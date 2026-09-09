@@ -1,7 +1,6 @@
 import type {
 	VerificationClaim,
 	WorkflowBuildOutcome,
-	WorkflowTriggerVerificationProgress,
 	WorkflowVerificationEvidence,
 } from './workflow-loop-state';
 import { deriveVerificationClaim } from '../tools/orchestration/verification/claim';
@@ -14,8 +13,8 @@ export function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefine
 	}
 
 	const passedTriggers = triggers.filter((trigger) => Object.hasOwn(progress, trigger.nodeName));
-	const passes = passedTriggers.map((trigger) => progress[trigger.nodeName]);
-	const coveredNodes = new Set(passes.flatMap((pass) => pass.nodesExecuted));
+	const passes = passedTriggers.flatMap((trigger) => progress[trigger.nodeName]);
+	const coveredNodes = new Set(passes.flatMap((pass) => pass.evidence?.nodesExecuted ?? []));
 	return {
 		passes,
 		allTriggersPassed: passedTriggers.length === triggers.length,
@@ -28,45 +27,6 @@ export function getMultiTriggerCoverage(outcome: WorkflowBuildOutcome | undefine
 	};
 }
 
-export function mergeTriggerVerificationProgress(
-	previous: WorkflowTriggerVerificationProgress[],
-	verification: Pick<WorkflowVerificationEvidence, 'evidence'> & { claim: VerificationClaim },
-): WorkflowTriggerVerificationProgress {
-	const nodes = verification.evidence?.nodesExecuted ?? [];
-	const simulated = verification.claim.simulatedNodes;
-	const simulatedNames = new Set([
-		...simulated.map((node) => node.nodeName),
-		...verification.claim.pinnedNodes,
-	]);
-	const liveNodes = new Set([
-		...previous.flatMap((pass) => pass.liveNodesExecuted),
-		...nodes.filter((name) => !simulatedNames.has(name)),
-	]);
-	return {
-		nodesExecuted: [...new Set([...previous.flatMap((pass) => pass.nodesExecuted), ...nodes])],
-		liveNodesExecuted: [...liveNodes],
-		simulatedNodes: [
-			...new Map(
-				[...previous.flatMap((pass) => pass.simulatedNodes), ...simulated]
-					.filter((node) => !liveNodes.has(node.nodeName))
-					.map((node) => [node.nodeName, node]),
-			).values(),
-		],
-		pinnedNodes: [
-			...new Set([
-				...previous.flatMap((pass) => pass.pinnedNodes),
-				...verification.claim.pinnedNodes,
-			]),
-		].filter((name) => !liveNodes.has(name)),
-		unprovenTargets: [
-			...new Set([
-				...previous.flatMap((pass) => pass.unprovenTargets),
-				...verification.claim.unprovenTargets,
-			]),
-		].filter((name) => !liveNodes.has(name)),
-	};
-}
-
 export function deriveWorkflowVerificationClaim(
 	outcome: WorkflowBuildOutcome,
 	verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
@@ -74,18 +34,38 @@ export function deriveWorkflowVerificationClaim(
 	const coverage = getMultiTriggerCoverage(outcome);
 	if (!coverage) return verification.claim;
 
+	const liveNodes = new Set(
+		coverage.passes.flatMap(({ evidence, claim }) => {
+			const simulated = new Set([
+				...claim.simulatedNodes.map((node) => node.nodeName),
+				...claim.pinnedNodes,
+			]);
+			return (evidence?.nodesExecuted ?? []).filter((name) => !simulated.has(name));
+		}),
+	);
 	// Only successful scoped passes contribute coverage. Keep the latest run's limitations.
-	const progress = mergeTriggerVerificationProgress(coverage.passes, { claim: verification.claim });
+	const claims = [...coverage.passes.map((pass) => pass.claim), verification.claim];
 
 	return deriveVerificationClaim({
 		analysis: {
 			success: verification.success,
 			nodesNotReached: coverage.nodesNotReached,
-			reachedSimulatedNodes: progress.simulatedNodes,
-			workflowPinnedNodeNames: progress.pinnedNodes,
+			reachedSimulatedNodes: [
+				...new Map(
+					claims
+						.flatMap((claim) => claim.simulatedNodes)
+						.filter((node) => !liveNodes.has(node.nodeName))
+						.map((node) => [node.nodeName, node]),
+				).values(),
+			],
+			workflowPinnedNodeNames: [...new Set(claims.flatMap((claim) => claim.pinnedNodes))].filter(
+				(name) => !liveNodes.has(name),
+			),
 		},
 		plannedNodeCount: outcome.nodeSimulationPlan?.length ?? 0,
-		fixTargetNodeNames: progress.unprovenTargets,
+		fixTargetNodeNames: claims
+			.flatMap((claim) => claim.unprovenTargets)
+			.filter((name) => !liveNodes.has(name)),
 		pendingTriggers: coverage.pendingTriggers,
 	});
 }

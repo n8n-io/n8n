@@ -1,3 +1,4 @@
+import { successfulVerification } from '../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
 import { MAX_VERIFY_ATTEMPTS } from '../remediation';
 import type { WorkflowBuildOutcome } from '../workflow-loop-state';
@@ -86,27 +87,11 @@ describe('WorkflowTaskCoordinator', () => {
 		await coordinator.startVerification('wi_1', 'A');
 		await coordinator.startVerification('wi_1', 'B');
 		for (const triggerNodeName of ['B', 'A']) {
-			await coordinator.recordVerification('wi_1', {
-				attempted: true,
-				success: true,
-				executionId: triggerNodeName,
-				evidence: { triggerNodeName, nodesExecuted: [triggerNodeName] },
-				claim: {
-					level: 'verified',
-					plannedNodeCount: 1,
-					reachedNodeCount: 1,
-					nodesNotReached: [],
-					simulatedNodes: [],
-					pinnedNodes: [],
-					unprovenTargets: [],
-					publishReady: true,
-					liveTestRecommended: false,
-				},
-			});
+			await coordinator.recordVerification('wi_1', successfulVerification(triggerNodeName));
 		}
 		expect((await coordinator.getBuildOutcome('wi_1'))?.verificationProgress).toMatchObject({
-			A: { nodesExecuted: ['A'] },
-			B: { nodesExecuted: ['B'] },
+			A: [{ evidence: { nodesExecuted: ['A'] } }],
+			B: [{ evidence: { nodesExecuted: ['B'] } }],
 		});
 	});
 

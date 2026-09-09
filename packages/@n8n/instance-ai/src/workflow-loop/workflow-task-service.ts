@@ -2,10 +2,7 @@ import { UserError } from 'n8n-workflow';
 
 import { MAX_VERIFY_ATTEMPTS } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
-import {
-	deriveWorkflowVerificationClaim,
-	mergeTriggerVerificationProgress,
-} from './verification-progress';
+import { deriveWorkflowVerificationClaim } from './verification-progress';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
@@ -16,7 +13,6 @@ import type {
 	VerificationClaim,
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
-import { deriveVerificationClaim } from '../tools/orchestration/verification/claim';
 import type { WorkflowTaskService } from '../types';
 
 function lastAttemptTimeMs(
@@ -96,31 +92,14 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 					: undefined;
 				delete progress[triggerNodeName];
 			}
-			const verification = {
-				// Keep the obligation open while the reserved execution is in progress.
-				attempted: false,
-				success: false,
-				status: 'running',
-				claim: deriveVerificationClaim({
-					analysis: {
-						success: false,
-						nodesNotReached: (outcome.nodeSimulationPlan ?? []).map((node) => node.nodeName),
-						reachedSimulatedNodes: [],
-						workflowPinnedNodeNames: [],
-					},
-					plannedNodeCount: outcome.nodeSimulationPlan?.length ?? 0,
-					fixTargetNodeNames: outcome.verification?.claim?.unprovenTargets,
-				}),
-			} satisfies WorkflowVerificationEvidence;
-			const next = {
+			return {
 				...outcome,
 				verifyAttempts: (outcome.verifyAttempts ?? 0) + 1,
 				// An unscoped retry cannot identify which pass it replaces.
 				verificationProgress: progress && !triggerNodeName ? {} : progress,
-				verification,
+				// Keep the obligation open and block publishing until the run completes.
+				verification: { attempted: false, success: false, status: 'running' },
 			};
-			verification.claim = deriveWorkflowVerificationClaim(next, verification);
-			return next;
 		});
 		return previousProgress;
 	}
@@ -137,11 +116,15 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 			const progress = outcome.verificationProgress && { ...outcome.verificationProgress };
 			if (progress && trigger) {
 				if (verification.success && verification.executionId && nodes.includes(trigger)) {
-					const priorProgress = Object.hasOwn(progress, trigger) ? progress[trigger] : undefined;
-					progress[trigger] = mergeTriggerVerificationProgress(
-						[priorProgress, previousProgress].filter((pass) => pass !== undefined),
-						verification,
-					);
+					const priorProgress = Object.hasOwn(progress, trigger) ? progress[trigger] : [];
+					progress[trigger] = [
+						...new Map(
+							[...(previousProgress ?? []), ...priorProgress, verification].map((pass) => [
+								pass.executionId,
+								pass,
+							]),
+						).values(),
+					];
 				} else {
 					delete progress[trigger];
 				}

@@ -1,3 +1,4 @@
+import { successfulVerification } from '../../__tests__/verification-fixtures';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
@@ -142,21 +143,11 @@ describe('deriveWorkflowVerificationObligation', () => {
 	});
 
 	const passedA = {
-		'Trigger A': {
-			nodesExecuted: ['Trigger A', 'Step A'],
-			liveNodesExecuted: ['Trigger A', 'Step A'],
-			simulatedNodes: [],
-			pinnedNodes: [],
-			unprovenTargets: [],
-		},
+		'Trigger A': [successfulVerification('Trigger A', ['Trigger A', 'Step A'])],
 	};
 	const passedAll = {
 		...passedA,
-		'Trigger B': {
-			...passedA['Trigger A'],
-			nodesExecuted: ['Trigger B', 'Step B'],
-			liveNodesExecuted: ['Trigger B', 'Step B'],
-		},
+		'Trigger B': [successfulVerification('Trigger B', ['Trigger B', 'Step B'])],
 	};
 	const successfulPass: WorkflowBuildOutcome['verification'] = {
 		attempted: true,

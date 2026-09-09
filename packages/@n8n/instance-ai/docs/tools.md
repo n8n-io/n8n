@@ -202,11 +202,9 @@ coverage per trigger. Each retry reserves an attempt and clears that trigger's
 old pass before execution. A successful result restores the combined coverage.
 If either write fails, the tool reports an error. The attempt limit still applies.
 
-The returned `claim` and the saved claim use the same cumulative evidence.
-`claim.pendingTriggers` lists triggers with incomplete verification evidence.
-Real executions must cover every planned node before `claim.level` can become
-`verified`. Simulated and pinned results can complete automatic coverage, but
-they do not prove live behavior. Starting a retry also clears publish readiness.
+The returned and saved `claim` use the same cumulative evidence. Pending triggers
+and nodes without real coverage prevent a `verified` claim. A running retry
+blocks publishing until verification completes.
 
 **Writes on success/failure**: the tool persists a structured `verification`
 record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto

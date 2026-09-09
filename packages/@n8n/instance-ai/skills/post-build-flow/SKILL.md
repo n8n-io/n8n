@@ -265,10 +265,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   different outputs of a shared Switch or If node.
 - A failed rerun removes that trigger's earlier coverage. Verify that trigger
   again before you claim that the workflow is verified.
-- Report per-trigger coverage — name each trigger and whether its branch ran.
-  Read `claim.level` for the combined result. It becomes `verified` only after
-  every trigger passes and real executions cover every planned node. A simulated
-  or pinned result can complete automatic coverage without proving live behavior.
+- Report each trigger and whether its branch ran. Use the combined `claim` to
+  describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -491,9 +489,9 @@ result.
 ## Claiming success
 
 For tracked multi-trigger builds, `claim` combines the saved successful passes.
-`nodesNotReached` outside the claim describes only the current trigger's branch.
-If `claim.pendingTriggers` is not empty, verify those triggers before reporting
-completion. The attempt limit still applies.
+A `verified` claim requires every trigger to pass and real coverage for every planned node.
+Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
+outside the claim describes only the current trigger's branch.
 
 `verify-built-workflow` returns a `claim`, and its `level` decides what you may
 say:

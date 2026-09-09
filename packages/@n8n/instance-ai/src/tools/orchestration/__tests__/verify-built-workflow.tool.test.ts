@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { successfulVerification } from '../../../__tests__/verification-fixtures';
 import type { WorkflowLoopStorage } from '../../../storage/workflow-loop-storage';
 import type {
 	InstanceAiDataTableService,
@@ -1647,7 +1648,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 
 		expect(result.nodesNotReached).toBeUndefined();
 		expect(updateBuildOutcome.mock.calls.at(-1)![1].verificationProgress).toMatchObject({
-			'Trigger A': { nodesExecuted: ['Trigger A', 'Step A'] },
+			'Trigger A': [{ evidence: { nodesExecuted: ['Trigger A', 'Step A'] } }],
 		});
 		expect(updateBuildOutcome.mock.calls.at(-1)![1].verification?.evidence?.triggerNodeName).toBe(
 			'Trigger A',
@@ -1711,13 +1712,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	);
 
 	const passedA = {
-		'Trigger A': {
-			nodesExecuted: ['Trigger A', 'Step A'],
-			liveNodesExecuted: ['Trigger A', 'Step A'],
-			simulatedNodes: [],
-			pinnedNodes: [],
-			unprovenTargets: [],
-		},
+		'Trigger A': [successfulVerification('Trigger A', ['Trigger A', 'Step A'])],
 	};
 
 	it('keeps the attempt and removes old coverage when the result cannot be saved', async () => {
@@ -1752,9 +1747,10 @@ describe('verify-built-workflow tool — trigger selection', () => {
 			executedNodeNames: ['Trigger A', 'Alternate Step'],
 		});
 		await runTool(ctx, triggerAInput);
-		expect(getOutcome().verificationProgress?.['Trigger A']).toMatchObject({
-			nodesExecuted: ['Trigger A', 'Step A', 'Alternate Step'],
-		});
+		expect(getOutcome().verificationProgress?.['Trigger A']).toMatchObject([
+			{ evidence: { nodesExecuted: ['Trigger A', 'Step A'] } },
+			{ evidence: { nodesExecuted: ['Trigger A', 'Alternate Step'] } },
+		]);
 	});
 
 	it('starts verification from the named trigger', async () => {

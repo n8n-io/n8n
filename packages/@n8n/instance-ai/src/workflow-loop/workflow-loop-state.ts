@@ -226,22 +226,14 @@ export const workflowVerificationEvidenceSchema = z.object({
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
 
-const workflowTriggerVerificationProgressSchema = z.object({
-	nodesExecuted: z.array(z.string()),
-	liveNodesExecuted: z.array(z.string()),
-	simulatedNodes: verificationClaimSchema.shape.simulatedNodes,
-	pinnedNodes: z.array(z.string()),
-	unprovenTargets: z.array(z.string()),
-});
-
-export type WorkflowTriggerVerificationProgress = z.infer<
-	typeof workflowTriggerVerificationProgressSchema
->;
-
 export const workflowVerificationProgressSchema = z.record(
 	z.string(),
-	workflowTriggerVerificationProgressSchema,
+	z.array(workflowVerificationEvidenceSchema.required({ claim: true })),
 );
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowVerificationProgressSchema
+>[string];
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -432,7 +424,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
-	/** Successful node coverage by trigger. A failed rerun removes that trigger's entry. */
+	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
 	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
