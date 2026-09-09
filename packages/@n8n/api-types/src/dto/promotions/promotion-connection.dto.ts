@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
@@ -61,14 +63,43 @@ export class CreatePromotionConnectionDto extends Z.class(
  * package operations each have their own route, so a strict shape rejects them
  * here.
  */
-export class UpdatePromotionConnectionDto extends Z.class(
-	{
+const updatePromotionConnectionSchema = z
+	.object({
 		name: promotionDisplayNameSchema.optional(),
 		target: promotionConnectionTargetSchema.optional(),
 		providerId: z.string().min(1).optional(),
-	},
-	{ strict: true },
-) {}
+	})
+	.strict()
+	.refine(
+		({ name, target, providerId }) =>
+			name !== undefined || target !== undefined || providerId !== undefined,
+		{ message: 'At least one field is required' },
+	)
+	.openapi({ minProperties: 1 });
+
+type UpdatePromotionConnection = z.infer<typeof updatePromotionConnectionSchema>;
+
+export class UpdatePromotionConnectionDto implements UpdatePromotionConnection {
+	name?: string;
+
+	target?: PromotionConnectionTarget;
+
+	providerId?: string;
+
+	static schema = updatePromotionConnectionSchema;
+
+	constructor(data: UpdatePromotionConnection) {
+		Object.assign(this, updatePromotionConnectionSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updatePromotionConnectionSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updatePromotionConnectionSchema.parse(data);
+	}
+}
 
 /**
  * The `providerId` filter shows which connections a provider edit affects. The

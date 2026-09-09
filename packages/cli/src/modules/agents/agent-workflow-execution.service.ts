@@ -8,6 +8,7 @@ import {
 	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
@@ -38,6 +39,7 @@ import {
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
+import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
@@ -98,6 +100,7 @@ export class AgentWorkflowExecutionService {
 		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly executionLevelTracer: ExecutionLevelTracer,
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
+		private readonly aiConfig: AiConfig,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -351,6 +354,7 @@ export class AgentWorkflowExecutionService {
 						userId: telemetryUserId,
 						runType,
 					}),
+					...modelStreamStallOptions(this.aiConfig),
 					...(telemetry ? { telemetry } : {}),
 				});
 

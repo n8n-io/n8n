@@ -18,7 +18,7 @@ import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workfl
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
-import { hasSingleUseBody, requestOAuth1, requestOAuth2 } from './oauth';
+import { hasSingleUseBody, isTokenExpiredStatusCode, requestOAuth1, requestOAuth2 } from './oauth';
 
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
@@ -111,7 +111,10 @@ export async function httpRequestWithAuthentication(
 		// the method failed due to unauthorized request
 		if (
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			error.response?.status === 401 &&
+			isTokenExpiredStatusCode(
+				error.response?.status,
+				additionalCredentialOptions?.preAuthenticationRetryStatusCode ?? 401,
+			) &&
 			additionalData.credentialsHelper.preAuthentication !== undefined &&
 			// OAuth 401s are already retried inside requestOAuth1/2 and leave
 			// credentialsDecrypted unset; with nothing refreshed, resending the same
