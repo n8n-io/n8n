@@ -99,6 +99,31 @@ describe('transfer framing', () => {
 			expect(unwrap('text')).toBe('text');
 		});
 
+		it('should give back the same value when nothing in it is a marker', () => {
+			const value = { list: [{ n: 1 }], deep: { text: 'x' } };
+
+			// The walk copies every object it enters, so a result with no marker in
+			// it would be allocated twice for nothing.
+			expect(unwrap(value)).toBe(value);
+		});
+
+		it('should copy only when it has a marker to rebuild', () => {
+			const value = { when: { [TRANSFER_TYPE_KEY]: 'DateTime' }, keep: { n: 1 } };
+
+			const result = unwrap(value) as Record<string, unknown>;
+
+			expect(result).not.toBe(value);
+			expect(result.when).toBe('decoded:DateTime');
+			expect(result.keep).toEqual({ n: 1 });
+		});
+
+		it('should give back a value that refers to itself and holds no marker', () => {
+			const value: Record<string, unknown> = { n: 1 };
+			value.self = value;
+
+			expect(unwrap(value)).toBe(value);
+		});
+
 		it('should hand every marker to the decoder, wherever it sits', () => {
 			const decode = vi.fn(decodeToTag);
 			const marker = { [TRANSFER_TYPE_KEY]: 'DateTime' };

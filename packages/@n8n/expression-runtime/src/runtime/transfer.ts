@@ -155,6 +155,31 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 }
 
 /**
+ * Say whether a value holds anything the walk would rebuild.
+ *
+ * Reads the same shapes the walk reads and builds nothing, so a result with no
+ * marker in it costs a read and no memory. `for...in` over a plain object and
+ * an index loop over an array both avoid the key array `Object.keys` returns.
+ */
+function holdsSentinel(value: unknown, seen: Set<object>): boolean {
+	if (value === null || typeof value !== 'object') return false;
+	if (seen.has(value)) return false;
+	seen.add(value);
+	if (Array.isArray(value)) {
+		for (let index = 0; index < value.length; index++) {
+			if (holdsSentinel(value[index], seen)) return true;
+		}
+		return false;
+	}
+	if (!isPlainObject(value)) return false;
+	if (isTransferSentinel(value) || isEscapedTransferValue(value)) return true;
+	for (const key in value) {
+		if (holdsSentinel(value[key], seen)) return true;
+	}
+	return false;
+}
+
+/**
  * Rebuild instances from the markers `__prepareForTransfer` emits.
  *
  * Walks the same shapes that function walks: a top-level value, arrays, and
@@ -162,7 +187,12 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
  * A payload marked opaque is returned as data, without any inspection.
  * Objects already visited are reused, so a graph that repeats or contains
  * itself is walked once.
+ *
+ * A value that holds no marker is given back as it is. The walk copies every
+ * plain object and array it enters, and most results carry no marker at all,
+ * so the copy would double what an expression allocates for nothing.
  */
 export function unwrapTransferSentinels(value: unknown, decode: SentinelDecoder): unknown {
+	if (!holdsSentinel(value, new Set<object>())) return value;
 	return unwrapValue(value, decode, new Map<object, unknown>());
 }

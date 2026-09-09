@@ -5,6 +5,7 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	isEscapedTransferValue,
 	isOpaqueTransferValue,
@@ -111,6 +112,26 @@ function isEscapedObject(
 }
 
 /**
+ * Give back the payload of an escape wrapper.
+ *
+ * A walked payload only had its own keys collide, so the walk goes on and
+ * rebuilds the markers deeper in it. An opaque payload is a value the guest
+ * could not walk, so `opaque` keeps every marker in it as data.
+ */
+function unescapeTransferValue(value: EscapedTransferValue): unknown {
+	const inner: unknown = value.__value;
+	const opaque = isOpaqueTransferValue(value);
+	if (typeof inner !== 'object' || inner === null) return inner;
+	if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
+	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+	const unescaped: Record<string, unknown> = {};
+	for (const [key, entry] of Object.entries(inner)) {
+		unescaped[key] = unwrapSentinels(entry, opaque);
+	}
+	return unescaped;
+}
+
+/**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
  *
@@ -135,21 +156,7 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 	}
 	if (!markersAsData) {
 		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-		if (isEscapedTransferValue(value)) {
-			// A walked payload only had its own keys collide, so the walk below still
-			// rebuilds luxon markers deeper in it. An opaque payload is a value the
-			// guest could not walk, so `opaque` keeps every marker in it as data.
-			const inner: unknown = value.__value;
-			const opaque = isOpaqueTransferValue(value);
-			if (typeof inner !== 'object' || inner === null) return inner;
-			if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
-			if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
-			const unescaped: Record<string, unknown> = {};
-			for (const [key, entry] of Object.entries(inner)) {
-				unescaped[key] = unwrapSentinels(entry, opaque);
-			}
-			return unescaped;
-		}
+		if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
