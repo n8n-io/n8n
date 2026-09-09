@@ -14,6 +14,18 @@ describe('SecurityConfig', () => {
 		process.env = originalEnv;
 	});
 
+	describe('azureStorageCustomEndpoints', () => {
+		test('defaults to false', () => {
+			process.env = {};
+			expect(Container.get(SecurityConfig).azureStorageCustomEndpoints).toBe(false);
+		});
+
+		test('is enabled by N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED=true', () => {
+			process.env = { N8N_AZURE_STORAGE_CUSTOM_ENDPOINTS_ENABLED: 'true' };
+			expect(Container.get(SecurityConfig).azureStorageCustomEndpoints).toBe(true);
+		});
+	});
+
 	describe('awsSystemCredentialsSdkSources', () => {
 		test('defaults to "all"', () => {
 			process.env = {};
