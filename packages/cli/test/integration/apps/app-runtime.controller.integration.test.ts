@@ -122,7 +122,10 @@ const respondWorkflow = () => ({
 	},
 });
 
-const createPublishedWorkflow = async (data: ReturnType<typeof echoWorkflow>, name: string) => {
+const createPublishedWorkflow = async (
+	data: ReturnType<typeof echoWorkflow | typeof respondWorkflow>,
+	name: string,
+) => {
 	const workflow = await createWorkflowWithHistory(
 		{ name, ...data } as unknown as Partial<IWorkflowDb>,
 		owner,
