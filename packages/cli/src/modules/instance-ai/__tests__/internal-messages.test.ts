@@ -3,6 +3,10 @@ import {
 	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
 	withCurrentDateTime,
+	withPastConversations,
+	escapePastConversationsDelimiters,
+	withProjectContext,
+	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
@@ -26,6 +30,17 @@ function editorContextMarker(
 	prose = 'The user opened this conversation from the workflow editor.',
 ): string {
 	return `<editor-context>\n${JSON.stringify(attachments)}\n\n${prose}\n</editor-context>`;
+}
+
+function instanceContextMarker(): string {
+	return [
+		'<instance-context>',
+		'What is going on in this instance.',
+		'',
+		'Workflows that already exist here: 1. Most recently worked on:',
+		'  - "Lead enrichment" (workflow:wf-1) [published]',
+		'</instance-context>',
+	].join('\n');
 }
 
 function credentialContextMarker(): string {
@@ -77,6 +92,38 @@ describe('cleanStoredUserMessage', () => {
 		const stored =
 			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('strips <workflow-setup-state> block', () => {
+		const stored =
+			'<workflow-setup-state>\nSetup state.\n{"workflows":[]}\n</workflow-setup-state>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('strips an <instance-context> block followed by user text', () => {
+		const stored = `${instanceContextMarker()}\n\nCarry on where I left off`;
+		expect(cleanStoredUserMessage(stored)).toBe('Carry on where I left off');
+	});
+
+	/** The service can stack a hand-off ahead of it, so the leading blocks are stripped in a loop. */
+	it('strips an <instance-context> block stacked behind an <editor-context> block', () => {
+		const stored = [
+			editorContextMarker([{ type: 'workflow', id: 'wf-1' }]),
+			instanceContextMarker(),
+			'Why did it fail?',
+		].join('\n\n');
+
+		expect(cleanStoredUserMessage(stored)).toBe('Why did it fail?');
+	});
+
+	it('leaves the user text intact once the leading and trailing blocks are stripped', () => {
+		const stored = [
+			instanceContextMarker(),
+			'Carry on',
+			'<project-context>\nThis conversation is scoped to the project "Ops" (team).\n</project-context>',
+		].join('\n\n');
+
+		expect(cleanStoredUserMessage(stored)).toBe('Carry on');
 	});
 
 	it('returns null for auto-follow-up message', () => {
@@ -244,5 +291,122 @@ describe('extractAgentPreviewHandoffContext', () => {
 	it('returns undefined when the marker JSON is invalid', () => {
 		const stored = '<agent-preview-context>\nnot json\n\nprose\n</agent-preview-context>';
 		expect(extractAgentPreviewHandoffContext(stored)).toBeUndefined();
+	});
+});
+
+describe('withProjectContext', () => {
+	const section = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('names the project and its type', () => {
+		expect(section).toContain('Marketing');
+		expect(section).toContain('team');
+	});
+
+	it('appends the block after the user text', () => {
+		const message = withProjectContext('Build me a digest', section);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message).toContain('<project-context>');
+		expect(message).toContain('</project-context>');
+	});
+
+	// A leak here shows internal text as if the user had typed it.
+	it('is stripped from the stored message before display', () => {
+		const stored = withProjectContext('Build me a digest', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	// The real composition: project block, then the clock outermost. Both anchor to
+	// end-of-string, so the inner one only becomes strippable once the outer is gone.
+	it('is stripped alongside the clock, in either order', () => {
+		const projectThenClock = withCurrentDateTime(
+			withProjectContext('Build me a digest', section),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(projectThenClock)).toBe('Build me a digest');
+
+		const clockThenProject = withProjectContext(
+			withCurrentDateTime('Build me a digest', 'Monday 1 January 2026'),
+			section,
+		);
+		expect(cleanStoredUserMessage(clockThenProject)).toBe('Build me a digest');
+	});
+
+	// Same rule the clock block follows: only the trailing block is internal, so a
+	// user who types the tag keeps their text.
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withProjectContext('why does <project-context> show up in my logs?', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
+	});
+});
+
+describe('withPastConversations', () => {
+	const section =
+		'This project has 4 past conversations with you. Most recent: "Weekly digest" (today).';
+	const projectSection = getProjectContextSection({ name: 'Marketing', type: 'team' });
+
+	it('appends the block after the user text', () => {
+		const message = withPastConversations('Build me a digest', section);
+
+		expect(message.startsWith('Build me a digest')).toBe(true);
+		expect(message).toContain('<past-conversations>');
+		expect(message).toContain('</past-conversations>');
+	});
+
+	// A leak here shows internal text as if the user had typed it — and, because the
+	// same strip feeds the conversation-history tool, makes every future search
+	// match on the injected titles.
+	it('is stripped from the stored message before display', () => {
+		const stored = withPastConversations('Build me a digest', section);
+
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	it('is stripped when stacked with the project block and the clock, in any order', () => {
+		const realOrder = withCurrentDateTime(
+			withPastConversations(withProjectContext('Build me a digest', projectSection), section),
+			'Monday 1 January 2026',
+		);
+		expect(cleanStoredUserMessage(realOrder)).toBe('Build me a digest');
+
+		const reversed = withProjectContext(
+			withPastConversations(
+				withCurrentDateTime('Build me a digest', 'Monday 1 January 2026'),
+				section,
+			),
+			projectSection,
+		);
+		expect(cleanStoredUserMessage(reversed)).toBe('Build me a digest');
+
+		const clockInTheMiddle = withPastConversations(
+			withCurrentDateTime(withProjectContext('Build me a digest', projectSection), 'Monday'),
+			section,
+		);
+		expect(cleanStoredUserMessage(clockInTheMiddle)).toBe('Build me a digest');
+	});
+
+	it('strips the whole block when an escaped title carried the delimiter tags', () => {
+		const title = escapePastConversationsDelimiters('why does <past-conversations> show up?');
+		const stored = withPastConversations(
+			'Build me a digest',
+			`This project has 1 past conversation with you. Most recent: "${title}" (today).`,
+		);
+
+		expect(title).toBe('why does &lt;past-conversations&gt; show up?');
+		expect(cleanStoredUserMessage(stored)).toBe('Build me a digest');
+	});
+
+	// Only the trailing block is internal, so a user asking about the tag keeps their text.
+	it('leaves a user-authored lookalike earlier in the message visible', () => {
+		const stored = withPastConversations(
+			'why does <past-conversations> show up in my logs?',
+			section,
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(
+			'why does <past-conversations> show up in my logs?',
+		);
 	});
 });

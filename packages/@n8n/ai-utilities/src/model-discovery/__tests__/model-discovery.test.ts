@@ -198,6 +198,9 @@ describe('model-discovery', () => {
 		['openrouter', 'https://openrouter.ai/api/v1/models'],
 		['xai', 'https://api.x.ai/v1/models'],
 		['vercel', 'https://ai-gateway.vercel.sh/v1/models'],
+		['moonshotai', 'https://api.moonshot.ai/v1/models'],
+		['minimax', 'https://api.minimax.io/v1/models'],
+		['alibaba', 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models'],
 	] as const)('%s', (provider, expectedUrl) => {
 		it('lists models with bearer auth, sorted by name', async () => {
 			const fetch = mockFetch({ data: [{ id: 'model-b' }, { id: 'model-a' }] });
@@ -207,6 +210,30 @@ describe('model-discovery', () => {
 			expect(calledUrl(fetch)).toBe(expectedUrl);
 			expect(calledHeaders(fetch).Authorization).toBe('Bearer key');
 			expect(models.map((m) => m.id)).toEqual(['model-a', 'model-b']);
+		});
+	});
+
+	describe('alibaba', () => {
+		it("appends the compatible-mode path to a credential's bare-host baseURL", async () => {
+			const fetch = mockFetch({ data: [{ id: 'model-a' }] });
+
+			await listModelsForProvider('alibaba', {
+				apiKey: 'key',
+				baseURL: 'https://dashscope-intl.aliyuncs.com',
+				fetch,
+			});
+
+			expect(calledUrl(fetch)).toBe(
+				'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models',
+			);
+		});
+
+		it('returns an empty list when the response has no data field', async () => {
+			const fetch = mockFetch({});
+
+			const models = await listModelsForProvider('alibaba', { apiKey: 'key', fetch });
+
+			expect(models).toEqual([]);
 		});
 	});
 
@@ -281,12 +308,15 @@ describe('model-discovery', () => {
 
 	it('exposes a registry of all supported providers', () => {
 		expect(Object.keys(MODEL_DISCOVERY_PROVIDERS).sort()).toEqual([
+			'alibaba',
 			'anthropic',
 			'cohere',
 			'deepseek',
 			'google',
 			'groq',
+			'minimax',
 			'mistral',
+			'moonshotai',
 			'nvidia',
 			'openai',
 			'openrouter',

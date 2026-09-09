@@ -811,7 +811,7 @@ describe('NodeCreator - utils', () => {
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ text: 'n8n credits', pill: true, type: 'info' });
+			expect(result.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
 		});
 
 		it('should retag credits when the wallet arrives after the first finalize', () => {
@@ -826,7 +826,7 @@ describe('NodeCreator - utils', () => {
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [second] = finalizeItems(items) as NodeCreateElement[];
-			expect(second.properties.tag).toEqual({ text: 'n8n credits', pill: true, type: 'info' });
+			expect(second.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {

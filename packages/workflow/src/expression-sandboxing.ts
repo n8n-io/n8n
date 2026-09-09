@@ -28,6 +28,9 @@ type AstNode = { type: string } & Record<string, unknown>;
 const isAstNode = (value: unknown): value is AstNode =>
 	typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
 
+// `Array.isArray` widens an `unknown` to `any[]`, which loses type safety on the elements
+const isNodeList = (value: unknown): value is unknown[] => Array.isArray(value);
+
 const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
 	if (!isAstNode(node)) return acc;
 
@@ -78,6 +81,38 @@ const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
 
 const getReservedIdentifier = (node: unknown): string | undefined =>
 	getBoundIdentifiers(node).find((name) => RESERVED_VARIABLE_NAMES.has(name));
+
+const getStaticTemplateValue = (node: AstNode): string | undefined => {
+	const { expressions, quasis } = node;
+	if (!isNodeList(expressions) || expressions.length !== 0) return undefined;
+	if (!isNodeList(quasis) || quasis.length !== 1) return undefined;
+
+	const quasi = quasis[0];
+	if (!isAstNode(quasi)) return undefined;
+	const { value } = quasi;
+	if (typeof value !== 'object' || value === null || !('cooked' in value)) return undefined;
+	const { cooked } = value;
+	return typeof cooked === 'string' ? cooked : undefined;
+};
+
+const getReservedMemberKey = (key: unknown): string | undefined => {
+	if (!isAstNode(key)) return undefined;
+
+	let keyName: string | undefined;
+	if (key.type === 'Identifier' && typeof key.name === 'string') {
+		keyName = key.name;
+	} else if (
+		(key.type === 'StringLiteral' || key.type === 'Literal') &&
+		typeof key.value === 'string'
+	) {
+		keyName = key.value;
+	} else if (key.type === 'TemplateLiteral') {
+		// A template literal with no substitutions names the member statically
+		keyName = getStaticTemplateValue(key);
+	}
+
+	return keyName !== undefined && RESERVED_VARIABLE_NAMES.has(keyName) ? keyName : undefined;
+};
 
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
@@ -402,6 +437,24 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 			const className = getReservedIdentifier(path.node.id);
 			if (className !== undefined) {
 				throw new ExpressionReservedVariableError(className);
+			}
+		},
+
+		visitClassBody(path) {
+			this.traverse(path);
+
+			const members = path.node.body;
+			if (!Array.isArray(members)) return;
+
+			for (const member of members) {
+				if (!isAstNode(member)) continue;
+				// A computed identifier key is a variable reference, not a name we can resolve
+				// statically; a computed string literal still names the member, so check it.
+				if (member.computed && isAstNode(member.key) && member.key.type === 'Identifier') continue;
+				const memberKey = getReservedMemberKey(member.key);
+				if (memberKey !== undefined) {
+					throw new ExpressionReservedVariableError(memberKey);
+				}
 			}
 		},
 

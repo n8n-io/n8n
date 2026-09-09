@@ -15,25 +15,15 @@ import type {
 	INode,
 	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
-	INodeTypeData,
-	INodeTypes,
 	ICredentialTestFunctions,
-	IDataObject,
 	IExecuteData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import {
-	VersionedNodeType,
-	NodeHelpers,
-	Workflow,
-	UnexpectedError,
-	createEmptyRunExecutionData,
-} from 'n8n-workflow';
+import { VersionedNodeType, Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
@@ -41,6 +31,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
+import { createMockNodeTypes } from '../credentials/mock-node-types';
 import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
@@ -60,31 +51,7 @@ export type CredentialAuthProbeResult = INodeCredentialTestResult & {
 	outcome: CredentialAuthProbeOutcome;
 };
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodesData: mockNodesData, nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 @Service()
 export class CredentialsTester {
@@ -117,7 +84,16 @@ export class CredentialsTester {
 
 		const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
 		for (const nodeName of supportedNodes) {
-			const node = this.nodeTypes.getByName(nodeName);
+			// Tool generation appends synthetic `…Tool` variants to `supportedNodes`, but
+			// `getByName` only resolves nodes that exist on disk. Skip what it can't load:
+			// a variant declares no test of its own, and the base node it was derived from
+			// is in this same list.
+			let node: INodeType | IVersionedNodeType;
+			try {
+				node = this.nodeTypes.getByName(nodeName);
+			} catch {
+				continue;
+			}
 
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
@@ -248,7 +224,7 @@ export class CredentialsTester {
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 		targetUrl: string,
-		options: { acceptedStatusCodes?: number[] } = {},
+		options: { acceptedStatusCodes?: number[]; allowedDomains?: string } = {},
 	): Promise<CredentialAuthProbeResult> {
 		try {
 			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
@@ -265,7 +241,15 @@ export class CredentialsTester {
 			userId,
 			credentialType,
 			credentialsDecrypted,
-			{ testRequest: { request: { url: targetUrl, method: 'GET' } } },
+			{
+				testRequest: {
+					request: {
+						url: targetUrl,
+						method: 'GET',
+						...(options.allowedDomains ? { allowedDomains: options.allowedDomains } : {}),
+					},
+				},
+			},
 			'authProbe',
 			options.acceptedStatusCodes,
 		);

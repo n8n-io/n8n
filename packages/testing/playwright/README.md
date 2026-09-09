@@ -108,7 +108,8 @@ situations where `test:local`'s defaults aren't enough:
   Pin a port with `N8N_BASE_URL=http://localhost:5680 …` when you need a
   stable URL for browser inspection.
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
-  Its `database.sqlite` is fully isolated from your local `~/.n8n` install.
+  n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
+  from your local `~/.n8n` install.
 - **Container-only tests included.** `@capability:*` / `@licensed` /
   `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
   are responsible for detecting the missing container and skipping or falling

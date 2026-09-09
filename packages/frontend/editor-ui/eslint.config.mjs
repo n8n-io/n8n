@@ -2,6 +2,36 @@ import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
 
+/**
+ * Extraction ratchet: a feature that has become a module package must not reappear
+ * under `src/features/`. Append one entry per extraction — this list only grows.
+ *
+ * The old path no longer resolves, so this is about the message, not the failure: it
+ * names the package and it says that the shell reaches a module through
+ * `src/app/modules.manifest.ts`, not through a deep path.
+ *
+ * Spread into every block that sets `no-restricted-imports`. Flat-config replaces
+ * rule options rather than merging them, so a scoped block that omits these patterns
+ * would switch the ratchet off for its own files.
+ */
+const extractedFeatures = [
+	{
+		group: ['@/features/instanceRegistry', '@/features/instanceRegistry/*'],
+		message:
+			'instanceRegistry is the @n8n/frontend-module-instance-registry package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/settings/otel', '@/features/settings/otel/*'],
+		message:
+			'otel is the @n8n/frontend-module-otel package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/execution/insights', '@/features/execution/insights/*'],
+		message:
+			'insights is the @n8n/frontend-module-insights package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+];
+
 export default defineConfig(
 	frontendConfig,
 	{
@@ -238,6 +268,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
 		},
 	},
 	{
@@ -299,6 +330,7 @@ export default defineConfig(
 				'error',
 				{
 					patterns: [
+						...extractedFeatures,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:
@@ -337,6 +369,19 @@ export default defineConfig(
 		],
 		rules: {
 			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	{
+		// Vite bundles everything this package imports and nothing resolves it from
+		// node_modules at runtime, so every dependency is a devDependency. That keeps
+		// the frontend libraries out of the server image, which installs editor-ui's
+		// production closure via packages/cli. The rule still catches imports of
+		// packages the manifest does not declare at all.
+		rules: {
+			'import-x/no-extraneous-dependencies': [
+				'error',
+				{ devDependencies: true, optionalDependencies: false },
+			],
 		},
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),

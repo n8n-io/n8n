@@ -23,7 +23,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
 	};
 });
 

@@ -86,6 +86,7 @@ watch(searchQuery, (value) => {
 });
 
 const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
+const isMcpCategory = computed(() => activeCategory.value === 'mcp');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
@@ -182,10 +183,16 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
-const flattenedRows = computed<FlattenedRow[]>(() =>
+type ListRow = FlattenedRow | { key: 'suggestion' };
+
+const toolRows = computed<FlattenedRow[]>(() =>
 	itemsForCategory(activeCategory.value)
 		.filter(matchesQuery)
 		.map((item) => ({ key: `item:${item.id}`, item })),
+);
+
+const flattenedRows = computed<ListRow[]>(() =>
+	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -252,7 +259,7 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => flattenedRows.value.length === 0);
+const isListEmpty = computed(() => toolRows.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
@@ -379,11 +386,17 @@ function handleOpenChange(value: boolean) {
 					</span>
 				</button>
 
-				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
-					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
-				</div>
-				<div v-else :class="$style.listWrapper">
+				<div :class="$style.listWrapper">
+					<template v-if="isListEmpty">
+						<div :class="$style.empty" data-test-id="tools-connection-empty">
+							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
+						</div>
+						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+							<slot name="suggestion-footer" />
+						</div>
+					</template>
 					<N8nRecycleScroller
+						v-else
 						ref="scrollerRef"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
@@ -392,6 +405,7 @@ function handleOpenChange(value: boolean) {
 					>
 						<template #default="{ item: row }">
 							<ToolRow
+								v-if="'item' in row"
 								:item="row.item"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
@@ -403,6 +417,9 @@ function handleOpenChange(value: boolean) {
 								@first-credential-connect="emit('first-credential-connect', $event)"
 								@new-credential-connect="emit('new-credential-connect', $event)"
 							/>
+							<div v-else :class="$style.suggestionRow">
+								<slot name="suggestion-footer" />
+							</div>
 						</template>
 					</N8nRecycleScroller>
 				</div>
@@ -480,10 +497,9 @@ function handleOpenChange(value: boolean) {
 	min-width: 0;
 }
 
-// Runs past the dialog's own bottom padding so the list ends at the dialog
-// edge instead of floating above it; rows stay inside the horizontal padding,
-// clear of the rounded corners.
 .listWrapper {
+	display: flex;
+	flex-direction: column;
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
@@ -496,10 +512,19 @@ function handleOpenChange(value: boolean) {
 }
 
 .empty {
+	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--xl);
 	min-height: 200px;
+}
+
+.suggestionRow {
+	width: 100%;
+
+	&:has(*) {
+		margin-top: var(--spacing--sm);
+	}
 }
 </style>

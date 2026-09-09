@@ -1838,6 +1838,113 @@ describe('Workflow Builder', () => {
 			// pinData should not exist or be undefined when no nodes have pinData
 			expect(json.pinData).toBeUndefined();
 		});
+
+		type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
+		const cfg = (name: string, pinData?: Array<Record<string, string>>) =>
+			pinData ? { name, pinData } : { name };
+		const manualTrigger = (name: string) =>
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+		const ifNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.if', version: 2.2, config: cfg(name, pin) }) as IfNode;
+		const noOp = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.noOp', version: 1, config: cfg(name, pin) });
+		const setNode = (name: string, pin?: Array<Record<string, string>>) =>
+			node({ type: 'n8n-nodes-base.set', version: 3.4, config: cfg(name, pin) });
+
+		it('should collect pinData from a branching node passed as a builder', () => {
+			const t = manualTrigger('Start');
+			const route = ifNode('Route', [{ decision: 'pinned' }]);
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test').add(t).to(route.onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Route']).toEqual([{ decision: 'pinned' }]);
+		});
+
+		it('should collect pinData from the prefix chain of a builder', () => {
+			const t = manualTrigger('Start');
+			const prep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test').add(t).to(prep.to(route).onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Prep']).toEqual([{ result: 'pinned' }]);
+		});
+
+		it('should key pinData by the renamed node when a prefix-chain node collides with an existing name', () => {
+			const t = manualTrigger('Start');
+			const existingPrep = setNode('Prep');
+			const pinnedPrep = setNode('Prep', [{ result: 'pinned' }]);
+			const route = ifNode('Route');
+			const yes = noOp('Yes');
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(existingPrep)
+				.to(pinnedPrep.to(route).onTrue!(yes).onFalse(no));
+			const json = wf.toJSON();
+
+			// The colliding chain node is stored as 'Prep 1'; its pins must follow the rename
+			// instead of attaching to the unrelated pre-existing 'Prep'.
+			expect(json.nodes.map((n) => n.name)).toContain('Prep 1');
+			expect(json.pinData).toEqual({ 'Prep 1': [{ result: 'pinned' }] });
+		});
+
+		it('should collect pinData from a chain used as a branch target', () => {
+			const t = manualTrigger('Start');
+			const route = ifNode('Route');
+			const first = setNode('First', [{ head: 'pinned' }]);
+			const second = setNode('Second', [{ tail: 'pinned' }]);
+			const no = noOp('No');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(route.onTrue!(first.to(second)).onFalse(no));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['First']).toEqual([{ head: 'pinned' }]);
+			expect(json.pinData?.['Second']).toEqual([{ tail: 'pinned' }]);
+		});
+
+		it('should collect pinData from a nested builder used as a branch target', () => {
+			const t = manualTrigger('Start');
+			const outer = ifNode('Outer');
+			const inner = ifNode('Inner');
+			const x = noOp('X', [{ result: 'pinned' }]);
+			const y = noOp('Y');
+			const z = noOp('Z');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(outer.onTrue!(inner.onTrue!(x).onFalse(y)).onFalse(z));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['X']).toEqual([{ result: 'pinned' }]);
+		});
+
+		it('should collect pinData from SplitInBatches done and each targets', () => {
+			const t = manualTrigger('Start');
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'SIB' },
+			});
+			const doneNode = noOp('Done', [{ result: 'pinned' }]);
+			const eachNode = noOp('Each');
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(splitInBatches(sibNode).onDone(doneNode).onEachBatch(eachNode));
+			const json = wf.toJSON();
+
+			expect(json.pinData?.['Done']).toEqual([{ result: 'pinned' }]);
+		});
 	});
 
 	describe('Switch fluent API', () => {

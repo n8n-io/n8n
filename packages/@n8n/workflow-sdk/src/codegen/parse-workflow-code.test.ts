@@ -176,4 +176,24 @@ describe('parseWorkflowCodeToBuilder', () => {
 			);
 		});
 	});
+
+	describe('resource limits', () => {
+		it('should surface a resource-limit violation as a SyntaxError', () => {
+			const doublings = 25;
+			const lines = ['const a0 = [1];'];
+
+			for (let i = 1; i <= doublings; i++) {
+				lines.push(`const a${i} = [...a${i - 1}, ...a${i - 1}];`);
+			}
+
+			lines.push(`export default a${doublings};`);
+			const code = lines.join('\n');
+
+			// Match the specific message, not just SyntaxError: exporting a bare
+			// array is also invalid on its own (wrong export type), so asserting
+			// only the error class would pass even if the resource limit were
+			// never enforced.
+			expect(() => parseWorkflowCodeToBuilder(code)).toThrow(/too much data/);
+		});
+	});
 });

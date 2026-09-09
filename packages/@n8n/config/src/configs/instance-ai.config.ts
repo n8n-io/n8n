@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
+import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
@@ -102,8 +103,8 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
-	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
-	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
@@ -173,36 +174,9 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
 
-	/** Scan and redact secrets/PII from agent output before it reaches the user. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
-	outputRedactionEnabled: boolean = true;
-
-	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
-	outputRedactionSecrets: boolean = true;
-
-	/** Comma-separated PII categories to redact from agent output. Available: email, phone, credit-card, ssn-us, iban, crypto-wallet, ip, mac, url. Empty = no PII scanning. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
-	outputRedactionPii: string = 'credit-card';
-
-	/** Replacement text substituted for each redacted match in agent output. */
-	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
-	outputRedactionPlaceholder: string = '[REDACTED]';
-
 	/** Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel. */
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
-
-	/**
-	 * Persist Instance AI events to a durable DB log (`instance_ai_events`)
-	 * and serve SSE replay + history from it. Default on since Gate A of the
-	 * durable-log rollout (pre-existing runs are backfilled by migration);
-	 * `false` restores the legacy in-memory bus + stored-snapshot history as
-	 * an off switch until the legacy paths sunset at Gate B. See RFC:
-	 * instance-ai durable event log.
-	 */
-	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
-	durableLog: boolean = true;
 
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
@@ -225,6 +199,35 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
+	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
+	 * the chat input replaces the suspending setup wizard. Env-settable so eval
+	 * lanes can exercise both paths; a managed rollout flag may layer on top
+	 * later behind the same accessors.
+	 */
+	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
+	instanceAiSetupPanelEnabled: boolean = false;
+
+	/**
+	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
+	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 *
+	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
+	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
+	 * with any other context surface, so a measurement can tell which one moved a result.
+	 */
+	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
+	nodeUsageEnabled: boolean = false;
+
+	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */
@@ -236,4 +239,63 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
 	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Max orchestrator runs executing concurrently on this process. A new user turn over
+	 * the cap is refused with HTTP 429; resumes and internal follow-up runs are always
+	 * admitted so an in-flight conversation is never stranded.
+	 *
+	 * `-1` (the default) means unlimited
+	 *
+	 * Size it against memory rather than throughput: measured peak is ~600MB
+	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
+	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
+	maxConcurrentRuns: number = -1;
+
+	/**
+	 * Max orchestrator runs one user may have executing at once, across all their threads.
+	 * Bounds credit overshoot: usage is only claimed when a run segment ends, so every run
+	 * a user can start in parallel is one more run's worth of spend that can land after
+	 * they cross quota.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * Counts executing runs only, a HITL-suspended run spends nothing while it waits,
+	 * and counting those would lock a user out for the whole confirmation timeout.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS_PER_USER', concurrencyLimitSchema)
+	maxConcurrentRunsPerUser: number = -1;
+
+	/**
+	 * Max background sub-agent tasks running concurrently on this process, across all
+	 * threads. Guards the fan-out case the per-thread limit misses: a handful of runs each
+	 * spawning their full complement of sub-agents. A spawn over the cap fails as a tool
+	 * error, which the orchestrator handles by doing the work inline or retrying later.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * The per-thread constant limit of MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD (5) applies regardless.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
+	maxConcurrentSubAgents: number = -1;
+
+	/**
+	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
+	 * changed recently, and what has run — plus the tool to read further back.
+	 *
+	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
+	 * The record is core and has other potential consumers; this flag gates one consumer's read.
+	 * Two of the three sources are not the activity log in the first place: what exists comes from
+	 * the workflows themselves, and runs come from `execution_entity`.
+	 *
+	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
+	 * the edit history stays empty, since no entry was ever written.
+	 */
+	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
+	instanceContextEnabled: boolean = false;
 }

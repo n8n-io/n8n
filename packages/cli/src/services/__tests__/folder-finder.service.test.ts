@@ -23,6 +23,7 @@ function makeFolder(overrides: Partial<Folder> = {}): Folder {
 function makeFinder(found: Folder[]) {
 	const folderRepository = mock<FolderRepository>();
 	folderRepository.find.mockResolvedValue(found);
+	folderRepository.findExistingIds.mockResolvedValue(new Set(found.map(({ id }) => id)));
 	const roleService = mock<RoleService>();
 	roleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
 	const finder = new FolderFinderService(folderRepository, roleService);
@@ -46,6 +47,26 @@ describe('FolderFinderService', () => {
 		const result = await finder.findFoldersByIdsForUser(['a', 'b'], nonGlobalUser, ['folder:read']);
 
 		expect(result).toEqual(folders);
+	});
+
+	it('merges distinct folders returned from different chunks', async () => {
+		const firstFolder = makeFolder({ id: 'first' });
+		const lastFolder = makeFolder({ id: 'last' });
+		const { finder, folderRepository } = makeFinder([]);
+		folderRepository.find.mockResolvedValueOnce([firstFolder]).mockResolvedValueOnce([lastFolder]);
+		const folderIds = [
+			...Array.from({ length: 10_000 }, (_, index) => `folder-${index}`),
+			lastFolder.id,
+		];
+
+		const result = await finder.findFoldersByIdsForUser(folderIds, nonGlobalUser, ['folder:read']);
+
+		expect(folderRepository.find).toHaveBeenCalledTimes(2);
+		expect(result).toEqual([firstFolder, lastFolder]);
+		const secondChunk = folderRepository.find.mock.calls[1][0]?.where as unknown as {
+			id: { value: string[] };
+		};
+		expect(secondChunk.id.value).toEqual([lastFolder.id]);
 	});
 
 	it('filters by the requested project scope for non-global users', async () => {
@@ -181,15 +202,16 @@ describe('FolderFinderService', () => {
 			const result = await finder.findExistingFolderIds([]);
 
 			expect(result.size).toBe(0);
-			expect(folderRepository.find.mock.calls).toHaveLength(0);
+			expect(folderRepository.findExistingIds).not.toHaveBeenCalled();
 		});
 
 		it('returns the ids that exist in the database, unscoped by access', async () => {
-			const { finder } = makeFinder([makeFolder({ id: 'fld-1' })]);
+			const { finder, folderRepository } = makeFinder([makeFolder({ id: 'fld-1' })]);
 
 			const result = await finder.findExistingFolderIds(['fld-1', 'fld-missing']);
 
 			expect(result).toEqual(new Set(['fld-1']));
+			expect(folderRepository.findExistingIds).toHaveBeenCalledWith(['fld-1', 'fld-missing']);
 		});
 	});
 

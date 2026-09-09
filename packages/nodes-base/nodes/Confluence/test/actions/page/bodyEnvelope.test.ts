@@ -1,6 +1,10 @@
 import { NodeOperationError } from 'n8n-workflow';
 
-import { buildBodyEnvelope, readBodyEnvelope } from '../../../actions/page/bodyEnvelope';
+import {
+	buildBodyEnvelope,
+	envelopeHasContent,
+	readBodyEnvelope,
+} from '../../../actions/page/bodyEnvelope';
 import { mockExecuteCtx } from '../../shared';
 
 describe('buildBodyEnvelope', () => {
@@ -69,6 +73,131 @@ describe('buildBodyEnvelope', () => {
 		])('rejects %s', (_name, input, message) => {
 			expect(() => buildBodyEnvelope('atlas_doc_format', input)).toThrow(message);
 		});
+	});
+});
+
+describe('envelopeHasContent', () => {
+	const adf = (content: unknown[]) =>
+		buildBodyEnvelope('atlas_doc_format', { type: 'doc', version: 1, content });
+
+	it.each([
+		['storage markup', buildBodyEnvelope('storage', '<p>x</p>'), true],
+		['a whitespace-only storage body', buildBodyEnvelope('storage', '  \n '), false],
+		[
+			'a storage body of only empty paragraphs',
+			buildBodyEnvelope('storage', '<p></p><p> </p>'),
+			false,
+		],
+		[
+			'a storage body of only nested structural markup',
+			buildBodyEnvelope(
+				'storage',
+				'<div><br /><ul><li></li></ul><table><tr><td></td></tr></table></div>',
+			),
+			false,
+		],
+		[
+			'a storage body of only non-breaking spaces',
+			buildBodyEnvelope('storage', '<p>&nbsp;</p>'),
+			false,
+		],
+		[
+			'a storage body of only numeric non-breaking-space entities',
+			buildBodyEnvelope('storage', '<p>&#160;</p><p>&#xa0;</p>'),
+			false,
+		],
+		[
+			'CDATA text as the only storage content',
+			buildBodyEnvelope('storage', '<p><![CDATA[hello]]></p>'),
+			true,
+		],
+		[
+			'a storage body with only a blank CDATA section',
+			buildBodyEnvelope('storage', '<p><![CDATA[  ]]></p>'),
+			false,
+		],
+		['a storage body with a visible entity', buildBodyEnvelope('storage', '<p>&amp;</p>'), true],
+		[
+			'text nested in structural storage markup',
+			buildBodyEnvelope('storage', '<div><p>hi</p></div>'),
+			true,
+		],
+		[
+			'an emoticon as the only storage content',
+			buildBodyEnvelope('storage', '<p><ac:emoticon ac:name="smile" /></p>'),
+			true,
+		],
+		[
+			'a macro as the only storage content',
+			buildBodyEnvelope('storage', '<ac:structured-macro ac:name="toc" />'),
+			true,
+		],
+		[
+			'an attached image as the only storage content',
+			buildBodyEnvelope(
+				'storage',
+				'<p><ac:image><ri:attachment ri:filename="x.png" /></ac:image></p>',
+			),
+			true,
+		],
+		['a horizontal rule as the only storage content', buildBodyEnvelope('storage', '<hr />'), true],
+		['a plain-text body', buildBodyEnvelope('plainText', 'Hello'), true],
+		['an empty plain-text body', buildBodyEnvelope('plainText', ' \n '), false],
+		['an empty ADF document', adf([]), false],
+		[
+			'an ADF document with only empty paragraphs',
+			adf([{ type: 'paragraph', content: [] }]),
+			false,
+		],
+		[
+			'an ADF document with only whitespace text',
+			adf([{ type: 'paragraph', content: [{ type: 'text', text: '   ' }] }]),
+			false,
+		],
+		[
+			'an ADF document with text',
+			adf([{ type: 'paragraph', content: [{ type: 'text', text: 'Hi' }] }]),
+			true,
+		],
+		[
+			'text nested in list structure',
+			adf([
+				{
+					type: 'bulletList',
+					content: [
+						{
+							type: 'listItem',
+							content: [{ type: 'paragraph', content: [{ type: 'text', text: 'item' }] }],
+						},
+					],
+				},
+			]),
+			true,
+		],
+		[
+			'a non-text node as the only content',
+			adf([{ type: 'paragraph', content: [{ type: 'emoji', attrs: { shortName: ':+1:' } }] }]),
+			true,
+		],
+		[
+			'an expand whose only text is its title',
+			adf([
+				{
+					type: 'expand',
+					attrs: { title: 'Read me' },
+					content: [{ type: 'paragraph', content: [] }],
+				},
+			]),
+			true,
+		],
+		[
+			'an expand with a blank title and no body text',
+			adf([{ type: 'expand', attrs: { title: '  ' }, content: [{ type: 'paragraph' }] }]),
+			false,
+		],
+		['malformed entries in the content array', adf([null, 'text', 42]), false],
+	])('%s → %s', (_name, envelope, expected) => {
+		expect(envelopeHasContent(envelope)).toBe(expected);
 	});
 });
 

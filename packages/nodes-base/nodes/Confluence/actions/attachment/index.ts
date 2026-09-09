@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as deleteAttachment from './delete.operation';
+import { siteRLC } from '../common';
 import * as getMany from './getMany.operation';
 import * as upload from './upload.operation';
 
@@ -39,6 +40,14 @@ export const description: INodeProperties[] = [
 		],
 		// Not the first option: the default must stay non-destructive
 		default: 'getMany',
+	},
+	{
+		...siteRLC,
+		displayOptions: {
+			show: {
+				resource: ['attachment'],
+			},
+		},
 	},
 	...deleteAttachment.description,
 	...getMany.description,

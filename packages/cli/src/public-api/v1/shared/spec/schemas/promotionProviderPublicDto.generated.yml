@@ -1,0 +1,59 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  type:
+    type: string
+    enum:
+      - git
+  authType:
+    type: string
+    enum:
+      - ssh-key
+      - token
+  config:
+    anyOf:
+      - type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          publicKey:
+            type: string
+            minLength: 1
+          keyType:
+            type: string
+            enum:
+              - ed25519
+              - rsa
+        required:
+          - schemaVersion
+          - publicKey
+          - keyType
+        additionalProperties: false
+      - type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+        required:
+          - schemaVersion
+        additionalProperties: false
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - id
+  - name
+  - type
+  - authType
+  - config
+  - createdAt
+  - updatedAt

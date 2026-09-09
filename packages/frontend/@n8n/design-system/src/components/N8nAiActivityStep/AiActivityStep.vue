@@ -164,6 +164,8 @@ const errorTooltip = computed(() =>
 .errorCallout {
 	margin-top: var(--spacing--xs);
 	max-width: 90%;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 .activityErrorIcon {
 	transform: translateY(1px);

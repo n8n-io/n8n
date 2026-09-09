@@ -64,6 +64,7 @@ vi.mock('@ai-sdk/google', () => ({
 		provider: 'google',
 		modelId: model,
 		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
@@ -133,16 +134,28 @@ vi.mock('@ai-sdk/gateway', () => ({
 }));
 
 vi.mock('@ai-sdk/azure', () => ({
-	createAzure:
-		(opts?: { apiKey?: string; resourceName?: string; apiVersion?: string; baseURL?: string }) =>
-		(model: string) => ({
+	createAzure: (opts?: {
+		apiKey?: string;
+		resourceName?: string;
+		apiVersion?: string;
+		baseURL?: string;
+		useDeploymentBasedUrls?: boolean;
+	}) => ({
+		// The factory calls `.chat(model)` (chat completions over deployment
+		// URLs), not the default responses model. Surface that via the
+		// returned object's `chat` builder and the captured options.
+		chat: (model: string) => ({
 			provider: 'azure-openai',
 			modelId: model,
 			apiKey: opts?.apiKey,
 			resourceName: opts?.resourceName,
 			apiVersion: opts?.apiVersion,
+			baseURL: opts?.baseURL,
+			useDeploymentBasedUrls: opts?.useDeploymentBasedUrls,
+			builder: 'chat',
 			specificationVersion: 'v3',
 		}),
+	}),
 }));
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
@@ -167,6 +180,42 @@ vi.mock('@ai-sdk/openai-compatible', () => ({
 		includeUsage: opts.includeUsage,
 		supportsStructuredOutputs: opts.supportsStructuredOutputs,
 		specificationVersion: 'v3',
+	}),
+}));
+
+vi.mock('@ai-sdk/moonshotai', () => ({
+	createMoonshotAI: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'moonshotai.chat',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
+	}),
+}));
+
+vi.mock('@ai-sdk/alibaba', () => ({
+	createAlibaba: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'alibaba.chat',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
+	}),
+}));
+
+vi.mock('@ai-sdk/minimax', () => ({
+	createMiniMax: (opts?: ProviderOpts) => (model: string) => ({
+		provider: 'minimax.messages',
+		modelId: model,
+		apiKey: opts?.apiKey,
+		baseURL: opts?.baseURL,
+		headers: opts?.headers,
+		fetch: opts?.fetch,
+		specificationVersion: 'v4',
 	}),
 }));
 
@@ -397,17 +446,33 @@ describe('createModel', () => {
 			expect(model.supportsStructuredOutputs).toBeUndefined();
 		});
 
-		it('should enable usage and structured outputs for moonshotai', () => {
+		it('should create model for moonshotai', () => {
 			const model = createModel({
 				id: 'moonshotai/kimi-k3',
 				apiKey: 'ms-test',
 			}) as unknown as Record<string, unknown>;
-			expect(model.provider).toBe('moonshotai');
+			expect(model.provider).toBe('moonshotai.chat');
 			expect(model.modelId).toBe('kimi-k3');
 			expect(model.apiKey).toBe('ms-test');
-			expect(model.baseURL).toBe('https://api.moonshot.ai/v1');
-			expect(model.includeUsage).toBe(true);
-			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should pass a region-specific baseURL through for moonshotai', () => {
+			const model = createModel({
+				id: 'moonshotai/kimi-k3',
+				apiKey: 'ms-test',
+				url: 'https://api.moonshot.cn/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://api.moonshot.cn/v1');
+		});
+
+		it('should create model for alibaba', () => {
+			const model = createModel({
+				id: 'alibaba/qwen-plus',
+				apiKey: 'ali-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('alibaba.chat');
+			expect(model.modelId).toBe('qwen-plus');
+			expect(model.apiKey).toBe('ali-test');
 		});
 
 		it('should have undefined supportsStructuredOutputs for custom when unset', () => {
@@ -468,25 +533,228 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('google baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({
+					id: 'google/gemini-3.7-flash',
+					apiKey: 'g-test',
+					...creds,
+				}) as unknown as Record<string, unknown>
+			).baseURL;
+
+		// `googlePalmApi.host` defaults to the bare host, which drops the API
+		// version from every request path — Google then 404s for any model.
+		it('appends the API version to the credential host', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('leaves a baseURL that already targets the API version unchanged', () => {
+			expect(baseURLFor({ url: 'https://generativelanguage.googleapis.com/v1beta' })).toBe(
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+		});
+
+		it('appends to a proxy host', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/gemini' })).toBe(
+				'https://proxy.example/gemini/v1beta',
+			);
+		});
+
+		it('leaves the SDK default in place when no host is configured', () => {
+			expect(baseURLFor({})).toBeUndefined();
+		});
+	});
+
+	describe('alibaba baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({ id: 'alibaba/qwen-plus', apiKey: 'ali-test', ...creds }) as unknown as Record<
+					string,
+					unknown
+				>
+			).baseURL;
+
+		it('appends the OpenAI-compatible path to a region base host', () => {
+			expect(baseURLFor({ url: 'https://dashscope-intl.aliyuncs.com' })).toBe(
+				'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+			);
+		});
+
+		it('appends it to a non-default region host too', () => {
+			expect(baseURLFor({ url: 'https://cn-hongkong.dashscope.aliyuncs.com' })).toBe(
+				'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
+			);
+		});
+
+		it('leaves a baseURL that already targets compatible mode unchanged', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/compatible-mode/v1' })).toBe(
+				'https://proxy.example/compatible-mode/v1',
+			);
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			expect(baseURLFor({})).toBeUndefined();
+		});
+	});
+
+	describe('minimax baseURL normalization', () => {
+		const baseURLFor = (creds: Record<string, unknown>) =>
+			(
+				createModel({ id: 'minimax/MiniMax-M3', apiKey: 'mm-test', ...creds }) as unknown as Record<
+					string,
+					unknown
+				>
+			).baseURL;
+
+		it('rewrites the OpenAI-compatible base to the Anthropic-compatible one', () => {
+			expect(baseURLFor({ url: 'https://api.minimax.io/v1' })).toBe(
+				'https://api.minimax.io/anthropic/v1',
+			);
+		});
+
+		it('rewrites the China region base too', () => {
+			expect(baseURLFor({ url: 'https://api.minimaxi.com/v1' })).toBe(
+				'https://api.minimaxi.com/anthropic/v1',
+			);
+		});
+
+		it('appends to a bare host', () => {
+			expect(baseURLFor({ url: 'https://api.minimax.io' })).toBe(
+				'https://api.minimax.io/anthropic/v1',
+			);
+		});
+
+		it('leaves a baseURL that already targets the Anthropic base unchanged', () => {
+			expect(baseURLFor({ url: 'https://proxy.example/minimax/anthropic/v1' })).toBe(
+				'https://proxy.example/minimax/anthropic/v1',
+			);
+		});
+
+		it('leaves baseURL undefined when none is provided', () => {
+			expect(baseURLFor({})).toBeUndefined();
+		});
+	});
+
 	describe('azure-openai', () => {
-		it('should create model with resourceName', () => {
+		it('should create a chat model with deployment-based URLs for a classic resource', () => {
 			const model = createModel({
 				id: 'azure-openai/gpt-4o',
 				apiKey: 'az-key',
 				resourceName: 'my-resource',
 				apiVersion: '2024-02-01',
+				endpointType: 'classic',
 			}) as unknown as Record<string, unknown>;
 			expect(model.provider).toBe('azure-openai');
 			expect(model.modelId).toBe('gpt-4o');
 			expect(model.apiKey).toBe('az-key');
 			expect(model.resourceName).toBe('my-resource');
 			expect(model.apiVersion).toBe('2024-02-01');
+			// Classic Azure OpenAI must use chat completions over deployment-based
+			// URLs so the credential's date-based apiVersion matches the endpoint
+			// (mirrors the LangChain Azure node's `useResponsesApi: false`).
+			expect(model.builder).toBe('chat');
+			expect(model.useDeploymentBasedUrls).toBe(true);
 		});
 
-		it('should throw if resourceName is missing', () => {
-			expect(() => createModel({ id: 'azure-openai/gpt-4o', apiKey: 'az-key' })).toThrow(
-				/Invalid credentials for provider "azure-openai"/,
-			);
+		it('should append /openai to a classic endpoint that lacks it', () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				apiKey: 'az-key',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+				baseURL: 'https://my-resource.openai.azure.com',
+			}) as unknown as Record<string, unknown>;
+			expect(model.baseURL).toBe('https://my-resource.openai.azure.com/openai');
+			expect(model.builder).toBe('chat');
+			expect(model.useDeploymentBasedUrls).toBe(true);
+		});
+
+		it('should use the user-provided deploymentName as the deployment id for classic', () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				apiKey: 'az-key',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+				deploymentName: 'my-gpt4o-deployment',
+			}) as unknown as Record<string, unknown>;
+			// The catalog model id is not the Azure deployment id; the factory
+			// hands the user's deployment name to .chat(...).
+			expect(model.modelId).toBe('my-gpt4o-deployment');
+			expect(model.builder).toBe('chat');
+			expect(model.useDeploymentBasedUrls).toBe(true);
+		});
+
+		it('should fall back to the catalog model id when classic has no deploymentName', () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				apiKey: 'az-key',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+			}) as unknown as Record<string, unknown>;
+			expect(model.modelId).toBe('gpt-4o');
+			expect(model.builder).toBe('chat');
+		});
+
+		it('should drive a Foundry endpoint as OpenAI-compatible when endpointType is foundry', () => {
+			const foundryURL = 'https://my-resource.services.ai.azure.com/openai/v1';
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				apiKey: 'az-key',
+				endpointType: 'foundry',
+				baseURL: foundryURL,
+			}) as unknown as Record<string, unknown>;
+			// Routed through @ai-sdk/openai-compatible, which uses the base verbatim.
+			expect(model.provider).toBe('azure-openai');
+			expect(model.modelId).toBe('gpt-4o');
+			expect(model.baseURL).toBe(foundryURL);
+			expect(model.builder).toBeUndefined();
+			expect(model.useDeploymentBasedUrls).toBeUndefined();
+		});
+
+		it('should treat a foundry endpoint without resourceName as valid', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+					baseURL: 'https://my-resource.services.ai.azure.com/openai/v1',
+				}),
+			).not.toThrow();
+		});
+
+		it('should throw if a classic endpoint is missing resourceName', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					endpointType: 'classic',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
+		});
+
+		it('should throw if resourceName is missing when endpointType is omitted', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
+		});
+
+		it('should throw if a foundry endpoint is missing baseURL', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*baseURL/);
 		});
 	});
 

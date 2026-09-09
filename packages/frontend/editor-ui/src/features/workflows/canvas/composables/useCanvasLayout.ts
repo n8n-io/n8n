@@ -12,12 +12,12 @@ import {
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
 import {
-	AGENT_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
 	NODE_X_SPACING,
-	snapPositionToGridByCenter,
+	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
+import { AGENT_NODE_SIZE, getAgentNodeHandleOffset } from '@/features/agents/utils/agentNode';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -625,24 +625,22 @@ export function useCanvasLayout(
 			})
 			.filter(isPresent);
 
-		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
-
-		// Snap by node center, not top-left: dagre aligns node centers and the
-		// connection handles sit at 50% of node height, so snapping the top-left
-		// corner shifts any node whose height isn't a multiple of two grid cells
-		// (e.g. the content-sized agent card) off the shared axis, leaving its
-		// connections slightly inclined. For default-size nodes the two are
-		// equivalent, since half their extent is already grid-aligned.
+		// Snap by the connection handle, not the top-left: dagre aligns node
+		// centers, and snapping each corner on its own can leave nodes on one row
+		// a grid cell apart. Handles sit at half the node height, except on the
+		// agent card, where they sit on the nearest grid line so that the card's
+		// top-left lands on the grid like every other node's.
 		const finalNodes = positionedNodes
 			.map(({ id, boundingBox }) => {
-				const [x, y] = snapPositionToGridByCenter(
-					[boundingBox.x - anchor.x, boundingBox.y - anchor.y],
-					[boundingBox.width, boundingBox.height],
-				);
+				const handleX = boundingBox.width / 2;
+				const handleY =
+					findNode<CanvasNodeData>(id)?.data?.render?.type === CanvasNodeRenderType.Agent
+						? getAgentNodeHandleOffset(boundingBox.height)
+						: boundingBox.height / 2;
 				return {
 					id,
-					x,
-					y,
+					x: snapToGrid(boundingBox.x - anchor.x + handleX) - handleX,
+					y: snapToGrid(boundingBox.y - anchor.y + handleY) - handleY,
 				};
 			})
 			// Stickies have no connections to keep straight, so their top-left

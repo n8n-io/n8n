@@ -569,6 +569,23 @@ describe('buildFromJson()', () => {
 		expect(tool!.approval).toBeUndefined();
 	});
 
+	it('drops a workflow tool when resolveTool returns null', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Deleted Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool: vi.fn().mockResolvedValue(null),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Deleted Workflow')).toBe(false);
+	});
+
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
 		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Test Workflow' }] });
 
@@ -1852,6 +1869,22 @@ describe('AgentJsonConfigSchema', () => {
 				transport: 'streamableHttp',
 				authentication: 'none',
 			});
+		});
+
+		it('accepts a native OAuth2 credential type', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://api.githubcopilot.com/mcp/',
+						authentication: 'githubOAuth2Api',
+						credential: 'github-credential',
+					},
+				],
+			});
+
+			expect(parsed.mcpServers?.[0].authentication).toBe('githubOAuth2Api');
 		});
 
 		it('rejects duplicate MCP server names', () => {

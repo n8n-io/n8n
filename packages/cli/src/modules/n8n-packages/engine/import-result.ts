@@ -11,6 +11,7 @@ import type {
 	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -53,6 +54,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};
@@ -68,6 +70,7 @@ export function buildImportResult(input: {
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
@@ -80,6 +83,7 @@ export function buildImportResult(input: {
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
 	};

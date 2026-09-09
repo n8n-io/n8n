@@ -3,9 +3,8 @@
 ## Overview
 
 Instance AI uses a pub/sub event bus to deliver agent events to the frontend
-in real-time. All agents — the orchestrator and eval-setup background agent —
-publish events to a per-thread channel. The frontend subscribes independently
-via SSE.
+in real-time. Agent runs publish events to a per-thread channel. The frontend
+subscribes independently via SSE.
 
 The protocol is designed for minimal time-to-first-token, progressive rendering
 of multi-agent activity, and resilient reconnection.
@@ -52,11 +51,9 @@ data: {"type":"tool-call","runId":"run_abc","agentId":"agent-001","payload":{"to
 ```
 
 Event IDs are monotonically increasing integers per thread channel. They are
-unique within that thread. With the durable log enabled, the shared database
-assigns the per-thread sequence. With the durable log disabled, multi-main
-deployments use a shared Redis sequence. In both modes, IDs and replay cursors
-are valid against any main. Live-only ephemeral frames do not include an `id:`
-field when the durable log is enabled.
+unique within that thread. The shared database assigns the per-thread sequence,
+so IDs and replay cursors are valid against any main. Live-only ephemeral frames
+do not include an `id:` field.
 
 ## Event Schema
 
@@ -78,7 +75,7 @@ The `runId` correlates all events started by one user message. This includes
 events from detached work that continues after the orchestrator responds. The
 POST endpoint returns the `runId`, and every event carries it.
 
-The `agentId` identifies which agent branch (orchestrator or background agent) the
+The `agentId` identifies which agent branch (orchestrator or child agent) the
 event belongs to. The frontend uses this to render an agent activity tree.
 
 For the full TypeScript type definitions, see
@@ -208,8 +205,7 @@ A tool has failed.
 
 ### `agent-spawned`
 
-The orchestrator has started a detached background agent (for example via
-`eval-setup-with-agent`).
+The orchestrator has started a child or embedded specialist agent.
 
 ```json
 {
@@ -218,19 +214,21 @@ The orchestrator has started a detached background agent (for example via
   "agentId": "agent-002",
   "payload": {
     "parentId": "agent-001",
-    "role": "eval-setup",
-    "tools": ["workflows", "nodes"]
+    "role": "agent-builder",
+    "tools": [],
+    "kind": "agent-builder",
+    "title": "Building agent"
   }
 }
 ```
 
 The frontend adds a new node to the agent activity tree under the parent.
-For this event type, `agentId` is the spawned background agent ID; `payload.parentId`
-links it to the orchestrator.
+For this event type, `agentId` is the child agent ID; `payload.parentId` links it
+to the orchestrator. Historical detached-agent events use the same shape.
 
 ### `agent-completed`
 
-A background agent has finished its work.
+A child or embedded specialist agent has finished its work.
 
 ```json
 {
@@ -238,13 +236,13 @@ A background agent has finished its work.
   "runId": "run_abc123",
   "agentId": "agent-002",
   "payload": {
-    "role": "eval-setup",
-    "result": "Added evaluation nodes to workflow wf-123"
+    "role": "agent-builder",
+    "result": "Updated the support agent"
   }
 }
 ```
 
-The frontend marks the background agent node as completed.
+The frontend marks the child agent node as completed.
 
 ### `confirmation-request`
 
@@ -303,6 +301,56 @@ progress indicator from this data.
       {"id": "t1", "description": "Build weather workflow", "status": "completed"},
       {"id": "t2", "description": "Set up Slack credential", "status": "in_progress"},
       {"id": "t3", "description": "Test end-to-end", "status": "pending"}
+    ]
+  }
+}
+```
+
+### `setup-items`
+
+The setup panel checklist for a workflow (service-keyed items, kinds
+`credential | parameters`). Each event carries the FULL current list for its
+`workflowId` and replaces the previous snapshot — removal is implicit, an
+empty `items` list clears the workflow's checklist. Items carry no status:
+done-ness is always derived client-side. Durable; the reducer folds the
+latest snapshot per `workflowId` onto the ROOT agent node regardless of the
+emitting agent, so it survives refresh via `GET /messages`.
+
+Emitted only while the setup panel flag is on, through the host-wired
+`setupItemsEmitter` on the domain context. `build-workflow` replaces the
+snapshot on every successful save (open credential slots fanned out to their
+nodes, slots already bound to a stored credential, and nodes with unresolved
+parameters); `workflows(action="setup")` publishes the same whole-workflow
+snapshot for normal setup calls; `credentials(action="setup")` re-analyses
+the saved workflow and merges the result, with the announced `reason`/`setupHint`
+applied, into the last snapshot. The emitter is seeded with the thread's
+persisted snapshots at run start and drops a snapshot whose content did not
+change, so a recomputed, unchanged list publishes nothing. Snapshot reads wait for
+pending events to drain. The final workflow setup handoff confirms the stored
+snapshot before it saves the setup routing marker. A failed handoff returns an
+error instead of `announced: true`. Credential replacement requests and existing
+setup cards keep their selection and resume flows.
+
+The agent observes saved workflows at the start of a user turn. This read updates
+its private open-item memo. It does not publish a snapshot or select a workflow.
+Observation checks saved credential bindings, required values, and placeholders.
+It does not test connections or resource availability. Configured items have not
+necessarily passed a connection test or workflow execution.
+
+```json
+{
+  "type": "setup-items",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "workflowId": "wf-1",
+    "items": [
+      {
+        "id": "wf-1:credential:slackApi",
+        "kind": "credential",
+        "credentialType": "slackApi",
+        "nodeBindings": [{"nodeName": "Send message"}]
+      }
     ]
   }
 }
@@ -390,24 +438,21 @@ The four statuses are `completed`, `cancelled`, `error` and `interrupted`.
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
 
-### Eval Setup Background Agent
+### Agent Builder Child Agent
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "eval-setup-with-agent", args: {workflowId: "wf-123", task: "Add evaluation nodes"}}}
-← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "eval-setup", tools: ["workflows", "nodes"], taskId: "task-1"}}
-← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {result: "Eval setup started (task: task-1).", taskId: "task-1"}}}
-← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Evaluation setup has started."}}
-← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", toolName: "workflows", args: {action: "get-json", workflowId: "wf-123"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", toolName: "build-agent", args: {name: "Support agent", message: "Add a support task"}}}
+← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "agent-builder", tools: [], kind: "agent-builder"}}
+← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", toolName: "read_config", args: {}}}
 ← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc2", result: {...}}}
-← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", toolName: "workflows", args: {action: "update", workflowId: "wf-123", workflow: {...}}}}
+← tool-call       {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", toolName: "write_config", args: {...}}}
 ← tool-result     {runId: "r1", agentId: "a2", payload: {toolCallId: "tc3", result: {...}}}
-← agent-completed {runId: "r1", agentId: "a2", payload: {role: "eval-setup", result: "Added evaluation nodes"}}
+← agent-completed {runId: "r1", agentId: "a2", payload: {role: "agent-builder", result: "Updated the support agent"}}
+← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc1", result: {ok: true, agentId: "agent-123", configUpdated: true}}}
+← text-delta      {runId: "r1", agentId: "a1", payload: {text: "The support agent is ready."}}
+← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
 ```
-
-Because eval setup is detached, its events can interleave with orchestrator
-events or continue after the orchestrator's `run-finish` event.
 
 ## Event Bus
 
@@ -421,14 +466,20 @@ graph LR
         S2[Sub-Agent B] -->|publish| Bus
     end
 
-    Bus --> Store[Replay Storage]
+    Bus -->|enqueue| Log[Durable Event Log]
+    Log -->|"drained (seq assigned)"| Bus
+    Log --> DB[(instance_ai_events)]
     Bus --> SSE[SSE Endpoint]
+    Bus -->|relay| Siblings[Sibling mains]
     SSE --> FE[Frontend]
 ```
 
-All events are published to a per-thread channel on the event bus and delivered
-to connected SSE clients. The durable log persists replayable facts. Ephemeral
-transport events remain live-only.
+All events are published to a per-thread channel on the event bus, which
+enqueues them into the durable event log. The log assigns each durable fact a
+per-thread `seq`, persists it, and hands the event back to the bus for
+delivery to connected SSE clients and — in multi-main — to sibling mains.
+Ephemeral transport events remain live-only, and the bus itself retains
+nothing.
 
 ### Implementations
 
@@ -437,13 +488,10 @@ transport events remain live-only.
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. On (the default),
-the durable event log (`instance_ai_events`) is the replay source: coalesced
-step-level facts are appended with a per-thread `seq` assigned by the
-writer's drain, so cursors stay valid across restarts and across mains
-sharing one database. Off (the rollback switch until Gate B), replay serves
-from a bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted;
-ids reset on restart).
+The durable event log (`instance_ai_events`) is the only replay source:
+coalesced step-level facts are appended with a per-thread `seq` assigned by
+the writer's drain, so cursors stay valid across restarts and across mains
+sharing one database.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -471,9 +519,8 @@ connection may occasionally deliver a lower id after a higher one. The
 frontend therefore tracks its reconnect cursor as the max id seen and drops
 already-seen ids on replay overlap.
 
-With the durable log enabled (`N8N_INSTANCE_AI_DURABLE_LOG`), ids are
-database-assigned sequence numbers and only DURABLE facts carry an `id:`
-line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
+Ids are database-assigned sequence numbers, and only DURABLE facts carry an
+`id:` line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
 `filesystem-request`) are live-only: their SSE frames have no `id:` line, so
 the browser's replay cursor never points at them (the same mechanism as the
 `run-sync` control frames). On replay, the deltas a client missed are covered
@@ -513,21 +560,19 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 credentials → [slack-bot, weather-api]
-├── 📋 create-tasks: build → configure evaluation
-├── 🔧 build-workflow → wf-123
-├── 🔧 executions(run) wf-123
+├── 📋 create-tasks: build → verify
+├── 🔧 build-agent → agent-123
 │
-├── 🤖 Eval setup
-│   ├── 🔧 workflows(get-json) → wf-123
-│   ├── 🔧 nodes(type-definition) → evaluation nodes
-│   ├── 🔧 workflows(update) → wf-123
-│   └── ✅ "Added evaluation nodes"
+├── 🤖 Agent Builder
+│   ├── 🔧 read_config → agent-123
+│   ├── 🔧 write_config → agent-123
+│   └── ✅ "Updated the support agent"
 │
-└── 💬 "Done! Your workflow runs daily at 8am..."
+└── 💬 "The support agent is ready."
 ```
 
-The eval-setup section is collapsible. Users can inspect its tool activity or
-view only the summary.
+Child-agent sections are collapsible. Users can inspect their tool activity or
+view only the summary. Stored historical child-agent events use the same tree.
 
 ## Session Restore
 
@@ -549,7 +594,7 @@ replaying all SSE events.
     "hasActiveRun": false,
     "isSuspended": false,
     "backgroundTasks": [
-      { "taskId": "t1", "role": "eval-setup", "agentId": "agent-002", "status": "running", "startedAt": 1709300000 }
+      { "taskId": "t1", "role": "builder", "agentId": "agent-002", "status": "running", "startedAt": 1709300000 }
     ]
   }
   ```
@@ -558,16 +603,16 @@ replaying all SSE events.
 
 1. **Persisted messages** — `@n8n/agents` persists tool invocations, reasoning, and
    text in its message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+   `InstanceAiMessage[]` objects.
 
-2. **Agent trees** — with the durable log enabled, history folds event-log rows
-   through `buildAgentTreeFromEvents()` when it reads a page. Stored snapshots
-   remain as the non-durable path and as a fallback for older history. The
-   backend updates snapshots when runs and background tasks settle.
+2. **Agent trees** — history folds event-log rows through
+   `buildAgentTreeFromEvents()` when it reads a page. The log is the only tree
+   source: a message whose run left no log rows renders from its own
+   text/reasoning content without a tree.
 
 3. **SSE cursor** — the messages response includes `nextEventId`. The frontend
    sets its SSE cursor to `nextEventId - 1` so the SSE connection only receives
-   events that arrived after the historical snapshot. This prevents duplicate
+   events that arrived after the historical messages. This prevents duplicate
    messages on refresh.
 
 ### Frontend Flow
@@ -600,6 +645,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
 | `thread-title-updated` | `title` | Thread title changed |

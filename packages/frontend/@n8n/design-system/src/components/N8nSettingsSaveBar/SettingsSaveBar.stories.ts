@@ -24,14 +24,14 @@ const storyComponents = {
 };
 
 const meta = {
-	title: 'Areas/Settings/Settings Save Bar',
+	title: 'Areas/Settings/SettingsSaveBar',
 	component: N8nSettingsSaveBar,
 	parameters: {
 		docs: {
 			description: {
 				component: [
 					'The explicit-save affordance for high-impact instance settings. It stays hidden until the page has unsaved changes, then slides up with an "Unsaved changes" status on the left and Discard (outline) + Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag) and `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). Cmd/Ctrl+S also triggers a save while the bar is visible and enabled.',
-					"The bar has two visual states that hand over automatically as the user scrolls. **Docked** is the resting state: the bar sits in the normal page flow after the last settings row, chrome-less (no surface, border, or shadow), with its content aligned to the settings rows' inner content line — it reads as the page's own closing row. **Floating** engages only while there is more content below the fold: the bar sticks 24px above the bottom of the scrollport and puts on its overlay chrome — a gently rounded (12px) bordered surface with a shadow spanning the settings column plus a 12px side overhang (720px column → 744px bar), its inner edges aligned exactly with the rows' outer edges. On handover the chrome fades (200ms, DS ease-out) and the content tuck settles on the DS spring curve.",
+					"The bar has two visual states that hand over automatically as the user scrolls. **Default** is the resting state: the bar sits in the normal page flow after the last settings row, chrome-less (no surface, border, or shadow), with its content aligned to the settings rows' inner content line — it reads as the page's own closing row. **Floating** engages only while there is more content below the fold: the bar sticks 24px above the bottom of the scrollport and puts on its overlay chrome — a gently rounded (12px) bordered surface with a shadow spanning the settings column plus a 12px side overhang (720px column → 744px bar), its inner edges aligned exactly with the rows' outer edges. On handover the chrome fades (200ms, DS ease-out) and the content tuck settles on the DS spring curve.",
 					'Hosting contract: render the bar as the **last child of the settings content column** and set `floating`. Keep the page\'s bottom padding on the content inside the scroll container (as `N8nSettingsLayout` does), not on the scroll container itself. No flex or min-height wiring is needed — positioning is plain `position: sticky` plus an internal stuck-state observer. The bar is always one line tall: the status message truncates with an ellipsis, and the default "Unsaved changes" copy should be kept unless the page has a strong reason to differ. Mirrors Figma 5991:7910.',
 				].join('\n\n'),
 			},
@@ -42,7 +42,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Docked: Story = {
+export const Default: Story = {
 	render: () => ({
 		components: storyComponents,
 		setup() {
@@ -100,7 +100,7 @@ export const Floating: Story = {
 		docs: {
 			description: {
 				story:
-					"The overlay state. With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while there is more content below the fold. Scroll to the end and it settles into its natural in-flow position after the last settings row — and since it no longer overlays anything there, its surface, border, and shadow dissolve and its content tucks in to the rows' content line (see Docked). Scroll back up and the overlay chrome fades in as it detaches.",
+					"The overlay state. With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while there is more content below the fold. Scroll to the end and it settles into its natural in-flow position after the last settings row — and since it no longer overlays anything there, its surface, border, and shadow dissolve and its content tucks in to the rows' content line (see Default). Scroll back up and the overlay chrome fades in as it detaches.",
 			},
 		},
 	},

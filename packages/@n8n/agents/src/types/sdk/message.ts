@@ -134,10 +134,22 @@ export type ContentToolCall = ContentMetadata & {
 
 	providerExecuted?: boolean;
 } & (
-		| { state: 'pending' }
+		| { state: 'pending'; suspension?: ToolCallSuspensionInfo }
 		| { state: 'resolved'; output: JSONValue; canceled?: boolean }
 		| { state: 'rejected'; error: string }
 	);
+
+/**
+ * Present on a pending block when the call suspended for user confirmation
+ * (HITL). Records what was asked of the user, so a later history load can
+ * settle an abandoned confirmation with an explanation instead of silently
+ * dropping the call.
+ */
+export interface ToolCallSuspensionInfo {
+	/** Human-readable confirmation message shown to the user (e.g. the approval card text). */
+	message?: string;
+	requestId?: string;
+}
 
 export type ContentInvalidToolCall = ContentMetadata & {
 	type: 'invalid-tool-call';

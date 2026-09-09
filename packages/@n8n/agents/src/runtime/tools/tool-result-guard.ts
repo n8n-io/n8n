@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { AgentDbMessage, AgentMessage, MessageContent } from '../../types/sdk/message';
@@ -9,6 +10,7 @@ import {
 	type ToolResultStorageScope,
 } from '../../workspace/tool-result-storage';
 import type { WorkspaceFilesystem } from '../../workspace/types';
+import { isContentToolResultOutput, type ContentToolResultOutput } from '../model/messages';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
@@ -48,6 +50,8 @@ const EXPIRED_OFFLOADED_TOOL_RESULT_JSON = JSON.stringify(EXPIRED_OFFLOADED_TOOL
 
 export interface ToolResultGuardStorage extends ToolResultStorageScope {
 	filesystem: WorkspaceFilesystem;
+	/** Invoked after a result was successfully offloaded to the workspace filesystem. */
+	onOffloaded?: () => void;
 }
 
 export interface GuardedToolResult {
@@ -63,6 +67,10 @@ export async function guardToolResultForModel(
 	storage?: ToolResultGuardStorage,
 	kind: ToolResultKind = 'result',
 ): Promise<GuardedToolResult> {
+	if (isContentToolResultOutput(output)) {
+		return await guardContentToolResultForModel(output, tokenCounter, storage, kind);
+	}
+
 	const historyOutput = toJsonValue(output);
 	const serialized = JSON.stringify(historyOutput);
 
@@ -91,6 +99,42 @@ export async function guardToolResultForModel(
 		wireOutput: truncated,
 		truncated: true,
 		offloaded: false,
+	};
+}
+
+async function guardContentToolResultForModel(
+	output: ContentToolResultOutput,
+	tokenCounter: TokenCounter,
+	storage: ToolResultGuardStorage | undefined,
+	kind: ToolResultKind,
+): Promise<GuardedToolResult> {
+	const textParts = output.value.filter((part) => part.type === 'text');
+	const historyOutput = toJsonValue(output);
+	if (textParts.length === 0) {
+		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
+	}
+
+	const guardedText = await guardToolResultForModel(textParts, tokenCounter, storage, kind);
+	if (!guardedText.truncated && !guardedText.offloaded) {
+		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
+	}
+
+	const replacement = JSON.stringify(guardedText.historyOutput);
+	let replacedText = false;
+	const value = output.value.flatMap((part): ContentToolResultOutput['value'] => {
+		if (part.type !== 'text') return [part];
+		if (replacedText) return [];
+
+		replacedText = true;
+		return [{ ...part, text: replacement }];
+	});
+	const wireOutput: ContentToolResultOutput = { ...output, value };
+
+	return {
+		historyOutput: toJsonValue(wireOutput),
+		wireOutput,
+		truncated: guardedText.truncated,
+		offloaded: guardedText.offloaded,
 	};
 }
 
@@ -129,10 +173,6 @@ export async function guardToolMessageForModel(
 	return { ...message, content };
 }
 
-function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isOffloadedToolResult(value: unknown): boolean {
 	return (
 		isRecord(value) &&
@@ -162,6 +202,19 @@ export function sanitizeOffloadedToolResultsForMemory(
 				if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
 					return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
 				}
+				if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
+					return {
+						...block,
+						output: toJsonValue({
+							type: 'content',
+							value: block.output.value.map((part) =>
+								part.type === 'text' && isSerializedOffloadedToolResult(part.text)
+									? { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON }
+									: part,
+							),
+						}),
+					};
+				}
 				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
 					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
 				}
@@ -187,6 +240,7 @@ async function tryOffloadResult(
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);
+		storage.onOffloaded?.();
 		return {
 			_offloaded: true,
 			path,

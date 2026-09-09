@@ -159,12 +159,12 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: false, instanceContextEnabled: true }),
+		).toContain(CONFIG_EVALS_SKILL_ID);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, instanceContextEnabled: true }),
+		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
@@ -191,16 +191,6 @@ describe('Instance AI runtime skills', () => {
 			const loadResult = await loadTool.handler?.({ skillId }, {});
 			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
 		}
-
-		const agentBuilder = await source.loadSkill('agent-builder');
-		expect(agentBuilder?.instructions).toContain('## Saved sub-agent dependencies');
-		expect(agentBuilder?.instructions).toContain(
-			'A saved sub-agent must be published before the parent can attach it',
-		);
-		expect(agentBuilder?.instructions).toMatch(
-			/Never attach a draft child or pass its\s+raw `agentId`/,
-		);
-		expect(agentBuilder?.instructions).toContain('identify the child by its display name');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -489,6 +479,16 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('within two rounds');
 		expect(loaded?.instructions).toContain('<background-task-completed>');
 		expect(loaded?.instructions).toContain('Never poll and never sleep');
+	});
+
+	it('loads the bundled instance-awareness skill', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const skill = source.registry.skills.find((entry) => entry.name === 'instance-awareness');
+
+		expect(skill).toBeDefined();
+
+		const loaded = await source.loadSkill('instance-awareness');
+		expect(loaded?.instructions).toContain('<instance-context>');
 	});
 
 	it('loads the bundled debugging-executions skill', async () => {

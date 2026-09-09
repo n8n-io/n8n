@@ -76,6 +76,24 @@ describe('TriggerContext', () => {
 
 			expect(credentials).toEqual({ secret: 'token' });
 		});
+
+		it('should surface the node to the credentials helper', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await triggerContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+			);
+		});
 	});
 
 	describe('getNodeParameter', () => {

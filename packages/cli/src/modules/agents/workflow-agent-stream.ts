@@ -1,5 +1,6 @@
 import { SKILL_LOAD_TOOL_NAME, type StreamChunk } from '@n8n/agents';
 import type { AgentNodeCapability, PushPayload } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ExecuteAgentInvocationContext, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 type WorkflowAgentStreamEvent =
@@ -20,10 +21,6 @@ type PendingTool = {
 	toolName: string;
 	input: unknown;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function capabilityFor(toolName: string, input: unknown): AgentNodeCapability | undefined {
 	if (toolName !== SKILL_LOAD_TOOL_NAME) return { kind: 'tool', name: toolName };

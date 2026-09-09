@@ -62,7 +62,7 @@ function cloneObservationLogEntry(entry: ObservationLogEntry): ObservationLogEnt
 	return { ...entry, createdAt: new Date(entry.createdAt) };
 }
 
-function compareKeyset(
+export function compareKeyset(
 	a: { createdAt: Date; id: string },
 	b: { createdAt: Date; id: string },
 ): number {

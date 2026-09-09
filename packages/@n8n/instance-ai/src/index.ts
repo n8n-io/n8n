@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import type * as SharedSandboxMod from '@n8n/agents/sandbox';
-
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
@@ -25,7 +23,6 @@ import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
-import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
@@ -108,7 +105,6 @@ const loadSystemPrompt = lazyModule(
 const loadSanitizeWebContent = lazyModule(
 	() => require('./tools/web-research/sanitize-web-content') as typeof SanitizeWebContentMod,
 );
-const loadTools = lazyModule(() => require('./tools') as typeof ToolsMod);
 const loadAgentPersistence = lazyModule(
 	() => require('./tools/orchestration/agent-persistence') as typeof AgentPersistenceMod,
 );
@@ -137,9 +133,6 @@ const loadBuilderTemplatesService = lazyModule(
 );
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
-);
-const loadSharedSandbox = lazyModule(
-	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
 );
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
@@ -187,10 +180,13 @@ const loadValidateAttachments = lazyModule(
 
 export { MAX_STEPS } from './constants/max-steps';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
+export { modelConfigId } from './utils/model-config-id';
+export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';
 export { WorkflowEditorLockedError } from './errors/workflow-editor-locked.error';
+export { FolderResolutionError } from './errors/folder-resolution.error';
 export {
 	LEGACY_PLANNED_TASK_KINDS,
 	PLANNED_TASK_KINDS,
@@ -213,23 +209,17 @@ export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
+export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
 } from './tools/orchestration/agent-preview-session-binding';
 
-export type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	CheckpointStore,
-	ContentToolCall,
-	MessageContent,
-	SerializableAgentState,
-	Thread,
-} from '@n8n/agents';
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
@@ -248,6 +238,10 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+// Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
+// so it costs nothing to load eagerly.
+export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
@@ -332,9 +326,6 @@ export const resolveAIAReasoning: typeof AiaModelDefaultsMod.resolveAIAReasoning
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
 	() => loadSystemPrompt().getDateTimeSection,
 );
-export const createAllTools: typeof ToolsMod.createAllTools = lazyFunction(
-	() => loadTools().createAllTools,
-);
 export const createSubAgentResourceIdPrefix: typeof AgentPersistenceMod.createSubAgentResourceIdPrefix =
 	lazyFunction(() => loadAgentPersistence().createSubAgentResourceIdPrefix);
 export declare const SUB_AGENT_RESOURCE_PREFIX: typeof AgentPersistenceMod.SUB_AGENT_RESOURCE_PREFIX;
@@ -405,8 +396,6 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
-export type Tool = EvalAgentsMod.Tool;
-export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 defineLazyExport('PURE_REPLAY_TOOLS', () => loadTraceReplay().PURE_REPLAY_TOOLS);
 defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
@@ -463,12 +452,6 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
-export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFunction(
-	() => loadSharedSandbox().getWorkspaceRoot,
-);
-export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
-	() => loadSharedSandbox().getPromptWorkspaceRoot,
-);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -510,6 +493,11 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
+export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
+export {
+	formatWorkflowSetupStateNote,
+	observeWorkflowSetupStates,
+} from './tools/workflows/setup-panel-state';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -613,8 +601,6 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
 export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissions =
-	lazyFunction(() => loadPlannedTaskPermissions().applyPlannedTaskPermissions);
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,
@@ -628,7 +614,11 @@ export type {
 	DataTableColumnInfo,
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
+	InstanceAiActivityEntry,
+	InstanceAiActivityExpansion,
+	InstanceAiActivityService,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
@@ -653,8 +643,6 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
-	SpawnBackgroundTaskOptions,
-	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
@@ -663,7 +651,10 @@ export type {
 	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
+	WorkflowFolderRef,
+	FolderResolutionFailure,
 	WorkflowDetail,
+	NodeUsageResult,
 	WorkflowNode,
 	WorkflowVersionSummary,
 	WorkflowVersionDetail,
@@ -696,11 +687,24 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
+	AgentCapabilitiesSummary,
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	BuilderOpenSuspension,
 	SessionWorkflowRef,
+	InstanceAiConversationHistoryReader,
+	ConversationHistoryMatchSource,
+	ConversationHistoryExcerpt,
+	ConversationHistorySearchHit,
+	ConversationHistorySearchResult,
+	ConversationHistoryMessage,
+	ConversationHistoryMessagesResult,
 } from './types';
+export {
+	CONVERSATION_HISTORY_MAX_SEARCH_LIMIT,
+	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
+} from './types';
+export { ASK_USER_TOOL_ID } from './tools/tool-ids';
 export type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunHandoffState,

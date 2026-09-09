@@ -103,7 +103,7 @@ describe('AwsSecretsManager', () => {
 				}),
 			);
 
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 
 			// Request connection reuse from our agents. Smithy treats a supplied agent as
 			// external and skips its own keep-alive defaults, so we pass them explicitly to

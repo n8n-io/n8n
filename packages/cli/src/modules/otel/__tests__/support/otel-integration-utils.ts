@@ -8,8 +8,14 @@ import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-import { createRunExecutionData } from 'n8n-workflow';
-import type { IDataObject, INodeType, INodeTypeData, NodeLoadingDetails } from 'n8n-workflow';
+import { createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IDataObject,
+	INodeType,
+	INodeTypeData,
+	NodeLoadingDetails,
+} from 'n8n-workflow';
 import path from 'path';
 
 import { WorkflowRunner } from '@/workflow-runner';
@@ -53,6 +59,7 @@ export async function initOtelTestEnvironment() {
 	const distNodes = loadNodesFromDist([
 		'n8n-nodes-base.executeWorkflow',
 		'n8n-nodes-base.executeWorkflowTrigger',
+		'n8n-nodes-base.wait',
 	]);
 	await utils.initNodeTypes({
 		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
@@ -152,4 +159,24 @@ export async function waitForExecution(
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 	throw new Error(`Execution ${executionId} did not complete within ${timeout}ms`);
+}
+
+/** `waitForExecution` is unusable for parked executions: `stoppedAt` is already set. */
+export async function waitForExecutionStatus(
+	executionRepository: ExecutionRepository,
+	executionId: string,
+	status: ExecutionStatus,
+	timeout = 10_000,
+): Promise<void> {
+	const start = Date.now();
+	let lastSeen: ExecutionStatus | undefined;
+	while (Date.now() - start < timeout) {
+		const execution = await executionRepository.findOneBy({ id: executionId });
+		lastSeen = execution?.status;
+		if (lastSeen === status) return;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+	throw new UnexpectedError(
+		`Execution ${executionId} did not reach status "${status}" within ${timeout}ms (last status: ${lastSeen})`,
+	);
 }

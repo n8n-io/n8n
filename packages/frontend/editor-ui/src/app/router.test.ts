@@ -208,12 +208,20 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
-	test('should block n8n Connect settings for Cloud UBB', async () => {
+	test('should block Gateway credits settings for Cloud UBB', async () => {
 		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
 
 		await router.push('/settings/n8n-connect');
 
-		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
@@ -230,7 +238,9 @@ describe('router', () => {
 
 		test('allows enrolled users to reach the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.variant,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
@@ -238,7 +248,9 @@ describe('router', () => {
 
 		test('redirects control users away from the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.control,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
@@ -257,7 +269,9 @@ describe('router', () => {
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
-					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+						value: RESOURCE_CENTER_EXPERIMENT.variant,
+					};
 					return null;
 				});
 

@@ -39,6 +39,7 @@ import {
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDITS_LABEL_KEY,
@@ -70,8 +71,9 @@ import {
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import type { WorkflowToolIncompatibilityReason } from '@n8n/api-types';
 import { toToolIconSource } from '../utils/toolIconSource';
+import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
-const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'n8n', 'app-action', 'workflows'];
+const BASE_CATEGORIES: ToolCategoryKey[] = ['all', 'mcp', 'app-action', 'workflows'];
 /** Prefix for the synthetic ids of gateway-backed rows in the n8n Connect section. */
 const N8N_CONNECT_ID_PREFIX = 'n8n-connect:';
 const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
@@ -130,7 +132,6 @@ const usersStore = useUsersStore();
 const searchQuery = ref('');
 const installingToolName = ref<string | null>(null);
 const isCreatingWorkflow = ref(false);
-
 const canCreateWorkflow = computed(() => {
 	if (!props.data.projectId || sourceControlStore.preferences.branchReadOnly) return false;
 
@@ -680,7 +681,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 /**
  * Same node, presented in the n8n Connect section: credentials are managed, so
  * it carries the "Free credits" pill and adds without a Connect step. The node
- * still appears under its native tab for users who want their own credential.
+ * still appears under n8n nodes for users who want their own credential.
  */
 function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 	return {
@@ -699,6 +700,12 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		workflowId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
+		// An unpublished workflow stays selectable; the warning tells the user the
+		// published agent cannot call it until they publish it.
+		warning:
+			workflow.activeVersionId === null
+				? i18n.baseText('agents.tools.workflow.notPublished')
+				: undefined,
 		status: 'none',
 		credentials: [],
 	};
@@ -726,7 +733,9 @@ function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): 
 	if (reason.reason === 'incompatible_nodes') {
 		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
 	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger');
+	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
+		interpolate: { trigger: workflowToolTriggerLabel() },
+	});
 }
 
 /**
@@ -820,7 +829,27 @@ function handleRowActivate(item: ToolConnectionItem) {
 		if (item.id.startsWith('tool:')) {
 			const localId = item.id.slice('tool:'.length);
 			const entry = workingToolEntries.value.find((e) => e.localId === localId);
-			if (entry) openConfigForToolEntry(entry);
+			if (!entry) return;
+			// Adding another instance of the same service: editing happens via the
+			// capabilities chips, so activating a connected node-tool row adds a
+			// new instance instead of overwriting the existing tool. A connected
+			// n8n Connect managed tool must keep its managed-credential
+			// preselection, so route it through the same managed add path.
+			const { ref } = entry;
+			if (ref.type === 'node') {
+				const nodeType =
+					[...availableToolTypes.value, ...communitySearchToolTypes.value].find(
+						(nt) => nt.name === ref.node.nodeType,
+					) ?? nodeTypesStore.getNodeType(ref.node.nodeType);
+				if (nodeType) {
+					const isManaged = Object.values(ref.node.credentials ?? {}).some(
+						(credential) => '__aiGatewayManaged' in credential && credential.__aiGatewayManaged,
+					);
+					void (isManaged ? addManagedNodeTool(nodeType) : handleAddTool(nodeType));
+				}
+				return;
+			}
+			openConfigForToolEntry(entry);
 		}
 		return;
 	}
@@ -866,5 +895,12 @@ function handleRowActivate(item: ToolConnectionItem) {
 		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
 		@create-workflow="handleCreateWorkflow"
-	/>
+	>
+		<template #suggestion-footer>
+			<McpRegistrySuggestionFooter
+				:prompt="i18n.baseText('agents.tools.suggestion.prompt')"
+				:action="i18n.baseText('agents.tools.suggestion.action')"
+			/>
+		</template>
+	</ToolsConnectionModal>
 </template>

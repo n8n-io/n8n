@@ -35,6 +35,7 @@ const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
+const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -168,7 +169,7 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 		selectedCredentials,
 		credentialsLoading: ref(false),
 		credentialPermissions: ref({ create: true }),
-		credentialModalOpen: ref(false),
+		credentialModalOpen,
 		getChannelCredentialId: (type?: string | null) =>
 			type ? (selectedCredentials.value[type] ?? connectedCredentials.value[type] ?? '') : '',
 		getCredentials: () => [
@@ -195,9 +196,19 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 			stubs: {
 				Dialog: {
 					props: ['open', 'showCloseButton'],
-					emits: ['update:open'],
+					emits: ['update:open', 'interactOutside'],
+					methods: {
+						// Mirrors reka-ui's own DismissableLayer: an outside click fires
+						// `interact-outside` first, and only dismisses if that event
+						// wasn't prevented.
+						clickOutside() {
+							const event = new Event('interact-outside', { cancelable: true });
+							this.$emit('interactOutside', event);
+							if (!event.defaultPrevented) this.$emit('update:open', false);
+						},
+					},
 					template:
-						'<div v-if="open"><button data-testid="close-dialog" @click="$emit(\'update:open\', false)" /><slot /></div>',
+						'<div v-if="open"><button data-testid="close-dialog" @click="$emit(\'update:open\', false)" /><button data-testid="click-outside" @click="clickOutside" /><slot /></div>',
 				},
 				DialogHeader: { template: '<div><slot /></div>' },
 				DialogTitle: { template: '<h3><slot /></h3>' },
@@ -248,6 +259,7 @@ describe('AgentChannelModal', () => {
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
+		credentialModalOpen.value = false;
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
 			statuses.value[type] = 'connected';
 			connectedCredentials.value[type] = credentialId;
@@ -415,6 +427,48 @@ describe('AgentChannelModal', () => {
 			expect(mocks.showError).toHaveBeenCalled();
 			expect(mocks.connect).not.toHaveBeenCalled();
 			expect(wrapper.emitted('update:open')).toBeUndefined();
+		});
+	});
+
+	describe('outside click', () => {
+		it('closes the modal', async () => {
+			const wrapper = mountModal('list');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="click-outside"]').trigger('click');
+
+			expect(wrapper.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('is ignored while the nested credential modal is open', async () => {
+			credentialModalOpen.value = true;
+			const wrapper = mountModal('list');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="click-outside"]').trigger('click');
+
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		});
+
+		it('is ignored while an action is in flight', async () => {
+			let release: () => void = () => {};
+			mocks.ensureAgentPersisted.mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						release = resolve;
+					}),
+			);
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await wrapper.get('[data-testid="click-outside"]').trigger('click');
+
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+
+			release();
+			await flushPromises();
 		});
 	});
 

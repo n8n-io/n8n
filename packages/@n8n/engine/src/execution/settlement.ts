@@ -103,13 +103,16 @@ function batchStepDecides(edgeClass: EdgeClass, batchStep: StepSummary): boolean
 }
 
 /**
- * One candidate's fate under rules 2–3.
+ * Decides what happens to one candidate step, under rules 2 and 3.
  *
- * `undecidable` covers a predecessor that has not settled and a loop that has
- * not ended alike, since either way the step an edge reads does not exist yet.
- * `outside` means the candidate is not part of the execution at this iteration
- * and gets no step at all, which is what keeps a loop that has ended from
- * cascading skips through its own body.
+ * Four answers, and the last two are the ones to understand:
+ *
+ * - `queued`, so the step runs
+ * - `skipped`, so it settles at once, having run nothing
+ * - `undecidable`, so ask again later. Something it reads has not settled yet, or
+ *   sits in a loop that has not ended.
+ * - `outside`, so it never exists. Nothing reaches it at this pass, which is what
+ *   keeps a finished loop from cascading skips through its own body.
  */
 function decideNodeFate(
 	graph: WorkflowGraph,
@@ -147,9 +150,10 @@ function decideNodeFate(
 }
 
 /**
- * Whether the candidate is a body step of a loop that has already ended. Read
- * from the batch step rather than from `terminalIterations`, so the exclusion
- * holds for anything recomputing fates from the steps alone.
+ * Whether the candidate is a body step of a loop that has already ended.
+ *
+ * Read from the batch step, not from `terminalIterations`, so anything
+ * recomputing fates from the steps alone reaches the same answer.
  */
 function isPastLoopEnd(
 	loops: WorkflowLoop[],
@@ -169,15 +173,20 @@ function isLive(source: StepSummary, edge: GraphEdge): boolean {
 }
 
 /**
- * The steps `decideSuccessors` reads for this settlement:
+ * Names every step `decideSuccessors` will read, so the caller can load them in
+ * one query.
  *
- * - the settled step, which for a batch node says which side to decide
- * - each candidate successor, since an existing one means it was decided already
- * - the steps each candidate's own incoming edges read
- * - for a candidate inside a loop, that loop's batch step at the same iteration
+ * Four kinds, and each one is read for a reason:
  *
- * Derived from the same mapping the decision uses, so a caller cannot load a
- * different set from the one that gets read.
+ * - the settled step. For a batch node it says which side of the loop to decide.
+ * - each candidate successor. One that already exists was decided earlier.
+ * - whatever each candidate's own incoming edges read, to judge that candidate.
+ * - for a candidate inside a loop, that loop's batch step at the same pass.
+ *
+ * This walks the same edges the decision walks, so the caller cannot load a
+ * different set from the one read. Loading less is the dangerous mistake: a
+ * missing step reads as one that has not settled, and its successor then waits
+ * forever.
  */
 export function decisionKeys(
 	graph: WorkflowGraph,

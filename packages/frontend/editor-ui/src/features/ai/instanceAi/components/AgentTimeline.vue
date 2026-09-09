@@ -23,6 +23,7 @@ import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
+import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
@@ -111,6 +112,20 @@ const childrenById = computed(() => {
 		map[child.agentId] = child;
 	}
 	return map;
+});
+
+/**
+ * Changes whenever the run visibly advances: a new run, a new timeline entry,
+ * or the tail entry growing. Drives the activity indicator's clock — an
+ * entry-derived key can't, because the tail entry's identity is stable while
+ * its content streams.
+ */
+const progressToken = computed(() => {
+	const entries = timelineEntries.value;
+	const tail = entries.at(-1);
+	const tailSize =
+		tail && (tail.type === 'text' || tail.type === 'reasoning') ? tail.content.length : 0;
+	return `${thread.activeRunId}:${entries.length}:${tailSize}`;
 });
 
 const renderBlocks = computed(() =>
@@ -293,6 +308,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 			<!-- Answered questions (read-only after resolution) -->
 			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- The run is live but a committed answer settled the block behind it -->
+			<TimelineActivityIndicator
+				v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+				:progress-token="progressToken"
+			/>
 
 			<!-- Child agent — flat section -->
 			<template v-else-if="block.type === 'child'">

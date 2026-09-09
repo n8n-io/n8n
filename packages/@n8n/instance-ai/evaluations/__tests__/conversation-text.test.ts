@@ -138,6 +138,7 @@ function seedDeclaring(name: string): CaseSeed {
 		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		projects: [],
 	};
 }
 
@@ -235,6 +236,30 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('(rejected)');
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
+	});
+
+	it('surfaces ask-user question types for process expectations', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				steps: [
+					{
+						kind: 'ask-user',
+						questions: [
+							{
+								id: 'service',
+								question: 'Which service?',
+								type: 'single',
+								options: ['RocketChat', 'Zulip'],
+							},
+						],
+					},
+				],
+			},
+		];
+
+		expect(transcriptAsText(transcript)).toContain(
+			'Q (single): Which service? [RocketChat / Zulip]',
+		);
 	});
 });
 

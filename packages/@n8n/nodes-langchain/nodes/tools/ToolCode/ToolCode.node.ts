@@ -1,5 +1,4 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import type { JSONSchema7 } from 'json-schema';
 import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
 import type {
@@ -12,12 +11,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import {
-	jsonParse,
-	NodeConnectionTypes,
-	nodeNameToToolName,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, nodeNameToToolName, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildInputSchemaField,
@@ -25,8 +19,12 @@ import {
 	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	convertJsonSchemaToZod,
+	generateSchemaFromExample,
+	parseJsonSchemaParameter,
+} from '@utils/schemaParsing';
+import { getConnectionHintNoticeField, logAiEvent } from '@n8n/ai-utilities';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
@@ -121,6 +119,10 @@ function getTool(
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
+		if (log) {
+			logAiEvent(ctx, 'ai-tool-called', { query, response });
+		}
+
 		// When invoked from `execute` (log=false) the engine, not the agent, is
 		// driving execution: throw so workflow-execute can record the error
 		// against the tool run. Continue-on-fail for AI tools still lets the
@@ -144,15 +146,15 @@ function getTool(
 		try {
 			// We initialize these even though one of them will always be empty
 			// it makes it easier to navigate the ternary operator
-			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
-			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as string;
+			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
+			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as unknown;
 
 			const schemaType = ctx.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
 
 			const jsonSchema =
 				schemaType === 'fromJson'
 					? generateSchemaFromExample(jsonExample, ctx.getNode().typeVersion >= 1.3)
-					: jsonParse<JSONSchema7>(inputSchema);
+					: parseJsonSchemaParameter(inputSchema);
 
 			const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 

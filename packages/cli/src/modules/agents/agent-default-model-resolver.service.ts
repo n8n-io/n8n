@@ -10,7 +10,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
+import { findVerifiedModelId } from './utils/provider-model-id';
 
 export interface ResolvedAgentDefaultModel {
 	model: string;
@@ -88,15 +88,7 @@ export class AgentDefaultModelResolverService {
 		const defaults = this.findProviderDefault(provider);
 		if (!defaults) return null;
 
-		const lowerDefault = defaults.defaultModel.toLowerCase();
-		// Exact match first; otherwise a verified id whose snapshot-stripped alias
-		// is the default — the managed gateway may list only the dated snapshot
-		// (e.g. `claude-sonnet-4-6-20251001`), and only that exact id is callable
-		// there. Return the verified id (original casing) so callers can use it
-		// verbatim against the verified list.
-		const match =
-			verifiedModelIds.find((id) => id.toLowerCase() === lowerDefault) ??
-			verifiedModelIds.find((id) => stripSnapshotSuffix(id).toLowerCase() === lowerDefault);
+		const match = findVerifiedModelId(provider, defaults.defaultModel, verifiedModelIds);
 		return match ? { model: `${provider}/${match}`, credential: credentialId } : null;
 	}
 
@@ -132,7 +124,7 @@ export class AgentDefaultModelResolverService {
 
 		return await this.resolveCredential(user, projectId, {
 			id: AI_GATEWAY_MANAGED_TAG,
-			name: 'n8n credits',
+			name: 'Gateway credits',
 			type: credentialType,
 		});
 	}

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { fetch as undiciFetch } from 'undici';
 import { mock } from 'vitest-mock-extended';
@@ -26,7 +27,7 @@ function makeFacade(): OutboundHttp {
 	const service = mock<SsrfProtectionService>();
 	vi.mocked(service.createSecureLookup).mockReturnValue(makeLookupFn());
 	vi.mocked(service.validateUrl).mockResolvedValue({ ok: true, result: undefined });
-	return new OutboundHttp(service, mock<Logger>());
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>());
 }
 
 describe('DI registration', () => {
@@ -54,7 +55,7 @@ describe('transport asCustomFetch', () => {
 	});
 
 	it('dispatches through the bare dispatcher returned by getDispatcher() when SSRF is disabled', async () => {
-		const transport = makeFacade().transport({ proxy: false, ssrf: 'disabled' });
+		const transport = makeFacade().transport({ proxy: false, useDefaultSsrfPolicy: 'unsafe' });
 		const fetchFn = transport.asCustomFetch();
 
 		await fetchFn('https://api.example.com/data');

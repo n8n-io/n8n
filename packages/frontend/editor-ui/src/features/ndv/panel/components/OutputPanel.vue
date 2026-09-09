@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -115,7 +115,9 @@ const workflowObject = computed(() =>
 const node = computed(() => {
 	return ndvStore.value.activeNode ?? undefined;
 });
-const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
+
+const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
+
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
@@ -141,13 +143,7 @@ const hasAiMetadata = computed(() => {
 	return false;
 });
 
-const hasError = computed(() =>
-	Boolean(
-		workflowRunData.value &&
-			node.value &&
-			workflowRunData.value[node.value.name]?.[props.runIndex]?.error,
-	),
-);
+const hasError = computed(() => Boolean(nodeRunData.value?.[props.runIndex]?.error));
 
 // Determine the initial output mode to logs if the node has an error and the logs are available
 const defaultOutputMode = computed<OutputType>(() => {
@@ -169,36 +165,10 @@ const runTaskData = computed(() => {
 		return null;
 	}
 
-	const runData = workflowRunData.value;
-
-	if (!runData?.hasOwnProperty(node.value.name)) {
-		return null;
-	}
-
-	if (runData[node.value.name].length <= props.runIndex) {
-		return null;
-	}
-
-	return runData[node.value.name][props.runIndex];
+	return nodeRunData.value?.[props.runIndex] ?? null;
 });
 
-const runsCount = computed(() => {
-	if (node.value === null) {
-		return 0;
-	}
-
-	const runData: IRunData | null = workflowRunData.value;
-
-	if (runData === null || (node.value && !runData.hasOwnProperty(node.value.name))) {
-		return 0;
-	}
-
-	if (node.value && runData[node.value.name].length) {
-		return runData[node.value.name].length;
-	}
-
-	return 0;
-});
+const runsCount = computed(() => nodeRunData.value?.length ?? 0);
 
 const staleData = computed(() => {
 	if (!node.value) {

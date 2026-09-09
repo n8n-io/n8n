@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 
+import type { EngineControlPlaneClient } from '../engine-control-plane-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 
 // Hoisted so the `vi.mock` factories below, which vitest lifts above the imports,
@@ -42,7 +43,11 @@ const mocks = vi.hoisted(() => {
 	const stepDataLoader = vi.fn();
 
 	type V1StepExecutorDeps = {
-		additionalDataFactory: (executionId: string) => Promise<{ executionId?: string }>;
+		additionalDataFactory: (context: {
+			executionId: string;
+			workflowId: string;
+			mode: string;
+		}) => Promise<{ executionId?: string }>;
 	};
 
 	return {
@@ -84,8 +89,10 @@ describe('EngineV2Runtime', () => {
 
 	const nodeTypes = mock<NodeTypes>();
 
+	let controlPlaneClient: EngineControlPlaneClient;
+
 	const newRuntime = (databaseUrl = 'postgres://engine') =>
-		new EngineV2Runtime(engineConfig(databaseUrl), nodeTypes, mockLogger());
+		new EngineV2Runtime(engineConfig(databaseUrl), nodeTypes, mockLogger(), controlPlaneClient);
 
 	/** The `externalDependencies` callback the runtime handed to the engine. */
 	const externalDependencies = (stores: { executionStore: unknown; stepStore: unknown }) => {
@@ -99,6 +106,7 @@ describe('EngineV2Runtime', () => {
 		vi.clearAllMocks();
 		mocks.dataSource.isInitialized = false;
 		mocks.listen.error = undefined;
+		controlPlaneClient = mock<EngineControlPlaneClient>();
 	});
 
 	describe('init', () => {
@@ -125,6 +133,30 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.engine.start).toHaveBeenCalled();
 		});
 
+		it('injects a lifecycle event callback that reports to the control plane', async () => {
+			await newRuntime().init();
+
+			const events = [
+				{
+					type: 'execution:completed' as const,
+					executionId: 'exec-1',
+					workflowId: 'wf-1',
+					at: '2026-08-24T10:00:00.000Z',
+				},
+			];
+			const lifecycleEventCallback = externalDependencies({ executionStore: {}, stepStore: {} })
+				.lifecycleEventCallback as (events: unknown[], signal: AbortSignal) => Promise<void>;
+			const signal = new AbortController().signal;
+
+			await lifecycleEventCallback(events, signal);
+
+			// The signal rides along, so an abandoned batch cancels its request.
+			expect(controlPlaneClient.sendLifecycleEvents).toHaveBeenCalledExactlyOnceWith(
+				events,
+				signal,
+			);
+		});
+
 		it('injects the v1 step executor so v1-node steps can run', async () => {
 			await newRuntime().init();
 
@@ -148,7 +180,9 @@ describe('EngineV2Runtime', () => {
 
 			const { additionalDataFactory } = mocks.V1StepExecutor.mock.calls[0][0];
 
-			await expect(additionalDataFactory('exec-1')).resolves.toEqual({ executionId: 'exec-1' });
+			await expect(
+				additionalDataFactory({ executionId: 'exec-1', workflowId: 'wf-1', mode: 'manual' }),
+			).resolves.toEqual({ executionId: 'exec-1' });
 		});
 
 		it('serves the engine API on the configured address', async () => {

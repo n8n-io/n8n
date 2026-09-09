@@ -21,7 +21,7 @@ import type {
 	RemoveOptions,
 	WriteOptions,
 } from '../types';
-import { BaseFilesystem } from './base-filesystem';
+import { BaseFilesystem, type BaseFilesystemOptions } from './base-filesystem';
 import type { DaytonaSandbox } from '../sandbox/daytona-sandbox';
 
 type DaytonaFsHandle = Parameters<Parameters<DaytonaSandbox['withFilesystem']>[0]>[0];
@@ -36,8 +36,11 @@ export class DaytonaFilesystem extends BaseFilesystem {
 	readonly provider = 'daytona';
 	status: ProviderStatus = 'pending';
 
-	constructor(private readonly sandbox: DaytonaSandbox) {
-		super();
+	constructor(
+		private readonly sandbox: DaytonaSandbox,
+		options?: BaseFilesystemOptions,
+	) {
+		super(options);
 		this.id = `daytona-fs-${sandbox.id}`;
 	}
 

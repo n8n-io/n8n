@@ -8,6 +8,7 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
@@ -30,6 +31,7 @@ export interface ScriptedGateRunArgs {
 	executionService: VerificationExecutionService;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	triggerNodeName?: string;
 	timeout?: number;
 	abortSignal?: AbortSignal;
 	buildOutcome: WorkflowBuildOutcome;
@@ -65,6 +67,7 @@ export async function runScriptedGateVerification(
 	for (const decision of script.decisions) {
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
+			triggerNodeName: args.triggerNodeName,
 			verificationPinData: { ...basePins, [script.nodeName]: decision.items },
 			omitConnections: [script.cutEdge],
 			isVerificationRun: true,
@@ -74,6 +77,7 @@ export async function runScriptedGateVerification(
 			result,
 			buildOutcome,
 			simulatedNodes: prepared.simulatedNodes,
+			triggerNodeName: args.triggerNodeName,
 			stateBefore,
 			runId,
 			chatModelRelatedNodeNames,
@@ -151,14 +155,28 @@ function mergeAnalyses(
 
 	// Rebuild the note from the union — a node simulated only in an earlier
 	// pass must still be disclosed.
-	const reachedSimulatedNodes = prepared.simulatedNodes.filter((node) =>
+	const plannedSimulated = prepared.simulatedNodes.filter((node) =>
 		reachedNames.has(node.nodeName),
 	);
+	// Pins come from the run result, so they only exist per pass. Without this
+	// union a pin-fed gate run would read as live (INS-1216).
+	const plannedSimulatedNames = new Set(plannedSimulated.map((node) => node.nodeName));
+	const workflowPinnedNodeNames = [
+		...new Set(passes.flatMap((pass) => pass.analysis.workflowPinnedNodeNames)),
+	].filter((name) => !plannedSimulatedNames.has(name));
+	const reachedSimulatedNodes = [
+		...plannedSimulated,
+		...workflowPinnedNodeNames.map((name) => ({
+			nodeName: name,
+			reason: WORKFLOW_PIN_SIMULATION_REASON,
+		})),
+	];
 
 	return {
 		success: passes.every((pass) => pass.analysis.success),
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames,
 		nodesNotReached,
 		remediation: failing?.analysis.remediation,
 		nodesExecuted: [...reachedNames],
