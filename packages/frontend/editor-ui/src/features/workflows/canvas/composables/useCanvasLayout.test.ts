@@ -396,11 +396,16 @@ describe('useCanvasLayout', () => {
 			} as INodeUi;
 		}
 
-		function computeGroupFrames(positions: Map<string, NodePosition>) {
-			const getNodeById = (id: string) => {
+		/** Store lookup over a position map, as the group mapper expects it. */
+		function storeNodeLookup(positions: Map<string, NodePosition>) {
+			return (id: string): INodeUi | undefined => {
 				const position = positions.get(id);
 				return position ? toStoreNode(id, position) : undefined;
 			};
+		}
+
+		function computeGroupFrames(positions: Map<string, NodePosition>) {
+			const getNodeById = storeNodeLookup(positions);
 
 			return expandedGroups.map((group) => ({
 				name: group.name,
@@ -425,10 +430,7 @@ describe('useCanvasLayout', () => {
 		function computeGroupLayoutComponents(
 			positions: Map<string, NodePosition>,
 		): NodeGroupLayoutComponent[] {
-			const getNodeById = (id: string) => {
-				const position = positions.get(id);
-				return position ? toStoreNode(id, position) : undefined;
-			};
+			const getNodeById = storeNodeLookup(positions);
 
 			return expandedGroups.map((group) => {
 				const { collapsed, expanded } = computeGroupFrameRects(
@@ -482,10 +484,7 @@ describe('useCanvasLayout', () => {
 			const initialPositions = new Map(graphNodes.map((node) => [node.id, node.position]));
 
 			const groupNodes = expandedGroups.map((group) => {
-				const getNodeById = (id: string) => {
-					const position = initialPositions.get(id);
-					return position ? toStoreNode(id, position) : undefined;
-				};
+				const getNodeById = storeNodeLookup(initialPositions);
 				const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
 				const frame = computeGroupFrameRects(nodesRect).expanded;
 				return createCanvasGraphGroupNode({
@@ -689,10 +688,7 @@ describe('useCanvasLayout', () => {
 				['billing-start', { x: 1248, y: 240 }],
 				['billing-done', { x: 1472, y: 240 }],
 			]);
-			const getNodeById = (id: string) => {
-				const position = positions.get(id);
-				return position ? toStoreNode(id, position) : undefined;
-			};
+			const getNodeById = storeNodeLookup(positions);
 			const groupNodes = expandedGroups.map((group) => {
 				const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById);
 				const frame = computeGroupFrameRects(nodesRect).expanded;
