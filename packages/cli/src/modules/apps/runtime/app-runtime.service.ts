@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -30,7 +31,6 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { AppRepository } from '../app.repository';
-import { AppsConfig } from '../apps.config';
 import { AppRuntimeError } from './app-runtime.error';
 
 /**
@@ -85,7 +85,7 @@ export class AppRuntimeService {
 		private readonly webhookResponseRelay: WebhookResponseRelay,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly logger: Logger,
-		private readonly appsConfig: AppsConfig,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -295,7 +295,7 @@ export class AppRuntimeService {
 
 	/** The slot is held while the call blocks on the run; a 202 releases it although the run goes on. */
 	private async holdRun<T>(runAndWait: () => Promise<T>): Promise<T> {
-		const max = this.appsConfig.runtimeMaxConcurrent;
+		const max = this.globalConfig.apps.runtimeMaxConcurrent;
 		if (max > 0 && this.inFlight >= max) {
 			throw new AppRuntimeError(
 				429,

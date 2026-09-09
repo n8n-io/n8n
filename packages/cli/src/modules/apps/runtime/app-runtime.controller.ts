@@ -1,17 +1,17 @@
+import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { createIpRateLimit, Options, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
-import { AppsConfig } from '../apps.config';
 import { AppRuntimeError } from './app-runtime.error';
 import { AppRuntimeService } from './app-runtime.service';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
 const rateLimit = createIpRateLimit(
-	Container.get(AppsConfig).runtimeRateLimit,
+	Container.get(GlobalConfig).apps.runtimeRateLimit,
 	Time.minutes.toMilliseconds,
 );
 

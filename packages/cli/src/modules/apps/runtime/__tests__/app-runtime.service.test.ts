@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AppsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
@@ -21,7 +22,6 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { App } from '../../app.entity';
 import type { AppRepository } from '../../app.repository';
-import type { AppsConfig } from '../../apps.config';
 import { AppRuntimeError } from '../app-runtime.error';
 import { AppRuntimeService } from '../app-runtime.service';
 
@@ -117,7 +117,7 @@ describe('AppRuntimeService', () => {
 		relay = mock<WebhookResponseRelay>();
 		executionPersistence = mock<ExecutionPersistence>();
 		logger = mock<Logger>();
-		appsConfig = { runtimeRateLimit: 60, runtimeMaxConcurrent: 10 };
+		appsConfig = mock<AppsConfig>({ runtimeMaxConcurrent: 10 });
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -127,7 +127,7 @@ describe('AppRuntimeService', () => {
 			relay,
 			executionPersistence,
 			logger,
-			appsConfig,
+			mock<GlobalConfig>({ apps: appsConfig }),
 		);
 
 		appRepository.findByNamespace.mockResolvedValue(app);
