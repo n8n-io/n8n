@@ -104,6 +104,26 @@ function resolveHostDepVersion(name: string): string {
 export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offline';
 
 /**
+ * Same flags, but revalidate registry metadata. The snapshot bake populates the
+ * sandbox's npm cache, so a sandbox created from an older snapshot holds a packument
+ * that predates a newly published SDK version. `--prefer-offline` trusts that stale
+ * packument and fails to resolve the pinned version. Used only to retry a failed
+ * install, never as the first attempt.
+ */
+export const NPM_INSTALL_FLAGS_REFRESH_METADATA =
+	'--ignore-scripts --no-audit --no-fund --prefer-online';
+
+/**
+ * Budget for the whole install step, both attempts together. A healthy install runs
+ * in under a second and the sandbox gateway already cuts a single command at 30s, so
+ * this is generous. It exists for the fault case: the sandbox terminates a command at
+ * its own timeout and reports that as a non-zero exit code, so without a shared
+ * deadline a timed-out first attempt would hand a second, equally long attempt to the
+ * retry below.
+ */
+const INSTALL_STEP_BUDGET_MS = 120_000;
+
+/**
  * Versions pinned from the host's installed packages. Pinning is load-bearing
  * for two reasons:
  *   1. `npm install '@n8n/workflow-sdk': '*'` inside the sandbox resolves to
@@ -473,7 +493,26 @@ export async function setupSandboxWorkspace(
 
 	// npm install (must run after package.json is in place)
 	await setupStep('install-dependencies', async () => {
-		const npmResult = await runInSandbox(workspace, `npm install ${NPM_INSTALL_FLAGS}`, root);
+		// One deadline covers both attempts. The signal stops us waiting; it does not kill
+		// the remote command, which the sandbox collects at its own timeout.
+		const deadline = Date.now() + INSTALL_STEP_BUDGET_MS;
+		const install = async (flags: string) =>
+			await runInSandbox(workspace, `npm install ${flags}`, {
+				cwd: root,
+				abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+			});
+
+		let npmResult = await install(NPM_INSTALL_FLAGS);
+		if (npmResult.exitCode !== 0 && Date.now() < deadline) {
+			// The cached packument can be too old to resolve the pinned SDK version. That is
+			// the one failure the cache causes, and refreshing metadata is the only way out,
+			// so retry once with whatever budget is left.
+			context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
+				stderr: npmResult.stderr.slice(0, 500),
+				remainingMs: deadline - Date.now(),
+			});
+			npmResult = await install(NPM_INSTALL_FLAGS_REFRESH_METADATA);
+		}
 		if (npmResult.exitCode !== 0) {
 			throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 		}
