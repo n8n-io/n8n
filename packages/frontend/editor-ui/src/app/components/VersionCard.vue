@@ -71,6 +71,8 @@ const nodeName = (node: VersionNode): string => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .card {
 	background-color: $version-card-background-color;
 	border: $version-card-border;

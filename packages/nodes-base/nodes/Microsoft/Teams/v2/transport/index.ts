@@ -4,6 +4,7 @@ import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
 	type MicrosoftGraphCredentialType,
+	rewriteNotFound,
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 	validateMicrosoftGraphId,
@@ -16,6 +17,7 @@ export {
 	SERVICE_PRINCIPAL_AUTH,
 	SP_HIDE,
 	buildMicrosoftGraphPath as buildTeamsPath,
+	rewriteNotFound,
 	validateMicrosoftGraphId as validateTeamsId,
 };
 
@@ -23,11 +25,17 @@ export type TeamsCredentialType = MicrosoftGraphCredentialType<'microsoftTeamsOA
 
 const {
 	getCredentialType: getTeamsCredentialType,
+	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
 
-export { getTeamsCredentialType, microsoftApiRequest, microsoftApiRequestAllItems };
+export {
+	getTeamsCredentialType,
+	getGraphBaseUrl,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+};
 
 /**
  * App-only Microsoft Graph has no `/me`, so the joined-teams listing is fetched
