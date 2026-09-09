@@ -94,6 +94,12 @@ describe('cleanStoredUserMessage', () => {
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
+	it('strips <workflow-setup-state> block', () => {
+		const stored =
+			'<workflow-setup-state>\nSetup state.\n{"workflows":[]}\n</workflow-setup-state>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
 	it('strips an <instance-context> block followed by user text', () => {
 		const stored = `${instanceContextMarker()}\n\nCarry on where I left off`;
 		expect(cleanStoredUserMessage(stored)).toBe('Carry on where I left off');

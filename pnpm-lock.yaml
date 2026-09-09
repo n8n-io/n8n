@@ -540,7 +540,7 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     isolated-vm:
-      specifier: ^7.0.0
+      specifier: ^7.0.1
       version: 7.0.1
     js-base64:
       specifier: 3.7.8
@@ -1154,8 +1154,8 @@ importers:
         specifier: workspace:*
         version: link:../ai-utilities
       '@n8n/sandbox-client':
-        specifier: 0.1.0
-        version: 0.1.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: 0.1.1
+        version: 0.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1354,6 +1354,9 @@ importers:
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -2751,6 +2754,9 @@ importers:
 
   packages/@n8n/imap:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       iconv-lite:
         specifier: 'catalog:'
         version: 0.6.3
@@ -7653,6 +7659,9 @@ importers:
       langsmith:
         specifier: 0.6.0
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0(supports-color@8.1.1)
@@ -11217,8 +11226,8 @@ packages:
     resolution: {integrity: sha512-qmDvJIjcNsZ6tXWy2G9yuCgMPTTn35GMA3dPpSLm7QJVpbQzYdw0ALy1bKoivXnEM3U93/OrK+/M719b+fg84Q==}
     engines: {node: '>=18'}
 
-  '@n8n/sandbox-client@0.1.0':
-    resolution: {integrity: sha512-9pADrO61nwOVrfaEZJM6lFkp6YQ0Qnt0OSArncxABoaYj3C2XvdfDbXByKn71tsE6zqmnFFmYI1S0ccshHASeQ==}
+  '@n8n/sandbox-client@0.1.1':
+    resolution: {integrity: sha512-a2S6j0RoN5VXFuwuaeB7AiQ93JX8zer9kStaqoLtSQrKqsxXysYAjom8DM/DNUZY+HNF6DOCT7oIQjUG//q3ZA==}
     engines: {node: '>=22.16', pnpm: '>=10.22.0'}
 
   '@n8n/typeorm@0.3.20-16':
@@ -30557,7 +30566,7 @@ snapshots:
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
 
-  '@n8n/sandbox-client@0.1.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+  '@n8n/sandbox-client@0.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
     transitivePeerDependencies:
