@@ -1,4 +1,11 @@
-import type { AiPreference, AiPreferenceRepository, Project, User } from '@n8n/db';
+import type {
+	AiPreference,
+	AiPreferenceRepository,
+	Project,
+	ProjectRepository,
+	User,
+} from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -6,7 +13,6 @@ import {
 	groupAiPreferences,
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
-import type { ProjectService } from '@/services/project.service.ee';
 
 const row = (overrides: Partial<AiPreference>): AiPreference =>
 	({ id: 'row', content: 'text', userId: null, projectId: null, ...overrides }) as AiPreference;
@@ -18,8 +24,8 @@ const projects = [
 
 describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
-	const projectService = mock<ProjectService>();
-	const service = new AiPreferenceService(aiPreferenceRepository, projectService);
+	const projectRepository = mock<ProjectRepository>();
+	const service = new AiPreferenceService(aiPreferenceRepository, projectRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -48,23 +54,44 @@ describe('AiPreferenceService', () => {
 	});
 
 	describe('getApplicableAcrossProjects', () => {
-		it('uses every project the user can access', async () => {
-			const user = mock<User>({ id: 'user-1' });
-			projectService.getAccessibleProjects.mockResolvedValue([
-				mock<Project>({ id: 'p-2', name: 'Sales' }),
-			]);
+		const ownPersonal = mock<Project>({
+			id: 'personal-1',
+			name: 'Me <me@n8n.io>',
+			type: 'personal',
+		});
+		const joinedTeam = mock<Project>({ id: 'team-1', name: 'Sales', type: 'team' });
+		const otherTeam = mock<Project>({ id: 'team-2', name: 'Marketing', type: 'team' });
+
+		it('gives a member their personal project and the team projects they belong to', async () => {
+			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			projectRepository.getAccessibleProjects.mockResolvedValue([ownPersonal, joinedTeam]);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([
-				row({ content: 'Sales rule', projectId: 'p-2' }),
+				row({ content: 'Sales rule', projectId: 'team-1' }),
 			]);
 
 			const result = await service.getApplicableAcrossProjects(user);
 
-			expect(projectService.getAccessibleProjects).toHaveBeenCalledWith(user);
+			expect(projectRepository.getAccessibleProjects).toHaveBeenCalledWith('user-1');
+			expect(projectRepository.findTeamProjects).not.toHaveBeenCalled();
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'user-1',
-				projectIds: ['p-2'],
+				projectIds: ['personal-1', 'team-1'],
 			});
-			expect(result.projects).toEqual([{ id: 'p-2', name: 'Sales', items: ['Sales rule'] }]);
+			expect(result.projects).toEqual([{ id: 'team-1', name: 'Sales', items: ['Sales rule'] }]);
+		});
+
+		it("adds every team project for an owner, without other users' personal projects", async () => {
+			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
+			projectRepository.getAccessibleProjects.mockResolvedValue([ownPersonal, joinedTeam]);
+			projectRepository.findTeamProjects.mockResolvedValue([joinedTeam, otherTeam]);
+			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
+
+			await service.getApplicableAcrossProjects(owner);
+
+			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
+				userId: 'owner-1',
+				projectIds: ['personal-1', 'team-1', 'team-2'],
+			});
 		});
 	});
 });

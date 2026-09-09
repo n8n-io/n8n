@@ -53,6 +53,10 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
+	async findTeamProjects(): Promise<Project[]> {
+		return await this.findBy({ type: 'team' });
+	}
+
 	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
 		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
 	}

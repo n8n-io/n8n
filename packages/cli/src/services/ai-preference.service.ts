@@ -1,8 +1,7 @@
-import type { AiPreference, User } from '@n8n/db';
-import { AiPreferenceRepository } from '@n8n/db';
+import type { AiPreference, Project, User } from '@n8n/db';
+import { AiPreferenceRepository, ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { ProjectService } from '@/services/project.service.ee';
+import { hasGlobalScope } from '@n8n/permissions';
 
 export type AiPreferenceProjectRef = { id: string; name: string };
 
@@ -24,7 +23,7 @@ export type ApplicableAiPreferences = {
 export class AiPreferenceService {
 	constructor(
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -40,13 +39,26 @@ export class AiPreferenceService {
 	}
 
 	/**
-	 * Preferences that apply to the user in every project they can access. For
-	 * callers with no current project, such as the MCP server.
+	 * Preferences that apply to the user across projects. For callers with no
+	 * current project, such as the MCP server.
+	 *
+	 * Every user gets their own personal project and the team projects they are a
+	 * member of. A global `project:read` scope adds the other team projects. Other
+	 * users' personal projects are never included, not even for an owner.
 	 */
 	async getApplicableAcrossProjects(user: User): Promise<ApplicableAiPreferences> {
-		// Access-aware: a global `project:read` scope sees every project.
-		const projects = await this.projectService.getAccessibleProjects(user);
-		return await this.getApplicable(user.id, projects);
+		// Personal projects relate only to their owner, so this list never holds
+		// another user's personal project.
+		const projects = new Map<string, Project>();
+		for (const project of await this.projectRepository.getAccessibleProjects(user.id)) {
+			projects.set(project.id, project);
+		}
+		if (hasGlobalScope(user, 'project:read')) {
+			for (const project of await this.projectRepository.findTeamProjects()) {
+				projects.set(project.id, project);
+			}
+		}
+		return await this.getApplicable(user.id, [...projects.values()]);
 	}
 }
 
