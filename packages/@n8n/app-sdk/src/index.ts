@@ -59,9 +59,13 @@ async function readJson(response: Response): Promise<unknown> {
 	}
 }
 
-// Vite sets BASE_URL to the app's base path ('/apps/<ns>/'). Without a bundler, the
-// served page lives at /apps/<ns>/..., so the namespace is the second path segment.
+// A dev preview serves the app under another prefix and injects VITE_N8N_API_BASE to
+// still reach `/apps/<ns>/api`. Otherwise Vite sets BASE_URL to the app's base path
+// ('/apps/<ns>/'). Without a bundler, the served page lives at /apps/<ns>/..., so the
+// namespace is the second path segment.
 function defaultBaseUrl(): string {
+	const apiBase = import.meta.env?.VITE_N8N_API_BASE;
+	if (apiBase !== undefined) return apiBase;
 	const viteBase = import.meta.env?.BASE_URL;
 	if (viteBase !== undefined) return `${viteBase}api`;
 	const [root, namespace] = location.pathname.split('/').filter(Boolean);

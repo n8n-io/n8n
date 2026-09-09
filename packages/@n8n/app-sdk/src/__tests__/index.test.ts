@@ -31,6 +31,18 @@ describe('createClient', () => {
 		});
 	});
 
+	it('prefers import.meta.env.VITE_N8N_API_BASE over BASE_URL', async () => {
+		vi.stubEnv('VITE_N8N_API_BASE', '/apps/runner/api');
+		vi.stubEnv('BASE_URL', '/preview/');
+		fetchMock.mockResolvedValue(
+			jsonResponse(200, { executionId: '1', status: 'success', principal: null }),
+		);
+
+		await createClient().workflows.run('submit');
+
+		expect(fetchMock.mock.calls[0][0]).toBe('/apps/runner/api/workflows/submit');
+	});
+
 	it('derives the base URL from import.meta.env.BASE_URL', async () => {
 		vi.stubEnv('BASE_URL', '/apps/runner/');
 		fetchMock.mockResolvedValue(

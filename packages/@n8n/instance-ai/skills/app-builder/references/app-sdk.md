@@ -47,8 +47,10 @@ fails the build. That is the intended signal to bind first.
 import { n8n, createClient, N8nAppError } from '@n8n/app-sdk';
 import type { RunResult, Bindings } from '@n8n/app-sdk';
 
-// Default client. Base URL = import.meta.env.BASE_URL + 'api' (Vite), so it
-// works under /apps/<namespace>/ without configuration.
+// Default client. Base URL = import.meta.env.VITE_N8N_API_BASE if set, else
+// import.meta.env.BASE_URL + 'api' (Vite), so it works under /apps/<namespace>/
+// without configuration.
+// Set VITE_N8N_API_BASE only when a dev preview serves the app under another prefix.
 const result = await n8n.workflows.run('submit', { email, amount });
 
 // Custom base URL (rarely needed):
