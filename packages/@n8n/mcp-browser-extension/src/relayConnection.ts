@@ -7,7 +7,11 @@
  * All communication with the relay uses these CDP target IDs.
  */
 
-import type { BrowserRecording, BrowserRecordingAction } from '@n8n/api-types';
+import type {
+	BrowserRecording,
+	BrowserRecordingAction,
+	BrowserRecordingScreenshot,
+} from '@n8n/api-types';
 
 import { DocumentPreparation } from './documentPreparation';
 import { ForeignFrames } from './foreignFrames';
@@ -291,6 +295,17 @@ export class RelayConnection {
 	sendRecordingAction(recordingId: string, action: BrowserRecordingAction): void {
 		if (this.ws.readyState !== WebSocket.OPEN) return;
 		this.sendMessage({ method: 'recordingActionAppended', params: { recordingId, action } });
+	}
+
+	/** Forward one captured screenshot live, while the recording is still in progress.
+	 *  Best-effort, same as `sendRecordingAction` — the final `sendRecording` call still
+	 *  carries the complete array. */
+	sendRecordingScreenshot(recordingId: string, screenshot: BrowserRecordingScreenshot): void {
+		if (this.ws.readyState !== WebSocket.OPEN) return;
+		this.sendMessage({
+			method: 'recordingScreenshotCaptured',
+			params: { recordingId, screenshot },
+		});
 	}
 
 	markAsAgentCreated(chromeTabId: number): void {

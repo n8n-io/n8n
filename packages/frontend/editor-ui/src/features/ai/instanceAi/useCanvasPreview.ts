@@ -40,7 +40,7 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 
 /** Synthetic id for the one live-recording tab a thread view can have at a time — one
  *  `useCanvasPreview` instance covers exactly one thread, so a plain constant is enough. */
-const RECORDING_TAB_ID = 'recording';
+export const RECORDING_TAB_ID = 'recording';
 
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
@@ -59,8 +59,9 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 	const liveRecording = useLiveRecordingState(threadId);
 
 	// All previewable artifacts in the current thread, derived from resource registry —
-	// plus a synthetic 'recording' tab while one is live, which isn't a durable resource
-	// with tool-call history behind it, so it's driven by push state instead.
+	// plus a synthetic 'recording' tab while one is live or has just finished (recap),
+	// which isn't a durable resource with tool-call history behind it, so it's driven
+	// by push state instead.
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
 		for (const entry of thread.producedArtifacts.values()) {
@@ -76,13 +77,13 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 				});
 			}
 		}
-		if (liveRecording.isRecording.value) {
+		if (liveRecording.isRecording.value || liveRecording.hasRecap.value) {
 			result.push({
 				id: RECORDING_TAB_ID,
 				type: 'recording',
 				name: i18n.baseText('instanceAi.recordingPreview.title'),
 				icon: ARTIFACT_ICON_MAP.recording,
-				building: true,
+				building: liveRecording.isRecording.value,
 			});
 		}
 
@@ -242,6 +243,12 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 		activeTabId.value = agentId;
 		isPreviewOpen.value = true;
 		return true;
+	}
+
+	/** Re-open the recording tab (live or recap) from outside the tab bar, e.g. the
+	 *  artifacts list. */
+	function openRecordingPreview(): void {
+		selectTab(RECORDING_TAB_ID);
 	}
 
 	// --- Guard: fall back if active tab is removed from registry ---
@@ -511,5 +518,6 @@ export function useCanvasPreview({ thread, threadId, initialAgentId }: UseCanvas
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openRecordingPreview,
 	};
 }

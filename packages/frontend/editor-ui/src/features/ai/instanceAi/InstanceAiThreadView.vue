@@ -307,6 +307,8 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openRecordingPreview', preview.openRecordingPreview);
+provide('liveRecording', preview.liveRecording);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
 
@@ -1443,6 +1445,9 @@ async function dismissComposerContextChip() {
 								:action-count="preview.liveRecording.actionCount.value"
 								:elapsed-ms="preview.liveRecording.elapsedMs.value"
 								:caption="preview.liveRecording.caption.value"
+								:is-recording="preview.liveRecording.isRecording.value"
+								:screenshots="preview.liveRecording.screenshots.value"
+								:is-expanded="isPreviewExpanded"
 							/>
 						</div>
 					</TabsRoot>

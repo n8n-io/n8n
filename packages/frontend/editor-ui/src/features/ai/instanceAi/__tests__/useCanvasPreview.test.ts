@@ -298,14 +298,24 @@ describe('useCanvasPreview', () => {
 			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(false);
 		});
 
-		test('removes the recording tab once the recording reaches a terminal status', () => {
+		test('removes the recording tab once a recording is discarded', () => {
 			const ctx = setup();
 			emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 1 });
 			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(true);
 
-			emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
+			emitRecordingState({ threadId: 'thread-1', status: 'discarded', actionCount: 0 });
 
 			expect(ctx.allArtifactTabs.value.some((t) => t.type === 'recording')).toBe(false);
+		});
+
+		test('keeps the recording tab as a finished recap once stopped, no longer building', () => {
+			const ctx = setup();
+			emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 1 });
+
+			emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 1 });
+
+			const recordingTab = ctx.allArtifactTabs.value.find((t) => t.type === 'recording');
+			expect(recordingTab).toMatchObject({ type: 'recording', building: false });
 		});
 	});
 

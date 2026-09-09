@@ -1,6 +1,7 @@
 import type {
 	BrowserRecording,
 	BrowserRecordingAction,
+	BrowserRecordingScreenshot,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
@@ -314,6 +315,8 @@ export class InstanceAiBrowserSessionService {
 			await this.handleRecordingCompleted(userId, recording);
 		relay.onRecordingActionAppended = (_recordingId, action) =>
 			this.handleRecordingActionAppended(userId, action);
+		relay.onRecordingScreenshotCaptured = (_recordingId, screenshot) =>
+			this.handleRecordingScreenshotCaptured(userId, screenshot);
 
 		const toolkit = createBrowserTools(
 			{ mode: 'remote' },
@@ -436,6 +439,29 @@ export class InstanceAiBrowserSessionService {
 			session.pushDebounceTimer = undefined;
 			this.pushRecordingState(session, 'recording');
 		}, ACTION_PUSH_DEBOUNCE_MS);
+	}
+
+	/** Forward one captured screenshot live, while a recording is in progress — no
+	 *  debounce needed, capture is already throttled (250ms/action, 20-shot cap). */
+	private handleRecordingScreenshotCaptured(
+		userId: string,
+		screenshot: BrowserRecordingScreenshot,
+	): void {
+		const session = this.sessions.get(userId);
+		const threadId = session?.pendingRecordingThreadId;
+		if (!threadId) return;
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiRecordingScreenshotReceived',
+				data: {
+					threadId,
+					actionId: screenshot.actionId,
+					mimeType: screenshot.mimeType,
+					data: screenshot.data,
+				},
+			},
+			[userId],
+		);
 	}
 
 	/** Summarize whatever has accumulated since the last tick. Skips the call — and its

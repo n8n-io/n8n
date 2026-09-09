@@ -466,5 +466,55 @@ describe('CDPRelayServer', () => {
 			expect(onActionAppended).not.toHaveBeenCalled();
 			ext.close();
 		});
+
+		const VALID_SCREENSHOT = {
+			id: '22222222-2222-2222-2222-222222222222',
+			actionId: VALID_ACTION.id,
+			data: 'ZmFrZQ==',
+			mimeType: 'image/jpeg',
+			timestamp: 0,
+		};
+
+		it('should invoke onRecordingScreenshotCaptured for a valid streamed screenshot', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const received = await new Promise<[string, unknown]>((resolve) => {
+				relay.onRecordingScreenshotCaptured = (recordingId, screenshot) =>
+					resolve([recordingId, screenshot]);
+				ext.send(
+					JSON.stringify({
+						method: 'recordingScreenshotCaptured',
+						params: { recordingId: 'rec-1', screenshot: VALID_SCREENSHOT },
+					}),
+				);
+			});
+
+			expect(received[0]).toBe('rec-1');
+			expect(received[1]).toMatchObject({ id: VALID_SCREENSHOT.id, actionId: VALID_ACTION.id });
+			ext.close();
+		});
+
+		it('should ignore a malformed streamed screenshot', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const onScreenshotCaptured = vi.fn();
+			relay.onRecordingScreenshotCaptured = onScreenshotCaptured;
+			ext.send(
+				JSON.stringify({
+					method: 'recordingScreenshotCaptured',
+					params: { recordingId: 'rec-1', screenshot: { not: 'a screenshot' } },
+				}),
+			);
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			expect(onScreenshotCaptured).not.toHaveBeenCalled();
+			ext.close();
+		});
 	});
 });

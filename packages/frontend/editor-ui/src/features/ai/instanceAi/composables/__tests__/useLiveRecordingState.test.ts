@@ -20,6 +20,15 @@ function emitRecordingState(data: {
 	pushHandler?.({ type: 'instanceAiRecordingStateChanged', data } as PushMessage);
 }
 
+function emitScreenshot(data: {
+	threadId: string;
+	actionId: string;
+	mimeType: string;
+	data: string;
+}) {
+	pushHandler?.({ type: 'instanceAiRecordingScreenshotReceived', data } as PushMessage);
+}
+
 describe('useLiveRecordingState', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -49,18 +58,27 @@ describe('useLiveRecordingState', () => {
 		expect(state.actionCount.value).toBe(3);
 	});
 
-	it.each(['stopped', 'discarded'] as const)(
-		'clears live state on a terminal "%s" status',
-		(status) => {
-			const state = useLiveRecordingState(() => 'thread-1');
-			emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 5 });
+	it('clears live state on a terminal "discarded" status, with no recap', () => {
+		const state = useLiveRecordingState(() => 'thread-1');
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 5 });
 
-			emitRecordingState({ threadId: 'thread-1', status, actionCount: 0 });
+		emitRecordingState({ threadId: 'thread-1', status: 'discarded', actionCount: 0 });
 
-			expect(state.isRecording.value).toBe(false);
-			expect(state.actionCount.value).toBe(0);
-		},
-	);
+		expect(state.isRecording.value).toBe(false);
+		expect(state.hasRecap.value).toBe(false);
+		expect(state.actionCount.value).toBe(0);
+	});
+
+	it('keeps the last known state as a recap once "stopped", instead of clearing it', () => {
+		const state = useLiveRecordingState(() => 'thread-1');
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 5 });
+
+		emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
+
+		expect(state.isRecording.value).toBe(false);
+		expect(state.hasRecap.value).toBe(true);
+		expect(state.actionCount.value).toBe(5);
+	});
 
 	it('ticks elapsed time locally while recording, without needing further pushes', () => {
 		const state = useLiveRecordingState(() => 'thread-1');
@@ -72,14 +90,24 @@ describe('useLiveRecordingState', () => {
 		expect(state.elapsedMs.value).toBeGreaterThanOrEqual(3000);
 	});
 
-	it('resets elapsed time to zero once the recording ends', () => {
+	it('resets elapsed time to zero once a recording is discarded', () => {
+		const state = useLiveRecordingState(() => 'thread-1');
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 0 });
+		vi.advanceTimersByTime(3000);
+
+		emitRecordingState({ threadId: 'thread-1', status: 'discarded', actionCount: 0 });
+
+		expect(state.elapsedMs.value).toBe(0);
+	});
+
+	it('keeps the final elapsed time once a recording stops, as part of the recap', () => {
 		const state = useLiveRecordingState(() => 'thread-1');
 		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 0 });
 		vi.advanceTimersByTime(3000);
 
 		emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
 
-		expect(state.elapsedMs.value).toBe(0);
+		expect(state.elapsedMs.value).toBeGreaterThanOrEqual(3000);
 	});
 
 	it('runs no ticking timer before a recording starts, or after it ends', () => {
@@ -91,5 +119,29 @@ describe('useLiveRecordingState', () => {
 
 		emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 0 });
 		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('accumulates screenshots for this thread as they arrive, ignoring other threads', () => {
+		const state = useLiveRecordingState(() => 'thread-1');
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 1 });
+
+		emitScreenshot({ threadId: 'thread-1', actionId: 'a1', mimeType: 'image/jpeg', data: 'x' });
+		emitScreenshot({ threadId: 'thread-2', actionId: 'a2', mimeType: 'image/jpeg', data: 'y' });
+
+		expect(state.screenshots.value).toEqual([
+			{ actionId: 'a1', mimeType: 'image/jpeg', data: 'x' },
+		]);
+	});
+
+	it('keeps screenshots around once stopped, but clears them on a fresh recording', () => {
+		const state = useLiveRecordingState(() => 'thread-1');
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 1 });
+		emitScreenshot({ threadId: 'thread-1', actionId: 'a1', mimeType: 'image/jpeg', data: 'x' });
+
+		emitRecordingState({ threadId: 'thread-1', status: 'stopped', actionCount: 1 });
+		expect(state.screenshots.value).toHaveLength(1);
+
+		emitRecordingState({ threadId: 'thread-1', status: 'recording', actionCount: 0 });
+		expect(state.screenshots.value).toHaveLength(0);
 	});
 });
