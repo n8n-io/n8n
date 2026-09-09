@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	ExecutionOptions,
 	MemoryTaskUsageReport,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
@@ -663,6 +664,48 @@ export interface ConnectedMcpService {
 	toolNames: string[];
 }
 
+/** One activity-log entry, flattened for the agent. `at` is ISO so the model can reason on it. */
+export interface InstanceAiActivityEntry {
+	id: number;
+	at: string;
+	category: string;
+	action: string;
+	resourceType?: string;
+	resourceId?: string;
+	resourceName?: string;
+	/** Whether the user in this conversation is the one who did it. */
+	byCurrentUser: boolean;
+	detail?: Record<string, unknown>;
+}
+
+/**
+ * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
+ * the live record: `workflows` and `credentials` already fetch those, and the entry carries the ids
+ * to call them with.
+ */
+export interface InstanceAiActivityExpansion {
+	entry: InstanceAiActivityEntry;
+	/** Other entries for the same resource, newest first. Empty when the entry names no resource. */
+	resourceHistory: InstanceAiActivityEntry[];
+	/** The call that fetches the live record, when one applies. */
+	liveRecordHint?: string;
+}
+
+/**
+ * Reads the activity log the agent is handed a window of at the start of a turn. Bound to one
+ * conversation's user and project by the adapter, so the tool cannot widen its own scope.
+ */
+export interface InstanceAiActivityService {
+	list(input: {
+		limit: number;
+		category?: string;
+		resourceId?: string;
+		beforeId?: number;
+	}): Promise<InstanceAiActivityEntry[]>;
+	/** Null when the id is pruned or out of scope — the two are indistinguishable on purpose. */
+	expand(id: number): Promise<InstanceAiActivityExpansion | null>;
+}
+
 export interface InstanceAiMcpService {
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 	getServers(slugs: string[]): Promise<McpRegistryConnectServerSummary[]>;
@@ -710,7 +753,11 @@ export interface UnavailableLocatorValue {
 
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; gatewayCreditsOnly?: boolean }): Promise<NodeSummary[]>;
-	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
+	getDescription(
+		nodeType: string,
+		version?: number,
+		options?: { includeGatewayMetadata?: boolean },
+	): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
 	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
@@ -1302,6 +1349,8 @@ export interface InstanceAiContext {
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
+	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
+	activityService?: InstanceAiActivityService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */
@@ -1388,6 +1437,13 @@ export interface InstanceAiContext {
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
 	/**
+	 * Setup panel v2: the setup tool announced a workflow's final checklist
+	 * instead of suspending, so the host must treat that build's setup as
+	 * handled and not route a `<workflow-setup-required>` follow-up for it.
+	 * Wired by the host only while the setup panel flag is on.
+	 */
+	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).
 	 * Same-run update HITL bypasses consult this set. Cross-run bypass for
@@ -1459,6 +1515,8 @@ export interface InstanceAiContext {
 export interface SetupItemsEmitter {
 	/** Replace the workflow's snapshot. Returns false when nothing changed (no event published). */
 	emit(workflowId: string, items: InstanceAiSetupItem[]): boolean;
+	/** Publish the final checklist and confirm persistence before setup routing ends. */
+	announce(workflowId: string, items: InstanceAiSetupItem[]): Promise<void>;
 	/**
 	 * Upsert items (by id) into the workflow's last snapshot and publish the
 	 * merged list. For emitters that know only part of the checklist, e.g. a
@@ -1470,6 +1528,8 @@ export interface SetupItemsEmitter {
 	 * artifact — the workflow the panel follows. Undefined before the first save.
 	 */
 	lastWorkflowId(): string | undefined;
+	/** Workflows with a known snapshot, most recently announced last. */
+	workflowIds(): string[];
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -1853,8 +1913,18 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
+	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
+	/**
+	 * Operator overrides for the model-stream stall deadlines, forwarded to
+	 * sub-agent runs so they honor the same limits as the orchestrator.
+	 */
+	modelStreamStallOptions?: Pick<
+		ExecutionOptions,
+		'modelStreamIdleTimeoutMs' | 'modelStreamFirstOutputTimeoutMs'
+	>;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;

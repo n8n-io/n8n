@@ -616,6 +616,25 @@ describe('scheduled repositories', () => {
 		});
 	});
 
+	describe('ScheduledJobRepository.findOwnerMemberIds', () => {
+		it('lists each member once, for this owner and task type only, skipping member-less jobs', async () => {
+			const agent = { ownerType: 'agent', ownerId: 'agent-1' };
+			const taskType = 'agent:scheduled-task';
+			// Two jobs under one member must yield that member once.
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-1', taskType });
+			await createJob({ ...agent, ownerMemberId: 'task-2', taskType });
+			// Not this task type, not a member, not this owner.
+			await createJob({ ...agent, ownerMemberId: 'timer-1', taskType: 'agent:wakeup' });
+			await createJob({ ...agent, ownerMemberId: null, taskType });
+			await createJob({ ...agent, ownerId: 'agent-2', ownerMemberId: 'task-9', taskType });
+
+			const memberIds = await jobRepository.findOwnerMemberIds(agent, taskType);
+
+			expect(memberIds.sort()).toEqual(['task-1', 'task-2']);
+		});
+	});
+
 	describe('ScheduledJobRepository.findQuarantinedByOwnerIds', () => {
 		it('returns at most `limit` jobs', async () => {
 			const owner = workflowOwned('wf-quarantined', 'node');

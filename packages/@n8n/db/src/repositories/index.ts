@@ -35,6 +35,7 @@ export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CrashedExecution,
 	type ExecutionDeletionCriteria,
 	type UpdateExecutionConditions,
 } from './execution.repository';

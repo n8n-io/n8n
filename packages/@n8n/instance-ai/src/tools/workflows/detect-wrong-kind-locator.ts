@@ -1,11 +1,8 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes, INodeProperties } from 'n8n-workflow';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function idModeRegexes(prop: INodeProperties): string[] {
 	const idMode = prop.modes?.find((m) => m.name === 'id');

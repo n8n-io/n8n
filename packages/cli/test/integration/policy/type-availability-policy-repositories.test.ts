@@ -170,6 +170,17 @@ describe('type availability policy repositories', () => {
 			expect(found.map((p) => p.id).sort()).toEqual([a.id, b.id].sort());
 		});
 
+		it('finds many by id under a row lock inside a transaction', async () => {
+			const a = await createPolicy();
+			const b = await createPolicy([ALLOW_BASE]);
+
+			const found = await transactionRunner.run(ROOT, async (ctx) => {
+				return await policyRepo.findManyByIds([b.id, a.id], ctx, true);
+			});
+
+			expect(found.map((p) => p.id)).toEqual([a.id, b.id].sort());
+		});
+
 		it('refuses to delete a policy that is still attached', async () => {
 			const policy = await createPolicy();
 			const scope = await createInstanceScope();
@@ -286,6 +297,44 @@ describe('type availability policy repositories', () => {
 			expect(scope.id).toBe(existing.id);
 			expect(scope.defaultAction).toBe('allow');
 			expect(scope.updatedBy).toBe('user-1');
+		});
+
+		describe('containsProjectScope', () => {
+			it('is false for an empty id list', async () => {
+				expect(await scopeRepo.containsProjectScope([], ROOT)).toBe(false);
+			});
+
+			it('is false when every named scope is the instance scope', async () => {
+				const instanceScope = await createInstanceScope();
+
+				expect(await scopeRepo.containsProjectScope([instanceScope.id], ROOT)).toBe(false);
+			});
+
+			it('is true when one of the named scopes is a project scope', async () => {
+				const project = await createTeamProject();
+				const instanceScope = await createInstanceScope();
+				const projectScope = await createProjectScope(project.id);
+
+				expect(
+					await scopeRepo.containsProjectScope([instanceScope.id, projectScope.id], ROOT),
+				).toBe(true);
+			});
+
+			it('ignores ids that name no scope', async () => {
+				await createInstanceScope();
+
+				expect(await scopeRepo.containsProjectScope(['does-not-exist'], ROOT)).toBe(false);
+			});
+
+			it('finds a project scope that lands in a later batch', async () => {
+				const project = await createTeamProject();
+				const projectScope = await createProjectScope(project.id);
+				// One batch per ID_QUERY_BATCH_SIZE (10,000) ids: the real id is the 10,001st, so
+				// only the second batch can find it.
+				const ids = [...Array.from({ length: 10_000 }, (_, i) => `missing-${i}`), projectScope.id];
+
+				expect(await scopeRepo.containsProjectScope(ids, ROOT)).toBe(true);
+			});
 		});
 
 		it('locks only the scopes that exist and returns their ids', async () => {

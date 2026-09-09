@@ -102,6 +102,39 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)[0].name).toBe('Untitled');
 	});
 
+	test('falls back to Untitled when the name and subtitle are blank', () => {
+		const node = makeAgentNode({
+			subtitle: '   ',
+			targetResource: { id: 'wf-1', type: 'workflow', name: '' },
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a built workflow reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					args: { name: '' },
+					result: { workflowId: 'wf-1', workflowName: '' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
+	test('falls back to Untitled when a data table reports a blank name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'data-tables',
+					result: { tableId: 'dt-1', name: '  ' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
+
 	test('ignores targetResource with non-artifact type', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'cred-1', type: 'credential', name: 'API Key' },

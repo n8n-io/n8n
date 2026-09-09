@@ -1,4 +1,5 @@
-import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
+import type { InterruptibleToolContext } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';

@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import type * as SharedSandboxMod from '@n8n/agents/sandbox';
-
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
@@ -136,9 +134,6 @@ const loadBuilderTemplatesService = lazyModule(
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
-const loadSharedSandbox = lazyModule(
-	() => require('@n8n/agents/sandbox') as typeof SharedSandboxMod,
-);
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
 );
@@ -225,16 +220,6 @@ export {
 	saveAgentPreviewSession,
 } from './tools/orchestration/agent-preview-session-binding';
 
-export type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	CheckpointStore,
-	ContentToolCall,
-	MessageContent,
-	SerializableAgentState,
-	Thread,
-} from '@n8n/agents';
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
@@ -411,8 +396,6 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
 );
-export type Tool = EvalAgentsMod.Tool;
-export const Tool: typeof EvalAgentsMod.Tool = lazyClass(() => loadEvalAgents().Tool);
 defineLazyExport('PURE_REPLAY_TOOLS', () => loadTraceReplay().PURE_REPLAY_TOOLS);
 defineLazyExport(
 	'SUB_AGENT_RESOURCE_PREFIX',
@@ -469,12 +452,6 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
-export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFunction(
-	() => loadSharedSandbox().getWorkspaceRoot,
-);
-export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
-	() => loadSharedSandbox().getPromptWorkspaceRoot,
-);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -516,7 +493,11 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
-export { createSetupItemsEmitter } from './tools/workflows/setup-items';
+export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
+export {
+	formatWorkflowSetupStateNote,
+	observeWorkflowSetupStates,
+} from './tools/workflows/setup-panel-state';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -633,6 +614,9 @@ export type {
 	DataTableColumnInfo,
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
+	InstanceAiActivityEntry,
+	InstanceAiActivityExpansion,
+	InstanceAiActivityService,
 	InstanceAiMcpService,
 	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,

@@ -4,6 +4,12 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 }));
 
+vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents/sandbox')>()),
+	getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
+	getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
+}));
+
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
@@ -14,6 +20,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		// passing test with silently empty metadata.
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
+			context.setupItemsEmitter !== undefined,
+		createSetupItemsEmitter: vi.fn(() => ({
+			emit: vi.fn(),
+			announce: vi.fn(),
+			merge: vi.fn(),
+			workflowIds: vi.fn(),
+			lastWorkflowId: vi.fn(),
+		})),
 		isQuotaExhaustedError: (error: unknown) =>
 			typeof error === 'object' &&
 			error !== null &&
@@ -34,8 +49,6 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
-		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
-		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: {
@@ -209,6 +222,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	createOrchestratorRunControl,
+	createSetupItemsEmitter,
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
@@ -294,22 +308,16 @@ function createStartRunService(): StartRunServiceInternals {
 }
 
 type CheckpointPruneServiceInternals = {
-	startCheckpointPruning: () => void;
-	stopCheckpointPruning: () => void;
-	runScheduledPrune: (now?: number) => Promise<void>;
+	pruneExpiredData: (now?: number, signal?: AbortSignal) => Promise<void>;
 	suspendedThreads: {
 		pruneStalePendingConfirmations: MockedFunction<(now: number) => Promise<void>>;
 	};
-	pruneExpiredThreads: MockedFunction<() => Promise<void>>;
-	scheduleCheckpointPrune: MockedFunction<(delayMs?: number) => void>;
+	pruneExpiredThreads: MockedFunction<(signal?: AbortSignal) => Promise<void>>;
 	checkpointStore: {
 		markExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 		hardDeleteExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 	};
-	checkpointPruneTimer?: NodeJS.Timeout;
-	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
-		pruneInterval: number;
 		snapshotRetention: number;
 		checkpointGcRetention: number;
 	};
@@ -320,7 +328,6 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as CheckpointPruneServiceInternals;
-	service.scheduleCheckpointPrune = vi.fn();
 	service.suspendedThreads = {
 		pruneStalePendingConfirmations: vi.fn(async (_now: number) => undefined),
 	};
@@ -329,9 +336,7 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 		markExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
 		hardDeleteExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
 	};
-	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
-		pruneInterval: 60 * 60 * 1000,
 		snapshotRetention: 24 * 60 * 60 * 1000,
 		checkpointGcRetention: 7 * 24 * 60 * 60 * 1000,
 	};
@@ -398,7 +403,6 @@ function createInstanceAiErrorReporterMock() {
 
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
-	stopCheckpointPruning: MockedFunction<() => void>;
 	liveness: { shutdown: MockedFunction<() => void> };
 	runState: {
 		shutdown: MockedFunction<
@@ -461,6 +465,7 @@ type TerminalGuardOrderServiceInternals = {
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -569,6 +574,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {};
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -637,7 +643,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
+	const snapshotModes = ['off', 'seeded', 'read failure'];
+	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -646,6 +653,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				abortSignal: AbortSignal,
 			) => Promise<{
 				orchestrationContext: {
+					setupPanelEnabled?: boolean;
 					workspace?: unknown;
 					runtimeSkills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
@@ -679,8 +687,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
+			eventLog: { getSetupItemsSnapshots: Mock };
 			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
@@ -709,7 +719,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
-			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => snapshotMode !== 'off'),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
@@ -734,8 +744,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
+		const initialSnapshots = [{ workflowId: 'wf-old', items: [] }];
+		service.eventLog = { getSetupItemsSnapshots: vi.fn().mockResolvedValue(initialSnapshots) };
+		if (snapshotMode === 'read failure') {
+			service.eventLog.getSetupItemsSnapshots.mockRejectedValue(new Error('storage unavailable'));
+		}
 		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
@@ -788,6 +804,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'run-1',
 			new AbortController().signal,
 		);
+		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+		if (snapshotMode === 'off') {
+			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
+			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
+		} else {
+			expect(createSetupItemsEmitter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					initialSnapshots: snapshotMode === 'seeded' ? initialSnapshots : [],
+				}),
+			);
+		}
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
@@ -844,7 +871,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			error: 'claim failed',
 		});
 		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
-			service.logger.warn.mock.invocationCallOrder[0],
+			service.logger.warn.mock.invocationCallOrder.at(-1)!,
 		);
 
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -955,6 +982,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: { warn: Mock };
@@ -1011,6 +1039,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = { warn: vi.fn() };
@@ -1077,7 +1106,6 @@ describe('InstanceAiService — shutdown', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
-		service.stopCheckpointPruning = vi.fn();
 		service.liveness = { shutdown: vi.fn() };
 		service.runState = {
 			shutdown: vi.fn(() => ({ activeRuns: [], suspendedRuns: [] })),
@@ -1343,12 +1371,12 @@ describe('InstanceAiService — run start', () => {
 	});
 });
 
-describe('InstanceAiService — scheduled pruning', () => {
+describe('InstanceAiService — expired data pruning', () => {
 	it('marks checkpoints expired older than the retention window', async () => {
 		const service = createCheckpointPruneService();
 		const now = new Date('2026-05-13T12:00:00.000Z').getTime();
 
-		await service.runScheduledPrune(now);
+		await service.pruneExpiredData(now);
 
 		// snapshotRetention = 24h → tombstone anything untouched since 05-12
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
@@ -1360,59 +1388,98 @@ describe('InstanceAiService — scheduled pruning', () => {
 		);
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('passes the signal to the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime(), signal);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledWith(signal);
+	});
+
+	it('stops before the next step once the signal is aborted', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.checkpointStore.markExpiredOlderThan.mockImplementation(async () => {
+			controller.abort();
+			return 0;
+		});
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
+		expect(service.pruneExpiredThreads).not.toHaveBeenCalled();
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
+	});
+
+	it('logs an early stop when the signal aborts during the thread sweep', async () => {
+		const service = createCheckpointPruneService();
+		const controller = new AbortController();
+		service.pruneExpiredThreads.mockImplementation(async () => controller.abort());
+
+		await service.pruneExpiredData(
+			new Date('2026-05-13T12:00:00.000Z').getTime(),
+			controller.signal,
+		);
+
+		expect(service.pruneExpiredThreads).toHaveBeenCalledTimes(1);
+		expect(service.logger.debug).toHaveBeenCalledWith(
+			'Stopped the Instance AI prune pass early because the run was aborted',
+		);
 	});
 
 	it('skips hard-deleting tombstones when the GC retention is disabled', async () => {
 		const service = createCheckpointPruneService();
 		service.instanceAiConfig.checkpointGcRetention = 0;
 
-		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime());
 
 		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
-		// The rest of the cycle still runs.
+		// The rest of the pass still runs.
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('propagates a checkpoint expiry failure to the caller', async () => {
+		const service = createCheckpointPruneService();
+		service.checkpointStore.markExpiredOlderThan.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(
+			service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime()),
+		).rejects.toThrow('db down');
+
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).not.toHaveBeenCalled();
 	});
 
 	it('continues the prune cycle when hard-deleting tombstones fails', async () => {
 		const service = createCheckpointPruneService();
 		service.checkpointStore.hardDeleteExpiredOlderThan.mockRejectedValueOnce(new Error('db down'));
 
-		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+		await service.pruneExpiredData(new Date('2026-05-13T12:00:00.000Z').getTime());
 
-		// A GC failure is swallowed and never forces the short retry cadence.
+		// A GC failure is swallowed and never interrupts the rest of the pass.
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalled();
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
 		expect(service.logger.warn).toHaveBeenCalled();
-	});
-
-	it('starts checkpoint pruning when configured', () => {
-		const service = createCheckpointPruneService();
-
-		service.startCheckpointPruning();
-
-		expect(service.checkpointPruningStopped).toBe(false);
-		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith(0);
-	});
-
-	it('does not start checkpoint pruning when disabled', () => {
-		const service = createCheckpointPruneService();
-		service.instanceAiConfig.pruneInterval = 0;
-
-		service.startCheckpointPruning();
-
-		expect(service.scheduleCheckpointPrune).not.toHaveBeenCalled();
 	});
 });
 
 type ExpiredThreadPruneServiceInternals = {
-	pruneExpiredThreads: () => Promise<void>;
+	pruneExpiredThreads: (signal?: AbortSignal) => Promise<void>;
 	clearThreadState: MockedFunction<(threadId: string) => Promise<void>>;
 	memoryService: {
 		cleanupExpiredThreads: MockedFunction<
-			(onThreadDeleted?: (threadId: string) => Promise<void>) => Promise<number>
+			(
+				onThreadDeleted?: (threadId: string) => Promise<void>,
+				signal?: AbortSignal,
+			) => Promise<number>
 		>;
 	};
 	logger: { warn: Mock };
@@ -1442,6 +1509,18 @@ describe('InstanceAiService — expired thread pruning', () => {
 
 		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledTimes(1);
 		expect(service.clearThreadState).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('passes the signal to the memory service', async () => {
+		const service = createExpiredThreadPruneService();
+		const { signal } = new AbortController();
+
+		await service.pruneExpiredThreads(signal);
+
+		expect(service.memoryService.cleanupExpiredThreads).toHaveBeenCalledWith(
+			expect.any(Function),
+			signal,
+		);
 	});
 
 	it('swallows errors so the recurring prune is not disrupted', async () => {
@@ -4643,6 +4722,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			threadId: string,
 			workflowId: string,
 			runId?: string,
+			options?: { requirePersisted?: boolean },
 		) => Promise<boolean>;
 		maybeStartWorkflowSetupFollowUp: (user: User, threadId: string) => Promise<boolean>;
 	};
@@ -4889,6 +4969,42 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
 			'setup_completed_by_tool',
 		);
+	});
+
+	it.each(['rejected', 'not saved'])(
+		'releases a %s routing marker so the handoff can retry',
+		async (failure) => {
+			const records = { 'wi-1': makeRecord() };
+			const service = createSetupFollowUpService(records);
+			if (failure === 'rejected') {
+				service.markWorkItemSetupRouted.mockRejectedValueOnce(new Error('storage unavailable'));
+			} else {
+				service.markWorkItemSetupRouted.mockResolvedValueOnce(false);
+			}
+
+			await expect(
+				service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1', { requirePersisted: true }),
+			).rejects.toThrow();
+			expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+			await expect(service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1')).resolves.toBe(
+				true,
+			);
+			await expect(service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a')).resolves.toBe(
+				false,
+			);
+			expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps the legacy card result when its routing marker is not saved', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+		service.markWorkItemSetupRouted.mockResolvedValueOnce(false);
+
+		await expect(service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1')).resolves.toBe(
+			false,
+		);
+		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
 	});
 
 	it('keeps setup for other workflows routable after one workflow setup completes', async () => {

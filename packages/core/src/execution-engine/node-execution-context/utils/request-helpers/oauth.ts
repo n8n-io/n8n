@@ -310,8 +310,32 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
-): number {
+): number | number[] {
 	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+}
+
+// Some gateways signal an expired token with different codes on different endpoints
+// (e.g. 403 on legacy paths, 404 on newer ones), so a single caller may need to match more
+// than one status.
+export function isTokenExpiredStatusCode(
+	status: unknown,
+	tokenExpiredStatusCode: number | number[],
+) {
+	return Array.isArray(tokenExpiredStatusCode)
+		? tokenExpiredStatusCode.includes(status as number)
+		: status === tokenExpiredStatusCode;
+}
+
+/** Refresh a little before the stored expiry, so a token that dies mid-request still refreshes. */
+const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+
+/**
+ * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
+ * expired, so callers fall back to refreshing when the expiry is unknown.
+ */
+function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
+	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
+	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
 }
 
 function isSingleUseValue(value: unknown): boolean {
@@ -409,9 +433,11 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
+		// Stamp the expiry now so `skipRefreshWhileTokenIsFresh` can tell a live first token
+		// from one that must be renewed.
 		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
 			additionalData,
-			data,
+			addExpiresAt(data),
 			credentials.jweEnabled === true,
 		)) as ClientOAuth2TokenData;
 		credentials.oauthTokenData = initialTokenData;
@@ -460,6 +486,19 @@ export async function requestOAuth2(
 	const tokenExpiredStatusCode = resolveTokenExpiredStatusCode(oAuth2Options, credentials);
 	const shouldSkipTokenRefresh = oAuth2Options?.skipTokenRefresh === true;
 
+	/**
+	 * A 401 means the server rejected the token, so it always earns a refresh. Any other
+	 * configured status can be ambiguous (a gateway that answers 404 for both an expired token
+	 * and a missing page), so `skipRefreshWhileTokenIsFresh` lets a caller ask for the stored
+	 * expiry to be checked first, instead of paying a refresh per missing item.
+	 */
+	const shouldRefreshToken = (status: unknown): boolean => {
+		if (shouldSkipTokenRefresh) return false;
+		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
+		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
+		return !isStoredTokenUnexpired(credentials);
+	};
+
 	const refreshCtx: RefreshOAuth2TokenContext = {
 		credentials,
 		token,
@@ -498,7 +537,7 @@ export async function requestOAuth2(
 
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (!shouldSkipTokenRefresh && error.response?.status === tokenExpiredStatusCode) {
+			if (shouldRefreshToken(error.response?.status)) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.httpRequest(opts),
 					() => {
@@ -515,17 +554,16 @@ export async function requestOAuth2(
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
-				!shouldSkipTokenRefresh &&
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode === tokenExpiredStatusCode
+				shouldRefreshToken(response.statusCode)
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (!shouldSkipTokenRefresh && error.statusCode === tokenExpiredStatusCode) {
+			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.request(opts as IRequestOptions),
 					() => {

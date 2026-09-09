@@ -1,3 +1,4 @@
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -11,7 +12,13 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(entry).toBeDefined();
 	});
 
-	it('registers the instance controller on init', async () => {
+	it('is gated by the node type policies license feature, so an unlicensed instance skips init', () => {
+		const entry = Container.get(ModuleMetadata).get('type-availability-policies');
+
+		expect(entry?.licenseFlag).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+	});
+
+	it('registers the instance and project controllers on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
@@ -19,11 +26,17 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		const { TypeAvailabilityPolicyInstanceController } = await import(
 			'../type-availability-policy-instance.controller.js'
 		);
-		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-			TypeAvailabilityPolicyInstanceController as never,
+		const { TypeAvailabilityPolicyProjectController } = await import(
+			'../type-availability-policy-project.controller.js'
 		);
+		const registry = Container.get(ControllerRegistryMetadata);
 
-		expect(metadata.routes.size).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(TypeAvailabilityPolicyInstanceController as never).routes.size,
+		).toBeGreaterThan(0);
+		expect(
+			registry.getControllerMetadata(TypeAvailabilityPolicyProjectController as never).routes.size,
+		).toBeGreaterThan(0);
 	});
 
 	it('exposes its entities so the datasource picks them up', async () => {

@@ -13,7 +13,7 @@
 # ==============================================================================
 
 ARG NODE_VERSION=26.7.0
-ARG PNPM_VERSION=11.25.0
+ARG PNPM_VERSION=12.3.4
 ARG PYTHON_VERSION=3.13
 
 
@@ -45,14 +45,14 @@ RUN node -e "const pkg = require('./package.json'); \
     delete pkg.devDependencies; \
     require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
-# `--config.minimum-release-age=0`: pnpm 11 defaults it to 1440 (24h), which would make
+# `--config.minimum-release-age=0`: pnpm defaults it to 1440 (24h), which would make
 # this reject any dependency published less than a day ago — e.g. a first-party
 # @n8n_io/ai-assistant-sdk bump landed within hours of its npm publish. This step only
 # re-resolves an already-vetted, already-pinned dependency set; the real supply-chain age
 # policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment by default (special case for n8n cloud)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --prod --no-lockfile --config.minimum-release-age=0
+    pnpm add moment@2.30.1 --save-prod --no-lockfile --config.minimum-release-age=0
 
 # Rebuild isolated-vm for the container platform. Install build tools as
 # fallback in case prebuild-install cannot find a prebuilt binary.
