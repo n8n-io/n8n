@@ -1,7 +1,8 @@
 import { createSkillLoadTool } from '@n8n/agents';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
@@ -15,6 +16,39 @@ describe('Instance AI runtime skills', () => {
 		} else {
 			process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
 		}
+	});
+
+	// `load_tool` only resolves DEFERRED tools, so a gate that names an always-loaded
+	// tool can only answer `not_found`. The model then falls back to `search_tools`,
+	// which costs 2 to 4 full-context round trips (INS-1394). This caught the
+	// `n8n-docs` gates that went stale when INS-749 made the tool always-loaded.
+	it('never tells the model to load an always-loaded tool', () => {
+		const gatePatterns = [
+			/load\s+`?([\w.-]+)`?\s+via\s+`?load_tool/gi,
+			/calling\s+`?([\w.-]+)`?,\s+load it via\s+`?load_tool/gi,
+		];
+		const offenders: string[] = [];
+
+		for (const skillId of readdirSync(INSTANCE_AI_SKILLS_DIR, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name)) {
+			const skillPath = join(INSTANCE_AI_SKILLS_DIR, skillId, 'SKILL.md');
+			if (!existsSync(skillPath)) continue;
+			const content = readFileSync(skillPath, 'utf-8');
+
+			for (const pattern of gatePatterns) {
+				for (const match of content.matchAll(pattern)) {
+					const toolName = match[1];
+					// "load it via load_tool" names the tool earlier; the second pattern catches it.
+					if (toolName === 'it') continue;
+					if (ALWAYS_LOADED_TOOL_NAMES.has(toolName)) {
+						offenders.push(`${skillId}/SKILL.md tells the model to load "${toolName}"`);
+					}
+				}
+			}
+		}
+
+		expect(offenders).toEqual([]);
 	});
 
 	it('points the workflow-builder skill at the SDK language reference', () => {
@@ -232,14 +266,15 @@ describe('Instance AI runtime skills', () => {
 			name: 'n8n-docs-assistant',
 			recommendedTools: ['n8n-docs', 'credentials', 'nodes'],
 		});
-		expect(skill?.description).toContain('Load n8n-docs via load_tool before calling it');
+		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
+		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
 			'credential setup questions opened from the credential modal',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
+		expect(loaded?.instructions).not.toContain('load_tool');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
