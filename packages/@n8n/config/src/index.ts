@@ -60,6 +60,7 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
+export { AppsConfig } from './configs/apps.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';

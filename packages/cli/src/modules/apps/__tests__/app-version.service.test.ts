@@ -53,6 +53,7 @@ describe('AppVersionService', () => {
 		);
 		appVersionRepository.countByAppId.mockResolvedValue(0);
 		appVersionRepository.sumSizeByProjectId.mockResolvedValue(0);
+		appVersionRepository.findDistPrunable.mockResolvedValue([]);
 	});
 
 	describe('create', () => {
