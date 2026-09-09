@@ -897,10 +897,11 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<AutosaveRes
 			snapshot.projectId,
 			snapshot.agentId,
 			snapshot.config,
-			// Edits made before the agent was persisted have no fetched hash yet;
-			// the create response carries the hash of the seeded config.
+			// Edits made before the agent was persisted have no fetched hash yet; the
+			// create response for that target carries the hash of the seeded config.
 			snapshot.baseConfigHash === undefined
-				? (agent.value?.configHash ?? null)
+				? (persistedAgentsByTarget.get(`${snapshot.projectId}:${snapshot.agentId}`)?.configHash ??
+						null)
 				: snapshot.baseConfigHash,
 		);
 	} catch (error) {

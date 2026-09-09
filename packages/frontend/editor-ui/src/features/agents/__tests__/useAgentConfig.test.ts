@@ -22,6 +22,10 @@ const config: AgentJsonConfig = {
 };
 
 describe('useAgentConfig', () => {
+	beforeEach(() => {
+		updateAgentConfigMock.mockReset();
+	});
+
 	it('uses the latest server hash for consecutive config updates', async () => {
 		getAgentConfigMock.mockResolvedValue({ config, configHash: 'hash-0' });
 		updateAgentConfigMock
@@ -50,6 +54,31 @@ describe('useAgentConfig', () => {
 		expect(updateAgentConfigMock.mock.calls.map((call) => call.at(-1))).toEqual([
 			'hash-0',
 			'hash-1',
+		]);
+	});
+
+	it('advances a base captured during an in-flight save, but never to a hash a fetch loaded', async () => {
+		getAgentConfigMock.mockResolvedValue({ config, configHash: 'hash-0' });
+		updateAgentConfigMock
+			.mockResolvedValueOnce({ config, configHash: 'hash-1', versionId: 'v1' })
+			.mockResolvedValueOnce({ config, configHash: 'hash-2', versionId: 'v1' })
+			.mockResolvedValueOnce({ config, configHash: 'hash-3', versionId: 'v1' });
+		const state = useAgentConfig();
+		await state.fetchConfig('project-1', 'agent-1');
+
+		// Both edits were made against hash-0, the second while the first was saving.
+		await state.updateConfig('project-1', 'agent-1', config, 'hash-0');
+		await state.updateConfig('project-1', 'agent-1', config, 'hash-0');
+		// Another writer changed the agent and a refresh loaded its hash; an edit
+		// made before that refresh keeps its own base so the server rejects it.
+		getAgentConfigMock.mockResolvedValue({ config, configHash: 'hash-remote' });
+		await state.fetchConfig('project-1', 'agent-1');
+		await state.updateConfig('project-1', 'agent-1', config, 'hash-2');
+
+		expect(updateAgentConfigMock.mock.calls.map((call) => call.at(-1))).toEqual([
+			'hash-0',
+			'hash-1',
+			'hash-2',
 		]);
 	});
 });
