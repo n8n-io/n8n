@@ -565,14 +565,14 @@ describe('apps tool', () => {
 
 			expect(context.appService?.getSourceTarball).toHaveBeenCalledWith('app-1');
 			const writeCalls = writeFileMock(context).mock.calls as Array<[string, Buffer, unknown]>;
-			expect(writeCalls).toHaveLength(1);
+			expect(writeCalls).toHaveLength(3);
 			expect(writeCalls[0][0]).toMatch(/^\.app-builds\/greeter-\d+-restore\.tgz$/);
 			expect(Buffer.isBuffer(writeCalls[0][1])).toBe(true);
 			expect(writeCalls[0][1]).toEqual(SOURCE_TARBALL);
 
 			const commands = commandsRun(context);
 			expect(commands[0]).toBe(
-				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(ls -A '/home/daytona/workspace/apps/greeter')\" ]",
+				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(cd '/home/daytona/workspace/apps/greeter' && find . -type f ! -path './src/n8n-bindings.d.ts' ! -path './vendor/n8n-app-sdk.tgz')\" ]",
 			);
 			expect(commands[1]).toBe("mkdir -p '/home/daytona/workspace/.app-builds'");
 			expect(commands[2]).toMatch(
@@ -592,6 +592,51 @@ describe('apps tool', () => {
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				warnings: [],
 			});
+		});
+
+		it('rewrites the SDK tarball and the binding types from the current bindings after unpacking', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: ['Binding submit: not published'],
+				stored: STORED_BINDINGS.slice(0, 1),
+			});
+			const order: string[] = [];
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				order.push(
+					command.startsWith('[ -d ') ? 'check' : command.includes('git init') ? 'git' : 'shell',
+				);
+				return await Promise.resolve(command.startsWith('[ -d ') ? fail('') : ok());
+			});
+			writeFileMock(context).mockImplementation(async (path: string) => {
+				order.push(path);
+				await Promise.resolve();
+			});
+
+			const result = await runRestore(context);
+
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				SDK_TARBALL,
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes([SUBMIT_BINDING]),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(order).toEqual([
+				'check',
+				'shell',
+				expect.stringMatching(/restore\.tgz$/),
+				'shell',
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				TYPES_PATH,
+				'git',
+				'shell',
+			]);
+			expect(result).toMatchObject({ warnings: ['Binding submit: not published'] });
 		});
 
 		it('returns denied when the app has no stored version', async () => {
@@ -687,8 +732,8 @@ describe('apps tool', () => {
 			const writeCalls = writeFileMock(context).mock.calls as Array<
 				[string, Buffer, { abortSignal?: AbortSignal }]
 			>;
-			expect(writeCalls).toHaveLength(1);
-			expect(writeCalls[0][2].abortSignal).toBe(abortSignal);
+			expect(writeCalls).toHaveLength(3);
+			for (const call of writeCalls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
 

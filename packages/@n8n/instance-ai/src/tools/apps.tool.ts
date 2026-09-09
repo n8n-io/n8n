@@ -461,12 +461,7 @@ async function handleCreate(
 			}
 		}
 
-		const sdk = await appService.getSdkTarball();
-		await requireFilesystem(workspace, 'write the SDK into').writeFile(
-			`${APPS_DIR}/${namespace}/${SDK_VENDOR_DIR}/${sdk.filename}`,
-			sdk.data,
-			{ recursive: true, abortSignal },
-		);
+		await writeSdkTarball(workspace, namespace, await appService.getSdkTarball(), abortSignal);
 		await writeBindingsTypes(workspace, namespace, [], abortSignal);
 
 		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
@@ -584,9 +579,16 @@ export async function handleRestore(
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${app.namespace}`;
 
-	const occupied = await run(`[ -d ${q(appDir)} ] && [ -n "$(ls -A ${q(appDir)})" ]`, {
-		cwd: root,
-	});
+	// `bind` may run before `restore` in a fresh sandbox; the files it generates are
+	// rewritten below, so they do not count as the user's work.
+	const sdk = await appService.getSdkTarball();
+	const generated = [BINDINGS_TYPES_PATH, `${SDK_VENDOR_DIR}/${sdk.filename}`]
+		.map((path) => `! -path ${q(`./${path}`)}`)
+		.join(' ');
+	const occupied = await run(
+		`[ -d ${q(appDir)} ] && [ -n "$(cd ${q(appDir)} && find . -type f ${generated})" ]`,
+		{ cwd: root },
+	);
 	if (occupied.exitCode === 0) {
 		return {
 			denied: true,
@@ -620,6 +622,12 @@ export async function handleRestore(
 			throw new Error(`Could not unpack the stored source: ${tailLog(combinedLog(extract))}`);
 		}
 
+		// The stored source carries the SDK and types of its build time; the restored app
+		// must build against the current ones.
+		await writeSdkTarball(workspace, app.namespace, sdk, abortSignal);
+		const described = await appService.getBindings(app.id);
+		await writeBindingsTypes(workspace, app.namespace, described.bindings, abortSignal);
+
 		const git = await run(gitInitCommand('restore'), { cwd: appDir });
 		return {
 			appId: app.id,
@@ -628,7 +636,7 @@ export async function handleRestore(
 			projectId: app.projectId,
 			versionId: tarball.versionId,
 			workspacePath,
-			warnings: git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING],
+			warnings: [...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]), ...described.warnings],
 		};
 	} catch (error) {
 		return { error: true, stage: 'restore', message: getErrorMessage(error) };
@@ -673,6 +681,19 @@ async function handleAddComponent(
 	}
 
 	return { appId: app.id, component: input.component };
+}
+
+async function writeSdkTarball(
+	workspace: NonNullable<InstanceAiContext['workspace']>,
+	namespace: string,
+	sdk: { filename: string; data: Uint8Array },
+	abortSignal?: AbortSignal,
+) {
+	await requireFilesystem(workspace, 'write the SDK into').writeFile(
+		`${APPS_DIR}/${namespace}/${SDK_VENDOR_DIR}/${sdk.filename}`,
+		sdk.data,
+		{ recursive: true, abortSignal },
+	);
 }
 
 async function writeBindingsTypes(
