@@ -263,6 +263,11 @@ describe('AppRuntimeService', () => {
 				[triggerNode.name]: [{ json: { message: 'hi', count: 3 } }],
 			});
 			expect(runData.executionData?.executionData?.nodeExecutionStack[0].node).toBe(triggerNode);
+			expect(runData.executionData?.resultData.metadata).toEqual({
+				appId: 'app-1',
+				appNamespace: 'runner',
+				appBindingKey: 'submit',
+			});
 		});
 
 		it('returns the last node items as output with principal null', async () => {

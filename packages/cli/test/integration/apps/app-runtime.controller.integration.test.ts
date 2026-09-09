@@ -174,7 +174,7 @@ beforeEach(async () => {
 describe('POST /apps/:namespace/api/workflows/:key', () => {
 	test('runs the published workflow with the body as input and answers with its output', async () => {
 		const workflow = await createEchoWorkflow({ published: true });
-		await createBoundApp(workflow.id);
+		const app = await createBoundApp(workflow.id);
 
 		const response = await visitor
 			.post('/apps/runner/api/workflows/submit')
@@ -190,6 +190,16 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 		expect(typeof response.body.executionId).toBe('string');
 		expect(response.headers['access-control-allow-origin']).toBe('*');
 		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+
+		const execution = await Container.get(ExecutionPersistence).findSingleExecution(
+			response.body.executionId,
+			{ includeData: true, unflattenData: true },
+		);
+		expect(execution?.customData).toEqual({
+			appId: app.id,
+			appNamespace: 'runner',
+			appBindingKey: 'submit',
+		});
 	});
 
 	test('fails a workflow that ends in Respond to Webhook, which needs a Webhook-type parent', async () => {

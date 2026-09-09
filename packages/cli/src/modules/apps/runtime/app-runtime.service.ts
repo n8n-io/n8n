@@ -200,7 +200,16 @@ export class AppRuntimeService {
 			pinData,
 			executionData: createRunExecutionData({
 				startData: {},
-				resultData: { pinData, runData: {} },
+				resultData: {
+					pinData,
+					runData: {},
+					// Saved as the execution's custom data, so operators can filter app traffic.
+					metadata: {
+						appId: origin.appId,
+						appNamespace: origin.namespace,
+						appBindingKey: origin.key,
+					},
+				},
 				executionData: {
 					contextData: {},
 					metadata: {},

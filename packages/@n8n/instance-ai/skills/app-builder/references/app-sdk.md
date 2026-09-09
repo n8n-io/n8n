@@ -124,7 +124,8 @@ Show `error.message` to the user; it is written for people.
 - Anonymous: anyone with the app URL can call a bound workflow. Bindings are
   the allow-list; nothing else protects the workflow.
 - The workflow runs as the app's project, so it uses the project's
-  credentials. It appears in the executions list with mode `integrated`.
+  credentials. It appears in the executions list with mode `integrated` and
+  the custom data `appId`, `appNamespace` and `appBindingKey`.
 - Only the published version runs. Draft changes take effect on publish.
 - Rate limit: 60 calls per minute per IP by default (instance setting).
 - Concurrency: at most 10 calls per instance hold a run at the same time by
