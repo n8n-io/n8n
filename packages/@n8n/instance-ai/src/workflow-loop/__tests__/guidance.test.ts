@@ -1,19 +1,111 @@
 import { formatWorkflowLoopGuidance } from '../guidance';
-import type { WorkflowLoopAction } from '../workflow-loop-state';
+import type { VerificationClaim, WorkflowLoopAction } from '../workflow-loop-state';
+
+function makeClaim(overrides: Partial<VerificationClaim> = {}): VerificationClaim {
+	return {
+		level: 'verified',
+		plannedNodeCount: 3,
+		reachedNodeCount: 3,
+		nodesNotReached: [],
+		simulatedNodes: [],
+		pinnedNodes: [],
+		unprovenTargets: [],
+		publishReady: true,
+		liveTestRecommended: false,
+		...overrides,
+	};
+}
 
 describe('formatWorkflowLoopGuidance', () => {
 	// ── done ────────────────────────────────────────────────────────────────────
 
 	describe('action type "done"', () => {
-		it('should report completion without workflowId', () => {
+		it('should not claim verification when no run recorded a claim', () => {
+			// A `verified` verdict reported without verifying leaves no claim. This
+			// sentence used to say "Workflow verified successfully", which handed
+			// the model the exact wording with no run evidence behind it.
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'All good',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('No automatic verification evidence is recorded');
+			expect(result).toContain('do NOT call the workflow verified');
+			expect(result).not.toContain('Workflow ID:');
+		});
+
+		it('should not claim success when the claim is partial', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				claim: makeClaim({
+					level: 'partial',
+					reachedNodeCount: 5,
+					plannedNodeCount: 12,
+					nodesNotReached: ['Send Email', 'Log Row'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('NOT fully verified');
+			expect(result).toContain('2 of 12 node(s) were never reached');
+			expect(result).toContain('Send Email, Log Row');
+			expect(result).toContain('Do NOT offer to publish it.');
+			expect(result).toContain('Offer a live end-to-end test');
+		});
+
+		it('should name the unproven fix target when the claim is unproven', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Patched',
+				claim: makeClaim({
+					level: 'unproven',
+					plannedNodeCount: 4,
+					reachedNodeCount: 4,
+					unprovenTargets: ['Send Email'],
+					simulatedNodes: [{ nodeName: 'Send Email', reason: 'Sends a message' }],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Changed but NOT verified');
+			expect(result).toContain('never proven: Send Email');
+			expect(result).toContain('nothing real happened at: Send Email');
+		});
+
+		it('should keep the verified wording when the claim is verified', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				claim: makeClaim(),
+			};
+			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('Workflow verified successfully');
 			expect(result).toContain('Report completion');
-			expect(result).not.toContain('Workflow ID:');
+		});
+
+		it('should downgrade the mocked-credential guidance too', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				workflowId: 'wf-123',
+				mockedCredentialTypes: ['slackApi'],
+				claim: makeClaim({
+					level: 'partial',
+					nodesNotReached: ['Send Email'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('NOT fully verified');
+			expect(result).toContain('workflows(action="setup")');
 		});
 
 		it('should include workflowId when present', () => {
@@ -44,7 +136,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).not.toContain('credentials(action="setup")');
-			expect(result).toContain('Report completion');
+			expect(result).toContain('Report the outcome');
 		});
 
 		it('should include credential instructions when mockedCredentialTypes has entries', () => {
@@ -356,5 +448,31 @@ describe('formatWorkflowLoopGuidance', () => {
 			);
 			expect(rebuild).toContain('wi-ignored');
 		});
+	});
+});
+
+describe('formatWorkflowLoopGuidance — setup panel', () => {
+	const action: WorkflowLoopAction = {
+		type: 'done',
+		summary: 'Built',
+		workflowId: 'wf-123',
+		mockedCredentialTypes: ['slackApi'],
+	};
+
+	it('still routes through workflows setup, but as an announcement that ends the turn', () => {
+		const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+
+		expect(result).toContain('workflows(action="setup")');
+		expect(result).toContain('wf-123');
+		expect(result).toContain('setup panel next to the chat');
+		expect(result).toContain('end your turn');
+		expect(result).toContain('When the result has `announced: true`');
+		expect(result).toContain('Otherwise follow the returned guidance');
+		expect(result).not.toContain('No card opens');
+		expect(result).not.toContain('inline setup card');
+	});
+
+	it('keeps the card wording while the panel is off', () => {
+		expect(formatWorkflowLoopGuidance(action, {})).toContain('inline setup card');
 	});
 });

@@ -69,7 +69,7 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 			typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	}
 	webServer.push({
-		command: 'cd .. && pnpm start',
+		command: 'pnpm --dir ../../.. start',
 		url: `${BACKEND_URL}/favicon.ico`,
 		timeout: 30000,
 		reuseExistingServer: IS_DEV ? false : true,

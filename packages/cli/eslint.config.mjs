@@ -408,6 +408,7 @@ export default defineConfig(
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
 			'./src/modules/agents/integrations/platforms/discord-integration.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
@@ -417,13 +418,9 @@ export default defineConfig(
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
 			'./src/license.ts',
-			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
-			'./src/modules/instance-ai/instance-ai.service.ts',
 			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
-			'./src/services/pruning/workflow-history-compaction.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
-			'./src/workflows/publication/workflow-publication-outbox-cleanup.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},

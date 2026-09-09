@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { IANAZone } from 'luxon';
 import type {
 	IConnection,
@@ -447,12 +448,9 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const sanitizeUnsafeKeys = (value: unknown): unknown => {
 	if (Array.isArray(value)) return value.map(sanitizeUnsafeKeys);
-	if (!isPlainObject(value)) return value;
+	if (!isRecord(value)) return value;
 	const out: Record<string, unknown> = {};
 	for (const [key, v] of Object.entries(value)) {
 		if (!isSafeObjectProperty(key)) continue;
@@ -582,7 +580,7 @@ const setAtPointer = (
 			const child: Record<string, unknown> = {};
 			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+		} else if (isRecord(read.value) || Array.isArray(read.value)) {
 			// The intermediate container already exists and is valid (object or array)
 			// it is our cursor now, next iteration will read from it.
 			cursor = read.value;
@@ -619,7 +617,7 @@ const deepMerge = (
 	for (const [key, value] of Object.entries(source)) {
 		if (!isSafeObjectProperty(key)) continue;
 		const existing = Object.prototype.hasOwnProperty.call(result, key) ? result[key] : undefined;
-		if (isPlainObject(existing) && isPlainObject(value)) {
+		if (isRecord(existing) && isRecord(value)) {
 			result[key] = deepMerge(existing, value);
 		} else {
 			result[key] = sanitizeUnsafeKeys(value);

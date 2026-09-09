@@ -20,6 +20,17 @@ export type PolicyRule = {
 	readonly selector: PolicySelector;
 };
 
+/**
+ * The actions a project scope accepts. `delegate` defers to a narrower scope, and none exists
+ * below project, so project-scope writes never accept it.
+ */
+export type NonDelegatingPolicyAction = Exclude<PolicyAction, 'delegate'>;
+
+/** A `PolicyRule` as a project scope accepts it. */
+export type NonDelegatingPolicyRule = Omit<PolicyRule, 'action'> & {
+	readonly action: NonDelegatingPolicyAction;
+};
+
 /** One policy document as attached to a scope, with its evaluation-order metadata. */
 export type PolicyAttachment = {
 	readonly policyId: string;

@@ -68,9 +68,12 @@
     "unplugin-icons": "^0.19.0",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
+    "unplugin-dts": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
+  },
+  "peerDependencies": {
+    "@vue/language-core": "catalog:frontend"
   },
   "files": [
     "README.md",

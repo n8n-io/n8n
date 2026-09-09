@@ -14,8 +14,26 @@ import type { SerializedDataTable } from '../../spec/serialized/data-table.schem
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
+import type { SerializedWorkflowLifecycle } from '../../spec/serialized/workflow-lifecycle.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
+
+/** `versionId` every workflow fixture carries, so a test can name it as published. */
+export const WIRE_VERSION_ID = 'wire-version-id';
+
+export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowLifecycle>;
+
+function workflowFiles(workflow: PackageWorkflow): {
+	content: SerializedWorkflow;
+	lifecycle: SerializedWorkflowLifecycle;
+} {
+	const { publishedVersionId, isArchived, ...content } = workflow;
+
+	return {
+		content,
+		lifecycle: { publishedVersionId: publishedVersionId ?? null, isArchived: isArchived ?? false },
+	};
+}
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */
 export const PACKAGE_GITHUB_CREDENTIAL_TYPE = 'githubApi';
@@ -29,9 +47,7 @@ export function githubCredentialPayload(
 	};
 }
 
-export function serializedWorkflow(
-	overrides: Partial<SerializedWorkflow> = {},
-): SerializedWorkflow {
+export function serializedWorkflow(overrides: Partial<PackageWorkflow> = {}): PackageWorkflow {
 	return {
 		id: 'wf-id',
 		name: 'Workflow',
@@ -46,9 +62,9 @@ export function serializedWorkflow(
 			},
 		],
 		connections: {},
-		versionId: 'wire-version-id',
+		versionId: WIRE_VERSION_ID,
 		parentFolderId: null,
-		isPublished: false,
+		publishedVersionId: null,
 		isArchived: false,
 		...overrides,
 	};
@@ -60,7 +76,7 @@ export function serializedWorkflowWithCredential(options: {
 	credentialId: string;
 	credentialName: string;
 	credentialType?: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	const credentialType = options.credentialType ?? PACKAGE_GITHUB_CREDENTIAL_TYPE;
 
 	return serializedWorkflow({
@@ -93,7 +109,7 @@ export function serializedWorkflowWithSubWorkflow(options: {
 	mode?: 'id' | 'list';
 	callerIds?: string;
 	callerPolicy?: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	const settings =
 		options.callerIds !== undefined || options.callerPolicy !== undefined
 			? {
@@ -210,10 +226,12 @@ export function credentialRequirementsFromWorkflows(
 }
 
 export async function buildImportPackageBuffer(
-	workflows: SerializedWorkflow[],
+	workflows: PackageWorkflow[],
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
+		/** Replaces every lifecycle file, or leaves it out, so tests can drive the rejections. */
+		workflowLifecycle?: 'omit' | Record<string, unknown>;
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -245,8 +263,15 @@ export async function buildImportPackageBuffer(
 
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	workflows.forEach((wf, idx) => {
+		const { content, lifecycle } = workflowFiles(wf);
 		writer.writeDirectory(`workflows/wf-${idx}`);
-		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(wf));
+		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
+		if (options.workflowLifecycle !== 'omit') {
+			writer.writeFile(
+				`workflows/wf-${idx}/workflow-lifecycle.json`,
+				JSON.stringify(options.workflowLifecycle ?? lifecycle),
+			);
+		}
 	});
 
 	return await streamToBuffer(writer.finalize());
@@ -271,7 +296,7 @@ export function serializedWorkflowWithDataTable(options: {
 	id: string;
 	name: string;
 	dataTableId: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	return serializedWorkflow({
 		id: options.id,
 		name: options.name,
@@ -318,7 +343,7 @@ export interface PackageProjectEntry {
 
 export interface PackageWorkflowEntry {
 	target: string;
-	workflow: SerializedWorkflow;
+	workflow: PackageWorkflow;
 }
 
 export interface PackageDataTableEntry {
@@ -409,8 +434,10 @@ export async function buildEntityPackageBuffer(options: {
 	// Manifest first: the reader/parser resolves it before reading any referenced file.
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	for (const { target, workflow } of workflows) {
+		const { content, lifecycle } = workflowFiles(workflow);
 		writer.writeDirectory(target);
-		writer.writeFile(`${target}/workflow.json`, JSON.stringify(workflow));
+		writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
+		writer.writeFile(`${target}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
 	}
 	for (const { target, folder } of folders) {
 		writer.writeDirectory(target);

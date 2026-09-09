@@ -84,7 +84,7 @@
     "typescript": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
+    "unplugin-dts": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
@@ -130,7 +130,8 @@
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend"
+    "vue-router": "catalog:frontend",
+    "@vue/language-core": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
