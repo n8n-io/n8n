@@ -569,7 +569,8 @@ try {
 		echo(chalk.yellow('INFO: Generating SBOM and rendering THIRD_PARTY_LICENSES.md...'));
 		try {
 			const toolingDir = path.join(config.rootDir, '.github', 'scripts');
-			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir . --ignore-workspace`;
+			// pnpm resolves a relative --lockfile-dir against --dir, so pass an absolute path.
+			await $`cd ${config.rootDir} && pnpm install --frozen-lockfile --dir .github/scripts --lockfile-dir ${toolingDir} --ignore-workspace`;
 			const generateProcess = $`cd ${toolingDir} && pnpm generate-licenses`;
 			generateProcess.pipe(process.stdout);
 			await generateProcess;
