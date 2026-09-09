@@ -143,9 +143,7 @@ export class SourceControlPublicController {
 			'`status: modified`. Retry with `force: true` to discard local changes.',
 	})
 	async pullSourceControl(req: AuthenticatedRequest, res: Response): Promise<void> {
-		// Writes the response directly rather than returning a value, to preserve this migrated
-		// endpoint's pre-existing contract exactly: a bare array body (not `{ data: [...] }`) on
-		// both 200 and 409, and a plain-text 400 on a validation or git-operation failure.
+		// Writes the response directly preserving migrated endpoints contract
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
 			res
 				.status(400)
