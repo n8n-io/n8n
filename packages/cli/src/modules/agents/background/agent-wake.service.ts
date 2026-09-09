@@ -89,6 +89,10 @@ export class AgentWakeService {
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
 
+	isWakeActive(threadId: string): boolean {
+		return this.activeWakes.has(threadId);
+	}
+
 	async onParentTurnFinished(threadId: string): Promise<void> {
 		this.failures.delete(threadId);
 		await this.requestWake(threadId);

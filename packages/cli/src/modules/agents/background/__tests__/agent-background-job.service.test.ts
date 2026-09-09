@@ -103,6 +103,28 @@ const registerParams = {
 	childThreadId: 'child-thread-1',
 };
 
+describe('markMailConsumed', () => {
+	afterEach(() => Container.reset());
+
+	it.each([true, false])(
+		'defers delivery status only while a wake is active (%s)',
+		async (active) => {
+			const { service, jobRepository } = setup({ backgroundTasksEnabled: true });
+			const wakeService = mock<AgentWakeService>();
+			wakeService.isWakeActive.mockReturnValue(active);
+			Container.set(AgentWakeService, wakeService);
+			jobRepository.markMailConsumed.mockResolvedValue(1);
+
+			const count = await service.markMailConsumed('thread-1', ['job-1']);
+
+			expect(wakeService.isWakeActive).toHaveBeenCalledWith('thread-1');
+			expect(count).toBe(active ? 0 : 1);
+			if (active) expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		},
+	);
+});
+
 describe('registerSubAgentJob', () => {
 	it('returns started with the job id and a ~30min timeout', async () => {
 		const { service, jobRepository } = setup();

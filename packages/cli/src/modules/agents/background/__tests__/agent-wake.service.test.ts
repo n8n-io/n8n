@@ -466,6 +466,24 @@ describe('AgentWakeService', () => {
 		});
 	});
 
+	it('marks results as delivered after a successful retry', async () => {
+		const { service, orchestrator, jobRepository } = setup();
+		orchestrator.executeForWake.mockImplementationOnce(async () => {
+			expect(service.isWakeActive('thread-1')).toBe(true);
+			throw new Error('Slack is unavailable');
+		});
+
+		await service.attemptWake('thread-1');
+
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+
+		await service.attemptWake('thread-1');
+
+		expect(service.isWakeActive('thread-1')).toBe(false);
+		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', ['job-1']);
+	});
+
 	it('stops after three failed wakes for the same pending jobs', async () => {
 		const { service, orchestrator } = setup();
 		orchestrator.executeForWake.mockRejectedValue(new Error('model unavailable'));

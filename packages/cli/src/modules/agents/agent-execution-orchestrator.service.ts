@@ -765,6 +765,9 @@ export class AgentExecutionOrchestratorService {
 		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
+		const delivery = isDraft
+			? undefined
+			: await this.getWakeDelivery(agentId, integrationType, memory.threadId);
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
@@ -797,8 +800,10 @@ export class AgentExecutionOrchestratorService {
 
 			// The runtime returns model errors as stream chunks. Throw here so the caller
 			// leaves the job results pending for a retry.
+			const chunks: StreamChunk[] = [];
 			let runError: unknown;
 			for await (const chunk of stream) {
+				if (delivery) chunks.push(chunk);
 				if (chunk.type === 'error') runError = chunk.error;
 				if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
 			}
@@ -807,9 +812,37 @@ export class AgentExecutionOrchestratorService {
 					cause: runError,
 				});
 			}
+			abortSignal.throwIfAborted();
+			if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
 		} finally {
 			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
 		}
+	}
+
+	private async getWakeDelivery(agentId: string, integrationType: string, threadId: string) {
+		const context = await this.integrationMessageContextService.getLatest(threadId);
+		const target = context?.replyTarget ?? context?.target;
+		const [platform, credentialId] = context?.integrationConnectionId.split(':') ?? [];
+		if (
+			context?.platform !== integrationType ||
+			platform !== integrationType ||
+			!credentialId ||
+			!target?.threadId
+		) {
+			throw new OperationalError('Background job wake has no reply context');
+		}
+
+		// Use the stored connection so results return to the correct workspace.
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
+		const bridge = Container.get(ChatIntegrationService).getBridge(
+			agentId,
+			integrationType,
+			credentialId,
+		);
+		if (!bridge) {
+			throw new OperationalError('Background job wake chat connection is unavailable');
+		}
+		return { bridge, threadId: target.threadId };
 	}
 
 	/**

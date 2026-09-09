@@ -193,6 +193,11 @@ export class AgentBackgroundJobService {
 	}
 
 	async markMailConsumed(parentThreadId: string, jobIds: string[]): Promise<number> {
+		if (this.agentsConfig.backgroundTasksEnabled) {
+			const { AgentWakeService } = await import('./agent-wake.service.js');
+			// A tool can read these results during a wake. Wait for chat delivery before marking them.
+			if (Container.get(AgentWakeService).isWakeActive(parentThreadId)) return 0;
+		}
 		return await this.jobRepository.markMailConsumed(parentThreadId, jobIds);
 	}
 
