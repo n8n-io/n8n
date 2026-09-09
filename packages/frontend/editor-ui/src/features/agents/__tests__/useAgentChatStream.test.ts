@@ -2415,14 +2415,19 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 			makeAbortableSseResponse([], init.signal ?? null),
 		) as unknown as typeof fetch;
 
-		const hook = buildHook();
+		const hook = buildHook('thread-1');
 		const send = hook.sendMessage('take your time');
 		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
 
 		await hook.stopGenerating();
 		await send;
 
-		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+		);
 		expect(hook.isStreaming.value).toBe(false);
 		expect(hook.isCancelling.value).toBe(false);
 	});
@@ -2433,7 +2438,7 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 			makeAbortableSseResponse([], init.signal ?? null),
 		) as unknown as typeof fetch;
 
-		const hook = buildHook();
+		const hook = buildHook('thread-1');
 		const send = hook.sendMessage('take your time');
 		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
 
@@ -2441,7 +2446,12 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		await send;
 
 		// The request has to have been made, or the rejection proves nothing.
-		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(cancelActiveAgentChatRunMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'thread-1',
+		);
 		expect(showErrorSpy).toHaveBeenCalled();
 		expect(hook.isStreaming.value).toBe(false);
 		expect(hook.isCancelling.value).toBe(false);
@@ -2456,7 +2466,7 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 			makeAbortableSseResponse([], init.signal ?? null),
 		) as unknown as typeof fetch;
 
-		const hook = buildHook();
+		const hook = buildHook('thread-1');
 		const send = hook.sendMessage('take your time');
 		await vi.waitFor(() => expect(hook.isStreaming.value).toBe(true));
 

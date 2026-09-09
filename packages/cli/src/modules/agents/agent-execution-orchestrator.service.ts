@@ -17,6 +17,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { CHAT_RUN_INTERRUPTED_BY_SHUTDOWN } from './agent-active-chat-run.registry';
 import {
 	AgentExecutionService,
 	type RecordMessageParams,
@@ -200,20 +201,20 @@ function getMaxIterationsChunks(): StreamChunk[] {
 
 /**
  * Record an aborted run as a clean stop rather than a failure, dropping the
- * teardown error the run raised on its way out.
+ * teardown error the run raised on its way out. A lost connection no longer
+ * aborts a chat run, so an abort here means somebody asked for it — the chat
+ * Stop, or Instance AI clearing its thread.
  *
- * A lost connection no longer aborts a chat run, so for the chat controller
- * this signal means an explicit Stop. It is not the only producer, though:
- * Instance AI threads its own session signal in through `executeDraftRun`, and
- * that one also fires on shutdown — so a run killed by a restart still records
- * as `cancelled` with no error. Carrying the intent on the signal itself
- * (`abort(reason)`) would make this true by construction.
+ * Shutdown is the exception: nobody asked, and collapsing it to `cancelled`
+ * would erase the only explanation the user ever gets for the truncated turn.
+ * Those runs keep their error and land as failed instead.
  */
 function normalizeAbortedMessageRecord(
 	record: MessageRecord,
 	abortSignal?: AbortSignal,
 ): MessageRecord {
 	if (!abortSignal?.aborted) return record;
+	if (abortSignal.reason === CHAT_RUN_INTERRUPTED_BY_SHUTDOWN) return record;
 	return { ...record, finishReason: 'cancelled', error: null };
 }
 

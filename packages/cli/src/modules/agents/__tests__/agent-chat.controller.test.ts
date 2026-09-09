@@ -193,7 +193,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ message: 'hi' } as never,
+			{ message: 'hi', sessionId: 'thread-1' } as never,
 		);
 		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
 
@@ -223,7 +223,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			makeSseResponse([]),
 			'agent-1',
-			{ message: 'hi' } as never,
+			{ message: 'hi', sessionId: 'thread-1' } as never,
 		);
 		await vi.waitFor(() => expect(agentTestRunService.prepareDraftRun).toHaveBeenCalled());
 
@@ -232,6 +232,7 @@ describe('AgentChatController SSE done payload', () => {
 				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 				{} as never,
 				'agent-1',
+				'thread-1',
 			),
 		).resolves.toEqual({ cancelled: true });
 
@@ -312,7 +313,12 @@ describe('AgentChatController SSE done payload', () => {
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+			{
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				sessionId: 'thread-1',
+				resumeData: { approved: true },
+			} as never,
 		);
 
 		const events = sseEvents(writes);
@@ -331,7 +337,7 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ message: 'hi' } as never,
+					{ message: 'hi', sessionId: 'thread-1' } as never,
 				),
 			method: 'executeForChat' as const,
 		},
@@ -342,7 +348,12 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+					{
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						sessionId: 'thread-1',
+						resumeData: { approved: true },
+					} as never,
 				),
 			method: 'resumeForChat' as const,
 		},
@@ -379,7 +390,7 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ message: 'hi' } as never,
+					{ message: 'hi', sessionId: 'thread-1' } as never,
 				),
 			method: 'executeForChat' as const,
 		},
@@ -390,7 +401,12 @@ describe('AgentChatController SSE done payload', () => {
 					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 					res,
 					'agent-1',
-					{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+					{
+						runId: 'run-1',
+						toolCallId: 'tc-1',
+						sessionId: 'thread-1',
+						resumeData: { approved: true },
+					} as never,
 				),
 			method: 'resumeForChat' as const,
 		},
@@ -417,6 +433,7 @@ describe('AgentChatController SSE done payload', () => {
 				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 				{} as never,
 				'agent-1',
+				'thread-1',
 			),
 		).resolves.toEqual({ cancelled: true });
 		expect(receivedSignal?.aborted).toBe(true);
@@ -444,6 +461,7 @@ describe('AgentChatController SSE done payload', () => {
 				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 				{} as never,
 				'agent-1',
+				'thread-1',
 			),
 		).resolves.toEqual({ cancelled: false });
 	});
@@ -466,7 +484,7 @@ describe('AgentChatController SSE done payload', () => {
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			makeSseResponse([]),
 			'agent-1',
-			{ message: 'hi' } as never,
+			{ message: 'hi', sessionId: 'thread-1' } as never,
 		);
 		await runStarted.promise;
 
@@ -475,6 +493,7 @@ describe('AgentChatController SSE done payload', () => {
 				{ params: { projectId: 'project-1' }, user: { id: 'user-2' } } as never,
 				{} as never,
 				'agent-1',
+				'thread-1',
 			),
 		).resolves.toEqual({ cancelled: false });
 		expect(receivedSignal?.aborted).toBe(false);
@@ -507,6 +526,41 @@ describe('AgentChatController HITL cancellation', () => {
 			runId: 'run-1',
 			resourceId: 'draft-chat:user-1',
 		});
+	});
+
+	it.each([
+		{
+			name: 'the active run',
+			stop: async (controller: AgentChatController) =>
+				await controller.cancelActiveChatRun(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'thread-1',
+				),
+		},
+		{
+			name: 'a suspended run',
+			stop: async (controller: AgentChatController) =>
+				await controller.cancelChatRun(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'run-1',
+				),
+		},
+	])('refuses to stop $name on an agent the project does not have', async ({ stop }) => {
+		const { controller, agentsService, activeChatRunRegistry } = makeController();
+		agentsService.findById.mockResolvedValue(null as never);
+		const controllerForOtherProject = new AbortController();
+		activeChatRunRegistry.register(
+			{ agentId: 'agent-1', userId: 'user-1', threadId: 'thread-1' },
+			controllerForOtherProject,
+		);
+
+		await expect(stop(controller)).rejects.toThrow(NotFoundError);
+		// The 404 has to come before the abort, or the check buys nothing.
+		expect(controllerForOtherProject.signal.aborted).toBe(false);
 	});
 });
 

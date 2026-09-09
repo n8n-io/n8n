@@ -13,6 +13,7 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -122,11 +123,12 @@ export class AgentChatController {
 		// turn finish and be recorded, so a reload shows the completed response.
 		// Only an explicit Stop (see `cancelActiveChatRun`) aborts it.
 		const abortController = new AbortController();
-		// Registered before the first await: the client enables Stop as soon as it
-		// posts, so a stop during preparation has to reach this run too.
+		// Minted here rather than in `prepareDraftRun` so the thread is known
+		// before the first await, which is what lets the run be registered — and
+		// therefore stoppable — while it is still being prepared.
+		const threadId = sessionId ?? randomUUID();
 		const unregisterRun = this.activeChatRunRegistry.register(
-			agentId,
-			req.user.id,
+			{ agentId, userId: req.user.id, threadId },
 			abortController,
 		);
 		let executionId: string | undefined;
@@ -135,7 +137,7 @@ export class AgentChatController {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
-				sessionId,
+				sessionId: threadId,
 				credentialProvider,
 			});
 			if (prepared.status === 'session_not_found') {
@@ -152,7 +154,6 @@ export class AgentChatController {
 				return;
 			}
 
-			const threadId = prepared.sessionId;
 			storedAttachments = await this.storeChatAttachments({
 				attachments,
 				agentId,
@@ -207,14 +208,13 @@ export class AgentChatController {
 		@Body payload: AgentChatResumeDto,
 	) {
 		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
+		const { runId, toolCallId, resumeData, sessionId } = payload;
 		const { send } = initSseStream(res);
 
 		// Same lifetime rule as `chat`: the resumed turn survives its connection.
 		const abortController = new AbortController();
 		const unregisterRun = this.activeChatRunRegistry.register(
-			agentId,
-			req.user.id,
+			{ agentId, userId: req.user.id, threadId: sessionId },
 			abortController,
 		);
 		try {
@@ -251,25 +251,32 @@ export class AgentChatController {
 	}
 
 	/**
-	 * Stop the turn this user is streaming on this agent. Dropping the SSE
+	 * Stop the turn this user is streaming on this thread. Dropping the SSE
 	 * connection no longer cancels a run, so the client asks for the stop it
 	 * means — otherwise the turn would finish and reappear on the next reload.
+	 * Scoped to the thread so stopping one conversation leaves the user's other
+	 * conversations with the same agent running.
 	 *
 	 * Returns `cancelled: false` when no run was found, which is expected: the
 	 * turn may have just ended, or (multi-main) be held by another instance.
 	 */
-	@Delete('/:agentId/chat/active-run')
+	@Delete('/:agentId/chat/:threadId/active-run')
 	@ProjectScope('agent:execute')
 	async cancelActiveChatRun(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const cancelled = this.activeChatRunRegistry.cancel(agentId, req.user.id);
+		const cancelled = this.activeChatRunRegistry.cancel({
+			agentId,
+			userId: req.user.id,
+			threadId,
+		});
 		return { cancelled };
 	}
 

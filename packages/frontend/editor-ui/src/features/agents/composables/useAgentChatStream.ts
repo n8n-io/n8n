@@ -908,6 +908,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { outcome } = await postAndConsume(url, {
 			runId: payload.runId,
 			toolCallId: payload.toolCallId,
+			sessionId: params.continueSessionId?.value,
 			resumeData,
 		});
 		let reconciled = false;
@@ -1009,11 +1010,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Only then tell the backend, because closing the stream no longer stops
 				// the run — without this the turn keeps going and reappears, finished,
 				// on the next reload.
-				if (wasStreaming) {
+				// Addressed to this conversation, so the user's other threads with the
+				// same agent keep running.
+				const threadId = params.continueSessionId?.value;
+				if (wasStreaming && threadId) {
 					await cancelActiveAgentChatRun(
 						rootStore.restApiContext,
 						params.projectId.value,
 						params.agentId.value,
+						threadId,
 					).catch((error) => showError(error, locale.baseText('agents.chat.stop.error')));
 				}
 			} finally {
