@@ -1,7 +1,7 @@
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { errorChain, type UnknownRecord } from '@n8n/utils/errors/error-chain';
 import type { IExecuteFunctions, ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, shouldRefreshMcpOAuth2Token } from 'n8n-workflow';
 
 type TokenContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
@@ -24,27 +24,8 @@ export interface RefreshingTokenSource {
 	expiredStatus?: number;
 }
 
-const REFRESH_BUFFER_MS = 2 * 60 * 1000;
-const REFRESH_BUFFER_RATIO = 0.1;
-
 /** Thrown when only a new sign-in can recover the credential. */
 export class OAuth2SessionExpiredError extends NodeOperationError {}
-
-/** Buffered so a request cannot outlive the token; short tokens get a smaller buffer. */
-export function isNearExpiry(tokenData: OAuth2TokenData | undefined): boolean {
-	if (!tokenData?.refresh_token) return false;
-
-	const expiresAt = Number(tokenData.n8n_expires_at);
-	if (!Number.isFinite(expiresAt)) return false;
-
-	const expiresInMs = Number(tokenData.expires_in) * 1000;
-	const buffer =
-		Number.isFinite(expiresInMs) && expiresInMs > 0
-			? Math.min(REFRESH_BUFFER_MS, expiresInMs * REFRESH_BUFFER_RATIO)
-			: REFRESH_BUFFER_MS;
-
-	return Date.now() + buffer >= expiresAt;
-}
 
 /** Core reports a dead credential here, as plain data so no `instanceof` is needed. */
 type CredentialInvalidError = { message?: string; description?: string };
@@ -114,9 +95,12 @@ export function createRefreshingOAuth2TokenProvider(options: {
 		expiredStatus: credential.tokenExpiredStatusCode ?? 401,
 
 		getToken: async () => {
+			// The shared expiry clock is MCP-named but provider-agnostic. No
+			// `grantType`, because this provider only serves the user grant, where a
+			// stored refresh token is what makes a refresh possible.
 			// Only a dead credential throws here; a transient failure falls through
 			// to the stored token, whose server rejection reads better
-			if (isNearExpiry(tokenData)) await refresh();
+			if (shouldRefreshMcpOAuth2Token(tokenData)) await refresh();
 
 			const accessToken = tokenData?.access_token;
 			if (!accessToken) {

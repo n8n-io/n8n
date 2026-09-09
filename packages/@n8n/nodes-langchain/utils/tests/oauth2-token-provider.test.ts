@@ -3,7 +3,6 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import {
 	createRefreshingOAuth2TokenProvider,
 	findSessionExpiredError,
-	isNearExpiry,
 	OAuth2SessionExpiredError,
 	type OAuth2TokenData,
 	type OAuth2UserCredential,
@@ -45,36 +44,6 @@ function makeProvider(credential: OAuth2UserCredential) {
 }
 
 beforeEach(() => vi.clearAllMocks());
-
-describe('isNearExpiry', () => {
-	it('should be false for a token well inside its window', () => {
-		expect(isNearExpiry(tokenData())).toBe(false);
-	});
-
-	it('should be true once the token is expired', () => {
-		expect(isNearExpiry(tokenData({ n8n_expires_at: String(Date.now() - 1000) }))).toBe(true);
-	});
-
-	it('should use a tenth of the lifetime for short-lived tokens', () => {
-		// 5-minute token -> 30s buffer, so 45s out is fresh but 20s out is not
-		const at = (secondsLeft: number) =>
-			tokenData({ expires_in: '300', n8n_expires_at: String(Date.now() + secondsLeft * 1000) });
-
-		expect(isNearExpiry(at(45))).toBe(false);
-		expect(isNearExpiry(at(20))).toBe(true);
-	});
-
-	it('should not ask for a refresh it cannot perform', () => {
-		const expired = { ...tokenData({ n8n_expires_at: String(Date.now() - 1000) }) };
-		delete expired.refresh_token;
-
-		expect(isNearExpiry(expired)).toBe(false);
-	});
-
-	it('should be false when the expiry is unknown', () => {
-		expect(isNearExpiry(tokenData({ n8n_expires_at: undefined }))).toBe(false);
-	});
-});
 
 describe('createRefreshingOAuth2TokenProvider', () => {
 	it('should return the stored token without refreshing when it is fresh', async () => {
