@@ -49,9 +49,14 @@ export type AppLivePreviewTarget = {
 /**
  * Keeps the thread's dev server alive while `visible` is true: ensures on
  * start and on every return to visibility, polls while it starts, and
- * heartbeats once it is ready. Hidden pauses everything.
+ * heartbeats once it is ready. Hidden pauses everything. A new
+ * `builtVersionId` retries a preview that stopped for lack of a build.
  */
-export function useAppLivePreview(target: AppLivePreviewTarget, visible: Ref<boolean>) {
+export function useAppLivePreview(
+	target: AppLivePreviewTarget,
+	visible: Ref<boolean>,
+	builtVersionId?: MaybeRefOrGetter<string | undefined>,
+) {
 	const rootStore = useRootStore();
 	const status = ref<AppPreviewStatus>();
 
@@ -108,6 +113,18 @@ export function useAppLivePreview(target: AppLivePreviewTarget, visible: Ref<boo
 			void ensure();
 		},
 		{ immediate: true },
+	);
+
+	// `apps build` installs the dependencies the dev server needs, so a build that
+	// lands after `no-source` or a failed start is the cue to try again.
+	watch(
+		() => toValue(builtVersionId),
+		() => {
+			const current = status.value?.status;
+			if (!visible.value || (current !== 'no-source' && current !== 'unavailable')) return;
+			pollingSince = null;
+			void ensure();
+		},
 	);
 
 	onScopeDispose(stop);

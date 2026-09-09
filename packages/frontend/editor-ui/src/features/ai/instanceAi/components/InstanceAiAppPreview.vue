@@ -33,6 +33,7 @@ const { isVisible } = useDocumentVisibility();
 const live = useAppLivePreview(
 	{ projectId: () => props.projectId, appId: () => props.appId, threadId: () => thread.id },
 	isVisible,
+	() => props.versionId,
 );
 
 const diagnostics = inject<AppPreviewDiagnostics | undefined>('appPreviewDiagnostics', undefined);

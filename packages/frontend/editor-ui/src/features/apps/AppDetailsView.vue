@@ -116,10 +116,14 @@ const LIVE_BANNER_KEYS = {
 
 // Without a build there is nothing to fall back to, so the empty state speaks instead.
 const liveBanner = computed(() => {
-	const status = props.liveStatus?.status;
-	if (!status || status === 'ready' || !versionId.value) return undefined;
-	const theme = status === 'starting' || status === 'no-source' ? 'info' : 'warning';
-	return { key: LIVE_BANNER_KEYS[status], theme } as const;
+	const live = props.liveStatus;
+	if (!live || live.status === 'ready' || !versionId.value) return undefined;
+	const theme = live.status === 'starting' || live.status === 'no-source' ? 'info' : 'warning';
+	const key =
+		live.status === 'unavailable' && live.reason === 'start-failed'
+			? 'apps.builder.live.startFailed'
+			: LIVE_BANNER_KEYS[live.status];
+	return { key, theme } as const;
 });
 
 const modeOptions = computed(() => [

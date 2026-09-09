@@ -66,11 +66,11 @@ describe('useAppLivePreview', () => {
 		await Promise.resolve();
 	}
 
-	function mountLive(visible = ref(true)) {
+	function mountLive(visible = ref(true), builtVersionId = ref<string | undefined>()) {
 		const scope = effectScope();
-		const live = scope.run(() => useAppLivePreview(target, visible));
+		const live = scope.run(() => useAppLivePreview(target, visible, builtVersionId));
 		if (!live) throw new Error('scope did not run');
-		return { ...live, visible, scope };
+		return { ...live, visible, builtVersionId, scope };
 	}
 
 	beforeEach(() => {
@@ -169,6 +169,49 @@ describe('useAppLivePreview', () => {
 		expect(live.status.value).toBeUndefined();
 		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
 		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		{ status: 'no-source' },
+		{ status: 'unavailable', reason: 'start-failed' },
+	] satisfies AppPreviewStatus[])('ensures again when a build lands after %o', async (answer) => {
+		ensureAppPreviewApi.mockResolvedValueOnce(answer).mockResolvedValueOnce(READY);
+		const live = mountLive();
+		await flush();
+		expect(live.status.value).toEqual(answer);
+		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+
+		live.builtVersionId.value = 'v-1';
+		await flush();
+
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/');
+		live.scope.stop();
+	});
+
+	it('ignores a new build while ready, starting or hidden', async () => {
+		ensureAppPreviewApi.mockResolvedValueOnce(STARTING).mockResolvedValue(READY);
+		const live = mountLive();
+		await flush();
+		expect(live.status.value).toEqual(STARTING);
+
+		live.builtVersionId.value = 'v-1';
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+
+		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_POLL_MS);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/');
+		live.builtVersionId.value = 'v-2';
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+
+		live.visible.value = false;
+		await flush();
+		live.builtVersionId.value = 'v-3';
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		live.scope.stop();
 	});
 
 	it('maps a failed request to unavailable/sandbox', async () => {

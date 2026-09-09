@@ -390,6 +390,10 @@ describe('AppDetailsView', () => {
 				{ status: 'unavailable', reason: 'sandbox' },
 				'Live preview stopped. This is the last build.',
 			],
+			[
+				{ status: 'unavailable', reason: 'start-failed' },
+				"Live preview couldn't start. This is the last build.",
+			],
 		])('shows the %o banner above the last build', async (liveStatus, text) => {
 			const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
 				artifactMode: true,

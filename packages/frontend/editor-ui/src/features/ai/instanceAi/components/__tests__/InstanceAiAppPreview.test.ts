@@ -83,13 +83,16 @@ describe('InstanceAiAppPreview', () => {
 		liveStatus.value = { status: 'starting' };
 		const wrapper = mountPreview({ versionId: 'v-1' });
 
-		const [target] = useAppLivePreviewMock.mock.calls[0] as unknown as [
+		const [target, , builtVersionId] = useAppLivePreviewMock.mock.calls[0] as unknown as [
 			{ projectId: () => string; appId: () => string; threadId: () => string },
+			unknown,
+			() => string | undefined,
 		];
-		expect([target.projectId(), target.appId(), target.threadId()]).toEqual([
+		expect([target.projectId(), target.appId(), target.threadId(), builtVersionId()]).toEqual([
 			'proj-1',
 			'app-1',
 			'thread-1',
+			'v-1',
 		]);
 
 		const view = wrapper.get('[data-test-id="app-details-view-stub"]');
