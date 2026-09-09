@@ -41,11 +41,9 @@ vi.mock('vue-router', () => ({
 	onBeforeRouteLeave: vi.fn(),
 }));
 
-// The evaluation-trigger route action opens the NDV. NodeView lazy-loads it, so
-// whether it mounts before the test's cleanup depends on module cache warmth;
-// when it does, it fails on jsdom (no <dialog>.show(), no route.meta).
+// Route actions open the NDV. The real NDV needs `route.meta` and `<dialog>`
+// APIs that this mock and jsdom lack; these tests only assert canvas state.
 vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
-	// `__esModule` makes defineAsyncComponent unwrap `default` instead of using the mock proxy.
 	__esModule: true,
 	default: { name: 'NodeDetailsView', render: () => null },
 }));
