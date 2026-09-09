@@ -17,7 +17,6 @@ import {
 	type BuiltMemory,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
-	type EpisodicMemoryCursor,
 	type EpisodicMemoryCaptureCandidate,
 	type EpisodicMemoryEntry,
 	type EpisodicMemoryEntrySource,
@@ -28,7 +27,6 @@ import {
 	type EpisodicMemoryTaskLockHandle,
 	type MemoryDescriptor,
 	type NewEpisodicMemoryCaptureCandidate,
-	type NewEpisodicMemoryCursor,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
 	type NewObservationLogEntry,
@@ -53,7 +51,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import { isUniqueConstraintError } from '@/response-helper';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
-import { AgentMemoryEntryCursorEntity } from '../entities/agent-memory-entry-cursor.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
@@ -63,7 +60,6 @@ import { AgentObservationLockEntity } from '../entities/agent-observation-lock.e
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMemoryEntryCandidateRepository } from '../repositories/agent-memory-entry-candidate.repository';
-import { AgentMemoryEntryCursorRepository } from '../repositories/agent-memory-entry-cursor.repository';
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
@@ -87,7 +83,6 @@ export class N8nMemory {
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
-		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
 
 	getImplementation(agentId: string) {
@@ -103,7 +98,6 @@ export class N8nMemory {
 			this.memoryEntryCandidateRepository,
 			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
-			this.memoryEntryCursorRepository,
 		);
 	}
 }
@@ -128,7 +122,6 @@ export class N8nMemoryImpl
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
-		private readonly memoryEntryCursorRepository: AgentMemoryEntryCursorRepository,
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
@@ -147,8 +140,6 @@ export class N8nMemoryImpl
 			await this.completeEpisodicMemoryCaptureCandidates(ids),
 		recordCaptureCandidateFailure: async (ids, maxAttempts) =>
 			await this.recordEpisodicMemoryCaptureCandidateFailure(ids, maxAttempts),
-		getCursor: async (scope) => await this.getEpisodicMemoryCursor(scope),
-		setCursor: async (cursor) => await this.setEpisodicMemoryCursor(cursor),
 		taskLock: {
 			acquire: async (resourceId, opts) =>
 				await this.acquireEpisodicMemoryTaskLock(resourceId, opts),
@@ -210,7 +201,6 @@ export class N8nMemoryImpl
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
 			await trx.delete(AgentObservationLockEntity, observationScope);
-			await trx.delete(AgentMemoryEntryCursorEntity, observationScope);
 			await trx.delete(AgentThreadEntity, { id: threadId });
 		});
 	}
@@ -223,7 +213,6 @@ export class N8nMemoryImpl
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
 			await trx.delete(AgentObservationLockEntity, observationScope);
-			await trx.delete(AgentMemoryEntryCursorEntity, observationScope);
 			await trx.delete(AgentThreadEntity, { id: observationScopeId });
 		});
 	}
@@ -749,21 +738,13 @@ export class N8nMemoryImpl
 					await sourceRepo.save([sourceEntity]);
 				} catch (error) {
 					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-					const existing = source.observationId
-						? await sourceRepo.findOneBy({
-								agentId: this.agentId,
-								memoryEntryId: persisted.id,
-								observationId: source.observationId,
-								evidenceHash,
-							})
-						: source.candidateId
-							? await sourceRepo.findOneBy({
-									agentId: this.agentId,
-									memoryEntryId: persisted.id,
-									candidateId: source.candidateId,
-									evidenceHash,
-								})
-							: null;
+					const existing = await sourceRepo.findOneBy({
+						agentId: this.agentId,
+						memoryEntryId: persisted.id,
+						observationId: source.observationId ?? IsNull(),
+						candidateId: source.candidateId ?? IsNull(),
+						evidenceHash,
+					});
 					if (!existing) throw error;
 				}
 			}
@@ -980,57 +961,6 @@ export class N8nMemoryImpl
 				inserted: replacements.map((entry) => this.toEpisodicMemoryEntry(entry)),
 			};
 		});
-	}
-
-	private async getEpisodicMemoryCursor(
-		scope: ObservationLogScope,
-	): Promise<EpisodicMemoryCursor | null> {
-		const entity = await this.memoryEntryCursorRepository.findOneBy({
-			agentId: this.agentId,
-			observationScopeId: scope.observationScopeId,
-		});
-		if (!entity) return null;
-		return {
-			observationScopeId: entity.observationScopeId,
-			lastIndexedObservationId: entity.lastIndexedObservationId,
-			lastIndexedObservationCreatedAt: entity.lastIndexedObservationCreatedAt,
-			updatedAt: entity.updatedAt,
-		};
-	}
-
-	private async setEpisodicMemoryCursor(cursor: NewEpisodicMemoryCursor): Promise<void> {
-		const cursorRow: QueryDeepPartialEntity<AgentMemoryEntryCursorEntity> = {
-			agentId: this.agentId,
-			observationScopeId: cursor.observationScopeId,
-			lastIndexedObservationId: cursor.lastIndexedObservationId,
-			lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
-			updatedAt: cursor.updatedAt ?? new Date(),
-		};
-
-		await this.memoryEntryCursorRepository
-			.createQueryBuilder()
-			.insert()
-			.into(AgentMemoryEntryCursorEntity)
-			.values(cursorRow)
-			.orIgnore()
-			.execute();
-
-		await this.memoryEntryCursorRepository
-			.createQueryBuilder()
-			.update(AgentMemoryEntryCursorEntity)
-			.set(cursorRow)
-			.where('"agentId" = :agentId')
-			.andWhere('"observationScopeId" = :observationScopeId')
-			.andWhere(
-				'("lastIndexedObservationCreatedAt" < :lastIndexedObservationCreatedAt OR ("lastIndexedObservationCreatedAt" = :lastIndexedObservationCreatedAt AND "lastIndexedObservationId" < :lastIndexedObservationId))',
-			)
-			.setParameters({
-				agentId: this.agentId,
-				observationScopeId: cursor.observationScopeId,
-				lastIndexedObservationId: cursor.lastIndexedObservationId,
-				lastIndexedObservationCreatedAt: cursor.lastIndexedObservationCreatedAt,
-			})
-			.execute();
 	}
 
 	// ── Descriptor ───────────────────────────────────────────────────────

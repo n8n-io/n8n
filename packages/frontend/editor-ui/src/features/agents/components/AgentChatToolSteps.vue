@@ -13,11 +13,7 @@ import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import {
-	formatToolNameForDisplay,
-	isCompactToolName,
-	resolveToolNameForDisplay,
-} from '../utils/toolDisplayName';
+import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
@@ -100,15 +96,13 @@ function getToolDisplayName(toolName: string, output?: unknown): string {
 	return resolveToolNameForDisplay(toolName, i18n, output);
 }
 
-function toolStepLabel(tc: ToolCall): string {
+function toolStepLabel(tc: ToolCall, isCompact = false): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
-	if (isCompactToolName(tc.tool, tc.output) && tc.state !== TOOL_CALL_STATE.DONE) {
-		return formatToolNameForDisplay(tc.tool);
-	}
-	return getToolDisplayName(tc.tool, tc.output);
+	// The compact "Memory noted" label only applies once the call has finished.
+	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
@@ -166,7 +160,7 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
-		label: [toolStepLabel(tc), ...metadata].join(' · '),
+		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
 		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
 		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),

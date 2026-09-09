@@ -133,77 +133,125 @@ describe('rankEpisodicMemoryEntries', () => {
 		});
 
 		expect(results.map((result) => result.id)).toEqual(['newer', 'older']);
+		expect(results[0].vectorScore).toBeGreaterThan(results[1].vectorScore);
+		expect(results[0].finalScore).toBeGreaterThan(results[1].finalScore);
 	});
 
-	it('uses recency when relevant entries are otherwise tied', () => {
+	it('uses recency as a ranking signal when relevant entries are otherwise tied', () => {
 		const now = new Date();
-		const oldDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-		const content = 'Midwest rollout current state manager mapping invoice review.';
+		const stalePlanning = entry({
+			id: 'stale-planning',
+			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
+			embedding: [1, 0],
+			createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+			lastSeenAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+		});
+		const currentState = entry({
+			id: 'current-state',
+			content: 'Midwest Southeast rollout current state manager mapping invoice review summary.',
+			embedding: [1, 0],
+			createdAt: now,
+			lastSeenAt: now,
+		});
+
 		const results = rankEpisodicMemoryEntries(
-			[
-				entry({ id: 'old', content, embedding: [1, 0], createdAt: oldDate, lastSeenAt: oldDate }),
-				entry({ id: 'new', content, embedding: [1, 0], createdAt: now, lastSeenAt: now }),
-			],
-			'Midwest rollout current state manager mapping invoice review',
+			[stalePlanning, currentState],
+			'Midwest Southeast rollout current state manager mapping invoice review',
 			{ queryEmbedding: [1, 0], topK: 2 },
 		);
 
-		expect(results.map((result) => result.id)).toEqual(['new', 'old']);
+		expect(results.map((result) => result.id)).toEqual(['current-state', 'stale-planning']);
 	});
 
-	it('returns no entries without lexical or vector relevance', () => {
-		expect(
-			rankEpisodicMemoryEntries(
-				[
-					entry({ content: 'User chose Postgres for memory storage.' }),
-					entry({ content: 'User prefers concise implementation reviews.' }),
-				],
-				'prior travel itinerary hotel booking',
-			),
-		).toEqual([]);
+	it('returns no entries when the query has no lexical or vector match', () => {
+		const now = new Date();
+		const newest = entry({
+			id: 'newest-unrelated',
+			content: 'User chose Postgres for durable memory storage.',
+			createdAt: now,
+			lastSeenAt: now,
+		});
+		const older = entry({
+			id: 'older-unrelated',
+			content: 'User prefers concise answers in implementation reviews.',
+			createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+			lastSeenAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+		});
+
+		const results = rankEpisodicMemoryEntries(
+			[older, newest],
+			'prior travel itinerary hotel booking',
+			{ topK: 5 },
+		);
+
+		expect(results).toEqual([]);
+	});
+
+	it('ignores low-positive vector scores without lexical relevance', () => {
+		const weakVector = entry({
+			id: 'weak-vector',
+			content: 'User chose Postgres for durable memory storage.',
+			embedding: [0.01, 1],
+		});
+		const strongVector = entry({
+			id: 'strong-vector',
+			content: 'Warehouse exception routing analysis used manager escalation history.',
+			embedding: [0.8, 0.6],
+		});
+
+		const results = rankEpisodicMemoryEntries(
+			[weakVector, strongVector],
+			'prior travel itinerary hotel booking',
+			{ queryEmbedding: [1, 0], topK: 5 },
+		);
+
+		expect(results.map((result) => result.id)).toEqual(['strong-vector']);
 	});
 });
 
 describe('createRecallMemoryTool', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it('returns source entries while hiding retrieval scores from the model output', async () => {
-		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
+	it('strips retrieval metadata from the model-visible recall output', () => {
 		const memory = new InMemoryMemory();
-		await saveEpisodicEntry(memory, {
-			resourceId: 'user-1',
-			content: 'User chose Postgres for the memory store.',
-			embedding: [1, 0],
-		});
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
 		});
-		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		const output = await tool.handler({ query: 'Postgres memory store' }, {});
-		expect(output).toMatchObject({
-			entries: [{ content: 'User chose Postgres for the memory store.' }],
+		expect(
+			tool.toModelOutput?.({
+				entries: [
+					{
+						id: 'memory-1',
+						content: 'User chose Postgres for durable memory storage.',
+						createdAt: '2026-05-20T13:42:36.631Z',
+						lexicalScore: 0.3,
+						vectorScore: 0.6,
+						rrfScore: 0.04,
+						finalScore: 0.04,
+					},
+				],
+			}),
+		).toEqual({
+			entries: [
+				{
+					content: 'Prior/historical entry: User chose Postgres for durable memory storage.',
+					createdAt: '2026-05-20T13:42:36.631Z',
+				},
+			],
 		});
-		const modelOutput = tool.toModelOutput?.(output);
-		expect(modelOutput).toMatchObject({
-			entries: [{ content: 'Prior/historical entry: User chose Postgres for the memory store.' }],
-		});
-		expect(modelOutput).not.toHaveProperty('entries.0.score');
 	});
 
-	it('counts query embedding tokens', async () => {
+	it('counts recall query embedding tokens when usage is available', async () => {
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
 		const counter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
 			incrementTokenCount: vi.fn(),
 		};
+		const memory = new InMemoryMemory();
 		const tool = createRecallMemoryTool({
-			memory: new InMemoryMemory(),
+			memory,
 			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
 			executionCounter: counter,
@@ -213,12 +261,40 @@ describe('createRecallMemoryTool', () => {
 		await tool.handler({ query: 'what did we decide?' }, {});
 
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(7);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 
-	it('only opens telemetry spans when telemetry is provided', async () => {
+	it('does not call describe() on the memory backend when ctx.parentTelemetry is absent', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
 		const memory = new InMemoryMemory();
-		const describeSpy = vi.spyOn(memory, 'describe');
+		const describeSpy = vi.spyOn(memory, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+			entries: [],
+		});
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
+
+	it('opens a query_memory span with resolved entry ids when ctx.parentTelemetry is provided', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const saved = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User chose Postgres for the memory store.',
+			embedding: [1, 0],
+		});
 		const span = {
 			end: vi.fn(),
 			recordException: vi.fn(),
@@ -227,8 +303,16 @@ describe('createRecallMemoryTool', () => {
 		};
 		const tracer = {
 			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
-				return await (fn as (value: typeof span) => Promise<unknown>)(span);
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
 			}),
+		};
+		const parentTelemetry: BuiltTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
 		};
 		const tool = createRecallMemoryTool({
 			memory,
@@ -238,22 +322,112 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		await tool.handler({ query: 'what did we decide?' }, {});
-		expect(describeSpy).not.toHaveBeenCalled();
-
-		const parentTelemetry: BuiltTelemetry = {
-			enabled: true,
-			recordInputs: true,
-			recordOutputs: true,
-			integrations: [],
-			tracer,
-		};
 		await tool.handler({ query: 'what did we decide?' }, { parentTelemetry });
-		expect(tracer.startActiveSpan).toHaveBeenCalledWith(
-			'query_memory',
-			expect.anything(),
-			expect.any(Function),
+
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('query_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'query_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['agent'],
+			'gen_ai.memory.owners': ['user-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'gen_ai.memory.ids': [saved.id],
+				'gen_ai.memory.operations': ['query_memory'],
+			}),
 		);
+	});
+});
+
+describe('getEpisodicMemoryScope', () => {
+	it('uses the persistence resourceId as the episodic memory scope', () => {
+		expect(
+			getEpisodicMemoryScope({
+				resourceId: 'chat-user-1',
+				threadId: 'thread-1',
+			}),
+		).toEqual({
+			resourceId: 'chat-user-1',
+		});
+	});
+});
+
+describe('InMemoryMemory episodic source cleanup', () => {
+	it('drops active entries that lose their last source when deleting a thread', async () => {
+		const memory = new InMemoryMemory();
+		const orphaned = await saveEpisodicEntry(
+			memory,
+			{ resourceId: 'user-1', content: 'User chose Postgres for durable memory storage.' },
+			[
+				{
+					observationId: 'obs-orphaned',
+					threadId: 'thread-1',
+					evidenceText: 'User chose Postgres',
+				},
+			],
+		);
+		const candidate = await memory.episodic.enqueueCaptureCandidate({
+			resourceId: 'user-1',
+			threadId: 'thread-1',
+			sourceMessageId: null,
+			runId: 'run-orphaned',
+			toolCallId: 'candidate-orphaned',
+			content: 'User prefers concise reports.',
+			evidenceText: 'I prefer concise reports',
+			kind: 'preference',
+		});
+		const candidateBacked = await saveEpisodicEntry(
+			memory,
+			{ resourceId: 'user-1', content: 'User prefers concise reports.' },
+			[
+				{
+					candidateId: candidate.id,
+					threadId: 'thread-1',
+					evidenceText: 'I prefer concise reports',
+				},
+			],
+		);
+		const shared = await saveEpisodicEntry(
+			memory,
+			{ resourceId: 'user-1', content: 'User prefers source-backed cross-session recall.' },
+			[
+				{
+					observationId: 'obs-shared-1',
+					threadId: 'thread-1',
+					evidenceText: 'source-backed',
+				},
+				{
+					observationId: 'obs-shared-2',
+					threadId: 'thread-2',
+					evidenceText: 'cross-session recall',
+				},
+			],
+		);
+
+		await memory.deleteThread('thread-1');
+
+		await expect(
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'source-backed', { topK: 10 }),
+		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
+		await expect(
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres storage', {
+				includeStatuses: ['dropped'],
+				topK: 10,
+			}),
+		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
+		await expect(
+			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports', {
+				includeStatuses: ['dropped'],
+				topK: 10,
+			}),
+		).resolves.toEqual([expect.objectContaining({ id: candidateBacked.id, status: 'dropped' })]);
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
+		).resolves.toEqual([]);
 	});
 });
 
@@ -596,88 +770,5 @@ describe('agent-directed episodic capture', () => {
 		await expect(
 			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports'),
 		).resolves.toHaveLength(1);
-	});
-});
-
-describe('episodic memory source cleanup', () => {
-	it('keeps legacy observation sources and drops entries that lose their last source', async () => {
-		const memory = new InMemoryMemory();
-		const orphaned = await saveEpisodicEntry(
-			memory,
-			{ resourceId: 'user-1', content: 'User chose Postgres for durable memory storage.' },
-			[
-				{
-					observationId: 'obs-orphaned',
-					threadId: 'thread-1',
-					evidenceText: 'User chose Postgres',
-				},
-			],
-		);
-		const candidate = await memory.episodic.enqueueCaptureCandidate({
-			resourceId: 'user-1',
-			threadId: 'thread-1',
-			sourceMessageId: null,
-			runId: 'run-orphaned',
-			toolCallId: 'candidate-orphaned',
-			content: 'User prefers concise reports.',
-			evidenceText: 'I prefer concise reports',
-			kind: 'preference',
-		});
-		const candidateBacked = await saveEpisodicEntry(
-			memory,
-			{ resourceId: 'user-1', content: 'User prefers concise reports.' },
-			[
-				{
-					candidateId: candidate.id,
-					threadId: 'thread-1',
-					evidenceText: 'I prefer concise reports',
-				},
-			],
-		);
-		const shared = await saveEpisodicEntry(
-			memory,
-			{ resourceId: 'user-1', content: 'User prefers source-backed cross-session recall.' },
-			[
-				{
-					observationId: 'obs-shared-1',
-					threadId: 'thread-1',
-					evidenceText: 'source-backed',
-				},
-				{
-					observationId: 'obs-shared-2',
-					threadId: 'thread-2',
-					evidenceText: 'cross-session recall',
-				},
-			],
-		);
-
-		await memory.deleteThread('thread-1');
-
-		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'source-backed', { topK: 10 }),
-		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
-		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres storage', {
-				includeStatuses: ['dropped'],
-				topK: 10,
-			}),
-		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
-		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports', {
-				includeStatuses: ['dropped'],
-				topK: 10,
-			}),
-		).resolves.toEqual([expect.objectContaining({ id: candidateBacked.id, status: 'dropped' })]);
-		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
-		).resolves.toEqual([]);
-	});
-});
-
-describe('getEpisodicMemoryScope', () => {
-	it('uses the persistence resource scope', () => {
-		expect(getEpisodicMemoryScope({ resourceId: 'chat-user-1', threadId: 'thread-1' })).toEqual({
-			resourceId: 'chat-user-1',
-		});
 	});
 });

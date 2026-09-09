@@ -10,7 +10,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | evidenceText | text |  | false |  |  | Redacted exact evidence from the source message |
 | id | varchar(36) |  | false | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) |  |  |
-| kind | varchar(32) |  | false |  |  | Reason the agent flagged this candidate |
+| kind | varchar(32) |  | false |  |  | Reason the agent flagged this candidate; see EpisodicMemoryCaptureKind in @n8n/agents |
 | resourceId | varchar(255) |  | false |  | [public.agents_resources](public.agents_resources.md) | Resource scope for the eventual episodic memory entry |
 | runId | varchar(255) |  | false |  |  | Agent run that issued the memory capture tool call |
 | sourceMessageId | varchar(36) |  | true |  | [public.agents_messages](public.agents_messages.md) | Persisted message that contains the exact source evidence |
@@ -23,7 +23,6 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agents_memory_entry_candidates_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['explicit_remember'::character varying, 'preference'::character varying, 'decision'::character varying, 'fact'::character varying, 'correction'::character varying])::text[]))) |
 | CHK_agents_memory_entry_candidates_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying])::text[]))) |
 | FK_5123f71435736664d2676084a85 | FOREIGN KEY | FOREIGN KEY ("resourceId") REFERENCES agents_resources(id) ON DELETE CASCADE |
 | FK_ac7ada75df7cc8ced228921d5a9 | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agents_threads(id) ON DELETE CASCADE |

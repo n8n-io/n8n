@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "threadId" varchar(255) NOT NULL, "sourceMessageId" varchar(36), "runId" varchar(255) NOT NULL, "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_kind" CHECK ("kind" IN ('explicit_remember', 'preference', 'decision', 'fact', 'correction')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed')), CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL)
+CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "resourceId" varchar(255) NOT NULL, "threadId" varchar(255) NOT NULL, "sourceMessageId" varchar(36), "runId" varchar(255) NOT NULL, "toolCallId" varchar(255) NOT NULL, "content" text NOT NULL, "evidenceText" text NOT NULL, "kind" varchar(32) NOT NULL, "status" varchar(16) NOT NULL DEFAULT ('pending'), "attemptCount" smallint NOT NULL DEFAULT (0), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_memory_entry_candidates_status" CHECK ("status" IN ('pending', 'completed', 'failed')), CONSTRAINT "FK_b3d0f5fe54565580bc1f5febb6e" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_5123f71435736664d2676084a85" FOREIGN KEY ("resourceId") REFERENCES "agents_resources" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ac7ada75df7cc8ced228921d5a9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_f1857f6716aa258393dd6f33243" FOREIGN KEY ("sourceMessageId") REFERENCES "agents_messages" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -34,7 +34,6 @@ CREATE TABLE "agents_memory_entry_candidates" ("id" varchar(36) PRIMARY KEY NOT 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("kind" IN ('explicit_remember', 'preference', 'decision', 'fact', 'correction')) |
 | - | CHECK | CHECK ("status" IN ('pending', 'completed', 'failed')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (sourceMessageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |

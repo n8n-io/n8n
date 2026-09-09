@@ -6154,7 +6154,6 @@ describe('AgentRuntime — observation log jobs', () => {
 				threadId: 'thread-1',
 			}),
 		]);
-		await expect(memory.episodic.getCursor({ observationScopeId: 'thread-1' })).resolves.toBeNull();
 		const firstLockCall = episodicLockSpy.mock.calls.at(0);
 		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
 		const [lockedResourceId, lockOptions] = firstLockCall;
@@ -6191,10 +6190,12 @@ describe('AgentRuntime — observation log jobs', () => {
 		vi.spyOn(memory.episodic.taskLock!, 'acquire')
 			.mockResolvedValueOnce(null)
 			.mockImplementation(acquire);
+		// generate() swallows model errors, so assert outside the mock.
+		let pendingAtModelCall: unknown;
 		generateText.mockImplementationOnce(async () => {
-			await expect(
-				memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
-			).resolves.toEqual([]);
+			pendingAtModelCall = await memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+			});
 			return makeGenerateSuccess('Plain response');
 		});
 
@@ -6213,6 +6214,8 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
+
+		expect(pendingAtModelCall).toEqual([]);
 	});
 
 	it('processes every pending capture batch before the model runs', async () => {
@@ -6229,10 +6232,11 @@ describe('AgentRuntime — observation log jobs', () => {
 				kind: 'fact',
 			});
 		}
+		let pendingAtModelCall: unknown;
 		generateText.mockImplementationOnce(async () => {
-			await expect(
-				memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
-			).resolves.toEqual([]);
+			pendingAtModelCall = await memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+			});
 			return makeGenerateSuccess('Plain response');
 		});
 		const runtime = new AgentRuntime({
@@ -6251,6 +6255,8 @@ describe('AgentRuntime — observation log jobs', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
+
+		expect(pendingAtModelCall).toEqual([]);
 	});
 
 	it('cancels pending episodic recovery promptly without releasing its resource queue', async () => {
@@ -6370,10 +6376,38 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 	});
 
-	it('exposes recall_memory without embedding until the tool is called', async () => {
+	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+		await memory.episodic.saveEntryWithSources(
+			{
+				resourceId: 'resource-1',
+				content: 'Earlier session: user chose Postgres for memory storage.',
+				embedding: [1, 0],
+			},
+			[
+				{
+					observationId: 'obs-resource-1',
+					threadId: 'thread-resource-1',
+					evidenceText: 'user chose Postgres',
+				},
+			],
+		);
+		await memory.episodic.saveEntryWithSources(
+			{
+				resourceId: 'resource-2',
+				content: 'Earlier session: user chose SQLite for memory storage.',
+				embedding: [1, 0],
+			},
+			[
+				{
+					observationId: 'obs-resource-2',
+					threadId: 'thread-resource-2',
+					evidenceText: 'user chose SQLite',
+				},
+			],
+		);
 
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
@@ -6388,8 +6422,13 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
+			instructions: { content: string };
 			tools: Record<string, unknown>;
 		};
+		const systemPrompt = callArgs.instructions?.content ?? '';
+		expect(systemPrompt).not.toContain('<episodic_memory>');
+		expect(systemPrompt).not.toContain('Postgres');
+		expect(systemPrompt).not.toContain('SQLite');
 		expect(callArgs.tools).toHaveProperty('recall_memory');
 		expect(embed).not.toHaveBeenCalled();
 	});

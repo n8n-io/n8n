@@ -3,19 +3,27 @@ import { TableCheck } from '@n8n/typeorm';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const candidateTable = 'agents_memory_entry_candidates';
+const cursorTable = 'agents_memory_entry_cursors';
 const entryTable = 'agents_memory_entries';
 const sourceTable = 'agents_memory_entry_sources';
 const candidateIdColumn = 'candidateId';
 const sourceCheck = 'agents_memory_entry_sources_exactly_one_source';
 const candidateSourceUniqueIndex = 'agents_mem_src_candidate_unique';
-const captureKinds = ['explicit_remember', 'preference', 'decision', 'fact', 'correction'];
 const captureStatuses = ['pending', 'completed', 'failed'];
 
 export class CreateAgentMemoryEntryCandidates1788877732544 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			queryRunner,
-			schemaBuilder: { addColumns, addForeignKey, column, createIndex, createTable, dropNotNull },
+			schemaBuilder: {
+				addColumns,
+				addForeignKey,
+				column,
+				createIndex,
+				createTable,
+				dropNotNull,
+				dropTable,
+			},
 			tablePrefix,
 		} = context;
 
@@ -46,8 +54,9 @@ export class CreateAgentMemoryEntryCandidates1788877732544 implements Reversible
 				),
 				column('kind')
 					.varchar(32)
-					.notNull.withEnumCheck(captureKinds)
-					.comment('Reason the agent flagged this candidate'),
+					.notNull.comment(
+						'Reason the agent flagged this candidate; see EpisodicMemoryCaptureKind in @n8n/agents',
+					),
 				column('status')
 					.varchar(16)
 					.notNull.default("'pending'")
@@ -120,16 +129,50 @@ export class CreateAgentMemoryEntryCandidates1788877732544 implements Reversible
 				['evidenceText', 'Exact source evidence text, not recall scope'],
 			]);
 		}
+		// Agent-directed capture replaces observation-log indexing, so nothing writes the cursor.
+		await dropTable(cursorTable);
 	}
 
 	async down(context: MigrationContext) {
 		const {
 			escape,
 			queryRunner,
-			schemaBuilder: { addNotNull, dropColumns, dropForeignKey, dropIndex, dropTable },
+			schemaBuilder: {
+				addNotNull,
+				column,
+				createTable,
+				dropColumns,
+				dropForeignKey,
+				dropIndex,
+				dropTable,
+			},
 			tablePrefix,
 		} = context;
 
+		await createTable(cursorTable)
+			.withColumns(
+				column('agentId').varchar(36).notNull.primary.comment('Agent that owns this cursor'),
+				column('observationScopeId')
+					.varchar(255)
+					.notNull.primary.comment('agents_threads.id source stream indexed into episodic memory'),
+				column('lastIndexedObservationId')
+					.varchar(36)
+					.notNull.comment('Last observation-log row indexed into episodic memory'),
+				column('lastIndexedObservationCreatedAt')
+					.timestampTimezone(3)
+					.notNull.comment('Creation timestamp for the last indexed observation-log row'),
+			)
+			.withIndexOn('observationScopeId')
+			.withForeignKey('agentId', {
+				tableName: 'agents',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('observationScopeId', {
+				tableName: 'agents_threads',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
 		await queryRunner.dropCheckConstraint(
 			`${tablePrefix}${sourceTable}`,
 			`CHK_${tablePrefix}${sourceCheck}`,

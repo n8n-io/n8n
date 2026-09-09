@@ -1,10 +1,6 @@
 import {
-	getEpisodicMemoryScope,
-	hasEpisodicMemoryCaptureStore,
-	isEpisodicMemoryEnabled,
-} from './episodic-memory';
-import {
 	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
 	runEpisodicMemoryCandidateProcessor,
 } from './episodic-memory-capture';
 import { createFilteredLogger } from '../logger';
@@ -762,24 +758,12 @@ export class MemoryOrchestrator {
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
 	): void {
-		const { memory, episodicMemory } = this.config;
-		if (
-			!memory ||
-			!episodicMemory ||
-			!isEpisodicMemoryEnabled(episodicMemory) ||
-			!hasEpisodicMemoryCaptureStore(memory) ||
-			!episodicMemory.extract
-		) {
-			return;
-		}
-		const scope = getEpisodicMemoryScope(persistence);
-		if (!scope) return;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return;
 
-		void this.scheduleEpisodicMemoryTask(memory, scope.resourceId, async () => {
+		void this.scheduleEpisodicMemoryTask(capture.memory, capture.scope.resourceId, async () => {
 			await runEpisodicMemoryCandidateProcessor({
-				memory,
-				config: episodicMemory,
-				scope,
+				...capture,
 				executionCounter,
 				telemetry,
 				agentName: this.config.name,
@@ -793,28 +777,16 @@ export class MemoryOrchestrator {
 		telemetry?: BuiltTelemetry,
 		abortSignal?: AbortSignal,
 	): Promise<void> {
-		const { memory, episodicMemory } = this.config;
-		if (
-			!memory ||
-			!episodicMemory ||
-			!isEpisodicMemoryEnabled(episodicMemory) ||
-			!hasEpisodicMemoryCaptureStore(memory) ||
-			!episodicMemory.extract
-		) {
-			return;
-		}
-		const scope = getEpisodicMemoryScope(persistence);
-		if (!scope) return;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return;
 		await this.scheduleEpisodicMemoryTask(
-			memory,
-			scope.resourceId,
+			capture.memory,
+			capture.scope.resourceId,
 			async () => {
 				let result;
 				do {
 					result = await runEpisodicMemoryCandidateProcessor({
-						memory,
-						config: episodicMemory,
-						scope,
+						...capture,
 						executionCounter,
 						telemetry,
 						agentName: this.config.name,

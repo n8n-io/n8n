@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(128) |  | false | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_messages](public.agents_messages.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
+| id | varchar(128) |  | false | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_messages](public.agents_messages.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
 | metadata | text |  | true |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | title | varchar(255) |  | true |  |  |  |
@@ -34,7 +34,6 @@
 erDiagram
 
 "public.agents_memory_entry_candidates" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
-"public.agents_memory_entry_cursors" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_memory_entry_sources" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_messages" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 "public.agents_observation_cursors" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
@@ -63,14 +62,6 @@ erDiagram
   varchar_16_ status
   varchar_255_ threadId FK
   varchar_255_ toolCallId
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agents_memory_entry_cursors" {
-  varchar_36_ agentId FK
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone lastIndexedObservationCreatedAt
-  varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_sources" {

@@ -6,7 +6,6 @@ import type {
 	BuiltObservationLogStore,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
-	ObservationLogScope,
 } from './observation-log';
 import type { JSONObject } from '../utils/json';
 
@@ -159,16 +158,6 @@ type NewEpisodicMemoryEntrySourceForEntryBase = Omit<
 export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceForEntryBase &
 	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
-export interface EpisodicMemoryCursor extends ObservationLogScope {
-	lastIndexedObservationId: string;
-	lastIndexedObservationCreatedAt: Date;
-	updatedAt: Date;
-}
-
-export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
-	updatedAt?: Date;
-};
-
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 	lexicalScore: number;
 	vectorScore: number;
@@ -211,8 +200,6 @@ export interface EpisodicMemoryMethods {
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult>;
-	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
 	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 

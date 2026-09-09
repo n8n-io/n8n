@@ -11,12 +11,15 @@ import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
 	getEpisodicMemoryScope,
-	hasEpisodicMemoryCaptureStore,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	RECALL_MEMORY_TOOL_NAME,
 } from '../memory/episodic-memory';
-import { createFlagMemoryTool, FLAG_MEMORY_TOOL_NAME } from '../memory/episodic-memory-capture';
+import {
+	createFlagMemoryTool,
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+} from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
@@ -222,26 +225,20 @@ export class RuntimeContextBuilder {
 		existingTools: BuiltTool[],
 		list?: AgentMessageList,
 	): BuiltTool | undefined {
-		const { memory, episodicMemory } = this.config;
-		if (
-			!memory ||
-			!episodicMemory ||
-			!isEpisodicMemoryEnabled(episodicMemory) ||
-			!episodicMemory.extract ||
-			!hasEpisodicMemoryCaptureStore(memory) ||
-			!persistence ||
-			!list
-		) {
-			return undefined;
-		}
-		const scope = getEpisodicMemoryScope(persistence);
-		if (!scope) return undefined;
+		if (!persistence || !list) return undefined;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return undefined;
 		if (existingTools.some((tool) => tool.name === FLAG_MEMORY_TOOL_NAME)) {
 			throw new Error(
 				`Tool name "${FLAG_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createFlagMemoryTool({ memory, scope, persistence, list });
+		return createFlagMemoryTool({
+			memory: capture.memory,
+			scope: capture.scope,
+			persistence,
+			list,
+		});
 	}
 
 	/**

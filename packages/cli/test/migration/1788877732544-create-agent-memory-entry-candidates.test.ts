@@ -147,6 +147,9 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 		dataSource = Container.get(DataSource);
 
 		await withContext(async (context) => {
+			expect(
+				await context.queryRunner.hasTable(`${context.tablePrefix}agents_memory_entry_cursors`),
+			).toBe(false);
 			const sourceTable = context.escape.tableName('agents_memory_entry_sources');
 			const legacyRows = await context.runQuery<
 				Array<{ id: string; observationId: string | null; candidateId: string | null }>
@@ -241,6 +244,9 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 			expect(
 				await context.queryRunner.hasTable(`${context.tablePrefix}agents_memory_entry_candidates`),
 			).toBe(false);
+			expect(
+				await context.queryRunner.hasTable(`${context.tablePrefix}agents_memory_entry_cursors`),
+			).toBe(true);
 			await expect(
 				context.runQuery<Array<{ status: string }>>(
 					`SELECT "status" FROM ${context.escape.tableName('agents_memory_entries')} WHERE "id" = :id`,

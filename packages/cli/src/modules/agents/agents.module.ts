@@ -226,9 +226,6 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
-		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity.js'
-		);
 
 		return [
 			Agent,
@@ -256,7 +253,6 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			AgentMemoryEntryCursorEntity,
 		];
 	}
 

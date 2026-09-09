@@ -6,6 +6,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
+import { hasFunctionProperty } from './observation-log-store';
 import { Tool } from '../../sdk/tool';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
@@ -26,6 +27,12 @@ export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 const RRF_K = 60;
 const RECENCY_RRF_WEIGHT = 1;
 const MIN_VECTOR_RELEVANCE_SCORE = 0.2;
+const CAPTURE_STORE_METHODS = [
+	'enqueueCaptureCandidate',
+	'getPendingCaptureCandidates',
+	'completeCaptureCandidates',
+	'recordCaptureCandidateFailure',
+] as const;
 
 const RecallMemoryInputSchema = z.object({
 	query: z.string().min(1),
@@ -80,17 +87,7 @@ export function hasEpisodicMemoryCaptureStore(
 	memory: BuiltMemory,
 ): memory is BuiltMemory & BuiltEpisodicMemoryStore & BuiltEpisodicMemoryCaptureStore {
 	if (!hasEpisodicMemoryStore(memory)) return false;
-	const episodic = memory.episodic;
-	return (
-		'enqueueCaptureCandidate' in episodic &&
-		typeof episodic.enqueueCaptureCandidate === 'function' &&
-		'getPendingCaptureCandidates' in episodic &&
-		typeof episodic.getPendingCaptureCandidates === 'function' &&
-		'completeCaptureCandidates' in episodic &&
-		typeof episodic.completeCaptureCandidates === 'function' &&
-		'recordCaptureCandidateFailure' in episodic &&
-		typeof episodic.recordCaptureCandidateFailure === 'function'
-	);
+	return CAPTURE_STORE_METHODS.every((method) => hasFunctionProperty(memory.episodic, method));
 }
 
 export function withEpisodicMemoryDefaults(
