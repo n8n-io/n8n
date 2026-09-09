@@ -1,15 +1,18 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import type { IMenuItem } from '../../types';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
-import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -134,12 +137,9 @@ const tooltipPlacement = computed(() => {
 						{{ item.label }}
 					</N8nText>
 					<PreviewBadge v-if="!compact && item.preview" />
-					<N8nTag
-						v-if="!compact && item.new"
-						:clickable="false"
-						text="New"
-						:class="$style.newTag"
-					/>
+					<N8nBadge v-if="!compact && item.new" :class="$style.newBadge">
+						{{ t('menuItem.new') }}
+					</N8nBadge>
 					<N8nActionPill v-if="!compact && item.creditsTag" size="small" :text="item.creditsTag" />
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
@@ -254,16 +254,11 @@ const tooltipPlacement = computed(() => {
 	min-width: 0;
 }
 
-.newTag {
-	background-color: var(--color--foreground--shade-2);
-	color: var(--color--background);
-	border-color: var(--color--foreground--shade-2);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: var(--spacing--sm);
-	min-height: auto;
-	height: auto;
-	line-height: 1;
+.menuItem .newBadge {
+	--n8n-badge--background: var(--color--foreground--shade-2);
+	--n8n-badge--text-color: var(--color--background);
+	--n8n-badge--border-color: var(--color--foreground--shade-2);
+
+	flex-shrink: 0;
 }
 </style>

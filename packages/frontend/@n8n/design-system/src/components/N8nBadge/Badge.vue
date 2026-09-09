@@ -42,7 +42,13 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 		:as="props.clickable ? 'button' : 'span'"
 		:type="props.clickable ? 'button' : undefined"
 		:disabled="props.clickable ? props.disabled : undefined"
-		:class="[$style.badge, $style[variant], $style[size], { [$style.clickable]: props.clickable }]"
+		:class="[
+			'n8n-badge',
+			$style.badge,
+			$style[variant],
+			$style[size],
+			{ [$style.clickable]: props.clickable },
+		]"
 	>
 		<N8nIcon
 			v-if="props.leadingIcon"

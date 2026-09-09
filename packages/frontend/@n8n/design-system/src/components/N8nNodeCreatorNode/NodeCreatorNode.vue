@@ -68,7 +68,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
-				<N8nBadge v-if="isNew" theme="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
+				<N8nBadge v-if="isNew" variant="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"
