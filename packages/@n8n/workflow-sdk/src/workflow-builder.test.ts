@@ -1018,6 +1018,51 @@ describe('Workflow Builder', () => {
 			expect(json.nodes.map((n) => n.name)).toContain('Notify');
 		});
 
+		it('expands a chain handler on an imported node instead of collapsing it', () => {
+			const imported: WorkflowJSON = {
+				id: 'test-id',
+				name: 'Imported',
+				nodes: [
+					{
+						id: 't',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'h',
+						name: 'Fetch',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+			};
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+			const escalate = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Escalate' },
+			});
+
+			const json = workflow.fromJSON(imported).onError(notify.to(escalate)).toJSON();
+
+			// Every chain node is present, and the route enters at the chain head.
+			expect(json.nodes.map((n) => n.name)).toEqual(['Start', 'Fetch', 'Notify', 'Escalate']);
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+			expect(json.connections.Notify?.main[0]?.[0]?.node).toBe('Escalate');
+			// No self-loop on the tail.
+			expect(json.connections.Escalate).toBeUndefined();
+		});
+
 		it('explains itself when there is no node to attach to', () => {
 			const { sendFetchFailure } = buildRetryFlow();
 

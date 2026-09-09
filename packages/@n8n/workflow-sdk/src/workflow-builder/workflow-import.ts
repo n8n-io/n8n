@@ -18,6 +18,8 @@ import {
 	type IDataObject,
 	type CredentialReference,
 	type NewCredentialValue,
+	type DeclaredConnection,
+	type InputTarget,
 } from '../types/base';
 
 /**
@@ -39,6 +41,14 @@ export interface ParsedWorkflow {
  * Parse workflow JSON into internal graph structures.
  * This is a pure function that doesn't depend on WorkflowBuilderImpl.
  */
+/**
+ * Local copy of the `InputTarget` guard. Importing it from the node builder would pull that
+ * module — and the plugins it registers — into every consumer of `fromJSON()`.
+ */
+function isInputTarget(value: unknown): value is InputTarget {
+	return typeof value === 'object' && value !== null && '_isInputTarget' in value;
+}
+
 export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	const nodes = new Map<string, GraphNode>();
 	// Map from connection name (how nodes reference each other) to map key
@@ -64,6 +74,11 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 
 		// For nodes without a name (like sticky notes), use the id as the internal name
 		const nodeName = n8nNode.name ?? n8nNode.id;
+		// An imported handle builds no connections of its own — the builder wires the graph.
+		// An error route is the exception: the builder's `.onError()` has no other way to say
+		// which node the route leaves from, so the handle records it like an authored node
+		// does, and the usual expansion adds the handler's chain or composite for free.
+		const declaredConnections: DeclaredConnection[] = [];
 		const instance: NodeInstance<string, string, unknown> = {
 			type: n8nNode.type,
 			version,
@@ -99,11 +114,22 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 			output() {
 				throw new Error('Nodes from fromJSON() do not support output()');
 			},
-			onError() {
-				throw new Error('Nodes from fromJSON() do not support onError()');
+			onError(handler: NodeInstance<string, string, unknown> | InputTarget) {
+				this.config.onError ??= 'continueErrorOutput';
+				declaredConnections.push(
+					isInputTarget(handler)
+						? {
+								target: handler.node,
+								outputIndex: 0,
+								targetInputIndex: handler.inputIndex,
+								connectionType: 'error',
+							}
+						: { target: handler, outputIndex: 0, connectionType: 'error' },
+				);
+				return this;
 			},
 			getConnections() {
-				return [];
+				return [...declaredConnections];
 			},
 		};
 
