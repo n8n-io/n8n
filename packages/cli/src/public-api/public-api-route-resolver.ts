@@ -40,6 +40,14 @@ export function isDtoArg(
 	return arg.type === type;
 }
 
+export function findBodyArg(
+	args: ResolvedRouteArg[],
+): Extract<ResolvedRouteArg, { type: 'body' }> | undefined {
+	return args.find(
+		(arg): arg is Extract<ResolvedRouteArg, { type: 'body' }> => arg.type === 'body',
+	);
+}
+
 export interface ResolvedPublicApiRoute {
 	controllerClass: Controller;
 	controllerName: string;
@@ -240,9 +248,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 
 		for (const [handlerName, route] of controllerMetadata.routes) {
 			const args = resolveRouteArgs(controllerClass, handlerName, route.args);
-			const requestBodyArg = args.find(
-				(arg): arg is Extract<ResolvedRouteArg, { type: 'body' }> => arg.type === 'body',
-			);
+			const requestBodyArg = findBodyArg(args);
 			const requestBodyDto = requestBodyArg?.dto;
 			const requestBodyRequired = requestBodyArg?.required;
 			const requestQueryDto = args.find((arg) => isDtoArg(arg, 'query'))?.dto;

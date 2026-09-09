@@ -15,22 +15,10 @@ const ArgDecorator =
 	};
 
 export interface BodyOptions {
-	/**
-	 * Public API only. Rejects a request with no body/JSON content-type even when every field on
-	 * the DTO is optional (which otherwise makes the body itself optional too). Mirrors the
-	 * independent `requestBody.required` an OpenAPI spec can declare regardless of its schema's
-	 * own property-level `required`.
-	 */
 	required?: boolean;
 }
 
-/**
- * Injects the request body into the handler. Supports both a bare `@Body payload: SomeDto` and a
- * factory form `@Body({ required: true }) payload: SomeDto` for cases where the DTO alone can't
- * express the right default (see `BodyOptions`). The two are told apart by arity: the runtime
- * always calls a parameter decorator with `(target, propertyKey, parameterIndex)` - 3 arguments -
- * so a call missing `parameterIndex` is the factory being invoked by user code instead.
- */
+/** Injects the request body into the handler */
 export function Body(
 	target: object,
 	propertyKey: string | symbol | undefined,
@@ -41,7 +29,8 @@ export function Body(
 	targetOrOptions?: object | BodyOptions,
 	propertyKey?: string | symbol,
 	parameterIndex?: number,
-) {
+): ParameterDecorator | void {
+	// Bare form e.g. `@Body body: MyDto`
 	if (parameterIndex !== undefined) {
 		return ArgDecorator({ type: 'body' })(
 			targetOrOptions as object,
@@ -50,6 +39,7 @@ export function Body(
 		);
 	}
 
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true }) body: MyDto`
 	const options = targetOrOptions as BodyOptions | undefined;
 	return ArgDecorator({
 		type: 'body',
