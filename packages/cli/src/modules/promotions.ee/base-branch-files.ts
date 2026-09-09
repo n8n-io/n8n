@@ -8,6 +8,7 @@ export type BaseBranchEntityType =
 	| 'tag';
 
 export type BaseBranchFile = {
+	key: string;
 	path: string;
 	blobSha: string;
 	type: BaseBranchEntityType;
@@ -35,26 +36,15 @@ const ENTITY_FILE_NAMES: Record<BaseBranchEntityType, string> = {
 
 const SHARED_DIRECTORIES = ['credentials', 'variables', 'tags'];
 
-export function baseBranchPathspecs(exportRoot: string): string[] {
-	return ['projects', ...SHARED_DIRECTORIES].map((directory) => `${exportRoot}/${directory}/`);
-}
-
-// Exact because ids never contain a hyphen (SAFE_ID in n8n-packages io/manifest-entry.ts)
-// while every exported directory is named `<slug>-<id>`.
 function entityIdOfSegment(segment: string): string {
 	return segment.slice(segment.lastIndexOf('-') + 1);
 }
 
-function nameSlugOfSegment(segment: string): string {
-	return segment.slice(0, segment.lastIndexOf('-'));
-}
-
-/** Parses NUL-delimited `git ls-tree -r -z` output; `-z` keeps paths unquoted. */
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
 	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
-): Map<string, BaseBranchFile> {
-	const files = new Map<string, BaseBranchFile>();
+): BaseBranchFile[] {
+	const files: BaseBranchFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
 	for (const record of lsTreeOutput.split('\0')) {
@@ -76,13 +66,19 @@ export function parseBaseBranchFiles(
 			continue;
 		}
 
-		const type = ENTITY_TYPES_BY_DIRECTORY[segments[segments.length - 3]];
-		if (!type || segments[segments.length - 1] !== ENTITY_FILE_NAMES[type]) continue;
+		const fileName = segments[segments.length - 1];
+		const type =
+			segments[0] === 'projects' && segments[2] === 'folders' && fileName === 'folder.json'
+				? 'folder'
+				: ENTITY_TYPES_BY_DIRECTORY[segments[segments.length - 3]];
+		if (!type || fileName !== ENTITY_FILE_NAMES[type]) continue;
 
 		const entitySegment = segments[segments.length - 2];
 		const key =
-			type === 'variable' ? nameSlugOfSegment(entitySegment) : entityIdOfSegment(entitySegment);
-		files.set(key, { path, blobSha, type });
+			type === 'variable'
+				? entitySegment.slice(0, entitySegment.lastIndexOf('-'))
+				: entityIdOfSegment(entitySegment);
+		files.push({ key, path, blobSha, type });
 	}
 
 	return files;

@@ -43,11 +43,7 @@ import {
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
-import {
-	baseBranchPathspecs,
-	parseBaseBranchFiles,
-	type BaseBranchFile,
-} from './base-branch-files';
+import { parseBaseBranchFiles, type BaseBranchFile } from './base-branch-files';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME } from './constants';
 import { GitConnectionProject } from './database/entities/git-connection-project.entity';
 import { GitConnection } from './database/entities/git-connection.entity';
@@ -392,16 +388,7 @@ export class GitConnectionsService {
 		};
 	}
 
-	/**
-	 * Lists the entity files the remote branch holds for a project (plus the
-	 * shared credential, variable and tag files) as of the fetch this performs.
-	 * Reads paths and blob hashes only — never file content, never the working
-	 * copy's checked-out files.
-	 */
-	async listBaseBranchFiles(
-		connectionId: string,
-		projectId: string,
-	): Promise<Map<string, BaseBranchFile>> {
+	async listBaseBranchFiles(connectionId: string, projectId: string): Promise<BaseBranchFile[]> {
 		const connection = await this.getEntity(connectionId);
 		const { branchName } = connection;
 		if (!branchName) throw new BadRequestError('A branch name is required to list branch files');
@@ -419,9 +406,10 @@ export class GitConnectionsService {
 			credentials,
 			rootFolder,
 			branchName,
-			pathspecs: baseBranchPathspecs(EXPORT_SUBFOLDER),
+			pathspecs: ['projects', 'credentials', 'variables', 'tags'].map(
+				(directory) => `${EXPORT_SUBFOLDER}/${directory}/`,
+			),
 		});
-		if (lsTreeOutput === null) return new Map();
 
 		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: EXPORT_SUBFOLDER, projectId });
 	}

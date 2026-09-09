@@ -11,16 +11,18 @@ import type { User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';
 import { createVariable } from '@test-integration/db/variables';
@@ -173,10 +175,6 @@ async function snapshotWorkingTree(dir: string): Promise<Map<string, string>> {
 	return snapshot;
 }
 
-function checkoutFolder(connectionId: string): string {
-	return path.join(testRoot, 'instance', 'git-connections', connectionId, 'repository');
-}
-
 describe('Git connection base branch listing', () => {
 	it('lists the project files plus shared credential, variable and tag files, and nothing from other projects', async () => {
 		const remote = await createRemote();
@@ -185,6 +183,8 @@ describe('Git connection base branch listing', () => {
 
 		const projectA = await createTeamProject('Orders', owner);
 		const projectB = await createTeamProject('Marketing', owner);
+		const parentFolder = await createFolder(projectA, { name: 'Operations' });
+		const childFolder = await createFolder(projectA, { name: 'Orders', parentFolder });
 		const credential = await saveCredential(
 			{
 				name: 'Header credential',
@@ -197,6 +197,7 @@ describe('Git connection base branch listing', () => {
 		const credentialWorkflow = await createWorkflow(
 			{
 				name: 'Process order',
+				parentFolder: childFolder,
 				nodes: [
 					{
 						id: 'n1',
@@ -204,7 +205,7 @@ describe('Git connection base branch listing', () => {
 						type: 'n8n-nodes-base.httpRequest',
 						typeVersion: 1,
 						position: [0, 0],
-						parameters: {},
+						parameters: { url: '={{ $vars.API_URL }}' },
 						credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
 					},
 				],
@@ -212,64 +213,35 @@ describe('Git connection base branch listing', () => {
 			},
 			projectA,
 		);
-		const variableWorkflow = await createWorkflow(
-			{
-				name: 'Sync inventory',
-				nodes: [
-					{
-						id: 'n1',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 3.4,
-						position: [0, 0],
-						parameters: {
-							assignments: {
-								assignments: [
-									{ id: 'a0', name: 'field0', type: 'string', value: '={{ $vars.API_URL }}' },
-								],
-							},
-						},
-					},
-				],
-				connections: {},
-			},
-			projectA,
-		);
 		const tag = await createTag({ name: 'prod' }, credentialWorkflow);
-		const otherWorkflow = await createWorkflow(
-			{ name: 'Campaign', nodes: [], connections: {} },
-			projectB,
-		);
+		await createWorkflow({ name: 'Campaign', nodes: [], connections: {} }, projectB);
 
 		await service.push(connection.id, owner, { commitMessage: 'Export projects' });
 
 		const files = await service.listBaseBranchFiles(connection.id, projectA.id);
 
-		expect(Object.fromEntries([...files.entries()].map(([id, file]) => [id, file.type]))).toEqual({
-			[projectA.id]: 'project',
-			[credentialWorkflow.id]: 'workflow',
-			[variableWorkflow.id]: 'workflow',
-			[credential.id]: 'credential',
-			apiurl: 'variable',
-			[tag.id]: 'tag',
-		});
-		expect(files.has(projectB.id)).toBe(false);
-		expect(files.has(otherWorkflow.id)).toBe(false);
+		expect(files.map(({ key, type }) => ({ key, type }))).toEqual(
+			expect.arrayContaining([
+				{ key: projectA.id, type: 'project' },
+				{ key: parentFolder.id, type: 'folder' },
+				{ key: childFolder.id, type: 'folder' },
+				{ key: credentialWorkflow.id, type: 'workflow' },
+				{ key: credential.id, type: 'credential' },
+				{ key: 'apiurl', type: 'variable' },
+				{ key: tag.id, type: 'tag' },
+			]),
+		);
+		expect(files).toHaveLength(7);
 
-		expect(files.get(projectA.id)?.path).toMatch(/^n8n-export\/projects\/orders-/);
-		expect(files.get(credential.id)?.path).toMatch(/^n8n-export\/credentials\//);
-		expect(files.get('apiurl')?.path).toMatch(/^n8n-export\/variables\/apiurl-/);
-		expect(files.get(tag.id)?.path).toMatch(/^n8n-export\/tags\//);
-
-		for (const file of files.values()) {
+		for (const file of files) {
 			expect(file.blobSha).toBe(await remoteBlobSha(remote, file.path));
 		}
 	});
 
-	it('reflects a remote update, parses hyphenated, spaced and Unicode slugs, and changes no file in the checkout', async () => {
+	it('reads remote updates without changing a dirty, detached checkout', async () => {
 		const remote = await createRemote();
 		const projectPath = 'n8n-export/projects/ünïcode örders-Pj01ab23/project.json';
-		const variablePath = 'n8n-export/variables/my var-Va45zz67/variable.json';
+		const variablePath = 'n8n-export/variables/my "quoted" var-Va45zz67/variable.json';
 		await writeRemoteFile(remote, projectPath, '{"name":"Ünïcode örders"}');
 		await writeRemoteFile(remote, variablePath, '{"name":"my var"}');
 		await commitAndPushRemote(remote, 'Initial export');
@@ -277,15 +249,25 @@ describe('Git connection base branch listing', () => {
 		const connection = await createConnection(remote.bareDir);
 		await service.clone(connection.id);
 
-		const checkout = checkoutFolder(connection.id);
+		const checkout = path.join(
+			testRoot,
+			'instance',
+			'git-connections',
+			connection.id,
+			'repository',
+		);
 		const checkoutGit = simpleGit(checkout);
+		await checkoutGit.addConfig('core.autocrlf', 'true');
 		await checkoutGit.raw(['checkout', '--detach']);
+		await writeFile(path.join(checkout, projectPath), 'Local changes\r\n');
+		await writeFile(path.join(checkout, 'untracked.txt'), 'Untracked file\n');
 		const headBefore = (await checkoutGit.revparse(['HEAD'])).trim();
 		const treeBefore = await snapshotWorkingTree(checkout);
 
 		const firstListing = await service.listBaseBranchFiles(connection.id, 'Pj01ab23');
-		expect([...firstListing.keys()].sort()).toEqual(['Pj01ab23', 'my var']);
-		expect(firstListing.get('my var')).toEqual({
+		expect(firstListing).toHaveLength(2);
+		expect(firstListing).toContainEqual({
+			key: 'my "quoted" var',
 			path: variablePath,
 			blobSha: await remoteBlobSha(remote, variablePath),
 			type: 'variable',
@@ -298,7 +280,8 @@ describe('Git connection base branch listing', () => {
 
 		const secondListing = await service.listBaseBranchFiles(connection.id, 'Pj01ab23');
 
-		expect(secondListing.get('Wf99zz88')).toEqual({
+		expect(secondListing).toContainEqual({
+			key: 'Wf99zz88',
 			path: workflowPath,
 			blobSha: await remoteBlobSha(remote, workflowPath),
 			type: 'workflow',
@@ -315,6 +298,81 @@ describe('Git connection base branch listing', () => {
 
 		const files = await service.listBaseBranchFiles(connection.id, 'Pj01ab23');
 
-		expect(files.size).toBe(0);
+		expect(files).toEqual([]);
+	});
+
+	it('preserves files with matching IDs or variable slugs across collections and scopes', async () => {
+		const remote = await createRemote();
+		const projectRoot = 'n8n-export/projects/orders-Pj01';
+		const entities = [
+			{ key: '42', type: 'folder', path: `${projectRoot}/folders/legacy-42/folder.json` },
+			{
+				key: '42',
+				type: 'workflow',
+				path: `${projectRoot}/folders/legacy-42/workflows/order-42/workflow.json`,
+			},
+			{ key: '42', type: 'credential', path: `${projectRoot}/credentials/api-42/credential.json` },
+			{
+				key: '42',
+				type: 'dataTable',
+				path: `${projectRoot}/data-tables/orders-42/data-table.json`,
+			},
+			{ key: 'apiurl', type: 'variable', path: `${projectRoot}/variables/apiurl-1/variable.json` },
+			{ key: 'apiurl', type: 'variable', path: 'n8n-export/variables/apiurl-2/variable.json' },
+		];
+		for (const entity of entities) {
+			await writeRemoteFile(remote, entity.path, '{}');
+		}
+		await writeRemoteFile(remote, 'n8n-export/manifest.json', 'Not used for this listing');
+		await writeRemoteFile(remote, `${projectRoot}/workflows/order-42/README.md`, 'Notes');
+		await commitAndPushRemote(remote, 'Export scoped entities');
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+
+		const files = await service.listBaseBranchFiles(connection.id, 'Pj01');
+
+		expect(files.map(({ blobSha, ...entity }) => entity)).toEqual(expect.arrayContaining(entities));
+		expect(files).toHaveLength(entities.length);
+	});
+
+	it('reports an unavailable remote before its first commit', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await simpleGit().raw(['init', '--bare', bareDir]);
+		const connection = await createConnection(bareDir);
+		await service.clone(connection.id);
+		await rename(bareDir, `${bareDir}.offline`);
+
+		await expect(service.listBaseBranchFiles(connection.id, 'Pj01ab23')).rejects.toThrow(
+			BadRequestError,
+		);
+	});
+
+	it('lists a branch outside the original single-branch clone', async () => {
+		const remote = await createRemote();
+		const connection = await createConnection(remote.bareDir);
+		await service.clone(connection.id);
+		await remote.git.checkoutLocalBranch('production');
+		const projectPath = 'n8n-export/projects/orders-Pj01ab23/project.json';
+		await writeRemoteFile(remote, projectPath, '{}');
+		await remote.git.add(['--all']);
+		await remote.git.commit('Export production project');
+		await remote.git.push('origin', 'production');
+		await connectionRepository.update(connection.id, { branchName: 'production' });
+
+		const files = await service.listBaseBranchFiles(connection.id, 'Pj01ab23');
+
+		expect(files).toEqual([
+			{
+				key: 'Pj01ab23',
+				path: projectPath,
+				blobSha: (await remote.git.revparse([`production:${projectPath}`])).trim(),
+				type: 'project',
+			},
+		]);
+
+		await remote.git.raw(['push', 'origin', '--delete', 'production']);
+		await expect(service.listBaseBranchFiles(connection.id, 'Pj01ab23')).rejects.toThrow(
+			BadRequestError,
+		);
 	});
 });

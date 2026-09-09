@@ -27,7 +27,6 @@ type PlainCredentials =
 	| { type: 'ssh'; privateKey: string }
 	| { type: 'https'; username: string; password: string };
 
-// Managed exports must round-trip byte-exact, so no line-ending conversion ever.
 const BASE_GIT_CONFIG = ['core.autocrlf=false'];
 
 @Service()
@@ -240,8 +239,7 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/** Updates `origin/<branch>` in the object store without touching the working tree. */
-	async fetchBranch({
+	private async fetchBranch({
 		connection,
 		credentials,
 		rootFolder,
@@ -253,17 +251,15 @@ export class GitConnectionsGitService {
 		branchName: string;
 	}): Promise<void> {
 		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
-		try {
-			await this.withGit(
-				{ connection, credentials, repoDir: repositoryFolder, sshDir },
-				async (git) => {
-					// --progress keeps the stall-timeout timer fed during a healthy transfer.
-					await git.fetch('origin', branchName, ['--progress']);
-				},
-			);
-		} catch (error) {
-			throw this.mapGitError(error, { connectionId: connection.id, branchName });
-		}
+		await this.withGit(
+			{ connection, credentials, repoDir: repositoryFolder, sshDir },
+			async (git) => {
+				// --progress keeps the stall-timeout timer fed during a healthy transfer.
+				await git.fetch('origin', `+refs/heads/${branchName}:refs/remotes/origin/${branchName}`, [
+					'--progress',
+				]);
+			},
+		);
 	}
 
 	async refreshWorkingCopy({
@@ -277,9 +273,9 @@ export class GitConnectionsGitService {
 		rootFolder: string;
 		branchName: string;
 	}): Promise<{ head: string }> {
-		await this.fetchBranch({ connection, credentials, rootFolder, branchName });
 		const { repositoryFolder } = this.connectionPaths(rootFolder);
 		try {
+			await this.fetchBranch({ connection, credentials, rootFolder, branchName });
 			const git = this.localGit(repositoryFolder);
 			await git.raw(['reset', '--hard', `origin/${branchName}`]);
 			const head = (await git.revparse(['HEAD'])).trim();
@@ -289,12 +285,6 @@ export class GitConnectionsGitService {
 		}
 	}
 
-	/**
-	 * Fetches the branch and returns the NUL-delimited `git ls-tree -r -z` output
-	 * of the pathspecs at the fetched tip, pinned to one commit so the read stays
-	 * consistent. Reads only refs and the object store, never the working tree.
-	 * Returns null when the branch has no commits yet (bootstrapped empty remote).
-	 */
 	async listBranchTree({
 		connection,
 		credentials,
@@ -307,46 +297,24 @@ export class GitConnectionsGitService {
 		rootFolder: string;
 		branchName: string;
 		pathspecs: string[];
-	}): Promise<string | null> {
-		const { repositoryFolder } = this.connectionPaths(rootFolder);
+	}): Promise<string> {
+		const { repositoryFolder, sshDir } = this.connectionPaths(rootFolder);
 		try {
 			try {
 				await this.fetchBranch({ connection, credentials, rootFolder, branchName });
 			} catch (error) {
-				// Fetching an unborn branch fails; only a branch we know nothing
-				// about is an empty listing, anything else stays an error.
-				if (!(await this.remoteBranchCommit(repositoryFolder, branchName))) return null;
+				const branches = await this.withGit(
+					{ connection, credentials, repoDir: repositoryFolder, sshDir },
+					async (git) => await git.listRemote(['--heads', 'origin']),
+				);
+				if (!branches.trim()) return '';
 				throw error;
 			}
-			const commit = await this.remoteBranchCommit(repositoryFolder, branchName);
-			if (!commit) return null;
-			return await this.localGit(repositoryFolder).raw([
-				'ls-tree',
-				'-r',
-				'-z',
-				commit,
-				'--',
-				...pathspecs,
-			]);
+			const git = this.localGit(repositoryFolder);
+			const commit = await git.revparse(['--verify', `refs/remotes/origin/${branchName}^{commit}`]);
+			return await git.raw(['ls-tree', '-r', '-z', commit.trim(), '--', ...pathspecs]);
 		} catch (error) {
 			throw this.mapGitError(error, { connectionId: connection.id, branchName });
-		}
-	}
-
-	private async remoteBranchCommit(
-		repositoryFolder: string,
-		branchName: string,
-	): Promise<string | null> {
-		try {
-			const commit = await this.localGit(repositoryFolder).raw([
-				'rev-parse',
-				'--verify',
-				'--quiet',
-				`origin/${branchName}`,
-			]);
-			return commit.trim();
-		} catch {
-			return null;
 		}
 	}
 
@@ -369,7 +337,6 @@ export class GitConnectionsGitService {
 		};
 	}
 
-	/** For local-only operations that need no credentials and no SSH key material. */
 	private localGit(repoDir: string): SimpleGit {
 		return simpleGit({
 			baseDir: repoDir,

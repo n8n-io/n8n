@@ -363,7 +363,11 @@ describe('PromotionsGitService (git operations)', () => {
 		it('fetches and hard-resets to the remote tip, returning the new revision', async () => {
 			const result = await call();
 
-			expect(mockGit.fetch).toHaveBeenCalledWith('origin', 'main', ['--progress']);
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 			expect(result).toEqual({ commitSha: 'def456' });
 		});
@@ -375,58 +379,6 @@ describe('PromotionsGitService (git operations)', () => {
 
 			expect(error).toBeInstanceOf(BadRequestError);
 			expect((error as Error).message).toBe('Could not complete the Git operation');
-		});
-	});
-
-	describe('listBranchTree', () => {
-		const pathspecs = ['n8n-export/projects/', 'n8n-export/credentials/'];
-
-		const call = async () =>
-			await gitService.listBranchTree({
-				connection: httpsConnection(),
-				credentials: httpsCredentials,
-				rootFolder,
-				branchName: 'main',
-				pathspecs,
-			});
-
-		it('fetches, pins the remote tip, and lists the tree at that commit', async () => {
-			mockGit.raw.mockImplementation(async (args: unknown) =>
-				Array.isArray(args) && args[0] === 'rev-parse' ? 'abc123\n' : 'ls-tree-output',
-			);
-
-			const result = await call();
-
-			expect(mockGit.fetch).toHaveBeenCalledWith('origin', 'main', ['--progress']);
-			expect(mockGit.raw).toHaveBeenCalledWith(['rev-parse', '--verify', '--quiet', 'origin/main']);
-			expect(mockGit.raw).toHaveBeenCalledWith([
-				'ls-tree',
-				'-r',
-				'-z',
-				'abc123',
-				'--',
-				...pathspecs,
-			]);
-			expect(result).toBe('ls-tree-output');
-		});
-
-		it('fails when the fetch fails but the branch ref exists locally', async () => {
-			mockGit.fetch.mockRejectedValueOnce(new Error('network down'));
-			mockGit.raw.mockResolvedValueOnce('abc123\n');
-
-			await expect(call()).rejects.toThrow(BadRequestError);
-		});
-
-		it('applies core.autocrlf=false to every git invocation', async () => {
-			mockGit.raw.mockResolvedValue('abc123\n');
-
-			await call();
-
-			const calls = simpleGitMock.mock.calls as unknown as Array<[{ config?: string[] }]>;
-			expect(calls.length).toBeGreaterThan(1);
-			for (const [options] of calls) {
-				expect(options.config).toContain('core.autocrlf=false');
-			}
 		});
 	});
 });

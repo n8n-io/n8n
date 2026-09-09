@@ -40,11 +40,7 @@ const FILE_NAMES = {
 	tags: 'tag.json',
 } as const satisfies Record<ManifestEntityCollection, string>;
 
-/**
- * Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so
- * no `/` and no dots. No hyphens either, so the id parses back exactly out of a
- * `<slug>-<id>` directory name as the tail after its last hyphen.
- */
+// Hyphens delimit the slug and ID in exported directory names.
 const SAFE_ID = /^[A-Za-z0-9_]+$/;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.

@@ -10,11 +10,14 @@ describe('createManifestEntry', () => {
 		});
 	});
 
-	it.each(['a/b', '..', 'with space'])('blocks the export for the id %s', (id) => {
-		expect(() =>
-			createManifestEntry('workflows', 'workflows', { id, name: 'Daily Report' }),
-		).toThrow(PackageExportBlockedError);
-	});
+	it.each(['a/b', '..', 'with space', 'nanoid_-123', '3f7c1e2a-9b4d-4e11-8a55-6d2f0c9b7e13'])(
+		'blocks the export for the id %s',
+		(id) => {
+			expect(() =>
+				createManifestEntry('workflows', 'workflows', { id, name: 'Daily Report' }),
+			).toThrow(PackageExportBlockedError);
+		},
+	);
 
 	it('blocks an export when the path segment exceeds 255 characters', () => {
 		expect(() =>
@@ -24,15 +27,4 @@ describe('createManifestEntry', () => {
 			}),
 		).toThrow('Shorten the entity name and retry the export.');
 	});
-
-	// A hyphen in an id would make the `<slug>-<id>` directory name ambiguous
-	// for readers that take the id as the tail after the last hyphen.
-	it.each(['nanoid_-123', '3f7c1e2a-9b4d-4e11-8a55-6d2f0c9b7e13'])(
-		'blocks the export for the id %s',
-		(id) => {
-			expect(() =>
-				createManifestEntry('workflows', 'workflows', { id, name: 'Daily Report' }),
-			).toThrow(PackageExportBlockedError);
-		},
-	);
 });

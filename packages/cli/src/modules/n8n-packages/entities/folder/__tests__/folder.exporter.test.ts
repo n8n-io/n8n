@@ -13,7 +13,7 @@ const user = mock<User>({ id: 'user-1' });
 
 function makeFolder(overrides: Partial<Folder> = {}): Folder {
 	return {
-		id: 'fld-1',
+		id: 'fld_1',
 		name: 'to_production',
 		parentFolderId: null,
 		createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -47,7 +47,7 @@ describe('FolderExporter', () => {
 
 		const { entries } = await exporter.export({
 			user,
-			folderIds: ['fld-1'],
+			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
@@ -56,7 +56,7 @@ describe('FolderExporter', () => {
 		});
 
 		expect(entries[0].target).toMatch(/^projects\/team-ligo\/folders\//);
-		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld-1'], {
+		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld_1'], {
 			includeArchived: false,
 		});
 	});
@@ -66,23 +66,23 @@ describe('FolderExporter', () => {
 
 		await exporter.export({
 			user,
-			folderIds: ['fld-1'],
+			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
 			includeArchivedWorkflows: true,
 		});
 
-		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld-1'], {
+		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld_1'], {
 			includeArchived: true,
 		});
 	});
 
 	it('delegates contained workflows to WorkflowExporter and aggregates its output', async () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
-		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld_1', ['w1']]]));
 		workflowExporter.export.mockResolvedValue({
-			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld-1/workflows/w1' }],
+			entries: [{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' }],
 			requirements: {
 				credentials: [
 					{
@@ -101,7 +101,7 @@ describe('FolderExporter', () => {
 
 		const result = await exporter.export({
 			user,
-			folderIds: ['fld-1'],
+			folderIds: ['fld_1'],
 			writer: new CapturingWriter(),
 			includeTags: true,
 			workflowVersionPolicy: 'latest',
@@ -113,11 +113,11 @@ describe('FolderExporter', () => {
 			expect.objectContaining({
 				user,
 				workflowIds: ['w1'],
-				basePrefix: 'folders/toproduction-fld-1',
+				basePrefix: 'folders/toproduction-fld_1',
 			}),
 		);
 		expect(result.workflowEntries).toEqual([
-			{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld-1/workflows/w1' },
+			{ id: 'w1', name: 'W1', target: 'folders/toproduction-fld_1/workflows/w1' },
 		]);
 		expect(result.requirements.credentials).toEqual([
 			{
@@ -207,7 +207,7 @@ describe('FolderExporter', () => {
 
 	it('propagates a WorkflowExporter abort so the whole folder export rejects', async () => {
 		const { exporter, workflowFinder, workflowExporter } = makeExporter([makeFolder()]);
-		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld-1', ['w1']]]));
+		workflowFinder.findWorkflowIdsByFolder.mockResolvedValue(new Map([['fld_1', ['w1']]]));
 		workflowExporter.export.mockRejectedValue(
 			new Error('1 workflow(s) not found or not accessible. Export aborted.'),
 		);
@@ -215,7 +215,7 @@ describe('FolderExporter', () => {
 		await expect(
 			exporter.export({
 				user,
-				folderIds: ['fld-1'],
+				folderIds: ['fld_1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
 				workflowVersionPolicy: 'latest',
