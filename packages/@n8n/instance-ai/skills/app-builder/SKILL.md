@@ -36,7 +36,7 @@ also publish with the Publish button above the preview, without you.
 
 ## The loop
 
-1. `apps(action="create", projectId, name)` once per app. Pass `namespace`
+1. `apps(action="create", name)` once per app. Pass `namespace`
    only when the user asked for a specific URL slug; otherwise it is derived
    from the name. The result carries `app.id`, `app.namespace`,
    `workspacePath` (the absolute app directory) and `installed`. If the
@@ -44,8 +44,8 @@ also publish with the Publish button above the preview, without you.
    call again. `installed: false` comes with a `warnings` entry that holds the
    `npm install` log; fix the cause, then run `npm install` in the app
    directory with `workspace_execute_command`.
-   You need a `projectId`: use the one bound to this conversation, or
-   `workspace(action="list-projects")` and ask when there is more than one.
+   Pass `projectId` only when the user names a project; otherwise the app
+   lands in the project bound to this conversation, else the personal one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
    layout. Do not start a dev server and do not run a build to check your

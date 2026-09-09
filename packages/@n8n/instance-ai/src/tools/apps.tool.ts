@@ -58,7 +58,12 @@ const LIVE_PREVIEW_FILES = ['.n8n-dev.log', '.n8n-dev.pid', '.n8n-preview-dist']
 
 const createSchema = z.object({
 	action: z.literal('create'),
-	projectId: z.string().describe('Project the app belongs to'),
+	projectId: z
+		.string()
+		.optional()
+		.describe(
+			'Project the app belongs to; defaults to the project bound to this conversation, else the personal project',
+		),
 	name: z.string().min(1).max(128).describe('Display name, e.g. "Greeter"'),
 	namespace: z
 		.string()

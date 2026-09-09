@@ -889,3 +889,16 @@ describe('apps tool', () => {
 		});
 	});
 });
+
+describe('create without a project id', () => {
+	it('leaves the project to the adapter when none is given', async () => {
+		const context = createMockContext();
+		await runCreate(context, { projectId: undefined });
+
+		expect(context.appService?.create).toHaveBeenCalledWith({
+			projectId: undefined,
+			name: 'Greeter',
+			namespace: 'greeter',
+		});
+	});
+});

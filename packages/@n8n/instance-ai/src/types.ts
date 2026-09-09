@@ -1040,7 +1040,8 @@ export interface AppSummary {
 export interface InstanceAiAppService {
 	/** `conflict` when the namespace is already taken instance-wide, so the tool can guide a retry. */
 	create(input: {
-		projectId: string;
+		/** Omitted → the project bound to the conversation, else the user's personal project. */
+		projectId?: string;
 		name: string;
 		namespace: string;
 	}): Promise<{ app: AppSummary } | { conflict: true }>;
