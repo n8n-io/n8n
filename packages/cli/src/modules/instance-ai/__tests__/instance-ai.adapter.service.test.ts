@@ -50,7 +50,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -1944,6 +1944,9 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Defaults to a bound project (every production run has one). Pass `null` to
 	// simulate a run with no bound project.
 	projectId?: string | null;
+	// Mirrors `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES`, which defaults to true in
+	// production. This harness leaves it off, so opt in to read real parameters.
+	allowSendingParameterValues?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2031,7 +2034,7 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		globalConfigStub(),
+		globalConfigStub({ allowSendingParameterValues: overrides?.allowSendingParameterValues }),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2192,8 +2195,11 @@ describe('createWorkflowAdapter', () => {
 					notesInFlow: true,
 					executeOnce: true,
 					retryOnFail: true,
+					maxTries: 5,
+					waitBetweenTries: 2500,
 					alwaysOutputData: true,
 					onError: 'continueErrorOutput',
+					extendsCredential: 'httpHeaderAuth',
 				},
 			],
 			connections: {},
@@ -2208,10 +2214,139 @@ describe('createWorkflowAdapter', () => {
 				notesInFlow: true,
 				executeOnce: true,
 				retryOnFail: true,
+				maxTries: 5,
+				waitBetweenTries: 2500,
 				alwaysOutputData: true,
 				onError: 'continueErrorOutput',
+				extendsCredential: 'httpHeaderAuth',
 			}),
 		);
+	});
+
+	// The agent reads a workflow with `get-as-code`, edits the file and saves it with
+	// `build-workflow`, which writes the parsed nodes over the saved ones. A field this
+	// read path drops is therefore not just missing from the code — it is erased from the
+	// user's workflow on the next save.
+	it('keeps every node-level setting through a get-as-code / build-workflow round trip', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+			allowSendingParameterValues: true,
+		});
+		const savedNode = {
+			id: 'http-id',
+			name: 'Download Image',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [208, 0] as [number, number],
+			parameters: { url: 'https://example.com/image', options: {} },
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Feishu Header' } },
+			notes: 'Downloads the message image',
+			notesInFlow: true,
+			executeOnce: true,
+			retryOnFail: true,
+			maxTries: 4,
+			waitBetweenTries: 1500,
+			alwaysOutputData: true,
+			onError: 'continueRegularOutput',
+			extendsCredential: 'httpHeaderAuth',
+		};
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-roundtrip',
+			name: 'Round Trip',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				savedNode,
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Download Image', type: 'main', index: 0 }]] },
+			},
+			settings: {},
+		});
+
+		const json = await adapter.getAsWorkflowJSON('wf-roundtrip');
+		// Same options `get-as-code` uses: ids in so node identity survives, positions out.
+		const code = generateWorkflowCode({
+			workflow: json,
+			includeNodeIds: true,
+			includePositions: false,
+		});
+		const rebuilt = parseWorkflowCode(code);
+
+		const rebuiltNode = rebuilt.nodes.find((n) => n.name === 'Download Image');
+		expect(rebuiltNode).toEqual(
+			expect.objectContaining({
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Feishu Header' } },
+				parameters: savedNode.parameters,
+				notes: savedNode.notes,
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 1500,
+				alwaysOutputData: true,
+				onError: 'continueRegularOutput',
+				extendsCredential: 'httpHeaderAuth',
+			}),
+		);
+	});
+
+	it.each([
+		{
+			name: 'reads a legacy continueOnFail node as its onError equivalent',
+			node: { continueOnFail: true },
+			expected: 'continueRegularOutput',
+		},
+		{
+			name: 'lets an explicit onError win over continueOnFail',
+			node: { continueOnFail: true, onError: 'continueErrorOutput' },
+			expected: 'continueErrorOutput',
+		},
+		{
+			name: 'leaves onError unset when the node continues on neither',
+			node: {},
+			expected: undefined,
+		},
+	])('$name', async ({ node, expected }) => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-legacy',
+			name: 'Legacy',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'legacy-id',
+					name: 'Legacy Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: {},
+					...node,
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-legacy');
+
+		expect(result.nodes[0].onError).toBe(expected);
 	});
 
 	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
