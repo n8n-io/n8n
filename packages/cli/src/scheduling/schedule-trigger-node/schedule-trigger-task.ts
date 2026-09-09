@@ -8,24 +8,8 @@ import type { INodeExecutionData } from 'n8n-workflow';
  */
 export const SCHEDULE_TRIGGER_TASK_TYPE = 'workflow:schedule-trigger';
 
-/**
- * What a schedule-trigger job carries through materialization to its handler.
- */
-export interface ScheduleTriggerTaskPayload {
-	workflowId: string;
-	nodeId: string;
-}
-
-const isNonEmptyString = (value: unknown): value is string =>
-	typeof value === 'string' && value !== '';
-
-/**
- * Validates the payload snapshot the materializer copied from the job onto the task.
- */
-export const isScheduleTriggerTaskPayload = (
-	payload: Record<string, unknown>,
-): payload is Record<string, unknown> & ScheduleTriggerTaskPayload =>
-	isNonEmptyString(payload.workflowId) && isNonEmptyString(payload.nodeId);
+export type { WorkflowNodeTaskPayload as ScheduleTriggerTaskPayload } from '../workflow-node-task-payload';
+export { isWorkflowNodeTaskPayload as isScheduleTriggerTaskPayload } from '../workflow-node-task-payload';
 
 export const scheduleTriggerDeduplicationKey = ({
 	jobId,

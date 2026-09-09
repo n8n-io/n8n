@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { SettingsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { vi } from 'vitest';
 
 import { OtelSettingsService, OTEL_SETTINGS_KEY } from '@/modules/otel/otel-settings.service';
@@ -119,7 +120,10 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(validSettings);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toMatchObject(validSettings);
+			expect(response.body).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {
@@ -129,7 +133,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const internal = await testServer.authAgentFor(owner).get('/otel/settings');
 
 			expect(internal.status).toBe(200);
-			expect(internal.body.data).toMatchObject(validSettings);
+			expect(internal.body.data).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('reads back a configuration written through the internal API (public API is a faithful stand-in)', async () => {
@@ -138,7 +145,10 @@ describe('OpenTelemetry settings in Public API', () => {
 			const publicRead = await testServer.publicApiAgentFor(owner).get('/settings/otel');
 
 			expect(publicRead.status).toBe(200);
-			expect(publicRead.body).toMatchObject(validSettings);
+			expect(publicRead.body).toMatchObject({
+				...validSettings,
+				exporterHeaders: `authorization=${CREDENTIAL_BLANKING_VALUE}`,
+			});
 		});
 
 		it('toggles enabled both ways', async () => {
@@ -170,7 +180,7 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(putResponse.status).toBe(200);
 			expect(putResponse.body.exporterServiceName).toBe('n8n-updated');
-			expect(putResponse.body.exporterHeaders).toBe(validSettings.exporterHeaders);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
 		});
 
 		it('switches the exporter protocol to gRPC and back', async () => {
@@ -336,6 +346,79 @@ describe('OpenTelemetry settings in Public API', () => {
 				.send(getResponse.body);
 
 			expect(putResponse.status).toBe(200);
+		});
+	});
+
+	describe('GET with env-managed exporterHeaders', () => {
+		const ENV_HEADERS = 'authorization=Bearer env-managed-token';
+		let originalHeaders: string;
+
+		beforeEach(async () => {
+			process.env[OTEL_ENV_VARS.exporterHeaders] = ENV_HEADERS;
+			originalHeaders = Container.get(OtelConfig).exporterHeaders;
+			Container.get(OtelConfig).exporterHeaders = ENV_HEADERS;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[OTEL_ENV_VARS.exporterHeaders];
+			Container.get(OtelConfig).exporterHeaders = originalHeaders;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('internal API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.authAgentFor(owner).get('/otel/settings');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
+		});
+
+		it('public API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+
+			expect(response.status).toBe(200);
+			expect(response.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+		});
+
+		it('accepts a GET response body echoed straight back (clean round-trip)', async () => {
+			const getResponse = await testServer.publicApiAgentFor(owner).get('/settings/otel');
+			expect(getResponse.status).toBe(200);
+
+			const putResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(getResponse.body);
+
+			expect(putResponse.status).toBe(200);
+			expect(putResponse.body.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+		});
+	});
+
+	describe('GET with headers supplied via the _FILE env variant', () => {
+		let originalHeaders: string;
+
+		beforeEach(async () => {
+			// Simulate `N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE` being set: mark it
+			// env-managed and pin the file-supplied value on the (singleton) config.
+			process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`] = '/run/secrets/otel-headers';
+			originalHeaders = Container.get(OtelConfig).exporterHeaders;
+			Container.get(OtelConfig).exporterHeaders = 'authorization=Bearer file-managed-token';
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`];
+			Container.get(OtelConfig).exporterHeaders = originalHeaders;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('internal API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.authAgentFor(owner).get('/otel/settings');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.exporterHeaders).toBe(`authorization=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
 		});
 	});
 

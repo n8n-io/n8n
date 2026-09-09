@@ -3,6 +3,10 @@ import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import {
+	serializedWorkflowLifecycleSchema,
+	type SerializedWorkflowLifecycle,
+} from '../../spec/serialized/workflow-lifecycle.schema';
+import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
@@ -16,7 +20,7 @@ type WorkflowPackageKeyHandling = {
 	name: 'copy';
 	description: 'exclude';
 	active: 'exclude';
-	isArchived: 'copy';
+	isArchived: 'transform';
 	nodes: 'copy';
 	connections: 'copy';
 	settings: 'copy';
@@ -39,13 +43,28 @@ type WorkflowPackageKeyHandling = {
 
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
 	WorkflowEntity,
 	SerializedWorkflow,
 	WorkflowPackageKeyHandling
+>();
+
+/** The same decisions from the lifecycle file's side. */
+type WorkflowLifecycleKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'isArchived' | 'activeVersionId'>,
+	'exclude'
+> & {
+	isArchived: 'copy';
+	activeVersionId: 'transform';
+};
+
+const serializeLifecyclePayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflowLifecycle,
+	WorkflowLifecycleKeyHandling
 >();
 
 @Service()
@@ -66,22 +85,25 @@ export class WorkflowSerializer {
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
 				versionId: workflow.versionId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
-				isPublished: workflow.activeVersionId === workflow.versionId,
-				isArchived: workflow.isArchived,
 				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 			}),
 		);
 	}
 
+	serializeLifecycle(workflow: WorkflowEntity): SerializedWorkflowLifecycle {
+		return serializedWorkflowLifecycleSchema.parse(
+			serializeLifecyclePayload({
+				publishedVersionId: workflow.activeVersionId,
+				isArchived: workflow.isArchived,
+			}),
+		);
+	}
+
 	/**
-	 * Turns a workflow from a package back into something we can save on
-	 * the target instance.
-	 *
-	 * We drop anything the target owns — its id, versionId, where it lives,
-	 * whether it's published, timestamps — so the caller can set those fresh.
-	 * The content of the workflow comes along, and we keep whichever
-	 * archived state the source had it in.
+	 * Turns a workflow from a package back into something we can save on the
+	 * target instance. We drop anything the target owns — its id, versionId,
+	 * where it lives, timestamps — so the caller can set those fresh.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);
@@ -91,7 +113,6 @@ export class WorkflowSerializer {
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],
-			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}

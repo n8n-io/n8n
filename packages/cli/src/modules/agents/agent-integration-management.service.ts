@@ -58,6 +58,7 @@ export class AgentIntegrationManagementService {
 		integration: unknown;
 		replaces?: IntegrationRef;
 		modifiedBy?: AgentActor;
+		onPersisted?: () => void;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
 		const integration = await this.validateConfig(options.integration);
 		await this.assertUsableCredential(options.agent, options.user, integration);
@@ -68,6 +69,7 @@ export class AgentIntegrationManagementService {
 			add: integration,
 			...(options.replaces ? { remove: options.replaces } : {}),
 			modifiedBy: options.modifiedBy ?? 'user',
+			onPersisted: options.onPersisted,
 		});
 
 		return { integration, savedAgent: result.agent };
@@ -80,6 +82,7 @@ export class AgentIntegrationManagementService {
 		credentialId: string;
 		deleteExternalResource?: boolean;
 		modifiedBy?: AgentActor;
+		onPersisted?: () => void;
 	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const result = await this.applyChange({
 			agent: options.agent,
@@ -88,6 +91,7 @@ export class AgentIntegrationManagementService {
 			cleanupRemovedIntegration: true,
 			deleteExternalResource: options.deleteExternalResource,
 			modifiedBy: options.modifiedBy ?? 'user',
+			onPersisted: options.onPersisted,
 		});
 
 		return {
@@ -114,6 +118,7 @@ export class AgentIntegrationManagementService {
 		cleanupRemovedIntegration?: boolean;
 		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
+		onPersisted?: () => void;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		return await this.serializePerAgent(
 			options.agent.id,
@@ -150,6 +155,7 @@ export class AgentIntegrationManagementService {
 		cleanupRemovedIntegration?: boolean;
 		deleteExternalResource?: boolean;
 		modifiedBy: AgentActor;
+		onPersisted?: () => void;
 	}): Promise<IntegrationDeltaResult & { warning?: AgentIntegrationDisconnectWarning }> {
 		const { agent, add } = options;
 		// "Replace this channel with itself" is just a connect. Left as a removal,
@@ -218,6 +224,7 @@ export class AgentIntegrationManagementService {
 			}
 			throw error;
 		}
+		if (result.changed) options.onPersisted?.();
 
 		if (add && result.published !== undefined) {
 			connected = await this.reconcileRuntimeWithPublication(

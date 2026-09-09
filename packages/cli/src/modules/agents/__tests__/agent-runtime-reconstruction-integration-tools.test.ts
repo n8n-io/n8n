@@ -3,7 +3,7 @@ import { type AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	CredentialsEntity,
@@ -44,6 +44,7 @@ import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
@@ -242,7 +243,13 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
-		agentSkillsService = new AgentSkillsService(logger, agentRepository, modificationTelemetry);
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		agentSkillsService = new AgentSkillsService(
+			logger,
+			agentRepository,
+			modificationTelemetry,
+			agentUpdateBroadcaster,
+		);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
@@ -255,12 +262,14 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
 			agentRepository,
 			runtimeCacheService,
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
@@ -273,6 +282,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<ExternalHooks>(),
 			agentSandboxRuntimeService,
 			agentRepository,
+			mock<AiConfig>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -306,6 +316,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
+			mock<AgentUpdateBroadcaster>(),
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

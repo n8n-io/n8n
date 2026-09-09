@@ -130,6 +130,12 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
 	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
 	'resume-agent-workflow-tool': {
 		agentRun: RelatedAgentRun;
@@ -143,6 +149,11 @@ export type PubSubCommandMap = {
 	 */
 	'cancel-agent-background-job': {
 		jobId: string;
+	};
+
+	/** Ask main instances to deliver background job results to the parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
 	};
 
 	'clear-test-webhooks': {

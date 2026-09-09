@@ -184,9 +184,20 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+export interface AgentConfigResponse {
+	config: AgentJsonConfig;
+	configHash: string;
+}
+
+export interface AgentConfigMutationResponse extends AgentConfigResponse {
+	updatedAt: string;
+	versionId: string | null;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
+	skillHash: string;
 	versionId: string | null;
 }
 
@@ -324,6 +335,11 @@ export interface AgentPersistedMessageDto {
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
 	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	/**
+	 * The recorded run error for a turn that ended in `error` or `interrupted`,
+	 * so history renders the same error bubble the live stream showed.
+	 */
+	executionError?: string;
 }
 
 export interface AgentBuilderOpenSuspension {

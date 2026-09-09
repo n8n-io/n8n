@@ -53,6 +53,10 @@ another main.
 The provider supports file operations and command execution. It does not need
 an interactive process API for the workflow build path.
 
+`N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true` asks the service to delete a sandbox
+once it goes idle instead of stopping it. Ephemeral mode is optional and is
+disabled by default.
+
 ### Daytona
 
 `daytona` is the explicit alternate provider. Instance AI assigns each thread
@@ -68,7 +72,7 @@ creation.
 
 Daytona lifecycle values control auto-stop, auto-archive, and auto-delete.
 `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true` asks Daytona to delete a sandbox when
-it stops. Ephemeral mode is optional and is disabled by default.
+it stops, which supersedes the auto-delete interval.
 
 ## Thread-Scoped Lifecycle
 
@@ -116,7 +120,6 @@ reattached. The setup creates or materializes:
 | `node-types/index.txt` | Searchable node-type catalog |
 | `src/` | Workflow source files |
 | `chunks/` | Reusable source modules |
-| `workflows/` | Existing workflows materialized as WorkflowJSON |
 | `knowledge-base/` | Best-practice, template, and SDK reference material |
 | `.sandbox-initialized` | Setup marker |
 
@@ -179,7 +182,7 @@ general user workload platform.
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Default command timeout in milliseconds |
 | `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | `900000` | In-process idle cache TTL; `0` disables eviction |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | empty | Prefix and label for Daytona names |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Delete a Daytona sandbox when it stops |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Delete the sandbox once idle instead of stopping it |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Daytona idle time before stop; `0` disables auto-stop |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` | Daytona stopped time before archive; `0` uses its maximum |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` | Daytona stopped time before delete; negative disables and `0` deletes on stop |

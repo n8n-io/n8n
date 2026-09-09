@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -938,7 +938,7 @@
     "@aws-sdk/credential-providers": "3.808.0",
     "@smithy/node-http-handler": "4.5.0",
     "@smithy/protocol-http": "5.3.12",
-    "@smithy/signature-v4": "5.3.5",
+    "@smithy/signature-v4": "catalog:",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
     "@confluentinc/kafka-javascript": "catalog:",
@@ -992,7 +992,7 @@
     "mongodb": "6.11.0",
     "mqtt": "5.7.2",
     "mqtt-packet": "catalog:",
-    "mssql": "10.0.2",
+    "mssql": "12.7.0",
     "mysql2": "catalog:",
     "n8n-workflow": "workspace:*",
     "node-html-markdown": "1.2.0",

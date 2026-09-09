@@ -24,7 +24,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
 
-import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
+import {
+	CREDENTIALS_BLANKING_VALUE,
+	OTEL_FIELD_ENV_VARS,
+	OTEL_TEST_SPAN_NAME,
+} from './otel.constants';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
 import { createSampleRateFormat, isOtlpProtocol } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
@@ -49,7 +53,7 @@ const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
 
 function syncHeaderPairsFromStore() {
-	headerPairs.value = headersStringToPairs(otelStore.settings.exporterHeaders);
+	headerPairs.value = headerPairsFromStore();
 }
 
 function syncHeaderPairsToStore() {
@@ -75,6 +79,23 @@ function onHeaderChange(index: number, field: 'key' | 'value', value: string) {
 
 function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
 	return otelStore.envManagedFields.includes(field);
+}
+
+// Keys come back from the API as-is; values come back blanked, so the value
+// inputs below render them empty until the user types a replacement. The pair
+// keeps the blanked value in state, so an untouched save preserves the stored one.
+function headerPairsFromStore(): Array<{ key: string; value: string }> {
+	return headersStringToPairs(otelStore.settings.exporterHeaders ?? '');
+}
+
+function headerValueDisplay(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE ? '' : pair.value;
+}
+
+function headerValuePlaceholder(pair: { key: string; value: string }): string {
+	return pair.value === CREDENTIALS_BLANKING_VALUE
+		? i18n.baseText('settings.opentelemetry.exporterHeaders.hiddenValuePlaceholder')
+		: i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder');
 }
 
 // State-first copy: the row tells the admin whether tracing is live right now,
@@ -234,7 +255,7 @@ watch(
 	(newVal) => {
 		const currentString = headersPairsToString(headerPairs.value);
 		if (newVal !== currentString) {
-			headerPairs.value = headersStringToPairs(newVal ?? '');
+			headerPairs.value = headerPairsFromStore();
 		}
 	},
 );
@@ -513,10 +534,8 @@ watch(
 										size="small"
 									>
 										<N8nInput
-											:model-value="pair.value"
-											:placeholder="
-												i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
-											"
+											:model-value="headerValueDisplay(pair)"
+											:placeholder="headerValuePlaceholder(pair)"
 											:disabled="isEnvManaged('exporterHeaders')"
 											data-test-id="otel-header-value"
 											@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"

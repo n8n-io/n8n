@@ -1,7 +1,46 @@
-import type { WorkflowLoopAction } from './workflow-loop-state';
+import { describeClaimCoverage, formatClaimHeadline } from './render-claim';
+import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
 	workItemId?: string;
+	/** Setup panel v2: `workflows(action="setup")` announces instead of opening a card. */
+	setupPanelEnabled?: boolean;
+}
+
+/**
+ * Lead sentence for a completed build. Derived from the claim so the guidance
+ * never tells the model a partially covered run was verified — that sentence
+ * was the strongest license for the false success claims in AIA-31.
+ */
+function formatClaimLead(claim: VerificationClaim | undefined): string {
+	if (claim?.level === 'verified') return 'Workflow verified successfully.';
+
+	// No claim means no verification run recorded a verdict for this build — a
+	// trigger-only workflow, or a verdict reported without verifying. Saying
+	// "verified successfully" here let a model reach that sentence with no run
+	// evidence at all. A live run the model inspected is still valid evidence,
+	// so ask it to name that rather than refusing the claim outright.
+	if (claim === undefined) {
+		return (
+			'Build complete. No automatic verification evidence is recorded for this workflow. ' +
+			'If you are relying on a live run you inspected, say which execution. ' +
+			'Otherwise do NOT call the workflow verified, tested, or working.'
+		);
+	}
+
+	// The claim is the only honest reading of the run, and nothing else tells
+	// the user how strong it is, so these rules carry the whole disclosure.
+	const rules = [
+		'Do NOT call the workflow verified, tested, working, or ready to publish.',
+		'Do NOT offer to publish it.',
+		claim.liveTestRecommended ? 'Offer a live end-to-end test instead.' : '',
+	].filter((rule) => rule !== '');
+
+	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');
+}
+
+function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
+	return claim?.level === 'verified';
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
@@ -22,24 +61,39 @@ export function formatWorkflowLoopGuidance(
 		case 'continue_building':
 			return `BUILD FAILED: ${action.reason}. Fix the workflow source file: ${formatSourceFileInstruction(action.sourceFilePath)}.`;
 		case 'done': {
+			const claimLead = formatClaimLead(action.claim);
 			if (action.setupSkippedByUser) {
 				return (
-					'Workflow verified successfully. The credentials it still needs are ones the user ' +
+					claimLead +
+					' The credentials it still needs are ones the user ' +
 					'skipped earlier in this conversation, so do NOT open the setup card again. Tell them ' +
 					'which parts stay unconfigured and what that means when the workflow runs, and offer ' +
 					'to set them up whenever they want.'
 				);
 			}
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
+				if (options.setupPanelEnabled) {
+					return (
+						'Workflow verified successfully with temporary mock data. ' +
+						`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
+						'it lists the remaining credentials and values in the setup panel next to the chat and returns them to you. ' +
+						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +
+						'Otherwise follow the returned guidance for validation errors, approvals, skipped items, or an existing setup card. ' +
+						'Do not call `credentials(action="setup")` or `apply-workflow-credentials`, and do not tell the user to open the editor or canvas.'
+					);
+				}
 				return (
-					'Workflow verified successfully with temporary mock data. ' +
+					`${claimLead} It still uses temporary mock data. ` +
 					`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" ` +
 					'to open the inline setup card in the AI Assistant panel for credentials, parameters, and triggers. ' +
 					'Do not tell the user to open the editor, use the canvas, or click a Setup button. ' +
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
-			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
+			const closing = isVerifiedClaim(action.claim)
+				? 'Report completion to the user.'
+				: 'Report the outcome to the user.';
+			return `${claimLead} ${closing}${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		}
 		case 'verify':
 			return (

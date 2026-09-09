@@ -46,9 +46,9 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 	});
 
 	describe('getAgentConfig', () => {
-		it('requests the agent config route and unwraps the { data } envelope', async () => {
+		it('requests the agent config route and returns the config from the response', async () => {
 			const config = { instructions: 'Be a helpful assistant.' } as AgentJsonConfig;
-			const fetchMock = stubFetch({ data: config });
+			const fetchMock = stubFetch({ data: { config, configHash: 'config-hash' } });
 			const client = new N8nClient(BASE_URL);
 
 			const result = await client.getAgentConfig('proj-1', 'agent-1');

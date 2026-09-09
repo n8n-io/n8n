@@ -136,6 +136,10 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				};
 			}
 
+			// The claim comes from the persisted run, never from the model: a
+			// `verified` verdict on a partially covered run must not upgrade it.
+			const claim = (await context.workflowTaskService.getBuildOutcome(input.workItemId))
+				?.verification?.claim;
 			const remediation = input.remediation ?? defaultRemediationForVerdict(input);
 			const forcedTerminalVerdict =
 				remediation && !remediation.shouldEdit
@@ -150,6 +154,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				workflowId: input.workflowId,
 				executionId: input.executionId,
 				verdict: forcedTerminalVerdict ?? input.verdict,
+				claim,
 				workflowInspection: input.workflowInspection,
 				failureSignature: forcedTerminalVerdict
 					? (remediation?.reason ?? input.failureSignature)
@@ -179,7 +184,10 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			}
 
 			return {
-				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),
+				guidance: formatWorkflowLoopGuidance(action, {
+					workItemId: input.workItemId,
+					setupPanelEnabled: context.setupPanelEnabled === true,
+				}),
 			};
 		})
 		.build();

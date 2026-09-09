@@ -21,6 +21,9 @@ import {
 	diffAgentConfigParts,
 } from './agent-modification-telemetry.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
+import { knownTaskTimezone } from './scheduling/task-timezone';
 import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -72,6 +75,8 @@ export class AgentTaskService {
 		private readonly scheduledTaskManager: ScheduledTaskManager,
 		private readonly publisher: Publisher,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -165,6 +170,7 @@ export class AgentTaskService {
 			}
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -247,6 +253,7 @@ export class AgentTaskService {
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 			return savedTask;
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -290,6 +297,7 @@ export class AgentTaskService {
 			await em.remove(task);
 			await saveAgentDraftFenced(this.agentRepository, agent, em);
 		});
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, context.pushRef);
 
 		this.modificationTelemetry.record({
 			agent,
@@ -327,6 +335,13 @@ export class AgentTaskService {
 	 * harmless.
 	 */
 	async requestReconcile(agentId: string): Promise<void> {
+		// Durable scheduling is database state. The main that handles the request
+		// writes it directly. There is no cron to register and no peer to broadcast to.
+		if (this.durableJobRegistrar.isEnabled()) {
+			await this.durableJobRegistrar.reconcile(agentId);
+			return;
+		}
+
 		await this.registerEnabledForAgent(agentId);
 		this.broadcastTasksChanged(agentId);
 	}
@@ -338,6 +353,12 @@ export class AgentTaskService {
 	 * Used by the local lifecycle path and the pubsub reconcile handler.
 	 */
 	async registerEnabledForAgent(agentId: string): Promise<void> {
+		// With durable scheduling on, no main can hold in-memory crons. If the
+		// leader registers them next to the durable jobs, every task runs twice
+		// per tick. The guard is here so that it also covers the pubsub reconcile
+		// path, for example a broadcast from a peer on the legacy path.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agent = await this.agentRepository.findOne({
 			where: { id: agentId },
 			relations: { activeVersion: true },
@@ -384,6 +405,10 @@ export class AgentTaskService {
 
 	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
+		// Durable jobs live in the database and survive leader changes. There is
+		// nothing to rebuild on takeover.
+		if (this.durableJobRegistrar.isEnabled()) return;
+
 		const agents = await this.agentRepository.find({
 			where: { activeVersionId: Not(IsNull()) },
 			relations: { activeVersion: true },
@@ -457,7 +482,13 @@ export class AgentTaskService {
 				timezone,
 			},
 			() => {
-				void this.runScheduledTask(agentId, taskId);
+				void this.startScheduledRun(agentId, taskId).catch((error: unknown) => {
+					this.logger.error('[AgentTaskService] Scheduled task lock failed', {
+						taskId,
+						agentId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 			},
 		);
 		if (!registered) return;
@@ -480,34 +511,62 @@ export class AgentTaskService {
 
 	// ── Run ───────────────────────────────────────────────────────────────
 
-	private async runScheduledTask(agentId: string, taskId: string): Promise<void> {
-		const holderId = randomUUID();
-		let lock: AgentTaskRunLockHandle | null = null;
-		let renewInterval: ReturnType<typeof setInterval> | undefined;
-		try {
-			lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
-				holderId,
-				ttlMs: TASK_RUN_LOCK_TTL_MS,
-			});
-			if (!lock) {
-				this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
-					taskId,
-					agentId,
-				});
-				return;
-			}
-
-			renewInterval = this.startTaskRunLockRenewal(lock);
-			await this.runTask(agentId, taskId);
-		} catch (error) {
-			this.logger.error('[AgentTaskService] Scheduled task lock failed', {
+	/**
+	 * Checks that the task is still published and enabled, takes the run lock,
+	 * and starts the task run in the background. Resolves as soon as the lock
+	 * decision is made. Both schedulers enter here: the in-memory cron and the
+	 * durable handler. The handler must report its dispatch decision within the
+	 * lease of the occurrence, so it cannot wait for a run that takes minutes.
+	 *
+	 * A `stale` task drops its in-memory cron here; the durable handler removes
+	 * its own job. A lock-acquisition error propagates to the caller. The
+	 * background continuation logs run errors. It also renews the lock while the
+	 * run lasts, and releases the lock after the run.
+	 */
+	async startScheduledRun(
+		agentId: string,
+		taskId: string,
+	): Promise<'started' | 'skipped-active' | 'stale'> {
+		// Body comes from the PUBLISHED snapshot row, so name/objective/cron
+		// reflect publish time rather than live draft edits.
+		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+		const snapshot = agent?.activeVersionId
+			? await this.taskSnapshotRepository.findByVersionAndTaskId(agent.activeVersionId, taskId)
+			: null;
+		if (!agent?.activeVersionId || !snapshot?.enabled) {
+			this.logger.warn('[AgentTaskService] Task fired but is no longer published and enabled', {
 				taskId,
 				agentId,
-				error: error instanceof Error ? error.message : String(error),
 			});
-		} finally {
-			if (renewInterval) clearInterval(renewInterval);
-			if (lock) {
+			this.deregister(agentId, taskId);
+			return 'stale';
+		}
+
+		const holderId = randomUUID();
+		const lock = await this.taskRunLockRepository.acquire(agentId, taskId, {
+			holderId,
+			ttlMs: TASK_RUN_LOCK_TTL_MS,
+		});
+		if (!lock) {
+			this.logger.info('[AgentTaskService] Skipping task because previous run is still active', {
+				taskId,
+				agentId,
+			});
+			return 'skipped-active';
+		}
+
+		const renewInterval = this.startTaskRunLockRenewal(lock);
+		void (async () => {
+			try {
+				await this.runTask(agent, snapshot);
+			} catch (error) {
+				this.logger.error('[AgentTaskService] Scheduled task run failed', {
+					taskId,
+					agentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				clearInterval(renewInterval);
 				await this.taskRunLockRepository.release(lock).catch((error) => {
 					this.logger.warn('[AgentTaskService] Failed to release task run lock', {
 						taskId,
@@ -516,7 +575,8 @@ export class AgentTaskService {
 					});
 				});
 			}
-		}
+		})();
+		return 'started';
 	}
 
 	private startTaskRunLockRenewal(lock: AgentTaskRunLockHandle): ReturnType<typeof setInterval> {
@@ -541,77 +601,35 @@ export class AgentTaskService {
 		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
-	private async runTask(agentId: string, taskId: string): Promise<void> {
-		let projectId: string | undefined;
+	private async runTask(agent: Agent, snapshot: AgentTaskSnapshot): Promise<void> {
+		const { id: agentId, projectId } = agent;
+		const { taskId } = snapshot;
+		const { message, threadId } = this.buildTaskRunMessage(
+			taskId,
+			snapshot.objective,
+			snapshot.timezone,
+		);
 
-		try {
-			const agent = await this.agentRepository.findOne({
-				where: { id: agentId },
-				relations: { activeVersion: true },
-			});
-			if (!agent) {
-				this.deregister(agentId, taskId);
-				return;
-			}
-			projectId = agent.projectId;
+		this.logger.info('[AgentTaskService] Task fired', {
+			taskId,
+			agentId,
+			projectId,
+			cronExpression: snapshot.cronExpression,
+			timezone: snapshot.timezone,
+		});
 
-			if (!agent.activeVersionId) {
-				this.logger.warn('[AgentTaskService] Task fired for unpublished agent', {
-					taskId,
-					agentId,
-				});
-				this.deregister(agentId, taskId);
-				return;
-			}
-			// Body comes from the PUBLISHED snapshot row, so name/objective/cron
-			// reflect publish time rather than live draft edits.
-			const snapshot = await this.taskSnapshotRepository.findByVersionAndTaskId(
-				agent.activeVersionId,
-				taskId,
-			);
-			if (!snapshot?.enabled) {
-				this.logger.warn('[AgentTaskService] Task fired but has no enabled published snapshot', {
-					taskId,
-					agentId,
-				});
-				this.deregister(agentId, taskId);
-				return;
-			}
-
-			const { message, threadId } = this.buildTaskRunMessage(
-				taskId,
-				snapshot.objective,
-				snapshot.timezone,
-			);
-
-			this.logger.info('[AgentTaskService] Task fired', {
-				taskId,
+		await this.consumeTaskRun(
+			'Task run',
+			{ taskId, agentId, projectId },
+			this.agentExecutionOrchestratorService.executeForTaskPublished({
 				agentId,
 				projectId,
-				cronExpression: snapshot.cronExpression,
-				timezone: snapshot.timezone,
-			});
-
-			await this.consumeTaskRun(
-				'Task run',
-				{ taskId, agentId, projectId },
-				this.agentExecutionOrchestratorService.executeForTaskPublished({
-					agentId: agent.id,
-					projectId: agent.projectId,
-					message,
-					memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
-					taskId,
-					taskVersionId: agent.activeVersionId,
-				}),
-			);
-		} catch (error) {
-			this.logger.error('[AgentTaskService] Task run failed', {
+				message,
+				memory: { threadId, resourceId: taskRunMemoryResourceId(taskId) },
 				taskId,
-				agentId,
-				projectId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+				taskVersionId: snapshot.versionId,
+			}),
+		);
 	}
 
 	/**
@@ -728,22 +746,10 @@ export class AgentTaskService {
 		}
 	}
 
-	/**
-	 * Timezone a task's cron is evaluated in. Null means "instance timezone" —
-	 * the only option before tasks carried their own zone. An unresolvable zone
-	 * falls back to the instance timezone rather than dropping the task, since
-	 * `CronTime` would throw and take the agent's whole reconcile with it.
-	 */
 	private resolveTaskTimezone(taskTimezone: string | null | undefined, taskId: string): string {
-		if (!taskTimezone) return this.globalConfig.generic.timezone;
-		if (!isValidTimeZone(taskTimezone)) {
-			this.logger.warn('[AgentTaskService] Task has unknown timezone, using instance timezone', {
-				taskId,
-				timezone: taskTimezone,
-			});
-			return this.globalConfig.generic.timezone;
-		}
-		return taskTimezone;
+		return (
+			knownTaskTimezone(taskTimezone, taskId, this.logger) ?? this.globalConfig.generic.timezone
+		);
 	}
 
 	private toDto(task: AgentTask): AgentTaskDto {
