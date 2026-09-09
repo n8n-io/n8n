@@ -196,10 +196,16 @@ describe('WorkingCopyUpdater', () => {
 			expect(await updater.readBranchState(exportFolder)).toEqual({});
 		});
 
-		it('rejects malformed JSON in an entity file as a bad request', async () => {
+		it('returns an empty state when the export folder does not exist', async () => {
+			expect(await updater.readBranchState(exportFolder)).toEqual({});
+		});
+
+		it('rejects malformed JSON in an entity file and names the file', async () => {
 			await writeTree(exportFolder, { 'projects/alpha/project.json': '{not-json' });
 
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow('not valid JSON');
+			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+				'"projects/alpha/project.json" on the branch is not valid JSON',
+			);
 		});
 
 		it('rejects an entity file that is missing an id or a name', async () => {
@@ -672,6 +678,31 @@ describe('WorkingCopyUpdater', () => {
 
 			expect(await readExported(`${shared}/workflow.json`)).toBe(workflowFile('w1'));
 			expect(await readExported(`${shared}/w2/workflow.json`)).toBe(workflowFile('w2'));
+		});
+
+		it('refuses a stale target that holds a kept folder', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				// A workflow.json at a container level makes the scanner treat
+				// "projects/alpha/folders" as a workflow target.
+				'projects/alpha/folders/workflow.json': workflowFile('wbad'),
+				'projects/alpha/folders/sales/folder.json': folderFile('f1', 'Sales'),
+			});
+			const staging = makeManifest({ projects: [alpha] });
+			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					selection({ deletedWorkflowIds: ['wbad'] }),
+				),
+			).rejects.toThrow('would delete content the selection keeps');
+
+			expect(await readExported('projects/alpha/folders/sales/folder.json')).toBe(
+				folderFile('f1', 'Sales'),
+			);
 		});
 
 		it('leaves the export in place when moving it aside fails', async () => {

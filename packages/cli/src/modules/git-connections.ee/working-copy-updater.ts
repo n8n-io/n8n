@@ -74,6 +74,10 @@ export class WorkingCopyUpdater {
 	 */
 	async readBranchState(exportFolder: string): Promise<BranchState> {
 		const resolvedBase = await this.resolveContained(exportFolder, '.');
+		// A fresh branch holds no export yet, so a first push has nothing to read.
+		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
+		if (rootInfo === null || !rootInfo.isDirectory()) return {};
+
 		const state: Required<BranchState> = { projects: [], folders: [], workflows: [] };
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -96,7 +100,7 @@ export class WorkingCopyUpdater {
 
 				const relativeFile = path.relative(resolvedBase, fullPath).split(path.sep).join('/');
 				const target = path.posix.dirname(relativeFile);
-				state[kind].push(await this.readEntityFile(fullPath, target));
+				state[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
 			}
 		};
 
@@ -132,13 +136,25 @@ export class WorkingCopyUpdater {
 		}
 	}
 
-	private async readEntityFile(file: string, target: string): Promise<ManifestEntry> {
-		let parsed: unknown;
+	private async readEntityFile(
+		file: string,
+		target: string,
+		relativeFile: string,
+	): Promise<ManifestEntry> {
+		let raw: string;
 		try {
-			parsed = jsonParse(await fs.readFile(file, 'utf-8'));
+			raw = await fs.readFile(file, 'utf-8');
 		} catch {
 			throw new BadRequestError(
-				`"${target}" on the branch is not valid JSON. Remove it and retry.`,
+				`Cannot read "${relativeFile}" on the branch. Remove it and retry.`,
+			);
+		}
+		let parsed: unknown;
+		try {
+			parsed = jsonParse(raw);
+		} catch {
+			throw new BadRequestError(
+				`"${relativeFile}" on the branch is not valid JSON. Remove it and retry.`,
 			);
 		}
 		if (
@@ -148,7 +164,7 @@ export class WorkingCopyUpdater {
 			typeof (parsed as { name?: unknown }).name !== 'string'
 		) {
 			throw new BadRequestError(
-				`"${target}" on the branch is missing an id or a name. Remove it and retry.`,
+				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
 		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
@@ -327,10 +343,13 @@ export class WorkingCopyUpdater {
 			}
 		}
 
+		// A malformed entity file can make the scanner treat a container directory
+		// as a workflow target. Reject a target that is, or holds, a kept project
+		// or folder, so a recursive remove never wipes a legitimate container.
 		const containers = [...(remaining.projects ?? []), ...(remaining.folders ?? [])].map(
 			(entry) => entry.target,
 		);
-		if (containers.includes(target)) {
+		if (containers.some((container) => container === target || isUnder(container, target))) {
 			throw new BadRequestError(
 				`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,
 			);
