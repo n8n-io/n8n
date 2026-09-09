@@ -1,0 +1,79 @@
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_667c164ac76678::t_dc6b312bcd56ba 71
+  s_667c164ac76678::t_997b0eeaa45254 61-62,64-67,73,85,93-144
+  s_667c164ac76678::t_2cb45f852691c3 40-42
+  s_667c164ac76678::t_96c6fb4ea7f735 74
+  s_d4538605bb58de::t_c18afcd1acd7c5 4,57,77-79
+  s_667c164ac76678::t_36895679aa23ef 6
+  s_d4538605bb58de::t_2f281d83591e05 1,16,52-56,58-60,63,68-70,72,75-76,80-84,86-92,145
+packages/workflow/src/interfaces.ts
+  s_d4538605bb58de::t_2f281d83591e05 4181
+packages/cli/src/modules/engine-v2/engine-data-plane-client.ts
+  s_d4538605bb58de::t_7921e6a02d75f2 12-13,111-122
+  s_667c164ac76678::t_bfc7b2d0b79035 110
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_667c164ac76678::t_aa0c0eea1f3fcf 112,114-129,131-137,139,145,147
+  s_d4538605bb58de::t_d4852edd674a54 35,109-111,113,130,138,140-144,146,148-155
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_d4538605bb58de::t_c64ef2d1de89cf 2,57-128
+packages/cli/src/executions/executions.controller.ts
+  s_d4538605bb58de::t_3434298b87e935 15,29,49
+packages/cli/src/executions/execution.service.ts
+  s_d4538605bb58de::t_3434298b87e935 589
+packages/cli/test/integration/executions/execution-list.test.ts
+  s_d4538605bb58de::t_b6b544dbb95de9 8-15,20-44,54-55,74-75,89,95-102,113,133-139,151-152,162-165,217-220,225-227,236-245
+  s_d4538605bb58de::t_890f8e92c73cfa 1-7,16-19,45-53,56-73,76-88,90-94,103-112,114-132,140-150,153-161,166-216,221-224,228-235
+packages/cli/src/services/__tests__/engine-data-plane-proxy.service.test.ts
+  s_d4538605bb58de::t_d324e04f69a594 54,56-65,70-71
+  s_667c164ac76678::t_9801751914e16a 55
+  s_667c164ac76678::t_f538225cfb292e 66-69
+packages/cli/src/executions/__tests__/merge-execution-pages.test.ts
+  s_d4538605bb58de::t_e2336469f93fa7 1-82
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_d4538605bb58de::t_7d69e3d1462114 71-75
+packages/cli/src/executions/execution-list.service.ts
+  s_d4538605bb58de::t_3434298b87e935 1-5,7-54,56-67,69,71-72,74-109,112-123,125,127-128,134-137,140-146,149-152
+  s_d4538605bb58de::t_c18afcd1acd7c5 6,55,68,70,111,124,129-133,139,148
+  s_d4538605bb58de::t_cc8457432f469c 73,126
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_d4538605bb58de::t_b37d4f0d1b0a3d 1-171,190
+  s_d4538605bb58de::t_c18afcd1acd7c5 172-189
+packages/cli/test/integration/executions.controller.test.ts
+  s_d4538605bb58de::t_0e27786042f07e 151-155
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_d4538605bb58de::t_9ca703253377b1 8,18,26,97-99,102-103,105-122,124-132,134
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_d4538605bb58de::t_7921e6a02d75f2 6-8,20,54-56
+packages/cli/src/executions/merge-execution-pages.ts
+  s_d4538605bb58de::t_2f281d83591e05 1-28
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_d4538605bb58de::t_4fdeed6223ac72 4983-4987
+packages/cli/src/modules/engine-v2/__tests__/engine-data-plane-client.test.ts
+  s_d4538605bb58de::t_ab54502787cefc 65,67-81,85-86
+  s_667c164ac76678::t_c1671218854f21 66
+  s_667c164ac76678::t_6c01eb5def1f83 82-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7da009b0b991623c47d19de845f639f32875e65d",
+  "prompts": {},
+  "sessions": {
+    "s_667c164ac76678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a89ab19d-2c3d-40c2-95b1-da7a385e51d0",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_d4538605bb58de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07d32-9dcb-7211-9690-77633250ea37",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

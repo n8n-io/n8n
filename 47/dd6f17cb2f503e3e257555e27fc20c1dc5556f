@@ -1,0 +1,19 @@
+.github/workflows/ci-pull-requests.yml
+  s_8be088cc1af255::t_03dd4078fe7600 125,350,355-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47dd6f17cb2f503e3e257555e27fc20c1dc5556f",
+  "prompts": {},
+  "sessions": {
+    "s_8be088cc1af255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97428d43-1d21-4a8a-b7f0-2fce5c621a88",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
