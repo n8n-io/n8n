@@ -6,7 +6,6 @@ import {
 	onMounted,
 	onBeforeUnmount,
 	useTemplateRef,
-	watch,
 	type DeepReadonly,
 	type VNode,
 } from 'vue';
@@ -38,8 +37,6 @@ const credentialsStore = useCredentialsStore();
 const { showMessage, showError } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
-/** The version the user submitted, so a push can confirm it before the response lands. */
-const submittedVersionId = ref<string | null>(null);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
@@ -102,7 +99,7 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	// After a submit the change check only describes the publish that is already
 	// under way, so "no changes" would be both true and misleading.
-	if (!wfHasAnyChanges.value && submittedVersionId.value === null) {
+	if (!wfHasAnyChanges.value && !publishing.value) {
 		return 'noChanges';
 	}
 
@@ -230,22 +227,6 @@ function onPublishSucceeded() {
 	modalBus.emit('close');
 }
 
-// The publish request is not the only source of truth: with the publication service
-// the backend also pushes the new active version. If the push lands first, the publish
-// is done - stop waiting for a response that may never arrive.
-watch(
-	() => [
-		workflowDocumentStore.value?.activeVersionId,
-		workflowDocumentStore.value?.activeVersion?.versionId,
-	],
-	(activeVersionIds) => {
-		if (!publishing.value || !submittedVersionId.value) return;
-		if (!activeVersionIds.includes(submittedVersionId.value)) return;
-
-		onPublishSucceeded();
-	},
-);
-
 async function handlePublish() {
 	if (isPublishDisabled.value) {
 		return;
@@ -253,7 +234,6 @@ async function handlePublish() {
 
 	const versionId = workflowDocumentStore.value?.versionId ?? '';
 	publishing.value = true;
-	submittedVersionId.value = versionId;
 
 	try {
 		// Activate the workflow
@@ -265,11 +245,6 @@ async function handlePublish() {
 				description: description.value,
 			},
 		);
-
-		// A push already reported the publish as done and closed the modal.
-		if (!publishing.value) {
-			return;
-		}
 
 		if (success) {
 			onPublishSucceeded();

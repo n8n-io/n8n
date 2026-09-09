@@ -262,15 +262,15 @@ describe('WorkflowPublishModal', () => {
 			expect(mockShowError).toHaveBeenCalled();
 		});
 
-		it('closes the modal when a push confirms the publish before the response arrives', async () => {
-			mockPublishWorkflow.mockReset().mockReturnValue(new Promise(() => {}));
+		it('closes the modal and re-enables Cancel when the composable reports success', async () => {
+			// The composable resolves this way whether the response arrived or a
+			// push confirmed the publish first - the modal cannot tell the difference.
+			mockPublishWorkflow.mockReset().mockResolvedValue({ success: true, errorHandled: false });
 
 			const { getByTestId } = renderComponent();
 
 			await userEvent.type(getByTestId('workflow-publish-version-name-input'), 'v1.0.0');
 			await userEvent.click(getByTestId('workflow-publish-button'));
-
-			publishConfirmedByPush('new-version');
 
 			await waitFor(() => {
 				expect(mockModalClosed).toHaveBeenCalled();

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import type { PushMessage } from '@n8n/api-types';
 import { useWorkflowActivate } from './useWorkflowActivate';
 
 // --- hoisted mocks ---
@@ -39,6 +40,19 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 		documentId === 'wf-2@latest' ? otherDocumentStore : mockDocumentStore,
 	),
 	createWorkflowDocumentId: vi.fn((workflowId: string) => `${workflowId}@latest`),
+}));
+
+// Captures the listeners publishWorkflow registers, so tests can dispatch
+// push messages and verify the listeners are removed again.
+const mockPushListeners = vi.hoisted(() => new Set<(message: unknown) => void>());
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn().mockReturnValue({
+		addEventListener: (handler: (message: unknown) => void) => {
+			mockPushListeners.add(handler);
+			return () => mockPushListeners.delete(handler);
+		},
+	}),
 }));
 
 const mockPublishWorkflow = vi.hoisted(() => vi.fn());
@@ -119,6 +133,12 @@ const WORKFLOW_ID = 'wf-1';
 const OTHER_WORKFLOW_ID = 'wf-2';
 const VERSION_ID = 'v-1';
 
+function dispatchPushMessage(message: PushMessage) {
+	for (const handler of mockPushListeners) {
+		handler(message);
+	}
+}
+
 function makePublishedWorkflowResponse() {
 	return {
 		activeVersion: {
@@ -146,6 +166,7 @@ describe('useWorkflowActivate', () => {
 		mockDocumentStore.checksum = undefined;
 		otherDocumentStore.hydrated = false;
 		mockGetWorkflowById.mockReturnValue({ activeVersion: null });
+		mockPushListeners.clear();
 	});
 
 	describe('publishWorkflow()', () => {
@@ -271,6 +292,83 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetActiveState).not.toHaveBeenCalled();
 			expect(mockSetVersionData).not.toHaveBeenCalled();
 			expect(mockSetChecksum).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('publishWorkflow() confirmed by push', () => {
+		it.each(['workflowActivated', 'workflowPartiallyActivated'] as const)(
+			'reports success when a "%s" push confirms the submitted version before the response arrives',
+			async (type) => {
+				mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+				mockPublishWorkflow.mockReturnValueOnce(new Promise(() => {}));
+
+				const { publishWorkflow } = useWorkflowActivate();
+				const resultPromise = publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+				dispatchPushMessage({
+					type,
+					data: {
+						workflowId: WORKFLOW_ID,
+						activeVersionId: VERSION_ID,
+						errorMessage: '',
+						failedNodes: [],
+					},
+				} as PushMessage);
+
+				expect(await resultPromise).toEqual({ success: true });
+				// The push handler owns the store updates on this path; writing
+				// "publishing" here would regress the status the handler already set.
+				expect(mockSetActiveState).not.toHaveBeenCalled();
+				expect(mockSetPublicationStatus).not.toHaveBeenCalled();
+			},
+		);
+
+		it('ignores pushes for another workflow or another version', async () => {
+			let resolveRequest!: (value: unknown) => void;
+			mockPublishWorkflow.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveRequest = resolve;
+				}),
+			);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const resultPromise = publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			dispatchPushMessage({
+				type: 'workflowActivated',
+				data: { workflowId: OTHER_WORKFLOW_ID, activeVersionId: VERSION_ID },
+			});
+			dispatchPushMessage({
+				type: 'workflowActivated',
+				data: { workflowId: WORKFLOW_ID, activeVersionId: 'some-other-version' },
+			});
+
+			// Neither push matched, so only the response settles the publish.
+			resolveRequest(makePublishedWorkflowResponse());
+
+			expect(await resultPromise).toEqual({ success: true });
+			expect(mockSetActiveState).toHaveBeenCalled();
+		});
+
+		it('removes the push listener once the publish settles', async () => {
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			expect(mockPushListeners.size).toBe(0);
+
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockPushListeners.size).toBe(0);
+		});
+
+		it('removes the push listener when the request rejects', async () => {
+			mockPublishWorkflow.mockRejectedValueOnce(new Error('network error'));
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockPushListeners.size).toBe(0);
 		});
 	});
 

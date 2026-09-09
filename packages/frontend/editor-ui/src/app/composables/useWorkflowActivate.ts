@@ -8,12 +8,13 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { getCurrentScope, onScopeDispose, ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useActivationError } from '@/app/composables/useActivationError';
 import type { INode } from 'n8n-workflow';
@@ -30,6 +31,14 @@ export function useWorkflowActivate() {
 
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const pushConnectionStore = usePushConnectionStore();
+	const pendingListeners = new Set<() => void>();
+	if (getCurrentScope()) {
+		onScopeDispose(() => {
+			for (const removeListener of pendingListeners) removeListener();
+			pendingListeners.clear();
+		});
+	}
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
@@ -105,6 +114,7 @@ export function useWorkflowActivate() {
 		}
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		let removeListener: (() => void) | undefined;
 
 		try {
 			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
@@ -115,40 +125,61 @@ export function useWorkflowActivate() {
 				? workflowDocumentStore.checksum
 				: undefined;
 
-			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
-				versionId,
-				name: options?.name,
-				description: options?.description,
-				expectedChecksum,
+			// A retry can publish the same version without changing the document's IDs.
+			const confirmedByPush = new Promise<null>((resolve) => {
+				removeListener = pushConnectionStore.addEventListener((message) => {
+					if (
+						(message.type === 'workflowActivated' ||
+							message.type === 'workflowPartiallyActivated') &&
+						message.data.workflowId === workflowId &&
+						message.data.activeVersionId === versionId
+					) {
+						resolve(null);
+					}
+				});
+				pendingListeners.add(removeListener);
 			});
 
-			if (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum) {
+			// Race the raw request so a late response cannot change confirmed state.
+			const updatedWorkflow = await Promise.race([
+				confirmedByPush,
+				workflowsStore.publishWorkflow(workflowId, {
+					versionId,
+					name: options?.name,
+					description: options?.description,
+					expectedChecksum,
+				}),
+			]);
+
+			if (updatedWorkflow && (!updatedWorkflow.activeVersion || !updatedWorkflow.checksum)) {
 				throw new Error('Failed to publish workflow');
 			}
-			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
-			workflowDocumentStore.setActiveState({
-				activeVersionId: updatedWorkflow.activeVersion.versionId,
-				activeVersion: updatedWorkflow.activeVersion,
-			});
-
-			if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
-				workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
-			}
-
-			if (workflowDocumentStore.hydrated) {
-				workflowDocumentStore.setVersionData({
-					versionId: updatedWorkflow.versionId,
-					name: workflowDocumentStore.versionData?.name ?? null,
-					description: workflowDocumentStore.versionData?.description ?? null,
+			if (updatedWorkflow?.activeVersion) {
+				workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion, true);
+				workflowDocumentStore.setActiveState({
+					activeVersionId: updatedWorkflow.activeVersion.versionId,
+					activeVersion: updatedWorkflow.activeVersion,
 				});
-				if (updatedWorkflow.checksum) {
-					workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+
+				if (useSettingsStore().isWorkflowPublicationServiceEnabled) {
+					workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+				}
+
+				if (workflowDocumentStore.hydrated) {
+					workflowDocumentStore.setVersionData({
+						versionId: updatedWorkflow.versionId,
+						name: workflowDocumentStore.versionData?.name ?? null,
+						description: workflowDocumentStore.versionData?.description ?? null,
+					});
+					if (updatedWorkflow.checksum) {
+						workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+					}
 				}
 			}
 
 			void useExternalHooks().run('workflow.published', {
 				workflowId,
-				versionId: updatedWorkflow.activeVersion.versionId,
+				versionId: updatedWorkflow?.activeVersion?.versionId ?? versionId,
 			});
 
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
@@ -180,6 +211,10 @@ export function useWorkflowActivate() {
 			}
 			return { success: false, errorHandled: true };
 		} finally {
+			if (removeListener) {
+				removeListener();
+				pendingListeners.delete(removeListener);
+			}
 			updatingWorkflowActivation.value = false;
 		}
 	};
