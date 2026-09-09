@@ -7,8 +7,6 @@ import {
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { wholeSeconds } from './whole-seconds';
-
 /** Whether a run is safe to repeat. */
 export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
 
@@ -150,6 +148,11 @@ export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule 
 	if (schedule.kind !== 'interval') return schedule;
 
 	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
+}
+
+/** Rounds to the whole second the scheduler requires, never below one. */
+function wholeSeconds(seconds: number): number {
+	return Math.max(1, Math.round(seconds));
 }
 
 /** Ceiling of an `int` column, which is what both fields are stored in. */
