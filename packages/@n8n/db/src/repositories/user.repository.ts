@@ -91,6 +91,27 @@ export class UserRepository extends Repository<User> {
 		return await super.update(...args);
 	}
 
+	/**
+	 * Change a user's email only if it still equals `oldEmail`. Returns false
+	 * when the email changed concurrently, so the caller can reject the request.
+	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
+	 */
+	async changeEmail(userId: string, oldEmail: string, newEmail: string): Promise<boolean> {
+		return await this.manager.transaction(async (trx) => {
+			const user = await trx.findOne(User, {
+				where: { id: userId },
+				// Serialize concurrent changes on Postgres; SQLite serializes writes.
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			if (!user || user.email !== oldEmail) return false;
+			user.email = newEmail;
+			await trx.save(User, user);
+			return true;
+		});
+	}
+
 	async deleteAllExcept(user: User) {
 		await this.delete({ id: Not(user.id) });
 	}

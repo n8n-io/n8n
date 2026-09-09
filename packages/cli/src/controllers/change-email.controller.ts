@@ -179,7 +179,11 @@ export class ChangeEmailController {
 			{ email: newEmail },
 		]);
 
-		await this.userService.update(userId, { email: newEmail });
+		// Reject the token when the email changed since the token was resolved, so
+		// a concurrent change is not overwritten.
+		const changed = await this.userRepository.changeEmail(userId, oldEmail, newEmail);
+		if (!changed) throw new NotFoundError('');
+
 		const user = await this.userService.findUserWithAuthIdentities(userId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['email'] });
