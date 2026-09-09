@@ -1171,7 +1171,6 @@ describe('executeWebhook credential-status gate', () => {
 			promise: new Promise(() => {}),
 			runId: 'test-run-id',
 		});
-		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 	});
 
 	/**
@@ -1353,7 +1352,6 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			promise: new Promise(() => {}),
 			runId: 'test-run-id',
 		});
-		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 		executionContextService.buildTriggerIdentityCredentials.mockResolvedValue('sealed-context');
 		// `establishExecutionContext` binds the execution id onto the sealed context; with no
 		// execution id yet (or no sealed subject) it hands the context straight back.
@@ -1520,7 +1518,6 @@ describe('executeWebhook getUserById', () => {
 			promise: new Promise(() => {}),
 			runId: 'test-run-id',
 		});
-		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
 		executionContextService.maybeBindExecutionId.mockImplementation(async (context) => context);
 		executionContextService.augmentExecutionContextWithHooks.mockImplementation(
 			async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
@@ -1658,7 +1655,6 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 			promise: postExecute.promise,
 			runId: 'test-run-id',
 		});
-		activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
 
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,

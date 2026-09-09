@@ -4,7 +4,7 @@ import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -164,10 +164,12 @@ export class ActiveExecutions {
 
 		// A previous entry for this id is about to be replaced. Park its postExecutePromise
 		// so the previous run's OWN later finalize resolves the right promise instead of
-		// this resumed run's — a run must never finalize an entry that isn't its own. Park
-		// unconditionally: `workflowExecution` is also absent between `add` and
-		// `attachWorkflowExecution`, and resolving an already-settled promise is a no-op.
-		if (resumingExecution) {
+		// this resumed run's — a run must never finalize an entry that isn't its own.
+		// A run that already settled needs no parking: it finalized once and nothing holds
+		// its `runId` to finalize it again, so parking it would keep the entry forever.
+		// `settled` is the only reliable test — `workflowExecution` is also absent between
+		// `add` and `attachWorkflowExecution`, for a run that has not started yet.
+		if (resumingExecution && !resumingExecution.settled) {
 			this.orphanedPromises.set(resumingExecution.runId, resumingExecution.postExecutePromise);
 		}
 
@@ -189,6 +191,7 @@ export class ActiveExecutions {
 				throw error;
 			})
 			.finally(() => {
+				execution.settled = true;
 				capacityReservation.release();
 				// A resume may have replaced this entry before this run settled (its promise was
 				// parked in `orphanedPromises`). Only touch the map if it still points at THIS

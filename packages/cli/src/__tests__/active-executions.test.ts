@@ -23,6 +23,7 @@ import type { Mock } from 'vitest';
 import { captor, mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { EventService } from '@/events/event.service';
@@ -535,6 +536,31 @@ describe('ActiveExecutions', () => {
 			await expect(oldPromise).resolves.toEqual(waitingRun);
 		});
 
+		test('a run that settled before the resume is not parked for a finalize that never comes', async () => {
+			// The ordinary Wait lifecycle: the run finalizes as it parks at `waiting`, long
+			// before the human resumes it. Its promise is already settled and nothing holds
+			// its `runId` to finalize it a second time, so parking it would keep an entry
+			// (and the `IRun` it resolved with) for the life of the process.
+			// Asserts on the private map because the only symptom is retained memory: a
+			// parked settled promise behaves identically to an unparked one.
+			const executionId = await activeExecutions.add(executionData);
+			const oldRunId = activeExecutions.getRunId(executionId);
+			activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			const waitingRun: IRun = { ...fullRunData, status: 'waiting' };
+			activeExecutions.finalizeExecution(executionId, waitingRun, oldRunId);
+			await new Promise(setImmediate);
+
+			// The entry survives the park, so the resume replaces it.
+			expect(activeExecutions.has(executionId)).toBe(true);
+			await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+
+			const parked = (activeExecutions as unknown as { orphanedPromises: Map<string, unknown> })
+				.orphanedPromises;
+			expect(parked.size).toBe(0);
+		});
+
 		test('cleanup of a replaced run must not remove the resumed run entry (queue mode)', async () => {
 			// In queue mode the main's placeholder never flips to `waiting` (the worker's
 			// setExecutionStatus is a no-op), so the old entry still reads `running` when
@@ -580,7 +606,9 @@ describe('ActiveExecutions', () => {
 
 	describe('getPostExecutePromise', () => {
 		test('Should throw error when trying to create a promise with invalid execution', async () => {
-			await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
+			await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow(
+				ExecutionNotFoundError,
+			);
 		});
 	});
 
@@ -599,7 +627,9 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('throws when the execution does not exist', () => {
-			expect(() => activeExecutions.getPostExecutePromiseWithRunId(FAKE_EXECUTION_ID)).toThrow();
+			expect(() => activeExecutions.getPostExecutePromiseWithRunId(FAKE_EXECUTION_ID)).toThrow(
+				ExecutionNotFoundError,
+			);
 		});
 	});
 

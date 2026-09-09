@@ -497,7 +497,6 @@ export async function updateParentExecutionWithChildResults(
 ): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return true;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -543,6 +542,12 @@ export async function updateParentExecutionWithChildResults(
 		}
 		if (!ownsWait) return false;
 	}
+
+	// Nothing to patch: the child reported no error and its last node produced no output.
+	// This is checked only after the ownership test above, because a child that owns no
+	// wait must be stopped whatever it produced — an empty result is not a licence to
+	// claim a sibling's wait.
+	if (!subworkflowError && !lastExecutedNodeData?.data) return true;
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must

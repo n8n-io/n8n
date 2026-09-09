@@ -159,6 +159,13 @@ export interface IExecutingWorkflowData {
 	 * must not resolve the resumed run's promise) from the resumed run's own finalize.
 	 */
 	runId: string;
+	/**
+	 * Whether this run's `postExecutePromise` has settled. Set once the promise's
+	 * `.finally` runs. A run that parks at `waiting` settles there and keeps its entry,
+	 * so `add` uses this to tell a settled predecessor (nothing to park) from one still
+	 * in flight (whose promise must be parked before the entry is replaced).
+	 */
+	settled?: boolean;
 }
 
 export interface IActiveDirectorySettings {

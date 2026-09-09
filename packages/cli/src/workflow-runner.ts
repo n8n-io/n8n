@@ -174,6 +174,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		executionId: string,
 		error: ExecutionError & { node?: INode },
+		runId: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<void> {
 		const runData = this.failedRunFactory.generateFailedExecutionFromError(
@@ -185,7 +186,7 @@ export class WorkflowRunner {
 		await lifecycleHooks.runHook('workflowExecuteBefore', [undefined, data.executionData]);
 		await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
 		responsePromise?.reject(error);
-		this.activeExecutions.finalizeExecution(executionId);
+		this.activeExecutions.finalizeExecution(executionId, undefined, runId);
 	}
 
 	/**
@@ -262,9 +263,10 @@ export class WorkflowRunner {
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
+		const runId = this.activeExecutions.getRunId(executionId);
 
 		if (establishContextError) {
-			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			await this.failExecution(data, executionId, establishContextError, runId, responsePromise);
 			return executionId;
 		}
 
@@ -273,7 +275,7 @@ export class WorkflowRunner {
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
-			await this.failExecution(data, executionId, error, responsePromise);
+			await this.failExecution(data, executionId, error, runId, responsePromise);
 			return executionId;
 		}
 
@@ -522,7 +524,7 @@ export class WorkflowRunner {
 				);
 		} catch (error) {
 			if (error instanceof WorkflowHasIssuesError) {
-				await this.failExecution(data, executionId, error);
+				await this.failExecution(data, executionId, error, runId);
 				return;
 			}
 

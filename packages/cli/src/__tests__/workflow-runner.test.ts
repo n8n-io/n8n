@@ -514,7 +514,7 @@ describe('run', () => {
 
 			await expect(runner.run(data)).resolves.toBe('1');
 
-			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error, 'test-run-id');
 			expect(processError).not.toHaveBeenCalled();
 		});
 

@@ -705,7 +705,8 @@ describe('WaitTracker', () => {
 				});
 
 				it('should not retry a non-retryable error when resuming the parent', async () => {
-					const { postExecutePromise, subworkflowResults } = setupParentExecutionTest(true);
+					const { parentExecution, postExecutePromise, subworkflowResults } =
+						setupParentExecutionTest(true);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 
 					// child run succeeds; the parent resume fails with a non-retryable error.
@@ -720,6 +721,10 @@ describe('WaitTracker', () => {
 					// `workflowRunner.run` is called once for the sub-workflow and once for the (single) parent attempt
 					// the non-retryable error is not retried, and gets logged
 					expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(logger.error).toHaveBeenCalled();
 				});
 			});
@@ -760,8 +765,11 @@ describe('WaitTracker', () => {
 					await vi.advanceTimersByTimeAsync(1000);
 
 					// The loop polled (includeData: false) and then claimed the parent: child + claim = 2 runs.
-					expect(parentPolls).toBeGreaterThanOrEqual(2);
 					expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+					expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(logger.error).not.toHaveBeenCalled();
 				});
 
@@ -846,7 +854,6 @@ describe('WaitTracker', () => {
 					await vi.advanceTimersByTimeAsync(1000);
 
 					// The failed read is treated as "not parked yet"; the next poll resumes the parent.
-					expect(parentPolls).toBeGreaterThanOrEqual(2);
 					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + parent claim
 					expect(logger.error).not.toHaveBeenCalled();
 				});
@@ -978,7 +985,7 @@ describe('WaitTracker', () => {
 				);
 
 				it('resumes the parent from DB when the child post-execute promise never settles', async () => {
-					// CAT-4359: in queue mode `postExecutePromise` only settles after Bull's
+					// In queue mode `postExecutePromise` only settles after Bull's
 					// `job.finished()`. A lost completion leaves it pending forever even when the
 					// child row is already terminal — recover by loading the run from the DB.
 					const parentExecution: IExecutionResponse = {

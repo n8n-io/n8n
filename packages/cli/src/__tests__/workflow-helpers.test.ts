@@ -1151,6 +1151,30 @@ describe('updateParentExecutionWithChildResults', () => {
 		expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
 	});
 
+	// An empty result means there is nothing to patch, but ownership still decides whether
+	// the caller may claim the parent.
+	it.each<[string, string[], boolean]>([
+		['a child that owns no wait', ['sibling-execution-id'], false],
+		['the owning child', [CHILD.executionId], true],
+	])(
+		'produces no error and no output: does not patch, and reports ownership for %s',
+		async (_, waitingChildExecutionIds, expectedOwnsWait) => {
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				waitingParent({ waitingChildExecutionIds }),
+			);
+
+			const ownsWait = await updateParentExecutionWithChildResults(
+				PARENT_ID,
+				childRun('success', 'Done', {}),
+				CHILD,
+			);
+
+			expect(ownsWait).toBe(expectedOwnsWait);
+			expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		},
+	);
+
 	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
 		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
 		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error), {

@@ -46,8 +46,32 @@ const PARENT_RESUME_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
  */
 const CHILD_RUN_SETTLE_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
 
-/** How often the resume loops re-check the parent / child row in the DB. */
+/** Delay before the resume loops re-check the parent / child row in the DB the first time. */
 const RESUME_POLL_INTERVAL_MS = 1000;
+
+/**
+ * Ceiling for the resume poll delay. Each loop runs for up to an hour and there is one
+ * per waiting child, so a fixed one second tick puts a query per second per wait on the
+ * executions table. Backing off to ten seconds cuts that tenfold. The added resume
+ * latency is not noticeable against the timeouts above.
+ */
+const MAX_RESUME_POLL_INTERVAL_MS = 10 * Time.seconds.toMilliseconds;
+
+/** Spread applied to a capped poll delay, so waits that start together do not query in lockstep. */
+const RESUME_POLL_JITTER = 0.2;
+
+/**
+ * Delay before poll number `attempt` (1-based). Doubles up to
+ * `MAX_RESUME_POLL_INTERVAL_MS`, then jitters by up to `RESUME_POLL_JITTER` either way.
+ * Only the capped delay is jittered: spreading matters for the loops that keep polling
+ * for minutes, and it keeps the early delays exact.
+ */
+function resumePollDelay(attempt: number): number {
+	const backoff = RESUME_POLL_INTERVAL_MS * 2 ** (attempt - 1);
+	if (backoff < MAX_RESUME_POLL_INTERVAL_MS) return backoff;
+	const spread = MAX_RESUME_POLL_INTERVAL_MS * RESUME_POLL_JITTER;
+	return Math.round(MAX_RESUME_POLL_INTERVAL_MS - spread + Math.random() * 2 * spread);
+}
 
 /**
  * Whether a resume parent failure is worth retrying. Only `UserError` and
@@ -243,7 +267,10 @@ export class WaitTracker {
 	 * This runs to completion regardless of multi-main leadership: only the
 	 * process holding the child's `postExecutePromise` can finish the resume, and
 	 * the `expectedStatus: 'waiting'` claim in `startExecution` already prevents
-	 * two processes from resuming the same parent.
+	 * two processes from resuming the same parent. Aborting the loop on stepdown was
+	 * tried and dropped: the demoted process is the only one that can still finish
+	 * this resume, so cancelling it strands the parent that the claim already
+	 * protects, and a nested resume was aborted along with it.
 	 */
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
@@ -267,6 +294,7 @@ export class WaitTracker {
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
 			const deadline = Date.now() + PARENT_RESUME_TIMEOUT_MS;
+			let pollAttempt = 0;
 			for (;;) {
 				// A failed poll read is treated like "parent not parked yet" and retried on
 				// the next tick (bounded by the deadline) — a transient DB error here must
@@ -335,7 +363,7 @@ export class WaitTracker {
 					});
 					return;
 				}
-				await sleep(RESUME_POLL_INTERVAL_MS);
+				await sleep(Math.min(resumePollDelay(++pollAttempt), deadline - Date.now()));
 			}
 		} catch (error) {
 			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
@@ -365,6 +393,7 @@ export class WaitTracker {
 
 		const deadline = Date.now() + CHILD_RUN_SETTLE_TIMEOUT_MS;
 		let lastKnownChildStatus: string | undefined;
+		let pollAttempt = 0;
 
 		// Prefer the in-memory promise (fast path). Race it against poll ticks so a
 		// settled promise is not delayed by the full interval, while a lost Bull
@@ -390,7 +419,7 @@ export class WaitTracker {
 
 			const winner = await Promise.race([
 				settled,
-				sleep(Math.min(RESUME_POLL_INTERVAL_MS, remaining)).then(
+				sleep(Math.min(resumePollDelay(++pollAttempt), remaining)).then(
 					() => ({ kind: 'tick' as const }) as const,
 				),
 			]);
@@ -411,6 +440,9 @@ export class WaitTracker {
 						includeData: true,
 						unflattenData: true,
 					});
+					// Defensive: every write path creates, updates and deletes the row and its
+					// data together, so a terminal row always carries a data object. A row
+					// without one means data loss outside this code, not a race to handle.
 					if (child?.data) {
 						const run = executionResponseToRun(child);
 						// The in-memory promise never settled, so neither did the capacity-releasing
