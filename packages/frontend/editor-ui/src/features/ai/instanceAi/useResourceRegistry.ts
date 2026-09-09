@@ -190,9 +190,8 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		recordProduced(col, { type: 'workflow', id: workflowId, name });
 	}
 
-	// workflows action=get-json returns the workflow document itself, not under
-	// a `workflow` key. Surface it so existing workflows loaded for editing can
-	// be previewed even before a later update result is observed.
+	// Historical workflows action=get-json events return the workflow document itself,
+	// not under a `workflow` key. Keep them available when replaying stored threads.
 	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
 		const entry = entryFromListItem('workflow', result);
 		if (entry) recordProduced(col, entry);

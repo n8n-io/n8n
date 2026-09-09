@@ -1,15 +1,13 @@
 import type {
 	ExecutionStatus,
-	IRun,
 	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
 
 import { isBillableExecution } from '../is-billable-execution';
 
-function run(mode: WorkflowExecuteMode, status: ExecutionStatus): IRun {
-	return mock<IRun>({ mode, status });
+function run(mode: WorkflowExecuteMode, status: ExecutionStatus) {
+	return { mode, status };
 }
 
 describe('isBillableExecution', () => {

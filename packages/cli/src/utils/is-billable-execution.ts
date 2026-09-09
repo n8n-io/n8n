@@ -1,6 +1,5 @@
 import type {
 	ExecutionStatus,
-	IRun,
 	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
@@ -32,7 +31,10 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
-export function isBillableExecution(runData: IRun, source?: WorkflowExecutionSource): boolean {
+export function isBillableExecution(
+	runData: { mode: WorkflowExecuteMode; status: ExecutionStatus },
+	source?: WorkflowExecutionSource,
+): boolean {
 	return (
 		source !== 'instance_ai' &&
 		isModeRootExecution[runData.mode] &&
