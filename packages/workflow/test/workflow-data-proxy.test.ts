@@ -2528,3 +2528,98 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
 	});
 });
+
+describe('WorkflowDataProxy → pairedItem traversal through a diamond', () => {
+	// Start fans out to Left and Right, which join again in Merge. A Start item is
+	// reached under one state from two different parent nodes.
+	const makeWorkflow = (): IWorkflowBase => ({
+		id: '1',
+		name: 'test',
+		nodes: (['Start', 'Left', 'Right', 'Merge', 'End'] as const).map((name, i) => ({
+			id: `uuid-${i}`,
+			name,
+			type: 'n8n-nodes-base.code',
+			typeVersion: 1,
+			position: [i * 100, 0] as [number, number],
+			parameters: {},
+		})),
+		connections: {
+			Start: {
+				main: [
+					[
+						{ node: 'Left', type: NodeConnectionTypes.Main, index: 0 },
+						{ node: 'Right', type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
+			},
+			Left: { main: [[{ node: 'Merge', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Right: { main: [[{ node: 'Merge', type: NodeConnectionTypes.Main, index: 1 }]] },
+			Merge: { main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]] },
+		},
+		active: false,
+		activeVersionId: null,
+		isArchived: false,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+
+	const task = (source: Array<{ previousNode: string } | null>, items: INodeExecutionData[]) => ({
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source,
+		data: { main: [items] },
+	});
+
+	const makeRun = (
+		startItems: INodeExecutionData[],
+		leftItem: number,
+		rightItem: number,
+	): IRun => ({
+		data: createRunExecutionData({
+			resultData: {
+				runData: {
+					Start: [task([null], startItems)],
+					Left: [task([{ previousNode: 'Start' }], [{ json: {}, pairedItem: { item: leftItem } }])],
+					Right: [
+						task([{ previousNode: 'Start' }], [{ json: {}, pairedItem: { item: rightItem } }]),
+					],
+					Merge: [
+						task(
+							[{ previousNode: 'Left' }, { previousNode: 'Right' }],
+							[
+								{
+									json: {},
+									pairedItem: [
+										{ item: 0, input: 0 },
+										{ item: 0, input: 1 },
+									],
+								},
+							],
+						),
+					],
+					End: [task([{ previousNode: 'Merge' }], [{ json: {}, pairedItem: { item: 0 } }])],
+				},
+			},
+		}),
+		mode: 'manual',
+		startedAt: new Date(),
+		status: 'success',
+		storedAt: 'db',
+	});
+
+	test('resolves when both routes reach one ancestor item', () => {
+		const run = makeRun([{ json: { origin: true }, pairedItem: { item: 0 } }], 0, 0);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(proxy.$('Start').item.json).toEqual({ origin: true });
+	});
+
+	test('detects ambiguity when the routes reach different ancestor items', () => {
+		const startItems = [0, 1].map((item) => ({ json: { item }, pairedItem: { item } }));
+		const run = makeRun(startItems, 0, 1);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
+	});
+});
