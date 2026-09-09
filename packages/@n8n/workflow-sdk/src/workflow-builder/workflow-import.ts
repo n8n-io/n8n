@@ -21,6 +21,7 @@ import {
 	type DeclaredConnection,
 	type InputTarget,
 } from '../types/base';
+import { isInputTarget } from './node-builders/node-builder';
 
 /**
  * Result of parsing a workflow JSON
@@ -41,14 +42,6 @@ export interface ParsedWorkflow {
  * Parse workflow JSON into internal graph structures.
  * This is a pure function that doesn't depend on WorkflowBuilderImpl.
  */
-/**
- * Local copy of the `InputTarget` guard. Importing it from the node builder would pull that
- * module — and the plugins it registers — into every consumer of `fromJSON()`.
- */
-function isInputTarget(value: unknown): value is InputTarget {
-	return typeof value === 'object' && value !== null && '_isInputTarget' in value;
-}
-
 export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 	const nodes = new Map<string, GraphNode>();
 	// Map from connection name (how nodes reference each other) to map key
