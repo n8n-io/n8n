@@ -6,7 +6,6 @@ import {
 	N8nDialog,
 	N8nDropdownMenu,
 	N8nIcon,
-	N8nIconButton,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
@@ -14,20 +13,18 @@ import {
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import type { DataTable } from '../dataTable.types';
 
 const props = defineProps<{
 	dataTable: DataTable;
 	view: 'table' | 'kanban';
 	disabled: boolean;
-	save: (metadata: DataTableMetadata) => Promise<void>;
+	save: (metadata: DataTableMetadata) => void;
 }>();
 const i18n = useI18n();
-const toast = useToast();
 const open = ref(false);
 const viewMenuOpen = ref(false);
-const saving = ref(false);
+const groupMenuOpen = ref(false);
 const groupByColumnId = ref('');
 const enumColumns = computed(() =>
 	props.dataTable.columns.filter((column) => column.type === 'enum'),
@@ -45,9 +42,24 @@ const viewItems = computed<Array<DropdownMenuItemProps<'table' | 'kanban'>>>(() 
 	},
 ]);
 const viewLabel = computed(() =>
-	i18n.baseText(
-		props.view === 'kanban' ? 'dataTable.kanban.view' : 'dataTable.kanban.tableView',
+	i18n.baseText(props.view === 'kanban' ? 'dataTable.kanban.view' : 'dataTable.kanban.tableView'),
+);
+const selectedGroupColumn = computed(() =>
+	enumColumns.value.find(
+		(column) => column.id === props.dataTable.metadata?.kanban?.groupByColumnId,
 	),
+);
+const groupItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	enumColumns.value.map((column) => ({
+		id: column.id,
+		label: column.name,
+		checked: column.id === selectedGroupColumn.value?.id,
+	})),
+);
+const groupLabel = computed(() =>
+	i18n.baseText('dataTable.kanban.sortBy', {
+		interpolate: { column: selectedGroupColumn.value?.name ?? '' },
+	}),
 );
 const validGrouping = computed(() =>
 	enumColumns.value.some((column) => column.id === groupByColumnId.value),
@@ -59,28 +71,21 @@ function configure() {
 	open.value = true;
 }
 
-async function persist(metadata: DataTableMetadata) {
-	if (props.disabled || saving.value) return;
-	saving.value = true;
-	try {
-		await props.save(metadata);
-		open.value = false;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('dataTable.kanban.settingsError'));
-	} finally {
-		saving.value = false;
-	}
+function persist(metadata: DataTableMetadata) {
+	if (props.disabled) return;
+	props.save(metadata);
+	open.value = false;
 }
 
-async function switchView(view: 'table' | 'kanban') {
+function switchView(view: 'table' | 'kanban') {
 	if (view === 'table') {
-		await persist({ view });
+		persist({ ...props.dataTable.metadata, view });
 		return;
 	}
 	const settings = props.dataTable.metadata?.kanban;
 	if (!settings || !enumColumns.value.some((column) => column.id === settings.groupByColumnId)) {
 		if (enumColumns.value.length === 1) {
-			await persist({
+			persist({
 				view,
 				kanban: { groupByColumnId: enumColumns.value[0].id },
 			});
@@ -89,9 +94,18 @@ async function switchView(view: 'table' | 'kanban') {
 		configure();
 		return;
 	}
-	await persist({
+	persist({
 		view,
 		kanban: { groupByColumnId: settings.groupByColumnId },
+	});
+}
+
+function switchGrouping(columnId: string) {
+	groupMenuOpen.value = false;
+	if (columnId === selectedGroupColumn.value?.id) return;
+	persist({
+		view: 'kanban',
+		kanban: { groupByColumnId: columnId },
 	});
 }
 </script>
@@ -99,40 +113,42 @@ async function switchView(view: 'table' | 'kanban') {
 <template>
 	<div :class="$style.controls" data-test-id="data-table-view-controls">
 		<N8nDropdownMenu
-			v-model="viewMenuOpen"
-			:items="viewItems"
-			:disabled="disabled || saving"
+			v-if="view === 'kanban'"
+			v-model="groupMenuOpen"
+			:items="groupItems"
+			:disabled="disabled"
 			placement="bottom-start"
-			@select="switchView"
+			@select="switchGrouping"
 		>
 			<template #trigger>
 				<N8nButton
 					variant="outline"
-					data-test-id="data-table-view-selector"
-					:disabled="disabled || saving"
+					data-test-id="data-table-kanban-group-selector"
+					:disabled="disabled"
 				>
-					{{ viewLabel }}
+					{{ groupLabel }}
 					<N8nIcon icon="chevron-down" size="small" />
 				</N8nButton>
 			</template>
-			<template #item-trailing="{ item, ui }">
-				<N8nIconButton
-					v-if="item.id === 'kanban'"
-					:class="ui.class"
-					variant="ghost"
-					icon="settings"
-					size="small"
-					:aria-label="i18n.baseText('dataTable.kanban.settings')"
-					data-test-id="data-table-kanban-settings"
-					@click.stop="configure"
-				/>
+		</N8nDropdownMenu>
+		<N8nDropdownMenu
+			v-model="viewMenuOpen"
+			:items="viewItems"
+			:disabled="disabled"
+			placement="bottom-start"
+			@select="switchView"
+		>
+			<template #trigger>
+				<N8nButton variant="outline" data-test-id="data-table-view-selector" :disabled="disabled">
+					{{ viewLabel }}
+					<N8nIcon icon="chevron-down" size="small" />
+				</N8nButton>
 			</template>
 		</N8nDropdownMenu>
 		<N8nDialog
 			:open="open"
 			:header="i18n.baseText('dataTable.kanban.settings')"
-			:show-close-button="!saving"
-			@update:open="!saving && (open = $event)"
+			@update:open="open = $event"
 		>
 			<form
 				:class="$style.form"
@@ -155,7 +171,7 @@ async function switchView(view: 'table' | 'kanban') {
 						id="kanban-group-column"
 						v-model="groupByColumnId"
 						:teleported="false"
-						:disabled="saving"
+						:disabled="disabled"
 						data-test-id="kanban-group-column"
 					>
 						<N8nOption
@@ -167,10 +183,10 @@ async function switchView(view: 'table' | 'kanban') {
 					</N8nSelect>
 				</N8nInputLabel>
 				<div :class="$style.controls">
-					<N8nButton type="button" variant="ghost" :disabled="saving" @click="open = false">{{
+					<N8nButton type="button" variant="ghost" @click="open = false">{{
 						i18n.baseText('generic.cancel')
 					}}</N8nButton>
-					<N8nButton type="submit" :loading="saving" :disabled="disabled || !validGrouping">{{
+					<N8nButton type="submit" :disabled="disabled || !validGrouping">{{
 						i18n.baseText('generic.save')
 					}}</N8nButton>
 				</div>

@@ -39,6 +39,8 @@ type Lane = {
 };
 const lanes = ref<Lane[]>([]);
 const dragging = ref(false);
+const dragSourceLaneKey = ref<string | null>(null);
+const dragOverLaneKey = ref<string | null>(null);
 const saving = ref(false);
 const updatingColor = ref<string | null>(null);
 const dialog = ref<{ row?: DataTableRow; initialValues?: DataTableRow }>();
@@ -292,11 +294,32 @@ type CardListChangeEvent = {
 	added?: { element: DataTableRow; newIndex: number };
 	moved?: { element: DataTableRow; newIndex: number };
 };
+type CardMoveEvent = {
+	to: HTMLElement;
+};
 
-function onDragStart() {
+function onDragStart(lane: Lane) {
 	dragging.value = true;
+	dragSourceLaneKey.value = lane.key;
+	dragOverLaneKey.value = null;
 	generation++;
 	lanes.value.forEach((lane) => (lane.refreshing = false));
+}
+
+function onDragMove(event: CardMoveEvent) {
+	const targetLaneKey = event.to.dataset.kanbanLaneKey ?? null;
+	dragOverLaneKey.value = targetLaneKey === dragSourceLaneKey.value ? null : targetLaneKey;
+	return true;
+}
+
+function clearDragOver(lane: Lane) {
+	if (dragOverLaneKey.value === lane.key) dragOverLaneKey.value = null;
+}
+
+function onDragEnd() {
+	dragging.value = false;
+	dragSourceLaneKey.value = null;
+	dragOverLaneKey.value = null;
 }
 
 async function onCardListChange(event: CardListChangeEvent, lane: Lane) {
@@ -380,10 +403,14 @@ defineExpose({ fetchRows, addRow });
 			<section
 				v-for="lane in lanes"
 				:key="lane.key"
-				:class="$style.column"
+				:class="[
+					$style.column,
+					{ [$style.columnDragOver]: dragging && dragOverLaneKey === lane.key },
+				]"
 				:style="lane.option ? { borderTopColor: lane.option.color } : undefined"
 				data-test-id="kanban-lane"
 				:aria-label="lane.option?.text ?? i18n.baseText('dataTable.kanban.unassigned')"
+				@mouseleave="clearDragOver(lane)"
 			>
 				<header :class="$style.columnHeader">
 					<N8nText bold>{{
@@ -413,9 +440,13 @@ defineExpose({ fetchRows, addRow });
 						:force-fallback="true"
 						:fallback-on-body="true"
 						ghost-class="data-table-kanban-ghost"
+						drag-class="data-table-kanban-drag"
+						fallback-class="data-table-kanban-drag"
 						:class="$style.cardList"
-						@start="onDragStart"
-						@end="dragging = false"
+						:data-kanban-lane-key="lane.key"
+						@start="onDragStart(lane)"
+						@move="onDragMove"
+						@end="onDragEnd"
 						@change="onCardListChange($event, lane)"
 					>
 						<template #item="{ element }">
@@ -515,6 +546,10 @@ defineExpose({ fetchRows, addRow });
 	background: var(--background--surface);
 	box-shadow: var(--shadow--md);
 }
+.columnDragOver {
+	outline: var(--focus--border-width) solid var(--focus--border-color);
+	outline-offset: calc(var(--focus--border-width) * -1);
+}
 .columnHeader {
 	display: flex;
 	justify-content: space-between;
@@ -588,6 +623,9 @@ defineExpose({ fetchRows, addRow });
 	padding: var(--spacing--xs);
 }
 :global(.data-table-kanban-ghost) {
-	opacity: 0.4;
+	opacity: 0;
+}
+:global(.data-table-kanban-drag) {
+	rotate: 2deg;
 }
 </style>

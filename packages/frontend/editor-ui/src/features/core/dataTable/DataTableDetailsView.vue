@@ -12,7 +12,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
-import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
+import { DEBOUNCE_TIME, LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
@@ -52,6 +52,7 @@ const documentTitle = useDocumentTitle();
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
 const { fetchDependencyCounts, hasDependencies } = useDependencies();
+const { debounce } = useDebounce();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
@@ -82,20 +83,66 @@ const invalidKanban = computed(
 	() => dataTable.value?.metadata?.view === 'kanban' && view.value === 'table',
 );
 
-const saveViewSettings = async (metadata: DataTableMetadata) => {
-	if (settingsReadOnly.value) return;
-	onToggleSave(true);
+type PendingViewSettingsSave = {
+	dataTableId: string;
+	projectId: string;
+	metadata: DataTableMetadata;
+};
+
+let pendingViewSettingsSave: PendingViewSettingsSave | null = null;
+let viewSettingsSaveInFlight = false;
+
+async function persistPendingViewSettings() {
+	if (viewSettingsSaveInFlight || !pendingViewSettingsSave) return;
+	const pendingSave = pendingViewSettingsSave;
+	pendingViewSettingsSave = null;
+	viewSettingsSaveInFlight = true;
 	try {
 		const response = await dataTableStore.updateDataTableMetadata(
-			props.id,
-			props.projectId,
-			metadata,
+			pendingSave.dataTableId,
+			pendingSave.projectId,
+			pendingSave.metadata,
 		);
 		if (!response) throw new Error(i18n.baseText('dataTable.notFound'));
-		dataTable.value = response;
+		if (
+			dataTable.value?.id === pendingSave.dataTableId &&
+			dataTable.value.projectId === pendingSave.projectId
+		) {
+			dataTable.value = {
+				...response,
+				metadata: dataTable.value.metadata,
+			};
+		}
+	} catch (error) {
+		if (
+			!pendingViewSettingsSave &&
+			dataTable.value?.id === pendingSave.dataTableId &&
+			dataTable.value.projectId === pendingSave.projectId
+		) {
+			toast.showError(error, i18n.baseText('dataTable.kanban.settingsError'));
+		}
 	} finally {
-		onToggleSave(false);
+		viewSettingsSaveInFlight = false;
+		if (pendingViewSettingsSave) void persistPendingViewSettings();
 	}
+}
+
+const debouncedPersistViewSettings = debounce(
+	() => {
+		void persistPendingViewSettings();
+	},
+	{ debounceTime: DEBOUNCE_TIME.API.AUTOSAVE, trailing: true },
+);
+
+const saveViewSettings = (metadata: DataTableMetadata) => {
+	if (settingsReadOnly.value || !dataTable.value) return;
+	dataTable.value.metadata = metadata;
+	pendingViewSettingsSave = {
+		dataTableId: dataTable.value.id,
+		projectId: dataTable.value.projectId,
+		metadata,
+	};
+	void debouncedPersistViewSettings();
 };
 
 const addRow = () => {
@@ -109,8 +156,6 @@ const onEnumColumnUpdated = (column: DataTableColumn) => {
 	);
 };
 const searchQuery = ref('');
-
-const { debounce } = useDebounce();
 
 const showErrorAndGoBackToList = async (error: unknown) => {
 	if (!(error instanceof Error)) {
@@ -233,6 +278,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	void debouncedPersistViewSettings.flush();
 	sourceControlEventBus.off('pull', handleSourceControlPull);
 });
 </script>
