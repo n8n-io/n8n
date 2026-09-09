@@ -137,7 +137,6 @@ describe('AddAppModal', () => {
 			name: 'Greeter',
 			namespace: 'greeter',
 			theme: null,
-			authMode: 'public',
 			projectId: 'proj-1',
 			activeVersionId: null,
 			createdAt: '2026-04-01T00:00:00.000Z',

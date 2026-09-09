@@ -21,7 +21,6 @@ function makeApp(overrides: Partial<App> = {}): App {
 		name: 'Greeter',
 		namespace: 'greeter',
 		theme: null,
-		authMode: 'public',
 		projectId: 'proj-1',
 		activeVersionId: 'v-1',
 		createdAt: '2026-04-01T00:00:00.000Z',

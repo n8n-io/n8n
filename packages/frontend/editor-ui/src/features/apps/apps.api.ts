@@ -1,8 +1,13 @@
-import type { DescribedBinding } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-import type { App, AppTheme, Page, UpdateAppInput } from '@/features/apps/apps.types';
+import type {
+	App,
+	AppTheme,
+	DescribedBinding,
+	Page,
+	UpdateAppInput,
+} from '@/features/apps/apps.types';
 
 export const fetchAppsApi = async (context: IRestApiContext, projectId: string) => {
 	return await makeRestApiRequest<App[]>(context, 'GET', `/projects/${projectId}/apps`);
@@ -76,5 +81,18 @@ export const fetchBindingsApi = async (
 		context,
 		'GET',
 		`/projects/${projectId}/apps/${appId}/bindings`,
+	);
+};
+
+export const deleteBindingApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	key: string,
+) => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/apps/${appId}/bindings/${key}`,
 	);
 };

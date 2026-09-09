@@ -1,4 +1,5 @@
-import type { AppAuthMode } from '@n8n/api-types';
+import type { OutputSource } from '@n8n/api-types';
+import type { JSONSchema7 } from 'json-schema';
 
 /**
  * Flat CSS custom-property overrides on top of the shadcn-vue template's default
@@ -16,7 +17,6 @@ export interface App {
 	name: string;
 	namespace: string;
 	theme: AppTheme | null;
-	authMode: AppAuthMode;
 	projectId: string;
 	/** Version served at `/apps/<namespace>/`; null until the first build. */
 	activeVersionId: string | null;
@@ -39,5 +39,16 @@ export interface UpdateAppInput {
 	name?: string;
 	namespace?: string;
 	theme?: AppTheme;
-	authMode?: AppAuthMode;
+}
+
+// mirrors @n8n/api-types; integrator swaps
+export interface DescribedBinding {
+	key: string;
+	kind: 'workflow';
+	workflowId: string;
+	name: string;
+	published: boolean;
+	input: JSONSchema7;
+	output: JSONSchema7;
+	outputSource: OutputSource;
 }

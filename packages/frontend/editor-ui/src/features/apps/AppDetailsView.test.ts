@@ -1,19 +1,18 @@
-import type { DescribedBinding } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
-import type { App } from './apps.types';
+import type { App, DescribedBinding } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
 const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
+const confirm = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
@@ -21,6 +20,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
@@ -49,7 +52,6 @@ const router = createRouter({
 			name: APP_PAGE_DETAILS,
 			component: { template: '<div />' },
 		},
-		{ path: '/workflow/:workflowId', name: VIEWS.WORKFLOW, component: { template: '<div />' } },
 	],
 });
 
@@ -57,7 +59,6 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 	global: {
 		plugins: [router],
 		stubs: {
-			RouterLink: false,
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
 			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
@@ -71,7 +72,6 @@ function makeApp(overrides: Partial<App> = {}): App {
 		name: 'Greeter',
 		namespace: 'greeter',
 		theme: null,
-		authMode: 'public',
 		projectId: 'proj-1',
 		activeVersionId: null,
 		createdAt: '2026-04-01T00:00:00.000Z',
@@ -96,6 +96,8 @@ describe('AppDetailsView', () => {
 		appsStore.bindings = [];
 		appsStore.bindingWarnings = [];
 		appsStore.fetchBindings.mockResolvedValue(undefined);
+		appsStore.deleteBinding.mockResolvedValue(undefined);
+		confirm.mockReset();
 	});
 
 	async function renderApp(app: App, props: Record<string, unknown> = {}) {
@@ -301,7 +303,7 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('lists the connected workflows with a link, publish state, input and output fields', async () => {
+	describe('Connections tab', () => {
 		const bindings: DescribedBinding[] = [
 			{
 				key: 'submit',
@@ -309,12 +311,9 @@ describe('AppDetailsView', () => {
 				workflowId: 'wf-1',
 				name: 'Echo',
 				published: true,
-				input: [{ name: 'message', type: 'string' }, { name: 'count' }],
-				output: [
-					{ name: 'reply', type: 'string', nullable: false, optional: false },
-					{ name: 'total', type: 'number', nullable: true, optional: true },
-				],
-				outputSource: { kind: 'execution', executionId: '42', at: '2026-09-09T10:00:01.000Z' },
+				input: { type: 'object', properties: { message: { type: 'string' } } },
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
+				outputSource: { kind: 'unknown' },
 			},
 			{
 				key: 'notify',
@@ -322,57 +321,63 @@ describe('AppDetailsView', () => {
 				workflowId: 'wf-2',
 				name: 'Notify',
 				published: false,
-				input: 'passthrough',
-				output: 'unknown',
+				input: { type: 'object', additionalProperties: true },
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
 				outputSource: { kind: 'unknown' },
 			},
 		];
-		appsStore.bindings = bindings;
-		appsStore.bindingWarnings = ['Binding \'notify\': workflow "Notify" is not published.'];
-		const { getByRole, getAllByTestId, getByTestId } = await renderApp(makeApp());
 
-		expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
-		await userEvent.click(getByRole('tab', { name: 'Connections' }));
+		it('lists the connected workflows with a link, key and per-binding warning', async () => {
+			appsStore.bindings = bindings;
+			appsStore.bindingWarnings = ['Binding \'notify\': workflow "Notify" is not published.'];
+			const { getByRole, getAllByTestId } = await renderApp(makeApp());
 
-		const rows = getAllByTestId('app-connection');
-		expect(rows).toHaveLength(2);
-		expect(rows[0]).toHaveTextContent('submit');
-		expect(getAllByTestId('app-connection-workflow')[0]).toHaveAttribute('href', '/workflow/wf-1');
-		expect(getAllByTestId('app-connection-workflow')[0]).toHaveTextContent('Echo');
-		expect(getAllByTestId('app-connection-published')[0]).toHaveTextContent('Published');
-		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('message: string');
-		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('count');
-		expect(getAllByTestId('app-connection-output')[0]).toHaveTextContent('reply: string');
-		expect(getAllByTestId('app-connection-output')[0]).toHaveTextContent('total?: number | null');
+			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
-		expect(getAllByTestId('app-connection-published')[1]).toHaveTextContent('Not published');
-		expect(getAllByTestId('app-connection-input')[1]).toHaveTextContent('Accepts any input');
-		expect(getAllByTestId('app-connection-output')[1]).toHaveTextContent('Output not inferred yet');
-		expect(getByTestId('app-connection-warning')).toHaveTextContent('is not published');
-	});
+			const rows = getAllByTestId('app-connection');
+			expect(rows).toHaveLength(2);
+			const links = getAllByTestId('app-connection-workflow');
+			expect(links[0]).toHaveAttribute('href', '/workflow/wf-1');
+			expect(links[0]).toHaveAttribute('target', '_blank');
+			expect(links[0]).toHaveTextContent('Echo');
+			expect(getAllByTestId('app-connection-key')[0]).toHaveTextContent('submit');
+			expect(rows[0].querySelector('[data-test-id="app-connection-warning"]')).toBeNull();
+			expect(rows[1].querySelector('[data-test-id="app-connection-warning"]')).not.toBeNull();
+			expect(getAllByTestId('app-connection-delete')).toHaveLength(2);
+		});
 
-	it('shows the empty state when no workflow is connected', async () => {
-		const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+		it('deletes a connection after confirmation', async () => {
+			appsStore.bindings = bindings;
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const { getByRole, getAllByTestId } = await renderApp(makeApp());
 
-		await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
 
-		expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
-		expect(queryByTestId('app-connection')).not.toBeInTheDocument();
-		expect(queryByTestId('app-connection-warning')).not.toBeInTheDocument();
-	});
+			expect(confirm).toHaveBeenCalledTimes(1);
+			expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'notify');
+		});
 
-	it('saves the auth mode from the Settings tab', async () => {
-		appsStore.updateApp.mockResolvedValue(makeApp({ authMode: 'n8n' }));
-		const { getByRole, getByTestId } = await renderApp(makeApp());
+		it('keeps the connection when the confirmation is cancelled', async () => {
+			appsStore.bindings = bindings;
+			confirm.mockResolvedValue('cancel');
+			const { getByRole, getAllByTestId } = await renderApp(makeApp());
 
-		await userEvent.click(getByRole('tab', { name: 'Settings' }));
-		const combobox = getByTestId('app-auth-mode').querySelector('input[role="combobox"]');
-		if (!combobox) throw new Error('Select input not found');
-		await userEvent.click(combobox);
-		await waitFor(() => expect(screen.getByRole('option', { name: 'n8n login' })).toBeVisible());
-		await userEvent.click(screen.getByRole('option', { name: 'n8n login' }));
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
 
-		expect(appsStore.updateApp).toHaveBeenCalledWith('proj-1', 'app-1', { authMode: 'n8n' });
+			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
+		});
+
+		it('shows the empty state when no workflow is connected', async () => {
+			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
+			expect(queryByTestId('app-connection')).not.toBeInTheDocument();
+		});
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {
