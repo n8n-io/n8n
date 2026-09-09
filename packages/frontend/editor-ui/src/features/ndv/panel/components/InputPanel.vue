@@ -505,6 +505,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						v-else-if="isMappingEnabled || hasRootNodeRun"
 						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
+						compact-actions
 					>
 						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
@@ -524,6 +525,22 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<br />
 							</template>
 						</I18nT>
+						<template #actions>
+							<NodeExecuteButton
+								square
+								hide-label
+								variant="outline"
+								size="small"
+								:node-name="nodeNameToExecute"
+								:label="i18n.baseText('ndv.input.noOutputData.action')"
+								:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
+								tooltip-placement="bottom"
+								telemetry-source="inputs"
+								data-test-id="execute-previous-node-compact"
+								execution-mode="exclusive"
+								@execute="onNodeExecute"
+							/>
+						</template>
 					</NDVEmptyState>
 					<NDVEmptyState v-else :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
 						<template #icon>

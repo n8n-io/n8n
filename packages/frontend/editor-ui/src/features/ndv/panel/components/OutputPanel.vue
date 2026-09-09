@@ -357,6 +357,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
+				compact-actions
 			>
 				<template v-if="isTriggerNode" #icon>
 					<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -421,6 +422,24 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							{{ i18n.baseText('ndv.output.insertTestData') }}
 						</N8nText>
 					</template>
+				</template>
+				<template #actions>
+					<NodeExecuteButton
+						square
+						hide-label
+						variant="outline"
+						size="small"
+						:node-name="activeNode?.name ?? ''"
+						:label="
+							i18n.baseText(
+								isTriggerNode
+									? 'ndv.output.noOutputData.trigger.action'
+									: 'ndv.output.noOutputData.notRun.action',
+							)
+						"
+						telemetry-source="inputs"
+						@execute="emit('execute')"
+					/>
 				</template>
 			</NDVEmptyState>
 		</template>

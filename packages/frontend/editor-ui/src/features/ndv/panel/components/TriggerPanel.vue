@@ -412,7 +412,7 @@ const onNodeExecute = () => {
 					<CopyInput
 						:value="webhookTestUrl"
 						:toast-title="i18n.baseText('ndv.trigger.copiedTestUrl')"
-						class="mb-2xl"
+						:class="['mb-2xl', $style.webhookUrl]"
 						size="medium"
 						:collapse="true"
 						:copy-button-text="i18n.baseText('generic.clickToCopy')"
@@ -532,6 +532,24 @@ const onNodeExecute = () => {
 	align-items: center;
 	text-align: center;
 	margin-bottom: var(--spacing--2xl);
+	width: 100%;
+	min-width: 0;
+}
+
+.webhookUrl {
+	width: 100%;
+	min-width: 0;
+
+	[data-test-id='copy-input'] {
+		direction: rtl;
+		text-align: left;
+		text-overflow: ellipsis;
+
+		> span {
+			direction: ltr;
+			unicode-bidi: isolate;
+		}
+	}
 }
 
 .shake {

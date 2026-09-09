@@ -6,207 +6,180 @@ import type { ResizeData, XYPosition } from '@/Interface';
 import type { MainPanelType } from '@/features/ndv/shared/ndv.types';
 import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '@/features/ndv/shared/ndv.constants';
 
+// CSS grid drives the layout. A manual override pins a side to an exact px track;
+// when the tracks no longer fit, the grid scrolls horizontally instead of cropping content.
+const CENTER_MIN_WIDTH_PX = 280;
+const SIDE_MIN_WIDTH_PX = 96;
+const SIDE_MAX_WIDTH_PX = 420;
+const SIDE_DEFAULT_MAX_PX = 300;
+
 interface UseNdvLayoutOptions {
-	container: MaybeRefOrGetter<HTMLElement | null>;
+	grid: MaybeRefOrGetter<HTMLElement | null>;
 	hasInputPanel: MaybeRefOrGetter<boolean>;
 	paneType: MaybeRefOrGetter<MainPanelType>;
 }
 
-type NdvPanelsSize = {
-	left: number;
-	main: number;
-	right: number;
-};
+type NdvStoredSize = { left: number; main: number; right: number };
+
+const clampSideWidth = (width: number) =>
+	Math.min(Math.max(Math.round(width), SIDE_MIN_WIDTH_PX), SIDE_MAX_WIDTH_PX);
 
 export function useNdvLayout(options: UseNdvLayoutOptions) {
-	const MIN_MAIN_PANEL_WIDTH_PX = 368;
-	const MIN_PANEL_WIDTH_PX = 120;
-	const DEFAULT_INPUTLESS_MAIN_WIDTH_PX = 480;
-	const DEFAULT_WIDE_MAIN_WIDTH_PX = 640;
-	const DEFAULT_REGULAR_MAIN_WIDTH_PX = 420;
+	// px; `null` = automatic grid track.
+	const leftOverride = ref<number | null>(null);
+	const rightOverride = ref<number | null>(null);
 
-	const panelWidthPercentage = ref<NdvPanelsSize>({ left: 40, main: 20, right: 40 });
+	// Snapshot at drag start so pointer moves never read the DOM (no reflow).
+	const dragSnapshot = ref({
+		containerLeft: 0,
+		containerRight: 0,
+		center: CENTER_MIN_WIDTH_PX,
+	});
+
 	const localStorageKey = computed(
 		() => `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_${toValue(options.paneType).toUpperCase()}`,
 	);
 
-	const containerSize = useElementSize(options.container);
+	const gridSize = useElementSize(options.grid);
+	const containerWidth = computed(() => gridSize.width.value);
 
-	const containerWidth = computed(() => containerSize.width.value);
+	const sideTrack = (override: number | null) =>
+		override === null
+			? `minmax(${SIDE_MIN_WIDTH_PX}px, ${SIDE_DEFAULT_MAX_PX}px)`
+			: `${override}px`;
 
-	const percentageToPixels = (percentage: number) => {
-		return (percentage / 100) * containerWidth.value;
-	};
-
-	const pixelsToPercentage = (pixels: number) => {
-		return (pixels / containerWidth.value) * 100;
-	};
-
-	const minMainPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_MAIN_PANEL_WIDTH_PX));
-	const panelWidthPixels = computed(() => ({
-		left: percentageToPixels(panelWidthPercentage.value.left),
-		main: percentageToPixels(panelWidthPercentage.value.main),
-		right: percentageToPixels(panelWidthPercentage.value.right),
-	}));
-	const minPanelWidthPercentage = computed(() => pixelsToPercentage(MIN_PANEL_WIDTH_PX));
-
-	const defaultPanelSize = computed(() => {
-		switch (toValue(options.paneType)) {
-			case 'inputless': {
-				const main = pixelsToPercentage(DEFAULT_INPUTLESS_MAIN_WIDTH_PX);
-				return { left: 0, main, right: 100 - main };
-			}
-			case 'wide': {
-				const main = pixelsToPercentage(DEFAULT_WIDE_MAIN_WIDTH_PX);
-				const panels = (100 - main) / 2;
-				return { left: panels, main, right: panels };
-			}
-			case 'dragless':
-			case 'unknown':
-			case 'regular':
-			default: {
-				const main = pixelsToPercentage(DEFAULT_REGULAR_MAIN_WIDTH_PX);
-				const panels = (100 - main) / 2;
-				return { left: panels, main, right: panels };
-			}
+	const gridTemplateColumns = computed(() => {
+		const center = `minmax(${CENTER_MIN_WIDTH_PX}px, 1fr)`;
+		if (!toValue(options.hasInputPanel)) {
+			return `${center} ${sideTrack(rightOverride.value)}`;
 		}
+		return `${sideTrack(leftOverride.value)} ${center} ${sideTrack(rightOverride.value)}`;
 	});
 
-	const isUsablePanelSize = (size: NdvPanelsSize | null | undefined): size is NdvPanelsSize =>
-		!!size &&
-		Number.isFinite(size.left) &&
-		Number.isFinite(size.main) &&
-		Number.isFinite(size.right);
-
-	const safePanelWidth = ({ left, main, right }: { left: number; main: number; right: number }) => {
+	// Resolved track px — read only at drag start/end, never per move.
+	const resolvedWidths = () => {
+		const el = toValue(options.grid);
+		const columns = el
+			? getComputedStyle(el)
+					.gridTemplateColumns.split(' ')
+					.map((value) => Number.parseFloat(value))
+					.filter((value) => Number.isFinite(value))
+			: [];
 		const hasInput = toValue(options.hasInputPanel);
-		const minLeft = hasInput ? minPanelWidthPercentage.value : 0;
-		const minRight = minPanelWidthPercentage.value;
-		const minMain = minMainPanelWidthPercentage.value;
-
-		const newPanelWidth = {
-			left: Math.max(minLeft, left),
-			main: Math.max(minMain, main),
-			right: Math.max(minRight, right),
+		return {
+			left: hasInput ? (columns[0] ?? 0) : 0,
+			center: (hasInput ? columns[1] : columns[0]) ?? CENTER_MIN_WIDTH_PX,
+			right: (hasInput ? columns[2] : columns[1]) ?? 0,
 		};
+	};
 
-		const total = newPanelWidth.left + newPanelWidth.main + newPanelWidth.right;
-		const sides = newPanelWidth.left + newPanelWidth.right;
-
-		// Panels must always span the container: distribute any difference across the
-		// side panels, otherwise a short total leaves the canvas showing through.
-		if (total !== 100 && sides > 0) {
-			const diff = 100 - total;
-			const leftShare = newPanelWidth.left / sides;
-
-			newPanelWidth.left = Math.max(minLeft, newPanelWidth.left + diff * leftShare);
-			newPanelWidth.right = Math.max(minRight, newPanelWidth.right + diff * (1 - leftShare));
+	const persistOverrides = () => {
+		if (leftOverride.value === null && rightOverride.value === null) {
+			localStorage.removeItem(localStorageKey.value);
+			return;
 		}
+		const total = containerWidth.value;
+		if (!total) return;
 
-		return newPanelWidth;
+		const { left, center, right } = resolvedWidths();
+		const toPercent = (px: number) => (px / total) * 100;
+		const value: NdvStoredSize = {
+			left: toPercent(left),
+			main: toPercent(center),
+			right: toPercent(right),
+		};
+		localStorage.setItem(localStorageKey.value, JSON.stringify(value));
 	};
 
-	const persistPanelSize = () => {
-		// Before the container is measured the sizes are placeholders, not something
-		// the user chose — persisting them would overwrite their actual layout.
-		if (!containerWidth.value || !isUsablePanelSize(panelWidthPercentage.value)) return;
+	const isUsableSize = (value: NdvStoredSize | null): value is NdvStoredSize =>
+		!!value &&
+		Number.isFinite(value.left) &&
+		Number.isFinite(value.main) &&
+		Number.isFinite(value.right);
 
-		localStorage.setItem(localStorageKey.value, JSON.stringify(panelWidthPercentage.value));
-	};
+	// Loaded once per pane type; px overrides then stay fixed (no rescale on resize).
+	const loadedForKey = ref<string | null>(null);
 
-	const loadPanelSize = () => {
-		if (!containerWidth.value) return;
+	const loadOverrides = () => {
+		const total = containerWidth.value;
+		const stored = localStorage.getItem(localStorageKey.value);
+		const parsed = stored ? jsonParse<NdvStoredSize | null>(stored, { fallbackValue: null }) : null;
 
-		const storedPanelSizeString = localStorage.getItem(localStorageKey.value);
-		const defaultSize = defaultPanelSize.value;
-		if (storedPanelSizeString) {
-			const storedPanelSize = jsonParse<NdvPanelsSize>(storedPanelSizeString, {
-				fallbackValue: defaultSize,
-			});
-			panelWidthPercentage.value = safePanelWidth(
-				isUsablePanelSize(storedPanelSize) ? storedPanelSize : defaultSize,
-			);
-		} else {
-			panelWidthPercentage.value = safePanelWidth(defaultSize);
-		}
-	};
-
-	const onResizeEnd = () => {
-		persistPanelSize();
-	};
-
-	const onResize = (event: ResizeData) => {
-		const newMain = Math.max(minMainPanelWidthPercentage.value, pixelsToPercentage(event.width));
-		const initialLeft = panelWidthPercentage.value.left;
-		const initialMain = panelWidthPercentage.value.main;
-		const initialRight = panelWidthPercentage.value.right;
-		const diffMain = newMain - initialMain;
-
-		if (event.direction === 'left') {
-			const potentialLeft = initialLeft - diffMain;
-
-			if (potentialLeft < minPanelWidthPercentage.value) return;
-
-			const newLeft = Math.max(minPanelWidthPercentage.value, potentialLeft);
-			const newRight = initialRight;
-			panelWidthPercentage.value = safePanelWidth({
-				left: newLeft,
-				main: newMain,
-				right: newRight,
-			});
-		} else if (event.direction === 'right') {
-			const potentialRight = initialRight - diffMain;
-
-			if (potentialRight < minPanelWidthPercentage.value) return;
-
-			const newRight = Math.max(minPanelWidthPercentage.value, potentialRight);
-			const newLeft = initialLeft;
-			panelWidthPercentage.value = safePanelWidth({
-				left: newLeft,
-				main: newMain,
-				right: newRight,
-			});
-		}
-	};
-
-	const onDrag = (position: XYPosition) => {
-		const newLeft = Math.max(
-			minPanelWidthPercentage.value,
-			pixelsToPercentage(position[0]) - panelWidthPercentage.value.main / 2,
-		);
-		const newRight = Math.max(
-			minPanelWidthPercentage.value,
-			100 - newLeft - panelWidthPercentage.value.main,
-		);
-
-		if (newLeft + panelWidthPercentage.value.main + newRight > 100) {
+		if (!total || !isUsableSize(parsed)) {
+			leftOverride.value = null;
+			rightOverride.value = null;
 			return;
 		}
 
-		panelWidthPercentage.value.left = newLeft;
-		panelWidthPercentage.value.right = newRight;
+		const hasInput = toValue(options.hasInputPanel);
+		const toPx = (pct: number) => (pct / 100) * total;
+		leftOverride.value = hasInput && parsed.left > 0 ? clampSideWidth(toPx(parsed.left)) : null;
+		rightOverride.value = parsed.right > 0 ? clampSideWidth(toPx(parsed.right)) : null;
 	};
 
-	watch(containerWidth, (newWidth) => {
-		if (!newWidth) return;
+	const maybeLoad = () => {
+		if (!containerWidth.value) return;
+		if (loadedForKey.value === localStorageKey.value) return;
+		loadOverrides();
+		loadedForKey.value = localStorageKey.value;
+	};
 
-		loadPanelSize();
-	});
+	const onResizeStart = () => {
+		const rect = toValue(options.grid)?.getBoundingClientRect();
+		dragSnapshot.value = {
+			containerLeft: rect?.left ?? 0,
+			containerRight: rect?.right ?? 0,
+			center: resolvedWidths().center,
+		};
+	};
 
-	watch(
-		toRef(options.paneType),
-		() => {
-			loadPanelSize();
-		},
-		{ immediate: true },
-	);
+	// Side width = pointer distance from the container edge captured at drag start.
+	const onResize = (event: ResizeData) => {
+		if (event.direction === 'left' && toValue(options.hasInputPanel)) {
+			leftOverride.value = clampSideWidth(event.x - dragSnapshot.value.containerLeft);
+		} else if (event.direction === 'right') {
+			rightOverride.value = clampSideWidth(dragSnapshot.value.containerRight - event.x);
+		}
+	};
+
+	// Drag grip: move Parameters (keep its width), resplit the two sides.
+	const onDrag = (position: XYPosition) => {
+		const total = containerWidth.value;
+		if (!total) return;
+
+		const center = dragSnapshot.value.center;
+		const pointerInContainer = position[0] - dragSnapshot.value.containerLeft;
+		const newLeft = clampSideWidth(pointerInContainer - center / 2);
+		leftOverride.value = newLeft;
+		rightOverride.value = clampSideWidth(total - newLeft - center);
+	};
+
+	const resetSide = (side: 'input' | 'output') => {
+		if (side === 'input') leftOverride.value = null;
+		else rightOverride.value = null;
+		persistOverrides();
+	};
+
+	const resetAll = () => {
+		leftOverride.value = null;
+		rightOverride.value = null;
+		persistOverrides();
+	};
+
+	const onResizeEnd = () => {
+		persistOverrides();
+	};
+
+	watch([toRef(options.paneType), containerWidth], () => maybeLoad(), { immediate: true });
 
 	return {
 		containerWidth,
-		panelWidthPercentage,
-		panelWidthPixels,
+		gridTemplateColumns,
+		onResizeStart,
 		onResize,
 		onDrag,
+		resetSide,
+		resetAll,
 		onResizeEnd,
 	};
 }

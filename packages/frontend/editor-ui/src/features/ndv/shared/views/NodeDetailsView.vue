@@ -106,7 +106,7 @@ const isInputPaneActive = ref(false);
 const isOutputPaneActive = ref(false);
 const isPairedItemHoveringEnabled = ref(true);
 const dialogRef = ref<HTMLDialogElement>();
-const containerRef = useTemplateRef('containerRef');
+const gridRef = useTemplateRef('gridRef');
 const mainPanelRef = useTemplateRef('mainPanelRef');
 
 useCanvasOnlyExternalLinks(dialogRef);
@@ -354,8 +354,22 @@ const currentNodePaneType = computed((): MainPanelType => {
 	return activeNodeType.value?.parameterPane ?? 'regular';
 });
 
-const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
-	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
+const {
+	containerWidth,
+	gridTemplateColumns,
+	onResizeStart,
+	onDrag,
+	onResize,
+	onResizeEnd,
+	resetSide,
+	resetAll,
+} = useNdvLayout({ grid: gridRef, hasInputPanel, paneType: currentNodePaneType });
+
+const onResizeHandleDblClick = (event: MouseEvent) => {
+	const direction = (event.target as HTMLElement | null)?.dataset?.dir?.toLowerCase();
+	if (direction === 'left') resetSide('input');
+	else if (direction === 'right') resetSide('output');
+};
 
 const icon = useNodeIconSource(activeNodeType, activeNode);
 
@@ -430,6 +444,7 @@ const onDragEnd = () => {
 
 const onDragStart = () => {
 	isDragging.value = true;
+	onResizeStart();
 };
 
 const onLinkRunToOutput = () => {
@@ -749,7 +764,6 @@ onBeforeUnmount(() => {
 		>
 			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
 			<div
-				ref="containerRef"
 				:class="{
 					[$style.container]: true,
 					[$style.webhookWaiting]: isExecutionWaitingForWebhook,
@@ -766,12 +780,8 @@ onBeforeUnmount(() => {
 					@close="close"
 					@rename="onRename"
 				/>
-				<main :class="$style.main">
-					<div
-						v-if="hasInputPanel"
-						:class="[$style.column, $style.dataColumn]"
-						:style="{ width: `${panelWidthPercentage.left}%` }"
-					>
+				<main ref="gridRef" :class="$style.grid" :style="{ gridTemplateColumns }">
+					<div v-if="hasInputPanel" :class="[$style.column, $style.dataColumn]">
 						<TriggerPanel
 							v-if="showTriggerPanel"
 							:node-name="activeNode.name"
@@ -810,18 +820,16 @@ onBeforeUnmount(() => {
 					</div>
 
 					<N8nResizeWrapper
-						:width="panelWidthPixels.main"
-						:min-width="260"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
 						:class="{
 							[$style.column]: !isExecutionWaitingForWebhook,
 							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
 						}"
-						:style="{ width: `${panelWidthPercentage.main}%` }"
 						@resize="onResize"
 						@resizestart="onDragStart"
 						@resizeend="onDragEnd"
+						@dblclick="onResizeHandleDblClick"
 					>
 						<div ref="mainPanelRef" :class="$style.main">
 							<PanelDragButton
@@ -830,6 +838,7 @@ onBeforeUnmount(() => {
 								@drag="onDrag"
 								@dragstart="onDragStart"
 								@dragend="onDragEnd"
+								@dblclick="resetAll"
 							/>
 							<NodeSettings
 								v-bind="nodeSettingsProps"
@@ -843,10 +852,7 @@ onBeforeUnmount(() => {
 						</div>
 					</N8nResizeWrapper>
 
-					<div
-						:class="[$style.column, $style.dataColumn]"
-						:style="{ width: `${panelWidthPercentage.right}%` }"
-					>
+					<div :class="[$style.column, $style.dataColumn]">
 						<OutputPanel
 							data-test-id="output-panel"
 							:can-link-runs="canLinkRuns"
@@ -914,11 +920,20 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
+.grid {
+	display: grid;
+	grid-template-columns: minmax(96px, 300px) minmax(280px, 1fr) minmax(96px, 300px);
+	flex-grow: 1;
+	min-height: 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+	padding-top: 18px;
+	margin-top: -18px;
+}
+
 .main {
 	width: 100%;
-	flex-grow: 1;
 	display: flex;
-	align-items: stretch;
 	height: 100%;
 	min-height: 0;
 	position: relative;
@@ -943,11 +958,12 @@ onBeforeUnmount(() => {
 
 .input,
 .output {
-	min-width: 280px;
+	min-width: 0;
 }
 
 .dataColumn {
 	overflow-x: auto;
+	container: ndvPane / inline-size;
 }
 
 .header {

@@ -1,4 +1,4 @@
-import { nextTick, ref, type Ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import { useNdvLayout } from './useNdvLayout';
 import { LOCAL_STORAGE_NDV_PANEL_WIDTH } from '@/features/ndv/shared/ndv.constants';
 import { mock } from 'vitest-mock-extended';
@@ -12,165 +12,200 @@ vi.mock('@vueuse/core', () => ({
 	})),
 }));
 
+const AUTO_SIDE = 'minmax(96px, 300px)';
+const CENTER = 'minmax(280px, 1fr)';
+
 describe('useNdvLayout', () => {
-	let containerRef: HTMLDivElement;
-	let container: Ref<HTMLElement | null>;
+	let grid: Ref<HTMLElement | null>;
 	let hasInputPanel: Ref<boolean>;
 	let paneType: Ref<'regular' | 'inputless' | 'wide'>;
 
 	beforeEach(() => {
-		containerRef = document.createElement('div');
-		container = ref(containerRef);
+		const gridEl = document.createElement('div');
+		// getComputedStyle reads the resolved tracks from here. It is only read at
+		// gesture boundaries (drag start / end), never during a move.
+		gridEl.style.gridTemplateColumns = '300px 400px 300px';
+		// The grid spans x = [0, 1000]; onResize converts the pointer to a side width.
+		gridEl.getBoundingClientRect = () => ({ left: 0, right: 1000, width: 1000 }) as DOMRect;
+		grid = ref(gridEl);
 		hasInputPanel = ref(true);
 		paneType = ref('regular');
 		containerWidth.value = 1000;
-
 		localStorage.clear();
 	});
 
-	it('sets default panel sizes for "regular" layout', () => {
-		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-		expect(panelWidthPercentage.value.main).toBeGreaterThan(0);
-		expect(
-			panelWidthPercentage.value.left +
-				panelWidthPercentage.value.main +
-				panelWidthPercentage.value.right,
-		).toBeCloseTo(100);
+	it('uses the automatic 3-track template with no overrides', () => {
+		const { gridTemplateColumns } = useNdvLayout({ grid, hasInputPanel, paneType });
+		expect(gridTemplateColumns.value).toBe(`${AUTO_SIDE} ${CENTER} ${AUTO_SIDE}`);
 	});
 
-	it('loads and uses stored values from localStorage', () => {
-		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-		localStorage.setItem(key, JSON.stringify({ left: 30, main: 40, right: 30 }));
-
-		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-		expect(panelWidthPercentage.value).toEqual({ left: 30, main: 40, right: 30 });
+	it('drops the input track for inputless layouts', () => {
+		hasInputPanel.value = false;
+		paneType.value = 'inputless';
+		const { gridTemplateColumns } = useNdvLayout({ grid, hasInputPanel, paneType });
+		expect(gridTemplateColumns.value).toBe(`${CENTER} ${AUTO_SIDE}`);
 	});
 
-	it('enforces minimum panel sizes', () => {
-		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-		localStorage.setItem(key, JSON.stringify({ left: 0, main: 5, right: 0 }));
+	it('pins the input side to a fixed pixel width on a left resize', () => {
+		const { gridTemplateColumns, onResizeStart, onResize } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
 
-		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-		expect(panelWidthPercentage.value.left).toBeGreaterThanOrEqual(12);
-		expect(panelWidthPercentage.value.right).toBeGreaterThanOrEqual(12);
-		expect(panelWidthPercentage.value.main).toBeCloseTo(36.8);
+		onResizeStart();
+		onResize(mock({ x: 350, direction: 'left' }));
+
+		expect(gridTemplateColumns.value).toBe(`350px ${CENTER} ${AUTO_SIDE}`);
 	});
 
-	it('updates layout on resize (left)', () => {
-		const { panelWidthPercentage, onResize } = useNdvLayout({ container, hasInputPanel, paneType });
+	it('pins the output side on a right resize', () => {
+		const { gridTemplateColumns, onResizeStart, onResize } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
 
-		onResize(mock({ width: 500, direction: 'left' }));
-		expect(panelWidthPercentage.value.main).toBeGreaterThanOrEqual(50);
+		onResizeStart();
+		// output = containerRight(1000) - x(700) = 300
+		onResize(mock({ x: 700, direction: 'right' }));
+
+		expect(gridTemplateColumns.value).toBe(`${AUTO_SIDE} ${CENTER} 300px`);
 	});
 
-	it('updates layout on resize (right)', () => {
-		const { panelWidthPercentage, onResize } = useNdvLayout({ container, hasInputPanel, paneType });
+	it('caps a dragged side at 420px', () => {
+		const { gridTemplateColumns, onResizeStart, onResize } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
 
-		onResize(mock({ width: 500, direction: 'right' }));
-		expect(panelWidthPercentage.value.main).toBeGreaterThanOrEqual(50);
+		onResizeStart();
+		onResize(mock({ x: 900, direction: 'left' }));
+
+		expect(gridTemplateColumns.value).toBe(`420px ${CENTER} ${AUTO_SIDE}`);
 	});
 
-	it('updates layout on drag', () => {
-		const { panelWidthPercentage, onDrag } = useNdvLayout({ container, hasInputPanel, paneType });
+	it('never shrinks a dragged side below 96px', () => {
+		const { gridTemplateColumns, onResizeStart, onResize } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
 
-		onDrag([300, 0]);
-		expect(panelWidthPercentage.value.left).toBeCloseTo(12);
-		expect(panelWidthPercentage.value.main).toBeCloseTo(42);
-		expect(panelWidthPercentage.value.right).toBeCloseTo(46);
+		onResizeStart();
+		onResize(mock({ x: 40, direction: 'left' }));
+
+		expect(gridTemplateColumns.value).toBe(`96px ${CENTER} ${AUTO_SIDE}`);
 	});
 
-	it('persists layout changes on resize end', () => {
-		const { onResizeEnd } = useNdvLayout({ container, hasInputPanel, paneType });
+	it('shifts both sides on drag while keeping the center width', () => {
+		const { gridTemplateColumns, onResizeStart, onDrag } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
 
-		const spy = vi.spyOn(localStorage.__proto__, 'setItem');
+		// center 400 (from the resolved template snapshot), cursor 450 =>
+		// left = 450 - 200 = 250, right = 1000 - 250 - 400 = 350.
+		onResizeStart();
+		onDrag([450, 0]);
+
+		expect(gridTemplateColumns.value).toBe(`250px ${CENTER} 350px`);
+	});
+
+	it('does not read the DOM during a move (no forced reflow per pointer move)', () => {
+		const { onResizeStart, onResize, onDrag } = useNdvLayout({ grid, hasInputPanel, paneType });
+
+		onResizeStart();
+		const getComputedStyleSpy = vi.spyOn(window, 'getComputedStyle');
+		const rectSpy = vi.spyOn(grid.value as HTMLElement, 'getBoundingClientRect');
+
+		onResize(mock({ x: 300, direction: 'left' }));
+		onResize(mock({ x: 320, direction: 'left' }));
+		onDrag([500, 0]);
+
+		expect(getComputedStyleSpy).not.toHaveBeenCalled();
+		expect(rectSpy).not.toHaveBeenCalled();
+
+		getComputedStyleSpy.mockRestore();
+		rectSpy.mockRestore();
+	});
+
+	it('resets a single side back to automatic', () => {
+		const { gridTemplateColumns, onResizeStart, onResize, resetSide } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
+
+		onResizeStart();
+		onResize(mock({ x: 350, direction: 'left' }));
+		expect(gridTemplateColumns.value).toContain('350px');
+
+		resetSide('input');
+		expect(gridTemplateColumns.value).toBe(`${AUTO_SIDE} ${CENTER} ${AUTO_SIDE}`);
+	});
+
+	it('resets both sides back to automatic', () => {
+		const { gridTemplateColumns, onResizeStart, onDrag, resetAll } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
+
+		onResizeStart();
+		onDrag([450, 0]);
+		resetAll();
+
+		expect(gridTemplateColumns.value).toBe(`${AUTO_SIDE} ${CENTER} ${AUTO_SIDE}`);
+	});
+
+	it('persists the resolved widths as percentages on resize end', () => {
+		const gridEl = grid.value as HTMLElement;
+		// The tracks the browser resolves once the left side is pinned to 350px.
+		gridEl.style.gridTemplateColumns = '350px 350px 300px';
+		const { onResizeStart, onResize, onResizeEnd } = useNdvLayout({
+			grid,
+			hasInputPanel,
+			paneType,
+		});
+		const spy = vi.spyOn(Storage.prototype, 'setItem');
+
+		onResizeStart();
+		onResize(mock({ x: 350, direction: 'left' }));
 		onResizeEnd();
-		expect(spy).toHaveBeenCalledWith(expect.stringContaining('_REGULAR'), expect.any(String));
+
+		expect(spy).toHaveBeenCalledWith(
+			`${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`,
+			JSON.stringify({ left: 35, main: 35, right: 30 }),
+		);
+		spy.mockRestore();
 	});
 
-	it('restores correct proportions after container width changes (zoom simulation)', async () => {
-		const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-		localStorage.setItem(key, JSON.stringify({ left: 29, main: 42, right: 29 }));
+	it('removes the stored value when the layout returns to automatic', () => {
+		localStorage.setItem(
+			`${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`,
+			JSON.stringify({ left: 35, main: 35, right: 30 }),
+		);
+		const spy = vi.spyOn(Storage.prototype, 'removeItem');
 
-		const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
+		const { resetAll } = useNdvLayout({ grid, hasInputPanel, paneType });
+		resetAll();
 
-		// Manually corrupt in-memory state to simulate what the old code did when
-		// zooming in inflated minMainPanelWidthPercentage and clamped main upward.
-		panelWidthPercentage.value = { left: 15, main: 70, right: 15 };
-
-		// Simulate zoom in — should reload from storage and restore correct proportions.
-		containerWidth.value = 600;
-		await nextTick();
-		await nextTick();
-
-		containerWidth.value = 1000;
-		await nextTick();
-		await nextTick();
-
-		expect(panelWidthPercentage.value.left).toBeCloseTo(29);
-		expect(panelWidthPercentage.value.main).toBeCloseTo(42);
-		expect(panelWidthPercentage.value.right).toBeCloseTo(29);
+		expect(spy).toHaveBeenCalledWith(`${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`);
+		spy.mockRestore();
 	});
 
-	describe('when the stored layout cannot be used as-is', () => {
-		const totalOf = ({ left, main, right }: { left: number; main: number; right: number }) =>
-			left + main + right;
+	it('loads stored percentages as pixel overrides (backward compatible with the legacy format)', () => {
+		localStorage.setItem(
+			`${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`,
+			// container is 1000px: 38% -> 380px, 25% -> 250px.
+			JSON.stringify({ left: 38, main: 37, right: 25 }),
+		);
 
-		it('spans the full container when stored values fall below the minimums', () => {
-			containerWidth.value = 1317;
-			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-			localStorage.setItem(key, JSON.stringify({ left: 1, main: 1, right: 1 }));
+		const { gridTemplateColumns } = useNdvLayout({ grid, hasInputPanel, paneType });
 
-			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-
-			// Minimums alone only add up to 46% of the container, leaving the canvas visible behind.
-			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
-			expect(panelWidthPercentage.value.left).toBeGreaterThanOrEqual((120 / 1317) * 100);
-			expect(panelWidthPercentage.value.right).toBeGreaterThanOrEqual((120 / 1317) * 100);
-			expect(panelWidthPercentage.value.main).toBeGreaterThanOrEqual((368 / 1317) * 100);
-		});
-
-		it('falls back to the defaults when the stored value is not usable', () => {
-			containerWidth.value = 1317;
-			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_REGULAR`;
-			localStorage.setItem(key, JSON.stringify({ left: null, main: null, right: null }));
-
-			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-
-			expect(panelWidthPercentage.value.main).toBeCloseTo((420 / 1317) * 100);
-			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
-		});
-
-		it('keeps a usable layout while the container is unmeasured', () => {
-			containerWidth.value = 0;
-
-			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-
-			expect(Object.values(panelWidthPercentage.value).every(Number.isFinite)).toBe(true);
-			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
-		});
-
-		it('does not persist while the container is unmeasured', () => {
-			containerWidth.value = 0;
-			const spy = vi.spyOn(Storage.prototype, 'setItem');
-
-			const { onResizeEnd } = useNdvLayout({ container, hasInputPanel, paneType });
-			onResizeEnd();
-
-			expect(spy).not.toHaveBeenCalled();
-			spy.mockRestore();
-		});
-
-		it('keeps the left panel collapsed for "inputless" layouts', () => {
-			containerWidth.value = 1317;
-			hasInputPanel.value = false;
-			paneType.value = 'inputless';
-			const key = `${LOCAL_STORAGE_NDV_PANEL_WIDTH}_INPUTLESS`;
-			localStorage.setItem(key, JSON.stringify({ left: 0, main: 1, right: 1 }));
-
-			const { panelWidthPercentage } = useNdvLayout({ container, hasInputPanel, paneType });
-
-			expect(panelWidthPercentage.value.left).toBe(0);
-			expect(totalOf(panelWidthPercentage.value)).toBeCloseTo(100);
-		});
+		expect(gridTemplateColumns.value).toBe(`380px ${CENTER} 250px`);
 	});
 });

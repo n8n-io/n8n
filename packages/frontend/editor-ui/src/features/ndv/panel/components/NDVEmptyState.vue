@@ -2,7 +2,12 @@
 import type { IconName } from '@n8n/design-system';
 
 import { N8nIcon } from '@n8n/design-system';
-const { icon } = defineProps<{ title?: string; wide?: boolean; icon?: IconName }>();
+const { icon } = defineProps<{
+	title?: string;
+	wide?: boolean;
+	icon?: IconName;
+	compactActions?: boolean;
+}>();
 
 defineSlots<{
 	icon(): unknown;
@@ -12,7 +17,9 @@ defineSlots<{
 </script>
 
 <template>
-	<article :class="[$style.empty, { [$style.wide]: wide }]">
+	<article
+		:class="[$style.empty, { [$style.wide]: wide, [$style.compactActions]: compactActions }]"
+	>
 		<slot name="icon">
 			<N8nIcon v-if="icon" :icon="icon" size="xlarge" />
 		</slot>
@@ -57,6 +64,20 @@ defineSlots<{
 
 	.wide & {
 		max-width: none;
+	}
+}
+
+.compactActions .actions {
+	display: none;
+}
+
+@container ndvPane (max-width: 180px) {
+	.compactActions .description {
+		display: none;
+	}
+
+	.compactActions .actions {
+		display: block;
 	}
 }
 </style>
