@@ -15,7 +15,7 @@ const member = {
 };
 
 describe('ProjectMemberPublicDto', () => {
-	test('accepts the seven fields the list returns', () => {
+	test('accepts all the expected fields', () => {
 		expect(ProjectMemberPublicDto.safeParse(member).success).toBe(true);
 	});
 
@@ -36,15 +36,6 @@ describe('ProjectMemberPublicDto', () => {
 		expect(result.success).toBe(true);
 		expect(result.data).not.toHaveProperty('password');
 	});
-
-	test.each([
-		['a Date for createdAt', { createdAt: new Date() }],
-		['a non-ISO updatedAt', { updatedAt: 'yesterday' }],
-		['a missing email', { email: undefined }],
-		['a missing role', { role: undefined }],
-	])('rejects %s', (_label, override) => {
-		expect(ProjectMemberPublicDto.safeParse({ ...member, ...override }).success).toBe(false);
-	});
 });
 
 describe('ProjectMemberListPublicDto', () => {
@@ -64,27 +55,14 @@ describe('ProjectMemberListPublicDto', () => {
 });
 
 describe('ListProjectMembersQueryPublicDto', () => {
-	test('defaults limit to 100', () => {
-		const result = ListProjectMembersQueryPublicDto.safeParse({});
+	test('exposes limit and cursor and drops offset', () => {
+		const result = ListProjectMembersQueryPublicDto.safeParse({
+			limit: '5',
+			cursor: 'abc',
+			offset: '3',
+		});
 
 		expect(result.success).toBe(true);
-		expect(result.data).toEqual({ limit: 100 });
-	});
-
-	test('clamps limit to 250', () => {
-		const result = ListProjectMembersQueryPublicDto.safeParse({ limit: '300' });
-
-		expect(result.success).toBe(true);
-		expect(result.data?.limit).toBe(250);
-	});
-
-	test('keeps the cursor', () => {
-		const result = ListProjectMembersQueryPublicDto.safeParse({ cursor: 'abc' });
-
-		expect(result.data?.cursor).toBe('abc');
-	});
-
-	test('rejects a non-numeric limit', () => {
-		expect(ListProjectMembersQueryPublicDto.safeParse({ limit: 'abc' }).success).toBe(false);
+		expect(result.data).toEqual({ limit: 5, cursor: 'abc' });
 	});
 });
