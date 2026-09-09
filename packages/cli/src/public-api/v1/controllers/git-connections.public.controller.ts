@@ -11,6 +11,8 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	PushGitConnectionDto,
 	UpdateGitConnectionDto,
+	gitConnectionIdParamSchema,
+	projectIdParamSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -125,7 +127,7 @@ export class GitConnectionsPublicController {
 	async getGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).findOne(id);
 	}
@@ -142,7 +144,7 @@ export class GitConnectionsPublicController {
 	async updateGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 		@Body input: UpdateGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).update(id, input);
@@ -160,7 +162,7 @@ export class GitConnectionsPublicController {
 	async cloneGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 		@Body input: CloneGitConnectionDto,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).clone(id, input.branchName);
@@ -180,7 +182,7 @@ export class GitConnectionsPublicController {
 	async disconnectGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionPublicDto> {
 		return await (await this.gitConnectionsService()).disconnect(id);
 	}
@@ -197,7 +199,7 @@ export class GitConnectionsPublicController {
 	async deleteGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).delete(id);
 	}
@@ -218,7 +220,7 @@ export class GitConnectionsPublicController {
 	async pushGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 		@Body input: PushGitConnectionDto,
 	): Promise<GitConnectionPushResultDto> {
 		return await (await this.gitConnectionsService()).push(id, req.user, input);
@@ -235,7 +237,7 @@ export class GitConnectionsPublicController {
 	async getGitConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionProjectListPublicDto> {
 		return await (await this.gitConnectionsService()).listProjects(id);
 	}
@@ -257,8 +259,8 @@ export class GitConnectionsPublicController {
 	async addProjectToGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<GitConnectionProjectPublicDto> {
 		return await (await this.gitConnectionsService()).addProject({
 			user: req.user,
@@ -280,8 +282,8 @@ export class GitConnectionsPublicController {
 	async removeProjectFromGitConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
-		@Param('projectId') projectId: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).removeProject({
 			user: req.user,
@@ -308,7 +310,7 @@ export class GitConnectionsPublicController {
 	async pullGitConnectionProjects(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id') id: string,
+		@Param('id', gitConnectionIdParamSchema) id: string,
 	): Promise<GitConnectionPullResultDto> {
 		return await (await this.gitConnectionsService()).pull(id, req.user);
 	}

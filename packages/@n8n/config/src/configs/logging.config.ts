@@ -57,6 +57,7 @@ export const LOG_SCOPES = [
 	'engine-v2',
 	'policy',
 	'activity-log',
+	'instance-reporting',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

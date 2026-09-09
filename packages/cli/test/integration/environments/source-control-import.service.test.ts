@@ -28,6 +28,7 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
@@ -46,6 +47,7 @@ import { SourceControlScopedService } from '@/modules/source-control.ee/source-c
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
@@ -136,10 +138,11 @@ describe('SourceControlImportService', () => {
 			mock(), // redactionEnforcementService
 			mockPolicyEnforcementService,
 			mock(), // dataTableSizeValidator
-			mock(), // activeWorkflowManager
+			Container.get(WorkflowPublishedVersionRepository),
 			mock(), // executionPersistence
 			mock(), // workflowPublishGuard
 			mock(), // workflowMutationHooks
+			Container.get(WorkflowFinderService),
 		);
 	});
 

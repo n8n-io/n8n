@@ -28,7 +28,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 			props: {
 				activeMainTab: 'agent',
 				mainTabOptions: [
-					{ label: 'Agent', value: 'agent' },
+					{ label: 'Build', value: 'agent' },
 					{ label: 'Sessions', value: 'sessions' },
 					{ label: 'Settings', value: 'settings' },
 				],
@@ -127,7 +127,7 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 			props: {
 				activeMainTab: 'settings',
 				mainTabOptions: [
-					{ label: 'Agent', value: 'agent' },
+					{ label: 'Build', value: 'agent' },
 					{ label: 'Sessions', value: 'sessions' },
 					{ label: 'Settings', value: 'settings' },
 				],

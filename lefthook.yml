@@ -1,3 +1,23 @@
+output:
+  - execution_out
+  - failure
+
+post-merge:
+  commands:
+    check-pnpm:
+      run: sh .githooks/check-pnpm.sh
+
+post-rewrite:
+  commands:
+    check-pnpm:
+      run: sh .githooks/check-pnpm.sh
+
+post-checkout:
+  commands:
+    check-pnpm:
+      # $3 is 1 for a branch checkout, 0 for a file checkout — skip the latter
+      run: '[ "{3}" = "0" ] || sh .githooks/check-pnpm.sh'
+
 pre-commit:
   commands:
     biome_check:
