@@ -32,3 +32,9 @@ export const promotionDirectionParamSchema = z
 	.openapi({ param: { description: 'The direction of the promotion: apply or promote.' } });
 export const credentialIdParamSchema = stringIdParamSchema('The ID of the credential.');
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
+export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
+	'The ID of the node type policy document.',
+);
+export const nodeTypePolicyScopeIdParamSchema = stringIdParamSchema(
+	'The ID of the node type policy scope.',
+);
