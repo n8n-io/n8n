@@ -82,7 +82,9 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
 		id: TOGGLE_FULL_WIDTH,
 		label: i18n.baseText('agents.builder.preview.more.fullWidth' as BaseTextKey),
-		icon: { type: 'icon', value: 'maximize-2' },
+		icon: props.isFullWidth
+			? { type: 'icon', value: 'minimize-2' }
+			: { type: 'icon', value: 'maximize-2' },
 		keepOpen: true,
 		checkbox: true,
 		checked: props.isFullWidth,
