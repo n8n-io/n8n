@@ -21,9 +21,14 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	InstanceAiBrowserRecordingRequest,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiBrowserRecordingResponse,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -1367,6 +1372,25 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		this.assertBrowserChannelEnabled();
 		return await this.browserSessionService.createLink(req.user.id);
+	}
+
+	@Post('/browser/recording')
+	@GlobalScope('instanceAi:message')
+	async createBrowserRecordingThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiBrowserRecordingRequest,
+	): Promise<InstanceAiBrowserRecordingResponse> {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		await this.requireModelConfigured();
+		const project = await this.projectService.getPersonalProject(req.user);
+		if (!project) throw new NotFoundError('Personal project not found');
+		return await this.instanceAiService.launchManualBrowserRecording({
+			userId: req.user.id,
+			projectId: project.id,
+			recording: payload.recording,
+		});
 	}
 
 	@Get('/browser/status')

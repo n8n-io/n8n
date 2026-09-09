@@ -2,6 +2,7 @@ interface RecorderState {
 	active: boolean;
 	inputTimers: Map<Element, ReturnType<typeof setTimeout>>;
 	copyContext?: { target: Element; value?: string; timestamp: number };
+	heartbeatTimer?: ReturnType<typeof setInterval>;
 }
 
 declare global {
@@ -10,13 +11,36 @@ declare global {
 	}
 }
 
+function startHeartbeat(state: RecorderState): void {
+	if (window !== window.top || state.heartbeatTimer) return;
+	state.heartbeatTimer = setInterval(() => {
+		void chrome.runtime
+			.sendMessage({ type: 'recordingHeartbeat' })
+			.then((response: unknown) => {
+				if (
+					response &&
+					typeof response === 'object' &&
+					'keepAlive' in response &&
+					response.keepAlive === false &&
+					state.heartbeatTimer
+				) {
+					clearInterval(state.heartbeatTimer);
+					state.heartbeatTimer = undefined;
+				}
+			})
+			.catch(() => {});
+	}, 20_000);
+}
+
 const existing = window.__n8nBrowserRecorder;
 if (existing) {
 	existing.active = true;
+	startHeartbeat(existing);
 } else {
 	const state: RecorderState = { active: true, inputTimers: new Map() };
 	window.__n8nBrowserRecorder = state;
 	const inFlightMessages = new Set<Promise<unknown>>();
+	startHeartbeat(state);
 
 	const normalized = (value: string | null | undefined, limit = 160) => {
 		const result = value?.replace(/\s+/g, ' ').trim().slice(0, limit);

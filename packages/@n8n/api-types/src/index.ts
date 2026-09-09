@@ -104,6 +104,7 @@ export {
 	browserRecordingSchema,
 	browserRecordingScreenshotSchema,
 	browserRecordingTargetSchema,
+	InstanceAiBrowserRecordingRequest,
 	MAX_BROWSER_RECORDING_SCREENSHOT_BASE64_BYTES,
 	MAX_BROWSER_RECORDING_NETWORK_REQUESTS,
 	MAX_BROWSER_RECORDING_SCREENSHOTS,
@@ -117,6 +118,7 @@ export type {
 	BrowserRecordingNetworkRequest,
 	BrowserRecordingScreenshot,
 	BrowserRecordingTarget,
+	InstanceAiBrowserRecordingResponse,
 } from './schemas/browser-recording.schema';
 
 export type {

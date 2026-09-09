@@ -12,6 +12,8 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
+	BrowserRecording,
+	InstanceAiBrowserRecordingResponse,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -206,6 +208,18 @@ export async function stopBrowserRecording(context: IRestApiContext): Promise<{ 
  */
 export async function discardBrowserRecording(context: IRestApiContext): Promise<{ ok: boolean }> {
 	return await makeRestApiRequest(context, 'POST', '/instance-ai/browser/recording/discard');
+}
+
+export async function createThreadFromBrowserRecording(
+	context: IRestApiContext,
+	recording: BrowserRecording,
+): Promise<InstanceAiBrowserRecordingResponse> {
+	return await makeRestApiRequest<InstanceAiBrowserRecordingResponse>(
+		context,
+		'POST',
+		'/instance-ai/browser/recording',
+		{ recording },
+	);
 }
 
 /**
