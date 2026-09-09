@@ -129,8 +129,6 @@ describe('Variables in Public API', () => {
 			);
 		});
 
-		// A limit above the documented maximum is clamped, not rejected. The eov request validator
-		// answered 400 here, and it no longer runs for a decorator-routed request.
 		it('if licensed, should clamp a limit above the maximum instead of rejecting it', async () => {
 			/**
 			 * Arrange

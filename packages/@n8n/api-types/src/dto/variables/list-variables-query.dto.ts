@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-/** Selects global variables only — the sentinel the endpoint has always accepted. */
 export const GLOBAL_PROJECT_ID_FILTER = 'null';
 
 export class ListVariablesQueryDto extends Z.class({

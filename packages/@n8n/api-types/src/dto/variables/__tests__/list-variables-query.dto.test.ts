@@ -14,7 +14,6 @@ describe('ListVariablesQueryDto', () => {
 				parsedResult: { limit: 5 },
 			},
 			{
-				// New behaviour: the request validator used to answer 400 for a limit above 250.
 				name: 'limit above the maximum, now clamped instead of rejected',
 				request: { limit: '1000' },
 				parsedResult: { limit: 250 },
