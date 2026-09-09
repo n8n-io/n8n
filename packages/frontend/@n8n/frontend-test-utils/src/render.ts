@@ -3,9 +3,9 @@ import { i18nInstance } from '@n8n/i18n';
 import type { TestingPinia } from '@pinia/testing';
 import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
 import isPlainObject from 'lodash/isPlainObject';
-import merge from 'lodash/merge';
+import mergeWith from 'lodash/mergeWith';
 import { PiniaVuePlugin, type Pinia } from 'pinia';
-import type { Plugin } from 'vue';
+import { isProxy, isRef, type Plugin } from 'vue';
 
 export type RenderOptions<T> = Omit<TestingLibraryRenderOptions<T>, 'props'> & {
 	pinia?: TestingPinia | Pinia;
@@ -50,11 +50,27 @@ const TelemetryStubPlugin: Plugin = {
 };
 
 /**
+ * True for the values a render option carries as identity rather than as data: a store, any
+ * `reactive()`/`readonly()` object, and any ref.
+ *
+ * `isPlainObject` is not enough on its own. A `reactive()` proxy — which is what `useSomeStore()`
+ * returns — reports `[object Object]` and inherits from `Object.prototype`, so lodash calls it
+ * plain and a deep copy would walk into it. A copy of a store is a different store.
+ */
+function isIdentity(value: unknown): boolean {
+	return isRef(value) || isProxy(value);
+}
+
+/**
  * Copies the plain objects and arrays a deep merge would otherwise write into, and carries
- * everything else over by reference. A pinia, a store or a ref is identity, not data: a copy of it
- * is a different store, so only the containers are copied.
+ * everything else over by reference.
  */
 function copyContainers<T>(value: T): T {
+	// Before the array check: `reactive([])` is an array *and* a proxy, and copying it would hand
+	// the component a different array than the one the test holds.
+	if (isIdentity(value)) {
+		return value;
+	}
 	if (Array.isArray(value)) {
 		return value.map(copyContainers) as T;
 	}
@@ -73,6 +89,23 @@ function copyContainers<T>(value: T): T {
 }
 
 /**
+ * `mergeWith` customizer that keeps a store, a reactive object or a ref out of the deep merge.
+ *
+ * Two directions, both needed. A store arriving in `options` would otherwise be copied the same
+ * way lodash copies any plain object. And a plain object arriving over a store already in the
+ * defaults would otherwise be merged *into* that store, writing into shared state.
+ */
+function keepIdentity(objValue: unknown, srcValue: unknown): unknown {
+	if (isIdentity(srcValue)) {
+		return srcValue;
+	}
+	if (isIdentity(objValue)) {
+		return srcValue === undefined ? objValue : srcValue;
+	}
+	return undefined;
+}
+
+/**
  * Deep-merges a render call's options over the renderer's defaults.
  *
  * The merge runs against a copy, because `merge` writes into its first argument: merging into
@@ -82,7 +115,7 @@ function copyContainers<T>(value: T): T {
  * `pinia` is resolved outside the merge — it is a plugin instance the render installs, so the two
  * candidates replace each other rather than merging.
  *
- * `merge` reads string keys only, so a symbol-keyed entry in `options` does not override the
+ * `mergeWith` reads string keys only, so a symbol-keyed entry in `options` does not override the
  * default of the same key. Pass such an override without `{ merge: true }`, where the plain spread
  * in `renderComponent` handles it.
  */
@@ -93,7 +126,11 @@ function mergeOptions<T>(
 	const { pinia: defaultPinia, ...mergeableDefaults } = defaultOptions;
 	const { pinia, ...mergeableOptions } = options;
 
-	const merged: RenderOptions<T> = merge(copyContainers(mergeableDefaults), mergeableOptions);
+	const merged: RenderOptions<T> = mergeWith(
+		copyContainers(mergeableDefaults),
+		mergeableOptions,
+		keepIdentity,
+	);
 	const resolvedPinia = pinia ?? defaultPinia;
 
 	return resolvedPinia ? { ...merged, pinia: resolvedPinia } : merged;

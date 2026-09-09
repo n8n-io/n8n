@@ -1,7 +1,7 @@
 import { useI18n } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { defineStore } from 'pinia';
-import { defineComponent, inject, type Plugin } from 'vue';
+import { defineComponent, inject, reactive, type Plugin } from 'vue';
 
 import { createComponentRenderer, defineRenderer } from '../render';
 import { mockedStore } from '../store';
@@ -71,6 +71,9 @@ describe('the shared renderer', () => {
 	});
 });
 
+const StoreKey = Symbol('store');
+const STORE_STRING_KEY = 'providedStore';
+
 const Labelled = defineComponent({
 	props: { label: { type: String, default: '' }, hint: { type: String, default: '' } },
 	template: '<span data-test-id="labelled">{{ label }}|{{ hint }}</span>',
@@ -111,6 +114,86 @@ describe('the { merge: true } option', () => {
 		const { getByTestId } = render({ pinia: createTestingPinia() }, { merge: true });
 
 		expect(getByTestId('provided')).toHaveTextContent('7');
+	});
+
+	it('keeps a store provided in the defaults the same store', () => {
+		const pinia = createTestingPinia();
+		const counter = useCounterStore();
+		let seen: unknown;
+		const Probing = defineComponent({
+			setup() {
+				seen = inject(StoreKey);
+				return {};
+			},
+			template: '<span data-test-id="probed" />',
+		});
+		const render = createComponentRenderer(Probing, {
+			pinia,
+			global: { provide: { [StoreKey]: counter } },
+		});
+
+		render({}, { merge: true });
+
+		// A store is a `reactive()` proxy, which lodash calls a plain object. A copy of it holds
+		// the same values but is a different store, so a test that seeds it talks to the wrong one.
+		expect(seen).toBe(counter);
+	});
+
+	// A string key on purpose: `mergeWith` drops a symbol key from `options`, and that documented
+	// limitation would mask what this test is about.
+	it('keeps a store passed in the call options the same store', () => {
+		const pinia = createTestingPinia();
+		const counter = useCounterStore();
+		let seen: unknown;
+		const Probing = defineComponent({
+			setup() {
+				seen = inject(STORE_STRING_KEY);
+				return {};
+			},
+			template: '<span data-test-id="probed" />',
+		});
+		const render = createComponentRenderer(Probing, { pinia });
+
+		render({ global: { provide: { [STORE_STRING_KEY]: counter } } }, { merge: true });
+
+		expect(seen).toBe(counter);
+	});
+
+	it('keeps a reactive array in the defaults the same array', () => {
+		const pinia = createTestingPinia();
+		const items = reactive([{ id: 1 }]);
+		let seen: unknown;
+		const Probing = defineComponent({
+			setup() {
+				seen = inject(StoreKey);
+				return {};
+			},
+			template: '<span data-test-id="probed" />',
+		});
+		const render = createComponentRenderer(Probing, {
+			pinia,
+			global: { provide: { [StoreKey]: items } },
+		});
+
+		render({}, { merge: true });
+
+		// `reactive([])` is an array as well as a proxy, so the identity check has to run first.
+		expect(seen).toBe(items);
+	});
+
+	it('does not merge a call option into a store the defaults provided', () => {
+		const pinia = createTestingPinia();
+		const counter = useCounterStore();
+		const Probing = defineComponent({ template: '<span data-test-id="probed" />' });
+		const render = createComponentRenderer(Probing, {
+			pinia,
+			global: { provide: { [STORE_STRING_KEY]: counter } },
+		});
+
+		render({ global: { provide: { [STORE_STRING_KEY]: { count: 99 } } } }, { merge: true });
+
+		// The override replaces the store. Merging into it would write 99 into shared state.
+		expect(counter.count).toBe(0);
 	});
 
 	it('installs the pinia the defaults carry', () => {
