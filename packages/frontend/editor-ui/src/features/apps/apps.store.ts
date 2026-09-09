@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -7,6 +8,7 @@ import {
 	createAppApi,
 	deleteAppApi,
 	fetchAppsApi,
+	fetchBindingsApi,
 	fetchRoutesApi,
 	getAppApi,
 	updateAppApi,
@@ -19,6 +21,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
+	const bindings = ref<DescribedBinding[]>([]);
+	const bindingWarnings = ref<string[]>([]);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
@@ -55,9 +59,17 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
+	const fetchBindings = async (projectId: string, appId: string) => {
+		const described = await fetchBindingsApi(rootStore.restApiContext, projectId, appId);
+		bindings.value = described.bindings;
+		bindingWarnings.value = described.warnings;
+	};
+
 	return {
 		apps,
 		pages,
+		bindings,
+		bindingWarnings,
 		fetchApps,
 		getApp,
 		createApp,
@@ -65,5 +77,6 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		applyAppTheme,
 		deleteApp,
 		fetchPages,
+		fetchBindings,
 	};
 });

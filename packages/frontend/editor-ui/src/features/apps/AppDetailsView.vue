@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import {
+	N8nBadge,
 	N8nButton,
+	N8nCallout,
+	N8nCard,
 	N8nIconButton,
+	N8nLink,
+	N8nOption,
 	N8nSegmentControl,
+	N8nSelect,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
 	N8nTabs,
+	N8nTag,
 	N8nText,
 	N8nToggle,
 	N8nToggleGroup,
@@ -16,6 +26,7 @@ import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
+import { VIEWS } from '@/app/constants';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
@@ -34,7 +45,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'theme' | 'code';
+type BuildTab = 'pages' | 'connections' | 'theme' | 'settings' | 'code';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
@@ -96,13 +107,20 @@ const modeOptions = computed(() => [
 
 const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
+	{ value: 'connections' as const, label: i18n.baseText('apps.connections') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
+	{ value: 'settings' as const, label: i18n.baseText('apps.builder.settings') },
 	{
 		value: 'code' as const,
 		label: i18n.baseText('apps.builder.code'),
 		disabled: true,
 		tooltip: i18n.baseText('apps.builder.codeComingSoon'),
 	},
+]);
+
+const authModeOptions = computed(() => [
+	{ value: 'public', label: i18n.baseText('apps.details.authMode.public') },
+	{ value: 'n8n', label: i18n.baseText('apps.details.authMode.n8n') },
 ]);
 
 const showErrorAndGoBack = async (error: unknown) => {
@@ -117,6 +135,7 @@ const initialize = async () => {
 		const [result] = await Promise.all([
 			appsStore.getApp(props.projectId, props.appId),
 			appsStore.fetchPages(props.projectId, props.appId),
+			appsStore.fetchBindings(props.projectId, props.appId),
 		]);
 		app.value = result;
 		mode.value = versionId.value ? 'preview' : 'build';
@@ -213,6 +232,16 @@ const onElementSelected = async (element: InspectedElement) => {
 const onThemeApplied = (updated: App) => {
 	app.value = updated;
 	mode.value = 'preview';
+};
+
+// N8nSelect emits untyped values; narrow before it reaches the PATCH body.
+const onAuthModeChange = async (value: unknown) => {
+	if ((value !== 'public' && value !== 'n8n') || value === app.value?.authMode) return;
+	try {
+		app.value = await appsStore.updateApp(props.projectId, props.appId, { authMode: value });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.details.authMode.error'));
+	}
 };
 
 const onOpenInAssistant = async () => {
@@ -421,8 +450,118 @@ watch(versionId, (next, previous) => {
 					</div>
 				</div>
 
+				<div
+					v-else-if="buildTab === 'connections'"
+					:class="$style.container"
+					data-test-id="app-connections"
+				>
+					<div :class="$style.header">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+					</div>
+
+					<N8nCallout
+						v-for="warning in appsStore.bindingWarnings"
+						:key="warning"
+						theme="warning"
+						data-test-id="app-connection-warning"
+					>
+						{{ warning }}
+					</N8nCallout>
+
+					<N8nText
+						v-if="appsStore.bindings.length === 0"
+						color="text-light"
+						data-test-id="app-connections-empty"
+					>
+						{{
+							i18n.baseText(
+								instanceAiAvailable
+									? 'apps.connections.empty'
+									: 'apps.connections.emptyNoAssistant',
+							)
+						}}
+					</N8nText>
+
+					<div :class="$style.pageGrid">
+						<N8nCard
+							v-for="binding in appsStore.bindings"
+							:key="binding.key"
+							data-test-id="app-connection"
+						>
+							<div :class="$style.connectionRow">
+								<N8nText bold data-test-id="app-connection-key">{{ binding.key }}</N8nText>
+								<N8nLink
+									:to="{ name: VIEWS.WORKFLOW, params: { workflowId: binding.workflowId } }"
+									theme="text"
+									size="medium"
+									data-test-id="app-connection-workflow"
+								>
+									{{ binding.name }}
+								</N8nLink>
+								<N8nBadge
+									:theme="binding.published ? 'success' : 'warning'"
+									data-test-id="app-connection-published"
+								>
+									{{
+										i18n.baseText(
+											binding.published ? 'generic.published' : 'apps.connections.unpublished',
+										)
+									}}
+								</N8nBadge>
+							</div>
+							<div :class="$style.connectionRow" data-test-id="app-connection-input">
+								<N8nText color="text-light" size="small">
+									{{ i18n.baseText('apps.connections.input') }}
+								</N8nText>
+								<N8nText v-if="binding.input === 'passthrough'" color="text-light" size="small">
+									{{ i18n.baseText('apps.connections.input.passthrough') }}
+								</N8nText>
+								<template v-else>
+									<N8nTag
+										v-for="field in binding.input"
+										:key="field.name"
+										:text="field.type ? `${field.name}: ${field.type}` : field.name"
+										:clickable="false"
+									/>
+								</template>
+							</div>
+						</N8nCard>
+					</div>
+				</div>
+
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
 					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
+				</div>
+
+				<div
+					v-else-if="buildTab === 'settings'"
+					:class="$style.container"
+					data-test-id="app-settings"
+				>
+					<N8nSettingsSection :title="i18n.baseText('apps.details.access.title')">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow
+								:title="i18n.baseText('apps.details.authMode.label')"
+								:description="i18n.baseText('apps.details.authMode.description')"
+							>
+								<template #action>
+									<N8nSelect
+										:model-value="app.authMode"
+										size="small"
+										data-test-id="app-auth-mode"
+										@update:model-value="onAuthModeChange"
+									>
+										<N8nOption
+											v-for="option in authModeOptions"
+											:key="option.value"
+											:value="option.value"
+											:label="option.label"
+										/>
+									</N8nSelect>
+								</template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
 				</div>
 			</div>
 		</div>
@@ -534,5 +673,12 @@ watch(versionId, (next, previous) => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.connectionRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

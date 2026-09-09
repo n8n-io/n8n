@@ -9,11 +9,15 @@ export interface AppTheme {
 	vars: Record<string, string>;
 }
 
+/** Mirrors `appAuthModeSchema` in @n8n/api-types until that export lands. */
+export type AppAuthMode = 'public' | 'n8n';
+
 export interface App {
 	id: string;
 	name: string;
 	namespace: string;
 	theme: AppTheme | null;
+	authMode: AppAuthMode;
 	projectId: string;
 	/** Version served at `/apps/<namespace>/`; null until the first build. */
 	activeVersionId: string | null;
@@ -36,4 +40,5 @@ export interface UpdateAppInput {
 	name?: string;
 	namespace?: string;
 	theme?: AppTheme;
+	authMode?: AppAuthMode;
 }

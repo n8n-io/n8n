@@ -1,8 +1,11 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
@@ -46,6 +49,7 @@ const router = createRouter({
 			name: APP_PAGE_DETAILS,
 			component: { template: '<div />' },
 		},
+		{ path: '/workflow/:workflowId', name: VIEWS.WORKFLOW, component: { template: '<div />' } },
 	],
 });
 
@@ -53,6 +57,7 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 	global: {
 		plugins: [router],
 		stubs: {
+			RouterLink: false,
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
 			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
@@ -66,6 +71,7 @@ function makeApp(overrides: Partial<App> = {}): App {
 		name: 'Greeter',
 		namespace: 'greeter',
 		theme: null,
+		authMode: 'public',
 		projectId: 'proj-1',
 		activeVersionId: null,
 		createdAt: '2026-04-01T00:00:00.000Z',
@@ -87,6 +93,9 @@ describe('AppDetailsView', () => {
 		appsStore = mockedStore(useAppsStore);
 		appsStore.pages = [];
 		appsStore.fetchPages.mockResolvedValue(undefined);
+		appsStore.bindings = [];
+		appsStore.bindingWarnings = [];
+		appsStore.fetchBindings.mockResolvedValue(undefined);
 	});
 
 	async function renderApp(app: App, props: Record<string, unknown> = {}) {
@@ -290,6 +299,70 @@ describe('AppDetailsView', () => {
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
 			initialDraft: 'Update the page at "/clients/:id" in this app.',
 		});
+	});
+
+	it('lists the connected workflows with a link, publish state and input fields', async () => {
+		const bindings: DescribedBinding[] = [
+			{
+				key: 'submit',
+				kind: 'workflow',
+				workflowId: 'wf-1',
+				name: 'Echo',
+				published: true,
+				input: [{ name: 'message', type: 'string' }, { name: 'count' }],
+			},
+			{
+				key: 'notify',
+				kind: 'workflow',
+				workflowId: 'wf-2',
+				name: 'Notify',
+				published: false,
+				input: 'passthrough',
+			},
+		];
+		appsStore.bindings = bindings;
+		appsStore.bindingWarnings = ['Binding \'notify\': workflow "Notify" is not published.'];
+		const { getByRole, getAllByTestId, getByTestId } = await renderApp(makeApp());
+
+		expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
+		await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+		const rows = getAllByTestId('app-connection');
+		expect(rows).toHaveLength(2);
+		expect(rows[0]).toHaveTextContent('submit');
+		expect(getAllByTestId('app-connection-workflow')[0]).toHaveAttribute('href', '/workflow/wf-1');
+		expect(getAllByTestId('app-connection-workflow')[0]).toHaveTextContent('Echo');
+		expect(getAllByTestId('app-connection-published')[0]).toHaveTextContent('Published');
+		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('message: string');
+		expect(getAllByTestId('app-connection-input')[0]).toHaveTextContent('count');
+
+		expect(getAllByTestId('app-connection-published')[1]).toHaveTextContent('Not published');
+		expect(getAllByTestId('app-connection-input')[1]).toHaveTextContent('Accepts any input');
+		expect(getByTestId('app-connection-warning')).toHaveTextContent('is not published');
+	});
+
+	it('shows the empty state when no workflow is connected', async () => {
+		const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+		expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
+		expect(queryByTestId('app-connection')).not.toBeInTheDocument();
+		expect(queryByTestId('app-connection-warning')).not.toBeInTheDocument();
+	});
+
+	it('saves the auth mode from the Settings tab', async () => {
+		appsStore.updateApp.mockResolvedValue(makeApp({ authMode: 'n8n' }));
+		const { getByRole, getByTestId } = await renderApp(makeApp());
+
+		await userEvent.click(getByRole('tab', { name: 'Settings' }));
+		const combobox = getByTestId('app-auth-mode').querySelector('input[role="combobox"]');
+		if (!combobox) throw new Error('Select input not found');
+		await userEvent.click(combobox);
+		await waitFor(() => expect(screen.getByRole('option', { name: 'n8n login' })).toBeVisible());
+		await userEvent.click(screen.getByRole('option', { name: 'n8n login' }));
+
+		expect(appsStore.updateApp).toHaveBeenCalledWith('proj-1', 'app-1', { authMode: 'n8n' });
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {

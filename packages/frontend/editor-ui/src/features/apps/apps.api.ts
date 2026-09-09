@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -63,5 +64,17 @@ export const fetchRoutesApi = async (
 		context,
 		'GET',
 		`/projects/${projectId}/apps/${appId}/routes`,
+	);
+};
+
+export const fetchBindingsApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+) => {
+	return await makeRestApiRequest<{ bindings: DescribedBinding[]; warnings: string[] }>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/bindings`,
 	);
 };
