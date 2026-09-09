@@ -372,8 +372,10 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		// Declaring an error route implies the error output port exists.
-		this.config.onError ??= 'continueErrorOutput';
+		// Declaring an error route implies the error output port exists. The other two
+		// values expose no error pin, so keeping one would serialize this route as a
+		// connection from an output the node does not have — the route wins.
+		this.config.onError = 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,

@@ -840,7 +840,11 @@ describe('Workflow Builder', () => {
 			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
 		});
 
-		it('does not override an explicit onError mode set in config', () => {
+		// The route is the more specific instruction, so it wins over an onError mode that
+		// exposes no error pin. Keeping the mode emitted a connection from an output the node
+		// does not have: the handler never ran, and the `error_routes_consistent` check counts
+		// that as a broken workflow.
+		it('opens the error output port over an explicit onError mode that has none', () => {
 			const httpNode = node({
 				type: 'n8n-nodes-base.httpRequest',
 				version: 4.2,
@@ -858,7 +862,8 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
-			expect(httpJson?.onError).toBe('continueRegularOutput');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
 		});
 	});
 
@@ -894,6 +899,33 @@ describe('Workflow Builder', () => {
 			});
 			return { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute };
 		};
+
+		/** A two-node workflow as `fromJSON()` reads it, with the cursor left on `Fetch`. */
+		const importedFlow = (fetchOverrides?: Partial<WorkflowJSON['nodes'][number]>) =>
+			({
+				id: 'test-id',
+				name: 'Imported',
+				nodes: [
+					{
+						id: 't',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'h',
+						name: 'Fetch',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: {},
+						...fetchOverrides,
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+			}) satisfies WorkflowJSON;
 
 		it('routes the error output of the node the cursor is on', () => {
 			const { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute } =
@@ -934,6 +966,33 @@ describe('Workflow Builder', () => {
 				'continueErrorOutput',
 			);
 		});
+
+		// A node that continues on its regular output has no error pin. Left as it was, the
+		// route serialized as a connection from an output the node does not have: the handler
+		// never received an item, and the save only reported a warning. Nodes read from a user
+		// workflow carry this value whenever the node uses the legacy `continueOnFail` flag.
+		it.each(['continueRegularOutput', 'stopWorkflow'] as const)(
+			'opens the error output port of a node that declares %s',
+			(onError) => {
+				const { schedule, sendFetchFailure } = buildRetryFlow();
+				const fetchPositions = node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch Positions', onError },
+				});
+
+				const json = workflow('test-id', 'Test')
+					.add(schedule)
+					.to(fetchPositions)
+					.onError(sendFetchFailure)
+					.toJSON();
+
+				expect(json.nodes.find((n) => n.name === 'Fetch Positions')?.onError).toBe(
+					'continueErrorOutput',
+				);
+				expect(json.connections['Fetch Positions']?.main[1]?.[0]?.node).toBe('Send Fetch Failure');
+			},
+		);
 
 		it('matches wiring the same error route on the node itself', () => {
 			const viaBuilder = buildRetryFlow();
@@ -981,36 +1040,13 @@ describe('Workflow Builder', () => {
 		it('routes the error output of an imported node, which declares no connections itself', () => {
 			// A node handle from fromJSON() throws on every connection method by design, so
 			// the builder has to wire this route into the graph itself.
-			const imported: WorkflowJSON = {
-				id: 'test-id',
-				name: 'Imported',
-				nodes: [
-					{
-						id: 't',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'h',
-						name: 'Fetch',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 4.2,
-						position: [200, 0],
-						parameters: {},
-					},
-				],
-				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
-			};
 			const notify = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.3,
 				config: { name: 'Notify' },
 			});
 
-			const json = workflow.fromJSON(imported).onError(notify).toJSON();
+			const json = workflow.fromJSON(importedFlow()).onError(notify).toJSON();
 
 			// fromJSON leaves the cursor on the last imported node.
 			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
@@ -1018,30 +1054,31 @@ describe('Workflow Builder', () => {
 			expect(json.nodes.map((n) => n.name)).toContain('Notify');
 		});
 
+		it('opens the error output port of an imported node that continues on its regular output', () => {
+			// The read path carries a legacy `continueOnFail` node over as
+			// `continueRegularOutput`, so this is the common shape of a user's node.
+			const notify = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Notify' },
+			});
+
+			const json = workflow
+				.fromJSON(importedFlow({ onError: 'continueRegularOutput' }))
+				.onError(notify)
+				.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+			expect(json.connections.Fetch?.main[1]?.[0]?.node).toBe('Notify');
+		});
+
+		it('leaves the imported onError value alone when no route is declared', () => {
+			const json = workflow.fromJSON(importedFlow({ onError: 'continueRegularOutput' })).toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueRegularOutput');
+		});
+
 		it('expands a chain handler on an imported node instead of collapsing it', () => {
-			const imported: WorkflowJSON = {
-				id: 'test-id',
-				name: 'Imported',
-				nodes: [
-					{
-						id: 't',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-					{
-						id: 'h',
-						name: 'Fetch',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 4.2,
-						position: [200, 0],
-						parameters: {},
-					},
-				],
-				connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
-			};
 			const notify = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.3,
@@ -1053,7 +1090,7 @@ describe('Workflow Builder', () => {
 				config: { name: 'Escalate' },
 			});
 
-			const json = workflow.fromJSON(imported).onError(notify.to(escalate)).toJSON();
+			const json = workflow.fromJSON(importedFlow()).onError(notify.to(escalate)).toJSON();
 
 			// Every chain node is present, and the route enters at the chain head.
 			expect(json.nodes.map((n) => n.name)).toEqual(['Start', 'Fetch', 'Notify', 'Escalate']);

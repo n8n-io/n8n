@@ -115,7 +115,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				throw new Error('Nodes from fromJSON() do not support output()');
 			},
 			onError(handler: NodeInstance<string, string, unknown> | InputTarget) {
-				this.config.onError ??= 'continueErrorOutput';
+				// The route wins over the saved value, the same way it does on an authored
+				// node: a node that continues on its regular output has no error pin to
+				// route from. A node the builder never routes from keeps what it imported.
+				this.config.onError = 'continueErrorOutput';
 				declaredConnections.push(
 					isInputTarget(handler)
 						? {
