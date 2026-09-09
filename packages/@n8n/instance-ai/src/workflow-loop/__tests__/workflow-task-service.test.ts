@@ -35,6 +35,16 @@ function createStorage() {
 				await Promise.resolve();
 			},
 		),
+		updateWorkItem: vi.fn<WorkflowLoopStorage['updateWorkItem']>(
+			async (_threadId, workItemId, update) => {
+				const item = records.get(workItemId) as Awaited<
+					ReturnType<WorkflowLoopStorage['getWorkItem']>
+				>;
+				const next = item ? update(item) : null;
+				if (next) records.set(workItemId, next);
+				return await Promise.resolve(next !== null);
+			},
+		),
 		listWorkItems: vi.fn(async () => {
 			return await Promise.resolve(
 				Array.from(records.values()) as Awaited<ReturnType<WorkflowLoopStorage['listWorkItems']>>,

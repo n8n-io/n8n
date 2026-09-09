@@ -73,31 +73,36 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 
 	/** Clear the superseded setup blocker so verification can enter the repair loop. */
 	async resumeSetupBlockedVerification(workItemId: string, runId: string): Promise<boolean> {
-		const item = await this.storage.getWorkItem(this.threadId, workItemId);
-		if (
-			!item?.lastBuildOutcome ||
-			item.state.runId !== runId ||
-			!canVerifyPendingSetup(item.lastBuildOutcome) ||
-			!isNeedsSetupRemediation(item.state.lastRemediation)
-		) {
-			return false;
-		}
+		// Check eligibility inside the thread mutation so overlapping requests cannot both resume.
+		return await this.storage.updateWorkItem(this.threadId, workItemId, (item) => {
+			if (
+				!item.lastBuildOutcome ||
+				item.state.runId !== runId ||
+				!canVerifyPendingSetup(item.lastBuildOutcome) ||
+				!isNeedsSetupRemediation(item.state.lastRemediation)
+			) {
+				return null;
+			}
 
-		const state: WorkflowLoopState = {
-			...item.state,
-			phase: 'verifying',
-			status: 'active',
-			lastRemediation: undefined,
-		};
-		if (terminalRemediationFromState(state, runId)) return false;
+			const state: WorkflowLoopState = {
+				...item.state,
+				phase: 'verifying',
+				status: 'active',
+				lastRemediation: undefined,
+			};
+			if (terminalRemediationFromState(state, runId)) return null;
 
-		await this.storage.saveWorkItem(this.threadId, state, item.attempts, {
-			...item.lastBuildOutcome,
-			verificationReadiness: { status: 'ready' },
-			remediation: isNeedsSetupRemediation(item.lastBuildOutcome.remediation)
-				? undefined
-				: item.lastBuildOutcome.remediation,
+			return {
+				...item,
+				state,
+				lastBuildOutcome: {
+					...item.lastBuildOutcome,
+					verificationReadiness: { status: 'ready' },
+					remediation: isNeedsSetupRemediation(item.lastBuildOutcome.remediation)
+						? undefined
+						: item.lastBuildOutcome.remediation,
+				},
+			};
 		});
-		return true;
 	}
 }

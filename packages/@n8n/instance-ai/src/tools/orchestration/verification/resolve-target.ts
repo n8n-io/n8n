@@ -86,8 +86,9 @@ export async function resolveVerificationTarget(
 			: undefined;
 	const canVerifyBeforePanelSetup =
 		context.setupPanelEnabled === true &&
+		stateBefore?.runId === context.runId &&
 		canVerifyPendingSetup(buildOutcome) &&
-		isNeedsSetupRemediation(terminalRemediation);
+		(!terminalRemediation || isNeedsSetupRemediation(terminalRemediation));
 
 	if (!buildOutcome.workflowId) {
 		return {
@@ -136,24 +137,34 @@ export async function resolveVerificationTarget(
 		};
 	}
 
-	if (
-		terminalRemediation &&
-		!(
-			canVerifyBeforePanelSetup &&
-			(await context.workflowTaskService.resumeSetupBlockedVerification(
-				resolvedInput.workItemId,
-				context.runId,
-			))
-		)
-	) {
+	let verificationBlocker = terminalRemediation;
+	if (canVerifyBeforePanelSetup) {
+		// The reads can overlap a state change. Always claim a pending outcome from this run.
+		const resumed = await context.workflowTaskService.resumeSetupBlockedVerification(
+			resolvedInput.workItemId,
+			context.runId,
+		);
+		verificationBlocker = resumed
+			? undefined
+			: (terminalRemediation ??
+				createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'verification_state_changed',
+					guidance:
+						'The work item changed before verification could start. Read its current state before continuing.',
+				}));
+	}
+
+	if (verificationBlocker) {
 		return {
 			kind: 'blocked',
 			result: {
 				success: false,
 				resolvedWorkItemId: resolvedInput.workItemId,
-				error: terminalRemediation.guidance,
-				remediation: terminalRemediation,
-				guidance: terminalRemediation.guidance,
+				error: verificationBlocker.guidance,
+				remediation: verificationBlocker,
+				guidance: verificationBlocker.guidance,
 			},
 		};
 	}
