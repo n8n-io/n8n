@@ -2,6 +2,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8N_PRICING_PAGE_URL } from '@n8n/frontend-constants/urls';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
+import { getDefaultUpgradeRedirectGuard } from '../registries/upgradeRedirectGuard';
 import { useSettingsStore } from '../settings.store';
 import type { CloudUpdateLinkSourceType, UTMCampaign } from '../types/pageRedirection';
 import { useUsersStore } from '../users.store';
@@ -17,14 +18,15 @@ export type UpgradeRedirectGuard = () => Promise<boolean>;
 /**
  * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
  * wraps this and supplies the guard, which keeps this base free of any feature
- * dependency.
+ * dependency. A caller that cannot reach the shell — a module package — omits it
+ * and gets the guard the shell registered (see `registries/upgradeRedirectGuard`).
  *
  * It lives in `@n8n/stores` rather than `@n8n/composables` because its body is
  * store orchestration end to end — all four stores it reads are in this package,
  * and `@n8n/composables` sits *below* the stores tier (see that package's
  * `packageBoundary.test.ts`), so it cannot reach them.
  */
-export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirectGuard }) {
+export function useBasePageRedirectionHelper({ guard }: { guard?: UpgradeRedirectGuard } = {}) {
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const versionsStore = useVersionsStore();
@@ -102,7 +104,7 @@ export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirect
 		utm_campaign: UTMCampaign,
 		mode: 'open' | 'redirect' = 'open',
 	) => {
-		const shouldProceed = await guard();
+		const shouldProceed = await (guard ?? getDefaultUpgradeRedirectGuard())();
 		if (!shouldProceed) return;
 
 		const { usageLeft, trialDaysLeft, userIsTrialing } = cloudPlanStore;

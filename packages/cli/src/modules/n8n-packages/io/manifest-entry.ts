@@ -1,3 +1,4 @@
+import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
@@ -116,9 +117,6 @@ export async function writeManifestEntry(
 ): Promise<ManifestEntry> {
 	const entry = createManifestEntry(collection, baseDir, entity);
 	await writer.writeDirectory(entry.target);
-	await writer.writeFile(
-		entityFilePath(collection, entry.target),
-		JSON.stringify(serialized, null, '\t'),
-	);
+	await writer.writeFile(entityFilePath(collection, entry.target), formatEntityFile(serialized));
 	return entry;
 }

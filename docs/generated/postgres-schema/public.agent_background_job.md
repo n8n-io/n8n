@@ -10,7 +10,10 @@
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
+| notifiedAt | timestamp(3) with time zone |  | true |  |  | Time when the parent agent consumed this settled job |
 | parentAgentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
+| parentPrincipalHash | varchar(64) |  | false |  |  | Sandbox principal hash of the parent agent run |
+| parentResourceId | varchar(255) |  | false |  |  | Memory resource of the parent agent run |
 | parentThreadId | varchar(128) |  | false |  |  |  |
 | result | text |  | true |  |  | Final answer of a settled sub-agent job |
 | settledAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -33,6 +36,8 @@
 | agent_background_job_id_not_null | n | NOT NULL id |
 | agent_background_job_kind_not_null | n | NOT NULL kind |
 | agent_background_job_parentAgentId_not_null | n | NOT NULL "parentAgentId" |
+| agent_background_job_parentPrincipalHash_not_null | n | NOT NULL "parentPrincipalHash" |
+| agent_background_job_parentResourceId_not_null | n | NOT NULL "parentResourceId" |
 | agent_background_job_parentThreadId_not_null | n | NOT NULL "parentThreadId" |
 | agent_background_job_status_not_null | n | NOT NULL status |
 | agent_background_job_title_not_null | n | NOT NULL title |
@@ -44,6 +49,7 @@
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
+| IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (("settledAt" IS NOT NULL) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
 | IDX_d46c6f00730c2ef8bcb6ee24b6 | CREATE INDEX "IDX_d46c6f00730c2ef8bcb6ee24b6" ON public.agent_background_job USING btree ("parentAgentId") |
 | IDX_e43e630272995a93dfeb94ab3e | CREATE INDEX "IDX_e43e630272995a93dfeb94ab3e" ON public.agent_background_job USING btree ("settledAt") |
@@ -63,7 +69,10 @@ erDiagram
   text error
   varchar_36_ id
   varchar_16_ kind
+  timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
+  varchar_64_ parentPrincipalHash
+  varchar_255_ parentResourceId
   varchar_128_ parentThreadId
   text result
   timestamp_3__with_time_zone settledAt
