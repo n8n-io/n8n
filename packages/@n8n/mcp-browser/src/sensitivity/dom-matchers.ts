@@ -298,7 +298,10 @@ export function opaqueFieldValues(container: Element): SecretHit[] {
 	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
 		if (!field.hasAttribute('readonly') && !field.hasAttribute('disabled')) continue;
 		for (const value of sensitiveInputValues(field)) {
-			const names = new Set(assignmentNames(value));
+			// `assignmentNames` leaves `NAME= value` alone because in prose that shape
+			// is `dGhpcw== copy` — a padded value with a control's label merged after
+			// it. A field's value carries no merged label, so the spacing is spacing.
+			const names = new Set(assignmentNames(value.replace(/=\s+/g, '=')));
 			for (const token of opaqueTokens(value)) {
 				hits.push(
 					names.has(token)

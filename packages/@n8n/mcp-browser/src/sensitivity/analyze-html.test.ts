@@ -490,6 +490,35 @@ describe('analyzeHtmlSensitivity', () => {
 		]);
 	});
 
+	// `NAME= value` is not an assignment to `assignmentNames`, because in prose it
+	// is `dGhpcw== copy` — a padded value with a button label merged after it. A
+	// field's value carries no merged label, so the shape can only be an assignment.
+	it('blocks capture of an assignment name spaced after the equals in a presented field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="GOOGLE_CLIENT_SECRET= ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// The other side of the rule above: trailing `=` is base64 padding, not an
+	// assignment, so a padded value stays capturable.
+	it('keeps a padded base64 value in a presented field capturable', () => {
+		const padded = 'notrealZGVtb1NlY3JldFZhbHVlMTIzNDU2Nzg5MA==';
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly value="${padded}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: padded }]);
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [
