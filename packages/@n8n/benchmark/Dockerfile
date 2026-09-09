@@ -23,7 +23,10 @@ RUN apt-get update && \
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install -g corepack@0.33 && corepack enable
+# Pin pnpm to the repo's packageManager version. Corepack is not needed, and Node
+# does not bundle it any more.
+ARG PNPM_VERSION=12.3.4
+RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 #
 # Builder
