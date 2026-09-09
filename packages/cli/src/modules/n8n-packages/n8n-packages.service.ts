@@ -35,6 +35,7 @@ import { WorkflowRequirementExporter } from './entities/workflow/workflow-requir
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { DirectoryPackageReader } from './io/directory/directory-package-reader';
 import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import { formatEntityFile } from './io/entity-file-format';
 import type { PackageReader } from './io/package-reader';
 import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
@@ -179,6 +180,7 @@ export class N8nPackagesService {
 				? await this.projectExporter.export({
 						user: request.user,
 						projectIds,
+						workflowIds: request.projectWorkflowIds,
 						writer,
 						includeTags,
 						workflowVersionPolicy,
@@ -341,7 +343,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
+		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,

@@ -17,8 +17,9 @@ import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint'
 
 /**
  * A scope that has never been written has no row. That "unconfigured" state behaves as
- * allow-all, and reports version `0` — so a first write can send `expectedVersion: 0` and
- * a racing second first-write correctly sees a mismatch once the row exists.
+ * allow-all, and reports version `0` — so a first write sends `expectedVersion: 0`. There is
+ * no row to lock at that point, so `createScopeOrConflict` decides which of two racing first
+ * writes wins.
  */
 const UNCONFIGURED_VERSION = 0;
 
@@ -126,9 +127,13 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
-	 * Sets the scope's default action, creating the scope on first write. The version check
-	 * runs inside the same transaction as the write, so two racing first-writes can't both
-	 * see "no row yet" and both succeed — the loser's `expectedVersion: 0` no longer matches.
+	 * Sets the scope's default action, creating the scope on first write.
+	 *
+	 * On Postgres the scope row is locked for the duration of the transaction, so a racing
+	 * writer blocks on the read until this one commits, then re-reads the bumped version and
+	 * correctly fails the `expectedVersion` check — instead of both writers reading the same
+	 * version and one silently overwriting the other's change. A first write has no row to
+	 * lock; `createScopeOrConflict` covers that case.
 	 */
 	async setDefaultAction(
 		kind: string,
@@ -138,7 +143,12 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -147,19 +157,18 @@ export class TypeAvailabilityPolicyService {
 				);
 			}
 
-			const before = scope ? { defaultAction: scope.defaultAction, version: scope.version } : null;
+			if (!scope) {
+				const created = await this.createScopeOrConflict(
+					{ kind, projectId, defaultAction, updatedBy },
+					ctx,
+				);
+				return { before: null, after: created };
+			}
 
-			const after = scope
-				? ((await this.scopeRepository.updateDefaultAction(
-						scope.id,
-						defaultAction,
-						updatedBy,
-						ctx,
-					)) ?? scope)
-				: await this.scopeRepository.createScope(
-						{ kind, projectId, defaultAction, updatedBy },
-						ctx,
-					);
+			const before = { defaultAction: scope.defaultAction, version: scope.version };
+			const after =
+				(await this.scopeRepository.updateDefaultAction(scope.id, defaultAction, updatedBy, ctx)) ??
+				scope;
 
 			return { before, after };
 		});
@@ -174,6 +183,31 @@ export class TypeAvailabilityPolicyService {
 		});
 
 		return result.after;
+	}
+
+	/**
+	 * `FOR UPDATE` finds nothing to lock when the scope has no row yet, so two first writes
+	 * can both pass the `expectedVersion: 0` check. Insert-or-ignore lets exactly one of them
+	 * create the row; the other learns it lost and reports the same conflict a stale version
+	 * would, instead of a raw unique-index error.
+	 */
+	private async createScopeOrConflict(
+		input: {
+			kind: string;
+			projectId: string | null;
+			defaultAction: PolicyAction;
+			updatedBy: string;
+		},
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicyScope> {
+		const { scope, created } = await this.scopeRepository.createScopeIfAbsent(input, ctx);
+		if (!created) {
+			throw new ConflictError(
+				`Policy scope was created concurrently (expected version ${UNCONFIGURED_VERSION}, found ${scope.version})`,
+			);
+		}
+
+		return scope;
 	}
 
 	async createPolicyDocument(
@@ -195,56 +229,114 @@ export class TypeAvailabilityPolicyService {
 		return { policy, warnings };
 	}
 
+	/**
+	 * Replaces a policy document's rules, guarded by optimistic concurrency: `expectedVersion`
+	 * must match the document's current version, checked and written inside one transaction
+	 * that (on Postgres) holds the document's row lock (see
+	 * `TypeAvailabilityPolicyRepository.findById`).
+	 *
+	 * Also bumps every scope this document is attached to, in the same transaction — a scope's
+	 * `version` is its clients' freshness signal for the *effective* policy, and this document's
+	 * rules are part of that even though the edit never touches the scope row directly. The
+	 * bump is skipped when the rules did not change, matching `updateRules`' own no-op.
+	 */
 	async updatePolicyDocument(
 		policyId: string,
 		rules: readonly PolicyRule[],
+		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
 		const warnings = lintRulesForShadowing(rules);
 
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const result = await this.transactionRunner.run({}, async (ctx) => {
+			// Scopes before the document: `setEffectivePolicy` locks its scope and then writes
+			// the document, and every path must take the two in the same order or they deadlock.
+			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+				policyId,
+				ctx,
+			);
+			const lockedScopeIds = await this.scopeRepository.lockScopesByIds(attachedScopeIds, ctx);
 
-		const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, {});
-		if (!updated) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+			const existing = await this.policyRepository.findById(policyId, ctx, true);
+			if (!existing) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
+
+			if (existing.version !== expectedVersion) {
+				throw new ConflictError(
+					`Policy document has changed since it was last read (expected version ${expectedVersion}, found ${existing.version})`,
+				);
+			}
+
+			const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, ctx);
+			// Defensive: the row was found above, and on Postgres it is locked, so it cannot be
+			// gone here.
+			if (!updated) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
+
+			if (updated.version !== existing.version) {
+				// An attachment that committed between the scope read above and the document lock
+				// belongs to a scope this transaction does not hold. Locking it now would be
+				// document → scope, the order that deadlocks, so refuse and let the client retry.
+				const locked = new Set(lockedScopeIds);
+				const scopeIdsNow = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					policyId,
+					ctx,
+				);
+				if (scopeIdsNow.some((id) => !locked.has(id))) {
+					throw new ConflictError(
+						'Policy document was attached to another scope while it was being updated',
+					);
+				}
+
+				await this.scopeRepository.bumpVersions(lockedScopeIds, ctx);
+			}
+
+			return { existing, updated };
+		});
 
 		this.eventService.emit('node-type-policy-document-updated', {
 			updatedBy,
-			kind: existing.kind,
+			kind: result.existing.kind,
 			policyId,
-			before: { rules: existing.rules, version: existing.version },
-			after: { rules: updated.rules, version: updated.version },
+			before: { rules: result.existing.rules, version: result.existing.version },
+			after: { rules: result.updated.rules, version: result.updated.version },
 		});
 
-		return { policy: updated, warnings };
+		return { policy: result.updated, warnings };
 	}
 
 	/**
 	 * Refuses to delete a policy that is still attached to any scope — the attachment FK is
 	 * `RESTRICT`, so this checks first and reports a clean count instead of letting a raw SQL
 	 * constraint violation reach the caller.
+	 *
+	 * The check and the delete share one transaction that (on Postgres) holds the document's
+	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
+	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
 	async deletePolicyDocument(policyId: string, updatedBy: string): Promise<void> {
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const existing = await this.transactionRunner.run({}, async (ctx) => {
+			const policy = await this.policyRepository.findById(policyId, ctx, true);
+			if (!policy) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
 
-		const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
-			policyId,
-			{},
-		);
-		if (attachedScopeIds.length > 0) {
-			throw new ConflictError(
-				`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+				policyId,
+				ctx,
 			);
-		}
+			if (attachedScopeIds.length > 0) {
+				throw new ConflictError(
+					`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+				);
+			}
 
-		await this.policyRepository.deletePolicy(policyId, {});
+			await this.policyRepository.deletePolicy(policyId, ctx);
+
+			return policy;
+		});
 
 		this.eventService.emit('node-type-policy-document-deleted', {
 			updatedBy,
@@ -272,6 +364,10 @@ export class TypeAvailabilityPolicyService {
 	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
 	 * write still runs in one transaction with the scope's version bump, so a concurrent
 	 * reader never observes the attachments changed without the version moving.
+	 *
+	 * The scope is still locked up front — not for a version check, but so this path takes
+	 * the scope before it touches any policy row (the attachment inserts key-share the
+	 * policies), the same scope → policy order every other write path uses.
 	 */
 	async replaceAttachments(
 		scopeId: string,
@@ -281,7 +377,7 @@ export class TypeAvailabilityPolicyService {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeById(scopeId, ctx);
+			const scope = await this.scopeRepository.findScopeById(scopeId, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
 			}
@@ -349,7 +445,12 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -365,7 +466,7 @@ export class TypeAvailabilityPolicyService {
 			const scopeId = scope
 				? scope.id
 				: (
-						await this.scopeRepository.createScope(
+						await this.createScopeOrConflict(
 							{ kind, projectId, defaultAction: input.defaultAction, updatedBy },
 							ctx,
 						)

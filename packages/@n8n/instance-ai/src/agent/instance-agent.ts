@@ -16,14 +16,14 @@ import { getSystemPrompt } from './system-prompt';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
-import { createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import {
-	ALWAYS_LOADED_TOOL_NAMES,
-	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
-	DOMAIN_TOOL_IDS,
-	ORCHESTRATION_TOOL_IDS,
-} from '../tools/tool-ids';
+	createOrchestratorDomainTools,
+	createOrchestrationTools,
+	getActiveOrchestratorDomainToolNames,
+} from '../tools';
+import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type {
 	CreateInstanceAgentOptions,
@@ -94,7 +94,6 @@ export async function createInstanceAgent(
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
-
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
 	// returns per-server connection failures alongside the tools so they travel
@@ -142,30 +141,11 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing native tools. Reserve every native tool id —
-	// orchestrator-only tools (e.g. conversation-history) are built after this
-	// guard runs, and the later merge is last-write-wins.
+	// Keep MCP tools from shadowing domain or orchestration tools.
 	const reservedToolNames = new Set<string>([
-		...Object.values(DOMAIN_TOOL_IDS),
-		...Object.values(ORCHESTRATION_TOOL_IDS),
+		...getActiveOrchestratorDomainToolNames(domainContext),
+		...orchestrationTools.keys(),
 	]);
-
-	// Store all MCP tools on orchestrationContext for sub-agents.
-	const allMcpTools = createToolRegistry();
-	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
-	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
-		source: 'local gateway MCP',
-		claimedToolNames: mcpContextToolNames,
-		warn: warnSkippedMcpTool,
-	});
-	addSafeMcpTools(allMcpTools, mcpTools, {
-		source: 'external MCP',
-		claimedToolNames: mcpContextToolNames,
-		warn: warnSkippedMcpTool,
-	});
-	if (orchestrationContext && allMcpTools.size > 0) {
-		orchestrationContext.mcpTools = allMcpTools;
-	}
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
@@ -180,6 +160,10 @@ export async function createInstanceAgent(
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
+	if (orchestrationContext) {
+		const builderMcpTools = mergeToolRegistries(safeLocalMcpTools, safeMcpTools);
+		if (builderMcpTools.size > 0) orchestrationContext.mcpTools = builderMcpTools;
+	}
 
 	const orchestratorDomainTools = createOrchestratorDomainTools({
 		...domainContext,
@@ -217,6 +201,7 @@ export async function createInstanceAgent(
 		// Presence of the service IS the experiment gate — the host only wires it
 		// for flagged-in users on project-bound runs.
 		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+		setupPanelEnabled: isSetupPanelEnabled(context),
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot

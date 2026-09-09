@@ -4,11 +4,19 @@ import { AdmittanceRejectedError, type AdmittanceService } from '../../admittanc
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionStore } from '../execution-store';
+import type { WorkflowDocument } from '../execution.types';
 import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
+};
+
+const sampleWorkflow: WorkflowDocument = {
+	id: 'wf-1',
+	name: 'Sample',
+	nodes: [{ name: 'Manual Trigger' }],
+	connections: {},
 };
 
 function makeQueue(): WorkQueue<OrchestrationMessage> {
@@ -37,6 +45,7 @@ describe('StartExecutionService', () => {
 		const result = await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: 'exec-id-1',
 			callerContext: {},
@@ -50,6 +59,7 @@ describe('StartExecutionService', () => {
 			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			callerContext: {},
 		});
@@ -70,6 +80,7 @@ describe('StartExecutionService', () => {
 		await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
 			callerContext,
 		});
@@ -88,6 +99,7 @@ describe('StartExecutionService', () => {
 		await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
 			callerContext: {},
 		});
@@ -107,6 +119,7 @@ describe('StartExecutionService', () => {
 		await service.start({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
+			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
 			callerContext: {},
 		});
@@ -130,6 +143,7 @@ describe('StartExecutionService', () => {
 			service.start({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
+				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
 				callerContext: {},
 			}),
@@ -151,6 +165,7 @@ describe('StartExecutionService', () => {
 			service.start({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
+				workflow: sampleWorkflow,
 				executionId: 'exec-id-1',
 				callerContext: {},
 			}),
