@@ -304,6 +304,37 @@ export function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
 	);
 }
 
+/** Execution context interfaces from `n8n-workflow` that expose a `helpers` object. */
+export const EXECUTION_CONTEXT_TYPES = new Set([
+	'IAllExecuteFunctions',
+	'IExecuteFunctions',
+	'IExecutePaginationFunctions',
+	'IExecuteSingleFunctions',
+	'IHookFunctions',
+	'ILoadOptionsFunctions',
+	'IPollFunctions',
+	'ISupplyDataFunctions',
+	'ITriggerFunctions',
+	'IWebhookFunctions',
+]);
+
+/**
+ * Matches `<receiver>.helpers.<method>` for any receiver, and a bare `helpers.<method>` left by
+ * destructuring. Deliberately does not identify the receiver: the rule runs without type
+ * information, so callers gate this on the file importing an execution context type instead.
+ */
+export function isHelpersAccess(node: TSESTree.MemberExpression): boolean {
+	if (node.object.type === AST_NODE_TYPES.Identifier) {
+		return node.object.name === 'helpers';
+	}
+
+	return (
+		node.object.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.property.type === AST_NODE_TYPES.Identifier &&
+		node.object.property.name === 'helpers'
+	);
+}
+
 /** Matches a call expression of the form `this.methodName(...)`. */
 export function isThisMethodCall(node: TSESTree.CallExpression, method: string): boolean {
 	return (
