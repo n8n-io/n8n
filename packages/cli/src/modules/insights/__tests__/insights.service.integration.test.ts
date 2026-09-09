@@ -26,8 +26,6 @@ import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-
 import type { InsightsByPeriod } from '../database/entities/insights-by-period';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
@@ -54,25 +52,19 @@ describe('InsightsService (Integration)', () => {
 		await testDb.terminate();
 	});
 
-	describe('startTimers', () => {
+	describe('collection lifecycle', () => {
 		let insightsService: InsightsService;
-		let compactionService: InsightsCompactionService;
-		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
 		let realCollectionService: InsightsCollectionService;
 		let initSpy: MockInstance;
 		let shutdownSpy: MockInstance;
 
 		beforeEach(() => {
-			compactionService = mock<InsightsCompactionService>();
-			pruningService = mock<InsightsPruningService>();
 			instanceSettings = mock<InstanceSettings>({
 				instanceType: 'main',
 			});
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				compactionService,
-				pruningService,
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
@@ -95,51 +87,32 @@ describe('InsightsService (Integration)', () => {
 			shutdownSpy.mockRestore();
 		});
 
-		const setupMocks = (instanceType: InstanceType, isLeader: boolean = false) => {
+		const setupMocks = (instanceType: InstanceType) => {
 			(instanceSettings as any).instanceType = instanceType;
-			Object.defineProperty(instanceSettings, 'isLeader', {
-				get: vi.fn(() => isLeader),
-			});
 		};
 
-		test('starts flushing timer for main instance', async () => {
-			setupMocks('main', false);
+		test('starts collection for main instance', async () => {
+			setupMocks('main');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction, flushing and pruning timers for main leader instances', async () => {
-			setupMocks('main', true);
+		test('starts collection for webhook instance', async () => {
+			setupMocks('webhook');
 
 			await insightsService.init();
 
 			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).toHaveBeenCalled();
 		});
 
-		test('starts only collection flushing timer for webhook instance', async () => {
-			setupMocks('webhook', false);
-
-			await insightsService.init();
-
-			expect(initSpy).toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
-		});
-
-		test('do no start any timers for non-main instances', async () => {
-			setupMocks('worker', false);
+		test('does not start collection for non-main instances', async () => {
+			setupMocks('worker');
 
 			await insightsService.init();
 
 			expect(initSpy).not.toHaveBeenCalled();
-			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
-			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 	});
 
@@ -223,6 +196,71 @@ describe('InsightsService (Integration)', () => {
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
 				total: { deviation: -6, unit: 'count', value: 12 },
 			});
+		});
+
+		test('does not expose stored billable rows on the summary', async () => {
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 10,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 9,
+				periodUnit: 'day',
+				periodStart: endDate.minus({ day: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 4,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(12);
+			expect(summary).not.toHaveProperty('billable');
+		});
+
+		test('does not count billable rows toward total', async () => {
+			const now = DateTime.utc();
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'billable',
+				value: 7,
+				periodUnit: 'day',
+				periodStart: now.minus({ day: 1 }),
+			});
+
+			const summary = await insightsService.getInsightsSummary({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(summary.total.value).toBe(0);
+			expect(summary).not.toHaveProperty('billable');
 		});
 
 		test('no data for previous period should return null deviation', async () => {
@@ -1003,6 +1041,34 @@ describe('InsightsService (Integration)', () => {
 			expect(byTime).toEqual([]);
 		});
 
+		test('does not include billable in by-time values', async () => {
+			const now = DateTime.utc();
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'success',
+				value: 3,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'billable',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: now.minus({ days: 1 }),
+			});
+
+			const byTime = await insightsService.getInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate: now.minus({ days: 7 }).toJSDate(),
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime.length).toBeGreaterThan(0);
+			for (const row of byTime) {
+				expect(row.values).not.toHaveProperty('billable');
+				expect(row.values).not.toHaveProperty('undefined');
+			}
+		});
+
 		test('returns empty array when no insights in the time range exists', async () => {
 			const now = DateTime.utc();
 			await createCompactedInsightsEvent(workflow1, {
@@ -1131,7 +1197,7 @@ describe('InsightsService (Integration)', () => {
 			});
 		});
 
-		test('compacted data with limited insight types are grouped by time correctly', async () => {
+		test('compacted data are grouped by time with failed and time saved', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
 			for (const workflow of [workflow1, workflow2]) {
@@ -1162,23 +1228,29 @@ describe('InsightsService (Integration)', () => {
 				user: globalWorkflowReadUser,
 				startDate,
 				endDate: now.toJSDate(),
-				insightTypes: ['time_saved_min', 'failure'],
 			});
 
 			// ASSERT
 			expect(byTime).toHaveLength(2);
 
-			// expect results to contain only failure and time saved insights
 			expect(byTime[0].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
 			expect(byTime[0].values).toEqual({
-				timeSaved: 30,
+				total: 0,
+				succeeded: 0,
 				failed: 0,
+				failureRate: 0,
+				averageRunTime: 0,
+				timeSaved: 30,
 			});
 
 			expect(byTime[1].date).toEqual(now.startOf('day').toISO());
 			expect(byTime[1].values).toEqual({
-				timeSaved: 0,
+				total: 7,
+				succeeded: 3,
 				failed: 4,
+				failureRate: 4 / 7,
+				averageRunTime: 0,
+				timeSaved: 0,
 			});
 		});
 
@@ -1432,6 +1504,63 @@ describe('InsightsService (Integration)', () => {
 		});
 	});
 
+	describe('getTimeSavedInsightsByTime', () => {
+		let insightsService: InsightsService;
+		beforeAll(() => {
+			insightsService = Container.get(InsightsService);
+		});
+
+		const globalWorkflowReadUser = {
+			role: { scopes: [{ slug: 'workflow:read' }] },
+		} as unknown as User;
+
+		let project: Project;
+		let workflow1: IWorkflowDb & WorkflowEntity;
+		let workflow2: IWorkflowDb & WorkflowEntity;
+
+		beforeEach(async () => {
+			project = await createTeamProject();
+			workflow1 = await createWorkflow({}, project);
+			workflow2 = await createWorkflow({}, project);
+		});
+
+		test('returns only time saved', async () => {
+			const now = DateTime.utc();
+			for (const workflow of [workflow1, workflow2]) {
+				await createCompactedInsightsEvent(workflow, {
+					type: 'success',
+					value: workflow === workflow1 ? 1 : 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'failure',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: now,
+				});
+				await createCompactedInsightsEvent(workflow, {
+					type: 'time_saved_min',
+					value: workflow === workflow1 ? 10 : 20,
+					periodUnit: 'day',
+					periodStart: now.minus({ days: 10 }),
+				});
+			}
+
+			const startDate = now.minus({ days: 14 }).startOf('day').toJSDate();
+
+			const byTime = await insightsService.getTimeSavedInsightsByTime({
+				user: globalWorkflowReadUser,
+				startDate,
+				endDate: now.toJSDate(),
+			});
+
+			expect(byTime).toHaveLength(2);
+			expect(byTime[0].values).toEqual({ timeSaved: 30 });
+			expect(byTime[1].values).toEqual({ timeSaved: 0 });
+		});
+	});
+
 	describe('validateDateFiltersLicense', () => {
 		let licenseStateMock: Mocked<LicenseState>;
 		let insightsService: InsightsService;
@@ -1440,8 +1569,6 @@ describe('InsightsService (Integration)', () => {
 			licenseStateMock = mock<LicenseState>();
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mock<InsightsCompactionService>(),
-				mock<InsightsPruningService>(),
 				licenseStateMock,
 				mock<InstanceSettings>(),
 				mockLogger(),
@@ -1538,19 +1665,9 @@ describe('InsightsService (Integration)', () => {
 	describe('shutdown', () => {
 		let insightsService: InsightsService;
 
-		const mockCompactionService = mock<InsightsCompactionService>({
-			stopCompactionTimer: vi.fn(),
-		});
-
-		const mockPruningService = mock<InsightsPruningService>({
-			stopPruningTimer: vi.fn(),
-		});
-
 		beforeAll(() => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
-				mockCompactionService,
-				mockPruningService,
 				mock<LicenseState>(),
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
@@ -1558,14 +1675,7 @@ describe('InsightsService (Integration)', () => {
 			);
 		});
 
-		beforeEach(() => {
-			mockCompactionService.stopCompactionTimer.mockReset();
-			mockCompactionService.stopCompactionTimer.mockResolvedValue(undefined);
-			mockPruningService.stopPruningTimer.mockReset();
-			mockPruningService.stopPruningTimer.mockReturnValue(undefined);
-		});
-
-		test('shutdown stops timers and shuts down services', async () => {
+		test('shutdown stops the collection service', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
 			const realCollectionService = Container.get(InsightsCollectionService);
@@ -1576,33 +1686,6 @@ describe('InsightsService (Integration)', () => {
 
 			// ASSERT
 			expect(shutdownSpy).toHaveBeenCalled();
-			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
-			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		});
-
-		test('stops pruning before waiting for compaction to finish', async () => {
-			// ARRANGE
-			const callOrder: string[] = [];
-			let resolveCompaction!: () => void;
-			mockCompactionService.stopCompactionTimer.mockImplementation(async () => {
-				callOrder.push('compaction');
-				await new Promise<void>((resolve) => {
-					resolveCompaction = resolve;
-				});
-			});
-			mockPruningService.stopPruningTimer.mockImplementation(() => {
-				callOrder.push('pruning');
-			});
-
-			// ACT
-			const stopPromise = insightsService.stopCompactionAndPruningTimers();
-			await Promise.resolve();
-
-			// ASSERT
-			expect(callOrder).toEqual(['pruning', 'compaction']);
-
-			resolveCompaction();
-			await stopPromise;
 		});
 	});
 });

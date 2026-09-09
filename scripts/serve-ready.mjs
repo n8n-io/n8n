@@ -31,6 +31,13 @@ export async function waitForHealth(port, healthPath, timeoutMs = 120_000, inter
 	return false;
 }
 
+// `/healthz` answers ok as soon as the process listens: it checks neither the
+// database nor the routes. n8n unblocks `/healthz/readiness` from markAsReady(),
+// after the migrations run and the controllers mount, so it is the only safe gate
+// for anything that then calls the REST API.
+export const waitForReady = (port, healthPath, timeoutMs = 180_000, intervalMs = 3000) =>
+	waitForHealth(port, `${healthPath}/readiness`, timeoutMs, intervalMs);
+
 // In a codespace, share the port with the org. Then any n8n member can open the
 // URL. GitHub makes every port private again at each start, so set it here. If
 // `gh` fails, report the reason and let the caller carry on.

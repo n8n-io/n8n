@@ -29,9 +29,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
 #     merge-group head SHA). Add this name to a ruleset's required-checks list
-#     to gate merges on it. The first job step sets the status to pending, so
-#     a run that crashes at any later point cannot leave a stale verdict in
-#     effect. The job itself only fails on errors.
+#     to gate merges on it. A missing approval reports "pending", not
+#     "failure": the PR waits for a reviewer, it is not broken, and anything
+#     other than success blocks the merge. The first job step sets the status
+#     to pending, so a run that crashes at any later point cannot leave a
+#     stale verdict in effect. The job itself only fails on errors.
 
 on:
   pull_request:
@@ -141,7 +143,10 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          # pnpm 11 and 12 resolve a relative lockfile directory from different locations.
+          # Use the checkout path because this workflow can run new workflow code against the old base.
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Evaluate required reviews
         env:

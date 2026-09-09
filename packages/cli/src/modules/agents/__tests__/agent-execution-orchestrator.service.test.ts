@@ -6,6 +6,7 @@ import type {
 } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -18,6 +19,8 @@ import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrat
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -26,6 +29,11 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from '../tool-registry';
+
+const aiConfigMock = mock<AiConfig>({
+	modelStreamIdleTimeoutMs: 90_000,
+	modelStreamFirstOutputTimeoutMs: 180_000,
+});
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -125,6 +133,7 @@ function makeService(sandboxEnabled = false) {
 	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 		isEnabled: () => sandboxEnabled,
 	});
+	const agentRepository = mock<AgentRepository>();
 
 	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
@@ -140,6 +149,8 @@ function makeService(sandboxEnabled = false) {
 		agentRunTracingService,
 		externalHooks,
 		agentSandboxRuntimeService,
+		agentRepository,
+		aiConfigMock,
 	);
 
 	return {
@@ -152,6 +163,7 @@ function makeService(sandboxEnabled = false) {
 		agentRunTracingService,
 		externalHooks,
 		agentSandboxRuntimeService,
+		agentRepository,
 	};
 }
 
@@ -289,6 +301,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 				executionCounter: expect.any(Object),
 				abortSignal: abortController.signal,
+				modelStreamIdleTimeoutMs: 90_000,
+				modelStreamFirstOutputTimeoutMs: 180_000,
 			}),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
@@ -398,6 +412,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
+					userId,
 					runType: 'test',
 					configuration: runtime.telemetryConfiguration,
 				},
@@ -528,6 +543,77 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('records a failed session and rethrows when the published runtime cannot be built', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Credential "OpenAI" not found');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		// A plain object: `mock<Agent>()` proxies nested fields, which breaks the
+		// telemetry builder's array handling of `schema`.
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent (draft)',
+			schema: { ...schema, name: 'Support Agent (draft)' },
+			activeVersion: { schema },
+			integrations: [],
+		} as unknown as Agent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId,
+				agentName: 'Support Agent',
+				threadId: 'thread-1',
+				userMessage: 'from slack',
+				source: 'slack',
+				telemetry: expect.objectContaining({ runType: 'production' }),
+			}),
+			expect.any(Date),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					finishReason: 'error',
+					error: 'Credential "OpenAI" not found',
+				}),
+			}),
+		);
+	});
+
+	it('rethrows the build error without recording when the agent no longer exists', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new Error('boom');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(
+			collect(
+				service.executeForTaskPublished({
+					agentId,
+					projectId,
+					message: 'run task',
+					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+	});
+
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
 		const {
 			service,
@@ -556,6 +642,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationType: 'task',
 			usePublishedVersion: true,
 			sandboxPrincipalHash: taskPrincipalHash,
+			allowBackgroundTasks: false,
 		});
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
@@ -620,6 +707,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sandboxPrincipalHash: userPrincipalHash,
+				allowBackgroundTasks: false,
 			}),
 		);
 	});

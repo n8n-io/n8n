@@ -39,8 +39,6 @@ tags:
     description: Operations about executions
   - name: Folders
     description: Operations about folders
-  - name: GitConnections
-    description: Operations about Git connections
   - name: Insights
     description: Operations about insights
   - name: LogStreaming
@@ -49,6 +47,8 @@ tags:
     description: Beta — breaking changes may still occur without major version bump.
   - name: Projects
     description: Operations about projects
+  - name: Promotions
+    description: Operations about promotion providers, connections, and package operations
   - name: Role
     description: Operations about roles
   - name: RoleMappingRule
@@ -101,8 +101,6 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions/{id}/retry:
-    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:

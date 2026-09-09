@@ -12,6 +12,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type INodePropertyOptions,
+	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -48,6 +49,7 @@ export type McpConnectionConfig = {
 	endpointUrl: string;
 	registryCredential?: {
 		connection: McpRegistryConnection;
+		credentialType: McpOAuth2CredentialType;
 		prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
 	};
 	timeout: number;
