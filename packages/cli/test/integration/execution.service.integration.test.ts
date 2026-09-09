@@ -155,7 +155,7 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: {
 					limit: 20,
-					before: { timestamp: thirdOldest.startedAt!.toISOString(), id: thirdOldest.id },
+					beforeId: thirdOldest.id,
 				},
 				user: owner,
 			};

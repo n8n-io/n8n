@@ -7,7 +7,7 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as ResponseHelper from '@/response-helper';
 
-import { parseExecutionCursor, positionOf } from './execution-cursor';
+import { parseExecutionCursor } from './execution-cursor';
 import { isExecutionIdV2 } from './execution-id';
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
@@ -52,7 +52,7 @@ export const parseRangeQuery = (req: Request, res: Response, next: NextFunction)
 		if (req.query.cursor !== undefined && typeof req.query.cursor !== 'string')
 			throw new BadRequestError('Invalid execution cursor');
 
-		const position = positionOf(parseExecutionCursor(req.query.cursor));
+		const beforeId = parseExecutionCursor(req.query.cursor);
 
 		const pageLimit = limit === undefined ? 20 : Number(limit);
 		if (!Number.isInteger(pageLimit) || pageLimit < 1 || pageLimit > 100)
@@ -62,7 +62,7 @@ export const parseRangeQuery = (req: Request, res: Response, next: NextFunction)
 			kind: 'range',
 			range: {
 				limit: pageLimit,
-				...(position ? { before: position } : {}),
+				...(beforeId ? { beforeId } : {}),
 			},
 		});
 

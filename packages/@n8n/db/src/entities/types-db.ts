@@ -245,7 +245,8 @@ export namespace ExecutionSummaries {
 	type RangeFields = {
 		range: {
 			limit: number;
-			before?: { timestamp: string; id: string };
+			/** ID of the last row of the previous page. The page continues below it. */
+			beforeId?: string;
 		};
 	};
 

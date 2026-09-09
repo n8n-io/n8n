@@ -71,45 +71,67 @@ describe('UserRepository', () => {
 			]);
 		});
 
-		test('pages in timestamp order, even without an explicit order', async () => {
-			// IDs ascend while timestamps descend, so an ID order would page these wrongly.
+		test('ignores the `startedAt` order on a cursor page', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would return these two rows the other way round.
 			const now = DateTime.utc();
 			const workflow = await createWorkflow({}, owner);
-			const newest = await createExecution(
+			const first = await createExecution(
 				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
 				workflow,
 			);
-			const middle = await createExecution(
+			const second = await createExecution(
 				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
 				workflow,
 			);
-			const oldest = await createExecution(
+			const third = await createExecution(
 				{ startedAt: now.plus({ minute: 1 }).toJSDate() },
 				workflow,
 			);
 
-			const page = async (before?: { timestamp: string; id: string }) =>
+			const rows = await executionRepository.findManyByRangeQuery({
+				workflowId: workflow.id,
+				user: owner,
+				kind: 'range',
+				range: { limit: 2, beforeId: third.id },
+				order: { startedAt: 'DESC' },
+			});
+
+			expect(rows.map((row) => row.id)).toStrictEqual([second.id, first.id]);
+		});
+
+		test('pages by ID, even when the timestamps disagree', async () => {
+			// The timestamps descend while the IDs ascend, so a timestamp order
+			// would page these rows in the opposite order.
+			const now = DateTime.utc();
+			const workflow = await createWorkflow({}, owner);
+			const first = await createExecution(
+				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
+				workflow,
+			);
+			const second = await createExecution(
+				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
+				workflow,
+			);
+			const third = await createExecution({ startedAt: null }, workflow);
+
+			const page = async (beforeId?: string) =>
 				await executionRepository.findManyByRangeQuery({
 					workflowId: workflow.id,
 					user: owner,
 					kind: 'range',
-					range: { limit: 1, before },
+					range: { limit: 1, beforeId },
 				});
 
 			// Walk the pages the way the cursor does: the first page has no cursor.
-			const cursorFor = (row: { id: string; startedAt: unknown }) => ({
-				timestamp: new Date(row.startedAt as string).toISOString(),
-				id: row.id,
-			});
+			const [newest] = await page();
+			expect(newest.id).toBe(third.id);
 
-			const [first] = await page();
-			expect(first.id).toBe(newest.id);
+			const [middle] = await page(newest.id);
+			expect(middle.id).toBe(second.id);
 
-			const [second] = await page(cursorFor(first));
-			expect(second.id).toBe(middle.id);
-
-			const [third] = await page(cursorFor(second));
-			expect(third.id).toBe(oldest.id);
+			const [oldest] = await page(middle.id);
+			expect(oldest.id).toBe(first.id);
 		});
 
 		test('exposes `jsonSizeBytes` and `binaryDataSizeBytes` as numbers and `workflowVersionId`', async () => {

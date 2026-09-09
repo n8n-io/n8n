@@ -164,14 +164,13 @@ describe('search-executions MCP tool', () => {
 		expect(query.range.limit).toBe(200);
 	});
 
-	test('pages from the position the cursor encodes', async () => {
-		const position = { timestamp: '2024-06-01T10:00:00.000Z', id: '50' };
-		const cursor = encodeExecutionCursor({ version: 1, v1: position });
+	test('pages from the execution ID the cursor encodes', async () => {
+		const cursor = encodeExecutionCursor('50');
 
 		await createTool().handler({ cursor } as never, {} as never);
 
 		const query = (executionService.findRangeWithCount as Mock).mock.calls[0][0];
-		expect(query.range.before).toEqual(position);
+		expect(query.range.beforeId).toBe('50');
 	});
 
 	test('returns an error for an invalid cursor', async () => {

@@ -1,15 +1,10 @@
-import {
-	encodeCursorForRow,
-	parseExecutionCursor,
-	positionOf,
-} from '@/executions/execution-cursor';
+import { encodeCursorForId, parseExecutionCursor } from '@/executions/execution-cursor';
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 describe('parseExecutionCursor', () => {
 	it('returns no cursor when the caller asks for the first page', () => {
 		expect(parseExecutionCursor(undefined)).toBeUndefined();
-		expect(positionOf(parseExecutionCursor(undefined))).toBeUndefined();
 	});
 
 	it('rejects a cursor that carries no position', () => {
@@ -17,28 +12,25 @@ describe('parseExecutionCursor', () => {
 
 		expect(() => parseExecutionCursor(encoded)).toThrow('Invalid execution cursor');
 	});
+
+	it('rejects a cursor that carries a non-numeric id', () => {
+		const encoded = Buffer.from(JSON.stringify({ version: 1, v1: V2_EXECUTION_ID })).toString(
+			'base64url',
+		);
+
+		expect(() => parseExecutionCursor(encoded)).toThrow('Invalid execution cursor');
+	});
 });
 
-describe('encodeCursorForRow', () => {
-	it('round-trips a v1 execution row through parseExecutionCursor', () => {
-		const row = {
-			id: '123',
-			startedAt: new Date('2024-01-01T00:00:00.000Z'),
-			createdAt: new Date(),
-		};
-
-		const encoded = encodeCursorForRow(row);
+describe('encodeCursorForId', () => {
+	it('round-trips a v1 execution id through parseExecutionCursor', () => {
+		const encoded = encodeCursorForId('123');
 
 		expect(encoded).not.toBeNull();
-		expect(positionOf(parseExecutionCursor(encoded ?? undefined))).toEqual({
-			timestamp: '2024-01-01T00:00:00.000Z',
-			id: '123',
-		});
+		expect(parseExecutionCursor(encoded ?? undefined)).toBe('123');
 	});
 
-	it('returns null for an engine 2.0 (v2) execution row', () => {
-		const row = { id: V2_EXECUTION_ID, startedAt: new Date(), createdAt: new Date() };
-
-		expect(encodeCursorForRow(row)).toBeNull();
+	it('returns null for an engine 2.0 (v2) execution id', () => {
+		expect(encodeCursorForId(V2_EXECUTION_ID)).toBeNull();
 	});
 });

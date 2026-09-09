@@ -208,7 +208,7 @@ describe('executions.store', () => {
 		});
 	});
 
-	it('should sort executions by start time', () => {
+	it('should sort executions by id, newest first', () => {
 		const mockExecutions: ExecutionSummaryWithScopes[] = [
 			{
 				id: '1',
@@ -241,6 +241,6 @@ describe('executions.store', () => {
 
 		mockExecutions.forEach(executionsStore.addExecution);
 
-		expect(executionsStore.executions.at(-1)).toEqual(expect.objectContaining({ id: '3' }));
+		expect(executionsStore.executions.at(-1)).toEqual(expect.objectContaining({ id: '1' }));
 	});
 });

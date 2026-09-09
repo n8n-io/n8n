@@ -1004,6 +1004,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return [...summariesById.values()];
 	}
 
+	/**
+	 * One page of execution summaries, newest first.
+	 *
+	 * A page that a cursor pages from is ordered by the immutable `id`. The cursor
+	 * pages by `id`, so any other order would let a page skip or repeat rows at
+	 * its boundary. Only a page without a cursor honours `order`.
+	 */
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		// Due to performance reasons, we use custom query builder with raw SQL.
 		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
@@ -1155,27 +1162,21 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		}
 
 		if (query.kind === 'range') {
-			const { limit, before } = query.range;
+			const { limit, beforeId } = query.range;
 
 			qb.limit(limit);
 
-			if (before) {
-				const { timestamp, id } = before;
-				qb.andWhere(
-					'(COALESCE(execution.startedAt, execution.createdAt) < :cursorTime OR (COALESCE(execution.startedAt, execution.createdAt) = :cursorTime AND execution.id < :cursorId))',
-					{
-						cursorTime: DateUtils.mixedDateToUtcDatetimeString(new Date(timestamp)),
-						cursorId: id,
-					},
-				);
-			}
+			if (beforeId) qb.andWhere('execution.id < :cursorId', { cursorId: beforeId });
 
-			// Every page is ordered by the key the cursor encodes, so that a cursor page
-			// cannot skip or repeat rows at its boundary. `top` never pages by cursor.
-			if (query.order?.top && !before) {
-				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
+			// Only a page that no cursor pages past can choose its order. A cursor
+			// pages by `id`, so any other order would let a cursor page skip or
+			// repeat rows at its boundary.
+			if (!beforeId) {
+				if (query.order?.startedAt === 'DESC') {
+					qb.orderBy({ 'COALESCE(execution.startedAt, execution.createdAt)': 'DESC' });
+				} else if (query.order?.top) {
+					qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+				}
 			}
 			qb.addOrderBy('execution.id', 'DESC');
 		}
@@ -1288,13 +1289,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		// postgres returned to the natural order again, listing executions in the
 		// order they were created.
 		if (query.kind === 'range') {
-			if (query.order?.top && !query.range.before) {
-				qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
-			} else {
-				const table = qb.escape('e');
-				const startedAt = qb.escape('startedAt');
-				const createdAt = qb.escape('createdAt');
-				qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
+			if (!query.range.beforeId) {
+				if (query.order?.startedAt === 'DESC') {
+					const table = qb.escape('e');
+					const startedAt = qb.escape('startedAt');
+					const createdAt = qb.escape('createdAt');
+					qb.orderBy({ [`COALESCE(${table}.${startedAt}, ${table}.${createdAt})`]: 'DESC' });
+				} else if (query.order?.top) {
+					qb.orderBy(`(CASE WHEN e.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+				}
 			}
 			qb.addOrderBy('e.id', 'DESC');
 		}

@@ -2,7 +2,7 @@ import type { User } from '@n8n/db';
 import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } from 'n8n-workflow';
 import z from 'zod';
 
-import { parseExecutionCursor, positionOf } from '@/executions/execution-cursor';
+import { parseExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -118,7 +118,7 @@ export const createSearchExecutionsTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 			const sharingOptions = await executionService.buildSharingOptions('workflow:read');
-			const position = positionOf(parseExecutionCursor(cursor));
+			const beforeId = parseExecutionCursor(cursor);
 
 			const query = {
 				kind: 'range' as const,
@@ -126,9 +126,8 @@ export const createSearchExecutionsTool = (
 				sharingOptions,
 				range: {
 					limit: safeLimit,
-					...(position ? { before: position } : {}),
+					...(beforeId ? { beforeId } : {}),
 				},
-				order: { startedAt: 'DESC' as const },
 				...(workflowId ? { workflowId } : {}),
 				...(status?.length ? { status } : {}),
 				...(startedAfter ? { startedAfter } : {}),

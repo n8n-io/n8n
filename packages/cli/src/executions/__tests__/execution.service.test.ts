@@ -26,6 +26,7 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
@@ -986,28 +987,20 @@ describe('ExecutionService', () => {
 
 		it('findRangeWithCount returns a cursor for the last row when the page is full', async () => {
 			executionRepository.findManyByRangeQuery.mockResolvedValue([
-				mock<ExecutionSummary>({
-					id: '1',
-					startedAt: new Date('2024-01-02T00:00:00.000Z'),
-					createdAt: new Date(),
-				}),
-				mock<ExecutionSummary>({
-					id: '2',
-					startedAt: new Date('2024-01-01T00:00:00.000Z'),
-					createdAt: new Date(),
-				}),
+				mock<ExecutionSummary>({ id: '2' }),
+				mock<ExecutionSummary>({ id: '1' }),
 			]);
 
 			const { nextCursor } = await executionService.findRangeWithCount(
 				mock({ range: { limit: 2 } }),
 			);
 
-			expect(nextCursor).not.toBeNull();
+			expect(nextCursor).toBe(encodeExecutionCursor('1'));
 		});
 
 		it('findRangeWithCount returns null when the page is partial', async () => {
 			executionRepository.findManyByRangeQuery.mockResolvedValue([
-				mock<ExecutionSummary>({ id: '1', startedAt: new Date(), createdAt: new Date() }),
+				mock<ExecutionSummary>({ id: '1' }),
 			]);
 
 			const { nextCursor } = await executionService.findRangeWithCount(
@@ -1020,32 +1013,25 @@ describe('ExecutionService', () => {
 		it('findLatestCurrentAndCompleted derives the cursor from the completed page, not current', async () => {
 			executionRepository.findManyByRangeQuery.mockImplementation(async (query) =>
 				query.status?.includes('running')
-					? [mock<ExecutionSummary>({ id: 'current-1' })]
-					: [
-							mock<ExecutionSummary>({
-								id: 'completed-1',
-								startedAt: new Date('2024-01-01T00:00:00.000Z'),
-								createdAt: new Date(),
-							}),
-						],
+					? [mock<ExecutionSummary>({ id: '20' })]
+					: [mock<ExecutionSummary>({ id: '10' })],
 			);
 
 			const { nextCursor } = await executionService.findLatestCurrentAndCompleted(
 				mock({ range: { limit: 1 } }),
 			);
 
-			expect(nextCursor).not.toBeNull();
+			expect(nextCursor).toBe(encodeExecutionCursor('10'));
 		});
 
 		it('findLatestCurrentAndCompleted applies the cursor to completed rows only', async () => {
 			executionRepository.findManyByRangeQuery.mockResolvedValue([]);
-			const before = { timestamp: '2024-01-01T00:00:00.000Z', id: '10' };
 
 			await executionService.findLatestCurrentAndCompleted(
 				mock<ExecutionSummaries.RangeQuery>({
 					kind: 'range',
 					status: undefined,
-					range: { limit: 20, before },
+					range: { limit: 20, beforeId: '10' },
 				}),
 			);
 
@@ -1053,8 +1039,8 @@ describe('ExecutionService', () => {
 			const current = queries.find((query) => query.status?.includes('running'));
 			const completed = queries.find((query) => !query.status?.includes('running'));
 
-			expect(current?.range.before).toBeUndefined();
-			expect(completed?.range.before).toEqual(before);
+			expect(current?.range).not.toHaveProperty('beforeId');
+			expect(completed?.range.beforeId).toBe('10');
 		});
 	});
 
