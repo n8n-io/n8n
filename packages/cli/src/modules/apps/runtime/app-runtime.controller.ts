@@ -24,6 +24,9 @@ function setCorsHeaders(res: Response) {
 	res.setHeader('Access-Control-Allow-Origin', '*');
 	res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	// The dev-only global cors middleware sets this before the controller runs. This
+	// public route never allows credentials, so drop it rather than send `*` with it.
+	res.removeHeader('Access-Control-Allow-Credentials');
 }
 
 /**

@@ -27,6 +27,12 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
 	modules: ['apps'],
 });
+// Like the dev-only global cors middleware: runs before the controller and sets the
+// credentials header that the public runtime API must never send.
+testServer.app.use((_req, res, next) => {
+	res.header('Access-Control-Allow-Credentials', 'true');
+	next();
+});
 
 let appRepository: AppRepository;
 
