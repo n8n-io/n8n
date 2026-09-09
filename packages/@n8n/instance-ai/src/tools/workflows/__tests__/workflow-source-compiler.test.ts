@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { validateWorkflow, workflow as workflowBuilder } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
@@ -431,6 +431,41 @@ describe('compileWorkflowSource > node positions in JSON sources', () => {
 		const [trigger, fetch] = result.workflow.nodes;
 		expect(trigger.position).toEqual([-420, 96]);
 		expect(fetch.position).toEqual([expect.any(Number), expect.any(Number)]);
+	});
+
+	it('still gives every node a position when the builder cannot lay the workflow out', async () => {
+		// The builder can reject a workflow the save would accept. Without a fallback the
+		// node reached the save positionless and failed there for the wrong reason.
+		const layout = vi.spyOn(workflowBuilder, 'fromJSON').mockImplementation(() => {
+			throw new Error('cannot import this workflow');
+		});
+		const workflow = {
+			name: 'Unlayoutable',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		try {
+			const result = await compileWorkflowSource(
+				makeContext(),
+				'src/workflows/unlayoutable.workflow.json',
+				JSON.stringify(workflow),
+			);
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[0].position).toEqual([expect.any(Number), expect.any(Number)]);
+		} finally {
+			layout.mockRestore();
+		}
 	});
 });
 
