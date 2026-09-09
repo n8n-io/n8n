@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { N8nButton, N8nInput, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { computed, onMounted, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import Modal from '@/app/components/Modal.vue';
+import type { Rule, RuleGroup } from '@/Interface';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { APP_DETAILS } from '@/features/apps/apps.constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -23,15 +24,47 @@ const router = useRouter();
 const uiStore = useUIStore();
 const appsStore = useAppsStore();
 
+// Mirrors `appNameSchema` / `appNamespaceSchema` in @n8n/api-types: at most
+// 128 characters; the namespace is lowercase, digits, single hyphens.
+const APP_NAME_MAX_LENGTH = 128;
+const NAMESPACE_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const toNamespace = (value: string) =>
+	value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+const nameValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'MAX_LENGTH', config: { maximum: APP_NAME_MAX_LENGTH } },
+];
+const namespaceValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'MAX_LENGTH', config: { maximum: APP_NAME_MAX_LENGTH } },
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: NAMESPACE_REGEX,
+			message: i18n.baseText('apps.add.input.namespace.error.regex'),
+		},
+	},
+];
+
 const name = ref('');
-const namespace = ref('');
+// Follows the name until the user types into the namespace field.
+const editedNamespace = ref<string | null>(null);
+const namespace = computed({
+	get: () => editedNamespace.value ?? toNamespace(name.value),
+	set: (value: string) => {
+		editedNamespace.value = value;
+	},
+});
 const isCreating = ref(false);
-const nameInputRef = ref<HTMLInputElement | null>(null);
+const formValidation = reactive({ name: false, namespace: false });
+const isFormValid = computed(() => formValidation.name && formValidation.namespace);
 
 const namespacePreview = computed(() => `/apps/${namespace.value || '…'}`);
 
 const onSubmit = async () => {
-	if (!name.value || !namespace.value || isCreating.value) return;
+	if (!isFormValid.value || isCreating.value) return;
 	isCreating.value = true;
 	try {
 		const app = await appsStore.createApp(props.data.projectId, name.value, namespace.value);
@@ -46,10 +79,6 @@ const onSubmit = async () => {
 		isCreating.value = false;
 	}
 };
-
-onMounted(() => {
-	setTimeout(() => nameInputRef.value?.focus(), 0);
-});
 </script>
 
 <template>
@@ -59,42 +88,34 @@ onMounted(() => {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nInputLabel
+				<N8nFormInput
+					v-model="name"
 					:label="i18n.baseText('apps.add.input.name.label')"
-					:required="true"
-					input-name="appName"
-				>
-					<N8nInput
-						ref="nameInputRef"
-						v-model="name"
-						:placeholder="i18n.baseText('apps.add.input.name.placeholder')"
-						name="appName"
-						data-test-id="apps-new-name"
-						@keydown.enter="onSubmit"
-					/>
-				</N8nInputLabel>
-				<div :class="$style.field">
-					<N8nInputLabel
-						:label="i18n.baseText('apps.add.input.namespace.label')"
-						:required="true"
-						input-name="appNamespace"
-					>
-						<N8nInput
-							v-model="namespace"
-							:placeholder="i18n.baseText('apps.add.input.namespace.placeholder')"
-							name="appNamespace"
-							data-test-id="apps-new-namespace"
-							@keydown.enter="onSubmit"
-						/>
-					</N8nInputLabel>
-					<N8nText color="text-light" size="small">
-						{{
-							i18n.baseText('apps.add.input.namespace.hint', {
-								interpolate: { path: namespacePreview },
-							})
-						}}
-					</N8nText>
-				</div>
+					:placeholder="i18n.baseText('apps.add.input.name.placeholder')"
+					name="appName"
+					required
+					focus-initially
+					:validation-rules="nameValidationRules"
+					data-test-id="apps-new-name"
+					@validate="(valid: boolean) => (formValidation.name = valid)"
+					@enter="onSubmit"
+				/>
+				<N8nFormInput
+					v-model="namespace"
+					:label="i18n.baseText('apps.add.input.namespace.label')"
+					:placeholder="i18n.baseText('apps.add.input.namespace.placeholder')"
+					:info-text="
+						i18n.baseText('apps.add.input.namespace.hint', {
+							interpolate: { path: namespacePreview },
+						})
+					"
+					name="appNamespace"
+					required
+					:validation-rules="namespaceValidationRules"
+					data-test-id="apps-new-namespace"
+					@validate="(valid: boolean) => (formValidation.namespace = valid)"
+					@enter="onSubmit"
+				/>
 			</div>
 		</template>
 		<template #footer>
@@ -108,7 +129,7 @@ onMounted(() => {
 				/>
 				<N8nButton
 					:loading="isCreating"
-					:disabled="!name || !namespace"
+					:disabled="!isFormValid"
 					size="large"
 					:label="i18n.baseText('apps.add.button.label')"
 					data-test-id="apps-new-submit"
@@ -124,12 +145,6 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-}
-
-.field {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
 }
 
 .footer {

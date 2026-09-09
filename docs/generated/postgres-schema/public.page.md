@@ -51,6 +51,8 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.app" {
+  varchar_36_ activeVersionId FK
+  varchar_16_ auth
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name

@@ -15,7 +15,6 @@ import { NextFunction, Response } from 'express';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -23,13 +22,30 @@ import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 
+/** Values of `req.query.params`, sent by the editor as a JSON-encoded object of strings. */
+const parsePreviewParams = (raw: unknown): Record<string, string> => {
+	if (typeof raw !== 'string') return {};
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== 'object' || parsed === null) return {};
+
+	const params: Record<string, string> = {};
+	for (const [key, value] of Object.entries(parsed)) {
+		if (typeof value === 'string') params[key] = value;
+	}
+	return params;
+};
+
 @RestController('/projects/:projectId/apps')
 export class AppsController {
 	constructor(
 		private readonly appsService: AppsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -44,6 +60,7 @@ export class AppsController {
 		if (e instanceof AppNamespaceConflictError || e instanceof PageRouteConflictError) {
 			throw new ConflictError(e.message);
 		}
+		// AppContentInvalidError is already a 400 ResponseError; let it propagate as-is.
 		throw e;
 	}
 
@@ -82,13 +99,6 @@ export class AppsController {
 		return await this.appsService.listApps(req.params.projectId);
 	}
 
-	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
-	@Get('/data-workflows')
-	@ProjectScope('app:read')
-	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
-	}
-
 	@Get('/:appId')
 	@ProjectScope('app:read')
 	async getApp(
@@ -96,7 +106,7 @@ export class AppsController {
 		_res: Response,
 		@Param('appId') appId: string,
 	) {
-		return await this.appsService.getApp(appId);
+		return await this.appsService.getAppForResponse(appId);
 	}
 
 	@Patch('/:appId')
@@ -124,6 +134,43 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deleteApp(appId);
+	}
+
+	@Post('/:appId/publish')
+	@ProjectScope('app:update')
+	async publish(
+		req: AuthenticatedRequest<{ projectId: string; appId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.appsService.publish(appId, req.user.id);
+		} catch (e: unknown) {
+			this.handleAppError(e);
+		}
+	}
+
+	@Get('/:appId/versions')
+	@ProjectScope('app:read')
+	async listVersions(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		return await this.appsService.listVersions(appId);
+	}
+
+	@Post('/:appId/versions/:versionId/activate')
+	@ProjectScope('app:update')
+	async activateVersion(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		await this.appsService.activateVersion(appId, versionId);
 	}
 
 	@Post('/:appId/pages')
@@ -155,7 +202,7 @@ export class AppsController {
 	@Patch('/:appId/pages/:pageId')
 	@ProjectScope('app:update')
 	async updatePage(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('appId') appId: string,
 		@Param('pageId') pageId: string,
@@ -163,7 +210,7 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		try {
-			return await this.appsService.updatePage(appId, pageId, dto, req.user);
+			return await this.appsService.updatePage(appId, pageId, dto);
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}
@@ -179,5 +226,29 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		await this.appsService.deletePage(appId, pageId);
+	}
+
+	/** Renders the draft page tree, for the editor/AI Assistant preview iframe. */
+	@Get('/:appId/pages/:pageId/preview', { usesTemplates: true })
+	@ProjectScope('app:read')
+	async previewPage(
+		req: AuthenticatedRequest<
+			{ projectId: string; appId: string; pageId: string },
+			unknown,
+			unknown,
+			{ path?: string; params?: string }
+		>,
+		res: Response,
+		@Param('appId') appId: string,
+		@Param('pageId') pageId: string,
+	) {
+		const html = await this.appsService.preview(
+			appId,
+			pageId,
+			req.query.path,
+			parsePreviewParams(req.query.params),
+		);
+		res.setHeader('X-Content-Type-Options', 'nosniff');
+		res.type('html').send(html);
 	}
 }

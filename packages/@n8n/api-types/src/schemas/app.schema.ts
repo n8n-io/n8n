@@ -26,3 +26,29 @@ export const pageRouteSchema = z
 	.trim()
 	.max(255)
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
+
+const cssColorSchema = z.string().trim().min(1).max(32);
+
+/** Colors, radius and font an App applies on top of the default page stylesheet. */
+export const appThemeSchema = z.object({
+	colors: z
+		.object({
+			primary: cssColorSchema.optional(),
+			background: cssColorSchema.optional(),
+			surface: cssColorSchema.optional(),
+			text: cssColorSchema.optional(),
+			muted: cssColorSchema.optional(),
+		})
+		.optional(),
+	radius: z.enum(['none', 'sm', 'md', 'lg']).optional(),
+	fontFamily: z.string().trim().max(100).optional(),
+	/** Appended to every served page after the theme variables. */
+	customCss: z.string().max(20_000).optional(),
+});
+
+export type AppTheme = z.infer<typeof appThemeSchema>;
+
+/** Who may open the App: anyone, or only a signed-in user of this n8n instance. */
+export const appAuthSchema = z.enum(['public', 'n8n']);
+
+export type AppAuth = z.infer<typeof appAuthSchema>;

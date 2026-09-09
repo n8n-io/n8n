@@ -1,0 +1,57 @@
+{{#if errorMessage}}
+<div class='rounded-lg border border-border-danger bg-background-danger p-md mb-md text-text-danger'>
+	{{errorMessage}}
+</div>
+{{/if}}
+<div class='overflow-x-auto rounded-lg border border-border mb-md'>
+	<table class='w-full text-sm'>
+		<thead>
+			<tr class='bg-subtle'>
+				{{#each columns}}<th class='text-left p-sm text-text-subtle font-medium'>{{this}}</th>{{/each}}
+				{{#if hasActions}}<th class='p-sm'></th>{{/if}}
+			</tr>
+		</thead>
+		<tbody>
+			{{#each rows}}
+			<tr class='border-t border-border'>
+				{{#each cells}}
+				<td class='p-sm text-text'>
+					{{#if input}}
+					{{#if input.isBoolean}}
+					<select name='{{input.name}}' form='{{input.formId}}' class='p-xs border border-border rounded-sm'>
+						<option value='true' {{#if input.isTrue}}selected{{/if}}>true</option>
+						<option value='false' {{#unless input.isTrue}}selected{{/unless}}>false</option>
+					</select>
+					{{else}}
+					<input type='{{input.inputType}}' {{#if input.isNumber}}step='any'{{/if}} name='{{input.name}}' value='{{value}}' form='{{input.formId}}' class='p-xs border border-border rounded-sm w-full' />
+					{{/if}}
+					{{else}}
+					{{value}}
+					{{/if}}
+				</td>
+				{{/each}}
+				{{#if @root.hasActions}}
+				<td class='p-sm whitespace-nowrap text-right'>
+					{{#unless editing}}
+					{{#if editUrl}}<a href='{{editUrl}}' class='app-link mr-xs'>Edit</a>{{/if}}
+					{{#if @root.deleteUrl}}
+					<form method='POST' action='{{@root.deleteUrl}}' class='inline'>
+						<input type='hidden' name='id' value='{{id}}' />
+						<button type='submit' class='bg-subtle hover:bg-hover text-text rounded-md p-xs border border-border'>Delete</button>
+					</form>
+					{{/if}}
+					{{/unless}}
+				</td>
+				{{/if}}
+			</tr>
+			{{/each}}
+		</tbody>
+	</table>
+</div>
+{{#if editForm}}
+<form id='{{editForm.id}}' method='POST' action='{{editForm.updateUrl}}' class='flex items-center gap-sm mb-md'>
+	<input type='hidden' name='id' value='{{editForm.rowId}}' />
+	<button type='submit' class='bg-brand hover:bg-brand-hover text-text-inverse rounded-md p-sm'>Save</button>
+	<a href='{{editForm.cancelUrl}}' class='app-link'>Cancel</a>
+</form>
+{{/if}}

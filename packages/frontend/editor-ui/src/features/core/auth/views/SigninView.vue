@@ -208,7 +208,8 @@ const login = async (form: LoginRequestDto) => {
 
 		if (isRedirectSafe()) {
 			const redirect = getRedirectQueryParameter();
-			if (redirect.startsWith('http')) {
+			// A served App page is not an SPA route
+			if (redirect.startsWith('http') || redirect.startsWith('/apps/')) {
 				window.location.href = redirect;
 				return;
 			}

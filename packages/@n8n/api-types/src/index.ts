@@ -309,6 +309,7 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildAppsSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
@@ -403,6 +404,7 @@ export {
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
@@ -500,6 +502,7 @@ export type {
 	McpToolCallResult,
 	InstanceAiEvent,
 	InstanceAiAgentAttachment,
+	InstanceAiAppAttachment,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
@@ -754,3 +757,34 @@ export {
 	SSO_ERROR_QUERY_PARAM,
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
+
+export {
+	appNameSchema,
+	appNamespaceSchema,
+	pageRouteSchema,
+	appThemeSchema,
+	type AppTheme,
+	appAuthSchema,
+	type AppAuth,
+} from './schemas/app.schema';
+export {
+	appBlockIdSchema,
+	appActionNameSchema,
+	appBlockSchema,
+	appContentSchema,
+	type AppBlock,
+	type AppBlockType,
+	type AppContent,
+	type HeaderBlock,
+	type ParagraphBlock,
+	type ListBlock,
+	type ImageBlock,
+	type DividerBlock,
+	type TableBlock,
+	type FormBlock,
+	type ButtonBlock,
+	type HtmlBlock,
+	type CodeBlock,
+} from './schemas/app-content.schema';
+export { appVersionSnapshotSchema, type AppVersionSnapshot } from './schemas/app-version.schema';
+export { appPageApiTypes, APP_PAGE_API_FILE_NAME } from './schemas/app-page-api';

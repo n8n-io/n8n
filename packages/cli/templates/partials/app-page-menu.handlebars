@@ -1,11 +1,11 @@
 {{!-- Recurses into `children`, so the menu nests as deeply as the page tree. --}}
-<ul>
+<ul class='list-none pl-sm text-sm'>
 	{{#each this}}
-		<li>
+		<li class='py-2xs'>
 			{{#if current}}
-				<span class='current-page'>{{title}}</span>
+				<span class='font-semibold app-text'>{{title}}</span>
 			{{else}}
-				<a href='{{path}}'>{{title}}</a>
+				<a href='{{path}}' class='app-link no-underline hover:underline'>{{title}}</a>
 			{{/if}}
 			{{#if children.length}}
 				{{> appPageMenu children}}

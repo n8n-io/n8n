@@ -28,7 +28,7 @@ export class AppRepository extends Repository<App> {
 		return await this.findBy({ projectId });
 	}
 
-	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme'>>) {
+	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme' | 'auth'>>) {
 		if (
 			updates.namespace !== undefined &&
 			updates.namespace !== app.namespace &&
@@ -42,5 +42,9 @@ export class AppRepository extends Repository<App> {
 
 	async deleteApp(id: string) {
 		await this.delete({ id });
+	}
+
+	async setActiveVersionId(app: App, activeVersionId: string | null) {
+		return await this.save(Object.assign(app, { activeVersionId }));
 	}
 }

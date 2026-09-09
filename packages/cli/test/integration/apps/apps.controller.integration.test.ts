@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -38,7 +38,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate(['App', 'AppVersion', 'Page']);
 });
 
 describe('POST /projects/:projectId/apps', () => {
@@ -91,15 +91,159 @@ describe('GET /projects/:projectId/apps', () => {
 	});
 });
 
-describe('GET /projects/:projectId/apps/data-workflows', () => {
-	// Regression test: this route must be registered before GET /:appId, or
-	// Express matches 'data-workflows' as an appId and 404s looking for that app.
-	test('lists data workflows without being shadowed by GET /:appId', async () => {
+describe('GET /projects/:projectId/apps/:appId', () => {
+	test('reports no active version and no publishedAt before publishing', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/apps/data-workflows`)
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
 			.expect(200);
 
-		expect(response.body.data).toEqual([]);
+		expect(response.body.data.activeVersionId).toBeNull();
+		expect(response.body.data.publishedAt).toBeNull();
+	});
+
+	test('reports the active version and its publishedAt after publishing', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const publishResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(200);
+
+		expect(response.body.data.activeVersionId).toBe(publishResponse.body.data.versionId);
+		expect(response.body.data.publishedAt).not.toBeNull();
+	});
+});
+
+describe('POST /projects/:projectId/apps/:appId/publish', () => {
+	test('publishes a snapshot of the draft pages and activates it', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		expect(response.body.data.versionId).toBeDefined();
+		expect(response.body.data.url).toBe('/apps/my-app');
+	});
+
+	test('rejects publishing when a draft page has invalid content, with the zod issues', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'b1', type: 'not-a-type', data: {} }],
+		});
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(400);
+
+		expect(response.body.meta.pages).toEqual([expect.objectContaining({ pageId: page.id })]);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authMemberAgent.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`).expect(403);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/versions and activate', () => {
+	test('lists versions newest first and marks the active one', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const first = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+		const second = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions`)
+			.expect(200);
+
+		expect(response.body.data).toEqual([
+			expect.objectContaining({ id: second.body.data.versionId, active: true }),
+			expect.objectContaining({ id: first.body.data.versionId, active: false }),
+		]);
+	});
+
+	test('activating an older version rolls back which one is active', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const first = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+		await authOwnerAgent.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`).expect(200);
+
+		await authOwnerAgent
+			.post(
+				`/projects/${ownerProject.id}/apps/${app.id}/versions/${first.body.data.versionId}/activate`,
+			)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(200);
+		expect(response.body.data.activeVersionId).toBe(first.body.data.versionId);
+	});
+
+	test('activating an unknown version answers 404', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/versions/does-not-exist/activate`)
+			.expect(404);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
+	test('renders the draft content even when unpublished', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'h1', type: 'header', data: { text: 'Draft heading', level: 1 } }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		expect(response.headers['content-type']).toContain('text/html');
+		expect(response.text).toContain('Draft heading');
+	});
+
+	test('fills a dynamic segment from ?params= into the interpolated content', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, ':id');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'p1', type: 'paragraph', data: { text: 'Client {{ params.id }}' } }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.query({ params: JSON.stringify({ id: '42' }) })
+			.expect(200);
+
+		expect(response.text).toContain('Client 42');
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(403);
 	});
 });
 
@@ -123,6 +267,22 @@ describe('App pages', () => {
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
 			.expect(200);
 		expect(listResponse.body.data).toHaveLength(2);
+	});
+
+	test('stores the content given at creation', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const content = [{ id: 'h1', type: 'header', data: { text: 'Submissions', level: 1 } }];
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'submissions', content })
+			.expect(200);
+		expect(response.body.data.content).toEqual(content);
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.expect(200);
+		expect(listResponse.body.data[0].content).toEqual(content);
 	});
 
 	test('accepts an empty route, meaning this page is the index page for its level', async () => {
@@ -292,36 +452,6 @@ describe('App pages', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${appB.id}/pages`)
 			.send({ route: 'child', parentPageId: pageInA.id })
-			.expect(404);
-	});
-
-	test("sets and clears a page's dataWorkflowId", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		const workflow = await createWorkflow({}, ownerProject);
-
-		const setResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
-			.expect(200);
-		expect(setResponse.body.data.dataWorkflowId).toBe(workflow.id);
-
-		const clearResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: null })
-			.expect(200);
-		expect(clearResponse.body.data.dataWorkflowId).toBeNull();
-	});
-
-	test("rejects a dataWorkflowId the caller can't read", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		// Owned by no one, so no SharedWorkflow row grants the owner access to it.
-		const workflow = await createWorkflow();
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
 			.expect(404);
 	});
 });

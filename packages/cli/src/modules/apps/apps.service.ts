@@ -1,24 +1,39 @@
-import type { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type {
+	AppVersionSnapshot,
+	CreateAppDto,
+	CreatePageDto,
+	UpdateAppDto,
+	UpdatePageDto,
+} from '@n8n/api-types';
+import { appContentSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { renderPage } from './rendering/page-renderer';
+import type { InvalidPageContent } from './errors/app-content-invalid.error';
+
+import { UrlService } from '@/services/url.service';
 
 import { AppRepository } from './app.repository';
+import { AppVersionRepository } from './app-version.repository';
+import { AppContentInvalidError } from './errors/app-content-invalid.error';
 import { AppNotFoundError } from './errors/app-not-found.error';
-import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
+import { AppVersionNotFoundError } from './errors/app-version-not-found.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
 import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { PageRepository } from './page.repository';
+import type { Page } from './page.entity';
+import { appBasePath, pagePath } from './serving/page-menu';
+import { isDynamicRoute } from './serving/resolve-page-path';
 
 @Service()
 export class AppsService {
 	constructor(
 		private readonly appRepository: AppRepository,
 		private readonly pageRepository: PageRepository,
-		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly appVersionRepository: AppVersionRepository,
+		private readonly urlService: UrlService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -33,6 +48,15 @@ export class AppsService {
 		const app = await this.appRepository.findOneBy({ id: appId });
 		if (!app) throw new AppNotFoundError(appId);
 		return app;
+	}
+
+	/** `getApp` plus the "unpublished changes" fields the editor shows. */
+	async getAppForResponse(appId: string) {
+		const app = await this.getApp(appId);
+		const activeVersion = app.activeVersionId
+			? await this.appVersionRepository.findSnapshot(app.activeVersionId)
+			: null;
+		return { ...app, publishedAt: activeVersion?.createdAt ?? null };
 	}
 
 	async updateApp(appId: string, dto: UpdateAppDto) {
@@ -58,7 +82,12 @@ export class AppsService {
 		if (await this.pageRepository.hasSiblingWithRoute(appId, parentPageId, dto.route)) {
 			throw new PageRouteConflictError(dto.route);
 		}
-		return await this.pageRepository.createPage(appId, parentPageId, dto.route);
+		return await this.pageRepository.createPage(
+			appId,
+			parentPageId,
+			dto.route,
+			dto.content ?? null,
+		);
 	}
 
 	/** Flat list; callers build the tree from each page's `parentPageId`. */
@@ -74,7 +103,7 @@ export class AppsService {
 		return page;
 	}
 
-	async updatePage(appId: string, pageId: string, dto: UpdatePageDto, user: User) {
+	async updatePage(appId: string, pageId: string, dto: UpdatePageDto) {
 		const page = await this.getPage(appId, pageId);
 		if (dto.route !== undefined && dto.route !== page.route) {
 			if (dto.route === '') {
@@ -94,22 +123,118 @@ export class AppsService {
 				throw new PageRouteConflictError(dto.route);
 			}
 		}
-		if (dto.dataWorkflowId) {
-			// Scoped to the user's own `workflow:read` access, same as any other
-			// workflow lookup — not just existence, so a page can't be wired up to
-			// read data from a workflow the caller isn't allowed to see.
-			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				dto.dataWorkflowId,
-				user,
-				['workflow:read'],
-			);
-			if (!workflow) throw new DataWorkflowNotFoundError(dto.dataWorkflowId);
-		}
 		return await this.pageRepository.updatePage(page, dto);
 	}
 
 	async deletePage(appId: string, pageId: string) {
 		await this.getPage(appId, pageId);
 		await this.pageRepository.deletePage(pageId);
+	}
+
+	/** Validates every draft page's content, freezes it as a version, and activates it. */
+	async publish(appId: string, userId: string) {
+		const app = await this.getApp(appId);
+		const pages = await this.pageRepository.findManyByAppId(appId);
+
+		const invalidPages: InvalidPageContent[] = [];
+		const validatedContent = new Map<string, AppVersionSnapshot['pages'][number]['content']>();
+		for (const page of pages) {
+			if (page.content === null) {
+				validatedContent.set(page.id, null);
+				continue;
+			}
+			const parsed = appContentSchema.safeParse(page.content);
+			if (parsed.success) validatedContent.set(page.id, parsed.data);
+			else invalidPages.push({ pageId: page.id, issues: parsed.error.issues });
+		}
+		if (invalidPages.length > 0) throw new AppContentInvalidError({ pages: invalidPages });
+
+		const snapshot: AppVersionSnapshot = {
+			pages: pages.map((page) => ({
+				id: page.id,
+				route: page.route,
+				parentPageId: page.parentPageId,
+				content: validatedContent.get(page.id) ?? null,
+			})),
+			theme: app.theme ?? null,
+		};
+
+		const version = await this.appVersionRepository.createFromSnapshot(appId, snapshot, userId);
+		await this.appRepository.setActiveVersionId(app, version.id);
+		return { versionId: version.id, url: appBasePath(app.namespace) };
+	}
+
+	async listVersions(appId: string) {
+		const app = await this.getApp(appId);
+		const versions = await this.appVersionRepository.findManyByAppId(appId, 50);
+		return versions.map((version) => ({
+			id: version.id,
+			createdAt: version.createdAt,
+			createdById: version.createdById,
+			active: version.id === app.activeVersionId,
+		}));
+	}
+
+	async activateVersion(appId: string, versionId: string) {
+		const app = await this.getApp(appId);
+		const version = await this.appVersionRepository.findSnapshot(versionId);
+		if (!version || version.appId !== appId) throw new AppVersionNotFoundError(versionId);
+		await this.appRepository.setActiveVersionId(app, version.id);
+	}
+
+	/** Renders a draft page for the editor/AI preview; never touches the active version. */
+	async preview(
+		appId: string,
+		pageId: string,
+		path: string | undefined,
+		params: Record<string, string>,
+	) {
+		const app = await this.getApp(appId);
+		const page = await this.getPage(appId, pageId);
+		const pages = await this.pageRepository.findManyByAppId(appId);
+
+		return await renderPage({
+			app: {
+				id: app.id,
+				name: app.name,
+				namespace: app.namespace,
+				projectId: app.projectId,
+				theme: app.theme,
+			},
+			page: {
+				id: page.id,
+				route: page.route,
+				content: appContentSchema.safeParse(page.content).data ?? null,
+				path: path ?? this.draftPagePath(app.namespace, page, pages, params),
+			},
+			pages,
+			params,
+			query: {},
+			viewer: null,
+			baseUrl: this.urlService.getInstanceBaseUrl(),
+			preview: true,
+		});
+	}
+
+	/** The public path this draft page would have, filling `:param` segments from `params` where given. */
+	private draftPagePath(
+		namespace: string,
+		page: Page,
+		pages: Page[],
+		params: Record<string, string>,
+	): string {
+		const byId = new Map(pages.map((p) => [p.id, p]));
+		const segments: string[] = [];
+
+		let current: Page | undefined = page;
+		while (current) {
+			const segment = isDynamicRoute(current.route)
+				? (params[current.route.slice(1)] ?? current.route)
+				: current.route;
+			if (segment !== '') segments.unshift(segment);
+			current = current.parentPageId ? byId.get(current.parentPageId) : undefined;
+		}
+
+		return pagePath(namespace, segments);
 	}
 }

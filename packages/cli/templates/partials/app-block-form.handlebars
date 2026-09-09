@@ -1,0 +1,38 @@
+{{#if showSuccess}}
+<div class='rounded-lg border border-border-success bg-background-success p-md mb-md text-text-success'>
+	{{successMessage}}
+</div>
+{{else}}
+<div class='rounded-lg border border-border bg-surface p-md mb-md'>
+	{{#if title}}<h3 class='text-lg font-medium text-text mb-xs'>{{title}}</h3>{{/if}}
+	{{#if description}}<p class='text-sm text-text-subtle mb-sm'>{{description}}</p>{{/if}}
+	<form method='POST' action='{{actionUrl}}' class='flex flex-col gap-sm'>
+		{{#each fields}}
+		<div class='flex flex-col gap-3xs'>
+			{{#if isHidden}}
+			<input type='hidden' name='{{name}}' value='{{defaultValue}}' />
+			{{else if isFileDisabled}}
+			<label class='text-sm text-text-subtle'>{{label}} (file uploads are not supported here)</label>
+			<input type='file' disabled class='text-sm text-text-disabled' />
+			{{else if isTextarea}}
+			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
+			<textarea id='{{name}}' name='{{name}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm'>{{defaultValue}}</textarea>
+			{{else if isSelect}}
+			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
+			<select id='{{name}}' name='{{name}}' {{#if multiple}}multiple{{/if}} {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm'>
+				{{#each options}}<option value='{{this}}'>{{this}}</option>{{/each}}
+			</select>
+			{{else if isCheckbox}}
+			<label class='text-sm text-text flex items-center gap-2xs'>
+				<input type='checkbox' name='{{name}}' {{#if required}}required{{/if}} /> {{label}}
+			</label>
+			{{else}}
+			<label class='text-sm text-text' for='{{name}}'>{{label}}</label>
+			<input id='{{name}}' type='{{inputType}}' name='{{name}}' value='{{defaultValue}}' placeholder='{{placeholder}}' {{#if required}}required{{/if}} class='p-xs border border-border rounded-sm' />
+			{{/if}}
+		</div>
+		{{/each}}
+		<button type='submit' class='bg-brand hover:bg-brand-hover text-text-inverse rounded-md p-sm'>{{submitLabel}}</button>
+	</form>
+</div>
+{{/if}}

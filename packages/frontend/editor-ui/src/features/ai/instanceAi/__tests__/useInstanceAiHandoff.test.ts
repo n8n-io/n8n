@@ -41,16 +41,19 @@ import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
 	clearPendingAgentAttachment,
+	clearPendingAppAttachment,
 	clearPendingComposerDraft,
 	clearPendingFirstMessage,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	provisionContextOnlyThread,
 	stashPendingAgentAttachment,
+	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
@@ -350,6 +353,99 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.routerPush).not.toHaveBeenCalled();
 	});
 
+	it('opens an app artifact thread without sending a message', async () => {
+		const { openAppArtifactThread } = useInstanceAiHandoff();
+
+		const opened = await openAppArtifactThread(
+			{
+				type: 'app',
+				appId: 'app-1',
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+				projectId: 'project-1',
+			},
+			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
+		);
+
+		expect(opened).toBe(true);
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'app_builder_page',
+			origin: 'internal',
+			sourceContext: { appId: 'app-1' },
+		});
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAppBuilderTarget: {
+				appId: 'app-1',
+				projectId: 'project-1',
+				name: 'Orders dashboard',
+			},
+		});
+		expect(getPendingAppAttachment('thread-1')).toEqual({
+			type: 'app',
+			appId: 'app-1',
+			name: 'Orders dashboard',
+			namespace: 'orders-dashboard',
+			projectId: 'project-1',
+		});
+		expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-1' },
+		});
+	});
+
+	it('clears the pending app attachment when navigation fails', async () => {
+		mocks.routerPush.mockRejectedValueOnce(new Error('Navigation failed'));
+		const { openAppArtifactThread } = useInstanceAiHandoff();
+
+		const opened = await openAppArtifactThread(
+			{ type: 'app', appId: 'app-1', projectId: 'project-1' },
+			{ source: 'app_builder_page', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(getPendingAppAttachment('thread-1')).toBeNull();
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.showError).toHaveBeenCalled();
+	});
+
+	it('removes the new thread when app artifact metadata cannot be saved', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+		const { openAppArtifactThread } = useInstanceAiHandoff();
+
+		const opened = await openAppArtifactThread(
+			{ type: 'app', appId: 'app-1', projectId: 'project-1' },
+			{ source: 'app_builder_page', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+	});
+
+	it('clearPendingThreadHandoff also clears a stashed app attachment', () => {
+		stashPendingAppAttachment('thread-1', {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'project-1',
+		});
+		clearPendingThreadHandoff('thread-1');
+
+		expect(getPendingAppAttachment('thread-1')).toBeNull();
+	});
+
+	it('clearPendingAppAttachment removes only the stashed app attachment', () => {
+		stashPendingAppAttachment('thread-1', {
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'project-1',
+		});
+		clearPendingAppAttachment('thread-1');
+
+		expect(getPendingAppAttachment('thread-1')).toBeNull();
+	});
+
 	describe('before setup is finished', () => {
 		beforeEach(() => {
 			mocks.instanceAiReady.value = false;
@@ -392,6 +488,19 @@ describe('useInstanceAiHandoff', () => {
 			const opened = await openAgentArtifactThread(
 				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
 				{ source: 'agent_preview', origin: 'internal' },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openAppArtifactThread to the assistant without minting a thread', async () => {
+			const { openAppArtifactThread } = useInstanceAiHandoff();
+
+			const opened = await openAppArtifactThread(
+				{ type: 'app', appId: 'app-1', projectId: 'project-1' },
+				{ source: 'app_builder_page', origin: 'internal' },
 			);
 
 			expect(opened).toBe(false);

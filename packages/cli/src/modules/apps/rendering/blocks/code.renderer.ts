@@ -1,0 +1,51 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+
+import type { BlockRenderer } from '../types';
+
+import { AppCodeRuntime, type RunStaticData } from '../../runtime/app-code-runtime';
+import { PageContextFactory } from '../../runtime/page-context.factory';
+
+/**
+ * Runs the block's `render(ctx)` in the isolate and inserts the result as-is
+ * (`content-blocks.md`: the `code` block is never sanitized). Throwing here —
+ * a compile error, a runtime error, an output over the 1 MB cap, a timeout —
+ * is intentional: `rendering/page-renderer.ts` catches it and renders the
+ * error block (generic text in production, message and stack in preview).
+ */
+export const codeBlockRenderer: BlockRenderer<'code'> = {
+	type: 'code',
+	async render(block, ctx) {
+		const staticData: RunStaticData = {
+			app: ctx.app,
+			page: ctx.page,
+			blockId: block.id,
+			params: ctx.params,
+			query: ctx.query,
+			viewer: ctx.viewer,
+			baseUrl: ctx.baseUrl,
+		};
+		const pageContext = Container.get(PageContextFactory).build({ ...staticData, logs: [] });
+
+		const { value: html, logs } = await Container.get(AppCodeRuntime).render(
+			block.data.source,
+			pageContext,
+			staticData,
+		);
+
+		if (logs.length === 0) return html;
+
+		Container.get(Logger).debug('App code block log', {
+			appId: ctx.app.id,
+			pageId: ctx.page.id,
+			blockId: block.id,
+			logs,
+		});
+
+		// `BlockRenderer.render()` returns HTML only, so a preview log line rides
+		// along as a comment rather than a second return channel.
+		if (!ctx.preview) return html;
+		const escaped = logs.join('\n').replace(/--/g, '—');
+		return `${html}\n<!-- ctx.log:\n${escaped}\n-->`;
+	},
+};

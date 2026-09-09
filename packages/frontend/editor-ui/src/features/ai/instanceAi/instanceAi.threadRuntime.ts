@@ -1,4 +1,4 @@
-import { computed, reactive, ref, triggerRef, watch } from 'vue';
+import { computed, effectScope, reactive, ref, triggerRef, watch, type EffectScope } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
@@ -52,6 +52,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from './constants';
 import {
@@ -121,6 +122,20 @@ export function getAgentBuilderTargetFromThreadMetadata(
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
 	return {
 		agentId: target.agentId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+	};
+}
+
+export function getAppBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.appId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return {
+		appId: target.appId,
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
 	};
@@ -366,16 +381,35 @@ export function buildRoutingFromMessages(messages: InstanceAiMessage[]): {
 	return { runStateByGroupId, groupIdByRunId };
 }
 
-export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
+export type ThreadRuntime = ReturnType<typeof setupThreadRuntime>;
 
 /**
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
+ *
+ * The runtime's watchers live in their own detached scope: the store creates
+ * a runtime from whichever component first reads the thread, and that instance
+ * can be a Suspense duplicate that is discarded during a layout transition
+ * while the runtime stays in the store (see the unmount guard in
+ * InstanceAiThreadView). Bound to the caller's scope, the watchers would stop
+ * with it and the registry would freeze for the live instance.
  */
 export function createThreadRuntime(
 	threadId: string,
 	hooks: ThreadRuntimeHooks,
 	initialProjectId?: string,
+): ThreadRuntime {
+	const scope = effectScope(true);
+	const runtime = scope.run(() => setupThreadRuntime(threadId, hooks, initialProjectId, scope));
+	if (!runtime) throw new Error(`Thread runtime scope for ${threadId} is not active`);
+	return runtime;
+}
+
+function setupThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId: string | undefined,
+	scope: EffectScope,
 ) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
@@ -471,6 +505,7 @@ export function createThreadRuntime(
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
+		() => getAppBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -1059,6 +1094,7 @@ export function createThreadRuntime(
 	function dispose(): void {
 		closeSSE();
 		resetState();
+		scope.stop();
 	}
 
 	async function loadHistoricalMessages(): Promise<HistoricalHydrationStatus> {

@@ -3,25 +3,34 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import {
+	activateVersionApi,
 	createAppApi,
 	createPageApi,
 	deleteAppApi,
 	deletePageApi,
 	fetchAppsApi,
-	fetchDataWorkflowsApi,
 	fetchPagesApi,
+	fetchPreviewApi,
+	fetchVersionsApi,
 	getAppApi,
+	publishAppApi,
+	updateAppApi,
 	updatePageApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type { App, DataWorkflowOption, Page, UpdatePageInput } from '@/features/apps/apps.types';
+import type {
+	App,
+	Page,
+	PreviewParams,
+	UpdateAppInput,
+	UpdatePageInput,
+} from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
-	const dataWorkflowOptions = ref<DataWorkflowOption[]>([]);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
@@ -35,6 +44,10 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		const app = await createAppApi(rootStore.restApiContext, projectId, name, namespace);
 		apps.value = [...apps.value, app];
 		return app;
+	};
+
+	const updateApp = async (projectId: string, appId: string, updates: UpdateAppInput) => {
+		return await updateAppApi(rootStore.restApiContext, projectId, appId, updates);
 	};
 
 	const deleteApp = async (projectId: string, appId: string) => {
@@ -74,10 +87,6 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return page;
 	};
 
-	const fetchDataWorkflows = async (projectId: string) => {
-		dataWorkflowOptions.value = await fetchDataWorkflowsApi(rootStore.restApiContext, projectId);
-	};
-
 	const deletePage = async (projectId: string, appId: string, pageId: string) => {
 		await deletePageApi(rootStore.restApiContext, projectId, appId, pageId);
 		// Refetch rather than filter locally: deleting a page cascades to its
@@ -86,18 +95,42 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		await fetchPages(projectId, appId);
 	};
 
+	const publish = async (projectId: string, appId: string) => {
+		return await publishAppApi(rootStore.restApiContext, projectId, appId);
+	};
+
+	const fetchVersions = async (projectId: string, appId: string) => {
+		return await fetchVersionsApi(rootStore.restApiContext, projectId, appId);
+	};
+
+	const activateVersion = async (projectId: string, appId: string, versionId: string) => {
+		return await activateVersionApi(rootStore.restApiContext, projectId, appId, versionId);
+	};
+
+	const fetchPreview = async (
+		projectId: string,
+		appId: string,
+		pageId: string,
+		options: PreviewParams,
+	) => {
+		return await fetchPreviewApi(rootStore.restApiContext, projectId, appId, pageId, options);
+	};
+
 	return {
 		apps,
 		pages,
-		dataWorkflowOptions,
 		fetchApps,
 		getApp,
 		createApp,
+		updateApp,
 		deleteApp,
 		fetchPages,
 		createPage,
 		updatePage,
 		deletePage,
-		fetchDataWorkflows,
+		publish,
+		fetchVersions,
+		activateVersion,
+		fetchPreview,
 	};
 });

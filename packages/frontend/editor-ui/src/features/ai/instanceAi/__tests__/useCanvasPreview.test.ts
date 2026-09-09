@@ -110,6 +110,16 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	thread.resourceNameIndex = nextByName;
 }
 
+function registerApp(thread: MockThread, id: string, name = `App ${id}`, projectId?: string) {
+	const entry: ResourceEntry = { type: 'app', id, name, projectId };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
+	const nextByName = new Map(thread.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	thread.resourceNameIndex = nextByName;
+}
+
 // ---------------------------------------------------------------------------
 // Route mock
 // ---------------------------------------------------------------------------
@@ -1005,6 +1015,92 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.dataTableRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('auto-open/refresh app preview', () => {
+		test.each(['create-page', 'set-content', 'publish'] as const)(
+			'auto-opens and refreshes the app preview on %s',
+			async (action) => {
+				const ctx = setup();
+				ctx.thread.isStreaming = true;
+				registerApp(ctx.thread, 'app-1', 'Orders dashboard', 'proj-1');
+				const initialKey = ctx.appRefreshKey.value;
+
+				ctx.thread.messages = [
+					makeMessage({
+						agentTree: makeAgentNode({
+							toolCalls: [
+								makeToolCall({
+									toolCallId: `tc-${action}`,
+									toolName: 'apps',
+									args: { action, appId: 'app-1' },
+									result: { appId: 'app-1', projectId: 'proj-1' },
+								}),
+							],
+						}),
+					}),
+				];
+				await nextTick();
+
+				expect(ctx.activeAppId.value).toBe('app-1');
+				expect(ctx.activeAppProjectId.value).toBe('proj-1');
+				expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
+			},
+		);
+
+		test.each([
+			'list',
+			'create',
+			'get',
+			'update-app',
+			'get-page',
+			'update-page',
+			'delete-page',
+		] as const)('does not auto-open the app preview on %s', async (action) => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: `tc-${action}`,
+								toolName: 'apps',
+								args: { action, appId: 'app-1' },
+								result: { appId: 'app-1', projectId: 'proj-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBeNull();
+		});
+
+		test('does not auto-open the app preview while hydrating', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-set-content',
+								toolName: 'apps',
+								args: { action: 'set-content', appId: 'app-1' },
+								result: { appId: 'app-1', projectId: 'proj-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBeNull();
 		});
 	});
 

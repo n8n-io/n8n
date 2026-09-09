@@ -33,6 +33,12 @@ export const INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY = 'instanceAiAgentPr
  * `@n8n/instance-ai`.
  */
 export const INSTANCE_AI_PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTarget';
+/**
+ * The app this thread is bound to, once one exists — written once, from the
+ * first `apps` result carrying an `appId` or an `app` attachment the thread
+ * was opened with, and never overwritten afterward (one app per thread).
+ */
+export const INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY = 'instanceAiAppBuilderTarget';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';

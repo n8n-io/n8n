@@ -30,8 +30,4 @@ export class Page extends WithTimestampsAndStringId {
 	@Column({ nullable: true })
 	@Index()
 	parentPageId: string | null;
-
-	/** Workflow this page calls to fetch its data. `null` means the page has no data source yet. */
-	@Column({ type: String, nullable: true })
-	dataWorkflowId: string | null;
 }

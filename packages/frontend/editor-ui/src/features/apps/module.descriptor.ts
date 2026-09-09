@@ -13,7 +13,6 @@ const i18n = useI18n();
 
 const AppsView = async () => await import('@/features/apps/AppsView.vue');
 const AppDetailsView = async () => await import('@/features/apps/AppDetailsView.vue');
-const PageView = async () => await import('@/features/apps/PageView.vue');
 
 export const AppsModule: FrontendModuleDescription = {
 	id: 'apps',
@@ -53,7 +52,7 @@ export const AppsModule: FrontendModuleDescription = {
 			name: APP_PAGE_DETAILS,
 			path: 'apps/:appId/pages/:pageId',
 			props: true,
-			component: PageView,
+			component: AppDetailsView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],

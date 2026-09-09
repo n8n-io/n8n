@@ -1,0 +1,7 @@
+<form method='POST' action='{{actionUrl}}' class='mb-md'>
+	{{#if isSecondary}}
+	<button type='submit' class='bg-subtle hover:bg-hover text-text rounded-md p-sm border border-border'>{{label}}</button>
+	{{else}}
+	<button type='submit' class='bg-brand hover:bg-brand-hover text-text-inverse rounded-md p-sm'>{{label}}</button>
+	{{/if}}
+</form>

@@ -15,6 +15,9 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	AppAuth,
+	AppContent,
+	AppTheme,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
@@ -1035,6 +1038,55 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
+// ── App service ──────────────────────────────────────────────────────────
+
+export interface AppSummary {
+	id: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	url: string;
+	activeVersionId: string | null;
+}
+
+export interface PageSummary {
+	id: string;
+	route: string;
+	parentPageId: string | null;
+	path: string;
+	hasContent: boolean;
+}
+
+/** Backs the `apps` tool. Optional on {@link InstanceAiContext} — its presence gates the tool. */
+export interface InstanceAiAppService {
+	listApps(projectId: string): Promise<AppSummary[]>;
+	createApp(input: {
+		projectId: string;
+		name: string;
+		namespace: string;
+	}): Promise<{ app: AppSummary } | { conflict: true }>;
+	getApp(appId: string): Promise<AppSummary>;
+	updateApp(
+		appId: string,
+		input: { name?: string; theme?: AppTheme | null; auth?: AppAuth },
+	): Promise<AppSummary>;
+	listPages(appId: string): Promise<PageSummary[]>;
+	getPage(appId: string, pageId: string): Promise<PageSummary & { content: AppContent | null }>;
+	createPage(
+		appId: string,
+		input: { route: string; parentPageId?: string; content?: AppContent },
+	): Promise<PageSummary>;
+	updatePage(
+		appId: string,
+		pageId: string,
+		input: { route?: string; content?: AppContent | null },
+	): Promise<PageSummary>;
+	deletePage(appId: string, pageId: string): Promise<void>;
+	publish(appId: string): Promise<{ versionId: string; url: string }>;
+	/** Text of app-page-api.d.ts. */
+	codeApi(): string;
+}
+
 // ── Builder delegate (sub-agent) ─────────────────────────────────────────────
 
 /** Reference to a workflow the current instance-AI session built or touched. */
@@ -1221,6 +1273,9 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present only when the `apps` backend module is active and wired.
+	 *  Presence gates the `apps` tool. */
+	appService?: InstanceAiAppService;
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
