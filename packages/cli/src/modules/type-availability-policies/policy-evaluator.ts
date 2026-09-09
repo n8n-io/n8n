@@ -1,3 +1,5 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+
 import type {
 	PolicyAction,
 	PolicyAttachment,
@@ -20,10 +22,13 @@ export type ScopePolicy = {
  * `optInAvailable` marks a denial the project can lift on its own, because the instance
  * delegated the type. It says nothing about who denied: a project that denied a delegated
  * type itself can still opt back in, so the flag is about the delegation, not the scope.
+ *
+ * `scope` reuses the response type's scope union, so the verdict and what the API reports
+ * cannot drift apart.
  */
 export type ComposedVerdict = {
 	readonly action: 'allow' | 'deny';
-	readonly scope: 'instance' | 'project';
+	readonly scope: NodeTypeAvailabilityScope;
 	readonly matchedRuleId: string | null;
 	readonly optInAvailable: boolean;
 };
