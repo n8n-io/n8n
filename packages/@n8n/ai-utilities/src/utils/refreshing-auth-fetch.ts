@@ -33,7 +33,11 @@ export function createRefreshingAuthFetch({
 		refreshInFlight ??= (async () => {
 			const refreshed = await refreshHeaders?.(new Headers(authHeaders));
 			if (!refreshed) return false;
-			authHeaders = new Headers(refreshed);
+			// Layer the refreshed auth over the current set so non-auth headers
+			// (e.g. a partner User-Agent) survive the refresh
+			const next = new Headers(authHeaders);
+			new Headers(refreshed).forEach((value, name) => next.set(name, value));
+			authHeaders = next;
 			authVersion += 1;
 			return true;
 		})();

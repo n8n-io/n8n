@@ -130,10 +130,7 @@ export function prepareMcpRegistryConnection({
 	}
 
 	const { nodeTypeName, transport } = connection;
-	// Registry-configured headers (e.g. a partner User-Agent) fill in, but the
-	// auth header always wins on a name collision: registry data must never be
-	// able to override the OAuth2 credential (the schema also strips
-	// `authorization` from registry headers; this is defense in depth).
+	// Credential headers win over registry-configured ones on a name clash
 	const mergedHeaders = { ...connection.headers, ...headers };
 
 	if (connection.isTemplated) {

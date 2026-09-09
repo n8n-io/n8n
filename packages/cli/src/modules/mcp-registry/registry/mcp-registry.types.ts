@@ -93,16 +93,7 @@ const mcpRegistryServerBaseSchema = z.object({
 			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
 			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
-			// `authorization` is stripped: it must only ever come from the OAuth2
-			// credential, never from registry data, or a row could override auth.
-			headers: z
-				.record(z.string(), z.string())
-				.transform((headers) =>
-					Object.fromEntries(
-						Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
-					),
-				)
-				.optional(),
+			headers: z.record(z.string(), z.string()).optional(),
 		}),
 	),
 	tools: z.array(

@@ -1,7 +1,8 @@
 import { fetchFollowingRedirects } from '@n8n/ai-utilities';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type { INode, NodeEgressFilter } from 'n8n-workflow';
-import { DATABRICKS_PARTNER_USER_AGENT, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export interface DatabricksOAuth2Credential {
 	host: string;
@@ -11,10 +12,6 @@ export interface DatabricksOAuth2Credential {
 	scope?: string;
 	authentication?: 'header' | 'body';
 }
-
-// Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
-// OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
-export const CHAT_MODEL_USER_AGENT = DATABRICKS_PARTNER_USER_AGENT;
 
 /**
  * Mints Databricks service-principal tokens on demand. Concurrent callers
@@ -48,7 +45,7 @@ export function getDatabricksTokenProvider(
 				scopes: credential.scope?.split(' '),
 				authentication: credential.authentication,
 				ssrfBridge: egressFilter,
-				headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
+				headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 			});
 			const token = await oAuthClient.credentials.getToken();
 			const expiresIn = Number(token.data.expires_in);
@@ -99,7 +96,9 @@ export function createDatabricksFetch(
 			init?.headers ?? (input instanceof Request ? input.headers : undefined),
 		);
 		headers.set('authorization', `Bearer ${await getToken()}`);
-		headers.set('user-agent', CHAT_MODEL_USER_AGENT);
+		// Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
+		// OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
+		headers.set('user-agent', DATABRICKS_PARTNER_USER_AGENT);
 		// The redirect loop takes a URL, so unwrap a Request input and carry its
 		// method/body/signal over (init still wins, per fetch spec). The body is
 		// buffered, which also lets 307/308 hops replay it.

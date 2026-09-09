@@ -189,11 +189,3 @@ export const BINARY_IN_JSON_PROPERTY = '_files';
 
 export const BINARY_MODE_SEPARATE = 'separate';
 export const BINARY_MODE_COMBINED = 'combined';
-
-/**
- * Partner User-Agent so Databricks can attribute traffic to n8n in audit logs
- * (PWAF telemetry spec). Unversioned by agreement with Databricks; every
- * Databricks-bound request (action node, AI sub-nodes, Genie MCP) must send
- * this exact string.
- */
-export const DATABRICKS_PARTNER_USER_AGENT = 'n8n_DatabricksNode';

@@ -6,17 +6,14 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
 import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import {
-	CHAT_MODEL_USER_AGENT,
-	createDatabricksFetch,
-	getDatabricksTokenProvider,
-} from '../token-provider';
+import { createDatabricksFetch, getDatabricksTokenProvider } from '../token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -341,7 +338,7 @@ describe('LmChatDatabricks', () => {
 			await node.methods.listSearch.searchModels.call(mockContext);
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.headers).toMatchObject({ 'User-Agent': CHAT_MODEL_USER_AGENT });
+			expect(requestOptions.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 		});
 	});
 });

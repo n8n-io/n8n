@@ -1,12 +1,9 @@
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type { INode, NodeEgressFilter } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { DatabricksOAuth2Credential } from '../token-provider';
-import {
-	CHAT_MODEL_USER_AGENT,
-	createDatabricksFetch,
-	getDatabricksTokenProvider,
-} from '../token-provider';
+import { createDatabricksFetch, getDatabricksTokenProvider } from '../token-provider';
 
 const { MockClientOAuth2, mockGetToken } = vi.hoisted(() => {
 	const mockGetToken = vi.fn();
@@ -84,7 +81,7 @@ describe('getDatabricksTokenProvider', () => {
 			accessTokenUri: 'https://my.databricks.com/oidc/v1/token',
 			scopes: ['all-apis'],
 			authentication: 'header',
-			headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
+			headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 		});
 	});
 
@@ -264,7 +261,7 @@ describe('createDatabricksFetch', () => {
 		});
 
 		const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-		expect(new Headers(init.headers).get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+		expect(new Headers(init.headers).get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 	});
 
 	it('should preserve the headers of a Request input when init sets none', async () => {
