@@ -1,3 +1,11 @@
+## [2.39.1](https://github.com/n8n-io/n8n/compare/n8n@2.39.0...n8n@2.39.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **core:** Repair legacy-format data-encryption keys during bootstrap ([#38142](https://github.com/n8n-io/n8n/issues/38142)) ([514e20b](https://github.com/n8n-io/n8n/commit/514e20b83d509bd07618cc48650fe783c4bf74f7))
+
+
 # [2.39.0](https://github.com/n8n-io/n8n/compare/n8n@2.38.1...n8n@2.39.0) (2026-09-08)
 
 
