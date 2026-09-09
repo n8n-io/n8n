@@ -1,0 +1,27 @@
+// Private rule for LOLBAS process execution tools detection
+// These patterns are reused across multiple threat and capability rules
+// Patterns require invocation context: flags, paths, file arguments, or piping
+
+rule lolbas_proc
+{
+    strings:
+        // Unix shells with flags, paths, or pipe targets
+        $bash_c = /\bbash\s+-c\b/
+        $sh_c = /\bsh\s+-c\b/
+        $bash_path = /\/bin\/bash\b/
+        $sh_path = /\/bin\/sh\b/
+        $bash_script = /\bbash\s+\S+\.(sh|bash)\b/
+        $sh_script = /\bsh\s+\S+\.sh\b/
+
+        // Scripting languages with flags or file arguments
+        $python_flag = /\bpython[0-9]?\s+-[cmubE]\b/
+        $python_script = /\bpython[0-9]?\s+\S+\.py\b/
+        $node_flag = /\bnode\s+-e\b/
+        $node_script = /\bnode\s+\S+\.js\b/
+        $perl_flag = /\bperl\s+-[eE]\b/
+        $ruby_flag = /\bruby\s+-e\b/
+        $php_flag = /\bphp\s+-r\b/
+
+    condition:
+        any of them
+}

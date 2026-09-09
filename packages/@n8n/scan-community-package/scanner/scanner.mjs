@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
 import { checkPackageProvenance, NPM_PROVENANCE_PREDICATE_TYPE } from './provenance.mjs';
+import { runYaraRules } from './yara.mjs';
 
 // Cap registry/tarball requests; axios has no default timeout, so a stalled
 // connection would otherwise hang the scan indefinitely.
@@ -236,6 +237,9 @@ export const buildScanConfig = async () => {
 	const n8nNodesPlugin = (await import('eslint-plugin-n8n-nodes-base')).default;
 
 	const parser = tsParser.default ?? tsParser;
+	// typescript-estree prints a multi-line banner on TTYs when the TypeScript
+	// version is newer than it officially supports. It is noise for scan users.
+	const parserOptions = { loggerFn: false };
 
 	return defineConfig(
 		n8nCommunityNodesPlugin.configs.recommended,
@@ -284,13 +288,13 @@ export const buildScanConfig = async () => {
 		// when given a top-level JSON object literal.
 		{
 			files: ['**/*.json'],
-			languageOptions: { parser },
+			languageOptions: { parser, parserOptions },
 		},
 		// The external `nodes`/`credentials` rulesets walk a TSESTree AST, so
 		// TS sources (when present in the tarball) need the TS parser too.
 		{
 			files: ['**/*.ts'],
-			languageOptions: { parser },
+			languageOptions: { parser, parserOptions },
 		},
 	);
 };
@@ -322,19 +326,23 @@ export const analyzePackage = async (
 		}
 
 		const results = await eslint.lintFiles(filesToLint);
-		const violations = results.filter((result) => result.errorCount > 0);
+		const errors = results.reduce((n, r) => n + r.errorCount, 0);
+		const warnings = results.reduce((n, r) => n + r.warningCount, 0);
+		const summary = `${errors} error${errors === 1 ? '' : 's'}, ${warnings} warning${warnings === 1 ? '' : 's'}`;
 
-		if (violations.length > 0) {
+		if (errors > 0) {
 			const formatter = await eslint.loadFormatter('stylish');
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
+				summary,
 				message: 'ESLint violations found',
-				details: formattedResults,
+				// Paths relative to the scanned root; the temp dir prefix is noise.
+				details: formattedResults.replaceAll(`${packageDir}${path.sep}`, '').trim(),
 			};
 		}
 
-		return { passed: true };
+		return { passed: true, summary };
 	} catch (error) {
 		console.error(error);
 		return {
@@ -440,25 +448,42 @@ export const analyzePackageByName = async (packageName, version) => {
 		}
 		stdout.write(`✅ Downloaded ${label} \n`);
 
-		stdout.write(`Analyzing ${label}...`);
+		stdout.write(`Analyzing ${label}...${stdout.TTY ? '' : '\n'}`);
+		const report = (name, result) => {
+			if (stdout.TTY) {
+				stdout.clearLine(0);
+				stdout.cursorTo(0);
+			}
+			stdout.write(`${result.passed ? '✅' : '❌'} ${name}: ${result.summary} \n`);
+			return { name, ...result };
+		};
 		// The source checkout gets the full rule set on real `.ts` sources.
 		// The shipped artifact must stay scanned too: provenance pins the
 		// source commit, not the build output — a build step can emit anything
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
+		const checks = [
+			report('Source lint', await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS)),
+			report(
+				'Published package lint',
+				await analyzePackage(packageDir, ['**/*.js', 'package.json']),
+			),
+			// Malware-pattern scan of the shipped artifact (GuardDog's YARA ruleset).
+			report('YARA malware rules', await runYaraRules(packageDir)),
+		];
+
+		const failed = checks.filter((c) => !c.passed);
 		const analysisResult = {
-			passed: sourceResult.passed && distResult.passed,
-			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
-			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
+			passed: failed.length === 0,
+			message: failed.map((c) => `${c.name}: ${c.summary}`).join('; ') || undefined,
+			details:
+				failed
+					.filter((c) => c.details)
+					.map((c) => `── ${c.name} ──\n${c.details}`)
+					.join('\n\n') || undefined,
+			checks,
 		};
-		if (stdout.TTY) {
-			stdout.clearLine(0);
-			stdout.cursorTo(0);
-		}
-		stdout.write(`✅ Analyzed ${label} \n`);
 
 		return {
 			packageName,
