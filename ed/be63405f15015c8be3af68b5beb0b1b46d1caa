@@ -1,0 +1,43 @@
+packages/cli/src/modules/agents/scheduling/agent-task-task-handler.ts
+  s_8eb3cc8f7c5911::t_42829395ebf6fc 46-50
+  s_8eb3cc8f7c5911::t_b67e7592966446 51-53
+  s_8eb3cc8f7c5911::t_94b6da38a18461 54
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_8eb3cc8f7c5911::t_2d7bd2dcdb3c6a 902-904,906-910,915-916,932,937-938,948,953-954,968,973,989,994,1004-1021,1023-1024,1028,1033-1034,1044,1049,1051,1068,1073,1088,1098,1115,1130
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_8eb3cc8f7c5911::t_aee453eb85967a 493-499,523-527,529-532,538-553,570,613-626,628-634,636-639,642-643,645-647
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-job-registrar.test.ts
+  s_8eb3cc8f7c5911::t_c3fe749fe1dc5a 152-162
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-task-handler.test.ts
+  s_8eb3cc8f7c5911::t_138e0f031462df 19,64-66,68
+packages/cli/src/modules/agents/scheduling/agent-task-job-registrar.ts
+  s_a655aa7146362b::t_1efd631fcc4690 52-53,70-73,92-94,179
+packages/cli/src/modules/agents/scheduling/agent-task-job.ts
+  s_8eb3cc8f7c5911::t_266c33628ca81c 22-25
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_8eb3cc8f7c5911::t_f0428bab27f1f8 198,202,204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "edbe63405f15015c8be3af68b5beb0b1b46d1caa",
+  "prompts": {},
+  "sessions": {
+    "s_8eb3cc8f7c5911": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea6e1bfa-4c4a-4e84-9919-ed26ac6a9d0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a655aa7146362b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fced894e-1e43-48a4-8824-934e8a5a0646",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
