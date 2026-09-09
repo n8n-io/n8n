@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 
 export interface ViewCommand {
 	command: 'view';
@@ -114,10 +115,6 @@ function truncatePreview(str: string): string {
 
 function escapeWhitespace(str: string): string {
 	return str.replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/\r/g, '\\r');
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
 }
 
 export function formatTextWithLineNumbers(text: string): string {

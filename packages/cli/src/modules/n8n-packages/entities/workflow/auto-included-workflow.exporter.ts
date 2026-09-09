@@ -5,7 +5,11 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { WorkflowNodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
-import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
+import {
+	packageDirectory,
+	writeManifestEntry,
+	writeWorkflowManifestEntry,
+} from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
@@ -97,12 +101,12 @@ export class AutoIncludedWorkflowExporter {
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
 
-			const entry = await writeManifestEntry(
+			const entry = await writeWorkflowManifestEntry(
 				request.writer,
-				'workflows',
 				await this.resolveWorkflowBaseDir(included, shells),
 				included.workflow,
 				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
+				this.workflowSerializer.serializeLifecycle(included.workflow),
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);

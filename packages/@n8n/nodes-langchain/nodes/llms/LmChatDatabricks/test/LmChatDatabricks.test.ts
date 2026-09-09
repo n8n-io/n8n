@@ -5,18 +5,19 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	createRefreshingAuthFetch,
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
+import { CHAT_MODEL_USER_AGENT } from '../constants';
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
-import {
-	CHAT_MODEL_USER_AGENT,
-	createDatabricksFetch,
-	getDatabricksTokenProvider,
-} from '../token-provider';
+import { getDatabricksTokenProvider } from '../token-provider';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -26,9 +27,13 @@ const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
-const mockedCreateDatabricksFetch = vi.mocked(createDatabricksFetch);
+const mockedCreateRefreshingAuthFetch = vi.mocked(createRefreshingAuthFetch);
 
-const mockTokenProvider = vi.fn(async () => 'test-token');
+const mockTokenProvider = {
+	getToken: vi.fn(async () => 'test-token'),
+	refreshAfterRejection: vi.fn(async () => null as string | null),
+	expiredStatus: 403,
+};
 const mockFetch = vi.fn() as unknown as typeof fetch;
 
 const mockCredential = {
@@ -71,7 +76,7 @@ describe('LmChatDatabricks', () => {
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
 		mockedGetDatabricksTokenProvider.mockReturnValue(mockTokenProvider);
-		mockedCreateDatabricksFetch.mockReturnValue(mockFetch);
+		mockedCreateRefreshingAuthFetch.mockReturnValue(mockFetch);
 		return ctx;
 	};
 
@@ -123,19 +128,57 @@ describe('LmChatDatabricks', () => {
 			expect(callArgs?.configuration?.baseURL).toBe('https://my.databricks.com/serving-endpoints');
 		});
 
-		it('should wire the token-provider fetch wrapper into ChatOpenAI', async () => {
+		it('should wire the refreshing fetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);
 
-			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(
-				mockNodeDef,
-				mockCredential,
-				undefined,
-			);
-			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider, undefined);
+			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(ctx, mockCredential, undefined);
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
 			expect(callArgs?.configuration?.fetch).toBe(mockFetch);
+		});
+
+		it('should retry on the expiry status the credential declares, not the default 401', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			expect(fetchOptions.expiredStatus).toBe(403);
+		});
+
+		it('should send the bearer and the partner User-Agent on every request', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			// Resolved per request, so a token minted mid-execution is picked up
+			const headers = new Headers(await fetchOptions.resolveHeaders?.());
+			expect(headers.get('authorization')).toBe('Bearer test-token');
+			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+		});
+
+		it('should re-authorize with the rotated token after a rejection', async () => {
+			const ctx = setupMockContext();
+			mockTokenProvider.refreshAfterRejection.mockResolvedValue('rotated-token');
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			const headers = new Headers((await fetchOptions.refreshHeaders?.(new Headers())) ?? {});
+			expect(headers.get('authorization')).toBe('Bearer rotated-token');
+			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+		});
+
+		it('should not re-authorize when the session cannot be refreshed', async () => {
+			const ctx = setupMockContext();
+			mockTokenProvider.refreshAfterRejection.mockResolvedValue(null);
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			await expect(fetchOptions.refreshHeaders?.(new Headers())).resolves.toBeNull();
 		});
 
 		it('should thread the egress filter into the token provider and proxy agent', async () => {
@@ -151,16 +194,39 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(
-				mockNodeDef,
+				ctx,
 				mockCredential,
 				egressFilter,
 			);
-			expect(mockedCreateDatabricksFetch).toHaveBeenCalledWith(mockTokenProvider, egressFilter);
 			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
 				'https://my.databricks.com/serving-endpoints',
 				expect.any(Object),
 				secureLookup,
 			);
+
+			// Every redirect hop is checked before the bearer is sent to it
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			egressFilter.validateUrl.mockResolvedValue({ ok: true });
+			await fetchOptions.assertAllowedUrl?.('https://my.databricks.com/serving-endpoints');
+			expect(egressFilter.validateUrl).toHaveBeenCalledWith(
+				'https://my.databricks.com/serving-endpoints',
+			);
+		});
+
+		it('should reject a redirect hop the egress filter denies', async () => {
+			const ctx = setupMockContext();
+			const denied = new Error('blocked host');
+			const egressFilter = {
+				validateUrl: vi.fn().mockResolvedValue({ ok: false, error: denied }),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn(),
+			};
+			ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
+
+			await node.supplyData.call(ctx, 0);
+
+			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
+			await expect(fetchOptions.assertAllowedUrl?.('http://169.254.169.254/')).rejects.toBe(denied);
 		});
 
 		it('should read the model via resourceLocator value extraction', async () => {
@@ -220,11 +286,12 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
-		it('should reject authorizationCode credentials', async () => {
+		it('should accept authorizationCode credentials', async () => {
 			const ctx = setupMockContext({ grantType: 'authorizationCode' });
 
-			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(NodeOperationError);
-			expect(MockedChatOpenAI).not.toHaveBeenCalled();
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalled();
 		});
 
 		it('should reject non-https hosts', async () => {

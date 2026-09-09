@@ -41,6 +41,13 @@ vi.mock('vue-router', () => ({
 	onBeforeRouteLeave: vi.fn(),
 }));
 
+// Route actions open the NDV. The real NDV needs `route.meta` and `<dialog>`
+// APIs that this mock and jsdom lack; these tests only assert canvas state.
+vi.mock('@/features/ndv/shared/views/NodeDetailsView.vue', () => ({
+	__esModule: true,
+	default: { name: 'NodeDetailsView', render: () => null },
+}));
+
 describe('NodeView', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;

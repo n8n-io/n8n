@@ -1166,7 +1166,7 @@ export class McpAgentToolsService {
 		abortSignal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
 		const { id: agentId, projectId } = agent;
-		const previewUrl = `${this.getAgentUrl(projectId, agentId)}/preview`;
+		const previewUrl = `${this.getAgentUrl(projectId, agentId)}?openPreview=true`;
 
 		try {
 			let result: AgentTestRunResult;

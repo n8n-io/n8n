@@ -122,6 +122,9 @@ catalog:
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.19.0
   '@rudderstack/rudder-sdk-node': 3.0.5
+  # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
+  # context, which splits @langchain/core into two physical copies.
+  '@smithy/signature-v4': 5.7.2
   '@stryker-mutator/core': 10.0.0
   '@stryker-mutator/vitest-runner': 10.0.0
   '@supabase/supabase-js': 2.112.3
@@ -170,6 +173,14 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
+  # Pinned exactly and kept together: these packages cross types with each other
+  # (`rule-tester` pins `utils` exactly), so a caret that lets one float breaks the
+  # other. Must match the `typescript-eslint` meta-package version below.
+  '@typescript-eslint/eslint-plugin': 8.35.0
+  '@typescript-eslint/parser': 8.35.0
+  '@typescript-eslint/rule-tester': 8.35.0
+  '@typescript-eslint/typescript-estree': 8.35.0
+  '@typescript-eslint/utils': 8.35.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
@@ -207,7 +218,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^7.0.0
+  isolated-vm: ^7.0.1
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   json-schema: 0.4.0
@@ -455,7 +466,6 @@ overrides:
   undici@6: catalog:undici-v6
   undici@7: catalog:undici-v7
   node-gyp>undici: catalog:undici-v7
-  'eslint-plugin-import-x>@typescript-eslint/utils': 8.35.0
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8

@@ -71,12 +71,12 @@
     "mutate:diff": "node scripts/mutation-health/mutate.mjs --diff",
     "test": "turbo run test",
     "test:ci": "turbo run test --continue --concurrency=1",
-    "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'",
-    "test:ci:frontend:changed": "turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/**'",
-    "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
-    "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
-    "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
-    "test:ci:backend:integration:changed": "turbo run test:integration:changed --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/**'",
+    "test:ci:frontend": "turbo run test --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'",
+    "test:ci:frontend:changed": "turbo run test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'",
+    "test:ci:backend": "turbo run test --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
+    "test:ci:backend:unit": "turbo run test:unit --continue --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
+    "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
+    "test:ci:backend:integration:changed": "turbo run test:integration:changed --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'",
     "test:affected": "turbo run test --affected --concurrency=1",
     "db:schema:docs": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:docs",
     "db:schema:check": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:check",
@@ -88,7 +88,7 @@
     "worker": "./packages/cli/bin/n8n worker",
     "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
     "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'",
-    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir . --ignore-workspace"
+    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir \"$PWD/.github/scripts\" --ignore-workspace"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

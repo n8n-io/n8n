@@ -129,8 +129,10 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	credentialIdParamSchema,
 	executionIdParamSchema,
-	gitConnectionIdParamSchema,
 	projectIdParamSchema,
+	promotionConnectionIdParamSchema,
+	promotionDirectionParamSchema,
+	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
 	workflowIdParamSchema,
