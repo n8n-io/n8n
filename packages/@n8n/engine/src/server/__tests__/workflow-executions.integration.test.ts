@@ -72,7 +72,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		const response = await search({ workflowIds: [workflowId], includeTotal: true }).expect(200);
 		const result = response.body as SearchExecutionsResponse;
 		expect(result.total).toBe(1);
-		expect(result.hasMore).toBe(false);
+		expect(result.nextCursor).toBeNull();
 		expect(result.items.map((item) => item.id)).toEqual([id]);
 		expect(Object.keys(result.items[0]).sort()).toEqual(
 			['id', 'workflowId', 'status', 'mode', 'createdAt', 'updatedAt', 'finishedAt'].sort(),
@@ -85,10 +85,12 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		expect(Object.keys(rows[0]).sort()).toEqual(Object.keys(result.items[0]).sort());
 	});
 
-	it('allows all for the authenticated CP and applies the ID filter', async () => {
+	it('allows all for the authenticated CP', async () => {
 		const id = await start(generateId());
-		const response = await search({ workflowIds: 'all', id, includeTotal: true }).expect(200);
-		expect(response.body).toMatchObject({ items: [{ id }], total: 1, hasMore: false });
+		const response = await search({ workflowIds: 'all', includeTotal: true }).expect(200);
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.items.map((item) => item.id)).toContain(id);
+		expect(result.total).toBeGreaterThanOrEqual(1);
 	});
 
 	it('compares modes exactly and applies status filters', async () => {
@@ -106,7 +108,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 				...filter,
 				includeTotal: true,
 			}).expect(200);
-			expect(response.body).toEqual({ items: [], hasMore: false, total: 0 });
+			expect(response.body).toEqual({ items: [], nextCursor: null, total: 0 });
 		}
 	});
 
@@ -132,10 +134,9 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 			}).expect(200);
 			const page = response.body as SearchExecutionsResponse;
 			expect(page.total).toBe(5);
-			expect(page.hasMore).toBe(i < 2);
+			expect(page.nextCursor !== null).toBe(i < 2);
 			seen.push(...page.items.map((item) => item.id));
-			const last = page.items.at(-1)!;
-			before = { id: last.id, createdAt: last.createdAt };
+			before = page.nextCursor ?? undefined;
 		}
 		expect(seen).toEqual(ids.sort().reverse());
 		expect(new Set(seen).size).toBe(5);

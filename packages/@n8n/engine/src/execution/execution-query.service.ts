@@ -15,8 +15,8 @@ export class ExecutionQueryService {
 
 	/**
 	 * Lists executions matching `query`, one page at a time. Fetches one extra
-	 * row over the requested limit to learn `hasMore` without a second count
-	 * query.
+	 * row over the requested limit, so the last in-page row's own cursor can be
+	 * reported as `nextCursor` without a second query.
 	 */
 	async searchExecutions(query: ExecutionListQuery) {
 		const { limit } = query;
@@ -24,9 +24,11 @@ export class ExecutionQueryService {
 			this.viewStore.listExecutionViews({ ...query, limit: limit + 1 }),
 			query.includeTotal ? this.viewStore.countExecutionViews(query) : undefined,
 		]);
+		const items = rows.slice(0, limit);
+		const last = items.at(-1);
 		return {
-			items: rows.slice(0, limit),
-			hasMore: rows.length > limit,
+			items,
+			nextCursor: rows.length > limit && last ? { createdAt: last.createdAt, id: last.id } : null,
 			...(total !== undefined ? { total } : {}),
 		};
 	}

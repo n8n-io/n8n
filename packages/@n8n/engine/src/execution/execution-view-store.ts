@@ -8,21 +8,23 @@ import type {
 	WorkflowDocument,
 } from './execution.types';
 
-/** Timestamps are ISO 8601 strings: the API reports them as such, and there is
- * no reader in between that needs them as `Date`. */
+/**
+ * Timestamps come back however the store's driver reports them: the only
+ * consumer serializes them to JSON, where `Date` and an ISO string are the
+ * same value, so there is no point parsing or formatting them in between.
+ */
 export interface ExecutionListItemView {
 	id: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
-	createdAt: string;
-	updatedAt: string;
-	finishedAt: string | null;
+	createdAt: Date;
+	updatedAt: Date;
+	finishedAt: Date | null;
 }
 
 export interface ExecutionListQuery {
 	workflowIds: string[] | 'all';
-	id?: string;
 	status?: ExecutionStatus[];
 	mode?: string;
 	createdAfter?: string;
@@ -31,6 +33,8 @@ export interface ExecutionListQuery {
 	/** Required at this layer; the API's default lives on the request schema. */
 	limit: number;
 	includeTotal?: boolean;
+	/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+	order?: { top?: ExecutionStatus; startedAt?: 'DESC' };
 }
 
 /**

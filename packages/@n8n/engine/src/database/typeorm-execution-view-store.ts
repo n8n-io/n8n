@@ -14,16 +14,6 @@ import type {
 /** The execution row, with its steps aggregated into one column. */
 type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
 
-/** `listExecutionViews`'s raw row: the driver reports timestamp columns as `Date`. */
-type ExecutionListItemRow = Omit<
-	ExecutionListItemView,
-	'createdAt' | 'updatedAt' | 'finishedAt'
-> & {
-	createdAt: Date;
-	updatedAt: Date;
-	finishedAt: Date | null;
-};
-
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
  * read of an execution and a read of its steps are one concern.
@@ -50,17 +40,17 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.before) {
 			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
 		}
-		const rows = await qb
-			.orderBy('execution.created_at', 'DESC')
+		// A sort order other than the cursor's own (created_at, id) can skip or
+		// repeat rows at the page boundary if a row's status changes after the
+		// fact. Same limitation as the control plane's equivalent query.
+		if (query.order?.top) {
+			qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+		}
+		return await qb
+			.addOrderBy('execution.created_at', 'DESC')
 			.addOrderBy('execution.id', 'DESC')
 			.limit(query.limit)
-			.getRawMany<ExecutionListItemRow>();
-		return rows.map((row) => ({
-			...row,
-			createdAt: row.createdAt.toISOString(),
-			updatedAt: row.updatedAt.toISOString(),
-			finishedAt: row.finishedAt?.toISOString() ?? null,
-		}));
+			.getRawMany<ExecutionListItemView>();
 	}
 
 	async countExecutionViews(query: ExecutionListQuery): Promise<number> {
@@ -72,7 +62,6 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.workflowIds !== 'all') {
 			qb.andWhere('execution.workflow_id = ANY(:workflowIds)', { workflowIds: query.workflowIds });
 		}
-		if (query.id) qb.andWhere('execution.id = :executionId', { executionId: query.id });
 		if (query.status) qb.andWhere('execution.status = ANY(:statuses)', { statuses: query.status });
 		if (query.mode) qb.andWhere('execution.mode = :mode', { mode: query.mode });
 		if (query.createdAfter)

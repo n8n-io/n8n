@@ -22,15 +22,12 @@ const GetExecutionQuery = z.object({ includeSteps: z.enum(['true', 'false']).opt
 
 const datetimeStringWithOffset = () => z.string().datetime({ offset: true });
 
+const ExecutionStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']);
+
 const SearchExecutionsBody = z
 	.object({
 		workflowIds: z.union([z.literal('all'), z.array(z.string().min(1)).min(1).max(10_000)]),
-		/** The execution's own ID, for looking up one execution within the filtered set. */
-		id: z.string().uuid().optional(),
-		status: z
-			.array(z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']))
-			.min(1)
-			.optional(),
+		status: z.array(ExecutionStatusSchema).min(1).optional(),
 		mode: z.string().min(1).max(32).optional(),
 		createdAfter: datetimeStringWithOffset().optional(),
 		createdBefore: datetimeStringWithOffset().optional(),
@@ -40,6 +37,11 @@ const SearchExecutionsBody = z
 			.optional(),
 		limit: z.number().int().min(1).max(100).default(20),
 		includeTotal: z.boolean().optional(),
+		/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+		order: z
+			.object({ top: ExecutionStatusSchema.optional(), startedAt: z.literal('DESC').optional() })
+			.strict()
+			.optional(),
 	})
 	.strict();
 
