@@ -1,8 +1,4 @@
-import type {
-	ExecutionStatus,
-	WorkflowExecuteMode,
-	WorkflowExecutionSource,
-} from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowExecuteMode, WorkflowExecutionSource } from 'n8n-workflow';
 
 import { isBillableExecution } from '../is-billable-execution';
 
