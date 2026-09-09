@@ -17,7 +17,13 @@ import {
 import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
-	| { ok: true; autoApproved: true; redirectUrl: string }
+	| {
+			ok: true;
+			autoApproved: true;
+			redirectUrl: string;
+			/** Presentational hints for the header icon while the redirect happens. */
+			uiHints?: ConsentUiHints;
+	  }
 	| {
 			ok: true;
 			autoApproved: false;
@@ -90,7 +96,12 @@ export class OAuthConsentService {
 				// resolver's DB-backed lookup twice.
 				const reuse = await this.tryReuseConsent(user, sessionPayload, resource);
 				if (reuse) {
-					return { ok: true, autoApproved: true, redirectUrl: reuse.redirectUrl };
+					return {
+						ok: true,
+						autoApproved: true,
+						redirectUrl: reuse.redirectUrl,
+						uiHints: resource.uiHints,
+					};
 				}
 
 				if (!(await resource.authorize(user)))

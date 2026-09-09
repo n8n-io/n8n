@@ -32,6 +32,8 @@ export type ConsentDetails =
 			 */
 			autoApproved: true;
 			redirectUrl: string;
+			/** Presentation hints from the resource, used for the header icon while redirecting. */
+			uiHints?: ConsentUiHints;
 	  }
 	| ({ autoApproved?: false } & ConsentDetailsPicker);
 

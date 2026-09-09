@@ -63,6 +63,7 @@ const clientDetails = computed<ConsentDetailsPicker | null>(() => {
 	return details && !details.autoApproved ? details : null;
 });
 const resourceName = computed(() => clientDetails.value?.resourceName);
+const uiHints = computed(() => consentStore.consentDetails?.uiHints);
 // Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
@@ -178,18 +179,13 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<N8nIcon
-						v-if="clientDetails?.uiHints?.icon"
-						:icon="clientDetails.uiHints.icon"
-						size="large"
-						color="text-dark"
-					/>
+					<N8nIcon v-if="uiHints?.icon" :icon="uiHints.icon" size="large" color="text-dark" />
 					<component
 						:is="clientBrandIcon"
 						v-else-if="clientBrandIcon"
 						:class="$style['brand-icon']"
 					/>
-					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
+					<N8nIcon v-else-if="detailsResolved || error" icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
 				     with a slow muted spinner badge. Decorative. -->

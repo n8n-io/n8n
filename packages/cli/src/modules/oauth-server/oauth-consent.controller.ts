@@ -51,6 +51,7 @@ export class OAuthConsentController {
 					data: {
 						autoApproved: true,
 						redirectUrl: consentDetails.redirectUrl,
+						uiHints: consentDetails.uiHints,
 					},
 				});
 				return;
