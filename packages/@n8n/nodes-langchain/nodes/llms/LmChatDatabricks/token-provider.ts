@@ -1,4 +1,3 @@
-import { fetchFollowingRedirects } from '@n8n/ai-utilities';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type {
 	INode,
@@ -8,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { indicatesInvalidToken } from './error-handling';
+import { CHAT_MODEL_USER_AGENT } from './constants';
 import type { OAuth2TokenData, RefreshingTokenSource } from '../../../utils/oauth2-token-provider';
 import { createRefreshingOAuth2TokenProvider } from '../../../utils/oauth2-token-provider';
 
@@ -45,12 +44,6 @@ export function getDatabricksTokenProvider(
 	return getServicePrincipalTokenProvider(ctx.getNode(), credential, egressFilter);
 }
 
-// Partner User-Agent for Databricks traffic attribution (PWAF telemetry spec).
-// Unversioned by agreement with Databricks.
-// Set here, not via ChatOpenAI's `defaultHeaders`, so it also wins over the
-// OpenAI SDK's own User-Agent - Headers.set() overwrites case-insensitively.
-export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksNode';
-
 /**
  * Mints Databricks service-principal tokens on demand. Concurrent callers
  * share one in-flight mint, and tokens re-mint 60s before expiry so requests
@@ -61,6 +54,10 @@ export const CHAT_MODEL_USER_AGENT = 'n8n_DatabricksNode';
  * expire mid-run. The mint URL is derived from the https-validated `host`
  * (matching the credential's default) so a stored `accessTokenUrl` cannot
  * redirect the client secret elsewhere.
+ *
+ * This holds for the mint path only. The user-login path hands the refresh to
+ * core, which posts to `accessTokenUrl` as stored, so the guarantee here does
+ * not extend to the whole node.
  */
 function getServicePrincipalTokenProvider(
 	node: INode,
@@ -88,7 +85,7 @@ function getServicePrincipalTokenProvider(
 			const token = await oAuthClient.credentials.getToken();
 			const expiresIn = Number(token.data.expires_in);
 			// ponytail: early-expiry buffer only; if server-side revocation mid-run
-			// ever matters, add invalidate-and-retry-once on 401/403 in createDatabricksFetch
+			// ever matters, this source needs a `refreshAfterRejection` hook too
 			expiresAt = Number.isNaN(expiresIn) ? 0 : Date.now() + (expiresIn - 60) * 1000;
 			return token.accessToken;
 		} catch (error) {
@@ -116,81 +113,5 @@ function getServicePrincipalTokenProvider(
 			}
 			return await cached;
 		},
-	};
-}
-
-/** Cloned so the caller still gets a readable body when the refresh is skipped. */
-async function peekBody(response: Response): Promise<string> {
-	try {
-		return await response.clone().text();
-	} catch {
-		return '';
-	}
-}
-
-/**
- * Wraps fetch to inject a fresh bearer token per request. Leaves a successful
- * body untouched, so streaming responses pass through; only a rejected one is
- * cloned, to read its short error payload. Redirects are followed manually so
- * every hop is validated against the egress filter before the token is sent to
- * it, matching the MCP client's fetch wrapper; the redirect helper also drops
- * the bearer on cross-origin hops.
- */
-export function createDatabricksFetch(
-	tokenSource: RefreshingTokenSource,
-	egressFilter?: NodeEgressFilter,
-): typeof globalThis.fetch {
-	const { getToken, refreshAfterRejection, expiredStatus } = tokenSource;
-
-	return async (input, init) => {
-		// The redirect loop takes a URL, so unwrap a Request input and carry its
-		// method/body/signal over (init still wins, per fetch spec). The body is
-		// buffered, which lets 307/308 hops and the retry below replay it.
-		const requestInit: RequestInit = { ...init };
-		if (input instanceof Request) {
-			requestInit.method ??= input.method;
-			requestInit.signal ??= input.signal;
-			if (requestInit.body === undefined && input.body) {
-				requestInit.body = await input.arrayBuffer();
-			}
-		}
-		const startUrl = input instanceof Request ? input.url : input;
-
-		const send = async (token: string) => {
-			// Passing headers in init replaces a Request input's own headers, so
-			// carry those over when init doesn't set any
-			const headers = new Headers(
-				init?.headers ?? (input instanceof Request ? input.headers : undefined),
-			);
-			headers.set('authorization', `Bearer ${token}`);
-			headers.set('user-agent', CHAT_MODEL_USER_AGENT);
-			return await fetchFollowingRedirects(
-				fetch,
-				startUrl,
-				{ ...requestInit, headers },
-				{
-					onBeforeHop: async (hopUrl) => {
-						if (egressFilter) {
-							const result = await egressFilter.validateUrl(hopUrl);
-							if (!result.ok) throw result.error;
-						}
-					},
-				},
-			);
-		};
-
-		const response = await send(await getToken());
-		if (response.status !== expiredStatus || !refreshAfterRejection) return response;
-
-		// The status alone also matches "no permission on this endpoint", and a
-		// refresh spends the one-time-use refresh token, so read the body first
-		if (!indicatesInvalidToken(await peekBody(response))) return response;
-
-		// The clock check missed it: revoked server-side, or clock skew
-		const refreshed = await refreshAfterRejection();
-		if (!refreshed) return response;
-
-		await response.body?.cancel().catch(() => {});
-		return await send(refreshed);
 	};
 }

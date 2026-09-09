@@ -1,14 +1,15 @@
+import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
+import { errorChain, type UnknownRecord } from '@n8n/utils/errors/error-chain';
 import type { IExecuteFunctions, ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 type TokenContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
-export interface OAuth2TokenData {
-	access_token?: string;
-	refresh_token?: string;
-	expires_in?: number;
-	n8n_expires_at?: string;
-}
+/**
+ * What core stores on the credential. Every field is a string, and any of them
+ * can be missing on a credential that was never connected.
+ */
+export type OAuth2TokenData = Partial<ClientOAuth2TokenData>;
 
 export interface OAuth2UserCredential {
 	oauthTokenData?: OAuth2TokenData;
@@ -59,16 +60,17 @@ function isCredentialInvalidError(error: unknown): error is CredentialInvalidErr
 	);
 }
 
-/** Model SDKs rewrite what their fetch hook throws, so the original survives only on `cause`. */
+const isSessionExpired = (
+	value: UnknownRecord,
+): value is UnknownRecord & OAuth2SessionExpiredError => value instanceof OAuth2SessionExpiredError;
+
+/**
+ * Model SDKs rewrite what their fetch hook throws, so the original survives only
+ * as a wrapped error. `errorChain` covers the keys they wrap under, including the
+ * `errorResponse`/`reason` pair `NodeApiError` uses.
+ */
 export function findSessionExpiredError(error: unknown): OAuth2SessionExpiredError | undefined {
-	const seen = new Set<unknown>();
-	let current = error;
-	while (current && typeof current === 'object' && !seen.has(current)) {
-		if (current instanceof OAuth2SessionExpiredError) return current;
-		seen.add(current);
-		current = (current as { cause?: unknown }).cause;
-	}
-	return undefined;
+	return errorChain(error).find(isSessionExpired);
 }
 
 export function createRefreshingOAuth2TokenProvider(options: {

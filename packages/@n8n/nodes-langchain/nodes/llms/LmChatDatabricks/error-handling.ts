@@ -5,10 +5,10 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 
 /**
  * Databricks answers both a dead token and "no permission on this endpoint" with
- * 403 `PERMISSION_DENIED`, so only the message tells them apart. Reconnecting
- * fixes the first; the second also must not spend the one-time refresh token.
+ * 403 `PERMISSION_DENIED`, so only the message tells them apart - and only the
+ * first is worth telling the user to reconnect over.
  */
-export function indicatesInvalidToken(text: string): boolean {
+function indicatesInvalidToken(text: string): boolean {
 	return /invalid\s+(access\s+)?token|token\s+(is\s+)?(invalid|expired)|expired\s+token/i.test(
 		text,
 	);

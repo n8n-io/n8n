@@ -1,5 +1,6 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	createRefreshingAuthFetch,
 	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -16,13 +17,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { CHAT_MODEL_USER_AGENT, databricksAuthHeaders } from './constants';
 import { makeDatabricksFailedAttemptHandler } from './error-handling';
 import type { DatabricksOAuth2Credential } from './token-provider';
-import {
-	CHAT_MODEL_USER_AGENT,
-	createDatabricksFetch,
-	getDatabricksTokenProvider,
-} from './token-provider';
+import { getDatabricksTokenProvider } from './token-provider';
 
 // Every request carries a secret (bearer token, or the client secret on the
 // mint path), so an http host would ship it in cleartext
@@ -300,9 +298,29 @@ export class LmChatDatabricks implements INodeType {
 
 		const timeout = options.timeout;
 		const tokenSource = getDatabricksTokenProvider(this, credential, egressFilter);
+		const { refreshAfterRejection } = tokenSource;
 		const configuration: ClientOptions = {
 			baseURL,
-			fetch: createDatabricksFetch(tokenSource, egressFilter),
+			// The model client builds its own transport, so it never reaches the
+			// request helpers: `resolveHeaders` runs the expiry clock before every
+			// request, and `refreshHeaders` covers the rejection the clock missed -
+			// revoked server-side, or clock skew
+			fetch: createRefreshingAuthFetch({
+				baseFetch: fetch,
+				expiredStatus: tokenSource.expiredStatus,
+				resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
+				...(refreshAfterRejection && {
+					refreshHeaders: async () => {
+						const refreshed = await refreshAfterRejection();
+						return refreshed ? databricksAuthHeaders(refreshed) : null;
+					},
+				}),
+				assertAllowedUrl: async (hopUrl) => {
+					if (!egressFilter) return;
+					const result = await egressFilter.validateUrl(hopUrl);
+					if (!result.ok) throw result.error;
+				},
+			}),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,

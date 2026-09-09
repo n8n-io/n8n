@@ -29,7 +29,7 @@ function tokenData(overrides: Partial<OAuth2TokenData> = {}): OAuth2TokenData {
 	return {
 		access_token: 'stored-token',
 		refresh_token: 'refresh-a',
-		expires_in: 3600,
+		expires_in: '3600',
 		n8n_expires_at: String(Date.now() + 3600 * 1000),
 		...overrides,
 	};
@@ -58,7 +58,7 @@ describe('isNearExpiry', () => {
 	it('should use a tenth of the lifetime for short-lived tokens', () => {
 		// 5-minute token -> 30s buffer, so 45s out is fresh but 20s out is not
 		const at = (secondsLeft: number) =>
-			tokenData({ expires_in: 300, n8n_expires_at: String(Date.now() + secondsLeft * 1000) });
+			tokenData({ expires_in: '300', n8n_expires_at: String(Date.now() + secondsLeft * 1000) });
 
 		expect(isNearExpiry(at(45))).toBe(false);
 		expect(isNearExpiry(at(20))).toBe(true);
