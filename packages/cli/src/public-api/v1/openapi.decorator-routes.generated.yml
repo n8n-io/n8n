@@ -3,6 +3,12 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /credentials:
+    get:
+      $ref: ./handlers/credentials/spec/paths/getCredentials.generated.yml
+  /credentials/{credentialId}:
+    get:
+      $ref: ./handlers/credentials/spec/paths/getCredential.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
@@ -85,6 +91,9 @@ paths:
   /source-control/status:
     get:
       $ref: ./handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  /source-control/push:
+    post:
+      $ref: ./handlers/source-control/spec/paths/pushSourceControl.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

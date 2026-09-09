@@ -1,6 +1,8 @@
 import { type IDataObject, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../../transport';
+import { odataStringLiteral } from '@utils/microsoft/odata';
+
+import { meetingRequest } from './shared';
 
 const isLocator = (value: unknown): value is { mode: unknown; value: unknown } =>
 	typeof value === 'object' && value !== null && 'mode' in value && 'value' in value;
@@ -26,12 +28,14 @@ export async function fetchMeetingByJoinUrl(
 			description: "Enter the join URL in the 'Meeting' parameter and try again",
 		});
 	}
-	const response = await microsoftApiRequest.call(
+	const response = await meetingRequest.call(
 		this,
 		'GET',
 		'/v1.0/me/onlineMeetings',
 		{},
-		{ $filter: `JoinWebUrl eq '${joinWebUrl.replace(/'/g, "''")}'` },
+		{
+			$filter: `JoinWebUrl eq ${odataStringLiteral(joinWebUrl)}`,
+		},
 	);
 	const meeting = response?.value?.[0];
 	if (!meeting) {
@@ -40,4 +44,11 @@ export async function fetchMeetingByJoinUrl(
 		});
 	}
 	return meeting;
+}
+
+export async function resolveMeetingId(this: IExecuteFunctions, i: number): Promise<string> {
+	const { mode, value } = readMeetingLocator.call(this, i);
+	if (mode !== 'url') return value;
+	const meeting = await fetchMeetingByJoinUrl.call(this, value);
+	return asText(meeting.id);
 }

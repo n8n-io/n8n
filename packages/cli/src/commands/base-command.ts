@@ -32,6 +32,7 @@ import { Expression, UnexpectedError } from 'n8n-workflow';
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
@@ -200,6 +201,11 @@ export abstract class BaseCommand<F = never> {
 				error: ensureError(error),
 			});
 		}
+
+		// Wire the encryption key provider (and seed keys on a seeding main) before
+		// anything encrypts or decrypts. This must run for every entrypoint —
+		// servers and one-off commands — since the cipher has no fallback path.
+		await Container.get(EncryptionBootstrapService).run();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 

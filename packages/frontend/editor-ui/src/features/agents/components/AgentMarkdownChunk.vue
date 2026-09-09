@@ -26,9 +26,9 @@ function handleLinkClick(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 }
 </style>
