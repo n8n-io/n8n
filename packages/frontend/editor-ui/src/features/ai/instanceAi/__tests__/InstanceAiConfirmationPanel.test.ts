@@ -563,6 +563,48 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 		});
 	});
 
+	describe('app binding confirmation', () => {
+		it('renders the structured card and approves with the generic payload', async () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-bind',
+					severity: 'warning',
+					message: 'Connect workflow "Echo" (wf-1) to app "Runner" as "submit"',
+					// mirrors @n8n/api-types; integrator drops the cast once `appBinding` is typed
+					...({
+						appBinding: {
+							appId: 'app-1',
+							appName: 'Runner',
+							appNamespace: 'runner',
+							workflowId: 'wf-1',
+							workflowName: 'Echo',
+							key: 'submit',
+							inputSchema: { type: 'object', additionalProperties: true },
+							outputSchema: { type: 'array' },
+						},
+					} as Partial<InstanceAiConfirmation>),
+				},
+				{ action: 'bind', appId: 'app-1' },
+				'apps',
+			);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+
+			expect(getByTestId('instance-ai-app-binding-approval')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-app-binding-workflow')).toHaveAttribute(
+				'href',
+				'/workflow/wf-1',
+			);
+			expect(getByTestId('instance-ai-panel-confirm-always-allow')).toBeInTheDocument();
+
+			await userEvent.click(getByTestId('instance-ai-panel-confirm-approve'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-bind', { kind: 'approval', approved: true });
+		});
+	});
+
 	describe('credential setup', () => {
 		it('passes requireUserSelection and falls back to the thread project', () => {
 			thread.projectId = 'thread-project';
