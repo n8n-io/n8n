@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
@@ -8,7 +9,7 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
-import type { CheckpointStore, SerializableAgentState } from '../../types';
+import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -38,6 +39,7 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
 		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
+			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
 			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
 		}),
 }));
@@ -761,6 +763,80 @@ describe('AgentRuntime — empty stop turn retry', () => {
 		const { runtime } = createRuntime();
 		await runtime.generate('hi');
 
+		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AgentRuntime — volatile instruction provider', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it('adds host instructions to the uncached system message without saving them', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const provider = vi
+			.fn()
+			.mockResolvedValue('<background-updates>One result.</background-updates>');
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: provider,
+		});
+		const persistence = { threadId: 'thread-1', resourceId: 'resource-1' };
+
+		const result = await runtime.generate('hello', { persistence });
+
+		expect(provider).toHaveBeenCalledWith({ persistence });
+		const system = generateText.mock.calls[0]?.[0].instructions as Array<{ content: string }>;
+		expect(system[0]?.content).toBe('Base instructions.');
+		expect(system[1]?.content).toContain('<background-updates>');
+		expect(JSON.stringify(result.getState())).not.toContain('<background-updates>');
+	});
+
+	it('calls the provider before each model call', async () => {
+		generateText
+			.mockResolvedValueOnce({
+				...makeGenerateWithToolCall('tc-provider', 'openai.web_search', { query: 'n8n' }),
+				toolCalls: [
+					{
+						toolCallId: 'tc-provider',
+						toolName: 'openai.web_search',
+						input: { query: 'n8n' },
+						providerExecuted: true,
+					},
+				],
+			})
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+		const provider = vi.fn().mockResolvedValue(undefined);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: provider,
+		});
+
+		await runtime.generate('search');
+
+		expect(generateText).toHaveBeenCalledTimes(2);
+		expect(provider).toHaveBeenCalledTimes(2);
+	});
+
+	it('continues the model call when the provider fails', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'Base instructions.',
+			volatileInstructionsProvider: vi
+				.fn()
+				.mockRejectedValue(new Error('instructions unavailable')),
+		});
+
+		await expect(runtime.generate('hello')).resolves.toEqual(
+			expect.objectContaining({ finishReason: 'stop' }),
+		);
 		expect(generateText).toHaveBeenCalledTimes(1);
 	});
 });
@@ -1696,19 +1772,72 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
-	it('requests raw chunks only when recoverUsageOnAbort is set', async () => {
+	it('requests raw chunks while the stall watchdog is active, even without recoverUsageOnAbort', async () => {
+		// The watchdog needs the provider's raw keepalive events (e.g. Anthropic
+		// `ping`) as its liveness signal, so they are requested by default.
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
-		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
-		await collectChunks((await off.runtime.stream('hello')).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
-
-		streamText.mockClear();
-		streamText.mockReturnValue(makeStreamSuccess('ok'));
-
-		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
-		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello');
+		await collectChunks(stream);
 		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
+	});
+
+	it('does not request raw chunks when stall detection is disabled and no reader needs them', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello', { modelStreamIdleTimeoutMs: 0 });
+		await collectChunks(stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
+	});
+
+	it('still requests raw chunks for the usage reader when stall detection is disabled', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello', {
+			modelStreamIdleTimeoutMs: 0,
+			recoverUsageOnAbort: true,
+		});
+		await collectChunks(stream);
+		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
+	});
+
+	it('installs a raw-chunk tap ahead of smoothing that consumes raw chunks', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('ok'));
+
+		const { runtime } = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
+		const { stream } = await runtime.stream('hello');
+		await collectChunks(stream);
+
+		// Watchdog on (default) + smoothStream on (default) → [tap, smoothStream].
+		const transforms = streamText.mock.calls.at(-1)?.[0].experimental_transform as Array<
+			() => TransformStream<Record<string, unknown>, Record<string, unknown>>
+		>;
+		expect(Array.isArray(transforms)).toBe(true);
+		expect(transforms).toHaveLength(2);
+
+		// Raw chunks must be consumed by the tap so they never reach smoothStream,
+		// whose word buffer flushes on every non-text chunk (defeating smoothing).
+		const input = [
+			{ type: 'raw', rawValue: { type: 'ping' } },
+			{ type: 'text-delta', id: 't', text: 'hi' },
+			{ type: 'raw', rawValue: { type: 'message_stop' } },
+			{ type: 'finish' },
+		];
+		const readable = new ReadableStream<Record<string, unknown>>({
+			start(controller) {
+				for (const chunk of input) controller.enqueue(chunk);
+				controller.close();
+			},
+		});
+		const out: unknown[] = [];
+		const reader = readable.pipeThrough(transforms[0]()).getReader();
+		for (let next = await reader.read(); !next.done; next = await reader.read()) {
+			out.push(next.value);
+		}
+		expect(out).toEqual([{ type: 'text-delta', id: 't', text: 'hi' }, { type: 'finish' }]);
 	});
 });
 
@@ -6598,11 +6727,15 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
-		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
+		extra?: {
+			tools?: BuiltTool[];
+			checkpointStorage?: CheckpointStore;
+			model?: ModelConfig;
+		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
-			model: 'openai/gpt-4o-mini',
+			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
@@ -6634,6 +6767,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		const second = capturedCall(1);
 		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+		expect(second.instructions).toHaveLength(2);
 
 		// The caller still receives the full response set of the turn.
 		expect(result.messages).toHaveLength(3);
@@ -6644,6 +6778,42 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'custom/test-model', baseURL: 'https://example.test/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+	});
+
+	it('merges system messages after compaction for OpenAI models with a custom URL', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, {
+			model: { id: 'openai/x', url: 'http://localhost:8000/v1' },
+		});
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const second = capturedCall(1);
+		expect(second.instructions).not.toBeInstanceOf(Array);
+		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 	});
 
 	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
@@ -6967,7 +7137,8 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_transform).toEqual(expect.any(Function));
+		// Raw-chunk tap (stall watchdog is on by default) + smoothStream.
+		expect(callArgs.experimental_transform).toEqual([expect.any(Function), expect.any(Function)]);
 		expect(smoothStreamSpy).toHaveBeenCalledWith({});
 
 		smoothStreamSpy.mockRestore();
@@ -6975,6 +7146,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 	it('omits smoothStream when explicitly disabled', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
+		const smoothStreamSpy = vi.spyOn(aiModule, 'smoothStream');
 
 		const runtime = new AgentRuntime({
 			name: 'smooth-stream-disabled-test',
@@ -6984,6 +7156,30 @@ describe('AgentRuntime — telemetry propagation', () => {
 		});
 
 		const { stream } = await runtime.stream('hello', { smoothStream: false });
+		await collectChunks(stream);
+
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		// Only the raw-chunk tap remains (the stall watchdog is still on).
+		expect(callArgs.experimental_transform).toEqual([expect.any(Function)]);
+		expect(smoothStreamSpy).not.toHaveBeenCalled();
+
+		smoothStreamSpy.mockRestore();
+	});
+
+	it('omits transforms entirely when smoothing and stall detection are both off', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'smooth-stream-none-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			smoothStream: false,
+			modelStreamIdleTimeoutMs: 0,
+		});
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
@@ -8611,6 +8807,31 @@ describe('AgentRuntime — model stream stall handling', () => {
 	});
 
 	/**
+	 * Run `source` through the transforms the AI SDK would apply, so the
+	 * raw-chunk tap actually executes — a plain mocked stream bypasses it, and
+	 * with it the liveness the watchdog depends on in production.
+	 */
+	function pipeThroughSdkTransforms(
+		args: Record<string, unknown>,
+		source: AsyncGenerator<Record<string, unknown>>,
+	): ReadableStream {
+		const readable = new ReadableStream<Record<string, unknown>>({
+			async pull(controller) {
+				const { done, value } = await source.next();
+				if (done) controller.close();
+				else controller.enqueue(value);
+			},
+		});
+		const transforms = args.experimental_transform as Array<
+			(opts: { tools: unknown; stopStream: () => void }) => TransformStream
+		>;
+		return transforms.reduce<ReadableStream>(
+			(piped, transform) => piped.pipeThrough(transform({ tools: {}, stopStream: () => {} })),
+			readable,
+		);
+	}
+
+	/**
 	 * streamText response that emits `chunks` then goes silent — a dead
 	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
 	 * which arrives before any provider byte and must not count as content.
@@ -8677,6 +8898,105 @@ describe('AgentRuntime — model stream stall handling', () => {
 			| undefined;
 		expect(String(errorChunk?.error)).toContain('stalled');
 		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('raw keepalive chunks reset the idle timer during a mid-turn quiet spell', async () => {
+		// Applies the transforms the way the AI SDK does, so the raw-chunk tap
+		// actually runs: it consumes the keepalives, and the only thing keeping
+		// the turn alive across the 600ms content gap is the liveness the tap
+		// stamps. Without that wiring the watchdog (500ms) fires. Margins are
+		// wide (400ms) so CI scheduler jitter cannot trip the real timers.
+		streamText.mockImplementation((args: Record<string, unknown>) => ({
+			...makeStreamSuccess('slow but alive'),
+			stream: pipeThroughSdkTransforms(
+				args,
+				(async function* () {
+					yield { type: 'start' };
+					yield { type: 'text-delta', id: 'text-1', text: 'slow ' };
+					for (let i = 0; i < 6; i++) {
+						await sleep(100);
+						yield { type: 'raw', rawValue: { type: 'ping' } };
+					}
+					yield { type: 'text-delta', id: 'text-1', text: 'but alive' };
+				})(),
+			),
+		}));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 500,
+			modelStreamFirstOutputTimeoutMs: 500,
+			// Only the tap in the chain: smoothing would re-time the deltas.
+			smoothStream: false,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks.find((c) => c.type === 'error')).toBeUndefined();
+		const text = chunks
+			.filter(
+				(c): c is StreamChunk & { type: 'text-delta'; delta: string } => c.type === 'text-delta',
+			)
+			.map((c) => c.delta)
+			.join('');
+		expect(text).toBe('slow but alive');
+		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('stalls when the wire goes silent even though the tap is installed', async () => {
+		// Counterpart to the test above: same pipeline, no keepalives. The tap
+		// must not keep a dead turn alive.
+		streamText.mockImplementation((args: Record<string, unknown>) => ({
+			stream: pipeThroughSdkTransforms(
+				args,
+				(async function* () {
+					yield { type: 'start' };
+					yield { type: 'text-delta', id: 'text-1', text: 'then silence' };
+					await new Promise(() => {});
+				})(),
+			),
+			finishReason: new Promise(() => {}),
+			usage: new Promise(() => {}),
+			response: new Promise(() => {}),
+			toolCalls: new Promise(() => {}),
+		}));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 300,
+			modelStreamFirstOutputTimeoutMs: 300,
+			smoothStream: false,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('still silently retries when the stalled turn emitted only raw keepalives', async () => {
+		// Keepalives are transport bookkeeping, not content: a turn that died
+		// having produced nothing but pings is invisible to the user and safe to
+		// re-issue.
+		streamText
+			.mockReturnValueOnce(makeStalledStream([{ type: 'raw', rawValue: { type: 'ping' } }]))
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finish?.finishReason).toBe('stop');
+		expect(runtime.getState().status).toBe('success');
 	});
 
 	it('surfaces the stall error when the retry stalls too', async () => {

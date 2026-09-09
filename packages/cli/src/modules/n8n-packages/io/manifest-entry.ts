@@ -1,7 +1,10 @@
+import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedWorkflowLifecycle } from '../spec/serialized/workflow-lifecycle.schema';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -17,28 +20,18 @@ export type ManifestEntityCollection = {
  * Import derives a project's scope and a workflow's parent folder from these
  * path segments, so they are part of the package contract.
  */
-const DIRECTORIES = {
-	projects: 'projects',
-	folders: 'folders',
-	workflows: 'workflows',
-	credentials: 'credentials',
-	dataTables: 'data-tables',
-	variables: 'variables',
-	tags: 'tags',
-} as const satisfies Record<ManifestEntityCollection, string>;
+export const PACKAGE_ENTITY_LAYOUT = {
+	projects: { directory: 'projects', fileName: 'project.json' },
+	folders: { directory: 'folders', fileName: 'folder.json' },
+	workflows: { directory: 'workflows', fileName: 'workflow.json' },
+	credentials: { directory: 'credentials', fileName: 'credential.json' },
+	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
+	variables: { directory: 'variables', fileName: 'variable.json' },
+	tags: { directory: 'tags', fileName: 'tag.json' },
+} as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
-const FILE_NAMES = {
-	projects: 'project.json',
-	folders: 'folder.json',
-	workflows: 'workflow.json',
-	credentials: 'credential.json',
-	dataTables: 'data-table.json',
-	variables: 'variable.json',
-	tags: 'tag.json',
-} as const satisfies Record<ManifestEntityCollection, string>;
-
-/** Readers accept [A-Za-z0-9._/-] in paths; an id must also stay one segment, so no `/` and no dots. */
-const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+// Hyphens delimit the slug and ID in exported directory names.
+const SAFE_ID = /^[A-Za-z0-9_]+$/;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
@@ -58,7 +51,7 @@ export function packageDirectory(
 	collection: ManifestEntityCollection,
 	basePrefix?: string,
 ): string {
-	const directory = DIRECTORIES[collection];
+	const { directory } = PACKAGE_ENTITY_LAYOUT[collection];
 	return basePrefix ? `${basePrefix}/${directory}` : directory;
 }
 
@@ -76,7 +69,14 @@ export function projectScopedDirectory(
 }
 
 export function entityFilePath(collection: ManifestEntityCollection, target: string): string {
-	return `${target}/${FILE_NAMES[collection]}`;
+	return `${target}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`;
+}
+
+/** Lifecycle files share the workflow target and have no manifest entry. */
+export const WORKFLOW_LIFECYCLE_FILE_NAME = 'workflow-lifecycle.json';
+
+export function workflowLifecycleFilePath(target: string): string {
+	return `${target}/${WORKFLOW_LIFECYCLE_FILE_NAME}`;
 }
 
 export function createManifestEntry(
@@ -88,7 +88,7 @@ export function createManifestEntry(
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
 			{
-				description: `Id "${entity.id}" may contain only letters, digits, hyphens, and underscores.`,
+				description: `Id "${entity.id}" may contain only letters, digits, and underscores.`,
 			},
 		);
 	}
@@ -116,9 +116,21 @@ export async function writeManifestEntry(
 ): Promise<ManifestEntry> {
 	const entry = createManifestEntry(collection, baseDir, entity);
 	await writer.writeDirectory(entry.target);
+	await writer.writeFile(entityFilePath(collection, entry.target), formatEntityFile(serialized));
+	return entry;
+}
+
+export async function writeWorkflowManifestEntry(
+	writer: PackageWriter,
+	baseDir: string,
+	workflow: { id: string; name: string },
+	content: SerializedWorkflow,
+	lifecycle: SerializedWorkflowLifecycle,
+): Promise<ManifestEntry> {
+	const entry = await writeManifestEntry(writer, 'workflows', baseDir, workflow, content);
 	await writer.writeFile(
-		entityFilePath(collection, entry.target),
-		JSON.stringify(serialized, null, '\t'),
+		workflowLifecycleFilePath(entry.target),
+		JSON.stringify(lifecycle, null, '\t'),
 	);
 	return entry;
 }

@@ -1,6 +1,7 @@
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -11,6 +12,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import {
 	createWorkflowDocumentId,
+	deriveHomeProject,
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
@@ -65,6 +67,37 @@ export function useWorkflowSetupItems(
 	 * placeholders, which would read as an empty (but "available") workflow.
 	 */
 	const fetchedWorkflow = ref<IWorkflowDb>();
+	let workflowFetchVersion = 0;
+	onScopeDispose(() => workflowFetchVersion++);
+
+	async function refreshWorkflow() {
+		const requestVersion = ++workflowFetchVersion;
+		const id = toValue(workflowId);
+		if (!id) return;
+		const isCurrentRequest = () =>
+			requestVersion === workflowFetchVersion &&
+			toValue(workflowId) === id &&
+			!toValue(options.paused) &&
+			!documentStore.value?.hydrated;
+		// Retry the current read once. An older response can contain pre-build values.
+		for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
+			try {
+				const workflow = await workflowsListStore.fetchWorkflow(id);
+				if (isCurrentRequest()) fetchedWorkflow.value = workflow;
+				return;
+			} catch {
+				// Keep the current rows if both attempts fail.
+			}
+		}
+	}
+
+	const workflowProjectId = computed(() => {
+		if (documentStore.value?.hydrated) return documentStore.value.homeProject?.id;
+		const workflow = fetchedWorkflow.value;
+		return workflow?.id === toValue(workflowId) && workflow
+			? deriveHomeProject(workflow)?.id
+			: undefined;
+	});
 
 	// (Re)load the derivation's inputs while not paused, and again when an
 	// agent edit settles or a canvas host's document store goes away. Failures
@@ -81,14 +114,7 @@ export function useWorkflowSetupItems(
 			if (!id || paused) return;
 			void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => {});
 			void credentialsStore.fetchUsableCredentials({ workflowId: id }).catch(() => {});
-			if (!hydrated) {
-				void workflowsListStore
-					.fetchWorkflow(id)
-					.then((workflow) => {
-						if (toValue(workflowId) === id) fetchedWorkflow.value = workflow;
-					})
-					.catch(() => {});
-			}
+			if (!hydrated) void refreshWorkflow();
 		},
 		{ immediate: true },
 	);
@@ -133,17 +159,26 @@ export function useWorkflowSetupItems(
 		return byName;
 	});
 
+	function getPendingParameterNames(node: INodeUi): Set<string> {
+		const names = new Set(Object.keys(getNodeParametersIssues(nodeTypesStore, node)));
+		// Non-empty placeholder values pass normal required-field validation.
+		for (const [name, value] of Object.entries(node.parameters)) {
+			if (findPlaceholderDetails(value).length > 0) names.add(name);
+		}
+		return names;
+	}
+
 	const nodesRequiringSetup = computed(() => {
 		return (workflowNodes.value ?? [])
 			.filter((node) => !node.disabled)
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
-				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
+				parameterNames: getPendingParameterNames(node),
 			}))
 			.filter(
-				({ credentialTypes, parameterIssues }) =>
-					credentialTypes.length > 0 || Object.keys(parameterIssues).length > 0,
+				({ credentialTypes, parameterNames }) =>
+					credentialTypes.length > 0 || parameterNames.size > 0,
 			);
 	});
 
@@ -171,7 +206,7 @@ export function useWorkflowSetupItems(
 	 * services so nodes can't share a row (or a done state): those are one
 	 * item per node, with the node name in the id.
 	 */
-	const derivedItems = computed<InstanceAiSetupItem[]>(() => {
+	const derivedCredentialItems = computed<InstanceAiSetupItem[]>(() => {
 		const id = toValue(workflowId);
 		if (!id || !isWorkflowAvailable.value) return [];
 
@@ -208,8 +243,16 @@ export function useWorkflowSetupItems(
 			});
 		}
 
-		for (const { node, parameterIssues } of nodesRequiringSetup.value) {
-			const parameterNames = Object.keys(parameterIssues);
+		return items;
+	});
+
+	const derivedItems = computed<InstanceAiSetupItem[]>(() => {
+		const id = toValue(workflowId);
+		if (!id || !isWorkflowAvailable.value) return [];
+		const items = [...derivedCredentialItems.value];
+
+		for (const { node, parameterNames: pendingNames } of nodesRequiringSetup.value) {
+			const parameterNames = [...pendingNames];
 			if (parameterNames.length === 0) continue;
 			const item = {
 				id: `${id}:parameters:${node.name}`,
@@ -270,9 +313,25 @@ export function useWorkflowSetupItems(
 
 		const node = nodesByName.value.get(item.nodeName);
 		if (!node) return false;
-		const issues = getNodeParametersIssues(nodeTypesStore, node);
-		return item.parameterNames.every((parameterName) => !Object.hasOwn(issues, parameterName));
+		const pendingNames = getPendingParameterNames(node);
+		return item.parameterNames.every((parameterName) => {
+			const root = parameterName.split(/[.[\]]/)[0] ?? parameterName;
+			return !pendingNames.has(root);
+		});
 	}
 
-	return { isWorkflowAvailable, derivedItems, isItemDone };
+	/** The workflow node behind an item, for detail views that host node inputs. */
+	function getNodeByName(nodeName: string): INodeUi | undefined {
+		return nodesByName.value.get(nodeName);
+	}
+
+	return {
+		isWorkflowAvailable,
+		workflowProjectId,
+		derivedItems,
+		derivedCredentialItems,
+		isItemDone,
+		getNodeByName,
+		refreshWorkflow,
+	};
 }

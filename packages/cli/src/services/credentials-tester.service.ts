@@ -15,25 +15,15 @@ import type {
 	INode,
 	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
-	INodeTypeData,
-	INodeTypes,
 	ICredentialTestFunctions,
-	IDataObject,
 	IExecuteData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import {
-	VersionedNodeType,
-	NodeHelpers,
-	Workflow,
-	UnexpectedError,
-	createEmptyRunExecutionData,
-} from 'n8n-workflow';
+import { VersionedNodeType, Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
@@ -41,6 +31,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
+import { createMockNodeTypes } from '../credentials/mock-node-types';
 import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
@@ -60,31 +51,7 @@ export type CredentialAuthProbeResult = INodeCredentialTestResult & {
 	outcome: CredentialAuthProbeOutcome;
 };
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodesData: mockNodesData, nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 @Service()
 export class CredentialsTester {

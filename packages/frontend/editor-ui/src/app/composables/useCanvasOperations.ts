@@ -95,7 +95,6 @@ import {
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
-	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -107,7 +106,11 @@ import {
 	NODE_X_SPACING,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import {
+	AGENT_NODE_SIZE,
+	getAgentNodeHandleOffset,
+	isAgentNodeV2,
+} from '@/features/agents/utils/agentNode';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -1729,20 +1732,20 @@ export function useCanvasOperations() {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
 					}
-					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
-						? agentNodeCanvasGeometryStore.getNodeHeight(
-								workflowDocumentStore.value.workflowId,
-								lastInteractedWithNodeObject.id,
+					// Line up the main handles of the two nodes
+					const sourceHandleY = isAgentNodeV2(lastInteractedWithNodeObject)
+						? getAgentNodeHandleOffset(
+								agentNodeCanvasGeometryStore.getNodeHeight(
+									workflowDocumentStore.value.workflowId,
+									lastInteractedWithNodeObject.id,
+								) ?? AGENT_NODE_SIZE[1],
 							)
-						: undefined;
-					const sourceNodeHeight =
-						measuredSourceHeight ??
-						(isAgentNodeV2(lastInteractedWithNodeObject)
-							? AGENT_NODE_SIZE[1]
-							: DEFAULT_NODE_SIZE[1]);
-					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
+						: DEFAULT_NODE_SIZE[1] / 2;
+					const targetHandleY = isAgentNodeV2(node)
+						? getAgentNodeHandleOffset(AGENT_NODE_SIZE[1])
+						: nodeSize[1] / 2;
 					const centeredY =
-						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
+						lastInteractedWithNode.value.position[1] + sourceHandleY - targetHandleY;
 
 					// If a node is active then add the new node directly after the current one
 					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
