@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_364b5a33777328::t_84ee847bf14f88 149
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_364b5a33777328::t_535851badc3704 2210-2211,2217
+  s_364b5a33777328::t_849c0b3fe8267c 2212-2216
+  s_364b5a33777328::t_fb57bb2fad4868 2151-2209,2218-2253
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_364b5a33777328::t_1f3fff15bd3cbf 210-215
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_364b5a33777328::t_84ee847bf14f88 5,21-23
+packages/@n8n/agents/src/runtime/tools/deferred-tool-manager.ts
+  s_364b5a33777328::t_286bef38a9cc29 77-83,91-93,111-116,189-191,210-219,252
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_364b5a33777328::t_6215b7d5972610 2,21-51
+  s_364b5a33777328::t_e7279103823bb5 5
+  s_364b5a33777328::t_1b42082e99996b 269-270,277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6d8692e8af266a8a1cceba75d738c7d3d46da738",
+  "prompts": {},
+  "sessions": {
+    "s_364b5a33777328": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da17b30e-c686-4c26-ba41-4be4bf6a216e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
