@@ -26,6 +26,8 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceContextInjection,
+	type InstanceContextReach,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -105,6 +107,7 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	deriveInstanceContextReach,
 	type RunTokenUsage,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
@@ -141,6 +144,8 @@ import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
 	readInstanceContextCursor,
+	toContextInjection,
+	shouldTraceContextInjection,
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -2394,6 +2399,7 @@ export class InstanceAiService {
 			conversationHistoryEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
+			instanceContextEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
@@ -2410,6 +2416,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
@@ -2562,7 +2569,7 @@ export class InstanceAiService {
 		// preserved) so every derived skill source inherits the exclusion.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
-			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
+			instanceContextEnabled,
 		});
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
@@ -2718,6 +2725,11 @@ export class InstanceAiService {
 			modelId,
 			orchestrationContext,
 			conversationHistory,
+			// Returned rather than re-resolved downstream: the block, the `activity` tool and the
+			// turn's telemetry all have to agree about which arm the user is in, and a second
+			// PostHog read could land either side of a rollout change.
+			instanceContextEnabled,
+			nodeUsageEnabled,
 		};
 	}
 
@@ -3773,6 +3785,8 @@ export class InstanceAiService {
 				modelId,
 				orchestrationContext,
 				conversationHistory,
+				instanceContextEnabled,
+				nodeUsageEnabled,
 			} = environment;
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
@@ -3939,7 +3953,26 @@ export class InstanceAiService {
 				isMachineFollowUp:
 					checkpoint?.isCheckpointFollowUp === true ||
 					plannedBuild?.isPlannedBuildFollowUp === true,
+				enabled: instanceContextEnabled,
 			});
+
+			// Reused by the trace event below and by the turn's telemetry, so both describe the
+			// same injection rather than each deriving its own view of it.
+			const contextInjection = toContextInjection(instanceContext);
+
+			// Published before the agent runs, so the trace records what the turn was handed
+			// rather than what it did with it.
+			if (shouldTraceContextInjection(contextInjection)) {
+				this.eventBus.publish(threadId, {
+					type: 'instance-context',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: {
+						injection: contextInjection,
+						...(instanceContext.state === 'injected' ? { block: instanceContext.block } : {}),
+					},
+				});
+			}
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -3982,7 +4015,7 @@ export class InstanceAiService {
 				contextResourcesBlock,
 				handoffContextBlock,
 				setupStateBlock,
-				instanceContext?.block ?? '',
+				instanceContext.state === 'injected' ? instanceContext.block : '',
 				messageBody,
 			]
 				.filter(Boolean)
@@ -4108,12 +4141,13 @@ export class InstanceAiService {
 			//
 			// Best-effort on purpose. The cursor is an optimisation — losing it re-sends a window,
 			// which is recoverable — so a metadata write must not fail the user's turn.
-			if (instanceContext) {
+			if (instanceContext.state === 'injected') {
+				const injectedCursor = instanceContext.cursor;
 				try {
 					await patchThread(memory, {
 						threadId,
 						update: ({ metadata }) => ({
-							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
+							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: injectedCursor },
 						}),
 					});
 				} catch (error) {
@@ -4151,6 +4185,20 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
+				// A turn that suspended to ask something is a finished turn for this event's
+				// purposes — the question is the outcome being measured, not an interruption of it.
+				this.emitInstanceContextTurn({
+					userId: user.id,
+					threadId,
+					runId,
+					segment: 'suspended',
+					status: 'suspended',
+					injection: contextInjection,
+					reach: deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+					workSummary: result.workSummary,
+					instanceContextEnabled,
+					nodeUsageEnabled,
+				});
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
 						runId,
@@ -4173,6 +4221,13 @@ export class InstanceAiService {
 						checkpoint,
 						plannedBuild,
 						runHandoff: runControl.state,
+						// The resumed segment builds no block of its own, so it inherits this turn's
+						// to finish the trace entry and report the rungs reached after approval.
+						instanceContext: {
+							injection: contextInjection,
+							instanceContextEnabled,
+							nodeUsageEnabled,
+						},
 					});
 					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
@@ -4346,12 +4401,26 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
+			const contextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			this.emitInstanceContextTurn({
+				userId: user.id,
+				threadId,
+				runId,
+				segment: 'whole',
+				status: result.status,
+				injection: contextInjection,
+				reach: contextReach,
+				workSummary: result.workSummary,
+				instanceContextEnabled,
+				nodeUsageEnabled,
+			});
 			await this.finalizeRun(threadId, runId, result.status, {
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				contextReach,
 				errorReason: userFacingErrorMessage,
 				...(result.status === 'errored'
 					? {
@@ -5103,6 +5172,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 			orchestrationContext,
+			instanceContext,
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
@@ -5246,6 +5316,7 @@ export class InstanceAiService {
 			messageGroupId,
 			resumeTracing,
 			unregisteredResumeTracing,
+			instanceContext,
 		});
 		return { ok: true, runId };
 	}
@@ -5279,6 +5350,12 @@ export class InstanceAiService {
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
+			/** This turn's instance context, carried across the suspension. */
+			instanceContext?: {
+				injection: InstanceContextInjection;
+				instanceContextEnabled: boolean;
+				nodeUsageEnabled: boolean;
+			};
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5589,6 +5666,24 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
+			// This segment's own reads. The reducer merges them into the entry the first
+			// segment opened rather than replacing it, so neither segment erases the other —
+			// and the deepest reads are often the ones that follow an approval.
+			const resumedContextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			if (opts.instanceContext) {
+				this.emitInstanceContextTurn({
+					userId: opts.user.id,
+					threadId: opts.threadId,
+					runId: opts.runId,
+					segment: 'resumed',
+					status: result.status,
+					injection: opts.instanceContext.injection,
+					reach: resumedContextReach,
+					workSummary: result.workSummary,
+					instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
+					nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
+				});
+			}
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				userId: opts.user.id,
 				// Forward modelId so title refinement fires on the resume path too — a run
@@ -5597,6 +5692,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				contextReach: resumedContextReach,
 				errorReason: userFacingErrorMessage,
 				...(result.status === 'errored'
 					? {
@@ -6167,6 +6263,7 @@ export class InstanceAiService {
 		archivedWorkflowIds?: string[],
 		userId?: string,
 		errorInfo?: RunFinishErrorInfo,
+		contextReach?: InstanceContextReach,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -6182,6 +6279,7 @@ export class InstanceAiService {
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
+				...(contextReach ? { contextReach } : {}),
 			},
 		});
 		// success-drop heartbeat; user_id required or PostHog drops instance-only events
@@ -6320,6 +6418,8 @@ export class InstanceAiService {
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
+			/** How far the turn went for instance context, for the trace to fold onto its entry. */
+			contextReach?: InstanceContextReach;
 			errorReason?: string;
 			errorInfo?: RunFinishErrorInfo;
 		},
@@ -6332,11 +6432,67 @@ export class InstanceAiService {
 			options?.archivedWorkflowIds,
 			options?.userId,
 			options?.errorInfo,
+			options?.contextReach,
 		);
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
+	}
+
+	/**
+	 * One event per turn that could have carried instance context.
+	 *
+	 * Emitted in both arms, including turns that got no block, because the read-out is a
+	 * rate: clarifying questions falling only means something against the turns where
+	 * nothing was injected. `reach` comes from the same derivation the trace shows the
+	 * user, so the two read-outs of this feature cannot disagree about what happened.
+	 */
+	private emitInstanceContextTurn(input: {
+		userId: string;
+		threadId: string;
+		runId: string;
+		/**
+		 * Which segment of the turn this is. A turn that stops for a confirmation finishes
+		 * in two, each reporting only its own reads, so they share a `runId` and a reader
+		 * counts turns by that rather than by rows.
+		 */
+		segment: 'whole' | 'suspended' | 'resumed';
+		status: string;
+		injection: InstanceContextInjection;
+		reach: InstanceContextReach;
+		workSummary?: WorkSummary;
+		instanceContextEnabled: boolean;
+		nodeUsageEnabled: boolean;
+	}): void {
+		const { injection } = input;
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
+			user_id: input.userId,
+			thread_id: input.threadId,
+			run_id: input.runId,
+			segment: input.segment,
+			instance_context_enabled: input.instanceContextEnabled,
+			node_usage_enabled: input.nodeUsageEnabled,
+			block_state: injection.state,
+			...(injection.state === 'absent'
+				? { absence_reason: injection.reason }
+				: {
+						block_is_update: injection.isUpdate,
+						block_inventory_rows: injection.legs.inventory,
+						block_event_rows: injection.legs.events,
+						block_run_rows: injection.legs.runs,
+						block_chars: injection.chars,
+						// The block is concatenated into the turn before anything tokenises it, so
+						// there is no exact figure to report here — only this estimate and the
+						// exact character count beside it.
+						block_tokens_estimated: Math.ceil(injection.chars / 4),
+					}),
+			context_depth: input.reach.depth,
+			context_surfaces: input.reach.surfaces,
+			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
+			tool_calls: input.workSummary?.totalToolCalls ?? 0,
+			status: input.status,
+		});
 	}
 
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */

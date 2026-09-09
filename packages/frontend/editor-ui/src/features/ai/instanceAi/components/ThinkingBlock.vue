@@ -11,6 +11,7 @@ import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import InstanceContextStep from './InstanceContextStep.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
@@ -97,6 +98,8 @@ const durationSec = computed<number | undefined>(() => {
 				:entry="entry"
 				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 			/>
+
+			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"

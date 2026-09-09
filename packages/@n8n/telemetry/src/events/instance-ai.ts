@@ -365,4 +365,67 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			total: z.number().int().describe('Rows matching every filter, ignoring limit'),
 		}),
 	},
+	INSTANCE_CONTEXT_TURN: {
+		name: 'Instance AI instance-context turn',
+		description:
+			'One event per assistant turn segment that could have carried instance context, in both arms of the rollout so a turn without a block has a denominator. Pairs what the turn was handed with how far it then went and whether it still had to ask the user something — the read-out the rollout is judged on is clarifying questions falling while build success holds. A turn that stops for a confirmation emits two rows sharing a `run_id`: count turns by distinct `run_id`, not by rows.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string().optional(),
+			run_id: z.string().describe('One turn. Shared by every segment of a turn that suspended'),
+			segment: z
+				.enum(['whole', 'suspended', 'resumed'])
+				.describe(
+					'`whole` is a turn that ran start to finish. `suspended` stopped to ask the user something; `resumed` is the same turn continuing after they answered, and carries only the reads that followed',
+				),
+			instance_context_enabled: z
+				.boolean()
+				.describe('Whether this user had the instance-context read flag on'),
+			node_usage_enabled: z
+				.boolean()
+				.describe('Whether this user had the node-usage surface on, which is a separate rung'),
+			block_state: z.enum(['injected', 'absent']).describe('Whether a block rode this turn at all'),
+			absence_reason: z
+				.enum(['disabled', 'machine-follow-up', 'empty'])
+				.optional()
+				.describe(
+					'Only when absent. `disabled` means the feature was not in play, `empty` means it was and found nothing — an agent that guessed on an `empty` turn was not withholding anything',
+				),
+			block_is_update: z
+				.boolean()
+				.optional()
+				.describe('Only when injected. An addition rather than the opening window'),
+			block_inventory_rows: z.number().int().optional(),
+			block_event_rows: z.number().int().optional(),
+			block_run_rows: z.number().int().optional(),
+			block_chars: z
+				.number()
+				.int()
+				.optional()
+				.describe('Rendered block length. Exact, unlike the token estimate beside it'),
+			block_tokens_estimated: z
+				.number()
+				.int()
+				.optional()
+				.describe(
+					'Block length in tokens, estimated at 4 characters each. An estimate because the block is never tokenised on its own — it is concatenated into the turn before the model sees it',
+				),
+			context_depth: z
+				.number()
+				.int()
+				.describe(
+					'Deepest context surface the turn reached: 0 block only, 1 activity list, 2 activity expand or node-usage, 3 full workflow read. This is the "does it go deep?" measure',
+				),
+			context_surfaces: z
+				.array(z.enum(['activity-list', 'activity-expand', 'node-usage', 'workflow-read']))
+				.describe(
+					'Every context surface called this turn, de-duplicated. Carried alongside the depth because the two depth-2 surfaces answer different questions and neither stands in for the other',
+				),
+			asked_clarifying_question: z
+				.boolean()
+				.describe('Whether the turn put a question back to the user rather than proceeding'),
+			tool_calls: z.number().int().describe('Total tool calls in the turn, as a denominator'),
+			status: z.string().describe('How the run ended'),
+		}),
+	},
 });

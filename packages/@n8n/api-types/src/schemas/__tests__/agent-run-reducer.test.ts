@@ -37,6 +37,24 @@ function makeRunFinish(
 	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
 
+function makeInstanceContext(
+	runId: string,
+	agentId: string,
+	payload: Extract<InstanceAiEvent, { type: 'instance-context' }>['payload'],
+): Extract<InstanceAiEvent, { type: 'instance-context' }> {
+	return { type: 'instance-context', runId, agentId, payload };
+}
+
+const INJECTED_PAYLOAD = {
+	injection: {
+		state: 'injected' as const,
+		isUpdate: false,
+		legs: { inventory: 3, events: 2, runs: 1 },
+		chars: 420,
+	},
+	block: '<instance-context>\nwhat exists\n</instance-context>',
+};
+
 function makeTextDelta(
 	runId: string,
 	agentId: string,
@@ -205,6 +223,158 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	describe('instance context', () => {
+		it('appends what the turn was handed to the root timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					injection: INJECTED_PAYLOAD.injection,
+					block: INJECTED_PAYLOAD.block,
+				},
+			]);
+		});
+
+		it('records an absent block, so a turn told nothing stays distinguishable', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(
+				state,
+				makeInstanceContext('run-1', 'root', {
+					injection: { state: 'absent', reason: 'empty' },
+				}),
+			);
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{ type: 'instance-context', injection: { state: 'absent', reason: 'empty' } },
+			]);
+		});
+
+		/** Replay re-delivers persisted events, and the entry describes the turn, not each delivery. */
+		it('appends only once when the event is delivered twice', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toHaveLength(1);
+		});
+
+		it('folds onto the root even when a sub-agent emitted it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			reduceEvent(state, makeInstanceContext('run-1', 'sub-1', INJECTED_PAYLOAD));
+
+			// The root timeline also carries the spawn's own `child` entry, so count only these.
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(1);
+			expect(state.agentsById['sub-1'].timeline).toEqual([]);
+		});
+
+		it('completes the entry with how far the turn went, on run-finish', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { depth: 2, surfaces: ['activity-expand'] },
+				},
+			});
+
+			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ depth: 2, surfaces: ['activity-expand'] });
+		});
+
+		/**
+		 * A turn that stops for a confirmation finishes in two segments, each reporting only
+		 * its own reads. Replacing would let the second erase the first — and the reads after
+		 * an approval are often the deepest.
+		 */
+		it('merges the reach of a turn that finished in two segments', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			const finishWith = (reach: { depth: 0 | 1 | 2 | 3; surfaces: string[] }) =>
+				reduceEvent(state, {
+					type: 'run-finish',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: { status: 'completed', contextReach: reach },
+				} as Parameters<typeof reduceEvent>[1]);
+
+			finishWith({ depth: 1, surfaces: ['activity-list'] });
+			finishWith({ depth: 3, surfaces: ['workflow-read'] });
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ depth: 3, surfaces: ['activity-list', 'workflow-read'] });
+		});
+
+		it('reads the same however the two segments arrive, since replay can reorder them', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			const finishWith = (reach: { depth: 0 | 1 | 2 | 3; surfaces: string[] }) =>
+				reduceEvent(state, {
+					type: 'run-finish',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: { status: 'completed', contextReach: reach },
+				} as Parameters<typeof reduceEvent>[1]);
+
+			finishWith({ depth: 3, surfaces: ['workflow-read'] });
+			finishWith({ depth: 1, surfaces: ['activity-list'] });
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach?.depth).toBe(3);
+			expect([...(entry.reach?.surfaces ?? [])].sort()).toEqual(['activity-list', 'workflow-read']);
+		});
+
+		it('does not repeat a surface both segments used', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			for (let i = 0; i < 2; i++) {
+				reduceEvent(state, {
+					type: 'run-finish',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: {
+						status: 'completed',
+						contextReach: { depth: 2, surfaces: ['activity-expand'] },
+					},
+				} as Parameters<typeof reduceEvent>[1]);
+			}
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ depth: 2, surfaces: ['activity-expand'] });
+		});
+
+		it('leaves the reach unset when the run reported none', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toBeUndefined();
+		});
+	});
+
 	describe('createInitialState', () => {
 		it('creates state with default root agent', () => {
 			const state = createInitialState();

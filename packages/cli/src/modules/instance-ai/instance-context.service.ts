@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	ActivityEventRepository,
@@ -11,6 +10,11 @@ import type { ActivityEvent, ActivityEventCategory, ActivityResourceType, User }
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
+import type {
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
+	InstanceContextLegs,
+} from '@n8n/api-types';
 import type { IDataObject } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -131,6 +135,54 @@ export type InstanceContextBlock = {
 };
 
 /**
+ * What a turn was handed, or why it was handed nothing.
+ *
+ * A bare `null` cannot answer that second half, and the difference is the whole point of
+ * showing this to anyone: an agent that was told nothing because the feature was off did
+ * not ignore anything, while one that was told nothing because there was nothing to tell
+ * was working with all there was. Those read identically until the reason is carried.
+ */
+export type InstanceContextResult =
+	| {
+			state: 'injected';
+			block: string;
+			cursor: InstanceContextCursor;
+			legs: InstanceContextLegs;
+			/** An addition to a block this thread already saw, rather than a full window. */
+			isUpdate: boolean;
+	  }
+	| { state: 'absent'; reason: InstanceContextAbsenceReason };
+
+/**
+ * Restates a build result as the shape the trace and telemetry both report, so neither
+ * derives its own view of what the turn was handed.
+ */
+export function toContextInjection(result: InstanceContextResult): InstanceContextInjection {
+	if (result.state === 'absent') return { state: 'absent', reason: result.reason };
+
+	return {
+		state: 'injected',
+		isUpdate: result.isUpdate,
+		legs: result.legs,
+		chars: result.block.length,
+	};
+}
+
+/**
+ * Whether an outcome is worth a row in the trace.
+ *
+ * An empty block earns one: a turn told nothing has to be distinguishable from one that
+ * was told and ignored it, and only the absent row can say which. The other two absences
+ * do not. A turn where the feature was off has no reader to inform — a row on every turn
+ * of every instance that never enabled this would be noise standing in for a signal — and
+ * a machine follow-up is the agent continuing its own task, where nobody is reading
+ * intent. Both still reach telemetry, where the off arm is the denominator.
+ */
+export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
+	return injection.state === 'injected' || injection.reason === 'empty';
+}
+
+/**
  * Renders what is going on in this instance as a context block for the agent: what exists, what
  * changed, and what has run.
  *
@@ -147,16 +199,11 @@ export type InstanceContextBlock = {
 export class InstanceContextService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-	}
-
-	get enabled(): boolean {
-		return this.globalConfig.instanceAi.instanceContextEnabled;
 	}
 
 	/**
@@ -177,9 +224,17 @@ export class InstanceContextService {
 		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
 		 */
 		isMachineFollowUp?: boolean;
+		/**
+		 * The per-user rollout gate, already resolved by the caller. Passed in rather than
+		 * read off config here so one turn resolves it once: a second read could disagree
+		 * with the one that decided whether the `activity` tool exists, leaving the agent
+		 * told about entries it has no way to open.
+		 */
+		enabled: boolean;
 		now?: Date;
-	}): Promise<InstanceContextBlock | null> {
-		if (!this.enabled || input.isMachineFollowUp) return null;
+	}): Promise<InstanceContextResult> {
+		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
+		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
@@ -188,7 +243,7 @@ export class InstanceContextService {
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			if (projectIds.length === 0) return null;
+			if (projectIds.length === 0) return { state: 'absent', reason: 'empty' };
 
 			const [entries, runs, inventory] = await Promise.all([
 				this.readEntries({ projectIds, cursor: input.cursor, now }),
@@ -203,9 +258,13 @@ export class InstanceContextService {
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
 			// clone, or a quiet fortnight. That is exactly the case that most needs "here is what
 			// exists", so the block stands on any one leg and only genuine emptiness suppresses it.
-			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) return null;
+			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) {
+				return { state: 'absent', reason: 'empty' };
+			}
 
 			return {
+				state: 'injected',
+				isUpdate,
 				block: renderBlock({
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
 					entriesTruncated: entries.truncated,
@@ -219,11 +278,20 @@ export class InstanceContextService {
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
 				},
+				// Counted from what was rendered, not from what was read: the caps and the age
+				// filter both discard rows, so the fetched totals would overstate the block.
+				legs: {
+					inventory: inventory?.workflows.length ?? 0,
+					events: entries.rows.length,
+					runs: runs.length,
+				},
 			};
 		} catch (error) {
 			// Context is an enhancement; failing to build it must not fail the user's turn.
+			// Reported as empty rather than disabled: the feature was in play, it just came back
+			// with nothing, and a reader chasing a bad answer should not be told it was off.
 			this.logger.warn('Failed to build the instance-context block', { error });
-			return null;
+			return { state: 'absent', reason: 'empty' };
 		}
 	}
 

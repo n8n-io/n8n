@@ -20,6 +20,10 @@ vi.mock('@n8n/instance-ai', async () => {
 		// passing test with silently empty metadata.
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		// Wiring-only stub, as above: the derivation has its own unit tests
+		// (instance-ai/src/stream/__tests__/instance-context-reach.test.ts). These tests pin
+		// that a resumed segment still reaches its terminal, not what it derived.
+		deriveInstanceContextReach: vi.fn(() => ({ depth: 0, surfaces: [] })),
 		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
 			context.setupItemsEmitter !== undefined,
 		createSetupItemsEmitter: vi.fn(() => ({
@@ -2924,7 +2928,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: new Error('model overloaded'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream(
@@ -2960,7 +2969,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error: new Error(
 				'provider rejected key sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
 			),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream(
@@ -2992,7 +3006,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream(
@@ -3035,7 +3054,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
@@ -3136,7 +3160,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 		service.pendingBrowserCredentialSetups.set('run-1', {
 			userId: 'user-1',
@@ -3182,7 +3211,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		const tracker = service.createBrowserCredentialSetupTracker('run-1', 'user-1');
@@ -3247,7 +3281,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -3298,7 +3337,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			suspension: {
 				toolCallId: 'tool-call-1',
 				requestId: 'req-1',
@@ -3370,7 +3414,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			suspension: {
 				toolCallId: 'tool-call-2',
 				requestId: 'req-2',
@@ -3441,7 +3490,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -3458,7 +3512,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			usage: {
 				promptTokens: 20,
 				completionTokens: 8,
@@ -3526,7 +3585,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'suspended',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			usage: {
 				promptTokens: 10,
 				completionTokens: 5,
@@ -3544,7 +3608,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 			usage: {
 				promptTokens: 20,
 				completionTokens: 8,
@@ -3591,7 +3660,12 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream(
@@ -3897,7 +3971,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: claimError,
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream({}, {}, opts);
@@ -3948,7 +4027,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: staleError,
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream({}, {}, opts);
@@ -4124,7 +4208,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
 			error: staleNamedError,
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4153,7 +4242,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4195,7 +4289,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve('done'),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
@@ -4220,7 +4319,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 		abortController.abort();
 
@@ -4254,7 +4358,12 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			status: 'cancelled',
 			agentRunId: 'agent-run-1',
 			text: Promise.resolve(''),
-			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				askedClarifyingQuestion: false,
+			},
 		});
 		abortController.abort();
 

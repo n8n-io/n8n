@@ -253,6 +253,7 @@ describe('PostHog', () => {
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
+				globalConfig.activityLog.enabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -290,6 +291,34 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			/**
+			 * The activity log's write switch is also its read switch, so an instance cannot be
+			 * left reading a log that nothing writes. This override is what couples them.
+			 */
+			it('force-enables the instance-activity-context flag when N8N_ACTIVITY_LOG_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '111_instance_activity_context': true });
+			});
+
+			it('leaves the instance-activity-context flag to PostHog when the record is off', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = false;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags['111_instance_activity_context']).toBeUndefined();
 			});
 
 			it('force-enables the folder-exploration flag when N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED is set', async () => {

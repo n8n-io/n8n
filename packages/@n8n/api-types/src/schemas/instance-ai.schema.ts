@@ -182,6 +182,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'instance-context',
 	'tasks-update',
 	'setup-items',
 	'filesystem-request',
@@ -281,6 +282,99 @@ export function isSafeObjectKey(key: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Instance context: what a turn was handed, and how far it then went
+// ---------------------------------------------------------------------------
+
+/**
+ * A context surface the agent can call, mapped to how deep a read it is.
+ *
+ * Depth is what makes "does it go deep?" answerable as one number, and the two
+ * surfaces sharing depth 2 genuinely tie: opening one entry's own history and
+ * summarising which node types a project uses are different questions asked at the
+ * same remove from the block. Ranking them against each other would invent an order
+ * the feature does not have, so a turn reports its deepest depth AND which surfaces
+ * it used, rather than one name standing in for both.
+ */
+export const INSTANCE_CONTEXT_SURFACE_DEPTH = {
+	'activity-list': 1,
+	'activity-expand': 2,
+	'node-usage': 2,
+	'workflow-read': 3,
+} as const;
+
+export type InstanceContextSurface = keyof typeof INSTANCE_CONTEXT_SURFACE_DEPTH;
+
+export const instanceContextSurfaceSchema = z.enum([
+	'activity-list',
+	'activity-expand',
+	'node-usage',
+	'workflow-read',
+]);
+
+export const instanceContextReachSchema = z.object({
+	depth: z
+		.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)])
+		.describe('Deepest surface reached. 0 means the block was all the turn used.'),
+	surfaces: z
+		.array(instanceContextSurfaceSchema)
+		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty at depth 0.'),
+});
+
+/** How far a turn went for instance context, beyond the block it was handed. */
+export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
+
+export const instanceContextLegsSchema = z.object({
+	inventory: z
+		.number()
+		.int()
+		.describe("Workflows named in the inventory leg. Only ever on a thread's opening block."),
+	events: z.number().int().describe('Activity entries listed.'),
+	runs: z.number().int().describe('Workflows contributing a run summary.'),
+});
+
+export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
+
+/**
+ * Why a turn got no block. Kept distinct because they mean opposite things to a
+ * reader: `disabled` says the feature was not in play, `empty` says it was and
+ * found nothing worth sending — which is the case where an agent that guessed
+ * was not, in fact, withholding anything.
+ */
+export const instanceContextAbsenceReasonSchema = z.enum([
+	'disabled',
+	'machine-follow-up',
+	'empty',
+]);
+
+export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
+
+export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
+	z.object({
+		state: z.literal('injected'),
+		isUpdate: z
+			.boolean()
+			.describe('An addition to a block this thread already saw, rather than a full window.'),
+		legs: instanceContextLegsSchema,
+		chars: z.number().int().describe('Rendered block length, tag included.'),
+	}),
+	z.object({ state: z.literal('absent'), reason: instanceContextAbsenceReasonSchema }),
+]);
+
+/** What a turn was handed, or why it was handed nothing. */
+export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSchema>;
+
+/**
+ * Sent once per turn, right after the block is built and before the agent runs, so a
+ * reader can tell a turn that knew about prior work from one that guessed. `reach`
+ * is not known yet at that point and arrives on `run-finish`.
+ */
+export const instanceContextPayloadSchema = z.object({
+	injection: instanceContextInjectionSchema,
+	/** The rendered block, so the trace can show what was actually said. */
+	block: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
 // Event payloads
 // ---------------------------------------------------------------------------
 
@@ -306,6 +400,12 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * How far this turn went for instance context. Rides the terminal event because it
+	 * is only knowable once every tool call is in — the same reason the run's duration
+	 * and tool counts are reported here.
+	 */
+	contextReach: instanceContextReachSchema.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
 	 * stepping-stones the agent created but never promoted to the main
@@ -1115,6 +1215,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('instance-context'),
+		...eventBase,
+		payload: instanceContextPayloadSchema,
+	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
@@ -1560,7 +1665,22 @@ export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
-	| { type: 'child'; agentId: string; responseId?: string };
+	| { type: 'child'; agentId: string; responseId?: string }
+	/**
+	 * What the turn was handed before it started. Sits in the timeline rather than
+	 * beside the message so it lands inside the trace the user expands, and so it
+	 * persists with the rest of the tree — `AgentTreeSnapshot` stores `timeline`
+	 * verbatim, which is what makes it survive a reload without its own restore path.
+	 */
+	| {
+			type: 'instance-context';
+			injection: InstanceContextInjection;
+			/** Absent until the run finishes. */
+			reach?: InstanceContextReach;
+			/** The rendered block. Omitted on `absent`. */
+			block?: string;
+			responseId?: string;
+	  };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -2300,6 +2420,40 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
+ * Rollout flag for reading instance-activity context: the per-turn
+ * `<instance-context>` block, the `activity` tool, and the skill that explains them.
+ *
+ * One flag over the whole feature rather than one per side. `N8N_ACTIVITY_LOG_ENABLED`
+ * is the single operator control: it decides whether the record accrues at all, and it
+ * force-enables this flag, so an instance cannot be left reading a log nothing writes.
+ * The read is useless without the write — the edit leg would be permanently empty — and
+ * the write is pointless without a reader.
+ *
+ * Within an instance that has the record on, this flag stages the read per user, which
+ * is what the rollout ramps and what a token regression rolls back. The write side stays
+ * instance-wide on purpose: its actor arrives as `UserLike`, which carries no
+ * `createdAt` for PostHog to evaluate against, so gating it per user would cost a user
+ * lookup on every recorded event to buy nothing the env var does not already give.
+ *
+ * ## When to roll this back
+ *
+ * Agreed before the rollout rather than argued during one. Roll back if either holds:
+ *
+ * 1. An agent starts treating *recent* as *relevant* — answering about the last thing
+ *    that happened rather than what was asked. That is worse than no block at all,
+ *    because a reader cannot tell it from the agent simply being wrong.
+ * 2. Median turn tokens rise past the measured control-arm cost of +9% with no matching
+ *    fall in clarifying questions. Paying for context that changes no behaviour is the
+ *    whole failure mode; the pair is what makes it visible.
+ *
+ * The win condition is the pair, not either half: **clarifying questions fall and build
+ * success does not.** Fewer questions with worse builds is a regression wearing a win's
+ * clothes, so neither number is read alone. `INSTANCE_CONTEXT_TURN` telemetry carries
+ * both sides — block presence against `asked_clarifying_question`, per turn.
+ */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '111_instance_activity_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

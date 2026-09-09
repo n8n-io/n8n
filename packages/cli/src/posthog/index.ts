@@ -6,6 +6,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
@@ -252,6 +253,14 @@ export class PostHogClient {
 
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] = true;
+		}
+
+		// One flag over both sides of instance-activity context, so the env var that turns
+		// the record on is also the one that turns reading it back on. They are coupled
+		// deliberately — see the flag's own note — and a single override keeps the operator
+		// from being able to put them in a state the feature does not support.
+		if (this.globalConfig.activityLog.enabled) {
+			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

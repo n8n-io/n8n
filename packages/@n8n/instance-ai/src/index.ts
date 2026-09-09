@@ -534,7 +534,8 @@ export type {
 	ResumableStreamSource,
 	TraceStatus,
 } from './runtime/resumable-stream-executor';
-export type { WorkSummary } from './stream/work-summary-accumulator';
+export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
+export { deriveInstanceContextReach } from './stream/instance-context-reach';
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
 	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);

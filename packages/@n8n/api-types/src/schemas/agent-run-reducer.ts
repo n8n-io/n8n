@@ -26,6 +26,7 @@ import type {
 	InstanceAiCancellationReason,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
+	InstanceContextReach,
 } from './instance-ai.schema';
 
 /** Map the backend's run-finish reason string to a semantic cancellation cause. */
@@ -147,6 +148,30 @@ function appendTimelineReasoning(
 	} else {
 		timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
 	}
+}
+
+/**
+ * Combines what two segments of one turn each reached: the deepest depth either got to,
+ * and every surface either used, in first-seen order.
+ *
+ * Order-independent, because replay can deliver the segments' terminal events in either
+ * order and the entry has to read the same afterwards.
+ */
+function mergeContextReach(
+	existing: InstanceContextReach | undefined,
+	incoming: InstanceContextReach,
+): InstanceContextReach {
+	if (!existing) return incoming;
+
+	const surfaces = [...existing.surfaces];
+	for (const surface of incoming.surfaces) {
+		if (!surfaces.includes(surface)) surfaces.push(surface);
+	}
+
+	return {
+		depth: existing.depth > incoming.depth ? existing.depth : incoming.depth,
+		surfaces,
+	};
 }
 
 /**
@@ -482,6 +507,25 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'instance-context': {
+			// Folds onto the ROOT node, like `setup-items`: it describes the turn, not the
+			// agent that happened to emit it, and history restore reads only the tree root.
+			//
+			// Appended once per run. The event is published before the agent starts, so it
+			// leads the timeline and the trace reads in the order things happened — what the
+			// turn was handed, then what it did with it.
+			const root = ensureAgent(state, state.rootAgentId);
+			if (root && !root.timeline.some((entry) => entry.type === 'instance-context')) {
+				root.timeline.push({
+					type: 'instance-context',
+					injection: event.payload.injection,
+					...(event.payload.block !== undefined ? { block: event.payload.block } : {}),
+					...(event.responseId ? { responseId: event.responseId } : {}),
+				});
+			}
+			break;
+		}
+
 		case 'tasks-update': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
@@ -544,6 +588,20 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				root.status = state.status;
 				if (state.status === 'cancelled') {
 					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
+				// How far the turn went is only knowable once every tool call is in, so it
+				// arrives here and completes the entry the turn opened with.
+				//
+				// Merged rather than assigned. A turn that stops for a confirmation finishes in
+				// two segments, each reporting only its own tool calls, so replacing would let
+				// the second segment erase what the first reached — and the reads after an
+				// approval are often the deepest ones.
+				const { contextReach } = event.payload;
+				if (contextReach) {
+					for (const entry of root.timeline) {
+						if (entry.type !== 'instance-context') continue;
+						entry.reach = mergeContextReach(entry.reach, contextReach);
+					}
 				}
 			}
 			// A terminated run can't have tool calls still in-flight.

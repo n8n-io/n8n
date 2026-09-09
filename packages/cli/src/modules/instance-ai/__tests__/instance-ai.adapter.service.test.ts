@@ -72,6 +72,7 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5125,6 +5126,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
+		[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5135,6 +5137,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
 			nodeUsageEnabled: true,
+			instanceContextEnabled: true,
 			folderExplorationEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -5148,6 +5151,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
+			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5155,6 +5159,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 		});
 	});
@@ -5167,6 +5172,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 		});
 	});
@@ -5180,6 +5186,7 @@ describe('resolveExperimentGates', () => {
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
 			nodeUsageEnabled: false,
+			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
 		});
 	});
