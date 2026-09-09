@@ -101,7 +101,7 @@ watch(
 );
 
 const dependencyMenuChildren = computed<WorkflowMenuItem[]>(() => {
-	const result = getDependencies(props.id);
+	const result = getDependencies(props.id, 'workflow');
 	const items: WorkflowMenuItem[] = buildDependencyMenuItems(result?.dependencies ?? []);
 	if (result && result.inaccessibleCount > 0) {
 		items.push({
@@ -215,7 +215,7 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 		disabled: props.isNewWorkflow,
 	});
 
-	if (!props.isNewWorkflow && hasDependencies(props.id)) {
+	if (!props.isNewWorkflow && hasDependencies(props.id, 'workflow')) {
 		nameAndMetadata.push({
 			id: WORKFLOW_MENU_ACTIONS.DEPENDENCIES,
 			label: locale.baseText('menuActions.dependencies'),
@@ -390,7 +390,10 @@ function onWorkflowMenuToggle(open: boolean): void {
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS | string): Promise<void> {
-	const dependency = resolveDependencyMenuId(getDependencies(props.id)?.dependencies ?? [], action);
+	const dependency = resolveDependencyMenuId(
+		getDependencies(props.id, 'workflow')?.dependencies ?? [],
+		action,
+	);
 	if (dependency) {
 		workflowTelemetry.track('User clicked dependency pill item', {
 			source: 'workflow_menu',

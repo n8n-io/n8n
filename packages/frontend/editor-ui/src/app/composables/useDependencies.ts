@@ -35,15 +35,20 @@ function toBatches(resourceIds: string[]): string[][] {
 	return batches;
 }
 
+// Legacy instances can hold a workflow and a credential with the same numeric
+// id, so cache and generation entries are keyed by resource type + id.
+const cacheKey = (resourceType: DependencyResourceType, resourceId: string) =>
+	`${resourceType}:${resourceId}`;
+
 // Overlapping refetches can resolve out of order. Track the newest request per
-// resource id, so only that request may write its result to the cache.
+// resource, so only that request may write its result to the cache.
 let requestCounter = 0;
 const countsRequestGeneration: Record<string, number> = {};
 const detailsRequestGeneration: Record<string, number> = {};
 
-function claimGeneration(generations: Record<string, number>, ids: string[]): number {
+function claimGeneration(generations: Record<string, number>, keys: string[]): number {
 	const generation = ++requestCounter;
-	for (const id of ids) generations[id] = generation;
+	for (const key of keys) generations[key] = generation;
 	return generation;
 }
 
@@ -57,7 +62,8 @@ export function useDependencies() {
 	): Promise<void> {
 		await Promise.all(
 			toBatches(resourceIds).map(async (batch) => {
-				const generation = claimGeneration(countsRequestGeneration, batch);
+				const keys = batch.map((id) => cacheKey(resourceType, id));
+				const generation = claimGeneration(countsRequestGeneration, keys);
 				try {
 					const result = await workflowDependenciesApi.getResourceDependencyCounts(
 						rootStore.restApiContext,
@@ -67,8 +73,9 @@ export function useDependencies() {
 					// Write every requested id so a stale cache entry clears when the
 					// resource no longer appears in the response
 					for (const id of batch) {
-						if (countsRequestGeneration[id] !== generation) continue; // a newer request owns this id
-						countsMap.value[id] = result[id] ?? emptyCounts();
+						const key = cacheKey(resourceType, id);
+						if (countsRequestGeneration[key] !== generation) continue; // a newer request owns this key
+						countsMap.value[key] = result[id] ?? emptyCounts();
 					}
 				} catch {
 					// Counts are supplementary — silently ignore errors
@@ -84,7 +91,8 @@ export function useDependencies() {
 	): Promise<void> {
 		await Promise.all(
 			toBatches(resourceIds).map(async (batch) => {
-				const generation = claimGeneration(detailsRequestGeneration, batch);
+				const keys = batch.map((id) => cacheKey(resourceType, id));
+				const generation = claimGeneration(detailsRequestGeneration, keys);
 				try {
 					const result = await workflowDependenciesApi.getResourceDependencies(
 						rootStore.restApiContext,
@@ -94,8 +102,9 @@ export function useDependencies() {
 					// Write every requested id so a stale cache entry clears when the
 					// resource no longer appears in the response
 					for (const id of batch) {
-						if (detailsRequestGeneration[id] !== generation) continue; // a newer request owns this id
-						dependenciesMap.value[id] = result[id] ?? { dependencies: [], inaccessibleCount: 0 };
+						const key = cacheKey(resourceType, id);
+						if (detailsRequestGeneration[key] !== generation) continue; // a newer request owns this key
+						dependenciesMap.value[key] = result[id] ?? { dependencies: [], inaccessibleCount: 0 };
 					}
 				} catch {
 					// Dependencies are supplementary — silently ignore errors
@@ -104,25 +113,31 @@ export function useDependencies() {
 		);
 	}
 
-	function getDependencies(resourceId: string): ResolvedDependenciesResult | undefined {
-		return dependenciesMap.value[resourceId];
+	function getDependencies(
+		resourceId: string,
+		resourceType: DependencyResourceType,
+	): ResolvedDependenciesResult | undefined {
+		return dependenciesMap.value[cacheKey(resourceType, resourceId)];
 	}
 
-	function getDependencyCounts(resourceId: string): DependencyTypeCounts | undefined {
-		return countsMap.value[resourceId];
+	function getDependencyCounts(
+		resourceId: string,
+		resourceType: DependencyResourceType,
+	): DependencyTypeCounts | undefined {
+		return countsMap.value[cacheKey(resourceType, resourceId)];
 	}
 
-	function getTotalCount(resourceId: string): number {
-		const counts = countsMap.value[resourceId];
+	function getTotalCount(resourceId: string, resourceType: DependencyResourceType): number {
+		const counts = countsMap.value[cacheKey(resourceType, resourceId)];
 		if (!counts) return 0;
 		return Object.values(counts).reduce((sum, n) => sum + n, 0);
 	}
 
-	function hasDependencies(resourceId: string): boolean {
+	function hasDependencies(resourceId: string, resourceType: DependencyResourceType): boolean {
 		// Check full deps first, then counts
-		const entry = dependenciesMap.value[resourceId];
+		const entry = dependenciesMap.value[cacheKey(resourceType, resourceId)];
 		if (entry !== undefined) return entry.dependencies.length > 0 || entry.inaccessibleCount > 0;
-		return getTotalCount(resourceId) > 0;
+		return getTotalCount(resourceId, resourceType) > 0;
 	}
 
 	function clearCache(): void {

@@ -28,12 +28,12 @@ const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = us
 
 const isLoadingDetails = ref(false);
 
-const depsResult = computed(() => getDependencies(props.resourceId));
+const depsResult = computed(() => getDependencies(props.resourceId, props.resourceType));
 
 const effectiveCount = computed(() => {
 	const result = depsResult.value;
 	if (result) return result.dependencies.length + result.inaccessibleCount;
-	return getTotalCount(props.resourceId) ?? 0;
+	return getTotalCount(props.resourceId, props.resourceType) ?? 0;
 });
 
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);

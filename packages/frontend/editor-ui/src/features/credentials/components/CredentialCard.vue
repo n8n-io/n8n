@@ -124,7 +124,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);

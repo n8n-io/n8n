@@ -48,7 +48,7 @@ const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-const dataTableHasDependents = computed(() => hasDependencies(props.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.id, 'dataTable'));
 
 const loading = ref(false);
 const saving = ref(false);
