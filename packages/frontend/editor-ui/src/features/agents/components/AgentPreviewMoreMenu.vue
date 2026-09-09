@@ -121,7 +121,13 @@ const triggerLabel = computed(() => {
 const triggerIcon = computed<IconName>(() => {
 	switch (sessionMetadata.value?.source) {
 		case 'slack':
-			return 'slack';
+		case 'telegram':
+		case 'linear':
+		case 'discord':
+		case 'mcp':
+		case 'workflow':
+		case 'webhook':
+			return sessionMetadata.value.source;
 		case 'instance-ai':
 			return 'sparkles';
 		default:

@@ -371,6 +371,12 @@ describe('AgentPreviewMoreMenu', function describeMenu() {
 
 	it.each([
 		['slack', 'Slack', 'slack'],
+		['telegram', 'Telegram', 'telegram'],
+		['linear', 'Linear', 'linear'],
+		['discord', 'Discord', 'discord'],
+		['mcp', 'Mcp', 'mcp'],
+		['workflow', 'Workflow', 'workflow'],
+		['webhook', 'Webhook', 'webhook'],
 		['instance-ai', 'agentSessions.origin.instanceAi', 'sparkles'],
 		['chat', 'agentSessions.origin.preview', 'bolt-filled'],
 		['n8n_chat', 'agentSessions.origin.preview', 'bolt-filled'],
