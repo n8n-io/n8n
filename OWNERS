@@ -81,6 +81,7 @@ packages/cli/src/events/                                @n8n-io/catalysts
 packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
+packages/cli/src/workflows/publication/                 @n8n-io/catalysts required
 packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
@@ -184,11 +185,11 @@ packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
 
-packages/frontend/@n8n/design-system/                   @n8n-io/design
+packages/frontend/@n8n/design-system/                   @n8n-io/design-engineering
 packages/frontend/@n8n/stores/                          @n8n-io/frontend
 packages/frontend/@n8n/composables/                     @n8n-io/frontend
 packages/frontend/@n8n/rest-api-client/                 @n8n-io/frontend
-packages/frontend/@n8n/storybook/                       @n8n-io/design
+packages/frontend/@n8n/storybook/                       @n8n-io/design-engineering
 packages/frontend/@n8n/i18n/                            @n8n-io/frontend
 packages/@n8n/stylelint-config/                         @n8n-io/qa-dx
 
@@ -249,3 +250,17 @@ docker/get-n8n.sh                                       @n8n-io/qa-dx required
 packages/testing/                                       @n8n-io/qa-dx
 packages/@n8n/benchmark/                                @n8n-io/qa-dx
 packages/@n8n/vitest-config/                            @n8n-io/qa-dx
+
+# Encryption boundary (IAM) — the encryption area and its guardrail rules.
+# Widening a constraint (allowed paths, banned methods) needs security review;
+# see packages/@n8n/eslint-config/src/configs/encryption-boundary.ts.
+
+packages/core/src/encryption/                           @n8n-io/iam required
+packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
+packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
+packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/rules/no-legacy-cipher-methods.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/rules/no-misplaced-cipher-primitives.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required

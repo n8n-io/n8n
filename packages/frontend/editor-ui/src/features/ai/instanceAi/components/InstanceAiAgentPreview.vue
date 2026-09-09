@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
 import type { AgentResource } from '@/features/agents/types';
+import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -20,6 +22,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	previewSessionId?: string;
+	previewOpen: boolean;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
@@ -38,7 +41,19 @@ const emit = defineEmits<{
 // `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
 const instanceAiStore = useInstanceAiStore();
+const rootStore = useRootStore();
 const i18n = useI18n();
+
+/**
+ * Props of an unmounted instance keep their last values, so a target comparison
+ * alone cannot tell "still showing this artifact" from "torn down while the
+ * request was in flight". Both must be false before a response touches shared
+ * thread state.
+ */
+let mounted = true;
+onBeforeUnmount(() => {
+	mounted = false;
+});
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -71,8 +86,27 @@ async function syncAgentTarget(name: string) {
 	});
 }
 
-async function onAgentPersisted(agent: AgentResource) {
-	await syncAgentTarget(agent.name);
+/**
+ * Persist the pending artifact: one request creates (or adopts, when the chat
+ * already created it under the same id) the agent and replaces this thread's
+ * pending marker with the bound target. The builder treats resolution as the
+ * acknowledgement, so the binding is durable before it stops drafting.
+ */
+async function persistAgent(name: string): Promise<AgentResource> {
+	const target = { projectId: props.projectId, agentId: props.agentId };
+	const { agent, thread: updatedThread } = await persistPendingAgent(
+		rootStore.restApiContext,
+		thread.id,
+		{ ...target, name },
+	);
+	// Authoritative: the server dropped the pending key, which a merge would keep.
+	// Skipped once this preview has been torn down or moved on, so a slow response
+	// for the previous artifact cannot restore its binding over the current one —
+	// the server write already landed, and the next thread load picks it up.
+	if (mounted && props.projectId === target.projectId && props.agentId === target.agentId) {
+		instanceAiStore.setThreadMetadata(thread.id, updatedThread.metadata);
+	}
+	return agent;
 }
 </script>
 
@@ -99,9 +133,10 @@ async function onAgentPersisted(agent: AgentResource) {
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
+			:artifact-preview-open="props.previewOpen"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
-			@persisted="onAgentPersisted"
+			:artifact-persist-agent="persistAgent"
 			@preview-open-change="emit('preview-open-change', $event)"
 			@assistant-handoff="emit('assistant-handoff', $event)"
 			@name-saved="syncAgentTarget"

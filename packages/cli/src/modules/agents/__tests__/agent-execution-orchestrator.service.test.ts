@@ -412,6 +412,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
+					userId,
 					runType: 'test',
 					configuration: runtime.telemetryConfiguration,
 				},
@@ -641,6 +642,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationType: 'task',
 			usePublishedVersion: true,
 			sandboxPrincipalHash: taskPrincipalHash,
+			allowBackgroundTasks: false,
 		});
 		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
@@ -705,6 +707,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sandboxPrincipalHash: userPrincipalHash,
+				allowBackgroundTasks: false,
 			}),
 		);
 	});

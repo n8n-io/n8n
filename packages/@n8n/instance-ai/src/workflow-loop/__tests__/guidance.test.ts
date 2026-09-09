@@ -358,3 +358,29 @@ describe('formatWorkflowLoopGuidance', () => {
 		});
 	});
 });
+
+describe('formatWorkflowLoopGuidance — setup panel', () => {
+	const action: WorkflowLoopAction = {
+		type: 'done',
+		summary: 'Built',
+		workflowId: 'wf-123',
+		mockedCredentialTypes: ['slackApi'],
+	};
+
+	it('still routes through workflows setup, but as an announcement that ends the turn', () => {
+		const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+
+		expect(result).toContain('workflows(action="setup")');
+		expect(result).toContain('wf-123');
+		expect(result).toContain('setup panel next to the chat');
+		expect(result).toContain('end your turn');
+		expect(result).toContain('When the result has `announced: true`');
+		expect(result).toContain('Otherwise follow the returned guidance');
+		expect(result).not.toContain('No card opens');
+		expect(result).not.toContain('inline setup card');
+	});
+
+	it('keeps the card wording while the panel is off', () => {
+		expect(formatWorkflowLoopGuidance(action, {})).toContain('inline setup card');
+	});
+});

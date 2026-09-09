@@ -1,4 +1,8 @@
-export { SystemTask, resolveSystemTaskRunOptions } from './system-task';
+export {
+	SystemTask,
+	resolveSystemTaskRunOptions,
+	resolveSystemTaskSchedule,
+} from './system-task';
 export type {
 	SystemTaskClass,
 	SystemTaskEffects,
@@ -6,3 +10,4 @@ export type {
 	SystemTaskSchedule,
 } from './system-task';
 export { SystemTaskMetadata } from './system-task-metadata';
+export { wholeSeconds } from './whole-seconds';

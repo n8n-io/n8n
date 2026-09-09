@@ -231,6 +231,15 @@ follow its build → publish → assign steps.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
+   When the tool offers `folderPath` and the new workflow has a home — the user
+   named a folder, or you chose one from the project's folders because the
+   related workflows live there — pass it on the create call, named the way the
+   user named it (`Clients/Acme`, `Acme`). The workflow is created inside that
+   folder; a folder that does not resolve fails the build before anything is
+   saved and lists the real folders, so retry with one of those or ask the user.
+   Never leave a workflow at the project root when its place was already clear.
+   `folderPath` is for new workflows only; move an existing one with
+   `workspace(action="move-workflow-to-folder")`.
 9. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    branches are wired on the workflow builder (`.to(ifNode).onTrue(...).onFalse(...)`
@@ -250,6 +259,9 @@ follow its build → publish → assign steps.
     pass the real n8n `workflowId` on the first `build-workflow` call only when
     you wrote the file yourself. Never pass local SDK workflow IDs as n8n
     workflow IDs.
+    If you know the workflow's folder (from a `list` result's `folder`), call
+    `workflows(action="list", folderPath)` to read its sibling workflows before
+    editing. Match the project's existing naming, node choices, and structure.
 12. After a successful direct `build-workflow` result, if the tool output
     contains `postBuildFlow.required: true`, follow the inlined
     `postBuildFlow.instructions` from that output (do not load `post-build-flow`
@@ -353,10 +365,17 @@ decision after testing.
   that the credential (or Gateway credits) is being used.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
-- If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Pick in this
-  order:
+- `credentials(action="list")` returns connected credential instances, not all
+  supported credential types. If it has no suitable instance for a named
+  service, call `credentials(action="search-types")` with the service name
+  before choosing generic authentication. Pick in this order:
   1. A **dedicated credential type** whenever search finds one.
+     For an HTTP Request node, use the most specific type for the target service
+     and operation. Set `authentication` to `'predefinedCredentialType'` and
+     `nodeCredentialType` to the returned type. If no credential instance
+     exists, leave `newCredential('Suggested Name')` unresolved for setup. Do
+     not use generic authentication only because the user has not connected an
+     account.
   2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
      without a dedicated type whose auth is expressible as header/query/body
      values — this covers API keys and bearer tokens. When the provider

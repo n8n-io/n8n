@@ -65,6 +65,23 @@ const restoreLine = (root, key, pattern, line) => {
 
 const SDK_PATHS = /^\s*"@n8n\/frontend-module-sdk":/;
 
+/**
+ * The body of `plugins: [...]` in a generated vite config. A plugin is wired by its call inside
+ * this array, not by its import, so the two are asserted apart.
+ */
+const pluginArray = (viteConfig) => {
+	const [, body] = /\n\t\tplugins: \[\n([\s\S]*?)\n\t\t\],\n/.exec(viteConfig) ?? [];
+
+	// A shape change here would silently make every assertion below it vacuous.
+	if (body === undefined) throw new Error('no `plugins: [` array in the generated vite.config.ts');
+
+	return body;
+};
+
+/** The two icons the generated test renders, one per plugin. See that template for why. */
+const ICON_FROM_UNPLUGIN = 'box';
+const ICON_FROM_SVG_LOADER = 'webhook';
+
 /** `InstanceAi` gives `instance-ai`, the id a descriptor of that name comes from. */
 const toKebab = (pascalName) => pascalName.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
@@ -91,6 +108,7 @@ describe('createFrontend', () => {
 				'tsconfig.json',
 				'vite.config.ts',
 				'eslint.config.mjs',
+				'stylelint.config.mjs',
 				'biome.jsonc',
 				'README.md',
 				'src/index.ts',
@@ -98,6 +116,7 @@ describe('createFrontend', () => {
 				`src/${NAME}.store.ts`,
 				`src/${NAME}.store.test.ts`,
 				'src/__tests__/setup.ts',
+				'src/__tests__/design-system-icons.test.ts',
 			];
 
 			for (const file of written) {
@@ -116,12 +135,76 @@ describe('createFrontend', () => {
 			);
 		});
 
+		it('registers the plugins a design-system consumer needs, and declares them', () => {
+			// design-system is consumed from source, so its `~icons/lucide/*` virtual modules and its
+			// `custom/*.svg` components are this package's problem. Without `svgLoader` an `.svg`
+			// import is a data-URI string, which Vue renders as a tag name.
+			//
+			// The call inside `plugins: [...]` is what wires a plugin into Vite, so that is what this
+			// asserts. An earlier version matched the import specifiers instead, and stayed green
+			// when both calls were deleted from the array — an import alone configures nothing.
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const viteConfig = readFileSync(join(packageDir, 'vite.config.ts'), 'utf8');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+			const registered = pluginArray(viteConfig);
+
+			for (const call of ['vue(', 'icons(', 'svgLoader(']) {
+				expect({ call, inPluginsArray: registered.includes(call) }).toEqual({
+					call,
+					inPluginsArray: true,
+				});
+			}
+
+			// A call needs its import, and the import needs its package: three ways to lose the same
+			// plugin, so all three are checked.
+			for (const specifier of ['unplugin-icons/vite', 'vite-svg-loader']) {
+				expect(viteConfig).toMatch(new RegExp(`^import .* from '${specifier}';$`, 'm'));
+			}
+			for (const dependency of ['unplugin-icons', 'vite-svg-loader', '@iconify/json']) {
+				expect(Object.keys(manifest.devDependencies)).toContain(dependency);
+			}
+
+			// `autoInstall: false` keeps a test run off the network, so the collection has to be the
+			// `@iconify/json` dependency asserted above.
+			expect(registered).toContain('autoInstall: false');
+
+			// The generated test is the behavioural half of this guarantee: it renders one icon of
+			// each kind in the module's own suite, which is the only place a real Vite graph exists.
+			// Assert it still names both mechanisms, so it cannot degrade into a trivial test.
+			const iconTest = readFileSync(
+				join(packageDir, 'src/__tests__/design-system-icons.test.ts'),
+				'utf8',
+			);
+
+			expect(iconTest).toContain('N8nIcon');
+			for (const icon of [ICON_FROM_UNPLUGIN, ICON_FROM_SVG_LOADER]) {
+				expect(iconTest).toContain(`'${icon}'`);
+			}
+		});
+
+		it('lints SCSS from the first run, before any SCSS exists', () => {
+			// A generated package has no `.scss` and no `<style>` block yet, and stylelint exits 1 on
+			// an empty match. Without `--allow-empty-input` the module is red on the day it is made.
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+
+			expect(manifest.scripts['lint:styles']).toContain('--allow-empty-input');
+			expect(manifest.scripts['lint:styles:fix']).toContain('--allow-empty-input');
+			expect(Object.keys(manifest.devDependencies)).toContain('@n8n/stylelint-config');
+			expect(Object.keys(manifest.devDependencies)).toContain('stylelint');
+			expect(readFileSync(join(packageDir, 'stylelint.config.mjs'), 'utf8')).toContain(
+				'@n8n/stylelint-config/base',
+			);
+		});
+
 		it('makes all four registrations', () => {
 			const { edits } = scaffold(root);
 
 			expect(edits.map((edit) => edit.note)).toEqual([
 				'@n8n/frontend-vite-config/index.ts (Vite alias)',
-				'editor-ui/package.json (dependency)',
+				'editor-ui/package.json (devDependency)',
 				'editor-ui/tsconfig.json (paths)',
 				'editor-ui/src/app/modules.manifest.ts (registration)',
 			]);
@@ -169,7 +252,7 @@ describe('createFrontend', () => {
 			scaffold(root, 'aaa-feature');
 
 			const lines = read(root, 'editorUiPackage').split('\n');
-			const opens = lines.findIndex((line) => /^\s*"dependencies": \{/.test(line));
+			const opens = lines.findIndex((line) => /^\s*"devDependencies": \{/.test(line));
 			const names = [];
 			for (let at = opens + 1; !/^\s*\},?\s*$/.test(lines[at]); at++) {
 				const [, dependency] = /^\s*"([^"]+)":/.exec(lines[at]) ?? [];
@@ -239,7 +322,7 @@ describe('createFrontend', () => {
 
 		it.each([
 			['viteConfig', /^export const modulePackages/, 'frontend-vite-config/index.ts'],
-			['editorUiPackage', /^\s*"dependencies": \{/, 'editor-ui/package.json'],
+			['editorUiPackage', /^\s*"devDependencies": \{/, 'editor-ui/package.json'],
 			['editorUiTsconfig', SDK_PATHS, 'editor-ui/tsconfig.json'],
 			['manifest', /^\];/, 'modules.manifest.ts'],
 		])('names %s when its anchor is gone', (key, pattern, file) => {
@@ -278,7 +361,10 @@ describe('createFrontend', () => {
 				.filter(({ binding, id }) => isModuleId(id) && substitutionsFor(id).PascalName === binding)
 				.map(({ id }) => id);
 
-			expect(reachable.length).toBeGreaterThanOrEqual(7);
+			// Only a vacuous-loop guard. A fixed floor would be wrong here: this counts the features
+			// still in the shell, and the migration exists to drive that count down. It was 7 until
+			// otel graduated in #36679, which turned a passing test red for doing its job.
+			expect(reachable.length).toBeGreaterThan(0);
 			for (const id of reachable) {
 				expect(() => scaffold(root, id)).toThrow(ScaffoldError);
 			}

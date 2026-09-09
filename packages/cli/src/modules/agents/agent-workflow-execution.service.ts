@@ -587,6 +587,7 @@ export class AgentWorkflowExecutionService {
 				userMessage: message,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
+					userId: telemetryUserId,
 					runType,
 					configuration: telemetryConfiguration,
 				},
@@ -613,6 +614,7 @@ export class AgentWorkflowExecutionService {
 					record: run.messageRecord,
 					source: AGENT_WORKFLOW_TRIGGER_TYPE,
 					telemetry: {
+						userId: telemetryUserId,
 						runType,
 						configuration: telemetryConfiguration,
 					},
@@ -737,6 +739,7 @@ export class AgentWorkflowExecutionService {
 		try {
 			this.telemetry.trackAgentTurnFinished({
 				agent_id: syntheticAgentId,
+				user_id: telemetryUserId,
 				thread_id: threadId,
 				run_type: runType,
 				agent_type: 'inline',

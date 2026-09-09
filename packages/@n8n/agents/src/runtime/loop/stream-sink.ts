@@ -195,16 +195,17 @@ export class StreamSink implements RunOutputSink<void> {
 			try {
 				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
 			} catch (error) {
-				// A stall before any content is invisible to the user (and to the
-				// host's persistence) — re-issue the request instead of failing the
-				// run for what is usually a dead connection at request time. Once
-				// content has streamed, a retry would duplicate segments and orphan
+				// A stalled or empty stream before any content is invisible to the user
+				// (and to the host's persistence) — re-issue the request instead of
+				// failing the run for what is usually a dead connection at request time.
+				// Once content has streamed, a retry would duplicate segments and orphan
 				// already-persisted tool-call facts, so the error surfaces instead.
 				// The abandoned attempt's prompt processing goes unbilled — accepted:
 				// it only has usage at all when the stream died between message_start
 				// and the first content chunk.
 				const retryable =
-					error instanceof ModelStreamStallError &&
+					(error instanceof ModelStreamStallError ||
+						loadAi().NoOutputGeneratedError.isInstance(error)) &&
 					attempt < MAX_MODEL_STREAM_STALL_RETRIES &&
 					!attemptState.streamedContent &&
 					!ctx.abortSignal.aborted;
@@ -220,7 +221,7 @@ export class StreamSink implements RunOutputSink<void> {
 		attemptState: { streamedContent: boolean },
 	): Promise<ModelTurnResult> {
 		const { idleMs, firstOutputMs } = deadlines;
-		const { streamText } = loadAi();
+		const { NoOutputGeneratedError, streamText } = loadAi();
 		// Raw chunks serve two consumers: the usage/error readers parse them, and
 		// the stall watchdog counts them as liveness — keepalive events the SDK
 		// otherwise drops (e.g. Anthropic `ping`, a gateway's empty-delta frames)
@@ -279,10 +280,16 @@ export class StreamSink implements RunOutputSink<void> {
 		// cancels the underlying fetch and the async iterator throws; the error
 		// propagates to the StreamSession which closes the consumer stream.
 		for await (const chunk of chunkStream) {
+			// The rejected result promises surface this error after the stream
+			// closes. Forwarding it here would mark a successful retry as failed.
+			// Runs before the `streamedContent` check below so a skipped chunk
+			// cannot make a stalled attempt look unretryable.
+			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			// Raw chunks are normally consumed by the raw-chunk tap inside the SDK
 			// pipeline and never reach this loop; this branch is the fallback for
 			// streams the tap was not applied to (e.g. mocked streams in tests) and
-			// is why 'raw' stays in the retry-safe set.
+			// is why 'raw' stays in the retry-safe set. Capturing usage here also
+			// lets an aborted turn still be billed via getTerminalFinish.
 			if (chunk.type === 'raw') {
 				this.rawUsageReader?.capture(chunk.rawValue);
 				this.rawErrorReader?.capture(chunk.rawValue);

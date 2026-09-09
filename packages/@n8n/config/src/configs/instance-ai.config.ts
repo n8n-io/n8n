@@ -103,8 +103,8 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
-	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
-	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
@@ -219,6 +219,15 @@ export class InstanceAiConfig {
 	nodeUsageEnabled: boolean = false;
 
 	/**
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
+	 */
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
 	 * Activation-capped trial variant for n8n cloud experiment.
 	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
 	 */
@@ -274,4 +283,19 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
 	maxConcurrentSubAgents: number = -1;
+
+	/**
+	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
+	 * changed recently, and what has run — plus the tool to read further back.
+	 *
+	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
+	 * The record is core and has other potential consumers; this flag gates one consumer's read.
+	 * Two of the three sources are not the activity log in the first place: what exists comes from
+	 * the workflows themselves, and runs come from `execution_entity`.
+	 *
+	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
+	 * the edit history stays empty, since no entry was ever written.
+	 */
+	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
+	instanceContextEnabled: boolean = false;
 }

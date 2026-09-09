@@ -100,6 +100,9 @@ export { PushWorkFolderRequestDto } from './source-control/push-work-folder-requ
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
 export { SourceControlStatusQueryPublicDto } from './source-control/source-control-status-query-public.dto';
 export { SourceControlStatusPublicDto } from './source-control/source-control-status-public.dto';
+export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
+export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
+export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
 export {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
@@ -119,6 +122,12 @@ export {
 } from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
+export {
+	CredentialPublicDto,
+	CredentialListPublicDto,
+	credentialPublicSchema,
+} from './credentials/credential-public.dto';
+export { ListCredentialsQueryDto } from './credentials/list-credentials-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
 	CreateVariableRequestDto,
@@ -431,7 +440,13 @@ export {
 	type ListWorkflowReviewActivityResponse,
 } from './workflow-reviews/workflow-review-activity.dto';
 
-export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export {
+	UpdateOtelSettingsDto,
+	OTLP_PROTOCOLS,
+	otlpProtocolSchema,
+	exporterEndpointSchema,
+	type OtlpProtocol,
+} from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
@@ -446,3 +461,75 @@ export {
 	type PromotableResourceType,
 	type PromoteRequest,
 } from './promotions/promotable-resource.dto';
+
+export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
+export {
+	CreatePromotionProviderDto,
+	ListPromotionProvidersQueryDto,
+	PromotionProviderCreatedPublicDto,
+	PromotionProviderListPublicDto,
+	PromotionProviderPublicDto,
+	UpdatePromotionProviderDto,
+	promotionGitConfigSchemas,
+	promotionGitSshKeyAuthInputSchema,
+	promotionGitSshKeyAuthUpdateSchema,
+	promotionGitSshKeyConfigSchema,
+	promotionGitTokenAuthInputSchema,
+	promotionGitTokenConfigSchema,
+	promotionProviderAuthInputSchema,
+	promotionProviderAuthTypeSchema,
+	promotionProviderAuthUpdateSchema,
+	promotionProviderConfigSchema,
+	promotionProviderPublicSchema,
+	promotionProviderSummarySchema,
+	promotionProviderTypeSchema,
+	promotionSshKeyTypeSchema,
+	type PromotionProviderAuthInput,
+	type PromotionProviderAuthType,
+	type PromotionProviderAuthUpdate,
+	type PromotionProviderConfig,
+	type PromotionProviderType,
+	type PromotionSshKeyType,
+} from './promotions/promotion-provider.dto';
+export {
+	PromotionApplyConfigPublicDto,
+	PromotionPromoteConfigPublicDto,
+	UpsertPromotionApplyConfigDto,
+	UpsertPromotionPromoteConfigDto,
+	promotionApplyConfigPublicSchema,
+	promotionConfigSettingsSchema,
+	promotionConnectionConfigsPublicSchema,
+	promotionDirectionSchema,
+	promotionGitApplySettingsSchema,
+	promotionGitPromoteSettingsSchema,
+	promotionGitSettingsSchemas,
+	promotionPromoteConfigPublicSchema,
+	type PromotionConfigSettings,
+	type PromotionConnectionConfigsPublic,
+	type PromotionDirection,
+} from './promotions/promotion-config.dto';
+export {
+	CreatePromotionConnectionDto,
+	ListPromotionConnectionsQueryDto,
+	PromotionConnectionListPublicDto,
+	PromotionConnectionProjectListPublicDto,
+	PromotionConnectionProjectPublicDto,
+	PromotionConnectionPublicDto,
+	UpdatePromotionConnectionDto,
+	promotionConnectionProjectPublicSchema,
+	promotionConnectionPublicSchema,
+	promotionConnectionScopeSchema,
+	promotionConnectionTargetSchema,
+	type PromotionConnectionScope,
+	type PromotionConnectionTarget,
+} from './promotions/promotion-connection.dto';
+export {
+	ApplyPackageResultDto,
+	PromotePackageDto,
+	PromotePackageResultDto,
+	applyPackageCountsSchema,
+	applyPackageResultSchema,
+	promotePackageCountsSchema,
+	promotePackageResultSchema,
+	promotionGitResultSchema,
+} from './promotions/promotion-operations.dto';

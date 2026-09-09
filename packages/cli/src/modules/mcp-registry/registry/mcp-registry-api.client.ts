@@ -27,7 +27,7 @@ export class McpRegistryApiClient {
 		private readonly credentialTypes: CredentialTypes,
 	) {}
 
-	async fetchAllServers(): Promise<McpRegistryServer[]> {
+	async fetchAllServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
 		const servers = await paginatedRequest<unknown>(
 			this.getUrl(),
 			{
@@ -36,12 +36,13 @@ export class McpRegistryApiClient {
 			},
 			{
 				throwOnError: true,
+				abortSignal: signal,
 			},
 		);
 		return this.parseServers(servers);
 	}
 
-	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
+	async fetchServersMetadata(signal?: AbortSignal): Promise<McpRegistryServerMetadata[]> {
 		return await paginatedRequest<McpRegistryServerMetadata>(
 			this.getUrl(),
 			{
@@ -51,11 +52,12 @@ export class McpRegistryApiClient {
 			},
 			{
 				throwOnError: true,
+				abortSignal: signal,
 			},
 		);
 	}
 
-	async fetchServersBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+	async fetchServersBySlugs(slugs: string[], signal?: AbortSignal): Promise<McpRegistryServer[]> {
 		const data: McpRegistryServer[] = [];
 		for (let i = 0; i < slugs.length; i += STRAPI_ARRAY_LIMIT) {
 			const batch = slugs.slice(i, i + STRAPI_ARRAY_LIMIT);
@@ -72,6 +74,7 @@ export class McpRegistryApiClient {
 				},
 				{
 					throwOnError: true,
+					abortSignal: signal,
 				},
 			);
 			data.push(...this.parseServers(batchData));
