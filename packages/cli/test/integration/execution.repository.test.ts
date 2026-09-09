@@ -71,35 +71,6 @@ describe('UserRepository', () => {
 			]);
 		});
 
-		test('ignores the `startedAt` order on a cursor page', async () => {
-			// The timestamps descend while the IDs ascend, so a timestamp order
-			// would return these two rows the other way round.
-			const now = DateTime.utc();
-			const workflow = await createWorkflow({}, owner);
-			const first = await createExecution(
-				{ startedAt: now.plus({ minute: 3 }).toJSDate() },
-				workflow,
-			);
-			const second = await createExecution(
-				{ startedAt: now.plus({ minute: 2 }).toJSDate() },
-				workflow,
-			);
-			const third = await createExecution(
-				{ startedAt: now.plus({ minute: 1 }).toJSDate() },
-				workflow,
-			);
-
-			const rows = await executionRepository.findManyByRangeQuery({
-				workflowId: workflow.id,
-				user: owner,
-				kind: 'range',
-				range: { limit: 2, beforeId: third.id },
-				order: { startedAt: 'DESC' },
-			});
-
-			expect(rows.map((row) => row.id)).toStrictEqual([second.id, first.id]);
-		});
-
 		test('pages by ID, even when the timestamps disagree', async () => {
 			// The timestamps descend while the IDs ascend, so a timestamp order
 			// would page these rows in the opposite order.

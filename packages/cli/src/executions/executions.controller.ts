@@ -44,10 +44,11 @@ export class ExecutionsController {
 		}
 
 		const noStatus = !query.status || query.status.length === 0;
+		const noRange = !query.range.beforeId;
 
 		// Without a status filter, every page keeps the current/completed split, so that
 		// "load more" pages only completed rows and the count stays completed-only.
-		if (noStatus) {
+		if (noStatus && noRange) {
 			const [executions, concurrentExecutionsCount] = await Promise.all([
 				this.executionService.findLatestCurrentAndCompleted(query),
 				this.executionService.getConcurrentExecutionsCount(),
