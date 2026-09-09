@@ -1,46 +1,79 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
+import userEvent from '@testing-library/user-event';
+import { cleanup, render, screen, waitFor } from '@testing-library/vue';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import AgentPreviewMoreMenu from '../components/AgentPreviewMoreMenu.vue';
+import type { AgentExecution, ThreadDetail } from '../composables/useAgentThreadsApi';
 
-const { clipboardCopy, getThreadDetail, routerResolve, showMessage } = vi.hoisted(
+enableAutoUnmount(afterEach);
+afterEach(cleanup);
+
+const { clipboardCopy, getThreadDetail, routerResolve, showError, showMessage } = vi.hoisted(
 	function createMocks() {
 		return {
 			clipboardCopy: vi.fn(),
-			getThreadDetail: vi.fn(),
+			getThreadDetail: vi.fn<(...args: string[]) => Promise<ThreadDetail>>(),
 			routerResolve: vi.fn(function resolveRoute() {
 				return { href: '/resolved-preview' };
 			}),
+			showError: vi.fn(),
 			showMessage: vi.fn(),
 		};
 	},
 );
 
-vi.mock('@n8n/composables/useClipboard', () => ({
-	useClipboard: () => ({ copy: clipboardCopy }),
-}));
+vi.mock('@n8n/composables/useClipboard', function mockUseClipboard() {
+	return {
+		useClipboard: function useClipboard() {
+			return { copy: clipboardCopy };
+		},
+	};
+});
 
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage }),
-}));
+vi.mock('@n8n/composables/useToast', function mockUseToast() {
+	return {
+		useToast: function useToast() {
+			return { showError, showMessage };
+		},
+	};
+});
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
-			options?.interpolate?.date ? `${key}:${options.interpolate.date}` : key,
-	}),
-}));
+vi.mock('@n8n/i18n', function mockUseI18n() {
+	return {
+		useI18n: function useI18n() {
+			return {
+				baseText: function baseText(
+					key: string,
+					options?: { interpolate?: Record<string, string> },
+				) {
+					return options?.interpolate?.date ? `${key}:${options.interpolate.date}` : key;
+				},
+			};
+		},
+	};
+});
 
-vi.mock('vue-router', () => ({
-	useRouter: () => ({ resolve: routerResolve }),
-}));
+vi.mock('vue-router', function mockVueRouter() {
+	return {
+		useRouter: function useRouter() {
+			return { resolve: routerResolve };
+		},
+	};
+});
 
-vi.mock('../agentSessions.store', () => ({
-	useAgentSessionsStore: () => ({ getThreadDetail }),
-}));
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { getThreadDetail };
+		},
+	};
+});
 
-vi.mock('@n8n/design-system', () => ({
+const stubs = {
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		props: ['items'],
@@ -77,12 +110,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['content'],
 		template: '<div><slot /></div>',
 	},
-}));
-
-type DropdownWrapper = VueWrapper<{
-	items: Array<{ id: string; icon?: { value: string }; checked?: boolean }>;
-	$emit: (event: 'select' | 'update:modelValue', value: string | boolean) => void;
-}>;
+};
 
 const thread = {
 	id: 'thread-1',
@@ -101,51 +129,72 @@ const thread = {
 	totalDuration: 1500,
 	createdAt: '2026-08-26T16:00:00.000Z',
 	updatedAt: '2026-08-26T16:32:00.000Z',
-	source: 'slack',
-};
+} satisfies ThreadDetail['thread'];
 
-function mountMenu(overrides: Partial<{ hasSession: boolean; isFullWidth: boolean }> = {}) {
+const slackExecution = mock<AgentExecution>({ source: 'slack' });
+const defaultDetail: ThreadDetail = { thread, executions: [slackExecution] };
+
+type MenuProps = InstanceType<typeof AgentPreviewMoreMenu>['$props'];
+
+const defaultProps = {
+	projectId: 'project-1',
+	agentId: 'agent-1',
+	effectiveSessionId: 'thread-1',
+	hasSession: true,
+	isFullWidth: false,
+	isLangSmithExportEnabled: false,
+	isExporting: false,
+	isDeletingSession: false,
+	getConversationMarkdown: function getConversationMarkdown() {
+		return '**User:**\n\nHello';
+	},
+} satisfies MenuProps;
+
+function mountMenu(overrides: Partial<MenuProps> = {}) {
 	return mount(AgentPreviewMoreMenu, {
-		props: {
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			effectiveSessionId: 'thread-1',
-			hasSession: true,
-			isFullWidth: false,
-			getConversationMarkdown: () => '**User:**\n\nHello',
-			...overrides,
-		},
+		props: { ...defaultProps, ...overrides },
+		global: { stubs: { ...stubs, DropdownMenu: stubs.N8nDropdownMenu, Switch: stubs.N8nSwitch } },
 	});
 }
 
 function getDropdown(wrapper: ReturnType<typeof mountMenu>) {
-	return wrapper.getComponent({ name: 'N8nDropdownMenu' }) as DropdownWrapper;
+	return wrapper.getComponent({ name: 'N8nDropdownMenu' });
 }
 
-describe('AgentPreviewMoreMenu', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		getThreadDetail.mockResolvedValue({ thread, executions: [] });
-		clipboardCopy.mockResolvedValue(undefined);
+function getMenuItem(wrapper: ReturnType<typeof mountMenu>, id: string) {
+	const items: Array<DropdownMenuItemProps<string>> = getDropdown(wrapper).props('items');
+	return items.find(function matchesId(item) {
+		return item.id === id;
 	});
+}
 
-	it('renders a leading icon for every menu item', () => {
+beforeEach(function resetMocks() {
+	vi.clearAllMocks();
+	getThreadDetail.mockReset().mockResolvedValue(defaultDetail);
+	clipboardCopy.mockReset().mockResolvedValue(undefined);
+});
+
+describe('AgentPreviewMoreMenu', function describeMenu() {
+	it('renders a leading icon for each default menu item', function rendersIcons() {
 		const wrapper = mountMenu();
 
 		expect(
-			wrapper.findAll('[data-menu-item]').map((item) => ({
-				id: item.attributes('data-menu-item'),
-				icon: item.get('i').attributes('data-icon'),
-			})),
+			wrapper.findAll('[data-menu-item]').map(function getItemIcon(item) {
+				return {
+					id: item.attributes('data-menu-item'),
+					icon: item.get('i').attributes('data-icon'),
+				};
+			}),
 		).toEqual([
 			{ id: 'copy-link', icon: 'link' },
 			{ id: 'copy-conversation', icon: 'copy' },
 			{ id: 'open-in-new-tab', icon: 'external-link' },
 			{ id: 'toggle-full-width', icon: 'maximize-2' },
+			{ id: 'delete-session', icon: 'trash' },
 		]);
 	});
 
-	it('copies a link to the active session', async () => {
+	it('copies a link to the active session', async function copiesLink() {
 		const wrapper = mountMenu();
 
 		getDropdown(wrapper).vm.$emit('select', 'copy-link');
@@ -163,7 +212,7 @@ describe('AgentPreviewMoreMenu', () => {
 		});
 	});
 
-	it('copies the complete conversation', async () => {
+	it('copies the supplied conversation markdown', async function copiesConversation() {
 		const wrapper = mountMenu();
 
 		getDropdown(wrapper).vm.$emit('select', 'copy-conversation');
@@ -176,39 +225,132 @@ describe('AgentPreviewMoreMenu', () => {
 		});
 	});
 
-	it('opens the active session in a new tab', () => {
-		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-		const wrapper = mountMenu();
+	it('does not copy an empty conversation', async function skipsEmptyConversation() {
+		const wrapper = mountMenu({ getConversationMarkdown: vi.fn().mockReturnValue('') });
 
-		getDropdown(wrapper).vm.$emit('select', 'open-in-new-tab');
+		getDropdown(wrapper).vm.$emit('select', 'copy-conversation');
+		await flushPromises();
 
-		expect(open).toHaveBeenCalledWith('/resolved-preview', '_blank', 'noopener');
-		open.mockRestore();
+		expect(clipboardCopy).not.toHaveBeenCalled();
+		expect(showMessage).not.toHaveBeenCalled();
 	});
 
-	it('emits an event to toggle full width', () => {
+	it.each([
+		['copy-link', 'agents.builder.preview.more.copyLinkError'],
+		['copy-conversation', 'agents.builder.preview.more.copyConversationError'],
+	])('reports a clipboard failure for %s', async function reportsCopyError(itemId, title) {
+		const error = new Error('Clipboard unavailable');
+		clipboardCopy.mockRejectedValueOnce(error);
 		const wrapper = mountMenu();
 
-		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
+		getDropdown(wrapper).vm.$emit('select', itemId);
+		await flushPromises();
 
+		expect(showError).toHaveBeenCalledExactlyOnceWith(error, title);
+		expect(showMessage).not.toHaveBeenCalled();
+	});
+
+	it('disables session-dependent copy actions without a session', function disablesCopy() {
+		const wrapper = mountMenu({ hasSession: false, effectiveSessionId: undefined });
+
+		expect(getMenuItem(wrapper, 'copy-link')).toMatchObject({ disabled: true });
+		expect(getMenuItem(wrapper, 'copy-conversation')).toMatchObject({ disabled: true });
+	});
+
+	it('opens the active session in a new tab', function opensSession() {
+		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
+			return null;
+		});
+		try {
+			const wrapper = mountMenu();
+			getDropdown(wrapper).vm.$emit('select', 'open-in-new-tab');
+
+			expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentPreviewView',
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				query: { continueSessionId: 'thread-1' },
+			});
+			expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
+		} finally {
+			open.mockRestore();
+		}
+	});
+
+	it('emits an event to toggle full width', function togglesFullWidth() {
+		const wrapper = mountMenu();
+		getDropdown(wrapper).vm.$emit('select', 'toggle-full-width');
 		expect(wrapper.emitted('toggle-full-width')).toEqual([[]]);
 	});
 
-	it('renders the full-width switch as a non-interactive indicator', () => {
-		const wrapper = mountMenu({ isFullWidth: true });
-		const switchControl = wrapper.get('[data-testid="full-width-switch"]');
-		const fullWidthItem = getDropdown(wrapper).vm.items.find(
-			(item) => item.id === 'toggle-full-width',
-		);
+	it.each([false, true])(
+		'renders the full-width state as %s with a non-interactive indicator',
+		function rendersFullWidthState(isFullWidth) {
+			const wrapper = mountMenu({ isFullWidth });
 
-		expect(fullWidthItem?.checked).toBe(true);
-		expect(switchControl.attributes()).toMatchObject({
-			'aria-hidden': 'true',
-			tabindex: '-1',
+			expect(getMenuItem(wrapper, 'toggle-full-width')).toMatchObject({
+				checked: isFullWidth,
+				checkbox: true,
+				keepOpen: true,
+			});
+			expect(wrapper.getComponent({ name: 'N8nSwitch' }).props('modelValue')).toBe(isFullWidth);
+			expect(wrapper.get('[data-testid="full-width-switch"]').attributes()).toMatchObject({
+				'aria-hidden': 'true',
+				tabindex: '-1',
+			});
+		},
+	);
+
+	it('emits an event to delete the session', function deletesSession() {
+		const wrapper = mountMenu();
+
+		expect(getMenuItem(wrapper, 'delete-session')).toMatchObject({
+			disabled: false,
+			destructive: true,
 		});
+		getDropdown(wrapper).vm.$emit('select', 'delete-session');
+		expect(wrapper.emitted('delete-session')).toEqual([[]]);
 	});
 
-	it('loads current metadata when the menu opens', async () => {
+	it.each([{ hasSession: false }, { effectiveSessionId: undefined }, { isDeletingSession: true }])(
+		'blocks deletion with %j',
+		function blocksDeletion(overrides) {
+			const wrapper = mountMenu(overrides);
+
+			expect(getMenuItem(wrapper, 'delete-session')).toMatchObject({ disabled: true });
+			getDropdown(wrapper).vm.$emit('select', 'delete-session');
+			expect(wrapper.emitted('delete-session')).toBeUndefined();
+		},
+	);
+
+	it.each([
+		{ isLangSmithExportEnabled: false },
+		{ hasSession: false },
+		{ effectiveSessionId: undefined },
+	])('hides export with %j', function hidesExport(overrides) {
+		const wrapper = mountMenu({ isLangSmithExportEnabled: true, ...overrides });
+		expect(getMenuItem(wrapper, 'export-session')).toBeUndefined();
+	});
+
+	it('shows export with an icon and emits its event', function exportsSession() {
+		const wrapper = mountMenu({ isLangSmithExportEnabled: true });
+
+		expect(getMenuItem(wrapper, 'export-session')).toMatchObject({
+			icon: { type: 'icon', value: 'bug' },
+			disabled: false,
+		});
+		getDropdown(wrapper).vm.$emit('select', 'export-session');
+		expect(wrapper.emitted('export-session')).toEqual([[]]);
+	});
+
+	it('blocks another export while one is in progress', function blocksExport() {
+		const wrapper = mountMenu({ isLangSmithExportEnabled: true, isExporting: true });
+
+		expect(getMenuItem(wrapper, 'export-session')).toMatchObject({ disabled: true });
+		getDropdown(wrapper).vm.$emit('select', 'export-session');
+		expect(wrapper.emitted('export-session')).toBeUndefined();
+	});
+
+	it('loads current metadata when the menu opens', async function refreshesMetadata() {
 		const wrapper = mountMenu();
 		await flushPromises();
 		getThreadDetail.mockClear();
@@ -218,6 +360,123 @@ describe('AgentPreviewMoreMenu', () => {
 
 		expect(getThreadDetail).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1', 'thread-1');
 		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('Slack');
 		expect(wrapper.text()).toContain('125t ($0.1250) • 1.5s');
+		expect(wrapper.text()).toContain('agents.builder.preview.more.lastMessageSent:');
+
+		getDropdown(wrapper).vm.$emit('update:modelValue', false);
+		await flushPromises();
+		expect(getThreadDetail).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['slack', 'Slack', 'slack'],
+		['instance-ai', 'agentSessions.origin.instanceAi', 'sparkles'],
+		['chat', 'agentSessions.origin.preview', 'bolt-filled'],
+		['n8n_chat', 'agentSessions.origin.preview', 'bolt-filled'],
+		[null, 'agentSessions.origin.preview', 'bolt-filled'],
+	])(
+		'uses the first non-null execution source for %s',
+		async function rendersSource(source, label, icon) {
+			getThreadDetail.mockResolvedValueOnce({
+				thread,
+				executions: [mock<AgentExecution>({ source: null }), mock<AgentExecution>({ source })],
+			});
+			const wrapper = mountMenu();
+			await flushPromises();
+
+			expect(wrapper.text()).toContain(label);
+			expect(wrapper.find(`[data-icon="${icon}"]`).exists()).toBe(true);
+		},
+	);
+
+	it('does not request metadata without a session ID', async function skipsMissingSession() {
+		const wrapper = mountMenu({ hasSession: false, effectiveSessionId: undefined });
+		getDropdown(wrapper).vm.$emit('update:modelValue', true);
+		await flushPromises();
+
+		expect(getThreadDetail).not.toHaveBeenCalled();
+		expect(wrapper.text()).not.toContain('125t');
+	});
+
+	it('clears metadata when a request fails', async function clearsFailedMetadata() {
+		const wrapper = mountMenu();
+		await flushPromises();
+		getThreadDetail.mockRejectedValueOnce(new Error('Request failed'));
+
+		getDropdown(wrapper).vm.$emit('update:modelValue', true);
+		await flushPromises();
+
+		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('125t');
+		expect(wrapper.text()).not.toContain('agents.builder.preview.more.lastMessageSent:');
+	});
+
+	it.each(['resolve', 'reject'] as const)(
+		'ignores an older request that completes with %s after a session change',
+		async function ignoresOlderRequest(outcome) {
+			const pending = Promise.withResolvers<ThreadDetail>();
+			getThreadDetail.mockReturnValueOnce(pending.promise);
+			const wrapper = mountMenu();
+			getThreadDetail.mockResolvedValueOnce({
+				thread: { ...thread, id: 'thread-2', totalPromptTokens: 200 },
+				executions: [],
+			});
+
+			await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+			await flushPromises();
+			if (outcome === 'resolve') pending.resolve(defaultDetail);
+			else pending.reject(new Error('Old request failed'));
+			await flushPromises();
+
+			expect(getThreadDetail).toHaveBeenLastCalledWith('project-1', 'agent-1', 'thread-2');
+			expect(wrapper.text()).toContain('225t');
+			expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
+		},
+	);
+
+	it('clears metadata when the session is removed', async function clearsRemovedSession() {
+		const wrapper = mountMenu();
+		await flushPromises();
+
+		await wrapper.setProps({ effectiveSessionId: undefined });
+		await flushPromises();
+
+		expect(wrapper.text()).not.toContain('125t');
+		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
+		expect(getThreadDetail).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('AgentPreviewMoreMenu with design system components', function describeRealMenu() {
+	it('supports keyboard toggling without closing and blocks disabled deletion', async function usesRealControls() {
+		const user = userEvent.setup();
+		const view = render(AgentPreviewMoreMenu, {
+			props: { ...defaultProps, isDeletingSession: true },
+		});
+
+		await user.click(screen.getByRole('button', { name: 'agents.builder.preview.more.label' }));
+		const fullWidthItem = await screen.findByRole('menuitemcheckbox', {
+			name: 'agents.builder.preview.more.fullWidth',
+		});
+		expect(fullWidthItem).toHaveAttribute('aria-checked', 'false');
+		const switchControl = fullWidthItem.querySelector('[role="switch"]');
+		expect(switchControl).toHaveAttribute('aria-hidden', 'true');
+		expect(switchControl).toHaveAttribute('tabindex', '-1');
+
+		fullWidthItem.focus();
+		await user.keyboard('{Enter}');
+		expect(view.emitted('toggle-full-width')).toEqual([[]]);
+		await view.rerender({ isFullWidth: true });
+		await waitFor(function checksUpdatedState() {
+			expect(fullWidthItem).toHaveAttribute('aria-checked', 'true');
+			expect(screen.getByRole('menu')).toBeVisible();
+		});
+
+		const deleteItem = screen.getByRole('menuitem', { name: 'agentSessions.delete' });
+		expect(deleteItem).toHaveAttribute('aria-disabled', 'true');
+		await user.click(deleteItem);
+		expect(view.emitted('delete-session')).toBeUndefined();
+		expect(screen.getByRole('menu')).toBeVisible();
 	});
 });

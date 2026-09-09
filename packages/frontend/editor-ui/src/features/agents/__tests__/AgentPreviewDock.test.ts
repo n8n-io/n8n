@@ -1,16 +1,52 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, shallowMount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils';
+
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { useKeybindingsMock } = vi.hoisted(function createMocks() {
-	return { useKeybindingsMock: vi.fn() };
-});
+enableAutoUnmount(afterEach);
+
+const { confirm, deleteThread, showError, showMessage, useKeybindingsMock } = vi.hoisted(
+	function createMocks() {
+		return {
+			confirm: vi.fn(),
+			deleteThread: vi.fn(),
+			showError: vi.fn(),
+			showMessage: vi.fn(),
+			useKeybindingsMock: vi.fn(),
+		};
+	},
+);
 
 vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
 	return { useKeybindings: useKeybindingsMock };
+});
+
+vi.mock('@/app/composables/useMessage', function mockUseMessage() {
+	return {
+		useMessage: function useMessage() {
+			return { confirm };
+		},
+	};
+});
+
+vi.mock('@n8n/composables/useToast', function mockUseToast() {
+	return {
+		useToast: function useToast() {
+			return { showMessage, showError };
+		},
+	};
+});
+
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { deleteThread };
+		},
+	};
 });
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
@@ -96,9 +132,10 @@ const AgentPreviewMoreMenuStub = {
 		'effectiveSessionId',
 		'hasSession',
 		'isFullWidth',
+		'isDeletingSession',
 		'getConversationMarkdown',
 	],
-	emits: ['toggle-full-width'],
+	emits: ['toggle-full-width', 'delete-session', 'export-session'],
 	template: '<button data-testid="agent-preview-more-btn" @click="$emit(\'toggle-full-width\')" />',
 };
 
@@ -138,8 +175,10 @@ function mountDock(
 }
 
 describe('AgentPreviewDock', () => {
-	beforeEach(() => {
-		useKeybindingsMock.mockClear();
+	beforeEach(function resetMocks() {
+		vi.clearAllMocks();
+		confirm.mockReset().mockResolvedValue(MODAL_CONFIRM);
+		deleteThread.mockReset().mockResolvedValue(undefined);
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
@@ -163,6 +202,7 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
 			'agent-preview-more-btn',
+			'agent-preview-close-btn',
 		]);
 	});
 
@@ -178,6 +218,11 @@ describe('AgentPreviewDock', () => {
 				testId: 'agent-preview-new-chat-btn',
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
+			},
+			{
+				testId: 'agent-preview-close-btn',
+				icon: 'chevrons-right',
+				label: 'agents.builder.preview.hide',
 			},
 		];
 		const traceTooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
@@ -202,7 +247,7 @@ describe('AgentPreviewDock', () => {
 
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toBeUndefined();
+		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
 	it.each([
@@ -247,11 +292,15 @@ describe('AgentPreviewDock', () => {
 			name: 'KeyboardShortcutTooltip',
 		});
 
-		expect(tooltips).toHaveLength(1);
+		expect(tooltips).toHaveLength(2);
 		expect(tooltips[0]?.props()).toMatchObject({
 			label: 'agents.builder.chat.newChat.label',
 			placement: 'bottom',
 			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
+		});
+		expect(tooltips[1]?.props()).toMatchObject({
+			label: 'agents.builder.preview.hide',
+			shortcut: { metaKey: false, shiftKey: false, keys: ['esc'] },
 		});
 	});
 
@@ -268,6 +317,118 @@ describe('AgentPreviewDock', () => {
 		});
 	});
 
+	it('confirms deletion and starts a new session after success', async function deletesSession() {
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledExactlyOnceWith(
+			'agentSessions.deleteConfirm.message',
+			'agentSessions.deleteConfirm.headline',
+			{
+				type: 'warning',
+				confirmButtonText: 'agentSessions.deleteConfirm.confirmButtonText',
+				cancelButtonText: '',
+			},
+		);
+		expect(deleteThread).toHaveBeenCalledExactlyOnceWith('project-1', 'agent-1', 'thread-1');
+		expect(showMessage).toHaveBeenCalledExactlyOnceWith({
+			title: 'agentSessions.showMessage.deleted',
+			type: 'success',
+		});
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
+		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('keeps the session when deletion is cancelled', async function cancelsDeletion() {
+		confirm.mockResolvedValueOnce(MODAL_CANCEL);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(deleteThread).not.toHaveBeenCalled();
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toBeUndefined();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('reports a deletion failure and keeps the session', async function reportsDeletionError() {
+		const error = new Error('Delete failed');
+		deleteThread.mockRejectedValueOnce(error);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalledExactlyOnceWith(error, 'agentSessions.showError.delete');
+		expect(showMessage).not.toHaveBeenCalled();
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toBeUndefined();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('blocks repeated deletion while confirmation or deletion is pending', async function blocksRepeatedDeletion() {
+		const confirmation = Promise.withResolvers<string>();
+		const deletion = Promise.withResolvers<void>();
+		confirm.mockReturnValueOnce(confirmation.promise);
+		deleteThread.mockReturnValueOnce(deletion.promise);
+		const wrapper = mountDock();
+		const menu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
+
+		menu.vm.$emit('delete-session');
+		menu.vm.$emit('delete-session');
+		await flushPromises();
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(deleteThread).not.toHaveBeenCalled();
+		expect(menu.props('isDeletingSession')).toBe(true);
+
+		confirmation.resolve(MODAL_CONFIRM);
+		await flushPromises();
+		menu.vm.$emit('delete-session');
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(deleteThread).toHaveBeenCalledTimes(1);
+
+		deletion.resolve();
+		await flushPromises();
+		expect(menu.props('isDeletingSession')).toBe(false);
+	});
+
+	it('does not replace a session selected while deletion is pending', async function preservesSelectedSession() {
+		const deletion = Promise.withResolvers<void>();
+		deleteThread.mockReturnValueOnce(deletion.promise);
+		const wrapper = mountDock();
+
+		wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+		await flushPromises();
+		await wrapper.setProps({ effectiveSessionId: 'thread-2' });
+		deletion.resolve();
+		await flushPromises();
+
+		expect(wrapper.emitted('new-session')).toBeUndefined();
+		expect(wrapper.emitted('session-deleted')).toEqual([['thread-1']]);
+	});
+
+	it.each([{ hasSession: false }, { effectiveSessionId: undefined }])(
+		'does not confirm deletion without a saved session: %j',
+		async function skipsDeletion(overrides) {
+			const wrapper = mountDock(overrides);
+
+			wrapper.getComponent({ name: 'AgentPreviewMoreMenu' }).vm.$emit('delete-session');
+			await flushPromises();
+
+			expect(confirm).not.toHaveBeenCalled();
+			expect(deleteThread).not.toHaveBeenCalled();
+		},
+	);
+
 	it('creates a new session from the registered keyboard shortcut', () => {
 		const wrapper = mountDock();
 		const newSessionShortcut = useKeybindingsMock.mock.calls[0]?.[0]?.[
@@ -279,7 +440,8 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 	});
 
-	it('only enables Escape while focus is within the dock', () => {
+	it('only enables Escape when the dock is open and contains focus', async function checksEscapeScope() {
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		const host = document.createElement('div');
 		const outsideButton = document.createElement('button');
 		document.body.append(host, outsideButton);
@@ -298,6 +460,9 @@ describe('AgentPreviewDock', () => {
 		expect(escapeBinding.disabled()).toBe(false);
 		escapeBinding.run();
 		expect(wrapper.emitted('close')).toEqual([[]]);
+
+		await wrapper.setProps({ isOpen: false });
+		expect(escapeBinding.disabled()).toBe(true);
 
 		wrapper.unmount();
 		host.remove();

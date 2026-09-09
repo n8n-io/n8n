@@ -24,18 +24,25 @@ const COPY_LINK = 'copy-link';
 const COPY_CONVERSATION = 'copy-conversation';
 const OPEN_IN_NEW_TAB = 'open-in-new-tab';
 const TOGGLE_FULL_WIDTH = 'toggle-full-width';
+const EXPORT_SESSION = 'export-session';
+const DELETE_SESSION = 'delete-session';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	effectiveSessionId?: string;
 	hasSession: boolean;
+	isDeletingSession?: boolean;
 	isFullWidth: boolean;
+	isLangSmithExportEnabled: boolean;
+	isExporting: boolean;
 	getConversationMarkdown: () => string;
 }>();
 
 const emit = defineEmits<{
 	'toggle-full-width': [];
+	'export-session': [];
+	'delete-session': [];
 }>();
 
 const i18n = useI18n();
@@ -70,6 +77,24 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => [
 		keepOpen: true,
 		checkbox: true,
 		checked: props.isFullWidth,
+	},
+	...(props.isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId
+		? ([
+				{
+					id: EXPORT_SESSION,
+					label: i18n.baseText('agentSessions.langsmithExport.button' as BaseTextKey),
+					icon: { type: 'icon', value: 'bug' },
+					disabled: props.isExporting,
+				},
+			] satisfies Array<DropdownMenuItemProps<string>>)
+		: []),
+	{
+		id: DELETE_SESSION,
+		label: i18n.baseText('agentSessions.delete' as BaseTextKey),
+		icon: { type: 'icon', value: 'trash' },
+		divided: true,
+		destructive: true,
+		disabled: !props.hasSession || !props.effectiveSessionId || props.isDeletingSession,
 	},
 ]);
 
@@ -122,29 +147,57 @@ function getSessionRoute() {
 }
 
 async function copyLink() {
-	const url = new URL(getSessionRoute().href, window.location.origin).href;
-	await clipboard.copy(url);
-	toast.showMessage({
-		title: i18n.baseText('agents.builder.preview.more.linkCopied' as BaseTextKey),
-		type: 'success',
-	});
+	try {
+		const url = new URL(getSessionRoute().href, window.location.origin).href;
+		await clipboard.copy(url);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.preview.more.linkCopied' as BaseTextKey),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.preview.more.copyLinkError'));
+	}
 }
 
 async function copyConversation() {
-	const conversation = props.getConversationMarkdown();
-	if (!conversation) return;
-	await clipboard.copy(conversation);
-	toast.showMessage({
-		title: i18n.baseText('agents.builder.preview.more.conversationCopied' as BaseTextKey),
-		type: 'success',
-	});
+	try {
+		const conversation = props.getConversationMarkdown();
+		if (!conversation) return;
+		await clipboard.copy(conversation);
+		toast.showMessage({
+			title: i18n.baseText('agents.builder.preview.more.conversationCopied' as BaseTextKey),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.preview.more.copyConversationError'));
+	}
 }
 
 function selectMenuItem(itemId: string) {
-	if (itemId === COPY_LINK) void copyLink();
-	if (itemId === COPY_CONVERSATION) void copyConversation();
-	if (itemId === OPEN_IN_NEW_TAB) window.open(getSessionRoute().href, '_blank', 'noopener');
-	if (itemId === TOGGLE_FULL_WIDTH) emit('toggle-full-width');
+	switch (itemId) {
+		case COPY_LINK:
+			void copyLink();
+			break;
+		case COPY_CONVERSATION:
+			void copyConversation();
+			break;
+		case OPEN_IN_NEW_TAB:
+			window.open(getSessionRoute().href, '_blank', 'noopener');
+			break;
+		case TOGGLE_FULL_WIDTH:
+			emit('toggle-full-width');
+			break;
+		case EXPORT_SESSION:
+			if (props.hasSession && props.effectiveSessionId && !props.isExporting) {
+				emit('export-session');
+			}
+			break;
+		case DELETE_SESSION:
+			if (props.hasSession && props.effectiveSessionId && !props.isDeletingSession) {
+				emit('delete-session');
+			}
+			break;
+	}
 }
 
 let metadataRequestId = 0;
@@ -157,7 +210,14 @@ async function loadSessionMetadata() {
 	}
 	try {
 		const detail = await sessionsStore.getThreadDetail(props.projectId, props.agentId, sessionId);
-		if (requestId === metadataRequestId) sessionMetadata.value = detail.thread;
+		if (requestId === metadataRequestId) {
+			sessionMetadata.value = {
+				...detail.thread,
+				source: detail.executions.find(function hasSource(execution) {
+					return execution.source !== null;
+				})?.source,
+			};
+		}
 	} catch {
 		if (requestId === metadataRequestId) sessionMetadata.value = null;
 	}
@@ -195,7 +255,7 @@ watch(
 					variant="ghost"
 					size="small"
 					icon-size="large"
-					:aria-label="i18n.baseText('generic.more' as BaseTextKey)"
+					:aria-label="i18n.baseText('agents.builder.preview.more.label' as BaseTextKey)"
 					data-testid="agent-preview-more-btn"
 				/>
 			</template>
@@ -211,9 +271,9 @@ watch(
 			</template>
 			<template #footer>
 				<ul :class="$style.sessionMetadata">
-					<li><N8nIcon :icon="triggerIcon" :size="12" />{{ triggerLabel }}</li>
-					<li>{{ tokenSpendLabel }} • {{ durationLabel }}</li>
-					<li>
+					<li v-if="triggerLabel"><N8nIcon :icon="triggerIcon" :size="12" />{{ triggerLabel }}</li>
+					<li v-if="sessionMetadata">{{ tokenSpendLabel }} • {{ durationLabel }}</li>
+					<li v-if="sessionMetadata?.updatedAt">
 						{{
 							i18n.baseText('agents.builder.preview.more.lastMessageSent' as BaseTextKey, {
 								interpolate: { date: lastMessageLabel },

@@ -201,7 +201,12 @@ onBeforeUnmount(() => {
 				:aria-selected="highlighted || undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
-				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				:class="[
+					$style.item,
+					$style['sub-trigger'],
+					props.class,
+					{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+				]"
 				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -209,7 +214,7 @@ onBeforeUnmount(() => {
 						v-if="icon?.type === 'icon'"
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
-						:color="disabled ? 'text-xlight' : 'text-light'"
+						:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
 						size="large"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -229,7 +234,7 @@ onBeforeUnmount(() => {
 				<Icon
 					icon="chevron-right"
 					:class="$style['sub-indicator']"
-					:color="disabled ? 'text-xlight' : 'text-light'"
+					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
 					size="large"
 				/>
 			</DropdownMenuSubTrigger>
@@ -348,7 +353,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -357,7 +366,7 @@ onBeforeUnmount(() => {
 					v-if="icon?.type === 'icon'"
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
-					:color="disabled ? 'text-xlight' : 'text-light'"
+					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
 					size="large"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -384,7 +393,11 @@ onBeforeUnmount(() => {
 			:aria-selected="highlighted || undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			:class="[
+				$style.item,
+				props.class,
+				{ 'is-disabled': !!disabled, [$style.destructive]: destructive },
+			]"
 			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
@@ -393,7 +406,7 @@ onBeforeUnmount(() => {
 					v-if="icon?.type === 'icon'"
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
-					:color="disabled ? 'text-xlight' : 'text-light'"
+					:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
 					size="large"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
@@ -416,7 +429,7 @@ onBeforeUnmount(() => {
 				icon="check"
 				:class="$style['item-check']"
 				size="large"
-				:color="disabled ? 'text-xlight' : 'text-light'"
+				:color="disabled ? 'text-xlight' : destructive ? undefined : 'text-light'"
 			/>
 		</DropdownMenuItem>
 	</div>
@@ -468,6 +481,18 @@ onBeforeUnmount(() => {
 	&[data-disabled] {
 		color: var(--text-color--disabled);
 		cursor: not-allowed;
+	}
+
+	&.destructive.destructive:not([data-disabled]):hover {
+		.item-label.item-label {
+			color: var(--text-color--danger);
+		}
+
+		.icon.icon,
+		.item-check.item-check,
+		.sub-indicator.sub-indicator {
+			color: var(--icon-color--danger);
+		}
 	}
 
 	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {

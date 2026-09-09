@@ -17,7 +17,6 @@ export interface ToggleProps extends Pick<ButtonProps, 'variant' | 'size' | 'dis
 	icon?: IconName;
 	name?: string;
 	required?: boolean;
-	iconOnly?: boolean;
 }
 
 const props = withDefaults(defineProps<ToggleProps>(), {
@@ -25,7 +24,6 @@ const props = withDefaults(defineProps<ToggleProps>(), {
 	size: 'medium',
 	disabled: false,
 	showTooltip: true,
-	iconOnly: true,
 });
 
 const emit = defineEmits<{
@@ -57,7 +55,7 @@ const classes = computed(() =>
 		$style.toggle,
 		$style[effectiveVariant.value],
 		$style[effectiveSize.value],
-		props.iconOnly && $style.iconOnly,
+		$style.iconOnly,
 		props.disabled && $style.disabled,
 		props.class,
 	),
@@ -84,7 +82,7 @@ const pressed = computed({
 			:disabled="disabled"
 			:class="classes"
 			:aria-label="label"
-			:data-icon-only="props.iconOnly"
+			data-icon-only="true"
 		>
 			<span :class="$style['toggle-inner']">
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
@@ -101,7 +99,7 @@ const pressed = computed({
 			:required="required"
 			:class="classes"
 			:aria-label="label"
-			:data-icon-only="props.iconOnly"
+			data-icon-only="true"
 		>
 			<span :class="$style['toggle-inner']">
 				<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
@@ -117,7 +115,7 @@ const pressed = computed({
 		:disabled="disabled"
 		:class="classes"
 		:aria-label="label"
-		:data-icon-only="props.iconOnly"
+		data-icon-only="true"
 	>
 		<span :class="$style['toggle-inner']">
 			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />
@@ -134,7 +132,7 @@ const pressed = computed({
 		:required="required"
 		:class="classes"
 		:aria-label="label"
-		:data-icon-only="props.iconOnly"
+		data-icon-only="true"
 	>
 		<span :class="$style['toggle-inner']">
 			<N8nIcon v-if="icon" :icon="icon" :size="computedIconSize" />

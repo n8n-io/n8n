@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -15,7 +16,10 @@ import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 
+import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
 
 import type {
@@ -69,6 +73,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'view-trace': [];
 	'new-session': [];
+	'session-deleted': [sessionId: string];
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
@@ -77,6 +82,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const message = useMessage();
+const toast = useToast();
+const sessionsStore = useAgentSessionsStore();
+const isDeletingSession = ref(false);
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -127,6 +136,39 @@ function createNewSession() {
 	emit('new-session');
 }
 
+async function deleteSession() {
+	const { projectId, agentId, effectiveSessionId: sessionId } = props;
+	if (!props.hasSession || !sessionId || isDeletingSession.value) return;
+
+	isDeletingSession.value = true;
+	try {
+		const confirmed = await message.confirm(
+			i18n.baseText('agentSessions.deleteConfirm.message'),
+			i18n.baseText('agentSessions.deleteConfirm.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+				cancelButtonText: '',
+			},
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
+
+		await sessionsStore.deleteThread(projectId, agentId, sessionId);
+		toast.showMessage({
+			title: i18n.baseText('agentSessions.showMessage.deleted'),
+			type: 'success',
+		});
+
+		if (props.projectId !== projectId || props.agentId !== agentId) return;
+		if (props.effectiveSessionId === sessionId) createNewSession();
+		emit('session-deleted', sessionId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+	} finally {
+		isDeletingSession.value = false;
+	}
+}
+
 function close() {
 	emit('close');
 }
@@ -138,10 +180,6 @@ function getConversationMarkdown() {
 function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
-}
-
-function isFocusWithinDock() {
-	return dock.value?.contains(document.activeElement) === true;
 }
 
 watch(
@@ -165,10 +203,14 @@ watch(
 	{ flush: 'post' },
 );
 
+function isEscapeDisabled() {
+	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+}
+
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 	Escape: {
-		disabled: () => !isFocusWithinDock(),
+		disabled: isEscapeDisabled,
 		run: close,
 	},
 });
@@ -257,25 +299,6 @@ useKeybindings({
 						/>
 					</N8nTooltip>
 
-					<N8nTooltip
-						v-if="isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId"
-						:content="i18n.baseText('agentSessions.langsmithExport.button')"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-						data-testid="agent-preview-langsmith-export-tooltip"
-					>
-						<N8nIconButton
-							icon="bug"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:loading="isExporting"
-							:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
-							data-testid="agent-preview-langsmith-export-btn"
-							@click="exportSession"
-						/>
-					</N8nTooltip>
-
 					<KeyboardShortcutTooltip
 						placement="bottom"
 						:label="i18n.baseText('agents.builder.chat.newChat.label')"
@@ -297,10 +320,30 @@ useKeybindings({
 						:agent-id="props.agentId"
 						:effective-session-id="props.effectiveSessionId"
 						:has-session="props.hasSession"
+						:is-deleting-session="isDeletingSession"
 						:is-full-width="layout === PreviewLayout.Fullpage"
+						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
+						:is-exporting="isExporting"
 						:get-conversation-markdown="getConversationMarkdown"
 						@toggle-full-width="toggleFullWidth"
+						@export-session="exportSession"
+						@delete-session="deleteSession"
 					/>
+					<KeyboardShortcutTooltip
+						placement="bottom"
+						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
+					>
+						<N8nIconButton
+							icon="chevrons-right"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							data-testid="agent-preview-close-btn"
+							@click="close"
+						/>
+					</KeyboardShortcutTooltip>
 				</div>
 			</header>
 
@@ -419,7 +462,7 @@ useKeybindings({
 }
 
 .actions {
-	margin-left: auto;
+	margin-inline-start: auto;
 	min-width: max-content;
 	flex: 0 0 auto;
 	display: flex;

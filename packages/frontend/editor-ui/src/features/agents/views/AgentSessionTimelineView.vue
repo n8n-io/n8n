@@ -264,6 +264,11 @@ function onSessionSelect(nextThreadId: string) {
 	});
 }
 
+function onSessionDeleted(sessionId: string) {
+	if (sessionId !== threadId.value) return;
+	void router.replace(agentExecutionsRoute.value);
+}
+
 function togglePreview() {
 	isPreviewOpen.value = !isPreviewOpen.value;
 }
@@ -319,6 +324,7 @@ function viewPreviewTrace() {
 				:effective-session-id="effectiveSessionId"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
+				@session-deleted="onSessionDeleted"
 				@session-select="onSessionPick"
 				@close="togglePreview"
 			/>
