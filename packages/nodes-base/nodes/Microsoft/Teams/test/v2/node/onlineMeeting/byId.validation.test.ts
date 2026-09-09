@@ -20,6 +20,7 @@ vi.mock('../../../../v2/transport', async () => {
 const operations: Array<[string, Record<string, unknown>, string]> = [
 	['get', {}, 'get'],
 	['deleteMeeting', {}, 'delete'],
+	['update', { updateFields: { subject: 'Renamed' } }, 'update'],
 ];
 
 describe('Microsoft Teams V2 — onlineMeeting by-ID operations', () => {

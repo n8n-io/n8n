@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { INode, INodeParameters } from 'n8n-workflow';
 
 /**
@@ -33,9 +34,9 @@ function deepMerge(target: INodeParameters, source: INodeParameters): INodeParam
 
 	const output = { ...target };
 
-	if (isObject(target) && isObject(source)) {
+	if (isRecord(target) && isRecord(source)) {
 		Object.keys(source).forEach((key) => {
-			if (isObject(source[key] as INodeParameters)) {
+			if (isRecord(source[key] as INodeParameters)) {
 				if (!target || !(key in target) || !target[key]) {
 					Object.assign(output, { [key]: source[key] });
 				} else {
@@ -48,13 +49,6 @@ function deepMerge(target: INodeParameters, source: INodeParameters): INodeParam
 	}
 
 	return output;
-}
-
-/**
- * Check if value is an object (not array or null)
- */
-function isObject(item: unknown): item is Record<string, unknown> {
-	return item !== null && typeof item === 'object' && !Array.isArray(item);
 }
 
 /**

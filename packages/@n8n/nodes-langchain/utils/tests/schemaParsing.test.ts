@@ -6,6 +6,7 @@ import type { INode, IExecuteFunctions } from 'n8n-workflow';
 import {
 	generateSchemaFromExample,
 	convertJsonSchemaToZod,
+	parseJsonSchemaParameter,
 	throwIfToolSchema,
 } from './../schemaParsing';
 
@@ -377,5 +378,37 @@ describe('throwIfToolSchema', () => {
 		const error = { message: 'tool input did not match expected schema' } as Error;
 
 		expect(() => throwIfToolSchema(ctx, error)).toThrow(NodeOperationError);
+	});
+});
+
+// Generated workflows store these fields as raw objects; before this the node
+// handed the object straight to JSON.parse and died with
+// '"[object Object]" is not valid JSON' before the model was ever called.
+describe('object-stored schema parameters', () => {
+	const example = { jobs: [{ title: '', company: '' }] };
+
+	it('generateSchemaFromExample accepts an object and matches the string form', () => {
+		expect(generateSchemaFromExample(example, true)).toEqual(
+			generateSchemaFromExample(JSON.stringify(example), true),
+		);
+	});
+
+	it('parseJsonSchemaParameter accepts an object and matches the string form', () => {
+		const schema = { type: 'object', properties: { title: { type: 'string' } } };
+
+		expect(parseJsonSchemaParameter(schema)).toEqual(
+			parseJsonSchemaParameter(JSON.stringify(schema)),
+		);
+	});
+
+	it('still throws on an unset parameter', () => {
+		expect(() => generateSchemaFromExample('')).toThrow();
+		expect(() => parseJsonSchemaParameter(undefined)).toThrow();
+	});
+
+	// JSON.parse coerced a non-string via String() and these parsed fine, so
+	// they must keep parsing fine — nothing that worked before may change.
+	it.each([42, true, null])('keeps accepting the primitive %s', (value) => {
+		expect(generateSchemaFromExample(value)).toEqual(generateSchemaFromExample(String(value)));
 	});
 });

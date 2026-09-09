@@ -1,6 +1,7 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { isRecord } from '@n8n/utils/is-record';
 import type { ThreadRuntime } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupApplyPayload } from '../workflowSetup.types';
 
@@ -26,10 +27,6 @@ export function useWorkflowSetupApply(deps: {
 	onUnmounted(() => {
 		cancelWait?.();
 	});
-
-	function isToolResult(val: unknown): val is Record<string, unknown> {
-		return typeof val === 'object' && val !== null && !Array.isArray(val);
-	}
 
 	function waitForToolResult(requestId: string): {
 		promise: Promise<WaitForToolResult>;
@@ -60,7 +57,7 @@ export function useWorkflowSetupApply(deps: {
 			resolveWait = resolve;
 			const existing = deps.thread.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
-				finish(isToolResult(existing.result) ? existing.result : null);
+				finish(isRecord(existing.result) ? existing.result : null);
 				return;
 			}
 
@@ -72,7 +69,7 @@ export function useWorkflowSetupApply(deps: {
 				},
 				(result) => {
 					if (result !== undefined) {
-						finish(isToolResult(result) ? result : null);
+						finish(isRecord(result) ? result : null);
 					}
 				},
 			);

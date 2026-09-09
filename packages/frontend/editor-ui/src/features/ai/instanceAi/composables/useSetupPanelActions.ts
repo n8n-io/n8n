@@ -21,6 +21,13 @@ import {
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	applySetupParameterChanges,
+	getSetupParameterChanges,
+	getSetupParameterValue,
+	mergeSetupParameterChanges,
+	type SetupParameterChange,
+} from '../setupPanelParameterChanges';
 
 export type SetupCredentialItem = Extract<InstanceAiSetupItem, { kind: 'credential' }>;
 
@@ -65,7 +72,7 @@ interface CredentialBind {
 
 interface ParameterApply {
 	nodeName: string;
-	values: INodeParameters;
+	changes: SetupParameterChange[];
 }
 
 interface NodesDelta {
@@ -103,12 +110,14 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 		}
 	}
 
-	for (const { nodeName, values } of delta.parameterApplies) {
-		if (Object.keys(values).length === 0) continue;
+	for (const { nodeName, changes } of delta.parameterApplies) {
+		if (changes.length === 0) continue;
 		const node = nodesByName.get(nodeName);
 		if (!node) continue;
 		sawTarget = true;
-		node.parameters = { ...node.parameters, ...values };
+		const parameters = applySetupParameterChanges(node.parameters, changes);
+		if (isEqual(parameters, node.parameters)) continue;
+		node.parameters = parameters;
 		changed = true;
 	}
 
@@ -147,7 +156,7 @@ export function useSetupPanelActions(options: {
 	const nodeHelpers = useNodeHelpers();
 
 	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
-	const pendingParameterApplies = shallowReactive(new Map<string, INodeParameters>());
+	const pendingParameterApplies = shallowReactive(new Map<string, SetupParameterChange[]>());
 	/**
 	 * The workflow the queued writes were captured for. A build settling and a
 	 * re-anchor can land in the same flush (the settle watcher runs first), so
@@ -169,9 +178,9 @@ export function useSetupPanelActions(options: {
 				pendingCredentialBinds.set(bind.item.id, bind);
 			}
 		}
-		for (const { nodeName, values } of delta.parameterApplies) {
-			const existing = pendingParameterApplies.get(nodeName);
-			pendingParameterApplies.set(nodeName, { ...values, ...existing });
+		for (const { nodeName, changes } of delta.parameterApplies) {
+			const existing = pendingParameterApplies.get(nodeName) ?? [];
+			pendingParameterApplies.set(nodeName, mergeSetupParameterChanges(changes, existing));
 		}
 	}
 
@@ -221,23 +230,23 @@ export function useSetupPanelActions(options: {
 				touchedNodeNames.add(binding.nodeName);
 			}
 		}
-		for (const { nodeName, values } of delta.parameterApplies) {
+		for (const { nodeName, changes } of delta.parameterApplies) {
 			if (!updatedNodeNames.has(nodeName)) continue;
 			const docNode = documentStore.getNodeByName(nodeName);
 			if (!docNode) continue;
 			const base = baseline.get(nodeName);
-			// The same-field rule holds per key: keep the locally edited keys,
-			// mirror the rest.
-			const mirrorValues = Object.fromEntries(
-				Object.entries(values).filter(([key]) =>
-					isEqual(docNode.parameters?.[key], base?.parameters?.[key]),
+			// Keep newer local edits to the same field.
+			const mirrorChanges = changes.filter((change) =>
+				isEqual(
+					getSetupParameterValue(docNode.parameters, change.path),
+					getSetupParameterValue(base?.parameters ?? {}, change.path),
 				),
 			);
-			if (Object.keys(mirrorValues).length === 0) continue;
+			if (mirrorChanges.length === 0) continue;
 			documentStore.updateNodeProperties(
 				{
 					name: nodeName,
-					properties: { parameters: { ...docNode.parameters, ...mirrorValues } },
+					properties: { parameters: applySetupParameterChanges(docNode.parameters, mirrorChanges) },
 				},
 				{ markDirty: false },
 			);
@@ -364,22 +373,24 @@ export function useSetupPanelActions(options: {
 		});
 	}
 
-	/** Submits parameter values for a node (top-level keys merge over the saved ones). */
+	/** Use a baseline to preserve unedited fields inside each submitted root. */
 	async function applyParameterValues(
 		nodeName: string,
 		values: INodeParameters,
+		baseline: INodeParameters = {},
 	): Promise<SetupPanelApplyResult> {
+		const changes = getSetupParameterChanges(baseline, { ...baseline, ...values });
 		if (toValue(options.isAgentBuilding)) {
 			queuedWorkflowId = toValue(options.workflowId);
-			const existing = pendingParameterApplies.get(nodeName);
-			pendingParameterApplies.set(nodeName, { ...existing, ...values });
+			const existing = pendingParameterApplies.get(nodeName) ?? [];
+			pendingParameterApplies.set(nodeName, mergeSetupParameterChanges(existing, changes));
 			return 'queued';
 		}
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return 'error';
 		return await patchWorkflowNodes(workflowId, {
 			credentialBinds: [],
-			parameterApplies: [{ nodeName, values }],
+			parameterApplies: [{ nodeName, changes }],
 		});
 	}
 
@@ -402,9 +413,9 @@ export function useSetupPanelActions(options: {
 		}
 		const delta: NodesDelta = {
 			credentialBinds: [...pendingCredentialBinds.values()],
-			parameterApplies: [...pendingParameterApplies.entries()].map(([nodeName, values]) => ({
+			parameterApplies: [...pendingParameterApplies.entries()].map(([nodeName, changes]) => ({
 				nodeName,
-				values,
+				changes,
 			})),
 		};
 		pendingCredentialBinds.clear();
