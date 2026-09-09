@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
 		workflowId: 'wf-1' as string | undefined,
-		fetchExecutions: vi.fn(),
+		fetchExecutionsPage: vi.fn(),
 		fetchExecution: vi.fn(),
 	},
 }));
@@ -20,7 +20,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({
-		fetchExecutions: (...args: unknown[]) => mocks.fetchExecutions(...args),
+		fetchExecutionsPage: (...args: unknown[]) => mocks.fetchExecutionsPage(...args),
 		fetchExecution: (...args: unknown[]) => mocks.fetchExecution(...args),
 	}),
 }));
@@ -39,7 +39,7 @@ function evalPage(startId: number, n: number, count: number, nextCursor: string 
 describe('useUserExecutions', () => {
 	beforeEach(() => {
 		mocks.workflowId = 'wf-1';
-		mocks.fetchExecutions.mockReset();
+		mocks.fetchExecutionsPage.mockReset();
 		mocks.fetchExecution.mockReset();
 	});
 
@@ -51,7 +51,7 @@ describe('useUserExecutions', () => {
 
 	it('pages past a full page of evaluation runs to find an older user run', async () => {
 		// Page 1: 10 evaluation runs (no user run). Page 2: a user run.
-		mocks.fetchExecutions
+		mocks.fetchExecutionsPage
 			.mockResolvedValueOnce(evalPage(100, 10, 11, 'cursor-1'))
 			.mockResolvedValueOnce({
 				count: 11,
@@ -65,8 +65,8 @@ describe('useUserExecutions', () => {
 
 		expect(result).toEqual({ id: '90' });
 		// Second page requested with the first page's nextCursor.
-		expect(mocks.fetchExecutions).toHaveBeenCalledTimes(2);
-		expect(mocks.fetchExecutions).toHaveBeenLastCalledWith(
+		expect(mocks.fetchExecutionsPage).toHaveBeenCalledTimes(2);
+		expect(mocks.fetchExecutionsPage).toHaveBeenLastCalledWith(
 			{ status: ['success'], workflowId: 'wf-1' },
 			'cursor-1',
 		);
@@ -75,13 +75,13 @@ describe('useUserExecutions', () => {
 
 	it('stops once the whole history is consumed and returns null when none are user runs', async () => {
 		// A single short page of only evaluation runs, and count says that's all.
-		mocks.fetchExecutions.mockResolvedValue(evalPage(5, 3, 3));
+		mocks.fetchExecutionsPage.mockResolvedValue(evalPage(5, 3, 3));
 
 		const { fetchLatestUserExecution } = useUserExecutions();
 		const result = await fetchLatestUserExecution();
 
 		expect(result).toBeNull();
-		expect(mocks.fetchExecutions).toHaveBeenCalledTimes(1);
+		expect(mocks.fetchExecutionsPage).toHaveBeenCalledTimes(1);
 		expect(mocks.fetchExecution).not.toHaveBeenCalled();
 	});
 });
