@@ -292,7 +292,10 @@ export class EvalThreadRestoreService {
 		return attempted;
 	}
 
-	/** Best-effort unpublish (rollback of a failed restore). */
+	/** Best-effort unpublish (rollback of a failed restore). A re-applied seed that
+	 *  was live before the restore ends inactive, on purpose: the restore has already
+	 *  overwritten its content, and no trigger should run on a half-restored seed.
+	 *  The harness never gets here, it gives every seed a fresh id per run. */
 	async unpublishWorkflows(workflowIds: string[]): Promise<void> {
 		for (const id of workflowIds) {
 			try {
