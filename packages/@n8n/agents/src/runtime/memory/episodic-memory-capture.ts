@@ -95,7 +95,7 @@ export function createFlagMemoryTool(opts: {
 }) {
 	return new Tool(FLAG_MEMORY_TOOL_NAME)
 		.description(
-			'Save one durable note about this user, account, or case for future conversations. This is the only record that outlives the conversation.',
+			'Save one durable note about this user, account, or case. This is the only way a detail carries over to future conversations.',
 		)
 		.systemInstruction(DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION)
 		.input(FlagMemoryInputSchema)
