@@ -1100,6 +1100,20 @@ describe('Workflow Builder', () => {
 			expect(json.connections.Escalate).toBeUndefined();
 		});
 
+		// An array target has no name for the graph to resolve, so both handlers used to
+		// vanish: no connection, no node, no complaint.
+		it('explains itself when handed an array of handlers', () => {
+			const { schedule, fetchPositions, sendFetchFailure, compute } = buildRetryFlow();
+			const build = () =>
+				workflow('test-id', 'Test')
+					.add(schedule)
+					.to(fetchPositions)
+					.onError([sendFetchFailure, compute] as never);
+
+			expect(build).toThrow('.onError() takes one handler, not an array');
+			expect(build).toThrow('.onError(notify).onError(logFailure)');
+		});
+
 		it('explains itself when there is no node to attach to', () => {
 			const { sendFetchFailure } = buildRetryFlow();
 
