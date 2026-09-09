@@ -1,6 +1,8 @@
-import type { AiPreference } from '@n8n/db';
-import { AiPreferenceRepository, ProjectRepository } from '@n8n/db';
+import type { AiPreference, User } from '@n8n/db';
+import { AiPreferenceRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 export type AiPreferenceProjectRef = { id: string; name: string };
 
@@ -22,7 +24,7 @@ export type ApplicableAiPreferences = {
 export class AiPreferenceService {
 	constructor(
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
-		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -41,9 +43,10 @@ export class AiPreferenceService {
 	 * Preferences that apply to the user in every project they can access. For
 	 * callers with no current project, such as the MCP server.
 	 */
-	async getApplicableAcrossProjects(userId: string): Promise<ApplicableAiPreferences> {
-		const projects = await this.projectRepository.getAccessibleProjects(userId);
-		return await this.getApplicable(userId, projects);
+	async getApplicableAcrossProjects(user: User): Promise<ApplicableAiPreferences> {
+		// Access-aware: a global `project:read` scope sees every project.
+		const projects = await this.projectService.getAccessibleProjects(user);
+		return await this.getApplicable(user.id, projects);
 	}
 }
 
@@ -87,7 +90,7 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 			items: preferences.instance,
 		},
 		...preferences.projects.map((project) => ({
-			heading: `Preferences for project "${project.name}":`,
+			heading: `Preferences for project "${singleLine(project.name)}":`,
 			items: project.items,
 		})),
 		{ heading: 'Personal preferences:', items: preferences.user },
@@ -100,8 +103,15 @@ export function renderAiPreferencesBlock(preferences: ApplicableAiPreferences): 
 
 function renderGroup({ heading, items }: { heading: string; items: string[] }): string {
 	// A multi-line preference stays one bullet.
-	const bullets = items.map((item) => `- ${escapeTags(item).replaceAll('\n', '\n  ')}`);
+	const bullets = items.map(
+		(item) => `- ${escapeTags(item).replaceAll(/\r\n?/g, '\n').replaceAll('\n', '\n  ')}`,
+	);
 	return [escapeTags(heading), ...bullets].join('\n');
+}
+
+/** A name must not add lines of its own to the heading. */
+function singleLine(text: string): string {
+	return text.replaceAll(/\s+/g, ' ').trim();
 }
 
 /** User text must not be able to close the block or open another tag. */
