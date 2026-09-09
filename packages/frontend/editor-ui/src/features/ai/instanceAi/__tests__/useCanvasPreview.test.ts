@@ -405,6 +405,52 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
+
+		test('opens an agent that is not a produced artifact', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.thread.resourceNameIndex = new Map([
+				[
+					'support agent',
+					{
+						type: 'agent',
+						id: 'agent-linked',
+						name: 'Support Agent',
+						projectId: 'project-linked',
+					},
+				],
+			]);
+
+			ctx.openAgentPreview('agent-linked', 'project-linked');
+
+			expect(ctx.activeAgentId.value).toBe('agent-linked');
+			expect(ctx.activeAgentProjectId.value).toBe('project-linked');
+			expect(ctx.allArtifactTabs.value).toContainEqual(
+				expect.objectContaining({
+					id: 'agent-linked',
+					name: 'Support Agent',
+					projectId: 'project-linked',
+				}),
+			);
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('uses produced artifact data when a linked agent enters the registry', () => {
+			const ctx = setup();
+			ctx.openAgentPreview('agent-linked', 'project-linked');
+
+			registerAgent(ctx.thread, 'agent-linked', 'Registered Agent', 'project-registered');
+
+			expect(ctx.activeAgentId.value).toBe('agent-linked');
+			expect(ctx.activeAgentProjectId.value).toBe('project-registered');
+			expect(ctx.allArtifactTabs.value).toEqual([
+				expect.objectContaining({
+					id: 'agent-linked',
+					name: 'Registered Agent',
+					projectId: 'project-registered',
+				}),
+			]);
+		});
 	});
 
 	describe('thread switch (route.params.threadId change)', () => {
