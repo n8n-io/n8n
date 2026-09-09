@@ -28,6 +28,21 @@ export const appBindingsSchema = z
 
 export type AppBinding = z.infer<typeof appBindingSchema>;
 
+/** One key of the items the bound workflow's last node returned, as observed in a sample run. */
+export type OutputFieldDef = {
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'null' | 'unknown';
+	/** Some sampled item had `null` for this key. */
+	nullable: boolean;
+	/** Some sampled item did not have this key. */
+	optional: boolean;
+};
+
+/** Where the output fields come from: one successful execution, or nothing yet. */
+export type OutputSource =
+	| { kind: 'execution'; executionId: string; at: string }
+	| { kind: 'unknown' };
+
 export type DescribedBinding = {
 	key: string;
 	kind: 'workflow';
@@ -36,4 +51,7 @@ export type DescribedBinding = {
 	published: boolean;
 	/** Declared trigger fields, or `'passthrough'` when the trigger accepts any object. */
 	input: Array<{ name: string; type?: string }> | 'passthrough';
+	/** Fields inferred from the latest successful execution, or `'unknown'` while there is none. */
+	output: OutputFieldDef[] | 'unknown';
+	outputSource: OutputSource;
 };

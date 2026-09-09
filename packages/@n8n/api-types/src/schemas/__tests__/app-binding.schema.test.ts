@@ -1,4 +1,4 @@
-import { appBindingSchema, appBindingsSchema } from '../app-binding.schema';
+import { appBindingSchema, appBindingsSchema, type DescribedBinding } from '../app-binding.schema';
 
 const binding = (key: string) => ({ key, kind: 'workflow', workflowId: 'wf-1' });
 
@@ -52,6 +52,28 @@ describe('app-binding.schema', () => {
 			const fifty = Array.from({ length: 50 }, (_, i) => binding(`k${i}`));
 			expect(appBindingsSchema.safeParse(fifty).success).toBe(true);
 			expect(appBindingsSchema.safeParse([...fifty, binding('k50')]).success).toBe(false);
+		});
+	});
+
+	describe('DescribedBinding', () => {
+		it('carries typed output with its source, or unknown output', () => {
+			const typed: DescribedBinding = {
+				key: 'submit',
+				kind: 'workflow',
+				workflowId: 'wf-1',
+				name: 'Echo',
+				published: true,
+				input: 'passthrough',
+				output: [{ name: 'reply', type: 'string', nullable: false, optional: false }],
+				outputSource: { kind: 'execution', executionId: '7', at: '2026-09-09T00:00:00.000Z' },
+			};
+			const untyped: DescribedBinding = {
+				...typed,
+				output: 'unknown',
+				outputSource: { kind: 'unknown' },
+			};
+			expect(typed.outputSource.kind).toBe('execution');
+			expect(untyped.output).toBe('unknown');
 		});
 	});
 });

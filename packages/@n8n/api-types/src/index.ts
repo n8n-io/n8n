@@ -198,6 +198,8 @@ export {
 	workflowBindingSchema,
 	type AppBinding,
 	type DescribedBinding,
+	type OutputFieldDef,
+	type OutputSource,
 } from './schemas/app-binding.schema';
 
 export {
