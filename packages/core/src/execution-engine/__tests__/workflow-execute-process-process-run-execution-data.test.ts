@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
+	EngineRequest,
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
@@ -241,6 +242,96 @@ describe('processRunExecutionData', () => {
 			{ name: 'nodeExecuteAfter', node: 'agent' },
 			{ name: 'workflowExecuteAfter' },
 		]);
+	});
+
+	test('preserves the engine response when retrying a resumed agent node', async () => {
+		const maxIterationsError = 'Max iterations (1) reached';
+		const responsesSeen: Array<EngineResponse | undefined> = [];
+		const getIterationCount = (response: EngineResponse | undefined) => {
+			const metadata = response?.metadata;
+			if (typeof metadata !== 'object' || metadata === null || !('iterationCount' in metadata)) {
+				return undefined;
+			}
+			return typeof metadata.iterationCount === 'number' ? metadata.iterationCount : undefined;
+		};
+		const request: EngineRequest = {
+			actions: [
+				{
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'tool',
+					input: { query: 'test input' },
+					type: NodeConnectionTypes.AiTool,
+					id: 'action_1',
+					metadata: {},
+				},
+			],
+			metadata: { iterationCount: 1 },
+		};
+		const errorOutput = () => [[{ json: { error: maxIterationsError } }]];
+
+		const agentNodeType = modifyNode(passThroughNode)
+			.return((response) => {
+				responsesSeen.push(response);
+				return request;
+			})
+			.return((response) => {
+				responsesSeen.push(response);
+				return errorOutput();
+			})
+			.return((response) => {
+				responsesSeen.push(response);
+				return getIterationCount(response) === 1 ? errorOutput() : request;
+			})
+			.return((response) => {
+				responsesSeen.push(response);
+				return errorOutput();
+			})
+			.return((response) => {
+				responsesSeen.push(response);
+				return errorOutput();
+			})
+			.done();
+
+		const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+		const agent = {
+			...createNodeData({ name: 'agent', type: 'agent' }),
+			retryOnFail: true,
+			maxTries: 2,
+			waitBetweenTries: 10,
+			onError: 'continueErrorOutput' as const,
+		};
+		const tool = createNodeData({ name: 'tool', type: types.passThrough });
+		const retryNodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			agent: { type: agentNodeType, sourcePath: '' },
+		});
+		const workflow = new DirectedGraph()
+			.addNodes(trigger, agent, tool)
+			.addConnections(
+				{ from: trigger, to: agent },
+				{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+			)
+			.toWorkflow({ name: '', active: false, nodeTypes: retryNodeTypes });
+		const executionData = createRunExecutionData({
+			startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+			executionData: {
+				nodeExecutionStack: [
+					{ data: { main: [[{ json: { foo: 1 } }]] }, node: trigger, source: null },
+				],
+			},
+		});
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		const result = await workflowExecute.processRunExecutionData(workflow);
+
+		const iterationCounts = responsesSeen.map(getIterationCount);
+		const toolRuns = result.data.resultData.runData.tool.length;
+		expect(responsesSeen).toHaveLength(3);
+		expect(iterationCounts).toEqual([undefined, 1, 1]);
+		expect(toolRuns).toBe(1);
+		expect(result.data.resultData.runData.agent.at(-1)?.data?.main?.[1]?.[0]?.json.error).toBe(
+			maxIterationsError,
+		);
 	});
 
 	describe('runExecutionData.waitTill', () => {
