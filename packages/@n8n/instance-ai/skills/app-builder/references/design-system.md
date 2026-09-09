@@ -1,177 +1,138 @@
-# Styling: Tailwind utilities on n8n tokens
+# Styling: catalog components on CSS-variable theming
 
-The template styles everything with Tailwind v4 utility classes, and every
-utility resolves to an n8n design-system token (`var(--…)` from
-`@n8n/design-system/theme.css`). `src/style.css` holds the whole setup:
+The template styles everything with this skill's own component catalog (built
+on `@ark-ui/vue`) and Tailwind v4 utility classes. Every color, radius and
+font a component uses resolves to a CSS variable declared once in
+`src/style.css`'s `:root`/`.dark` blocks — an app's Theme tab overrides these
+variables and every component picks up the change, because none of them
+hardcode a color.
 
 ```css
-@layer theme, base, utilities;
-@import '@n8n/design-system/theme.css' layer(base); /* tokens, reset, fonts, dark mode */
-@import 'tailwindcss/theme' layer(theme);
-@import 'tailwindcss/utilities' layer(utilities);
-@theme inline reference { --color-*: initial; … --color-brand: var(--background--brand); … }
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@custom-variant dark (&:is(.dark *));
+@theme inline { --color-primary: var(--primary); --radius-lg: var(--radius); … }
+:root { --primary: oklch(0.205 0 0); --radius: 0.625rem; … }
+.dark { --primary: oklch(0.922 0 0); … }
 ```
-
-`theme.css` sits in the `base` layer so its element rules (`h1 { color }`, `a`,
-`code`) lose to any utility; `reference` keeps the mapped names out of `:root`,
-where they would collide with the legacy hooks `theme.css` reads.
-
-The `@theme` block removes Tailwind's own palette and scales (colors, spacing,
-fonts, sizes, radius, shadows) and puts the n8n tokens in their place. So
-`bg-red-500`, `p-4`, `text-base`, `rounded-md` from the Tailwind docs do not
-exist here; the names below do. Tailwind's preflight is not imported because
-`theme.css` already ships a reset and the body font. The same `style.css` works
-in any Vite project with `@tailwindcss/vite` (React, Svelte, vanilla).
 
 Rules:
 
-- Style with utility classes in the template. No hex colors, no `px`/`rem`
-  values, no `style="…"`, no `[value]` arbitrary values (`p-[13px]`) for things a
-  token covers. Custom CSS only for what utilities cannot express (keyframes,
-  complex grids); use `var(--…)` tokens there too.
-- Dark mode is automatic: `theme.css` switches every token under
-  `[data-theme='dark']` and `prefers-color-scheme: dark`, and the utilities
-  reference the tokens. Do not use `dark:` variants and do not pick colors per
-  theme. To force a theme set `data-theme="dark"` (or `"light"`) on `<body>`.
-- Add a token to the `@theme` block when you need one that is not mapped; the
-  token names come from `@n8n/design-system/theme.css`. Do not invent values.
-- `N8n*` Vue components from `@n8n/design-system` are not available in the
-  sandbox (see the end of this file).
+- Build UI from the catalog components first (below), not hand-rolled markup.
+  Only `button` and `switch` exist from `create` (Home.vue's own demo) — for
+  any other one, call `apps(action: "add-component", appId, component:
+  "<name>")` before importing it. It copies the component's files from this
+  skill's own catalog (`component-registry/<name>/`) into
+  `src/components/ui/<name>/` and installs any dependency it needs; it is
+  safe to call again for a component you already added. Do not hand-write a
+  component the catalog already provides. Reach for `@ark-ui/vue` directly
+  (already a project dependency) only for behavior no catalog component
+  covers.
+- Style with the utility names below — they all resolve to the theme's CSS
+  variables (`bg-primary`, `text-muted-foreground`, `rounded-lg`). No hex
+  colors, no inline styles, no `dark:` variants: dark mode comes from the
+  `.dark` class `src/theme-mode.ts` sets, not a Tailwind variant.
+- You can edit any theme variable directly: write it into `src/theme-overrides.css`'s
+  `:root { }` block (create the file's content if it is empty) — a rebuild picks
+  it up like any other source change. Do not edit `src/style.css`'s `:root`/`.dark`
+  blocks (the template defaults); put overrides in `theme-overrides.css`
+  instead. A later Theme-tab save merges its own keys (`--primary`,
+  `--primary-foreground`, `--ring`, `--secondary`, `--secondary-foreground`,
+  `--accent`, `--accent-foreground`, `--radius`, `--font-sans`) onto whatever is
+  already in the file rather than replacing it, so it never erases a variable
+  you set here. `src/theme-mode.ts` is different: the Theme tab's mode control
+  always overwrites it on save, so edit it directly only when the user won't
+  also be using that tab for this app.
 
-## Token → utility table
+## Component catalog
 
-Use the utility prefix from Tailwind (`bg-`, `text-`, `border-`, `p-`, `m-`,
-`gap-`, `w-`, `h-`, `rounded-`, `shadow-`, `font-`, `leading-`) with the names
-below. `hover:`, `focus-visible:`, `active:`, `disabled:` and responsive
-variants (`sm:`, `md:`, `lg:`) work as usual.
+Add one with `apps(action: "add-component", appId, component: "<name>")`,
+then import it as `import { X } from '@/components/ui/<name>'`:
 
-### Colors (`bg-`, `text-`, `border-`, `outline-`, `ring-`)
-
-| Utility name | n8n token | Use |
+| Component | Import | Notes |
 |---|---|---|
-| `text` | `--text-color` | default text (`text-text`) |
-| `text-subtle`, `text-subtler`, `text-disabled`, `text-inverse` | `--text-color--subtle` … | secondary text (`text-text-subtle`) |
-| `text-success`, `text-warning`, `text-danger`, `text-info` | `--text-color--success` … | status text (`text-text-danger`; a bare `text-danger` is the palette red below) |
-| `surface` | `--background--surface` | cards, panels (white / dark grey) |
-| `subtle` | `--background--subtle` | page background, inset areas |
-| `hover`, `active`, `disabled`, `inverse` | `--background--hover` … | interaction states of neutral surfaces |
-| `background-success`, `background-warning`, `background-danger`, `background-info` | `--background--success` … | tinted status surfaces (callouts) |
-| `brand`, `brand-hover`, `brand-active`, `brand-focus`, `brand-disabled` | `--background--brand`, `--background--brand--hover` … | primary action surfaces |
-| `border`, `border-subtle`, `border-strong`, `border-stronger` | `--border-color`, `--border-color--subtle` … | borders (`border border-border`) |
-| `border-success`, `border-warning`, `border-danger`, `border-info` | `--border-color--success` … | status borders |
-| `primary`, `primary-shade-1`, `primary-tint-1` … `primary-tint-3` | `--color--primary`, `--color--primary--shade-1` … | brand orange; `text-primary` for links/accents |
-| `secondary`, `secondary-shade-1`, `secondary-tint-1`, `secondary-tint-2` | `--color--secondary` … | purple accent |
-| `success`, `success-shade-1`, `success-tint-1` … `success-tint-4` | `--color--success` … | green |
-| `warning`, `warning-shade-1`, `warning-tint-1`, `warning-tint-2` | `--color--warning` … | gold |
-| `danger`, `danger-shade-1`, `danger-tint-1` … `danger-tint-4` | `--color--danger` … | red |
-| `info` | `--color--info` | neutral info |
-| `neutral-white` | `--color--neutral-white` | text on `bg-brand` |
+| Button | `Button` | `variant`: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`. `size`: `default`, `sm`, `lg`, `icon`. |
+| Input | `Input` | `v-model` a string or number ref. |
+| Card | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter` | |
+| Dialog | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose` | `v-model:open` on `Dialog` if you need to control it programmatically. Wrap the trigger element with `DialogTrigger`/`DialogClose` — they use `as-child` so the Dialog controls the element you put inside directly. |
+| Select | `Select` | One component: pass `:items="[{ label, value }]"` and `v-model` a single string. No sub-parts — for a custom trigger or grouped items, compose `@ark-ui/vue/select`'s own parts directly instead. |
+| Tabs | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` | `v-model` or `default-value` on `Tabs`, matching `value` on each trigger/content pair. |
+| Badge | `Badge` | `variant`: `default`, `secondary`, `outline`, `destructive`. |
+| Switch | `Switch` | `v-model` a boolean ref. |
+| Checkbox | `Checkbox` | `v-model` a boolean ref. |
+| Tooltip | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` | `TooltipProvider` is a plain passthrough (Ark UI needs no shared context) — wrap the tree in one only to match other libraries' convention if you want to. |
+| DropdownMenu | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`, `DropdownMenuCheckboxItem`, `DropdownMenuRadioGroup`, `DropdownMenuRadioItem`, `DropdownMenuSub`, `DropdownMenuSubTrigger` | For a submenu, nest a `DropdownMenuSub` inside the parent's `DropdownMenuContent`, with a `DropdownMenuSubTrigger` and its own `DropdownMenuContent` inside it. |
 
-Opacity modifiers work on every name: `bg-primary/10`, `border-danger/50`.
+Every `Item`/`Trigger`/`CheckboxItem`/`RadioItem` that identifies one entry in
+a list (`DropdownMenuItem`, `DropdownMenuRadioItem`, `TabsTrigger`,
+`TabsContent`) takes a `value` prop — pick a stable string per entry.
 
-### Spacing (`p-`, `px-`, `m-`, `gap-`, `space-x-`, `inset-`, `w-`, `h-`, `translate-`)
+## Recipe (from the template's own `Home.vue`)
 
-| Utility name | n8n token | Value |
-|---|---|---|
-| `5xs`, `4xs`, `3xs`, `2xs` | `--spacing--5xs` … `--spacing--2xs` | 2, 4, 6, 8 px |
-| `xs`, `sm`, `md`, `lg`, `xl` | `--spacing--xs` … `--spacing--xl` | 12, 16, 20, 24, 32 px |
-| `2xl`, `3xl`, `4xl`, `5xl` | `--spacing--2xl` … `--spacing--5xl` | 48, 64, 128, 256 px |
-
-Example: `p-md gap-xs mt-lg h-xl w-2xl`. The numeric scale (`p-4`) is off.
-Control heights: `h-sm` (16 px) is too small for a button; use `h-xl` (32 px)
-or `h-2xl` (48 px), or the design-system height tokens with the var shorthand:
-`h-(--height--md)` (32 px), `h-(--height--lg)` (36 px).
-
-These names also drive `w-`, `h-`, `max-w-` and `max-h-`, so `max-w-md` is the
-20 px spacing token, not a container. For page and panel widths use
-percentages (`w-3/4`, `max-w-full`) or the breakpoint widths `max-w-screen-sm`
-(640 px), `max-w-screen-md` (768 px, the template's page shell),
-`max-w-screen-lg` (1024 px), `max-w-screen-xl` (1280 px).
-
-### Typography
-
-| Utility | n8n token |
-|---|---|
-| `font-sans` (default), `font-mono` | `--font-family`, `--font-family--monospace` |
-| `text-4xs`, `text-3xs`, `text-2xs`, `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | `--font-size--4xs` … `--font-size--2xl` (8 … 28 px) |
-| `font-regular`, `font-medium`, `font-bold` | `--font-weight--regular` (400), `--font-weight--medium` (500), `--font-weight--bold` (600) |
-| `leading-xs`, `leading-sm`, `leading-md`, `leading-lg`, `leading-xl` | `--line-height--xs` … `--line-height--xl` (1 … 1.5) |
-
-Heading: `text-2xl leading-sm font-bold text-text`. Body: `text-md leading-md
-text-text`. Secondary: `text-sm text-text-subtle`. `text-base` and `text-lg`
-from Tailwind's defaults do not exist except where listed.
-
-### Radius and shadow
-
-| Utility | n8n token |
-|---|---|
-| `rounded` | `--radius` (4 px, buttons and inputs) |
-| `rounded-4xs`, `rounded-3xs`, `rounded-2xs`, `rounded-xs`, `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`, `rounded-full` | `--radius--4xs` … `--radius--2xl` (2 … 32 px), `--radius--full` |
-| `shadow-2xs`, `shadow-xs`, `shadow-sm`, `shadow-md`, `shadow-xl`, `shadow-outline` | `--shadow--2xs` … `--shadow--xl`, `--shadow--outline` |
-
-Cards: `rounded-lg border border-border bg-surface p-md shadow-xs`.
-
-### Recipes (from the template's `Home.vue`)
-
-```html
-<button class="inline-flex h-xl items-center rounded bg-brand px-xs text-sm font-medium text-neutral-white hover:bg-brand-hover active:bg-brand-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-focus">Save</button>
-<button class="inline-flex h-xl items-center rounded border border-border bg-surface px-xs text-sm font-medium text-text hover:bg-hover">Cancel</button>
-<section class="rounded-lg border border-border bg-surface p-md shadow-xs">…</section>
-<div class="rounded border border-border-danger bg-background-danger p-xs text-sm text-text-danger">Error</div>
-<input class="h-xl w-full rounded border border-border bg-surface px-2xs text-sm text-text focus-visible:border-brand-focus focus-visible:outline-none" />
-```
-
-## Headless primitives: reka-ui
-
-`reka-ui` (the Vue port of Radix, the same library `@n8n/design-system` builds
-on) is in the template for behaviour that plain elements do not give you:
-focus management, keyboard navigation, ARIA state. It ships no styles; style
-every part with the utilities above. State comes as `data-state` attributes,
-so use `data-[state=checked]:bg-brand`, `data-[state=open]:…`,
-`data-[disabled]:opacity-50`.
-
-Import what you use from `'reka-ui'`: `SwitchRoot`/`SwitchThumb`,
-`CheckboxRoot`/`CheckboxIndicator`, `RadioGroupRoot`/`RadioGroupItem`,
-`DialogRoot`/`DialogTrigger`/`DialogPortal`/`DialogOverlay`/`DialogContent`/
-`DialogTitle`/`DialogDescription`/`DialogClose`, `PopoverRoot`/`PopoverTrigger`/
-`PopoverContent`, `TooltipProvider`/`TooltipRoot`/`TooltipTrigger`/
-`TooltipContent`, `DropdownMenuRoot`/`DropdownMenuTrigger`/`DropdownMenuContent`/
-`DropdownMenuItem`, `SelectRoot`/`SelectTrigger`/`SelectValue`/`SelectContent`/
-`SelectItem`, `TabsRoot`/`TabsList`/`TabsTrigger`/`TabsContent`,
-`AccordionRoot`/`AccordionItem`/`AccordionTrigger`/`AccordionContent`,
-`SliderRoot`/`SliderTrack`/`SliderRange`/`SliderThumb`, `ProgressRoot`/
-`ProgressIndicator`, `ToastProvider`/`ToastRoot`/`ToastTitle`/`ToastViewport`.
-Docs: https://reka-ui.com/docs/components/<name> (kebab-case).
+`apps(action="create")` already runs `add-component` for `button` and
+`switch` — the two the template's starter page uses — so a fresh app has them
+from the start:
 
 ```vue
-<SwitchRoot
-	v-model="enabled"
-	class="relative h-sm w-xl rounded-full bg-border-strong transition-colors data-[state=checked]:bg-brand"
->
-	<SwitchThumb
-		class="block h-xs w-xs translate-x-4xs rounded-full bg-neutral-white shadow-xs transition-transform data-[state=checked]:translate-x-sm"
-	/>
-</SwitchRoot>
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+</script>
+
+<template>
+	<section class="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+		<p class="text-sm">Clicked {{ count }} times</p>
+		<Button @click="count++">Click me</Button>
+	</section>
+	<label class="mt-4 flex items-center gap-2 text-sm">
+		<Switch v-model="enabled" />
+		Notifications {{ enabled ? 'on' : 'off' }}
+	</label>
+</template>
 ```
 
-```vue
-<DialogRoot>
-	<DialogTrigger class="…button classes…">Open</DialogTrigger>
-	<DialogPortal>
-		<DialogOverlay class="fixed inset-0 bg-inverse/40" />
-		<DialogContent class="fixed top-1/2 left-1/2 w-3/4 max-w-screen-sm -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-surface p-lg shadow-md">
-			<DialogTitle class="text-lg font-bold text-text">Title</DialogTitle>
-			<DialogDescription class="mt-2xs text-sm text-text-subtle">…</DialogDescription>
-			<DialogClose class="…button classes…">Close</DialogClose>
-		</DialogContent>
-	</DialogPortal>
-</DialogRoot>
-```
+Everything else — `add-component` for `card`, `dialog`, whatever the app
+needs — follows the same shape: import from `@/components/ui/<name>` after
+adding it. Reach for `@ark-ui/vue` directly, styled with the utilities above,
+only for behavior no catalog component covers (e.g. `Combobox`, `Popover`,
+`Accordion`, `RadioGroup` — part of Ark UI's own broader catalog, not
+pre-generated here). Compose its parts the same way the catalog components
+do, following https://ark-ui.com/vue/docs/components/<name>.
 
-## Not available in the sandbox: `N8n*` Vue components
+## CSS-variable → utility reference
 
-Importing anything from `'@n8n/design-system'` (the JS entry) pulls the whole
-component library plus element-plus and tiptap into the bundle; `vite build`
-then needs more than 1 GiB while the sandbox has 512 MiB and dies with exit
-134 or 137. The package keeps its place in `package.json` for `theme.css`
-only. Build the UI from elements, utilities and reka-ui instead.
+Use these with the usual utility prefixes (`bg-`, `text-`, `border-`,
+`outline-`, `ring-`). `hover:`, `focus-visible:`, `active:`, `disabled:` and
+responsive variants (`sm:`, `md:`, `lg:`) work as usual; Tailwind's own
+default color palette (`bg-blue-500`) also still works for anything not
+covered below.
+
+| Utility name | CSS variable | Use |
+|---|---|---|
+| `background`, `foreground` | `--background`, `--foreground` | page background / default text |
+| `card`, `card-foreground` | `--card`, `--card-foreground` | `Card`'s surface |
+| `popover`, `popover-foreground` | `--popover`, `--popover-foreground` | `Dialog`/`Select`/`DropdownMenu` surfaces |
+| `primary`, `primary-foreground` | `--primary`, `--primary-foreground` | the accent color the Theme tab's swatch picker sets |
+| `secondary`, `secondary-foreground` | `--secondary`, `--secondary-foreground` | secondary buttons/badges |
+| `muted`, `muted-foreground` | `--muted`, `--muted-foreground` | de-emphasized text and surfaces |
+| `accent`, `accent-foreground` | `--accent`, `--accent-foreground` | hover/highlight states |
+| `destructive` | `--destructive` | delete/danger actions |
+| `border`, `input`, `ring` | `--border`, `--input`, `--ring` | borders, input borders, focus rings |
+| `chart-1` … `chart-5` | `--chart-1` … `--chart-5` | data-visualization palette |
+
+Font and radius: `font-sans` reads `--font-sans` (the Theme tab's font
+picker); `rounded`, `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`
+read `--radius` (the Theme tab's corner-radius slider) via the `@theme
+inline` mapping's `calc()` offsets.
+
+## Headless primitives: @ark-ui/vue
+
+`@ark-ui/vue` is in the template for every catalog component and for behavior
+no catalog component covers: focus management, keyboard navigation, ARIA
+state. It ships no styles; style every part with the utilities above. State
+comes as `data-state`/`data-part`/`data-highlighted`/`data-disabled`
+attributes, so use `data-[state=checked]:bg-primary`, `data-[state=open]:…`,
+`data-[highlighted]:bg-accent`, `data-[disabled]:opacity-50`.
+
+Docs: https://ark-ui.com/vue/docs/components/<name> (kebab-case), styling
+guide at https://ark-ui.com/docs/guides/styling.

@@ -173,10 +173,19 @@ describe('apps tool', () => {
 			expect(commands[1]).toContain('mv gitignore .gitignore');
 			expect(commands[1]).toContain("'greeter'");
 			expect(commands[2]).toContain(
+				"[ -d '/home/daytona/workspace/skills/app-builder/component-registry/button' ]",
+			);
+			expect(commands[2]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/button/.' '/home/daytona/workspace/apps/greeter/src/components/ui/button/'",
+			);
+			expect(commands[2]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/switch/.' '/home/daytona/workspace/apps/greeter/src/components/ui/switch/'",
+			);
+			expect(commands[3]).toContain(
 				"[ -f .gitignore ] || printf 'node_modules\\ndist\\n' > .gitignore",
 			);
-			expect(commands[2]).toContain('git init');
-			expect(commands[2]).toContain('commit -qm scaffold --allow-empty');
+			expect(commands[3]).toContain('git init');
+			expect(commands[3]).toContain('commit -qm scaffold --allow-empty');
 			expect(result).toEqual({
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
@@ -250,7 +259,7 @@ describe('apps tool', () => {
 			const calls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(calls).toHaveLength(3);
+			expect(calls).toHaveLength(4);
 			for (const call of calls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
@@ -604,6 +613,60 @@ describe('apps tool', () => {
 			>;
 			expect(writeCalls).toHaveLength(1);
 			expect(writeCalls[0][2].abortSignal).toBe(abortSignal);
+		});
+	});
+
+	describe('add-component', () => {
+		async function runAddComponent(context: InstanceAiContext, component = 'accordion') {
+			const tool = createAppsTool(context);
+			const parsed: unknown = inputSchema(tool).parse({
+				action: 'add-component',
+				appId: 'app-1',
+				component,
+			});
+			return await executeTool<Record<string, unknown>>(tool, parsed);
+		}
+
+		it('rejects a component name that is not a lowercase slug', () => {
+			const tool = createAppsTool(createMockContext());
+			const parsed = inputSchema(tool).safeParse({
+				action: 'add-component',
+				appId: 'app-1',
+				component: '../evil',
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('copies the component from the local catalog, no install step needed', async () => {
+			const context = createMockContext();
+
+			const result = await runAddComponent(context, 'alert-dialog');
+
+			const commands = commandsRun(context);
+			expect(commands[0]).toContain(
+				"[ -d '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog' ]",
+			);
+			expect(commands[0]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog/.' '/home/daytona/workspace/apps/greeter/src/components/ui/alert-dialog/'",
+			);
+			expect(commands).toHaveLength(1);
+			expect(result).toEqual({ appId: 'app-1', component: 'alert-dialog' });
+		});
+
+		it('reports a failure when the component is not in the catalog', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockResolvedValue(
+				fail('not in the component catalog: accordion'),
+			);
+
+			const result = await runAddComponent(context);
+
+			expect(result).toEqual({
+				error: true,
+				message: expect.stringContaining("not in this app-builder skill's component catalog"),
+				log: expect.stringContaining('not in the component catalog: accordion'),
+			});
+			expect(commandsRun(context)).toHaveLength(1);
 		});
 	});
 

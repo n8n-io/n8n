@@ -9,14 +9,25 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { posix } from 'node:path';
 import { z } from 'zod';
 
+import { APPS_TOOL_ID } from './tool-ids';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { SANDBOX_RUNTIME_SKILLS_DIR } from '../skills/materialize-runtime-skills';
 import type { InstanceAiContext } from '../types';
-import { APPS_TOOL_ID } from './tool-ids';
 import { escapeSingleQuotes } from '../workspace/sandbox-fs';
 import { NPM_INSTALL_FLAGS } from '../workspace/sandbox-setup';
 
 export { APPS_TOOL_ID };
+
+/**
+ * The slice of `InstanceAiContext` the create/build/restore handlers actually
+ * touch. Narrow and exported so a headless caller (e.g. the Theme tab's
+ * rebuild pipeline) can reuse `handleBuild`/`handleRestore` without
+ * constructing — or faking — a full `InstanceAiContext`.
+ */
+export type AppSandboxContext = Pick<
+	InstanceAiContext,
+	'appService' | 'workspace' | 'workspaceRoot'
+>;
 
 export const APP_BUILDER_SKILL_DIR = 'app-builder';
 export const MAX_APP_TARBALL_BYTES = 20 * 1024 * 1024;
@@ -68,10 +79,22 @@ const restoreSchema = z.object({
 	appId: z.string(),
 });
 
+const addComponentSchema = z.object({
+	action: z.literal('add-component'),
+	appId: z.string(),
+	component: z
+		.string()
+		.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only')
+		.describe(
+			'Component name from this skill\'s catalog (references/design-system.md), e.g. "button" or "dropdown-menu"',
+		),
+});
+
 type CreateInput = z.infer<typeof createSchema>;
 type BuildInput = z.infer<typeof buildSchema>;
 type RestoreInput = z.infer<typeof restoreSchema>;
-type AppsInput = CreateInput | BuildInput | RestoreInput;
+type AddComponentInput = z.infer<typeof addComponentSchema>;
+type AppsInput = CreateInput | BuildInput | RestoreInput | AddComponentInput;
 
 // Defaults live here, not in the schema: the flattened union schema the model
 // sees wraps every field in `.optional()`, which skips Zod defaults at parse time.
@@ -81,12 +104,48 @@ const DEFAULT_OUT_DIR = 'dist';
 
 type BuildStage = 'install' | 'build' | 'check' | 'store';
 
-interface BuildFailure {
+export interface BuildFailure {
 	error: true;
 	stage: BuildStage;
 	message: string;
 	log: string;
 }
+
+/** `denied` is a literal so callers can discriminate it from a same-shaped success field left `undefined`. */
+export interface AppActionDenied {
+	denied: true;
+	reason: string;
+}
+
+export interface AppBuildSuccess {
+	appId: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	versionId: string;
+	url: string;
+	warnings: string[];
+}
+
+export type AppBuildResult = AppActionDenied | BuildFailure | AppBuildSuccess;
+
+export interface AppRestoreSuccess {
+	appId: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	versionId: string;
+	workspacePath: string;
+	warnings: string[];
+}
+
+export interface AppRestoreFailure {
+	error: true;
+	stage: 'restore';
+	message: string;
+}
+
+export type AppRestoreResult = AppActionDenied | AppRestoreFailure | AppRestoreSuccess;
 
 export function slugifyNamespace(name: string): string {
 	return name
@@ -111,6 +170,37 @@ function resolveOutDir(raw: string | undefined): string | undefined {
 }
 
 const q = (value: string) => `'${escapeSingleQuotes(value)}'`;
+
+/** Components the Vue template's own Home.vue demonstrates; added at create time so it never ships broken. */
+const STARTER_COMPONENTS = ['button', 'switch'];
+
+/** Copies the contents of one directory into another; both sides must already exist except `dest`. */
+const copyDirCommand = (source: string, dest: string) =>
+	`cp -r ${q(`${source}/.`)} ${q(`${dest}/`)}`;
+
+/** Where this skill's hand-authored component catalog lives in the materialized skill bundle. */
+const componentRegistryDir = (root: string) =>
+	`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/component-registry`;
+
+/**
+ * Copies one or more components from this skill's own component catalog
+ * (`component-registry/<name>/`, hand-authored on `@ark-ui/vue`) into the
+ * app. A plain local file copy, not a network call — there is no CLI or
+ * hosted registry for these components the way shadcn-vue has for reka-ui.
+ */
+function copyComponentsScript(registryDir: string, appDir: string, components: string[]): string {
+	const lines = ['set -e'];
+	for (const component of components) {
+		const source = `${registryDir}/${component}`;
+		const dest = `${appDir}/src/components/ui/${component}`;
+		lines.push(
+			`[ -d ${q(source)} ] || { echo "not in the component catalog: ${component}" >&2; exit 1; }`,
+			`mkdir -p ${q(dest)}`,
+			copyDirCommand(source, dest),
+		);
+	}
+	return lines.join('\n');
+}
 
 /**
  * Post-build check and packaging as one shell script. A failed check prints a
@@ -154,7 +244,7 @@ export function buildScaffoldScript(input: {
 		"fs.writeFileSync(p,JSON.stringify(j,null,2)+'\\n')}";
 	return [
 		'set -e',
-		`cp -r ${q(`${input.templateDir}/.`)} ${q(`${input.appDir}/`)}`,
+		copyDirCommand(input.templateDir, input.appDir),
 		`cd ${q(input.appDir)}`,
 		'if [ -f gitignore ]; then mv gitignore .gitignore; fi',
 		`node -e ${q(patchPackageName)} ${q(input.packageName)}`,
@@ -181,7 +271,7 @@ type SandboxRunner = (
 ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
 
 function requireSandbox(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 	abortSignal?: AbortSignal,
 ): {
 	workspace: NonNullable<InstanceAiContext['workspace']>;
@@ -223,7 +313,7 @@ function requireFilesystem(
 }
 
 async function handleCreate(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 	input: CreateInput,
 	abortSignal?: AbortSignal,
 ) {
@@ -267,6 +357,20 @@ async function handleCreate(
 			}
 		}
 
+		// The Vue template's own Home.vue demonstrates real catalog components rather
+		// than hand-rolled markup, so it needs them to exist from the start. This is a
+		// local copy, not an install: node_modules is left to the first `build` call,
+		// same as the "none" template.
+		if (template === 'vue') {
+			const addStarters = await run(
+				copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
+				{ cwd: appDir },
+			);
+			if (addStarters.exitCode !== 0) {
+				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
+			}
+		}
+
 		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
 		const warnings = git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING];
 
@@ -283,11 +387,11 @@ async function handleCreate(
 	}
 }
 
-async function handleBuild(
-	context: InstanceAiContext,
+export async function handleBuild(
+	context: AppSandboxContext,
 	input: BuildInput,
 	abortSignal?: AbortSignal,
-) {
+): Promise<AppBuildResult> {
 	const appService = requireAppService(context);
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
@@ -369,11 +473,11 @@ async function handleBuild(
  * Rehydrate `apps/<namespace>/` from the stored source tarball. Needed when a
  * thread starts in a fresh sandbox that never held the app's files.
  */
-async function handleRestore(
-	context: InstanceAiContext,
+export async function handleRestore(
+	context: AppSandboxContext,
 	input: RestoreInput,
 	abortSignal?: AbortSignal,
-) {
+): Promise<AppRestoreResult> {
 	const appService = requireAppService(context);
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
@@ -435,6 +539,44 @@ async function handleRestore(
 	}
 }
 
+/**
+ * Copies a component from this skill's own catalog into an app, on demand,
+ * rather than shipping every component pre-generated in the template. No
+ * install step: every catalog component shares the one `@ark-ui/vue` base
+ * dependency already in the template's `package.json` from `create`, so a
+ * copy never changes dependencies. A future component that needs its own
+ * extra dependency must add it to the template's base `package.json` too
+ * (the way `class-variance-authority` already is) — `handleBuild` only
+ * installs when `node_modules` is missing, so it won't pick up a dependency
+ * added after the app's first build.
+ */
+async function handleAddComponent(
+	context: AppSandboxContext,
+	input: AddComponentInput,
+	abortSignal?: AbortSignal,
+) {
+	const appService = requireAppService(context);
+	const { workspace, run } = requireSandbox(context, abortSignal);
+	const app = await appService.get(input.appId);
+
+	const root = await getWorkspaceRoot(workspace);
+	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
+
+	const add = await run(
+		copyComponentsScript(componentRegistryDir(root), appDir, [input.component]),
+		{ cwd: appDir },
+	);
+	if (add.exitCode !== 0) {
+		return {
+			error: true,
+			message: `"${input.component}" is not in this app-builder skill's component catalog. Check references/design-system.md for the exact name.`,
+			log: tailLog(combinedLog(add)),
+		};
+	}
+
+	return { appId: app.id, component: input.component };
+}
+
 async function readTarball(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	relativePath: string,
@@ -449,7 +591,7 @@ async function readTarball(
 }
 
 function requireAppService(
-	context: InstanceAiContext,
+	context: AppSandboxContext,
 ): NonNullable<InstanceAiContext['appService']> {
 	if (!context.appService) {
 		throw new Error('Apps are not available on this instance.');
@@ -461,7 +603,7 @@ function requireAppService(
 
 export function createAppsTool(context: InstanceAiContext) {
 	const inputSchema = sanitizeInputSchema(
-		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema]),
+		z.discriminatedUnion('action', [createSchema, buildSchema, restoreSchema, addComponentSchema]),
 	);
 
 	return new Tool(APPS_TOOL_ID)
@@ -471,7 +613,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`create` registers the app and copies a starter template into apps/<namespace>/ in the workspace; ' +
 				'edit the files there, then call `build` to compile them and publish a new version. ' +
 				'`build` returns the live `url` on success, or `{ error, stage, message, log }` to fix and retry. ' +
-				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet.',
+				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
+				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.",
 		)
 		.input(inputSchema)
 		.handler(async (input: AppsInput, ctx) => {
@@ -482,6 +625,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleBuild(context, input, ctx.abortSignal);
 				case 'restore':
 					return await handleRestore(context, input, ctx.abortSignal);
+				case 'add-component':
+					return await handleAddComponent(context, input, ctx.abortSignal);
 			}
 		})
 		.build();

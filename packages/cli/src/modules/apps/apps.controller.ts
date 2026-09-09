@@ -1,4 +1,10 @@
-import { CreateAppDto, CreatePageDto, UpdateAppDto, UpdatePageDto } from '@n8n/api-types';
+import {
+	ApplyAppThemeDto,
+	CreateAppDto,
+	CreatePageDto,
+	UpdateAppDto,
+	UpdatePageDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -23,6 +29,7 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 import { sendErrorResponse } from '@/response-helper';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { AppThemeBuildService } from './app-theme-build.service';
 import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
@@ -74,6 +81,7 @@ export class AppsController {
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
+		private readonly appThemeBuildService: AppThemeBuildService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -153,6 +161,27 @@ export class AppsController {
 		} catch (e: unknown) {
 			this.handleAppError(e);
 		}
+	}
+
+	/**
+	 * Persists the theme, then writes it into the app's stored source and
+	 * rebuilds it — a served app is a static file stream, so a theme change
+	 * only takes effect through a real rebuild. Runs without needing an open
+	 * Instance AI conversation.
+	 */
+	@Post('/:appId/theme')
+	@ProjectScope('app:update')
+	async applyTheme(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Body dto: ApplyAppThemeDto,
+	) {
+		this.checkInstanceWriteAccess();
+		await this.appsService.updateApp(appId, { theme: dto.theme });
+		const result = await this.appThemeBuildService.applyTheme(appId, dto.theme, req.user);
+		if ('error' in result) throw new BadRequestError(result.message);
+		return await this.appsService.getApp(appId);
 	}
 
 	@Delete('/:appId')

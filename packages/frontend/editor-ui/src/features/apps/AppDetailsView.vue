@@ -20,6 +20,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
+import AppThemeEditor from '@/features/apps/components/AppThemeEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { ADD_PAGE_MODAL_KEY, APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
@@ -31,7 +32,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'code';
+type BuildTab = 'pages' | 'theme' | 'code';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
@@ -83,6 +84,7 @@ const modeOptions = computed(() => [
 
 const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
+	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
 	{
 		value: 'code' as const,
 		label: i18n.baseText('apps.builder.code'),
@@ -142,6 +144,11 @@ const onDeletePage = async (pageId: string) => {
 
 const onDeviceChange = (value: unknown) => {
 	if (value === 'desktop' || value === 'mobile') device.value = value;
+};
+
+const onThemeApplied = (updated: App) => {
+	app.value = updated;
+	mode.value = 'preview';
 };
 
 const onOpenInAssistant = async () => {
@@ -335,6 +342,10 @@ watch(versionId, (next, previous) => {
 							@delete="onDeletePage"
 						/>
 					</div>
+				</div>
+
+				<div v-else-if="buildTab === 'theme'" :class="$style.container">
+					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
 				</div>
 			</div>
 		</div>

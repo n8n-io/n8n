@@ -21,9 +21,11 @@ recommended_tools:
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-three actions: `create` registers an app, `build` turns the source into a
+four actions: `create` registers an app, `build` turns the source into a
 published version, `restore` brings the stored source back into a workspace
-that does not have it.
+that does not have it, `add-component` copies a component from this skill's
+own catalog (built on `@ark-ui/vue`) into an app — `create` uses it for the
+two the starter page needs, and every other component goes through it too.
 
 ## The loop
 
@@ -80,16 +82,21 @@ nothing to restore (no version yet) or the directory already has files; read
   base-path settings and pass matching `command`/`outDir` to `build`.
 - The build runs in 512 MiB of memory. Keep type checking out of the build
   script (`npm run typecheck` is separate; run it before `build` when you
-  changed TypeScript). Do not import `@n8n/design-system` components: bundling
-  them needs more than 1 GiB and the build dies (see
-  `references/design-system.md`).
-- Look: Tailwind utilities whose names are the n8n design-system tokens
-  (`bg-brand`, `text-text`, `p-md`, `rounded-lg`); the template's
-  `src/style.css` sets this up and works in any Vite stack. Tailwind's own
-  palette and scales are removed, so read `references/design-system.md` for
-  the names before you write classes. No hex colors, no px values, no inline
-  styles. Interactive widgets come from `reka-ui`, styled with the same
-  utilities. Only build a different look when the user asks for one.
+  changed TypeScript).
+- Look: build UI from this skill's own catalog components (`Button`, `Input`,
+  `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
+  `DropdownMenu` — see `references/design-system.md` for the full catalog and
+  import paths) and Tailwind utilities that read the theme's CSS variables
+  (`bg-primary`, `text-muted-foreground`, `rounded-lg`). Only `button` and
+  `switch` exist from `create`: call `apps(action: "add-component", appId,
+  component: "<name>")` for any other one before importing it, rather than
+  hand-writing it.
+  No hex colors, no inline styles, no `dark:` variants. Interactive behavior a
+  catalog component doesn't cover comes from `@ark-ui/vue` directly (already a
+  project dependency — see `references/design-system.md` for components
+  outside the curated catalog), styled with the same utilities. Only build a
+  different look when the user asks for one — and point them at the app's
+  Theme tab for color/font/radius changes instead of hardcoding a look.
 - Keep dependencies few. Adding one means a cold `npm install` on the next
   build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
@@ -97,24 +104,33 @@ nothing to restore (no version yet) or the directory already has files; read
 ## Template
 
 `apps(action="create")` with the default `template: "vue"` copies
-`${N8N_SKILL_DIR}/templates/vue` into the app directory: Vite + Vue 3 + TS +
-vue-router + Tailwind v4 on the `@n8n/design-system` tokens + reka-ui, with a committed
-`package-lock.json` so the first build installs pinned versions. `template: "none"` gives an empty
-directory for other stacks; write `package.json` yourself.
+`${N8N_SKILL_DIR}/templates/vue` into the app directory (Vite + Vue 3 + TS +
+vue-router + Tailwind v4 on CSS-variable theming, with `@ark-ui/vue` already a
+dependency), then adds `button` and `switch` from this skill's own component
+catalog — the two Home.vue's own demo uses — so a fresh app is never one
+hand-edit away from broken imports. Every other component gets added the same
+way, on demand, as you need it (see `references/design-system.md`), keeping
+the committed `package-lock.json` closer to what an app actually uses.
+`template: "none"` gives an empty directory for other stacks; write
+`package.json` yourself.
 
 Layout after create:
 
 ```
 apps/<namespace>/
-  AI_RULES.md        stack and conventions for this app
+  AI_RULES.md              stack and conventions for this app
   index.html
-  package.json       scripts: build = vite build, typecheck = vue-tsc -b
-  vite.config.ts     base: process.env.APP_BASE ?? '/'
-  src/main.ts        style.css + router
-  src/style.css      theme.css + Tailwind + @theme token mapping (the utility names)
-  src/router.ts      createWebHistory(import.meta.env.BASE_URL)
-  src/App.vue        RouterView shell
-  src/pages/Home.vue one component per route
+  package.json             scripts: build = vite build, typecheck = vue-tsc -b
+  vite.config.ts           base: process.env.APP_BASE ?? '/'
+  src/main.ts              style.css + theme-overrides.css + theme mode + router
+  src/style.css            Tailwind + the theme's :root/.dark CSS variables
+  src/theme-overrides.css  any CSS variable override; edit freely, see design-system.md
+  src/theme-mode.ts        light/dark/system; a Theme-tab save always overwrites this one
+  src/router.ts            createWebHistory(import.meta.env.BASE_URL)
+  src/App.vue              RouterView shell
+  src/pages/Home.vue       one component per route
+  src/components/ui/       catalog components (button, switch from create; more via add-component)
+  src/lib/utils.ts         cn() helper every component imports
 ```
 
 Add a page: create `src/pages/<Name>.vue`, add a route in `src/router.ts`,
