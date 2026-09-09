@@ -1,9 +1,11 @@
 import { Get, RootLevelController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 import { getHtmlSandboxCSP } from 'n8n-core';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { AppServingService } from './app-serving.service';
+import { injectInspectorScript } from './inject-inspector-script';
 import { renderAppPage, renderAppPageNotFound } from './render-page';
 
 /** Express 5 hands a wildcard path over as its segments; an empty path has none. */
@@ -39,7 +41,7 @@ export class AppServingController {
 				res.redirect(302, `/apps/${req.params.namespace}/${search}`);
 				return;
 			}
-			this.sendStaticFile(res, resolved.filePath);
+			await this.sendStaticFile(res, resolved.filePath);
 			return;
 		}
 
@@ -58,17 +60,27 @@ export class AppServingController {
 		res.type('html').send(await renderAppPage(resolved.context));
 	}
 
-	private sendStaticFile(res: Response, filePath: string) {
+	private async sendStaticFile(res: Response, filePath: string) {
 		// Every file gets the sandbox policy: a browser renders `.htm`, `.svg` and
 		// friends as documents too, and the policy is harmless on the rest.
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 		// HTML is the entry point and must revalidate so a new version shows up on
 		// reload. Assets revalidate too (ETag makes that a 304), because a build
 		// may reference them by an unhashed name that changes content across versions.
-		res.setHeader(
-			'Cache-Control',
-			path.extname(filePath) === '.html' ? 'no-cache' : 'public, max-age=0, must-revalidate',
-		);
+		const isHtml = path.extname(filePath) === '.html';
+		res.setHeader('Cache-Control', isHtml ? 'no-cache' : 'public, max-age=0, must-revalidate');
+
+		if (isHtml) {
+			// Read rather than stream so the element-picker script can be spliced in;
+			// entry documents are small, so this costs nothing measurable.
+			try {
+				const html = await readFile(filePath, 'utf8');
+				res.type('html').send(injectInspectorScript(html));
+			} catch {
+				if (!res.headersSent) res.status(404).type('text').send('Not found');
+			}
+			return;
+		}
 
 		// `dotfiles: 'allow'` because the cache lives under `.n8n`, which `send`
 		// would otherwise treat as a hidden path and refuse.

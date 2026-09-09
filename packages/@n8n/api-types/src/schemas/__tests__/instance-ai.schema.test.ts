@@ -34,6 +34,7 @@ import {
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAppAttachmentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -1055,6 +1056,41 @@ describe('instanceAiAppAttachmentSchema', () => {
 		expect(
 			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'Greeter' })).success,
 		).toBe(false);
+	});
+});
+
+describe('instanceAiElementAttachmentSchema', () => {
+	const elementAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'element',
+		appId: 'app-1',
+		tagName: 'button',
+		...overrides,
+	});
+
+	it('accepts just the required fields', () => {
+		expect(instanceAiElementAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
+	});
+
+	it('accepts the optional route/text/selector fields', () => {
+		const result = instanceAiElementAttachmentSchema.safeParse(
+			elementAttachment({ route: '/clients', text: 'Submit', selector: '#go' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing appId or tagName', () => {
+		expect(
+			instanceAiElementAttachmentSchema.safeParse(elementAttachment({ appId: undefined })).success,
+		).toBe(false);
+		expect(
+			instanceAiElementAttachmentSchema.safeParse(elementAttachment({ tagName: undefined }))
+				.success,
+		).toBe(false);
+	});
+
+	it('is also accepted by instanceAiAttachmentSchema and instanceAiResourceAttachmentSchema', () => {
+		expect(instanceAiAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
+		expect(instanceAiResourceAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
 	});
 });
 

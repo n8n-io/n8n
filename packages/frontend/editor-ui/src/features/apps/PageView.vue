@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { N8nButton, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nSegmentControl,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import CopyInput from '@/app/components/CopyInput.vue';
@@ -10,7 +16,9 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
+import type { InspectedElement } from '@/features/apps/components/AppPreviewFrame.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
+import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_DETAILS, APP_PAGE_DETAILS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
@@ -36,6 +44,7 @@ const toast = useToast();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { requestPageChange } = useAppPageAssistant();
+const { selectElement } = useAppElementSelection();
 
 const appsStore = useAppsStore();
 
@@ -45,6 +54,8 @@ const app = ref<App | null>(null);
 const route = ref('');
 const loading = ref(false);
 const mode = ref<BuilderMode>('build');
+const inspecting = ref(false);
+const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previewFrame');
 
 const versionId = computed(() => app.value?.activeVersionId ?? undefined);
 
@@ -113,6 +124,24 @@ const onEdit = async () => {
 const onDelete = async () => {
 	if (!app.value) return;
 	await requestPageChange('delete', app.value, fullPath.value);
+};
+
+const onToggleInspect = () => {
+	inspecting.value = !inspecting.value;
+	if (inspecting.value) previewFrame.value?.enableInspect();
+	else previewFrame.value?.disableInspect();
+};
+
+// One pick and inspect mode ends (the iframe's own script already turned
+// itself off; this keeps the toggle button and AppPreviewFrame's own flag —
+// which a later refresh() would otherwise re-arm — in sync with it). This
+// view is never embedded in a thread, so selectElement always opens/reveals
+// the app's Instance AI thread with the pick pre-staged.
+const onElementSelected = async (element: InspectedElement) => {
+	inspecting.value = false;
+	previewFrame.value?.disableInspect();
+	if (!app.value) return;
+	await selectElement(app.value, element, false);
 };
 
 const openPage = async (pageId: string) => {
@@ -207,13 +236,27 @@ watch(() => props.pageId, initialize);
 				/>
 			</div>
 
-			<AppPreviewFrame
-				v-if="mode === 'preview' && app && versionId"
-				:namespace="app.namespace"
-				:version-id="versionId"
-				:path="fullPath"
-				:class="$style.preview"
-			/>
+			<div v-if="mode === 'preview' && app && versionId" :class="$style.preview">
+				<div :class="$style.previewBar">
+					<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+						<N8nIconButton
+							icon="mouse-pointer"
+							:variant="inspecting ? 'subtle' : 'ghost'"
+							size="small"
+							:aria-label="i18n.baseText('apps.builder.inspect')"
+							data-test-id="page-preview-inspect"
+							@click="onToggleInspect"
+						/>
+					</N8nTooltip>
+				</div>
+				<AppPreviewFrame
+					ref="previewFrame"
+					:namespace="app.namespace"
+					:version-id="versionId"
+					:path="fullPath"
+					@element-selected="onElementSelected"
+				/>
+			</div>
 			<div
 				v-else-if="mode === 'preview' && !loading"
 				:class="$style.emptyState"
@@ -326,12 +369,22 @@ watch(() => props.pageId, initialize);
 }
 
 .preview {
+	display: flex;
+	flex-direction: column;
 	flex: 1;
 	min-height: 400px;
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	overflow: hidden;
 	background: var(--background--surface);
+}
+
+.previewBar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-bottom: var(--border);
 }
 
 .emptyState {

@@ -33,6 +33,19 @@ const agentAttachment = computed(() =>
 const appAttachment = computed(() =>
 	props.attachment?.type === 'app' ? props.attachment : undefined,
 );
+const elementAttachment = computed(() =>
+	props.attachment?.type === 'element' ? props.attachment : undefined,
+);
+// The route is shown so it's clear at a glance which page the pick came from
+// (the same page the AI opens the preview to) — not just spelled out in a
+// tooltip, since it's easy to miss otherwise.
+const elementChipLabel = computed(() => {
+	const attachment = elementAttachment.value;
+	if (!attachment) return '';
+	const text = attachment.text ? `: "${attachment.text}"` : '';
+	const route = attachment.route ? ` on ${attachment.route}` : '';
+	return `${attachment.tagName}${text}${route}`;
+});
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
 );
@@ -114,6 +127,22 @@ onBeforeUnmount(() => {
 		<N8nIcon icon="app-window" size="small" />
 		<span :class="$style.resourceName">{{ appAttachment.name }}</span>
 	</div>
+	<div
+		v-else-if="elementAttachment"
+		:class="$style.resourceChip"
+		data-test-id="attachment-preview-resource"
+	>
+		<N8nIcon icon="mouse-pointer" size="small" />
+		<span :class="$style.resourceName" :title="elementChipLabel">{{ elementChipLabel }}</span>
+		<button
+			v-if="isRemovable"
+			:class="$style.removeChipBtn"
+			data-test-id="attachment-preview-remove"
+			@click.stop="emit('remove-resource')"
+		>
+			<N8nIcon icon="x" size="xsmall" />
+		</button>
+	</div>
 	<div v-else-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
 			<N8nIcon icon="spinner" color="primary" spin size="small" />
@@ -148,6 +177,24 @@ onBeforeUnmount(() => {
 	background: var(--color--foreground--tint-2);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
+}
+
+.removeChipBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	padding: 0;
+	cursor: pointer;
+	border-radius: var(--radius--sm);
+	color: var(--color--text--shade-1);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color--text);
+		background: var(--color--foreground);
+	}
 }
 
 .resourceName {

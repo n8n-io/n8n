@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
 	instanceAiAppAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAppAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
@@ -85,6 +87,8 @@ const pendingComposerDraftKey = (threadId: string) => `n8n-instance-ai-composer-
 const pendingAgentAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-agent-attachment:${threadId}`;
 const pendingAppAttachmentKey = (threadId: string) => `n8n-instance-ai-app-attachment:${threadId}`;
+const pendingElementAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-element-attachment:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
@@ -241,6 +245,31 @@ export function getPendingAppAttachment(threadId: string): InstanceAiAppAttachme
 
 export function clearPendingAppAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAppAttachmentKey(threadId));
+}
+
+/**
+ * A picked element handed off across navigation (e.g. from a standalone
+ * Apps admin page, which has no composer of its own to stage a chip into).
+ * One-shot: consuming it clears it, like the node-set draft attachment below.
+ */
+export function stashPendingElementAttachment(
+	threadId: string,
+	attachment: InstanceAiElementAttachment,
+): void {
+	localStorage.setItem(pendingElementAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function consumePendingElementAttachment(
+	threadId: string,
+): InstanceAiElementAttachment | null {
+	const raw = localStorage.getItem(pendingElementAttachmentKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingElementAttachmentKey(threadId));
+
+	const parsed = instanceAiElementAttachmentSchema.safeParse(
+		jsonParse(raw, { fallbackValue: undefined }),
+	);
+	return parsed.success ? parsed.data : null;
 }
 
 /** Drop a stashed opening message without sending it (e.g. its thread is gone). */
@@ -441,7 +470,7 @@ export function useInstanceAiHandoff() {
 	async function openAppArtifactThread(
 		attachment: InstanceAiAppAttachment,
 		launch: InstanceAiThreadLaunch,
-		options?: { initialDraft?: string },
+		options?: { initialDraft?: string; initialElementAttachment?: InstanceAiElementAttachment },
 	): Promise<boolean> {
 		if (!instanceAiReady.value) {
 			await routeToSetup();
@@ -459,11 +488,16 @@ export function useInstanceAiHandoff() {
 			}
 			if (attachment.appId) {
 				try {
+					// A picked element's route becomes the preview's initial page too,
+					// so opening the thread doesn't strand the user looking at the app
+					// root when they picked the element from a different page.
+					const pagePath = options?.initialElementAttachment?.route;
 					await instanceAiStore.updateThreadMetadata(threadId, {
 						[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
 							appId: attachment.appId,
 							projectId: attachment.projectId,
 							name: attachment.name,
+							...(pagePath ? { pagePath } : {}),
 						},
 					});
 				} catch {
@@ -474,6 +508,9 @@ export function useInstanceAiHandoff() {
 			}
 			stashPendingAppAttachment(threadId, attachment);
 			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			if (options?.initialElementAttachment) {
+				stashPendingElementAttachment(threadId, options.initialElementAttachment);
+			}
 			try {
 				const failure = await router.push({
 					name: INSTANCE_AI_THREAD_VIEW,

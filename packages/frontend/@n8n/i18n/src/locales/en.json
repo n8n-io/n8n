@@ -5162,6 +5162,7 @@
 	"apps.builder.desktop": "Desktop",
 	"apps.builder.mobile": "Mobile",
 	"apps.builder.refresh": "Refresh preview",
+	"apps.builder.inspect": "Select an element",
 	"apps.builder.code": "Code",
 	"apps.builder.codeComingSoon": "Source files show here soon",
 	"apps.builder.theme": "Theme",

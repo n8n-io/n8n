@@ -18,6 +18,7 @@ import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppsService } from '@/modules/apps/apps.service';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { injectInspectorScript } from '@/modules/apps/serving/inject-inspector-script';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -386,7 +387,7 @@ describe('GET /apps/:namespace with an active version', () => {
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
 		expect(response.headers['cache-control']).toBe('no-cache');
-		expect(response.text).toBe(INDEX_HTML);
+		expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('serves every html file with the sandbox policy and no caching', async () => {
@@ -403,7 +404,7 @@ describe('GET /apps/:namespace with an active version', () => {
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
 		expect(response.headers['cache-control']).toBe('no-cache');
-		expect(response.text).toBe(about);
+		expect(response.text).toBe(injectInspectorScript(about));
 	});
 
 	test('serves assets with their own content type, the sandbox policy and revalidation', async () => {
@@ -442,7 +443,7 @@ describe('GET /apps/:namespace with an active version', () => {
 		const response = await visitor.get('/apps/hello/deep/route').expect(200);
 
 		expect(response.headers['content-type']).toContain('text/html');
-		expect(response.text).toBe(INDEX_HTML);
+		expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('never serves a file outside the dist directory', async () => {
@@ -455,13 +456,13 @@ describe('GET /apps/:namespace with an active version', () => {
 			'/apps/hello/%2Fetc%2Fpasswd',
 		]) {
 			const response = await visitor.get(url).expect(200);
-			expect(response.text).toBe(INDEX_HTML);
+			expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 		}
 
 		// superagent normalises `..` before the request leaves the process.
 		const raw = await rawGet('/apps/hello/../../config');
 		expect(raw.statusCode).toBe(200);
-		expect(raw.body).toBe(INDEX_HTML);
+		expect(raw.body).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('serves the newest version after a second upload', async () => {
@@ -471,7 +472,7 @@ describe('GET /apps/:namespace with an active version', () => {
 
 		const response = await visitor.get('/apps/hello/').expect(200);
 
-		expect(response.text).toBe('second');
+		expect(response.text).toBe(injectInspectorScript('second'));
 	});
 });
 
