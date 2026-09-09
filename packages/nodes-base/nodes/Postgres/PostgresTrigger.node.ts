@@ -306,14 +306,12 @@ export class PostgresTrigger implements INodeType {
 		// as that execution unwinds. Releasing the connection makes the second pass
 		// consequential — its `SELECT 1` health probe fails against a connection the
 		// first pass already returned, turning a cleanup that fully succeeded into a
-		// TriggerCloseError warning. Nothing is lost by skipping it: the connection is
-		// gone, so a second pass could not issue UNLISTEN or DROP either way.
-		let cleanedUp = false;
+		// TriggerCloseError warning. The second caller joins the first pass instead:
+		// the connection is gone either way, so there is no UNLISTEN or DROP left for it
+		// to issue, but it must not be told cleanup finished before it actually has.
+		let cleanUp: Promise<void> | undefined;
 
-		const cleanUpDb = async () => {
-			if (cleanedUp) return;
-			cleanedUp = true;
-
+		const runCleanUp = async () => {
 			try {
 				try {
 					// check if the connection is healthy
@@ -357,6 +355,15 @@ export class PostgresTrigger implements INodeType {
 					// cleanup error we may be unwinding from.
 				}
 			}
+		};
+
+		const cleanUpDb = async () => {
+			// Holding the promise rather than a boolean means a caller that arrives while
+			// the first pass is still awaiting UNLISTEN joins that pass instead of
+			// returning early. Deactivation must not report itself finished while the
+			// trigger is still being dropped, or a reactivation could recreate it first.
+			cleanUp ??= runCleanUp();
+			await cleanUp;
 		};
 
 		connection.client.on('notification', onNotification);

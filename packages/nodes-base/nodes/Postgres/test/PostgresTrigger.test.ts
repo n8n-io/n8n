@@ -252,6 +252,41 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		expect(connection.done).toHaveBeenCalledTimes(1);
 		expect(connection.query).toHaveBeenCalledTimes(1);
 	});
+
+	it('makes a concurrent close join the in-flight cleanup rather than return early', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		// Park the first pass inside UNLISTEN. A guard that only records that cleanup
+		// has started lets the second caller resolve here, so deactivation reports
+		// itself finished while the trigger is still being dropped — and a reactivation
+		// can recreate that trigger before the first pass gets round to dropping it.
+		let releaseUnlisten: () => void = () => {};
+		connection.none.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseUnlisten = resolve;
+				}),
+		);
+
+		const first = response.closeFunction?.();
+		const second = response.closeFunction?.();
+		let secondSettled = false;
+		void second?.then(() => {
+			secondSettled = true;
+		});
+
+		await new Promise((resolve) => setImmediate(resolve));
+		// LISTEN during setup, then the UNLISTEN we are holding.
+		expect(connection.none).toHaveBeenCalledTimes(2);
+		expect(secondSettled).toBe(false);
+
+		releaseUnlisten();
+		await Promise.all([first, second]);
+
+		expect(secondSettled).toBe(true);
+		expect(connection.done).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('PostgresTrigger.trigger (Advanced mode)', () => {
