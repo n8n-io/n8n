@@ -862,6 +862,131 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('WorkflowBuilder.onError()', () => {
+		// INS-1314 defect 4: `.add(a).to(b).onError(h)` threw
+		// "...to(...).onError is not a function". `.onError()` existed on the node and on
+		// the chain, but not on the workflow builder that `.to()` returns.
+		const buildRetryFlow = () => {
+			const schedule = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Every Hour' },
+			});
+			const loadUniverse = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Load Universe' },
+			});
+			const fetchPositions = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch Positions' },
+			});
+			const sendFetchFailure = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.3,
+				config: { name: 'Send Fetch Failure' },
+			});
+			const compute = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Compute' },
+			});
+			return { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute };
+		};
+
+		it('routes the error output of the node the cursor is on', () => {
+			const { schedule, loadUniverse, fetchPositions, sendFetchFailure, compute } =
+				buildRetryFlow();
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(loadUniverse)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.to(compute)
+				.toJSON();
+
+			expect(json.nodes.map((n) => n.name)).toEqual([
+				'Every Hour',
+				'Load Universe',
+				'Fetch Positions',
+				'Send Fetch Failure',
+				'Compute',
+			]);
+			// Main output continues the flow; the error pin carries the handler.
+			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
+			expect(json.connections['Fetch Positions']?.main[1]?.[0]?.node).toBe('Send Fetch Failure');
+			// The handler is a leaf, not the source of the continuation.
+			expect(json.connections['Send Fetch Failure']).toBeUndefined();
+		});
+
+		it('turns on the error output port of the node it attaches to', () => {
+			const { schedule, fetchPositions, sendFetchFailure } = buildRetryFlow();
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.toJSON();
+
+			expect(json.nodes.find((n) => n.name === 'Fetch Positions')?.onError).toBe(
+				'continueErrorOutput',
+			);
+		});
+
+		it('matches wiring the same error route on the node itself', () => {
+			const viaBuilder = buildRetryFlow();
+			const viaNode = buildRetryFlow();
+
+			const fromBuilder = workflow('test-id', 'Test')
+				.add(viaBuilder.schedule)
+				.to(viaBuilder.fetchPositions)
+				.onError(viaBuilder.sendFetchFailure)
+				.to(viaBuilder.compute)
+				.toJSON();
+
+			const fromNode = workflow('test-id', 'Test')
+				.add(viaNode.schedule)
+				.to(viaNode.fetchPositions.onError(viaNode.sendFetchFailure))
+				.to(viaNode.compute)
+				.toJSON();
+
+			expect(fromBuilder.connections).toEqual(fromNode.connections);
+		});
+
+		it('keeps the cursor on the source node so sibling routes stack', () => {
+			const { schedule, fetchPositions, sendFetchFailure, compute } = buildRetryFlow();
+			const auditFailure = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Audit Failure' },
+			});
+
+			const json = workflow('test-id', 'Test')
+				.add(schedule)
+				.to(fetchPositions)
+				.onError(sendFetchFailure)
+				.onError(auditFailure)
+				.to(compute)
+				.toJSON();
+
+			expect(json.connections['Fetch Positions']?.main[1]?.map((c) => c.node)).toEqual([
+				'Send Fetch Failure',
+				'Audit Failure',
+			]);
+			expect(json.connections['Fetch Positions']?.main[0]?.[0]?.node).toBe('Compute');
+		});
+
+		it('explains itself when there is no node to attach to', () => {
+			const { sendFetchFailure } = buildRetryFlow();
+
+			expect(() => workflow('test-id', 'Test').onError(sendFetchFailure)).toThrow(
+				'.onError() must follow adding a node',
+			);
+		});
+	});
+
 	describe('.settings()', () => {
 		it('should update workflow settings', () => {
 			const wf = workflow('test-id', 'Test Workflow').settings({

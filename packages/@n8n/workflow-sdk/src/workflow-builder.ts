@@ -454,6 +454,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Route the error output of the node the cursor is on (the last node added via
+	 * `.to()`/`.add()`) to `handler`. The cursor stays on that node, so a following
+	 * `.to()` continues the main branch — the same way `.onTrue()`/`.onFalse()` behave.
+	 */
+	onError(handler: unknown): WorkflowBuilder {
+		assertNotOutputSelector(handler, 'onError');
+
+		const sourceKey = this._currentNode;
+		const sourceInstance = sourceKey ? this._nodes.get(sourceKey)?.instance : undefined;
+		if (!sourceInstance || typeof sourceInstance.onError !== 'function') {
+			throw new Error(
+				'.onError() must follow adding a node. Use it as ' +
+					'workflow.add(trigger).to(httpNode).onError(errorHandler).',
+			);
+		}
+
+		if (handler === null || handler === undefined) return this;
+
+		sourceInstance.onError(handler as NodeInstance<string, string, unknown>);
+		// The handler is reachable only through the node's declared connections, so pull it
+		// — and anything it fans out to — into the graph.
+		this.addSingleNodeConnectionTargets(this._nodes, sourceInstance);
+		return this;
+	}
+
+	/**
 	 * Connect a branch output of the node the cursor is on (the last node added
 	 * via `.to()`/`.add()`) to `target`, without advancing the cursor — so
 	 * sibling branches (`.onTrue().onFalse()`, `.onCase(0).onCase(1)`) all attach
@@ -1330,7 +1356,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 }
 
-function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
+function assertNotOutputSelector(value: unknown, method: 'add' | 'to' | 'onError'): void {
 	if (!isOutputSelector(value)) return;
 	const sourceName = value.node.name;
 	throw new TypeError(
