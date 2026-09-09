@@ -949,12 +949,42 @@ describe('workflow tool → background job handoff', () => {
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			status: 'success',
 			jobId: 'job-1',
 			data: { Result: [{ approved: true }] },
 		});
 		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('returns the inline result when marking it as delivered fails', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.markMailConsumed.mockRejectedValue(new Error('database unavailable'));
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('marks the inline result as delivered even if the settle hook settled the job first', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.settle.mockResolvedValue(false);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 	});
 
 	it('settles a failed inline finish with its error and no result', async () => {
@@ -987,6 +1017,7 @@ describe('workflow tool → background job handoff', () => {
 		],
 		['the thread carries no host metadata', { hostMetadata: undefined }],
 		['the thread has no memory resource', { resourceId: undefined }],
+		['the session belongs to a task run', { resourceId: 'task:task-1' }],
 	])('falls back to suspending when %s', async (_name, persistenceOverrides) => {
 		setPersistence({
 			status: 'waiting',
@@ -1051,6 +1082,7 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			error: expect.stringContaining('outcome is unknown'),
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			executionId: 'exec-1',
 			status: 'unknown',
@@ -1089,5 +1121,7 @@ describe('workflow tool → background job handoff', () => {
 			jobId: 'job-1',
 			note: expect.stringContaining('check_background_jobs'),
 		});
+		// The settle hook recorded the actual outcome. Leave it pending for delivery.
+		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 });

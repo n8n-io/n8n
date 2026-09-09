@@ -10,9 +10,9 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -154,6 +154,21 @@ export interface ExecuteForTaskNowConfig {
 	taskId: string;
 }
 
+export interface ExecuteForWakeConfig {
+	agentId: string;
+	projectId: string;
+	message: string;
+	memory: AgentMemoryScope;
+	abortSignal: AbortSignal;
+	identity:
+		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
+		| {
+				type: 'published';
+				integrationType: string;
+				principalHash: AgentSandboxPrincipalHash;
+		  };
+}
+
 export interface StreamChatResponseConfig {
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
@@ -176,6 +191,10 @@ export interface StreamChatResponseConfig {
 	/** Add full sanitized tool configuration to approval cards in preview chat. */
 	includeHitlToolDetails?: boolean;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
+	/** Hide the internal wake instruction from the execution transcript. */
+	hideUserMessageFromTranscript?: boolean;
+	/** Prevent this wake run from triggering another wake. */
+	isWakeRun?: boolean;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -528,6 +547,8 @@ export class AgentExecutionOrchestratorService {
 						},
 					},
 				});
+				// After the resumed turn, request any job results that arrived during the approval wait.
+				if (!recorder.suspended) await this.requestPendingBackgroundWake(threadId);
 			} finally {
 				this.runtimeCacheService.releaseRuntimeLease(agentInstance);
 			}
@@ -740,6 +761,94 @@ export class AgentExecutionOrchestratorService {
 		}
 	}
 
+	async executeForWake(config: ExecuteForWakeConfig): Promise<void> {
+		const { agentId, projectId, message, memory, identity, abortSignal } = config;
+		const isDraft = identity.type === 'draft';
+
+		// Draft wakes skip the quota hook, like other test chat runs.
+		if (!isDraft) await this.externalHooks.run('agent.preExecute', [agentId]);
+
+		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
+		const delivery = isDraft
+			? undefined
+			: await this.getWakeDelivery(agentId, integrationType, memory.threadId);
+		const runtime = await this.runtimeCacheService.getRuntime({
+			agentId,
+			projectId,
+			integrationType,
+			usePublishedVersion: !isDraft,
+			...(isDraft ? { user: identity.user } : {}),
+			sandboxPrincipalHash: identity.principalHash,
+		});
+
+		try {
+			const stream = this.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				...(isDraft ? { userId: identity.user.id } : {}),
+				message,
+				memory,
+				projectId: runtime.projectId,
+				source: integrationType,
+				telemetry: {
+					runType: isDraft ? 'test' : 'production',
+					configuration: runtime.telemetryConfiguration,
+				},
+				abortSignal,
+				includeHitlToolDetails: isDraft,
+				sandboxPrincipalHash: identity.principalHash,
+				hideUserMessageFromTranscript: true,
+				isWakeRun: true,
+			});
+
+			// The runtime returns model errors as stream chunks. Throw here so the caller
+			// leaves the job results pending for a retry.
+			const chunks: StreamChunk[] = [];
+			let runError: unknown;
+			for await (const chunk of stream) {
+				if (delivery) chunks.push(chunk);
+				if (chunk.type === 'error') runError = chunk.error;
+				if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
+			}
+			if (runError !== undefined) {
+				throw new OperationalError('Background job wake failed', {
+					cause: runError,
+				});
+			}
+			abortSignal.throwIfAborted();
+			if (delivery) await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks);
+		} finally {
+			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);
+		}
+	}
+
+	private async getWakeDelivery(agentId: string, integrationType: string, threadId: string) {
+		const context = await this.integrationMessageContextService.getLatest(threadId);
+		const target = context?.replyTarget ?? context?.target;
+		const [platform, credentialId] = context?.integrationConnectionId.split(':') ?? [];
+		if (
+			context?.platform !== integrationType ||
+			platform !== integrationType ||
+			!credentialId ||
+			!target?.threadId
+		) {
+			throw new OperationalError('Background job wake has no reply context');
+		}
+
+		// Use the stored connection so results return to the correct workspace.
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
+		const bridge = Container.get(ChatIntegrationService).getBridge(
+			agentId,
+			integrationType,
+			credentialId,
+		);
+		if (!bridge) {
+			throw new OperationalError('Background job wake chat connection is unavailable');
+		}
+		return { bridge, threadId: target.threadId };
+	}
+
 	/**
 	 * Stream an agent response, record it, and yield each chunk.
 	 */
@@ -761,6 +870,8 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 			includeHitlToolDetails,
 			sandboxPrincipalHash,
+			hideUserMessageFromTranscript,
+			isWakeRun,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -803,7 +914,7 @@ export class AgentExecutionOrchestratorService {
 				agentId,
 				agentName: agentInstance.name,
 				projectId,
-				userMessage: message,
+				userMessage: hideUserMessageFromTranscript ? null : message,
 				attachments,
 				source,
 				taskId,
@@ -850,7 +961,7 @@ export class AgentExecutionOrchestratorService {
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
-					userMessage: message,
+					userMessage: hideUserMessageFromTranscript ? null : message,
 					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
@@ -860,6 +971,16 @@ export class AgentExecutionOrchestratorService {
 					telemetry: { ...telemetry, userId },
 				},
 			});
+			if (!isWakeRun) await this.requestPendingBackgroundWake(threadId);
+		}
+	}
+
+	private async requestPendingBackgroundWake(threadId: string): Promise<void> {
+		try {
+			const { AgentWakeService } = await import('./background/agent-wake.service.js');
+			await Container.get(AgentWakeService).onParentTurnFinished(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to request pending background job delivery', { threadId, error });
 		}
 	}
 
