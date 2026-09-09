@@ -12,6 +12,7 @@ import type {
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
@@ -103,12 +104,8 @@ export type TargetOutput = Omit<
 	buildTrace?: BuildTrace;
 };
 
-export function isPlainObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.nodeResults === 'object' &&
 		v.nodeResults !== null &&
@@ -119,29 +116,29 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 }
 
 function isAgentEvalResult(v: unknown): v is InstanceAiEvalAgentExecutionResult {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.runId === 'string' &&
 		Array.isArray(v.toolCalls) &&
 		Array.isArray(v.modelTurns) &&
-		isPlainObject(v.seed)
+		isRecord(v.seed)
 	);
 }
 
 function isWorkflowResponse(v: unknown): v is WorkflowResponse {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.id === 'string' &&
 		typeof v.name === 'string' &&
 		typeof v.active === 'boolean' &&
 		typeof v.versionId === 'string' &&
 		Array.isArray(v.nodes) &&
-		isPlainObject(v.connections)
+		isRecord(v.connections)
 	);
 }
 
 function isBuildTrace(v: unknown): v is BuildTrace {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.finalText === 'string' &&
 		Array.isArray(v.toolCalls) &&
@@ -156,7 +153,7 @@ function isBuildTrace(v: unknown): v is BuildTrace {
  *  shape (passed:false, score:0) — masking infra errors as builder regressions.
  */
 export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
-	if (!isPlainObject(raw) || Object.keys(raw).length === 0) return undefined;
+	if (!isRecord(raw) || Object.keys(raw).length === 0) return undefined;
 	const parsed = targetOutputSchema.safeParse(raw);
 	if (!parsed.success) return undefined;
 	return {

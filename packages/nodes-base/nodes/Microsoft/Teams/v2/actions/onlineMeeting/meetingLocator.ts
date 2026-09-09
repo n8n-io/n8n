@@ -45,3 +45,10 @@ export async function fetchMeetingByJoinUrl(
 	}
 	return meeting;
 }
+
+export async function resolveMeetingId(this: IExecuteFunctions, i: number): Promise<string> {
+	const { mode, value } = readMeetingLocator.call(this, i);
+	if (mode !== 'url') return value;
+	const meeting = await fetchMeetingByJoinUrl.call(this, value);
+	return asText(meeting.id);
+}
