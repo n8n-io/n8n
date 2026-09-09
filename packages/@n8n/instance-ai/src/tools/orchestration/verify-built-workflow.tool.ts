@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
 import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -19,7 +20,10 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
-import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
+import {
+	executionNodeErrorSchema,
+	verificationClaimSchema,
+} from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
@@ -81,6 +85,16 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input. ' +
 				'An empty array is rejected unless the node is also listed in `allowZeroItemFixtures`.',
 		),
+	fixTargetNodeNames: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Node names this change is about — the node the user reported as failing, or the node ' +
+				'you just repaired. The verdict shown to the user is downgraded to "changed but ' +
+				'unverified" when any of these was never reached or had simulated output, so a green ' +
+				'run elsewhere cannot pass as proof for them. Pass these whenever you are fixing a ' +
+				'specific node rather than building from scratch.',
+		),
 	allowZeroItemFixtures: z
 		.array(z.string())
 		.optional()
@@ -125,6 +139,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
 	remediation: remediationOutputSchema,
@@ -238,6 +253,22 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						};
 					})();
 
+			// The repair target from an earlier verdict counts even when the model
+			// omits it here — that is exactly the turn where it stops mentioning it.
+			const fixTargetNodeNames = [
+				...new Set(
+					[
+						...(resolvedInput.fixTargetNodeNames ?? []),
+						target.stateBefore?.lastFailedNodeName,
+					].filter((name): name is string => name !== undefined),
+				),
+			];
+			const claim = deriveVerificationClaim({
+				analysis,
+				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
+				fixTargetNodeNames,
+			});
+
 			await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
@@ -245,6 +276,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				workflowId,
 				result,
 				analysis,
+				claim,
 				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
 			});
 
@@ -254,6 +286,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				resolvedWorkItemId: resolvedInput.workItemId,
 				executionId: result.executionId || undefined,
 				success: analysis.success,
+				claim,
 				status: result.status,
 				nodesExecuted: analysis.nodesExecuted,
 				lastNodeExecuted: result.lastNodeExecuted,
