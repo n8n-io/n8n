@@ -583,17 +583,17 @@ describe('Promotion base branch listing', () => {
 
 		const files = await service.listBaseBranchFiles(project.id);
 
-		expect(files.map(({ id, type }) => ({ id, type }))).toEqual(
+		expect(files.map(({ entityId, type }) => ({ entityId, type }))).toEqual(
 			expect.arrayContaining([
-				{ id: project.id, type: 'project' },
-				{ id: parentFolder.id, type: 'folder' },
-				{ id: childFolder.id, type: 'folder' },
-				{ id: workflow.id, type: 'workflow' },
-				{ id: credential.id, type: 'credential' },
-				{ id: variable.id, type: 'variable' },
-				{ id: tag.id, type: 'tag' },
-				{ id: projectTable.id, type: 'dataTable' },
-				{ id: sharedTable.id, type: 'dataTable' },
+				{ entityId: project.id, type: 'project' },
+				{ entityId: parentFolder.id, type: 'folder' },
+				{ entityId: childFolder.id, type: 'folder' },
+				{ entityId: workflow.id, type: 'workflow' },
+				{ entityId: credential.id, type: 'credential' },
+				{ entityId: variable.id, type: 'variable' },
+				{ entityId: tag.id, type: 'tag' },
+				{ entityId: projectTable.id, type: 'dataTable' },
+				{ entityId: sharedTable.id, type: 'dataTable' },
 			]),
 		);
 		expect(files.map(({ path }) => path).sort()).toEqual(expectedPaths.sort());
@@ -620,7 +620,7 @@ describe('Promotion base branch listing', () => {
 		await service.clone(instance.id, 'promote');
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				id: project.id,
+				entityId: project.id,
 				slug: 'orders',
 				projectId: project.id,
 				fileName: 'project.json',
@@ -647,7 +647,7 @@ describe('Promotion base branch listing', () => {
 
 		expect(await service.listBaseBranchFiles(project.id)).toEqual([
 			{
-				id: project.id,
+				entityId: project.id,
 				slug: 'orders',
 				projectId: project.id,
 				fileName: 'project.json',
@@ -683,7 +683,7 @@ describe('Promotion base branch listing', () => {
 		const firstListing = await service.listBaseBranchFiles(project.id);
 		expect(firstListing).toHaveLength(2);
 		expect(firstListing).toContainEqual({
-			id: 'Va45zz67',
+			entityId: 'Va45zz67',
 			slug: 'my "quoted" var',
 			projectId: null,
 			fileName: 'variable.json',
@@ -699,7 +699,7 @@ describe('Promotion base branch listing', () => {
 		const secondListing = await service.listBaseBranchFiles(project.id);
 
 		expect(secondListing).toContainEqual({
-			id: 'Wf99zz88',
+			entityId: 'Wf99zz88',
 			slug: 'my-hyphen-ated-slug',
 			projectId: project.id,
 			fileName: 'workflow.json',
@@ -727,7 +727,7 @@ describe('Promotion base branch listing', () => {
 		const projectRoot = `n8n-export/projects/orders-${project.id}`;
 		const entities = [
 			{
-				id: '42',
+				entityId: '42',
 				slug: 'legacy',
 				projectId: project.id,
 				fileName: 'folder.json',
@@ -735,7 +735,7 @@ describe('Promotion base branch listing', () => {
 				path: `${projectRoot}/folders/legacy-42/folder.json`,
 			},
 			{
-				id: '42',
+				entityId: '42',
 				slug: 'order',
 				projectId: project.id,
 				fileName: 'workflow.json',
@@ -743,7 +743,7 @@ describe('Promotion base branch listing', () => {
 				path: `${projectRoot}/folders/legacy-42/workflows/order-42/workflow.json`,
 			},
 			{
-				id: '42',
+				entityId: '42',
 				slug: 'api',
 				projectId: project.id,
 				fileName: 'credential.json',
@@ -751,7 +751,7 @@ describe('Promotion base branch listing', () => {
 				path: `${projectRoot}/credentials/api-42/credential.json`,
 			},
 			{
-				id: '1',
+				entityId: '1',
 				slug: 'apiurl',
 				projectId: project.id,
 				fileName: 'variable.json',
@@ -759,7 +759,7 @@ describe('Promotion base branch listing', () => {
 				path: `${projectRoot}/variables/apiurl-1/variable.json`,
 			},
 			{
-				id: '2',
+				entityId: '2',
 				slug: 'apiurl',
 				projectId: null,
 				fileName: 'variable.json',
@@ -817,7 +817,7 @@ describe('Promotion base branch listing', () => {
 
 		expect(files).toEqual([
 			{
-				id: project.id,
+				entityId: project.id,
 				slug: 'orders',
 				projectId: project.id,
 				fileName: 'project.json',

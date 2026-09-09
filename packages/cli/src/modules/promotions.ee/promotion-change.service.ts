@@ -88,18 +88,21 @@ export class PromotionChangeService {
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		const differences = diffPackageFiles(base, desired);
+		const changes = diffPackageFiles(base, desired);
 		const changedIds = new Set<string>();
 		const changedPaths = new Set<string>();
-		for (const difference of differences) {
-			if (difference.change !== 'created') changedPaths.add(difference.base.path);
-			if (difference.change !== 'removed') changedPaths.add(difference.desired.path);
-			const file = difference.change === 'removed' ? difference.base : difference.desired;
-			if (file.type === 'workflow') changedIds.add(file.id);
+		for (const fileChange of changes) {
+			if (fileChange.change !== 'added') changedPaths.add(fileChange.base.path);
+			if (fileChange.change !== 'deleted') changedPaths.add(fileChange.desired.path);
+			const file = fileChange.change === 'deleted' ? fileChange.base : fileChange.desired;
+			if (file.type === 'workflow') changedIds.add(file.entityId);
 		}
 		const baseDependencies = new Map<string, PackageFile[]>();
 		for (const file of base) {
-			const key = JSON.stringify([file.fileName, file.type === 'variable' ? file.slug : file.id]);
+			const key = JSON.stringify([
+				file.fileName,
+				file.type === 'variable' ? file.slug : file.entityId,
+			]);
 			const group = baseDependencies.get(key) ?? [];
 			group.push(file);
 			baseDependencies.set(key, group);
@@ -123,7 +126,7 @@ export class PromotionChangeService {
 					) ?? [];
 				const projectFiles = group.filter((file) => file.projectId === projectId);
 				const scopedFiles = projectFiles.length ? projectFiles : group;
-				const sameId = entry ? scopedFiles.filter(({ id }) => id === entry.id) : [];
+				const sameId = entry ? scopedFiles.filter(({ entityId }) => entityId === entry.id) : [];
 				const previous = sameId.length ? sameId : scopedFiles;
 				const currentPath = entry
 					? `${PACKAGE_SUBFOLDER}/${entityFilePath(collection, entry.target)}`
@@ -143,7 +146,9 @@ export class PromotionChangeService {
 			fields: ['updatedAt', 'versionCounter'],
 		});
 		const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
-		const baseIds = new Set(base.filter(({ type }) => type === 'workflow').map(({ id }) => id));
+		const baseIds = new Set(
+			base.filter(({ type }) => type === 'workflow').map(({ entityId }) => entityId),
+		);
 		return [...changedIds].map((id) => {
 			const entry = desiredWorkflows.get(id);
 			const workflow = metadataById.get(id);

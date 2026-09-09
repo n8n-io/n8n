@@ -52,46 +52,46 @@ it('compares Git and writer output without losing scoped identities or lifecycle
 		});
 		expect(baseFiles.filter(({ type }) => type === 'variable')).toEqual([
 			expect.objectContaining({
-				id: '1',
+				entityId: '1',
 				slug: 'api',
 				projectId: 'Project1',
 				fileName: 'variable.json',
 			}),
 			expect.objectContaining({
-				id: '2',
+				entityId: '2',
 				slug: 'api',
 				projectId: null,
 				fileName: 'variable.json',
 			}),
 		]);
 		expect(desiredFiles.filter(({ type }) => type === 'variable')).toEqual([
-			expect.objectContaining({ id: '1', slug: 'api', projectId: 'Project1' }),
-			expect.objectContaining({ id: '2', slug: 'api', projectId: null }),
+			expect.objectContaining({ entityId: '1', slug: 'api', projectId: 'Project1' }),
+			expect.objectContaining({ entityId: '2', slug: 'api', projectId: null }),
 		]);
 
-		const differences = diffPackageFiles(baseFiles, desiredFiles);
+		const changes = diffPackageFiles(baseFiles, desiredFiles);
 
 		expect(
-			differences.map((difference) => {
-				const file = difference.change === 'removed' ? difference.base : difference.desired;
-				return { id: file.id, type: file.type, change: difference.change };
+			changes.map((fileChange) => {
+				const file = fileChange.change === 'deleted' ? fileChange.base : fileChange.desired;
+				return { entityId: file.entityId, type: file.type, change: fileChange.change };
 			}),
 		).toEqual(
 			expect.arrayContaining([
-				{ id: 'Edit', type: 'workflow', change: 'modified' },
-				{ id: 'Move', type: 'workflow', change: 'moved' },
-				{ id: 'Both', type: 'workflow', change: 'moved-and-modified' },
-				{ id: 'Delete', type: 'workflow', change: 'removed' },
-				{ id: 'Life', type: 'workflow', change: 'modified' },
-				{ id: 'New', type: 'workflow', change: 'created' },
-				{ id: '2', type: 'variable', change: 'modified' },
+				{ entityId: 'Edit', type: 'workflow', change: 'modified' },
+				{ entityId: 'Move', type: 'workflow', change: 'renamed' },
+				{ entityId: 'Both', type: 'workflow', change: 'renamed-and-modified' },
+				{ entityId: 'Delete', type: 'workflow', change: 'deleted' },
+				{ entityId: 'Life', type: 'workflow', change: 'modified' },
+				{ entityId: 'New', type: 'workflow', change: 'added' },
+				{ entityId: '2', type: 'variable', change: 'modified' },
 			]),
 		);
-		expect(differences).toHaveLength(7);
-		expect(differences).toContainEqual(
+		expect(changes).toHaveLength(7);
+		expect(changes).toContainEqual(
 			expect.objectContaining({
 				change: 'modified',
-				desired: expect.objectContaining({ id: 'Life', fileName: 'workflow-lifecycle.json' }),
+				desired: expect.objectContaining({ entityId: 'Life', fileName: 'workflow-lifecycle.json' }),
 			}),
 		);
 		expect(diffPackageFiles(baseFiles, baseFiles)).toEqual([]);

@@ -15,7 +15,7 @@ const BASE_BRANCH_ENTITIES = {
 } as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
 
 export type PackageFile = Readonly<{
-	id: string;
+	entityId: string;
 	slug: string;
 	projectId: string | null;
 	fileName:
@@ -87,7 +87,7 @@ export function parsePackageFiles(
 
 		const entitySegment = segments[segments.length - 2];
 		files.push({
-			id: entityIdOfSegment(entitySegment),
+			entityId: entityIdOfSegment(entitySegment),
 			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
 			projectId: segments[0] === projects.directory ? projectId : null,
 			fileName: isWorkflowLifecycle ? WORKFLOW_LIFECYCLE_FILE_NAME : entity.fileName,
