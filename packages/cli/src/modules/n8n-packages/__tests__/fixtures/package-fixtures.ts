@@ -14,25 +14,22 @@ import type { SerializedDataTable } from '../../spec/serialized/data-table.schem
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
-import type { SerializedWorkflowLifecycle } from '../../spec/serialized/workflow-lifecycle.schema';
+import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
 /** `versionId` every workflow fixture carries, so a test can name it as published. */
 export const WIRE_VERSION_ID = 'wire-version-id';
 
-export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowLifecycle>;
+export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowMetadata>;
 
 function workflowFiles(workflow: PackageWorkflow): {
 	content: SerializedWorkflow;
-	lifecycle: SerializedWorkflowLifecycle;
+	metadata: SerializedWorkflowMetadata;
 } {
-	const { publishedVersionId, isArchived, ...content } = workflow;
+	const { publishedVersionId, ...content } = workflow;
 
-	return {
-		content,
-		lifecycle: { publishedVersionId: publishedVersionId ?? null, isArchived: isArchived ?? false },
-	};
+	return { content, metadata: { publishedVersionId: publishedVersionId ?? null } };
 }
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */
@@ -230,8 +227,8 @@ export async function buildImportPackageBuffer(
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
-		/** Replaces every lifecycle file, or leaves it out, so tests can drive the rejections. */
-		workflowLifecycle?: 'omit' | Record<string, unknown>;
+		/** Replaces every metadata file, or leaves it out, so tests can drive the rejections. */
+		workflowMetadata?: 'omit' | Record<string, unknown>;
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -263,13 +260,13 @@ export async function buildImportPackageBuffer(
 
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	workflows.forEach((wf, idx) => {
-		const { content, lifecycle } = workflowFiles(wf);
+		const { content, metadata } = workflowFiles(wf);
 		writer.writeDirectory(`workflows/wf-${idx}`);
 		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
-		if (options.workflowLifecycle !== 'omit') {
+		if (options.workflowMetadata !== 'omit') {
 			writer.writeFile(
-				`workflows/wf-${idx}/workflow-lifecycle.json`,
-				JSON.stringify(options.workflowLifecycle ?? lifecycle),
+				`workflows/wf-${idx}/workflow-metadata.json`,
+				JSON.stringify(options.workflowMetadata ?? metadata),
 			);
 		}
 	});
@@ -434,10 +431,10 @@ export async function buildEntityPackageBuffer(options: {
 	// Manifest first: the reader/parser resolves it before reading any referenced file.
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	for (const { target, workflow } of workflows) {
-		const { content, lifecycle } = workflowFiles(workflow);
+		const { content, metadata } = workflowFiles(workflow);
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
-		writer.writeFile(`${target}/workflow-lifecycle.json`, JSON.stringify(lifecycle));
+		writer.writeFile(`${target}/workflow-metadata.json`, JSON.stringify(metadata));
 	}
 	for (const { target, folder } of folders) {
 		writer.writeDirectory(target);
