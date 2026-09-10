@@ -4,6 +4,7 @@ import {
 	mkdtemp,
 	readdir,
 	readFile,
+	realpath,
 	rename,
 	rm,
 	stat,
@@ -141,7 +142,9 @@ describe('WorkingCopyUpdater', () => {
 	};
 
 	beforeEach(async () => {
-		root = await mkdtemp(path.join(tmpdir(), 'n8n-working-copy-'));
+		// realpath so the ancestor-symlink check in applySelection does not trip
+		// over macOS's /var → /private/var.
+		root = await mkdtemp(path.join(await realpath(tmpdir()), 'n8n-working-copy-'));
 		exportFolder = path.join(root, 'repository', 'n8n-export');
 		stagingFolder = path.join(root, 'staging');
 	});

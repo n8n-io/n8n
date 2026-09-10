@@ -58,6 +58,7 @@ interface DependencyRef {
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
  * connection, runs the exporter and commits.
+ *
  */
 @Service()
 export class WorkingCopyUpdater {
@@ -286,13 +287,26 @@ export class WorkingCopyUpdater {
 			),
 		};
 		const parent = path.dirname(exportFolder);
-		// A first push meets a branch with no export yet; create it so the temp copy
-		// and the later swap have a directory to work with.
-		await fs.mkdir(exportFolder, { recursive: true });
-		const workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
+		// Reject a symlinked ancestor: realpath resolves every component, so a
+		// mismatch with the logical path means an intermediate directory is a
+		// symbolic link. resolveContained only checks from `parent` downward.
+		const resolvedParent = path.resolve(parent);
+		const realParent = await fs.realpath(parent).catch(() => resolvedParent);
+		if (realParent !== resolvedParent) {
+			throw new BadRequestError('The export path traverses a symbolic link. Remove it and retry.');
+		}
+		// Reject a symlink at the export path itself before any writes.
+		await this.resolveContained(parent, path.basename(exportFolder));
+
+		let workFolder: string | undefined;
 		let backupFolder: string | undefined;
 
 		try {
+			// A first push meets a branch with no export yet; create it so the temp
+			// copy and the later swap have a directory to work with.
+			await fs.mkdir(exportFolder, { recursive: true });
+			workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
+
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
 			for (const target of staleWorkflowTargets(
@@ -367,7 +381,7 @@ export class WorkingCopyUpdater {
 				'Failed to apply the selection to the branch. Check the server logs for details.',
 			);
 		} finally {
-			await fs.rm(workFolder, { recursive: true, force: true });
+			if (workFolder) await fs.rm(workFolder, { recursive: true, force: true });
 		}
 	}
 
