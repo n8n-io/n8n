@@ -158,8 +158,12 @@ describe('Microsoft Teams v2, getTags', () => {
 
 		const error = (await getTags.call(ctx).catch((e) => e)) as NodeOperationError;
 
-		expect(error.message).toBe('Could not load team tags');
-		expect(error.description).toContain('TeamworkTag.Read');
+		// The scope and the action both have to be in the MESSAGE. The resource-locator dropdown
+		// renders only the message and drops the description, so a description-only hint is
+		// invisible to the user who has to act on it (verified in the editor 2026-09-10).
+		expect(error.message).toBe(
+			'Could not load team tags. Add TeamworkTag.Read to the credential, then reconnect it.',
+		);
 	});
 
 	it.each(SHAPES)('passes a %s-shaped 403 about something else through', async (shape) => {
