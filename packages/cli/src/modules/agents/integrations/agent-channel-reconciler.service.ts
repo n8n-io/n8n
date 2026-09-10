@@ -215,6 +215,13 @@ export class AgentChannelReconciler {
 					// it, so it can only be here mid-setup.
 					if (isDraftIntegration(integration)) continue;
 
+					// Stateless channels (e.g. the OpenAI-compatible channels) have no
+					// runtime process to bring up: they answer synchronous requests and
+					// never hold a connection. Reconciling them would loop forever, since
+					// no live channel is ever created. Their status is resolved directly
+					// from config instead (see channel-status-report.ts).
+					if (this.integrationRegistry.get(integration.type)?.hasNoRuntimeProcess) continue;
+
 					const key = channelKey({
 						agentId: agent.id,
 						integrationType: integration.type,

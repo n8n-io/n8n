@@ -6,6 +6,9 @@ import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.v
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
+import AgentChannelOpenAiCompatibleEditView from './openaiCompatible/AgentChannelOpenAiCompatibleEditView.vue';
+import AgentChannelOpenAiCompatibleSetup from './openaiCompatible/AgentChannelOpenAiCompatibleSetup.vue';
+import { useOpenAiCompatibleChannelRuntime } from './openaiCompatible/useOpenAiCompatibleChannelRuntime';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
@@ -104,6 +107,23 @@ const platforms = {
 		type: 'discord',
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	// `openwebui` and `librechat` share one backend implementation and one
+	// pair of setup/edit components (agent-connection-channels.md 5.4); only
+	// the row's own runtime instance and its `type` differ.
+	openwebui: {
+		type: 'openwebui',
+		setupComponent: AgentChannelOpenAiCompatibleSetup,
+		editComponent: AgentChannelOpenAiCompatibleEditView,
+		createRuntime: (context) => useOpenAiCompatibleChannelRuntime(context, 'openwebui'),
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	librechat: {
+		type: 'librechat',
+		setupComponent: AgentChannelOpenAiCompatibleSetup,
+		editComponent: AgentChannelOpenAiCompatibleEditView,
+		createRuntime: (context) => useOpenAiCompatibleChannelRuntime(context, 'librechat'),
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;

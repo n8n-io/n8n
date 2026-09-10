@@ -61,7 +61,14 @@ export class AgentIntegrationManagementService {
 		onPersisted?: () => void;
 	}): Promise<{ integration: AgentIntegrationConfig; savedAgent: Agent }> {
 		const integration = await this.validateConfig(options.integration);
-		await this.assertUsableCredential(options.agent, options.user, integration);
+
+		// Credential-less channels (the OpenAI-compatible channels) carry no
+		// credential to assert: their `credentialId` is a synthetic connection id
+		// backing no Credentials row, and their bearer token is derived, not
+		// stored. Only assert a credential when the integration declares one.
+		if (this.registry.require(integration.type).credentialTypes.length > 0) {
+			await this.assertUsableCredential(options.agent, options.user, integration);
+		}
 
 		const result = await this.applyChange({
 			agent: options.agent,

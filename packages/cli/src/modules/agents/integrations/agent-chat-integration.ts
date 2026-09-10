@@ -258,6 +258,15 @@ export abstract class AgentChatIntegration {
 	readonly internal: boolean = false;
 
 	/**
+	 * True when this integration has no persistent process serving it (no
+	 * webhook, no poller, no gateway connection), so it can never write a
+	 * liveness row to `agent_channel_status`. `buildChannelStatusReport()`
+	 * resolves this type's status straight from configuration instead of
+	 * waiting on a row that will never arrive.
+	 */
+	readonly hasNoRuntimeProcess: boolean = false;
+
+	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
 	 * credential) to execute actions and context queries. Internal channels
 	 * (e.g. the in-app n8n chat) set this to false — the executors then skip

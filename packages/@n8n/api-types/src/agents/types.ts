@@ -171,6 +171,20 @@ export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
 }
 
+/**
+ * Response to `generate-key`/`regenerate-key` for the OpenAI-compatible
+ * channels (openwebui, librechat). The channel stores no secret: `apiKey` is
+ * the bearer token derived from the agent id and `connectionId` (see
+ * OpenAiCompatibleChatService.deriveToken). It is deterministic, so this is a
+ * convenience for display, not a one-time reveal — verify recomputes it rather
+ * than reading it back. `connectionId` is the integration entry's opaque id,
+ * not a Credentials row.
+ */
+export interface AgentGenerateChannelKeyResponse {
+	connectionId: string;
+	apiKey: string;
+}
+
 export interface AgentSkillReference {
 	path: string;
 	content: string;

@@ -257,6 +257,52 @@ describe('buildChannelStatusReport', () => {
 		});
 	});
 
+	describe('a type with no persistent process (e.g. openwebui/librechat)', () => {
+		const openwebui: AgentIntegrationConfig = { type: 'openwebui', credentialId: 'cred-owui' };
+		const hasNoRuntimeProcess = (type: string) => type === 'openwebui';
+
+		it('reports connected on a published agent with no status rows at all', () => {
+			const report = buildChannelStatusReport(
+				[openwebui],
+				PUBLISHED,
+				[],
+				isLive,
+				hasNoRuntimeProcess,
+			);
+
+			expect(report.integrations[0].status).toBe('connected');
+			expect(report.status).toBe('connected');
+		});
+
+		it('reports configured, not connected, when the agent is unpublished', () => {
+			const report = buildChannelStatusReport([openwebui], null, [], isLive, hasNoRuntimeProcess);
+
+			expect(report.integrations[0].status).toBe('configured');
+		});
+
+		it('ignores any status rows that do exist for this type', () => {
+			const report = buildChannelStatusReport(
+				[openwebui],
+				PUBLISHED,
+				[erroredRow(openwebui, 'main-a', 'should be ignored')],
+				isLive,
+				hasNoRuntimeProcess,
+			);
+
+			expect(report.integrations[0]).toEqual({
+				type: 'openwebui',
+				credentialId: 'cred-owui',
+				status: 'connected',
+			});
+		});
+
+		it('defaults to the row-based path when no resolver is given', () => {
+			const report = buildChannelStatusReport([openwebui], PUBLISHED, [], isLive);
+
+			expect(report.integrations[0].status).toBe('starting');
+		});
+	});
+
 	describe('rollup', () => {
 		it('is partial when one channel runs and another does not', () => {
 			const report = buildChannelStatusReport(

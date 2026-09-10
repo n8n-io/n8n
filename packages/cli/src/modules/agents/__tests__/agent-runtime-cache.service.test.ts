@@ -106,6 +106,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -137,6 +138,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			false,
+			undefined,
 		);
 	});
 
@@ -371,6 +373,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -407,6 +410,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -417,6 +421,7 @@ describe('AgentRuntimeCacheService', () => {
 			userB,
 			undefined,
 			'manual',
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -591,6 +596,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			'integrated',
+			undefined,
 			undefined,
 			undefined,
 			undefined,

@@ -86,6 +86,13 @@ export interface ExecuteForChatPublishedConfig {
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
+	/**
+	 * Build the runtime with no persistent memory (no store load/save, no
+	 * observation log, no mid-run observer). For stateless channels whose client
+	 * resends the full transcript every call (the OpenAI-compatible channels), so
+	 * persisting to a per-call throwaway thread would only leak orphan rows.
+	 */
+	disableMemory?: boolean;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. The admin who published the
@@ -634,6 +641,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			attachments,
 			sandboxPrincipalHash,
+			disableMemory,
 		} = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
@@ -646,6 +654,7 @@ export class AgentExecutionOrchestratorService {
 				integrationType,
 				usePublishedVersion: true,
 				sandboxPrincipalHash,
+				...(disableMemory ? { disableMemory: true } : {}),
 			},
 			{ threadId: memory.threadId, userMessage: message, attachments, source: integrationType },
 		);

@@ -460,6 +460,35 @@ describe('ChatIntegrationService', () => {
 		});
 	});
 
+	describe('connect, requiresChatInstance false', () => {
+		it('persists without decrypting a credential or building a chat instance', async () => {
+			// openwebui/librechat: no bot, no webhook, nothing for the Chat SDK to
+			// manage. `requiresChatInstance` is otherwise only checked at
+			// action/context-query execution time, never in the connect path, so
+			// without establishConnection's own guard this would call
+			// createAdapter() regardless and the real implementation throws by
+			// design.
+			const createAdapter = vi.fn();
+			const integration = new FakeIntegration('openwebui', false);
+			(integration as unknown as { requiresChatInstance: boolean }).requiresChatInstance = false;
+			(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+				createAdapter;
+			const registry = new ChatIntegrationRegistry();
+			registry.register(integration);
+
+			const credentialsService = mock<CredentialsService>();
+			const { service } = buildServiceWith({ registry, credentialsService });
+
+			await expect(
+				service.connect('agent-1', { type: 'openwebui', credentialId: 'cred-x' }, 'project-1'),
+			).resolves.toBeUndefined();
+
+			expect(createAdapter).not.toHaveBeenCalled();
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('disconnectAll', () => {
 		it('shuts down every active connection and empties the connection map', async () => {
 			const service = buildService();

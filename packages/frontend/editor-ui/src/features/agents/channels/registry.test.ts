@@ -25,6 +25,18 @@ describe('agent channel platform registry', () => {
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
 	});
 
+	it('registers openwebui and librechat as distinct rows sharing one runtime factory shape', () => {
+		expect(isRegisteredAgentChannelPlatform('openwebui')).toBe(true);
+		expect(isRegisteredAgentChannelPlatform('librechat')).toBe(true);
+
+		const openwebui = getAgentChannelPlatform('openwebui');
+		const librechat = getAgentChannelPlatform('librechat');
+
+		expect(openwebui.setupComponent).toBe(librechat.setupComponent);
+		expect(openwebui.editComponent).toBe(librechat.editComponent);
+		expect(openwebui.setupComponent).not.toBe(getAgentChannelPlatform('slack').setupComponent);
+	});
+
 	it('derives Slack list metadata from its local runtime state', () => {
 		const platform = getAgentChannelPlatform('slack');
 		const runtime = {

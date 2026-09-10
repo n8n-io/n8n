@@ -46,6 +46,11 @@ const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
 	useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const credentialNamesById = ref<Record<string, string>>({});
+// Until the credential list resolves, an absent name is "still loading" and
+// shows a skeleton. After it resolves, an absent name is genuine — a
+// credential-less channel (the OpenAI-compatible channels store no credential)
+// or a deleted credential — so the skeleton gives way to no subtitle.
+const credentialNamesLoaded = ref(false);
 const channelModalOpen = ref(false);
 const channelModalView = ref<ChannelView>('list');
 
@@ -125,6 +130,8 @@ async function loadChannelDetails() {
 		);
 	} catch {
 		credentialNamesById.value = {};
+	} finally {
+		credentialNamesLoaded.value = true;
 	}
 }
 
@@ -228,7 +235,7 @@ const remainingChannelOptionLabels = computed(() => {
 					<N8nText v-if="channel.credentialName" step="xs" color="text-light">
 						{{ channel.credentialName }}
 					</N8nText>
-					<div v-else :class="$style.credentialnameSkeleton" />
+					<div v-else-if="!credentialNamesLoaded" :class="$style.credentialnameSkeleton" />
 				</div>
 			</button>
 

@@ -239,6 +239,12 @@ export class AgentRuntimeReconstructionService {
 		supportsHitl?: boolean,
 		/** Disable background jobs for task-triggered runtimes. */
 		allowBackgroundTasks = true,
+		/**
+		 * Build with no persistent memory: strip the memory config so the runtime
+		 * loads nothing, saves nothing, and runs no observer. For stateless
+		 * channels (OpenAI-compatible) whose client resends the full transcript.
+		 */
+		disableMemory = false,
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
@@ -247,6 +253,13 @@ export class AgentRuntimeReconstructionService {
 		let config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
+		}
+
+		// Stateless runtimes drop memory entirely: `buildFromJson` gates the whole
+		// memory subsystem on `config.memory?.enabled`, so clearing it skips the
+		// store, the observation log, and the mid-run observer.
+		if (disableMemory && config.memory) {
+			config = { ...config, memory: { ...config.memory, enabled: false } };
 		}
 
 		// Published/integration runs have no interactive n8n user and keep
@@ -932,6 +945,15 @@ export class AgentRuntimeReconstructionService {
 				}
 
 				for (const descriptor of descriptors) {
+					// Stateless channels (e.g. the OpenAI-compatible channels) expose no
+					// context or action operations. Skip them so we never build a tool
+					// with an empty operation enum.
+					if (
+						descriptor.contextToolDefinitions.length === 0 &&
+						descriptor.actionToolDefinitions.length === 0
+					) {
+						continue;
+					}
 					agent.tool(
 						createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
 					);

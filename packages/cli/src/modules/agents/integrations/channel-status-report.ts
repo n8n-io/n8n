@@ -31,11 +31,15 @@ export type IsLiveRow = (row: AgentChannelStatus) => boolean;
  * No live rows means `starting`, not an error: it is the honest answer right
  * after a publish, and after an upgrade, before any pass has reported in.
  */
+/** True for a type with no persistent process to prove liveness (e.g. openwebui/librechat). */
+export type HasNoRuntimeProcess = (integrationType: string) => boolean;
+
 export function buildChannelStatusReport(
 	integrations: AgentIntegrationConfig[] | null | undefined,
 	activeVersionId: string | null,
 	statuses: AgentChannelStatus[],
 	isLive: IsLiveRow,
+	hasNoRuntimeProcess: HasNoRuntimeProcess = () => false,
 ): AgentIntegrationStatusResponse {
 	const liveByChannel = new Map<string, AgentChannelStatus[]>();
 	for (const row of statuses) {
@@ -51,6 +55,20 @@ export function buildChannelStatusReport(
 	const entries: AgentIntegrationStatusEntry[] = (integrations ?? [])
 		.filter((integration) => !isDraftIntegration(integration))
 		.map((integration) => {
+			// A stateless request/response channel has no process to prove liveness
+			// the way a webhook/polling channel does: no row is ever written for it,
+			// so the row-based path below would report `starting` forever. Resolve
+			// straight from configuration instead, same rule `resolveStatus` applies
+			// for an unpublished agent.
+			if (hasNoRuntimeProcess(integration.type)) {
+				return {
+					type: integration.type,
+					credentialId: integration.credentialId,
+					...('settings' in integration ? { settings: integration.settings } : {}),
+					status: activeVersionId === null ? 'configured' : 'connected',
+				} satisfies AgentIntegrationStatusEntry;
+			}
+
 			const rows = liveByChannel.get(channelKey(integration.type, integration.credentialId)) ?? [];
 			const status = resolveStatus(activeVersionId, rows);
 			const failure = status === 'error' ? mostRecentFailure(rows) : undefined;
