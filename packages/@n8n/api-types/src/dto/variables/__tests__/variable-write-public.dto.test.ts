@@ -10,7 +10,7 @@ describe.each([
 		expect(Dto.safeParse(validPayload).success).toBe(true);
 	});
 
-	test.each(['key', 'value'])('rejects a payload with no %s', (field) => {
+	test.each(['key', 'value'] as const)('rejects a payload with no %s', (field) => {
 		const { [field]: _omitted, ...payload } = validPayload;
 
 		expect(Dto.safeParse(payload).success).toBe(false);
