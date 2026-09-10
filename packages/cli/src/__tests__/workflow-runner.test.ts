@@ -163,7 +163,34 @@ describe('processError', () => {
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
-	test('processError settles the post-execute promise when the stored run cannot be read in queue mode', async () => {
+	test.each([
+		[
+			'the stored execution cannot be found',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockResolvedValue(undefined),
+		],
+		[
+			'the stored execution carries no run data',
+			() =>
+				vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+					mock<IExecutionResponse>({
+						status: 'success',
+						finished: true,
+						mode: 'webhook',
+						data: undefined,
+					}),
+				),
+		],
+		[
+			'reading the stored execution fails',
+			() =>
+				vi
+					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+					.mockRejectedValue(new Error('storage unavailable')),
+		],
+	])('processError finalizes the execution as failed when %s', async (_case, mockReadback) => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
 		const activeExecutions = Container.get(ActiveExecutions);
@@ -173,30 +200,34 @@ describe('processError', () => {
 			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
 
 		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
-			mock<IExecutionBase>({ status: 'success', finished: true, mode: 'webhook' }),
+			mock<IExecutionBase>({ status: 'success', finished: true }),
 		);
-		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockRejectedValue(
-			new Error('read failed'),
-		);
+		mockReadback();
 
+		const startedAt = new Date();
 		globalConfig.executions.mode = 'queue';
-
-		await expect(
-			runner.processError(
-				new Error('test') as ExecutionError,
-				new Date(),
-				'webhook',
-				execution.id,
-				hooks,
-			),
-		).resolves.toBeUndefined();
-
-		await expect(postExecutePromise).resolves.toEqual(
-			expect.objectContaining({ status: 'success', finished: true }),
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			startedAt,
+			'webhook',
+			execution.id,
+			hooks,
 		);
+
+		const run = await postExecutePromise;
+		expect(run).toEqual(
+			expect.objectContaining({ status: 'error', finished: false, mode: 'webhook', startedAt }),
+		);
+		expect(run?.data.resultData.error?.message).toBe(
+			`Execution ${execution.id} succeeded, but its result could not be read`,
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
 		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
 	test('processError should return early if the error is `ExecutionNotFoundError`', async () => {
