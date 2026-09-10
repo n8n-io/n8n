@@ -77,6 +77,7 @@ const matches = (d, e) =>
 	d.pkg.startsWith(e.pkg) &&
 	(e.file === undefined || d.file.includes(e.file)) &&
 	(e.rule === undefined || d.key === e.rule) &&
+	(e.key === undefined || d.key === e.key) &&
 	(e.before === undefined || d.before === e.before) &&
 	(e.after === undefined || d.after === e.after);
 

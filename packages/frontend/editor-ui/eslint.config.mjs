@@ -1,6 +1,20 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
+
+/**
+ * `ignorePatterns` says which files the oxlint pass skips, so ESLint covers them
+ * instead. Handing the key to `eslint-plugin-oxlint` turns it into a global
+ * ESLint ignore and both linters skip the file, so strip it here and build from
+ * the rest.
+ */
+const oxlintConfig = (() => {
+	const { ignorePatterns, ...rest } = JSON.parse(
+		readFileSync(new URL('./.oxlintrc.json', import.meta.url), 'utf8'),
+	);
+	return rest;
+})();
 
 /**
  * Extraction ratchet: a feature that has become a module package must not reappear
@@ -350,6 +364,16 @@ export default defineConfig(
 		],
 		rules: {
 			'n8n-local-rules/no-dynamic-regexp': 'off',
+
+			// A stub component keeps its Vue template in a plain string, where
+			// `${...}` and backticks belong to the Vue expression and must stay
+			// uninterpolated. Both rules read them as JavaScript.
+			'n8n-local-rules/no-interpolation-in-regular-string': 'off',
+			'n8n-local-rules/no-unneeded-backticks': 'off',
+
+			// A test parses fixtures it declares itself. An unexpected throw is
+			// the signal the test wants, so it needs no guard.
+			'n8n-local-rules/no-uncaught-json-parse': 'off',
 		},
 	},
 	{
@@ -384,5 +408,5 @@ export default defineConfig(
 			],
 		},
 	},
-	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
+	...oxlint.buildFromOxlintConfig(oxlintConfig),
 );
