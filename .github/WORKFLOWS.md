@@ -32,7 +32,13 @@ Complete reference for n8n's `.github/` folder.
 │       ├── docker-tags.mjs               # Generate image tags
 │       └── docker-config.mjs             # Build context config
 ├── actions/                              # Custom composite actions
-│   ├── setup-nodejs/                     # pnpm + Node + Turbo cache
+│   ├── setup-nodejs/                     # Full stack: toolchain + install + caches + build
+│   ├── setup-node-toolchain/             # Node.js + pnpm only
+│   ├── setup-safechain/                  # Aikido SafeChain supply-chain guard
+│   ├── pnpm-install/                     # Install with failure diagnostics
+│   ├── setup-turbo-cache/                # Turborepo remote cache server
+│   ├── setup-docker-builder/             # Buildx builder with layer cache
+│   ├── setup-workflow-scripts/           # Node.js + cached .github/scripts deps
 │   └── docker-registry-login/            # GHCR + DockerHub auth
 └── workflows/                            # GitHub Actions workflows
 ```
@@ -572,7 +578,17 @@ Composite actions in `.github/actions/`:
 | Action                   | Purpose                                      | Used By            |
 |--------------------------|----------------------------------------------|--------------------|
 | `setup-nodejs`           | pnpm + Node.js + Turbo cache + Docker (opt)  | Most CI workflows  |
+| `setup-node-toolchain`   | Node.js + pnpm, nothing else                 | `setup-nodejs`, `setup-workflow-scripts` |
+| `setup-safechain`        | Aikido SafeChain install + activation        | `setup-nodejs`, `setup-workflow-scripts` |
+| `pnpm-install`           | pnpm install with failure diagnostics        | `setup-nodejs`, `setup-workflow-scripts` |
+| `setup-turbo-cache`      | Turborepo remote cache server                | `setup-nodejs`     |
+| `setup-docker-builder`   | Buildx builder with a layer cache            | `setup-nodejs`     |
+| `setup-workflow-scripts` | Node.js + cached `.github/scripts` deps      | Workflows that only run `.mjs` helpers |
 | `docker-registry-login`  | GHCR + DockerHub + DHI authentication        | Docker workflows   |
+
+`setup-nodejs` is the full stack and stays the default for build and test jobs.
+It is a thin composition of the single-purpose actions above, so a job that
+needs only part of the stack can use those pieces directly and skip the rest.
 
 ### setup-nodejs
 
@@ -582,7 +598,17 @@ inputs:
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
+  install-command:     # default: 'pnpm install --frozen-lockfile'
+  cache-dependency-path: # default: 'pnpm-lock.yaml'
+
+outputs:
+  node-version:        # the version that is active after setup
+  pnpm-version:        # the version that is active after setup
 ```
+
+Step order matters and the composition keeps it: pnpm has to be on PATH before
+`actions/setup-node` can cache the pnpm store, and SafeChain has to be active
+before any install runs.
 
 The pnpm version comes from the `packageManager` field in the root
 `package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
@@ -607,6 +633,37 @@ newly created sticky disk - it stays at 0 bytes however many runs commit to it,
 while the build reports a successful commit. Every job therefore shares the
 `n8n-io/n8n` key, which is the only disk that actually retains layers. Revisit
 once new-disk retention works.
+
+### setup-workflow-scripts
+
+```yaml
+inputs: none
+
+outputs:
+  cache-hit:  # 'true' when the dependency tree came from the cache
+```
+
+Use this action in a job whose only job-specific work is to run one of the
+`.mjs` helpers in `.github/scripts`. It installs Node.js and pnpm, activates
+SafeChain, and restores `.github/scripts/node_modules` from a cache keyed on
+`.github/scripts/pnpm-lock.yaml`. On a hit no install runs at all. On a miss it
+installs once and saves the tree straight away, so a job that fails later still
+leaves a warm cache.
+
+Those dependencies change only when the lockfile changes, which is why the
+lockfile hash is the whole refresh policy - a time-based refresh would add cold
+installs without invalidating anything the hash does not already invalidate.
+
+The action does not start a Turborepo cache server, because none of these jobs
+run turbo, and it turns off the pnpm store cache: the dependency-tree cache
+covers the same packages and misses under the same conditions.
+
+`github-script` is the other way to remove the install, but the `.github/scripts`
+helpers need more than the `@actions/github` and `core` objects it injects
+(`semver`, `yaml`, `ajv`, `conventional-changelog`, `@cyclonedx/cdxgen`), and
+they are unit tested as plain modules by `test-workflow-scripts-reusable.yml`.
+Inlining them into workflow YAML would drop those tests, so the caching route
+wins here.
 
 ### docker-registry-login
 
@@ -683,7 +740,9 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
-| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-node-toolchain` action |
+| `verify-safechain.mjs`  | Assert the SafeChain shims are active | `setup-safechain` action |
+| `retry.mjs`             | Retry a command with a delay | `setup-safechain` action, docker workflows |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |

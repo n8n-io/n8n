@@ -74,12 +74,8 @@ jobs:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
 
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+      - name: Setup workflow scripts
+        uses: ./.github/actions/setup-workflow-scripts
 
       - name: Bump package versions
         # Assign first: a command substitution nested in another command's

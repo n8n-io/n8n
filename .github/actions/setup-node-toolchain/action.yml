@@ -1,0 +1,169 @@
+# Installs the pinned Node.js and pnpm versions and verifies both are active.
+# Works on Blacksmith and GitHub-hosted runners: Blacksmith routes
+# actions/cache through its own backend transparently.
+#
+# This is the smallest useful piece of the setup stack. Use it directly when a
+# job only needs a Node.js runtime — it installs no project dependencies, adds
+# no supply-chain wrapper and starts no cache server.
+
+name: 'Node.js Toolchain Setup'
+description: 'Installs the pinned Node.js and pnpm versions, verifies both are active, and caches the executables.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
+    required: false
+    default: '26.5.1'
+  cache-dependency-path:
+    description: 'Path(s) to the lockfile(s) used to compute the pnpm store and metadata cache keys. Scope this down (e.g. to `.github/scripts/pnpm-lock.yaml`) when only installing a subset.'
+    required: false
+    default: 'pnpm-lock.yaml'
+  enable-store-cache:
+    description: 'Whether to cache the pnpm package store and registry metadata. Turn this off for jobs that install nothing, and for jobs that cache their own dependency tree instead.'
+    required: false
+    default: 'true'
+
+outputs:
+  node-version:
+    description: 'The Node.js version that is active after setup.'
+    value: ${{ steps.verify-node.outputs.version }}
+  pnpm-version:
+    description: 'The pnpm version that is active after setup.'
+    value: ${{ steps.pnpm-version.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Use one pin for setup, cache lookup and verification.
+    - name: Resolve pnpm version
+      id: pnpm-version
+      shell: bash
+      run: node .github/scripts/resolve-pnpm-version.mjs
+
+    # Windows cannot activate a POSIX home path from the restored cache.
+    - name: Restore pnpm executable
+      if: runner.os != 'Windows'
+      id: cache-pnpm-exe
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: ${{ steps.pnpm-version.outputs.cache-key }}
+
+    - name: Setup pnpm
+      id: setup-pnpm
+      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      with:
+        install: false
+        version: ${{ steps.pnpm-version.outputs.version }}
+
+    - name: Retry pnpm setup
+      if: steps.setup-pnpm.outcome == 'failure'
+      uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+      with:
+        install: false
+        version: ${{ steps.pnpm-version.outputs.version }}
+
+    # Cache hits restore files but not the per-job environment.
+    - name: Activate cached pnpm executable
+      if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
+      shell: bash
+      run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
+        PNPM_DEST="$HOME/setup-pnpm"
+        echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
+        echo "$PNPM_DEST" >> "$GITHUB_PATH"
+        echo "$PNPM_DEST/bin" >> "$GITHUB_PATH"
+
+    # A stale or truncated cache entry must fail here, not later in the install.
+    - name: Verify pnpm Version
+      shell: bash
+      env:
+        EXPECTED_PNPM_VERSION: ${{ steps.pnpm-version.outputs.version }}
+      run: |
+        ACTUAL_PNPM_VERSION="$(pnpm --version)"
+        if [ "$ACTUAL_PNPM_VERSION" != "$EXPECTED_PNPM_VERSION" ]; then
+          echo "::error::pnpm ${EXPECTED_PNPM_VERSION} is not active (got ${ACTUAL_PNPM_VERSION})"
+          exit 1
+        fi
+
+    # Save before later job failures can prevent cache creation.
+    - name: Save pnpm executable
+      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/setup-pnpm
+        key: ${{ steps.pnpm-version.outputs.cache-key }}
+
+    # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
+    # on every subsequent job. First fresh runner pays the download; later jobs
+    # (including parallel E2E shards) hit the cache. Blacksmith transparently
+    # routes actions/cache through its S3 backend.
+    #
+    # The `x64.complete` sibling marker file must be cached alongside the
+    # toolchain — without it, setup-node's `tc.find` returns empty and the
+    # action re-downloads from nodejs.org. Re-downloads also keep the silent
+    # fall-through window open: errors during download/extract are swallowed,
+    # PATH is left untouched, and the runner image's baked-in Node 20.20.0
+    # quietly takes over. Caching the parent version dir captures the marker
+    # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
+    - name: Restore Node.js Toolcache
+      if: runner.os == 'Linux' && runner.arch == 'X64'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
+        key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        # A job that installs nothing must not participate in the pnpm-store
+        # cache. Its post step would save an empty store, and cache keys are
+        # write-once — so if it lost the race to a real installer, every other
+        # job on that key would restore nothing and silently re-download.
+        cache: ${{ inputs.enable-store-cache == 'true' && 'pnpm' || '' }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
+
+    # Fail fast if setup-node silently fell through to the runner's baked-in
+    # Node instead of activating the requested version.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify Node.js Version
+      id: verify-node
+      shell: bash
+      env:
+        EXPECTED_NODE_VERSION: ${{ inputs.node-version }}
+      run: |
+        ACTUAL_NODE_VERSION="$(node --version)"
+        if [ "${ACTUAL_NODE_VERSION#v}" != "${EXPECTED_NODE_VERSION#v}" ]; then
+          echo "::error::setup-node did not activate Node ${EXPECTED_NODE_VERSION} (got ${ACTUAL_NODE_VERSION})"
+          exit 1
+        fi
+        echo "version=${ACTUAL_NODE_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+    # To avoid setup-node cache failure.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify PNPM Cache Directory
+      shell: bash
+      run: |
+        PNPM_STORE_PATH="$( pnpm store path --silent )"
+        if [ ! -d "$PNPM_STORE_PATH" ]; then
+            mkdir -p "$PNPM_STORE_PATH"
+        fi
+
+    # pnpm keeps registry metadata and its lockfile verification log outside the package store.
+    - name: Resolve pnpm metadata cache directory
+      if: ${{ inputs.enable-store-cache == 'true' }}
+      id: pnpm-metadata-cache
+      shell: bash
+      run: |
+        PNPM_CACHE_PATH="$(pnpm cache path --silent)"
+        mkdir -p "$PNPM_CACHE_PATH"
+        echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm metadata cache
+      if: ${{ inputs.enable-store-cache == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+        key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.pnpm-version.outputs.version }}-${{ hashFiles(inputs.cache-dependency-path) }}
