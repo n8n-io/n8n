@@ -236,6 +236,118 @@ describe('processError', () => {
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
 
+	test('processError soft-deletes a false-positive success for a manual execution that is not saved', async () => {
+		const workflow = await createWorkflow({ settings: { saveManualExecutions: false } }, owner);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'manual', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		const successData = createRunExecutionData({
+			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
+		});
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'manual',
+				data: successData,
+				workflowId: workflow.id,
+				workflowData: workflow,
+			}),
+		);
+		const deleteInFlightSpy = vi.spyOn(
+			Container.get(ExecutionPersistence),
+			'deleteInFlightExecution',
+		);
+		const softDeleteSpy = vi
+			.spyOn(Container.get(ExecutionRepository), 'softDelete')
+			.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'manual',
+			execution.id,
+			hooks,
+		);
+
+		await expect(postExecutePromise).resolves.toEqual(
+			expect.objectContaining({ status: 'success', finished: true, data: successData }),
+		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(softDeleteSpy).toHaveBeenCalledWith(execution.id);
+		expect(deleteInFlightSpy).not.toHaveBeenCalled();
+		expect(activeExecutions.has(execution.id)).toBe(false);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
+	});
+
+	test('processError prunes a false-positive success even when the stored execution carries no run data', async () => {
+		const workflow = await createWorkflow(
+			{ settings: { saveDataSuccessExecution: 'none' } },
+			owner,
+		);
+		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
+		const activeExecutions = Container.get(ActiveExecutions);
+
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: workflow },
+			{ executionId: execution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
+
+		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionBase>({ status: 'success', finished: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: undefined,
+				workflowId: workflow.id,
+				workflowData: workflow,
+				storedAt: 'db',
+			}),
+		);
+		const deleteInFlightSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'deleteInFlightExecution')
+			.mockResolvedValue();
+
+		globalConfig.executions.mode = 'queue';
+		await runner.processError(
+			new Error('test') as ExecutionError,
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		// The run data was still unreadable, so the waiters see the usual fallback error...
+		const run = await postExecutePromise;
+		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
+		// ...but the retention decision ran anyway, off the row that was found.
+		expect(deleteInFlightSpy).toHaveBeenCalledWith({
+			workflowId: workflow.id,
+			executionId: execution.id,
+			storedAt: 'db',
+		});
+		expect(activeExecutions.has(execution.id)).toBe(false);
+	});
+
 	test.each([
 		[
 			'the stored execution cannot be found',
@@ -243,18 +355,6 @@ describe('processError', () => {
 				vi
 					.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
 					.mockResolvedValue(undefined),
-		],
-		[
-			'the stored execution carries no run data',
-			() =>
-				vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
-					mock<IExecutionResponse>({
-						status: 'success',
-						finished: true,
-						mode: 'webhook',
-						data: undefined,
-					}),
-				),
 		],
 		[
 			'reading the stored execution fails',
