@@ -169,6 +169,26 @@ describe('executions.store', () => {
 
 			expect(fetchUsersSpy).not.toHaveBeenCalled();
 		});
+
+		it('does not fail the executions load when fetchUsers rejects', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.spyOn(useUsersStore(), 'fetchUsers').mockRejectedValue(new Error('network error'));
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				count: 2,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [
+					{ id: '1', scopes: [], startedByUserId: 'u-1' },
+					{ id: '2', scopes: [], startedByUserId: 'u-1' },
+				] as unknown as ExecutionSummaryWithScopes[],
+			} satisfies IExecutionsListResponse);
+
+			// If fetchExecutions let the fetchUsers rejection propagate, this await would throw
+			// and fail the test.
+			await executionsStore.fetchExecutions({});
+
+			expect(executionsStore.executionsCount).toBe(2);
+		});
 	});
 
 	it('should sort execution by createdAt', () => {

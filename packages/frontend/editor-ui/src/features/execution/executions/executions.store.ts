@@ -33,6 +33,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const loading = ref(false);
 	const initialLoadComplete = ref(false);
@@ -185,12 +186,18 @@ export const useExecutionsStore = defineStore('executions', () => {
 			});
 
 			// Resolve starting users to names in one request per page (same approach as
-			// workflow history). `fetchUsers` no-ops for users who cannot list users.
+			// workflow history). `fetchUsers` no-ops for users who cannot list users. A
+			// failure here (network error, non-2xx) must not fail the executions load, since
+			// the execution rows are already merged into the store by this point.
 			const startedByIds = new Set(
 				data.results.map((e) => e.startedByUserId).filter((id): id is string => Boolean(id)),
 			);
 			if (startedByIds.size > 0) {
-				await useUsersStore().fetchUsers({ filter: { ids: Array.from(startedByIds) } });
+				try {
+					await usersStore.fetchUsers({ filter: { ids: Array.from(startedByIds) } });
+				} catch (error) {
+					console.error('Failed to resolve the users who started these executions', error);
+				}
 			}
 
 			const isLoadMore = !!lastId;
