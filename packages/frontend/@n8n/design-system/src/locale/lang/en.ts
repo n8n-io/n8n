@@ -2,6 +2,12 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'setupPanel.label': 'Workflow setup',
+	'setupPanel.back': 'Back to setup checklist',
+	'setupPanel.complete': 'Complete',
+	'setupPanel.connected': 'Connected',
+	'setupPanel.changeConnection': 'Change connection',
+	'setupPanel.moreOptions': 'More options',
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',

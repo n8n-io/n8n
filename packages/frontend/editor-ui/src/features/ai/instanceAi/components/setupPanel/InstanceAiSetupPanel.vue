@@ -1,28 +1,47 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { InstanceAiSetupItem } from '@n8n/api-types';
+import { computed, onScopeDispose, ref, watch } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	N8nSetupPanel,
+	N8nSetupConnection,
+	N8nIcon,
+	N8nText,
+	type SetupPanelItem,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeParameters } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import { LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS } from '@/app/constants';
+import { getWorkflow } from '@/app/api/workflows';
+import { deriveHomeProject } from '@/app/stores/workflowDocument.store';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useThread } from '../../instanceAi.store';
-import { useSetupPanelState, type SetupPanelRow } from '../../composables/useSetupPanelState';
+import { useSetupPanelState } from '../../composables/useSetupPanelState';
+import { groupSetupPanelRows, type SetupPanelGroup } from '../../setupPanelGroups';
+import { useSetupPanelTelemetry } from '../../composables/useSetupPanelTelemetry';
 import {
 	useSetupPanelActions,
 	type SetupCredentialItem,
 	type SetupPanelApplyResult,
 } from '../../composables/useSetupPanelActions';
 import InstanceAiSetupPanelDetail from './InstanceAiSetupPanelDetail.vue';
+import InstanceAiSetupCredential from './InstanceAiSetupCredential.vue';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 
 const props = defineProps<{
-	/** The thread's active artifact workflow — the host gates rendering on it. */
+	/** Workflow selected from an artifact or an early setup announcement. */
 	workflowId: string;
 	projectId?: string;
 }>();
@@ -33,15 +52,55 @@ const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+const oauth = useCredentialOAuth();
+const connectingItemId = ref<string>();
+let active = true;
+onScopeDispose(() => {
+	active = false;
+	oauth.cancelAuthorize();
+});
 const { testCredentialInBackground } = useCredentialTestInBackground();
 
-const { rows, isAgentBuilding, getNodeByName, refreshWorkflow, workflowProjectId } =
-	useSetupPanelState({
-		thread,
-		workflowId: () => props.workflowId,
-	});
+const {
+	rows,
+	rowSource,
+	credentialsAvailable,
+	isAgentBuilding,
+	getNodeByName,
+	refreshWorkflow,
+	workflowProjectId,
+} = useSetupPanelState({
+	thread,
+	workflowId: () => props.workflowId,
+});
 
-const credentialProjectId = computed(() => workflowProjectId.value ?? props.projectId);
+const fetchedProject = ref<{ workflowId: string; projectId?: string }>();
+const credentialProjectId = computed(
+	() =>
+		workflowProjectId.value ??
+		props.projectId ??
+		(fetchedProject.value?.workflowId === props.workflowId
+			? fetchedProject.value.projectId
+			: undefined),
+);
+// Early credential announcements can precede the artifact's project metadata.
+watch(
+	() => (workflowProjectId.value || props.projectId ? undefined : props.workflowId),
+	async (id) => {
+		if (!id || fetchedProject.value?.workflowId === id) return;
+		try {
+			const workflow = await getWorkflow(rootStore.restApiContext, id);
+			if (props.workflowId === id)
+				fetchedProject.value = { workflowId: id, projectId: deriveHomeProject(workflow)?.id };
+		} catch {
+			// Saved-state derivation retries after the build ends.
+		}
+	},
+	{ immediate: true },
+);
 const isCredentialProjectReady = computed(() =>
 	projectsStore.myProjects.some((project) => project.id === credentialProjectId.value),
 );
@@ -62,65 +121,206 @@ const actions = useSetupPanelActions({
 	onFlushResult: notifyApplyResult,
 });
 
-// --- Drill-down navigation (list ↔ detail swap inside the card) ---
-
 const selectedItemId = ref<string>();
-const selectedRow = computed(() => rows.value.find((row) => row.item.id === selectedItemId.value));
+watch(
+	() => props.workflowId,
+	() => {
+		selectedItemId.value = undefined;
+		oauth.cancelAuthorize();
+	},
+);
 
-function itemNodeName(item: InstanceAiSetupItem): string | undefined {
-	return item.kind === 'parameters'
-		? item.nodeName
-		: item.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
+function nodeType(node: INodeUi) {
+	return nodeTypesStore.getNodeType(node.type, node.typeVersion);
 }
 
-/**
- * The workflow node behind the selected item. Unresolvable while the row feed
- * is event-only (agent mid-build, or the saved workflow still fetching) — the
- * detail closes itself and rows stop offering drill-down until it resolves.
- */
-const selectedNode = computed(() => {
-	const item = selectedRow.value?.item;
-	const nodeName = item ? itemNodeName(item) : undefined;
-	return nodeName ? getNodeByName(nodeName) : undefined;
+// Remember visibility only. Completion still comes from the workflow and credentials.
+const shownItemIds = useLocalStorage<string[]>(
+	() =>
+		LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS(
+			usersStore.currentUserId ?? '',
+			thread.id,
+			props.workflowId,
+		),
+	[],
+	{ writeDefaults: false, flush: 'sync' },
+);
+const credentialsReady = credentialsAvailable;
+watch(
+	[rows, credentialsReady],
+	([currentRows, ready]) => {
+		const added = currentRows.filter(
+			(row) =>
+				!row.isDone &&
+				(row.item.kind === 'parameters' || ready) &&
+				!shownItemIds.value.includes(row.item.id),
+		);
+		if (added.length)
+			shownItemIds.value = [...shownItemIds.value, ...added.map((row) => row.item.id)];
+	},
+	{ immediate: true, flush: 'sync' },
+);
+const groups = computed(() =>
+	groupSetupPanelRows(rows.value, {
+		workflowId: props.workflowId,
+		getNodeByName,
+		getNodeType: nodeType,
+	}).filter((group) => {
+		const items = [...(group.credential ? [group.credential] : []), ...group.parameters];
+		return (
+			items.some((row) => shownItemIds.value.includes(row.item.id)) ||
+			items.some((row) => !row.isDone && (row.item.kind === 'parameters' || credentialsReady.value))
+		);
+	}),
+);
+const panelTelemetry = useSetupPanelTelemetry({
+	workflowId: () => props.workflowId,
+	threadId: thread.id,
+	rows,
+	groups,
+	shownItemIds,
+	ready: () => credentialsReady.value && (rowSource.value === 'derived' || rows.value.length > 0),
 });
+const selectedGroup = computed(() =>
+	groups.value.find((group) => group.id === selectedItemId.value),
+);
+const selectedNode = computed(() => {
+	const item = selectedGroup.value?.credential?.item;
+	const name = item?.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
+	return name ? getNodeByName(name) : undefined;
+});
+const selectedNodes = computed(() =>
+	(selectedGroup.value?.credential?.item.nodeBindings ?? []).flatMap((binding) => {
+		const node = getNodeByName(binding.nodeName);
+		return node ? [node] : [];
+	}),
+);
 
-function canOpenRow(row: SetupPanelRow): boolean {
-	const nodeName = itemNodeName(row.item);
-	return (
-		nodeName !== undefined &&
-		getNodeByName(nodeName) !== undefined &&
-		(row.item.kind !== 'credential' || isCredentialProjectReady.value)
-	);
+function groupById(id: string) {
+	return groups.value.find((group) => group.id === id);
 }
 
-function openRow(row: SetupPanelRow) {
-	if (canOpenRow(row)) selectedItemId.value = row.item.id;
+function groupNodeType(id: string) {
+	const node = groupById(id)?.node;
+	return node ? nodeType(node) : null;
 }
 
-function closeDetail() {
-	selectedItemId.value = undefined;
+function groupName(group: SetupPanelGroup): string {
+	const item = group.credential?.item;
+	if (item)
+		return (
+			deriveServiceName(item.setupHint) ??
+			getAppNameFromCredType(
+				item.appDisplayName ??
+					credentialsStore.getCredentialTypeByName(item.credentialType)?.displayName ??
+					item.credentialType,
+			)
+		);
+	return group.node
+		? (nodeType(group.node)?.displayName ?? group.node.name)
+		: i18n.baseText('instanceAi.setupPanel.details');
 }
 
-// --- Row rendering ---
+const panelItems = computed<SetupPanelItem[]>(() =>
+	groups.value.map((group) => {
+		const pending: string[] = [];
+		if (group.credential && !group.credential.isDone) {
+			pending.push(i18n.baseText('instanceAi.setupPanel.connection'));
+		}
+		for (const row of group.parameters) {
+			if (row.isDone) continue;
+			const node = getNodeByName(row.item.nodeName);
+			const properties = node ? nodeType(node)?.properties : undefined;
+			for (const name of row.item.parameterNames) {
+				const root = name.split(/[.[\]]/)[0];
+				pending.push(properties?.find((property) => property.name === root)?.displayName ?? name);
+			}
+		}
+		return {
+			id: group.id,
+			title: groupName(group),
+			hasAction: Boolean(
+				group.credential &&
+					!group.credential.isDone &&
+					oauth.isOAuthCredentialType(group.credential.item.credentialType) &&
+					oauth.canOAuthCredentialQuickConnect(group.credential.item.credentialType) &&
+					credentialsStore.getUsableCredentialByType(group.credential.item.credentialType)
+						.length === 0,
+			),
+			completed:
+				(!group.credential || group.credential.isDone) &&
+				group.parameters.every((row) => row.isDone),
+			subtitle: pending.length
+				? i18n.baseText('instanceAi.setupPanel.needs', {
+						interpolate: { items: [...new Set(pending)].join(', ') },
+					})
+				: undefined,
+			disabled: group.credential
+				? !isCredentialProjectReady.value ||
+					!credentialsReady.value ||
+					!credentialsStore.getCredentialTypeByName(group.credential.item.credentialType)
+				: !group.parameters.some((row) => getNodeByName(row.item.nodeName)),
+		};
+	}),
+);
 
-function rowName(item: InstanceAiSetupItem): string {
-	if (item.kind === 'parameters') return item.nodeName;
-	return getAppNameFromCredType(
-		item.appDisplayName ??
-			credentialsStore.getCredentialTypeByName(item.credentialType)?.displayName ??
-			item.credentialType,
-	);
-}
-
-function rowNodeType(item: InstanceAiSetupItem) {
-	const nodeName = itemNodeName(item);
-	const node = nodeName ? getNodeByName(nodeName) : undefined;
-	return node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
-}
+const parameterEditors = computed(() =>
+	(selectedGroup.value?.parameters ?? []).flatMap((row) => {
+		const node = getNodeByName(row.item.nodeName);
+		return node ? [{ item: row.item, node, isComplete: row.isDone }] : [];
+	}),
+);
 
 // --- Apply paths (T6 actions; row done-ness re-derives after each write) ---
 
 const isApplying = ref(false);
+
+async function connectFromRow(id: string, advanced = false) {
+	const group = groupById(id);
+	const item = group?.credential?.item;
+	const projectId = credentialProjectId.value;
+	if (!group || !item || !projectId || connectingItemId.value) return;
+	const workflowId = props.workflowId;
+	const nodeName = item.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
+	const node = nodeName ? getNodeByName(nodeName) : undefined;
+	const bind = async (credentialId: string) => {
+		if (!active || props.workflowId !== workflowId) return;
+		await onBindCredential(item, credentialId);
+		if (active && props.workflowId === workflowId && group.parameters.length > 0)
+			selectedItemId.value = id;
+	};
+	panelTelemetry.trackConnectionStarted(item, advanced ? 'advanced' : 'oauth');
+	if (advanced) {
+		uiStore.openNewCredential(
+			item.credentialType,
+			false,
+			true,
+			projectId,
+			undefined,
+			node?.name,
+			node,
+			{
+				closeOnSave: true,
+				credentialSetupHint: item.setupHint,
+				workflowId,
+				onCredentialCreated: (credential) => void bind(credential.id),
+			},
+		);
+		return;
+	}
+	connectingItemId.value = id;
+	try {
+		const credential = await oauth.createAndAuthorize(item.credentialType, node?.type, {
+			projectId,
+			workflowId,
+		});
+		if (credential) await bind(credential.id);
+	} catch (error) {
+		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
+	} finally {
+		connectingItemId.value = undefined;
+	}
+}
 
 async function notifyApplyResult(result: SetupPanelApplyResult) {
 	if (result === 'error' || result === 'conflict') {
@@ -132,12 +332,22 @@ async function notifyApplyResult(result: SetupPanelApplyResult) {
 }
 
 async function onBindCredential(item: SetupCredentialItem, credentialId: string) {
+	if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+		const result = await actions.bindCredential(item, {
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+		await notifyApplyResult(result);
+		panelTelemetry.trackConnectionCompleted(item, null, result);
+		return;
+	}
 	const credential = credentialsStore.getCredentialById(credentialId);
 	if (!credential) return;
 	void testCredentialInBackground(credential.id, credential.name, item.credentialType);
-	await notifyApplyResult(
-		await actions.bindCredential(item, { id: credential.id, name: credential.name }),
-	);
+	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
+	await notifyApplyResult(result);
+	panelTelemetry.trackConnectionCompleted(item, credential.id, result);
 }
 
 async function onApplyParameters(
@@ -155,141 +365,76 @@ async function onApplyParameters(
 </script>
 
 <template>
-	<section v-if="rows.length > 0" :class="$style.panel" data-test-id="instance-ai-setup-panel">
-		<template v-if="selectedRow && selectedNode && canOpenRow(selectedRow)">
-			<header :class="$style.detailHeader">
-				<N8nButton
-					variant="ghost"
-					size="small"
-					icon-only
-					:aria-label="i18n.baseText('generic.back')"
-					data-test-id="instance-ai-setup-panel-back"
-					@click="closeDetail"
-				>
-					<N8nIcon icon="chevron-left" size="small" />
-				</N8nButton>
-				<N8nText size="medium" color="text-dark" bold>{{ rowName(selectedRow.item) }}</N8nText>
-			</header>
-			<InstanceAiSetupPanelDetail
-				:key="selectedRow.item.id"
-				:item="selectedRow.item"
-				:node="selectedNode"
-				:workflow-id="workflowId"
-				:project-id="credentialProjectId"
-				:is-applying="isApplying"
-				@bind-credential="onBindCredential"
-				@apply-parameters="onApplyParameters"
+	<N8nSetupPanel
+		v-model:active-item-id="selectedItemId"
+		:items="panelItems"
+		data-test-id="instance-ai-setup-panel"
+	>
+		<template #action="{ item }">
+			<N8nSetupConnection
+				:connected="false"
+				:action-label="i18n.baseText('instanceAi.setupPanel.connect')"
+				action-variant="subtle"
+				:actions="[{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }]"
+				:disabled="item.disabled || Boolean(connectingItemId)"
+				:loading="connectingItemId === item.id"
+				@action="connectFromRow(item.id)"
+				@select="connectFromRow(item.id, true)"
 			/>
 		</template>
-
-		<ul v-else :class="$style.rows">
-			<li v-for="row in rows" :key="row.item.id">
-				<button
-					type="button"
-					:class="$style.row"
-					:disabled="!canOpenRow(row)"
-					data-test-id="instance-ai-setup-panel-row"
-					@click="openRow(row)"
-				>
-					<CredentialIcon
-						v-if="row.item.kind === 'credential'"
-						:credential-type-name="row.item.credentialType"
-						:size="16"
-					/>
-					<NodeIcon v-else :node-type="rowNodeType(row.item)" :size="16" />
-					<N8nText :class="$style.rowName" size="medium" color="text-dark">
-						{{ rowName(row.item) }}
-					</N8nText>
-					<N8nText
-						v-if="row.isDone"
-						:class="$style.rowStatus"
-						size="small"
-						color="success"
-						data-test-id="instance-ai-setup-panel-row-done"
-					>
-						<N8nIcon icon="check" size="small" />
-						{{
-							i18n.baseText(
-								row.item.kind === 'credential'
-									? 'instanceAi.setupPanel.connected'
-									: 'instanceAi.setupPanel.ready',
-							)
-						}}
-					</N8nText>
-					<N8nIcon
-						v-if="canOpenRow(row)"
-						icon="chevron-right"
-						size="small"
-						:class="$style.rowChevron"
-					/>
-				</button>
-			</li>
-		</ul>
-	</section>
+		<template #icon="{ item }">
+			<CredentialIcon
+				v-if="groupById(item.id)?.credential"
+				:credential-type-name="groupById(item.id)?.credential?.item.credentialType ?? ''"
+				:size="16"
+			/>
+			<NodeIcon
+				v-else-if="groupById(item.id)?.node"
+				:node-type="groupNodeType(item.id)"
+				:size="16"
+			/>
+			<N8nIcon v-else icon="sliders-horizontal" size="small" />
+		</template>
+		<template #detail>
+			<div v-if="selectedGroup" :class="$style.detail">
+				<InstanceAiSetupCredential
+					v-if="selectedGroup.credential && credentialProjectId"
+					:key="selectedGroup.credential.item.id"
+					:item="selectedGroup.credential.item"
+					:node="selectedNode"
+					:nodes="selectedNodes"
+					:workflow-id="workflowId"
+					:project-id="credentialProjectId"
+					@bind-credential="onBindCredential"
+					@connect-started="
+						panelTelemetry.trackConnectionStarted(selectedGroup.credential.item, $event)
+					"
+				/>
+				<template v-if="!selectedGroup.credential || selectedGroup.credential.isDone">
+					<div v-for="editor in parameterEditors" :key="editor.item.id">
+						<N8nText v-if="parameterEditors.length > 1" size="small" bold>
+							{{ editor.node.name }}
+						</N8nText>
+						<InstanceAiSetupPanelDetail
+							:item="editor.item"
+							:node="editor.node"
+							:workflow-id="workflowId"
+							:project-id="credentialProjectId"
+							:is-applying="isApplying"
+							:is-complete="editor.isComplete"
+							@apply-parameters="onApplyParameters"
+						/>
+					</div>
+				</template>
+			</div>
+		</template>
+	</N8nSetupPanel>
 </template>
 
 <style lang="scss" module>
-.panel {
+.detail {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--background--surface);
-}
-
-.rows {
-	display: flex;
-	flex-direction: column;
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-
-.row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--2xs);
-	border: 0;
-	border-radius: var(--radius);
-	background: none;
-	cursor: pointer;
-	text-align: left;
-
-	&:hover:not(:disabled) {
-		background-color: var(--background--hover);
-	}
-
-	&:disabled {
-		cursor: default;
-	}
-}
-
-.rowName {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.rowStatus {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	white-space: nowrap;
-}
-
-.rowChevron {
-	color: var(--icon-color);
-}
-
-.detailHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 }
 </style>

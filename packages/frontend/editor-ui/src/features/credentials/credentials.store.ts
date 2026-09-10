@@ -698,6 +698,8 @@ export const listenForCredentialChanges = (opts: {
 
 			switch (name) {
 				case 'createNewCredential':
+					// Connection flows publish only after authorization or testing succeeds.
+					if (args[3]?.skipStoreUpdate) return;
 					const createdCredential = returnValue as unknown as ICredentialsResponse;
 					onCredentialCreated?.(createdCredential);
 					break;

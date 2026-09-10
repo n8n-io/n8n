@@ -324,9 +324,13 @@ export function useCredentialOAuth() {
 	 * offer the credential until the next scoped fetch. Ask the server rather than
 	 * inserting locally: only it can say whether the credential is usable here.
 	 */
-	async function publishConnectedCredential(credential: ICredentialsResponse): Promise<void> {
+	async function publishConnectedCredential(
+		credential: ICredentialsResponse,
+		workflowId?: string,
+	): Promise<void> {
 		credentialsStore.upsertCredential(credential);
-		await credentialsStore.refreshUsableCredentials();
+		if (workflowId) await credentialsStore.fetchUsableCredentials({ workflowId });
+		else await credentialsStore.refreshUsableCredentials();
 	}
 
 	async function authorizeNewCredential(
@@ -358,6 +362,12 @@ export function useCredentialOAuth() {
 	async function createAndAuthorize(
 		credentialTypeName: string,
 		nodeType?: string,
+		context: {
+			projectId?: string;
+			workflowId?: string;
+			data?: ICredentialDataDecryptedObject;
+			name?: string;
+		} = {},
 	): Promise<ICredentialsResponse | null> {
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 		if (!credentialType) {
@@ -376,20 +386,22 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
-		const data: ICredentialDataDecryptedObject = {};
+		const data: ICredentialDataDecryptedObject = { ...context.data };
 		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
 			(prop) => prop.name === 'allowedHttpRequestDomains',
 		);
 		if (!allowedHttpRequestDomainsProperty || allowedHttpRequestDomainsProperty.type !== 'hidden') {
-			data.allowedHttpRequestDomains = 'none';
+			data.allowedHttpRequestDomains ??= 'none';
 		}
 
 		let credential: ICredentialsResponse;
 		try {
-			const name = await credentialsStore.getNewCredentialName({
-				credentialTypeName,
-				fallbackName: credentialType.displayName,
-			});
+			const name =
+				context.name ??
+				(await credentialsStore.getNewCredentialName({
+					credentialTypeName,
+					fallbackName: credentialType.displayName,
+				}));
 			credential = await credentialsStore.createNewCredential(
 				{
 					id: '',
@@ -397,7 +409,7 @@ export function useCredentialOAuth() {
 					type: credentialTypeName,
 					data,
 				},
-				projectsStore.currentProject?.id,
+				context.projectId ?? projectsStore.currentProject?.id,
 				undefined,
 				{ skipStoreUpdate: true },
 			);
@@ -405,7 +417,7 @@ export function useCredentialOAuth() {
 			telemetry.track('User created credentials', {
 				credential_type: credential.type,
 				credential_id: credential.id,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: context.workflowId ?? workflowsStore.workflowId,
 			});
 		} catch (error) {
 			popup.close();
@@ -423,7 +435,7 @@ export function useCredentialOAuth() {
 
 		const trackProperties: Record<string, GenericValue> = {
 			credential_type: credentialTypeName,
-			workflow_id: workflowsStore.workflowId ?? null,
+			workflow_id: context.workflowId ?? workflowsStore.workflowId ?? null,
 			credential_id: credential.id,
 			is_complete: true,
 			is_new: true,
@@ -438,7 +450,7 @@ export function useCredentialOAuth() {
 		telemetry.track('User saved credentials', trackProperties);
 
 		if (success) {
-			await publishConnectedCredential(credential);
+			await publishConnectedCredential(credential, context.workflowId);
 
 			return credential;
 		}

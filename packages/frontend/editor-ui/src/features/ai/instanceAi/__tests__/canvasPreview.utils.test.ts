@@ -1166,6 +1166,23 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('locks an announced workflow while its first build has no result yet', () => {
+		const call = makeToolCall({
+			toolName: 'build-workflow',
+			args: { filePath: 'workflow.ts' },
+			isLoading: true,
+		});
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [call],
+			setupItemsByWorkflowId: { 'wf-1': [] },
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
+		call.isLoading = false;
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while an active agent run has already built the workflow', () => {
 		const node = makeAgentNode({
 			status: 'active',

@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -21,6 +22,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useSetupPanelActions,
 	type SetupCredentialItem,
+	type SetupCredentialRef,
 	type SetupPanelApplyResult,
 } from '../composables/useSetupPanelActions';
 
@@ -31,10 +33,12 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 
 // useNodeHelpers injects the host's document store at init, which needs a
 // component setup context — stub the one getter the mirror uses.
-const { getNodeCredentialIssues, getNodeInputIssues } = vi.hoisted(() => ({
+const { getNodeCredentialIssues, getNodeInputIssues, track } = vi.hoisted(() => ({
+	track: vi.fn(),
 	getNodeCredentialIssues: vi.fn(),
 	getNodeInputIssues: vi.fn(),
 }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({ getNodeCredentialIssues, getNodeInputIssues }),
 }));
@@ -83,7 +87,7 @@ function createHarness(
 	vi.mocked(getWorkflow).mockImplementation(async () => makeWorkflow());
 
 	const actions = useSetupPanelActions({
-		thread: { sendMessage },
+		thread: { id: 'thread-1', sendMessage },
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
 		onFlushResult: options.onFlushResult,
@@ -93,12 +97,84 @@ function createHarness(
 
 describe('useSetupPanelActions', () => {
 	beforeEach(() => {
+		track.mockClear();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.mocked(getWorkflow).mockReset();
 		getNodeCredentialIssues.mockReset();
 		getNodeCredentialIssues.mockReturnValue(null);
 		getNodeInputIssues.mockReset();
 		getNodeInputIssues.mockReturnValue(null);
+	});
+
+	it.each<SetupCredentialRef>([
+		{ id: null, name: '', __aiGatewayManaged: true },
+		{ id: 'own-key', name: 'Own key' },
+	])(
+		'persists a deliberate switch between Gateway and own credentials: $id',
+		async (nextCredential) => {
+			const { actions, updateWorkflow } = createHarness();
+			vi.mocked(getWorkflow).mockResolvedValue(
+				makeWorkflow({
+					nodes: [
+						createTestNode({
+							name: 'Slack',
+							credentials: {
+								slackApi: nextCredential.id
+									? { id: null, name: '', __aiGatewayManaged: true }
+									: credential,
+							},
+						}),
+					],
+				}),
+			);
+			expect(await actions.bindCredential(credentialItem, nextCredential)).toBe('applied');
+			expect(updateWorkflow.mock.calls[0][1].nodes[0].credentials.slackApi).toEqual(nextCredential);
+		},
+	);
+
+	it('does not rewrite an existing managed binding', async () => {
+		const { actions, updateWorkflow } = createHarness();
+		const managed = { id: null, name: '', __aiGatewayManaged: true };
+		vi.mocked(getWorkflow).mockResolvedValue(
+			makeWorkflow({
+				nodes: [createTestNode({ name: 'Slack', credentials: { slackApi: managed } })],
+			}),
+		);
+		expect(await actions.bindCredential(credentialItem, managed)).toBe('noop');
+		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('resolves an early announcement again after a version conflict changes its nodes', async () => {
+		const { actions, updateWorkflow, building } = createHarness({ agentBuilding: true });
+		const nodeTypes = mockedStore(useNodeTypesStore);
+		nodeTypes.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypes.getNodeType = vi
+			.fn()
+			.mockReturnValue({ credentials: [{ name: 'slackApi', required: true }], properties: [] });
+		vi.mocked(getWorkflow)
+			.mockResolvedValueOnce(makeWorkflow({ nodes: [createTestNode({ name: 'First' })] }))
+			.mockResolvedValueOnce(
+				makeWorkflow({
+					nodes: [
+						createTestNode({ name: 'Second' }),
+						createTestNode({ name: 'Third' }),
+						createTestNode({ name: 'Disabled', disabled: true }),
+					],
+				}),
+			);
+		updateWorkflow.mockRejectedValueOnce(conflictError());
+		expect(
+			await actions.bindCredential({ ...credentialItem, nodeBindings: undefined }, credential),
+		).toBe('queued');
+		expect(getWorkflow).not.toHaveBeenCalled();
+		building.value = false;
+		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(2));
+		expect(updateWorkflow.mock.calls[1][1].nodes).toEqual([
+			expect.objectContaining({ name: 'Second', credentials: { slackApi: credential } }),
+			expect.objectContaining({ name: 'Third', credentials: { slackApi: credential } }),
+			expect.objectContaining({ name: 'Disabled' }),
+		]);
+		expect(updateWorkflow.mock.calls[1][1].nodes[2].credentials).toBeUndefined();
 	});
 
 	it('binds a credential through the version-guarded workflow PATCH', async () => {
@@ -532,6 +608,10 @@ describe('useSetupPanelActions', () => {
 		const { actions, sendMessage } = createHarness();
 
 		await expect(actions.executeWorkflow()).resolves.toBe(true);
+		expect(track).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST,
+			{ workflow_id: WORKFLOW_ID, thread_id: 'thread-1', source: 'instance_ai_setup_panel' },
+		);
 
 		expect(sendMessage).toHaveBeenCalledExactlyOnceWith(
 			'Run a test execution of this workflow.',
@@ -546,5 +626,6 @@ describe('useSetupPanelActions', () => {
 
 		await expect(actions.executeWorkflow()).resolves.toBe(false);
 		expect(sendMessage).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalled();
 	});
 });

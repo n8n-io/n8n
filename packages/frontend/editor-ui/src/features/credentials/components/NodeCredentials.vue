@@ -31,7 +31,11 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import {
+	AI_GATEWAY_UNSUPPORTED_NODE_TYPES,
+	ChatHubToolContextKey,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+} from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -73,20 +77,6 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-
-// Nodes that let the user pick their own predefined credential type via a
-// parameter ("Authentication" → "Predefined Credential Type") rather than
-// declaring a fixed credential in their node type. Gateway credits mints a
-// managed credential for a specific, known provider — it can't stand in for
-// an arbitrary user-chosen one, so these nodes never offer it. Includes the
-// AI-Agent-tool variants ("Tool" suffix) generated from the same node types.
-const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
-	'n8n-nodes-base.httpRequest',
-	'n8n-nodes-base.httpRequestTool',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.graphql',
-	'n8n-nodes-base.graphqlTool',
-];
 
 type Props = {
 	node: INodeUi;
@@ -458,6 +448,7 @@ watch(
 );
 
 function getCredentialFetchScope(): CredentialFetchScope | undefined {
+	if (props.workflowId) return { workflowId: props.workflowId };
 	const workflowId = workflowDocumentStore?.value.workflowId;
 	if (workflowId && !workflowsStore.isNewWorkflow) {
 		return { workflowId };
@@ -1129,6 +1120,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			nodeType: props.node.type,
 			source: 'node_type',
 			serviceName,
+			projectId: props.projectId,
+			workflowId: telemetryWorkflowId.value || undefined,
 		});
 
 		if (credential) {

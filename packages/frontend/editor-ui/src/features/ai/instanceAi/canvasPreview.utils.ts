@@ -245,7 +245,11 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 		node.status === 'active' &&
 		(getLatestBuildResult(node)?.workflowId === workflowId ||
 			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
-			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId)
+			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
+			(Object.hasOwn(node.setupItemsByWorkflowId ?? {}, workflowId) &&
+				node.toolCalls.some(
+					(call) => call.isLoading && call.toolName === 'build-workflow' && !call.args?.workflowId,
+				)))
 	) {
 		return true;
 	}

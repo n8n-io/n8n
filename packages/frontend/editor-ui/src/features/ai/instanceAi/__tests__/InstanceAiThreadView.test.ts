@@ -548,6 +548,8 @@ describe('InstanceAiThreadView', () => {
 			contextualSuggestion: null,
 			currentTasks: null,
 			producedArtifacts: new Map(),
+			setupItemsByWorkflowId: {},
+			projectId: 'thread-project',
 			resourceNameIndex: new Map(),
 			linkableResourceNameIndex: new Map(),
 			feedbackByResponseId: {},
@@ -701,6 +703,21 @@ describe('InstanceAiThreadView', () => {
 				expect.any(String),
 				undefined,
 			);
+		});
+
+		it('shows an announced workflow before its first artifact exists', async () => {
+			seedSetupArtifacts();
+			thread.producedArtifacts = new Map();
+			const rendered = renderView({ props: { threadId: 'thread-1' } });
+			expect(rendered.queryByTestId('setup-panel')).not.toBeInTheDocument();
+			thread.setupItemsByWorkflowId = {
+				'wf-early': [
+					{ id: 'wf-early:credential:slackApi', kind: 'credential', credentialType: 'slackApi' },
+				],
+			};
+			await flushPromises();
+			expect(rendered.getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-early');
+			expect(rendered.getByTestId('setup-panel')).not.toHaveAttribute('data-project-id');
 		});
 
 		it('follows the selected workflow and project when tabs change', async () => {

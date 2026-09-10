@@ -391,6 +391,21 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('uses an explicit setup workflow even when the global editor has no saved workflow', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = { id: 'project-1' } as Project;
+		workflowDocumentStoreRef.value = null;
+		renderComponent(
+			{
+				props: { node: httpNode, standalone: true, workflowId: 'wf-setup', projectId: 'project-1' },
+			},
+			{ merge: true },
+		);
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf-setup',
+		});
+	});
+
 	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = null;

@@ -38,6 +38,41 @@ const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
 
 export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
+	SETUP_PANEL_STATE_OBSERVED: {
+		name: 'AI Assistant setup panel state observed',
+		description:
+			'The setup panel observed a new requirement snapshot. Also fires when no setup is needed, including workflows whose credentials were already connected.',
+		properties: z.object({
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			credential_count: z.number(),
+			pending_credential_count: z.number(),
+			pending_parameter_count: z.number(),
+			already_connected_count: z.number(),
+		}),
+	},
+	SETUP_PANEL_ITEM_SHOWN: {
+		name: 'AI Assistant setup panel item shown',
+		description:
+			'A setup checklist row became visible. Reopening the same row within the mounted panel does not emit another event.',
+		properties: z.object({
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			kind: z.enum(['credential', 'parameters', 'details']),
+			credential_type: z.string().optional(),
+			parameter_count: z.number(),
+		}),
+	},
+	SETUP_PANEL_DISMISSED: {
+		name: 'AI Assistant setup panel dismissed',
+		description:
+			'A visible setup panel closed. The reason separates navigation and removed requirements from execution success or an explicit dismissal.',
+		properties: z.object({
+			workflow_id: z.string(),
+			thread_id: z.string(),
+			reason: z.enum(['navigation', 'items_removed', 'execution_succeeded', 'user_dismissed']),
+		}),
+	},
 	USER_CLICKED_AI_CREDIT_BALANCE: {
 		name: 'User clicked AI credit balance',
 		description:

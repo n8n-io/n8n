@@ -10,15 +10,19 @@ import ParameterInputExpanded from '@/features/ndv/parameters/components/Paramet
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { computed } from 'vue';
 
-import { N8nNotice } from '@n8n/design-system';
+import { N8nInput, N8nNotice } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	documentationUrl: string;
 	showValidationWarnings?: boolean;
+	compact?: boolean;
+	credentialType?: string;
 };
 
 const props = defineProps<Props>();
+const i18n = useI18n();
 
 const { check: envFeatureFlag } = useEnvFeatureFlag();
 
@@ -42,7 +46,11 @@ function valueChanged(parameterData: IUpdateInformation) {
 </script>
 
 <template>
-	<div v-if="visibleProperties.length" :class="$style.container" @keydown.stop>
+	<div
+		v-if="visibleProperties.length"
+		:class="[$style.container, { [$style.compact]: compact }]"
+		@keydown.stop
+	>
 		<form
 			v-for="parameter in visibleProperties"
 			:key="parameter.name"
@@ -58,6 +66,20 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:hint="parameter.description"
 				:value="String(credentialDataValues[parameter.name] ?? parameter.default ?? '')"
 			/>
+			<N8nInput
+				v-else-if="compact && parameter.type === 'string'"
+				:model-value="
+					typeof credentialDataValues[parameter.name] === 'string'
+						? String(credentialDataValues[parameter.name])
+						: ''
+				"
+				:type="parameter.typeOptions?.password ? 'password' : 'text'"
+				:placeholder="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
+				:aria-label="i18n.credText(credentialType ?? '').inputLabelDisplayName(parameter)"
+				:autocomplete="parameter.typeOptions?.password ? 'new-password' : 'off'"
+				size="small"
+				@update:model-value="valueChanged({ name: parameter.name, value: $event })"
+			/>
 			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
@@ -65,7 +87,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 				:node-values="credentialDataValues"
 				:documentation-url="documentationUrl"
 				:show-validation-warnings="showValidationWarnings"
-				:label="{ size: 'medium' }"
+				:label="{ size: compact ? 'small' : 'medium' }"
 				event-source="credentials"
 				@update="valueChanged"
 			/>
@@ -77,6 +99,16 @@ function valueChanged(parameterData: IUpdateInformation) {
 .container {
 	> * {
 		margin-bottom: var(--spacing--lg);
+	}
+}
+
+.compact {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+
+	> * {
+		margin-bottom: 0;
 	}
 }
 </style>

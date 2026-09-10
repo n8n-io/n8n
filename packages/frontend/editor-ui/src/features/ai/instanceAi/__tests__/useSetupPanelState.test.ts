@@ -50,6 +50,7 @@ function createHarness(
 
 	vi.mocked(isAgentEditingWorkflow).mockImplementation(() => editing.value);
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
+		credentialsAvailable: computed(() => true),
 		isWorkflowAvailable: computed(() => available.value),
 		workflowProjectId: computed(() => undefined),
 		derivedItems: computed(() => derived.value),

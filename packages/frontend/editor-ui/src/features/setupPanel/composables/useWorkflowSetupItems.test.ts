@@ -12,6 +12,8 @@ import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetu
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
@@ -28,6 +30,10 @@ vi.mock('@/features/setupPanel/setupPanel.utils', () => ({
 	getNodeCredentialTypes: vi.fn().mockReturnValue([]),
 	getNodeParametersIssues: vi.fn().mockReturnValue({}),
 }));
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	makeRestApiRequest: vi.fn(),
+}));
 
 // The credential-change test runs the real `deleteCredential` action (a
 // reassigned `vi.fn()` would bypass pinia's wrapper, so `$onAction` — what
@@ -35,6 +41,9 @@ vi.mock('@/features/setupPanel/setupPanel.utils', () => ({
 vi.mock('@/features/credentials/credentials.api', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	deleteCredential: vi.fn().mockResolvedValue(true),
+	createNewCredential: vi
+		.fn()
+		.mockResolvedValue({ id: 'pending', name: 'Pending account', type: 'slackApi' }),
 }));
 
 const WORKFLOW_ID = 'wf-1';
@@ -345,6 +354,33 @@ describe('useWorkflowSetupItems', () => {
 		});
 	});
 
+	it('refreshes a binding saved outside the panel when there is no live canvas document', async () => {
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(
+			createTestWorkflow({ id: WORKFLOW_ID, nodes: [createTestNode({ name: 'Slack' })] }),
+		);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+		await flushPromises();
+		expect(state.getNodeByName('Slack')?.credentials).toBeUndefined();
+		const saved = createTestWorkflow({
+			id: WORKFLOW_ID,
+			checksum: 'saved-checksum',
+			nodes: [
+				createTestNode({
+					name: 'Slack',
+					credentials: { slackApi: { id: 'existing', name: 'Existing account' } },
+				}),
+			],
+		});
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(saved);
+		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(saved);
+		await useWorkflowsStore().updateWorkflow(WORKFLOW_ID, { nodes: saved.nodes });
+		await flushPromises();
+		expect(state.getNodeByName('Slack')?.credentials?.slackApi).toEqual({
+			id: 'existing',
+			name: 'Existing account',
+		});
+	});
+
 	// Pins that the subscription stays non-detached and registered synchronously
 	// in the composable body: that is what lets pinia unbind it on scope dispose,
 	// so a closed panel does not keep re-anchoring the shared usable slice.
@@ -360,12 +396,14 @@ describe('useWorkflowSetupItems', () => {
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
 	});
 
-	it('pauses fetching while the agent edits, then refreshes once it settles', async () => {
+	it('reads credentials during a build but defers the workflow fetch until it settles', async () => {
 		const paused = ref(true);
 
 		useWorkflowSetupItems(() => WORKFLOW_ID, { paused });
 
-		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: WORKFLOW_ID,
+		});
 		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 
 		paused.value = false;
@@ -375,6 +413,62 @@ describe('useWorkflowSetupItems', () => {
 			});
 			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
 		});
+	});
+
+	it('does not refresh the usable slice before a connection flow publishes its credential', async () => {
+		useWorkflowSetupItems(() => WORKFLOW_ID);
+		await flushPromises();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		await credentialsStore.createNewCredential(
+			{ id: '', name: 'Pending account', type: 'slackApi', data: {} },
+			'project',
+			undefined,
+			{ skipStoreUpdate: true },
+		);
+		await flushPromises();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		await credentialsStore.createNewCredential(
+			{ id: '', name: 'Saved account', type: 'slackApi', data: {} },
+			'project',
+		);
+		await flushPromises();
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(2);
+	});
+
+	it('requires a fresh credential read before reporting readiness, even with a cached scope', async () => {
+		const read = Promise.withResolvers<[]>();
+		credentialsStore.fetchUsableCredentials.mockReturnValueOnce(read.promise);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID, { paused: true });
+		expect(state.credentialsAvailable.value).toBe(false);
+		read.resolve([]);
+		await flushPromises();
+		expect(state.credentialsAvailable.value).toBe(true);
+	});
+
+	it('derives a managed credential as complete without an ordinary credential ID', () => {
+		hydrateWorkflow([
+			createTestNode({
+				name: 'Slack',
+				credentials: { slackApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}),
+		]);
+		expect(useWorkflowSetupItems(() => WORKFLOW_ID).isItemDone(credentialItem())).toBe(true);
+	});
+
+	it('keeps an unconnected private credential pending even if another account is usable', () => {
+		hydrateWorkflow([
+			createTestNode({
+				name: 'Slack',
+				credentials: { slackApi: { id: 'private', name: 'Private' } },
+			}),
+		]);
+		credentialsStore.getCredentialById = vi
+			.fn()
+			.mockReturnValue({ id: 'private', isResolvable: true, connectedByMe: false });
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentialsStore.getUsableCredentialByType = vi.fn().mockReturnValue([{ id: 'ordinary' }]);
+		expect(useWorkflowSetupItems(() => WORKFLOW_ID).isItemDone(credentialItem())).toBe(false);
 	});
 
 	it('follows the canvas host through dispose and recreate cycles', () => {

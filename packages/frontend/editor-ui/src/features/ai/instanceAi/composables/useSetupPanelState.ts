@@ -121,6 +121,7 @@ export function useSetupPanelState(options: {
 	});
 
 	return {
+		credentialsAvailable: derivation.credentialsAvailable,
 		rows,
 		rowSource,
 		isAgentBuilding,

@@ -7,15 +7,19 @@ import type {
 	InstanceAiSetupItem,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
-import type { INodeParameters } from 'n8n-workflow';
+import type { INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { getWorkflow } from '@/app/api/workflows';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { getNodeCredentialTypes } from '@/features/setupPanel/setupPanel.utils';
+import { GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import {
 	createWorkflowDocumentId,
 	useExistingWorkflowDocumentStore,
@@ -31,10 +35,7 @@ import {
 
 export type SetupCredentialItem = Extract<InstanceAiSetupItem, { kind: 'credential' }>;
 
-export interface SetupCredentialRef {
-	id: string;
-	name: string;
-}
+export type SetupCredentialRef = INodeCredentialsDetails;
 
 export type SetupPanelApplyResult =
 	/** The workflow PATCH landed. */
@@ -57,6 +58,7 @@ export type SetupPanelApplyResult =
  * `useThread()`; kept narrow so tests can pass a plain stub.
  */
 export interface SetupPanelThreadActions {
+	readonly id?: string;
 	sendMessage: (
 		message: string,
 		attachments?: InstanceAiAttachment[],
@@ -104,7 +106,13 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 			const current = node.credentials?.[item.credentialType];
 			// Legacy workflow JSON may carry a plain credential name; the bind
 			// overwrites it with a proper { id, name } reference.
-			if (typeof current !== 'string' && current?.id === credential.id) continue;
+			if (
+				typeof current !== 'string' &&
+				current?.id === credential.id &&
+				(current?.__aiGatewayManaged === true) === (credential.__aiGatewayManaged === true)
+			) {
+				continue;
+			}
 			node.credentials = { ...node.credentials, [item.credentialType]: { ...credential } };
 			changed = true;
 		}
@@ -150,6 +158,7 @@ export function useSetupPanelActions(options: {
 	onFlushResult?: (result: SetupPanelApplyResult) => void;
 }) {
 	const i18n = useI18n();
+	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -312,6 +321,37 @@ export function useSetupPanelActions(options: {
 			if (!fresh.checksum) return 'error';
 
 			const nodes = fresh.nodes;
+			// An early announcement can arrive before its workflow nodes exist.
+			if (delta.credentialBinds.some((bind) => !bind.item.nodeBindings?.length)) {
+				try {
+					await nodeTypesStore.loadNodeTypesIfNotLoaded();
+				} catch {
+					return 'error';
+				}
+			}
+			const resolvedDelta: NodesDelta = {
+				...delta,
+				credentialBinds: delta.credentialBinds.map((bind) => {
+					if (
+						bind.item.nodeBindings?.length ||
+						GENERIC_AUTH_CREDENTIAL_TYPES.has(bind.item.credentialType)
+					)
+						return bind;
+					return {
+						...bind,
+						item: {
+							...bind.item,
+							nodeBindings: nodes
+								.filter(
+									(node) =>
+										!node.disabled &&
+										getNodeCredentialTypes(nodeTypesStore, node).includes(bind.item.credentialType),
+								)
+								.map((node) => ({ nodeName: node.name })),
+						},
+					};
+				}),
+			};
 			// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
 			// values first so the mirror can spot newer local edits.
 			const baseline: NodesBaseline = new Map(
@@ -320,7 +360,7 @@ export function useSetupPanelActions(options: {
 					{ credentials: { ...node.credentials }, parameters: { ...node.parameters } },
 				]),
 			);
-			const outcome = applyDeltaToNodes(nodes, delta);
+			const outcome = applyDeltaToNodes(nodes, resolvedDelta);
 			if (outcome !== 'changed') return outcome;
 
 			// The anchor and the agent lock can both move while the fetch was
@@ -340,7 +380,7 @@ export function useSetupPanelActions(options: {
 					versionId: fresh.versionId,
 					expectedChecksum: fresh.checksum,
 				});
-				syncHydratedDocument(workflowId, delta, baseline, updated);
+				syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
 				return 'applied';
 			} catch (error) {
 				const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;
@@ -453,6 +493,11 @@ export function useSetupPanelActions(options: {
 	async function executeWorkflow(): Promise<boolean> {
 		const workflowId = toValue(options.workflowId);
 		if (!workflowId) return false;
+		telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+			source: 'instance_ai_setup_panel',
+			workflow_id: workflowId,
+			thread_id: options.thread.id,
+		});
 		return await options.thread.sendMessage(
 			i18n.baseText('instanceAi.setupPanel.executeMessage'),
 			undefined,

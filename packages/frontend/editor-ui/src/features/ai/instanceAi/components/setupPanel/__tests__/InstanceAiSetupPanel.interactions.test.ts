@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import { computed, defineComponent, h, reactive, type PropType } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -13,7 +14,11 @@ import {
 	type INodeTypeDescription,
 	type AssignmentCollectionValue,
 } from 'n8n-workflow';
-import type { InstanceAiAgentNode, InstanceAiCredentialSetupHint } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiCredentialSetupHint,
+	InstanceAiSetupItem,
+} from '@n8n/api-types';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -116,6 +121,40 @@ const NodeCredentialsStub = defineComponent({
 	},
 });
 
+const SetupCredentialStub = defineComponent({
+	props: {
+		item: {
+			type: Object as PropType<Extract<InstanceAiSetupItem, { kind: 'credential' }>>,
+			required: true,
+		},
+		node: Object as PropType<INodeUi>,
+		workflowId: String,
+		projectId: String,
+	},
+	emits: ['bindCredential'],
+	setup(props, { emit }) {
+		return () =>
+			props.node
+				? h(NodeCredentialsStub, {
+						node: props.node,
+						overrideCredType: props.item.credentialType,
+						credentialSetupHint: props.item.setupHint,
+						workflowId: props.workflowId,
+						projectId: props.projectId,
+						skipAutoSelect: true,
+						onCredentialSelected: (update: {
+							properties: { credentials: Record<string, { id: string }> };
+						}) =>
+							emit(
+								'bindCredential',
+								props.item,
+								update.properties.credentials[props.item.credentialType].id,
+							),
+					})
+				: null;
+	},
+});
+
 const ParameterInputListStub = defineComponent({
 	props: {
 		node: { type: Object as PropType<INodeUi>, required: true },
@@ -147,6 +186,7 @@ const ParameterInputListStub = defineComponent({
 });
 
 const componentStubs = {
+	InstanceAiSetupCredential: SetupCredentialStub,
 	NodeCredentials: NodeCredentialsStub,
 	ParameterInputList: ParameterInputListStub,
 	CredentialIcon: true,
@@ -166,6 +206,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		localStorage.clear();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mockedStore(useProjectsStore).myProjects = [mock<ProjectListItem>({ id: 'project-1' })];
 		const nodeTypes = mockedStore(useNodeTypesStore);
@@ -200,6 +241,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 		const credentials = mockedStore(useCredentialsStore);
 		credentials.setCredentials(accounts);
 		credentials.fetchUsableCredentials.mockResolvedValue([]);
+		credentials.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentials.getNewCredentialName.mockResolvedValue('Slack account');
 		credentials.getCredentialTypeByName = vi.fn().mockReturnValue({
 			name: 'slackApi',
 			displayName: 'Slack API',
@@ -277,15 +320,17 @@ describe('InstanceAiSetupPanel interactions', () => {
 		hydrated = true,
 		options: RenderOptions<typeof InstanceAiSetupPanel> = {},
 	) {
+		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
 		const rendered = renderPanel(hydrated, options);
-		await fireEvent.click(await rendered.findByRole('button', { name: 'Notify' }));
+		await fireEvent.click(await rendered.findByRole('button', { name: /Slack/ }));
 		return rendered;
 	}
 
 	it('binds a credential announced without bindings after the build ends', async () => {
 		startBuild();
-		const { getByRole } = renderPanel();
-		await fireEvent.click(getByRole('button', { name: 'Slack' }));
+		const { getByRole, findByRole } = renderPanel();
+		await flushPromises();
+		await fireEvent.click(await findByRole('button', { name: /Slack/ }));
 		const picker = getByRole('combobox');
 		expect(picker).toHaveAttribute('data-workflow-id', 'wf-1');
 		expect(picker).toHaveAttribute('data-project-id', 'project-1');
@@ -316,7 +361,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 			},
 		];
 		const { getByRole, getByTestId } = renderPanel();
-		await fireEvent.click(getByRole('button', { name: 'Slack' }));
+		await flushPromises();
+		await fireEvent.click(getByRole('button', { name: /Slack/ }));
 		expect(getByTestId('credential-recipe')).toHaveTextContent(JSON.stringify(setupHint));
 		thread.messages = [];
 		await flushPromises();
@@ -329,6 +375,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 	it('follows saved account changes and keeps references absent from the local list', async () => {
 		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
 		const { getByRole, getByTestId } = renderPanel();
+		await flushPromises();
 		await fireEvent.click(getByRole('button', { name: /Slack/ }));
 		expect(getByTestId('selected-account')).toHaveTextContent('First account');
 		documentStore.updateNodeProperties({
@@ -344,6 +391,31 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(getByTestId('selected-account')).toHaveTextContent('Shared account');
 		expect(updateWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('renders fields gated by defaults omitted from the saved workflow', async () => {
+		const type = mockedStore(useNodeTypesStore).allNodeTypes[0];
+		type.properties.unshift({
+			name: 'resource',
+			displayName: 'Resource',
+			type: 'options',
+			default: 'message',
+			options: [{ name: 'Message', value: 'message' }],
+		});
+		const channel = type.properties.find((property) => property.name === 'channel')!;
+		channel.displayOptions = { show: { resource: ['message'] } };
+		channel.placeholder = 'Choose a channel';
+		const rendered = await openParameters(false, {
+			global: { stubs: { ParameterInputList: false } },
+		});
+		const input = await rendered.findByPlaceholderText('Choose a channel');
+		expect(input).toBeVisible();
+		await fireEvent.update(input, 'announcements');
+		await fireEvent.blur(input);
+		await fireEvent.click(rendered.getByRole('button', { name: 'Confirm' }));
+		await flushPromises();
+		expect(saved.nodes[0].parameters.channel).toBe('announcements');
+		expect(saved.nodes[0].parameters.resource).toBeUndefined();
 	});
 
 	it.each([true, false])('clears saved drafts with a hydrated canvas: %s', async (hydrated) => {
@@ -393,7 +465,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 		});
 		await flushPromises();
 		expect(getByLabelText('Channel')).toHaveValue('external-value');
-		expect(getByRole('button', { name: 'Confirm' })).toBeDisabled();
+		expect(getByRole('button', { name: 'Update' })).toBeDisabled();
 	});
 
 	it('keeps a failed draft available for retry', async () => {
@@ -565,17 +637,16 @@ describe('InstanceAiSetupPanel interactions', () => {
 		const uiStore = mockedStore(useUIStore);
 		const { findByRole } = renderPanel(false, {
 			props: { projectId: undefined },
-			global: { stubs: { NodeCredentials: false } },
+			global: { stubs: { NodeCredentials: false, InstanceAiSetupCredential: false } },
 		});
-		await fireEvent.click(await findByRole('button', { name: 'Slack' }));
-		const connect = await findByRole('button', { name: 'Connect to Slack' });
-		expect(connect).toBeEnabled();
-		await fireEvent.click(connect);
+		await fireEvent.click(await findByRole('button', { name: /Slack/ }));
+		await userEvent.click(await findByRole('button', { name: 'More options' }));
+		await userEvent.click(await findByRole('menuitem', { name: 'Advanced setup' }));
 		await flushPromises();
 		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 			'slackApi',
 			false,
-			false,
+			true,
 			'workflow-project',
 			undefined,
 			'Notify',
@@ -605,8 +676,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 				expect(updateWorkflow).not.toHaveBeenCalled();
 			} else {
 				expect(getByLabelText('Channel')).toHaveValue('user-value');
-				await fireEvent.click(getByRole('button', { name: 'Back' }));
-				expect(getByRole('button', { name: 'Notify Ready' })).toBeInTheDocument();
+				await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+				expect(getByRole('button', { name: 'Slack Complete' })).toBeInTheDocument();
 				expect(saved.nodes[0].parameters.channel).toBe('Saved elsewhere');
 				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 			}

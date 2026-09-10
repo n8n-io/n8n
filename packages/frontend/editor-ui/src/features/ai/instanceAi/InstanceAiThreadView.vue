@@ -318,8 +318,7 @@ const preview = useCanvasPreview({
 	},
 });
 // --- Setup panel (checklist docked above the composer) ---
-// Anchors to the active canvas tab's workflow; on a hydrated thread with no
-// tab state yet, the latest workflow artifact wins (insertion order).
+// Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {
 	if (!settingsStore.isInstanceAiSetupPanelEnabled) return undefined;
 	const active = preview.activeWorkflowId.value;
@@ -328,7 +327,12 @@ const setupPanelWorkflowId = computed(() => {
 	for (const entry of thread.producedArtifacts.values()) {
 		if (entry.type === 'workflow') latest = entry.id;
 	}
-	return latest;
+	return (
+		latest ??
+		Object.keys(thread.setupItemsByWorkflowId).findLast(
+			(id) => thread.setupItemsByWorkflowId[id].length > 0,
+		)
+	);
 });
 const setupPanelProjectId = computed(() =>
 	setupPanelWorkflowId.value
