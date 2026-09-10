@@ -276,7 +276,7 @@ export class Expression {
 								memoryLimit: options.bridgeMemoryLimit,
 								logger: LoggerProxy,
 							});
-			this.vmEvaluator = new runtime.ExpressionEvaluator({
+			const evaluator = new runtime.ExpressionEvaluator({
 				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
@@ -285,17 +285,28 @@ export class Expression {
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
-			await this.vmEvaluator.initialize();
-			// Browser always passes runtimeBundle (the pre-built IIFE string).
-			// Use its presence as an explicit signal that we are in browser mode,
-			// rather than relying on IS_FRONTEND which is unreliable when
-			// vite-plugin-node-polyfills shims process with extra keys.
-			// Browser uses a single shared caller for all evaluations since the
-			// sync evaluate() requires a pre-acquired caller and Expression
-			// instances are short-lived in the editor.
-			if (options.runtimeBundle) {
-				this.useSharedCaller = true;
-				await this.vmEvaluator.acquire(Expression.BROWSER_CALLER);
+
+			// Publish the evaluator only once it is usable. A half-started one
+			// would leave `shouldUseVm` reporting the engine as active while no
+			// bridge is acquired, so callers could neither retry the start nor
+			// fall back to the legacy evaluator.
+			try {
+				await evaluator.initialize();
+				// Browser always passes runtimeBundle (the pre-built IIFE string).
+				// Use its presence as an explicit signal that we are in browser mode,
+				// rather than relying on IS_FRONTEND which is unreliable when
+				// vite-plugin-node-polyfills shims process with extra keys.
+				// Browser uses a single shared caller for all evaluations since the
+				// sync evaluate() requires a pre-acquired caller and Expression
+				// instances are short-lived in the editor.
+				if (options.runtimeBundle) {
+					await evaluator.acquire(Expression.BROWSER_CALLER);
+					this.useSharedCaller = true;
+				}
+				this.vmEvaluator = evaluator;
+			} catch (error) {
+				this.useSharedCaller = false;
+				throw error;
 			}
 		}
 	}
@@ -331,9 +342,14 @@ export class Expression {
 	 */
 	static async disposeExpressionEngine(): Promise<void> {
 		if (this.vmEvaluator) {
+			// The browser acquires one shared bridge at start-up, and an acquired
+			// bridge leaves the pool, so disposing the pool alone would leave that
+			// runtime alive.
+			if (this.useSharedCaller) await this.vmEvaluator.release(Expression.BROWSER_CALLER);
 			await this.vmEvaluator.dispose();
 			this.vmEvaluator = undefined;
 		}
+		this.useSharedCaller = false;
 	}
 
 	/**
