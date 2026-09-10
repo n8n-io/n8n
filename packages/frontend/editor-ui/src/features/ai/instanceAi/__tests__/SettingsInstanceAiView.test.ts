@@ -656,7 +656,7 @@ describe('SettingsInstanceAiView', () => {
 			}
 		});
 
-		it('lists the workflow and data table permissions in the apps group', async () => {
+		it('lists the workflow, data table and agent permissions in the apps group', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.apps'));
@@ -665,6 +665,7 @@ describe('SettingsInstanceAiView', () => {
 				expect(getByTestId('n8n-agent-permission-bindAppWorkflow')).toBeVisible(),
 			);
 			expect(getByTestId('n8n-agent-permission-bindAppDataTable')).toBeVisible();
+			expect(getByTestId('n8n-agent-permission-bindAppAgent')).toBeVisible();
 		});
 
 		it('summarises non-default permissions as exceptions', () => {

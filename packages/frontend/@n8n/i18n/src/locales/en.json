@@ -5624,6 +5624,7 @@
 	"settings.n8nAgent.permissions.executeMcpTool": "Execute MCP tools",
 	"settings.n8nAgent.permissions.bindAppWorkflow": "Connect workflows to apps",
 	"settings.n8nAgent.permissions.bindAppDataTable": "Connect data tables to apps",
+	"settings.n8nAgent.permissions.bindAppAgent": "Connect agents to apps",
 	"dataTable.search.dateSearchInfo": "Date searches use UTC format, while the table displays dates in your local timezone",
 	"dataTable.cell.oversized": "Value too large to display",
 	"dataTable.cell.oversized.tooltip": "The value can be modified using the data table node",
