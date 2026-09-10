@@ -243,15 +243,17 @@ export class TypeORMAgentMemory
 
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
 		return await this.serializeThreadMutation(thread.id, async () => {
-			const existing = await this.threadRepo.findOneBy({ id: thread.id });
-			if (existing) {
-				existing.resourceId = thread.resourceId;
-				if (thread.title !== undefined) existing.title = thread.title;
-				if (thread.metadata !== undefined) {
-					existing.metadata = mergeSaveThreadMetadata(existing.metadata, thread.metadata);
-				}
-				return toThread(await this.threadRepo.save(existing));
-			}
+			const updated = await this.threadRepo.updateThread({
+				threadId: thread.id,
+				update: (current) => ({
+					resourceId: thread.resourceId,
+					...(thread.title !== undefined ? { title: thread.title } : {}),
+					...(thread.metadata !== undefined
+						? { metadata: mergeSaveThreadMetadata(current.metadata, thread.metadata) }
+						: {}),
+				}),
+			});
+			if (updated) return updated;
 
 			const saved = await this.threadRepo.save(
 				this.threadRepo.create({
@@ -323,18 +325,14 @@ export class TypeORMAgentMemory
 		threadId: string;
 		update: (current: Thread) => ThreadPatch | null | undefined;
 	}): Promise<Thread | null> {
-		return await this.serializeThreadMutation(args.threadId, async () => {
-			const existing = await this.threadRepo.findOneBy({ id: args.threadId });
-			if (!existing) return null;
-
-			const current = toThread(existing);
-			const patch = args.update(cloneThreadForPatch(current));
-			if (!patch) return current;
-
-			if (patch.title !== undefined) existing.title = patch.title;
-			if (patch.metadata !== undefined) existing.metadata = patch.metadata;
-			return toThread(await this.threadRepo.save(existing));
-		});
+		return await this.serializeThreadMutation(
+			args.threadId,
+			async () =>
+				await this.threadRepo.updateThread({
+					threadId: args.threadId,
+					update: (current) => args.update(cloneThreadForPatch(current)),
+				}),
+		);
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
