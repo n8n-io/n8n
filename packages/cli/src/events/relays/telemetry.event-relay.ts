@@ -91,8 +91,8 @@ function countRuleActions(rules: readonly PolicyRule[]) {
 }
 
 /**
- * Node type names are cheap to send but a default-deny policy blocks nearly every known type,
- * so the full list would blow the 32 KB payload cap and say nothing. Cap it.
+ * A default-deny policy blocks nearly every known type, so an uncapped list would blow the
+ * 32 KB payload cap. The counts alongside each list carry the total either way.
  */
 const MAX_LISTED_POLICY_TYPES = 100;
 
@@ -107,20 +107,13 @@ function summarizeTypeAvailability(
 ) {
 	const partition = partitionTypesByAction(rules, defaultAction, typeNames);
 
-	// Report whichever side is shorter: under allow-by-default the blocked types are the
-	// signal, under deny-by-default the handful of allowed ones are.
-	const side: 'blocked' | 'allowed' =
-		partition.deny.length <= partition.allow.length ? 'blocked' : 'allowed';
-	const listed = side === 'blocked' ? partition.deny : partition.allow;
-
 	return {
 		evaluated_type_count: typeNames.length,
 		blocked_type_count: partition.deny.length,
 		allowed_type_count: partition.allow.length,
 		delegated_type_count: partition.delegate.length,
-		listed_types: listed.slice(0, MAX_LISTED_POLICY_TYPES),
-		listed_types_side: side,
-		listed_types_truncated: listed.length > MAX_LISTED_POLICY_TYPES,
+		blocked_types: partition.deny.slice(0, MAX_LISTED_POLICY_TYPES),
+		allowed_types: partition.allow.slice(0, MAX_LISTED_POLICY_TYPES),
 	};
 }
 

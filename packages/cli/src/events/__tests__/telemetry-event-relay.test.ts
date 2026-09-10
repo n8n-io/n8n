@@ -726,9 +726,8 @@ describe('TelemetryEventRelay', () => {
 					blocked_type_count: 2,
 					allowed_type_count: 1,
 					delegated_type_count: 0,
-					listed_types: ['n8n-nodes-base.code'],
-					listed_types_side: 'allowed',
-					listed_types_truncated: false,
+					blocked_types: ['n8n-nodes-base.executeCommand', '@acme/n8n-nodes-acme.thing'],
+					allowed_types: ['n8n-nodes-base.code'],
 					previous_rule_count: null,
 					shadow_warning_count: 2,
 					version: 1,
@@ -874,8 +873,8 @@ describe('TelemetryEventRelay', () => {
 				expect.objectContaining({
 					blocked_type_count: 1,
 					allowed_type_count: 2,
-					listed_types: ['n8n-nodes-base.executeCommand'],
-					listed_types_side: 'blocked',
+					blocked_types: ['n8n-nodes-base.executeCommand'],
+					allowed_types: ['n8n-nodes-base.code', '@acme/n8n-nodes-acme.thing'],
 				}),
 			);
 		});
@@ -898,7 +897,7 @@ describe('TelemetryEventRelay', () => {
 				expect.objectContaining({
 					rule_count: 1,
 					blocked_type_count: 2,
-					allowed_type_count: 1,
+					blocked_types: ['n8n-nodes-base.code', 'n8n-nodes-base.executeCommand'],
 				}),
 			);
 		});
@@ -928,13 +927,12 @@ describe('TelemetryEventRelay', () => {
 				evaluated_type_count: 250,
 				allowed_type_count: 120,
 				blocked_type_count: 130,
-				listed_types_side: 'allowed',
-				listed_types_truncated: true,
 			});
-			expect(properties?.listed_types).toHaveLength(100);
+			expect(properties?.blocked_types).toHaveLength(100);
+			expect(properties?.allowed_types).toHaveLength(100);
 		});
 
-		it('should report an empty list when nothing is on the shorter side', () => {
+		it('should report every known type as blocked when nothing is allowed', () => {
 			eventService.emit('node-type-policy-saved', {
 				updatedBy: 'user123',
 				kind: 'node-types',
@@ -952,9 +950,12 @@ describe('TelemetryEventRelay', () => {
 				expect.objectContaining({
 					blocked_type_count: 3,
 					allowed_type_count: 0,
-					listed_types: [],
-					listed_types_side: 'allowed',
-					listed_types_truncated: false,
+					blocked_types: [
+						'n8n-nodes-base.code',
+						'n8n-nodes-base.executeCommand',
+						'@acme/n8n-nodes-acme.thing',
+					],
+					allowed_types: [],
 				}),
 			);
 		});
