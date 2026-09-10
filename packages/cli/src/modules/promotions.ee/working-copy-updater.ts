@@ -8,11 +8,12 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { containerPlacement, isUnder, pinPath, staleWorkflowTargets } from './branch-placement';
-import type { BranchState, Placement } from './branch-placement';
+import type { BranchLayout, Placement } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
 
 const selectivePushOptionsSchema = z.object({
@@ -27,7 +28,7 @@ const ENTITY_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
-} as const satisfies Record<string, keyof BranchState>;
+} as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
 const DEPENDENCY_COLLECTIONS = ['credentials', 'dataTables', 'tags'] as const;
@@ -96,19 +97,19 @@ export class WorkingCopyUpdater {
 	 * What the branch holds, from `project.json`, `folder.json` and
 	 * `workflow.json`. Placement and guards only need those collections.
 	 */
-	async readBranchState(exportFolder: string): Promise<BranchState> {
+	async readBranchLayout(exportFolder: string): Promise<BranchLayout> {
 		return (await this.scanBranch(exportFolder)).state;
 	}
 
 	private async scanBranch(
 		exportFolder: string,
-	): Promise<{ state: BranchState; dependencies: DependencyRef[] }> {
+	): Promise<{ state: BranchLayout; dependencies: DependencyRef[] }> {
 		const resolvedBase = await this.resolveContained(exportFolder, '.');
 		// A fresh branch holds no export yet, so a first push has nothing to read.
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
 		if (rootInfo === null || !rootInfo.isDirectory()) return { state: {}, dependencies: [] };
 
-		const collected: Required<BranchState> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
 		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -145,7 +146,7 @@ export class WorkingCopyUpdater {
 
 		await walk(resolvedBase);
 		this.assertUniqueEntityIds(collected);
-		const state: BranchState = {
+		const state: BranchLayout = {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
@@ -157,7 +158,7 @@ export class WorkingCopyUpdater {
 	 * Duplicate ids make the project-scope Map keep one target and the stale
 	 * walk delete every copy. The package schema already rejects this.
 	 */
-	private assertUniqueEntityIds(state: BranchState): void {
+	private assertUniqueEntityIds(state: BranchLayout): void {
 		for (const [label, entries] of [
 			['projects', state.projects],
 			['folders', state.folders],
@@ -215,7 +216,7 @@ export class WorkingCopyUpdater {
 	 * project. Membership is judged by the project's directory on the branch,
 	 * the only place that records it.
 	 */
-	assertDeletionsOnBranch(branch: BranchState, selection: SelectivePushOptions): void {
+	assertDeletionsOnBranch(branch: BranchLayout, selection: SelectivePushOptions): void {
 		if (selection.deletedWorkflowIds.length === 0) return;
 
 		const targetById = new Map((branch.workflows ?? []).map((w) => [w.id, w.target]));
@@ -241,7 +242,7 @@ export class WorkingCopyUpdater {
 	 * projects. Applying it would write outside the selected project, so a
 	 * selective push refuses it.
 	 */
-	assertNoCrossProjectMoves(branch: BranchState, selection: SelectivePushOptions): void {
+	assertNoCrossProjectMoves(branch: BranchLayout, selection: SelectivePushOptions): void {
 		if (selection.workflowIds.length === 0) return;
 
 		const projectTarget = branch.projects?.find((p) => p.id === selection.projectId)?.target;
@@ -275,7 +276,10 @@ export class WorkingCopyUpdater {
 		this.assertNoCrossProjectMoves(existing, selection);
 
 		const placement = containerPlacement(existing, staging);
-		const remaining: BranchState = {
+		const otherProjectTargets = (existing.projects ?? [])
+			.filter((p) => p.id !== selection.projectId)
+			.map((p) => p.target);
+		const remaining: BranchLayout = {
 			...existing,
 			workflows: (existing.workflows ?? []).filter(
 				(workflow) => !selection.deletedWorkflowIds.includes(workflow.id),
@@ -305,10 +309,18 @@ export class WorkingCopyUpdater {
 			// the new one when the import manifest is written. Remove only that file,
 			// not the directory, so a sibling dependency sharing it is not dropped;
 			// remove the directory once it is empty.
-			for (const { collection, target } of this.renamedDependencies(dependencies, staging)) {
+			const { renamedInScope, outOfScopeInStaging } = this.partitionChangedDependencies(
+				dependencies,
+				staging,
+				otherProjectTargets,
+			);
+			for (const { collection, target } of renamedInScope) {
 				const dir = await this.resolveDependencyDir(workFolder, target);
 				await fs.rm(path.join(dir, DEPENDENCY_FILE_BY_COLLECTION[collection]), { force: true });
 				if ((await fs.readdir(dir)).length === 0) await fs.rmdir(dir);
+			}
+			for (const target of outOfScopeInStaging) {
+				placement.keptFiles.add(target);
 			}
 			await this.overlayDirectory(stagingFolder, workFolder, placement);
 			await writeImportManifest({
@@ -349,7 +361,11 @@ export class WorkingCopyUpdater {
 					);
 				});
 			}
-			throw error;
+			if (error instanceof BadRequestError) throw error;
+			this.logger.error('Failed to apply the selective push to the working copy', { error });
+			throw new InternalServerError(
+				'Failed to apply the selection to the branch. Check the server logs for details.',
+			);
 		} finally {
 			await fs.rm(workFolder, { recursive: true, force: true });
 		}
@@ -363,7 +379,7 @@ export class WorkingCopyUpdater {
 	private async assertRemovableLeafTarget(
 		exportFolder: string,
 		target: string,
-		remaining: BranchState,
+		remaining: BranchLayout,
 		staging: PackageManifest,
 	): Promise<string> {
 		const segments = target.split(/[\\/]/).filter(Boolean);
@@ -410,29 +426,51 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * Each branch dependency for which staging points at a different path. A
-	 * dependency staging no longer includes stays; a full push removes it.
+	 * Partition dependencies whose staging target differs from the branch target.
+	 *
+	 * - **renamedInScope** — the branch copy sits under the selected project or
+	 *   at the top level. The target change is a real rename or a move into
+	 *   scope. Delete the old file before overlay.
+	 * - **outOfScopeInStaging** — the branch copy sits under a different project
+	 *   (e.g. a credential owned by Beta while pushing Alpha). The exporter
+	 *   placed it at a fallback path because the owning project was not exported.
+	 *   The overlay must skip it so it does not duplicate the dependency.
 	 */
-	private renamedDependencies(
+	private partitionChangedDependencies(
 		dependencies: DependencyRef[],
 		staging: PackageManifest,
-	): Array<{ collection: DependencyCollection; target: string }> {
+		otherProjectTargets: string[],
+	): {
+		renamedInScope: Array<{ collection: DependencyCollection; target: string }>;
+		outOfScopeInStaging: string[];
+	} {
 		const stagingTargets = new Map<string, string>();
 		for (const collection of DEPENDENCY_COLLECTIONS) {
 			for (const entry of staging[collection] ?? []) {
 				stagingTargets.set(`${collection}:${entry.id}`, entry.target);
 			}
 		}
-		if (stagingTargets.size === 0) return [];
 
-		const renamed: Array<{ collection: DependencyCollection; target: string }> = [];
+		const renamedInScope: Array<{ collection: DependencyCollection; target: string }> = [];
+		const outOfScopeInStaging: string[] = [];
+
+		if (stagingTargets.size === 0) {
+			return { renamedInScope, outOfScopeInStaging };
+		}
+
 		for (const dependency of dependencies) {
 			const newTarget = stagingTargets.get(`${dependency.collection}:${dependency.id}`);
-			if (newTarget !== undefined && newTarget !== dependency.target) {
-				renamed.push({ collection: dependency.collection, target: dependency.target });
+			if (newTarget === undefined || newTarget === dependency.target) continue;
+
+			const underOtherProject = otherProjectTargets.some((pt) => isUnder(dependency.target, pt));
+			if (underOtherProject) {
+				outOfScopeInStaging.push(newTarget);
+			} else {
+				renamedInScope.push({ collection: dependency.collection, target: dependency.target });
 			}
 		}
-		return renamed;
+
+		return { renamedInScope, outOfScopeInStaging };
 	}
 
 	/** Id in a dependency file, or undefined when unreadable — a malformed leftover is skipped, not fatal. */

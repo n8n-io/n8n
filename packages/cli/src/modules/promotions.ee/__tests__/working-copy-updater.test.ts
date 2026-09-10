@@ -27,7 +27,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import type { BranchState } from '../branch-placement';
+import type { BranchLayout } from '../branch-placement';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
 
@@ -176,7 +176,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 	});
 
-	describe('readBranchState', () => {
+	describe('readBranchLayout', () => {
 		it('takes projects, folders and workflows from their json files', async () => {
 			await writeTree(exportFolder, {
 				'projects/alpha/project.json': projectFile,
@@ -185,7 +185,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/credentials/c1/credential.json': credentialFile('c1'),
 			});
 
-			const branch = await updater.readBranchState(exportFolder);
+			const branch = await updater.readBranchLayout(exportFolder);
 
 			expect(branch.projects).toEqual([alpha]);
 			expect(branch.folders).toEqual([folder('f1', 'Sales', 'sales')]);
@@ -196,17 +196,17 @@ describe('WorkingCopyUpdater', () => {
 		it('returns an empty state when the export has no entity files', async () => {
 			await mkdir(exportFolder, { recursive: true });
 
-			expect(await updater.readBranchState(exportFolder)).toEqual({});
+			expect(await updater.readBranchLayout(exportFolder)).toEqual({});
 		});
 
 		it('returns an empty state when the export folder does not exist', async () => {
-			expect(await updater.readBranchState(exportFolder)).toEqual({});
+			expect(await updater.readBranchLayout(exportFolder)).toEqual({});
 		});
 
 		it('rejects malformed JSON in an entity file and names the file', async () => {
 			await writeTree(exportFolder, { 'projects/alpha/project.json': '{not-json' });
 
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
 				'"projects/alpha/project.json" on the branch is not valid JSON',
 			);
 		});
@@ -216,7 +216,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/project.json': JSON.stringify({ id: 'p1' }),
 			});
 
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
 				'missing an id or a name',
 			);
 		});
@@ -228,7 +228,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/beta/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
 				/two workflows with id "w1"/,
 			);
 		});
@@ -236,7 +236,7 @@ describe('WorkingCopyUpdater', () => {
 
 	describe('assertDeletionsOnBranch', () => {
 		it('rejects deletes of workflows that are not on the branch', () => {
-			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
+			const branch: BranchLayout = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
 				updater.assertDeletionsOnBranch(branch, selection({ deletedWorkflowIds: ['w-unknown'] })),
@@ -245,7 +245,7 @@ describe('WorkingCopyUpdater', () => {
 
 		it('rejects deletes of workflows that belong to another project', () => {
 			const other = { id: 'w-other', name: 'WOther', target: 'projects/beta/workflows/w-other' };
-			const branch: BranchState = {
+			const branch: BranchLayout = {
 				workflows: [wf('w1'), other],
 				projects: [alpha, { id: 'p2', name: 'Beta', target: 'projects/beta' }],
 			};
@@ -256,7 +256,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('accepts deletes of workflows under the selected project', () => {
-			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
+			const branch: BranchLayout = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
 				updater.assertDeletionsOnBranch(branch, selection({ deletedWorkflowIds: ['w1'] })),
@@ -269,7 +269,7 @@ describe('WorkingCopyUpdater', () => {
 		const inBeta = { id: 'w-moved', name: 'WMoved', target: 'projects/beta/workflows/w-moved' };
 
 		it('rejects a selected workflow that the branch holds under another project', () => {
-			const branch: BranchState = { workflows: [wf('w1'), inBeta], projects: [alpha, beta] };
+			const branch: BranchLayout = { workflows: [wf('w1'), inBeta], projects: [alpha, beta] };
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w-moved'] })),
@@ -277,7 +277,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('rejects it even when the branch does not hold the selected project yet', () => {
-			const branch: BranchState = { workflows: [inBeta], projects: [beta] };
+			const branch: BranchLayout = { workflows: [inBeta], projects: [beta] };
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w-moved'] })),
@@ -285,7 +285,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('accepts a selected workflow that the branch holds under the selected project', () => {
-			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
+			const branch: BranchLayout = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w1'] })),
@@ -293,7 +293,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('accepts a selected workflow that the branch does not hold yet', () => {
-			const branch: BranchState = { workflows: [wf('w1')], projects: [alpha] };
+			const branch: BranchLayout = { workflows: [wf('w1')], projects: [alpha] };
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ workflowIds: ['w-new'] })),
@@ -301,7 +301,7 @@ describe('WorkingCopyUpdater', () => {
 		});
 
 		it('accepts a selection that moves nothing, so a delete-only push is unaffected', () => {
-			const branch: BranchState = { workflows: [wf('w1'), inBeta], projects: [alpha, beta] };
+			const branch: BranchLayout = { workflows: [wf('w1'), inBeta], projects: [alpha, beta] };
 
 			expect(() =>
 				updater.assertNoCrossProjectMoves(branch, selection({ deletedWorkflowIds: ['w1'] })),
@@ -453,7 +453,7 @@ describe('WorkingCopyUpdater', () => {
 				'w1',
 				'w2',
 			]);
-			const branch = await updater.readBranchState(exportFolder);
+			const branch = await updater.readBranchLayout(exportFolder);
 			expect(branch.folders).toEqual([folder('f1', 'Sales', 'sales')]);
 			expect(branch.workflows).toEqual(
 				expect.arrayContaining([inFolder('w2', 'sales'), inFolder('w1', 'sales')]),
@@ -884,6 +884,43 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
+		it('keeps a dependency the branch holds under a project the push does not export', async () => {
+			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
+
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha, beta],
+						workflows: [wf('w1')],
+						credentials: [{ id: 'c1', name: 'c1', target: 'projects/beta/credentials/c1' }],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+						'projects/beta/project.json': JSON.stringify({ id: beta.id, name: beta.name }),
+						'projects/beta/credentials/c1/credential.json': credentialFile('c1'),
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						workflows: [wf('w1')],
+						credentials: [{ id: 'c1', name: 'c1', target: 'credentials/c1' }],
+					}),
+					files: {
+						'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
+						'credentials/c1/credential.json': credentialFile('c1'),
+					},
+				},
+				{ workflowIds: ['w1'] },
+			);
+
+			expect(await readExported('projects/beta/credentials/c1/credential.json')).toBe(
+				credentialFile('c1'),
+			);
+			await expectAbsent('credentials/c1/credential.json');
+		});
+
 		it('leaves a renamed variable directory in place, deferred to a full push', async () => {
 			await writeTree(exportFolder, {
 				'projects/alpha/project.json': projectFile,
@@ -940,7 +977,7 @@ describe('WorkingCopyUpdater', () => {
 					staging,
 					selection({ workflowIds: ['w1'] }),
 				),
-			).rejects.toThrow('EACCES');
+			).rejects.toThrow('Failed to apply the selection to the branch');
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
@@ -974,7 +1011,7 @@ describe('WorkingCopyUpdater', () => {
 					staging,
 					selection({ workflowIds: ['w1'] }),
 				),
-			).rejects.toThrow('EACCES');
+			).rejects.toThrow('Failed to apply the selection to the branch');
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
@@ -1089,7 +1126,7 @@ describe('WorkingCopyUpdater', () => {
 			await mkdir(path.dirname(exportFolder), { recursive: true });
 			await symlink(outside, exportFolder);
 
-			await expect(updater.readBranchState(exportFolder)).rejects.toThrow(
+			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
 				/"\." on the branch is a symbolic link/,
 			);
 		});
