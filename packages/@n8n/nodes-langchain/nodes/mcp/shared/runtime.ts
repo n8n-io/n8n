@@ -2,7 +2,6 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { logWrapper } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
-import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { JSONSchema7 } from 'json-schema';
 import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
@@ -33,6 +32,7 @@ import {
 } from './utils';
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import {
+	appendAttribution,
 	buildMcpToolName,
 	createCallTool,
 	getErrorDescriptionFromToolCall,
@@ -115,22 +115,6 @@ async function connectAndGetTools(
 }
 
 /**
- * Fixed in code, never taken from the registry row, so a row cannot inject a prompt.
- */
-const ATTRIBUTION_INSTRUCTION =
-	'Agent: end your reply with the line above and include every link from this response verbatim.';
-
-/**
- * Append the registry row's attribution to a tool result. Only a content array is
- * touched: every failure path returns a plain string, and structured content stays
- * as the server sent it.
- */
-export function appendAttribution(result: unknown, attribution: string): unknown {
-	if (!isUnknownArray(result)) return result;
-	return [...result, { type: 'text', text: `${attribution}\n${ATTRIBUTION_INSTRUCTION}` }];
-}
-
-/**
  * Build a {@link StructuredToolkit} from a connected MCP server.
  *
  * Used by `supplyData` on every MCP-client-style node. Connects, lists tools,
@@ -179,25 +163,23 @@ export async function buildMcpToolkit(
 	try {
 		const tools = mcpTools.map((tool) => {
 			const prefixedName = buildMcpToolName(node.name, tool.name);
-			const callTool = createCallTool(
-				tool.name,
-				client,
-				config.timeout,
-				(errorMessage) => {
-					const callError = new NodeOperationError(node, errorMessage, { itemIndex });
-					void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
-					ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
-						error: callError,
-					});
-				},
-				() => ctx.getExecutionCancelSignal(),
-			);
 			return logWrapper(
 				mcpToolToDynamicTool(
 					{ ...tool, name: prefixedName },
-					attribution
-						? async (args: IDataObject) => appendAttribution(await callTool(args), attribution)
-						: callTool,
+					createCallTool(
+						tool.name,
+						client,
+						config.timeout,
+						(errorMessage) => {
+							const callError = new NodeOperationError(node, errorMessage, { itemIndex });
+							void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
+							ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
+								error: callError,
+							});
+						},
+						() => ctx.getExecutionCancelSignal(),
+						attribution,
+					),
 				),
 				ctx,
 			);
@@ -249,10 +231,11 @@ async function runToolCall(opts: {
 	mcpTools: McpTool[];
 	client: Client;
 	timeout: number;
+	attribution?: string;
 	itemIndex: number;
 	returnData: INodeExecutionData[];
 }): Promise<void> {
-	const { ctx, node, item, mcpTools, client, timeout, itemIndex, returnData } = opts;
+	const { ctx, node, item, mcpTools, client, timeout, attribution, itemIndex, returnData } = opts;
 
 	if (!item.json.tool || typeof item.json.tool !== 'string') {
 		throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
@@ -289,7 +272,9 @@ async function runToolCall(opts: {
 
 		returnData.push({
 			json: {
-				response: result.content as IDataObject,
+				response: (attribution
+					? appendAttribution(result.content, attribution)
+					: result.content) as IDataObject,
 				...(isStructuredContent(result.structuredContent) && {
 					structuredContent: result.structuredContent,
 				}),
@@ -361,6 +346,7 @@ export async function executeMcpTool(
 				mcpTools,
 				client,
 				timeout: config.timeout,
+				attribution: config.registryCredential?.connection.attribution,
 				itemIndex,
 				returnData,
 			});
@@ -386,6 +372,7 @@ export async function executeMcpTool(
 				mcpTools,
 				client,
 				timeout: config.timeout,
+				attribution: config.registryCredential?.connection.attribution,
 				itemIndex,
 				returnData,
 			});

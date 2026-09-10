@@ -14,11 +14,11 @@ import {
 } from 'n8n-workflow';
 
 import { McpClientsManager } from './McpClientsManager';
-import { appendAttribution, buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
+import { buildMcpToolkit, executeMcpTool, loadMcpToolOptions } from './runtime';
 import type { ResolvedMcpConfig, McpConnectionConfig } from './runtime';
 import type { McpTool } from './types';
 import * as utils from './utils';
-import { buildMcpToolName } from '../McpClientTool/utils';
+import { appendAttribution, buildMcpToolName } from '../McpClientTool/utils';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
@@ -97,6 +97,19 @@ async function buildRegistryTools(attribution?: string) {
 
 	const result = await buildMcpToolkit(createSupplyDataCtx(), 0, createRegistryConfig(attribution));
 	return (result.response as StructuredToolkit).getTools();
+}
+
+/** Run one registry-backed tool call through the agent tool-call (`execute`) path. */
+async function runRegistryToolCall(attribution?: string) {
+	const client = mock<Client>({
+		callTool: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'rows' }] }),
+		close: vi.fn(),
+	});
+	vi.spyOn(utils, 'connectMcpClientForCredential').mockResolvedValue({ ok: true, result: client });
+	vi.spyOn(utils, 'getAllTools').mockResolvedValue([sampleTool] as McpTool[]);
+
+	const ctx = createExecuteCtx([{ json: { tool: buildMcpToolName('MCP', 'search') } }]);
+	return await executeMcpTool(ctx, () => createRegistryConfig(attribution));
 }
 
 function createSupplyDataCtx(overrides: Record<string, unknown> = {}) {
@@ -286,16 +299,11 @@ describe('runtime', () => {
 			expect(content).toEqual([{ type: 'text', text: 'rows' }]);
 		});
 
-		it('returns a string result unchanged, since every failed call returns one', () => {
-			expect(appendAttribution('Failed to execute tool "search"', 'Powered by Genie')).toBe(
-				'Failed to execute tool "search"',
-			);
-		});
-
-		it('returns structured content unchanged', () => {
+		it('returns a non-array content value unchanged', () => {
 			const structured = { rows: [{ id: 1 }] };
 
 			expect(appendAttribution(structured, 'Powered by Genie')).toBe(structured);
+			expect(appendAttribution(undefined, 'Powered by Genie')).toBeUndefined();
 		});
 	});
 
@@ -310,6 +318,21 @@ describe('runtime', () => {
 			await expect(executeMcpTool(ctx, () => baseConfig)).rejects.toThrow(
 				'Execution was cancelled',
 			);
+		});
+
+		it('appends the registry attribution on the agent tool-call path', async () => {
+			const result = await runRegistryToolCall('Powered by Genie');
+
+			expect(result[0][0].json.response).toEqual([
+				{ type: 'text', text: 'rows' },
+				{ type: 'text', text: ATTRIBUTION_SUFFIX },
+			]);
+		});
+
+		it('leaves the agent tool-call result untouched when the row sets no attribution', async () => {
+			const result = await runRegistryToolCall(undefined);
+
+			expect(result[0][0].json.response).toEqual([{ type: 'text', text: 'rows' }]);
 		});
 
 		it('throws when item.json.tool is missing', async () => {
