@@ -1,31 +1,13 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExecutionMode, ExecutionSnapshot, ExecutionStatus } from '@n8n/engine';
-import type {
-	ExecutionStatus as ExecutionStatusV1,
-	IRunExecutionData,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { ExecutionSnapshot } from '@n8n/engine';
+import type { IRunExecutionData } from 'n8n-workflow';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
+import { toV1Mode, toV1Status } from './engine-v2-mapping';
 import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
-
-/** A status added later reads as `unknown` rather than being guessed at. */
-const STATUS_V1 = new Map<ExecutionStatus, ExecutionStatusV1>([
-	['queued', 'new'],
-	['running', 'running'],
-	['completed', 'success'],
-	['failed', 'error'],
-	['cancelled', 'canceled'],
-]);
-
-/** Anything not manual is a production run. */
-const MODE_V1 = new Map<ExecutionMode, WorkflowExecuteMode>([
-	['manual', 'manual'],
-	['production', 'trigger'],
-]);
 
 /**
  * Reads an engine 2.0 execution for display. The data plane is its only store:
@@ -74,8 +56,8 @@ export class EngineV2ExecutionReader {
 		return {
 			id: snapshot.id,
 			workflowId: snapshot.workflowId,
-			mode: MODE_V1.get(snapshot.mode) ?? 'trigger',
-			status: STATUS_V1.get(snapshot.status) ?? 'unknown',
+			mode: toV1Mode(snapshot.mode),
+			status: toV1Status(snapshot.status),
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
 			startedAt,
