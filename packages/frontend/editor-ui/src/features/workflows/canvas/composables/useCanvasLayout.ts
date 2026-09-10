@@ -562,6 +562,13 @@ export function useCanvasLayout(
 			);
 		}
 
+		if (node.data.render?.type === CanvasNodeRenderType.StickyNote) {
+			return {
+				width: node.data.render.options.width ?? DEFAULT_NODE_SIZE[0],
+				height: node.data.render.options.height ?? DEFAULT_NODE_SIZE[1],
+			};
+		}
+
 		// The agent card is far larger than the default node — without this the
 		// unmeasured fallback below would feed dagre a 96x96 box for it
 		if (node.data.render?.type === CanvasNodeRenderType.Agent) {

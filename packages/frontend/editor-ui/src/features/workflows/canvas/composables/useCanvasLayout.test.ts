@@ -972,6 +972,62 @@ describe('useCanvasLayout', () => {
 			expect(matchesGrid(result)).toBe(true);
 		});
 
+		test('uses saved sticky dimensions for hidden group members', () => {
+			const first = createCanvasGraphNode({
+				id: 'first',
+				position: { x: 1008, y: 1008 },
+				hidden: true,
+			});
+			const second = createCanvasGraphNode({
+				id: 'second',
+				position: { x: 1232, y: 1008 },
+				hidden: true,
+			});
+			const stickyDimensions = { width: 480, height: 360 };
+			const sticky = createCanvasGraphNode({
+				id: 'sticky',
+				data: {
+					type: STICKY_NODE_TYPE,
+					render: { type: CanvasNodeRenderType.StickyNote, options: stickyDimensions },
+				},
+				dimensions: { width: 0, height: 0 },
+				position: { x: 960, y: 928 },
+				hidden: true,
+			});
+			const groupNodesRect = {
+				x: sticky.position.x,
+				y: sticky.position.y,
+				width: stickyDimensions.width,
+				height: stickyDimensions.height,
+			};
+			const group = createCanvasGraphGroupNode({
+				id: groupId,
+				nodeIds: ['first', 'second', 'sticky'],
+				isCollapsed: true,
+				nodesRect: groupNodesRect,
+				position: titleBarFromNodesRect(groupNodesRect, true).position,
+			});
+
+			const { layout } = createTestSetup([first, second, sticky, group], [], undefined, [
+				['first', 'second'],
+			]);
+			const result = layout('all');
+
+			const laidOutFirst = result.nodes.find((n) => n.id === 'first');
+			const laidOutSecond = result.nodes.find((n) => n.id === 'second');
+			const laidOutSticky = result.nodes.find((n) => n.id === 'sticky');
+			assert(laidOutFirst);
+			assert(laidOutSecond);
+			assert(laidOutSticky);
+
+			const coveredWidth = DEFAULT_NODE_SIZE[0] + NODE_X_SPACING + DEFAULT_NODE_SIZE[0];
+			expect(laidOutSecond.x - laidOutFirst.x).toBe(DEFAULT_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(laidOutSecond.y - laidOutFirst.y).toBe(0);
+			expect(laidOutSticky.x - laidOutFirst.x).toBe((coveredWidth - stickyDimensions.width) / 2);
+			expect(laidOutSticky.y - laidOutFirst.y).toBeLessThan(-DEFAULT_NODE_SIZE[1]);
+			expect(matchesGrid(result)).toBe(true);
+		});
+
 		function createStickyOverGroupSetup(isCollapsed: boolean) {
 			const before = createCanvasGraphNode({ id: 'before', position: { x: 0, y: 0 } });
 			const m1 = createCanvasGraphNode({ id: 'm1', position: { x: 1008, y: 1008 } });
