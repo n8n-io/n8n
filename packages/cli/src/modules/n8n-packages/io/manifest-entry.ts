@@ -1,7 +1,10 @@
+import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedWorkflowLifecycle } from '../spec/serialized/workflow-lifecycle.schema';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -79,6 +82,13 @@ export function entityFilePath(collection: ManifestEntityCollection, target: str
 	return `${target}/${FILE_NAMES[collection]}`;
 }
 
+/** Out of `FILE_NAMES` because it is no entity of its own: no manifest entry, shares the target. */
+const WORKFLOW_LIFECYCLE_FILE_NAME = 'workflow-lifecycle.json';
+
+export function workflowLifecycleFilePath(target: string): string {
+	return `${target}/${WORKFLOW_LIFECYCLE_FILE_NAME}`;
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
@@ -116,9 +126,21 @@ export async function writeManifestEntry(
 ): Promise<ManifestEntry> {
 	const entry = createManifestEntry(collection, baseDir, entity);
 	await writer.writeDirectory(entry.target);
+	await writer.writeFile(entityFilePath(collection, entry.target), formatEntityFile(serialized));
+	return entry;
+}
+
+export async function writeWorkflowManifestEntry(
+	writer: PackageWriter,
+	baseDir: string,
+	workflow: { id: string; name: string },
+	content: SerializedWorkflow,
+	lifecycle: SerializedWorkflowLifecycle,
+): Promise<ManifestEntry> {
+	const entry = await writeManifestEntry(writer, 'workflows', baseDir, workflow, content);
 	await writer.writeFile(
-		entityFilePath(collection, entry.target),
-		JSON.stringify(serialized, null, '\t'),
+		workflowLifecycleFilePath(entry.target),
+		JSON.stringify(lifecycle, null, '\t'),
 	);
 	return entry;
 }

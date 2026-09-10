@@ -916,7 +916,7 @@ export async function executeWebhook(
 
 		// The node's output is the only place a file shows up, so this cannot run with
 		// the checks above.
-		if (routesToEngineV2) await engineV2Webhooks.assertPayloadSupported(webhookResultData);
+		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
 		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits

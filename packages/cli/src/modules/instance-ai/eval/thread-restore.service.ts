@@ -8,6 +8,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { SharedWorkflowRepository, WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
@@ -16,10 +17,6 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isWorkflowNode(value: unknown): value is INode {
 	if (!isRecord(value)) return false;

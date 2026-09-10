@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
@@ -176,7 +177,7 @@ function readJsonValue(value: unknown, pointer: string, input: ToolResultInput):
 			input.limit ?? DEFAULT_CONTAINER_LIMIT,
 		);
 	}
-	if (isJsonObject(value)) {
+	if (isRecord(value)) {
 		return readContainerPage(
 			value,
 			pointer,
@@ -196,7 +197,7 @@ function describeValue(value: unknown, pointer: string): DescribeOutput {
 		output.charCount = value.length;
 	} else if (Array.isArray(value)) {
 		output.childCount = value.length;
-	} else if (isJsonObject(value)) {
+	} else if (isRecord(value)) {
 		output.childCount = Object.keys(value).length;
 	}
 	return output;
@@ -329,7 +330,7 @@ function describeChild(
 		if (value.length <= MAX_INLINE_STRING_CHARS) child.value = value;
 	} else if (Array.isArray(value)) {
 		child.childCount = value.length;
-	} else if (isJsonObject(value)) {
+	} else if (isRecord(value)) {
 		child.childCount = Object.keys(value).length;
 	} else if (value === null || typeof value === 'boolean' || typeof value === 'number') {
 		child.value = value;
@@ -358,7 +359,7 @@ function resolveJsonPointer(root: unknown, pointer: string): unknown {
 			value = value[index];
 			continue;
 		}
-		if (isJsonObject(value) && Object.hasOwn(value, segment)) {
+		if (isRecord(value) && Object.hasOwn(value, segment)) {
 			value = value[segment];
 			continue;
 		}
@@ -381,15 +382,11 @@ function appendJsonPointer(pointer: string, segment: string): string {
 function getJsonValueType(value: unknown): JsonValueType {
 	if (value === null) return 'null';
 	if (Array.isArray(value)) return 'array';
-	if (isJsonObject(value)) return 'object';
+	if (isRecord(value)) return 'object';
 	if (typeof value === 'string') return 'string';
 	if (typeof value === 'number') return 'number';
 	if (typeof value === 'boolean') return 'boolean';
 	throw new Error('Stored tool result contains an unsupported JSON value');
-}
-
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isWithinOutputBudget(output: ToolResultOutput): boolean {

@@ -20,6 +20,8 @@ import {
 	WorkflowTagsPublicDto,
 	WorkflowVersionHistoryListPublicDto,
 	WorkflowVersionPublicDto,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -354,7 +356,7 @@ export class WorkflowsPublicController {
 	async getWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: GetWorkflowQueryDto,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -407,7 +409,7 @@ export class WorkflowsPublicController {
 	async updateWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: UpdateWorkflowPublicDto,
 		@Query query: UpdateWorkflowQueryDto,
 	): Promise<UpdatedWorkflowPublicDto> {
@@ -456,7 +458,7 @@ export class WorkflowsPublicController {
 	async deleteWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<DeletedWorkflowPublicDto> {
 		const workflow = await this.workflowService.deleteForPublicApi(req.user, workflowId);
 
@@ -482,7 +484,7 @@ export class WorkflowsPublicController {
 	async archiveWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
 
@@ -505,7 +507,7 @@ export class WorkflowsPublicController {
 	async unarchiveWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
 
@@ -527,7 +529,7 @@ export class WorkflowsPublicController {
 	async transferWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TransferWorkflowPublicDto,
 	): Promise<void> {
 		await this.enterpriseWorkflowService.transferWorkflow(
@@ -621,7 +623,7 @@ export class WorkflowsPublicController {
 	async publishWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
 		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
@@ -647,7 +649,7 @@ export class WorkflowsPublicController {
 	async unpublishWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
 			source: 'api',
@@ -675,7 +677,7 @@ export class WorkflowsPublicController {
 	async activateWorkflow(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: ActivateWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
 		return await this.publishWorkflow(req, res, workflowId, body);
@@ -693,7 +695,7 @@ export class WorkflowsPublicController {
 	async deactivateWorkflow(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		return await this.unpublishWorkflow(req, res, workflowId);
 	}
@@ -711,7 +713,7 @@ export class WorkflowsPublicController {
 	async getWorkflowHistory(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
@@ -757,8 +759,8 @@ export class WorkflowsPublicController {
 	async getWorkflowVersion(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
-		@Param('versionId') versionId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('versionId', workflowVersionIdParamSchema) versionId: string,
 	): Promise<WorkflowVersionPublicDto> {
 		let version: WorkflowHistory;
 		try {
@@ -795,7 +797,7 @@ export class WorkflowsPublicController {
 	async getWorkflowTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowTagsPublicDto> {
 		this.assertWorkflowTagsEnabled();
 
@@ -823,7 +825,7 @@ export class WorkflowsPublicController {
 	async updateWorkflowTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<WorkflowTagsPublicDto> {
 		this.assertWorkflowTagsEnabled();

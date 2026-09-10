@@ -1,0 +1,21 @@
+type: object
+properties:
+  connectionId:
+    type: string
+  configId:
+    type: string
+  direction:
+    type: string
+    enum:
+      - apply
+      - promote
+  branchName:
+    type: string
+  hasCheckout:
+    type: boolean
+required:
+  - connectionId
+  - configId
+  - direction
+  - branchName
+  - hasCheckout

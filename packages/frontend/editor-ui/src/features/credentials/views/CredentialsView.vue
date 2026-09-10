@@ -11,7 +11,7 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
