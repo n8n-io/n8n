@@ -198,6 +198,45 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 		});
 	});
 
+	it('auto-selects from the payload before the usable slice has been fetched', async () => {
+		const credentialsStore = useCredentialsStore();
+		Object.defineProperty(credentialsStore, 'hasFetchedUsableCredentials', {
+			configurable: true,
+			get: () => false,
+		});
+		Object.defineProperty(credentialsStore, 'allUsableCredentialsByType', {
+			configurable: true,
+			get: () => ({}),
+		});
+
+		renderComponent({
+			props: {
+				requestId: 'req-1',
+				credentialRequests: [
+					{
+						credentialType: 'openAiApi',
+						reason: 'Enter a valid OpenAI API key',
+						existingCredentials: [
+							{ id: 'cred-1', name: 'OpenAI account' },
+							{ id: 'cred-2', name: 'OpenAI account 2' },
+						],
+					},
+				],
+				message: 'Set up credentials',
+				requireUserSelection: true,
+			},
+		});
+
+		// The payload is the whole list; waiting for the slice fetch would leave a
+		// multi-credential card unselected until unrelated store activity re-fired.
+		await vi.waitFor(() => {
+			expect(screen.getByTestId('instance-ai-credential-step-check')).toBeTruthy();
+		});
+		expect(
+			screen.getByTestId('node-credentials-select').querySelector('[data-icon="wallet"]'),
+		).toBeNull();
+	});
+
 	it('falls back to the store slice when the payload lists no credentials', async () => {
 		renderComponent({
 			props: {

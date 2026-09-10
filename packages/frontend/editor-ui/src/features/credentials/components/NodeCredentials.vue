@@ -429,8 +429,9 @@ watch(
 		if (types.length === 0) return;
 		// Before the scoped fetch lands there are no options to pick from, which would
 		// read as "no credentials exist" and auto-enable the AI Gateway below. The
-		// watcher re-fires once the fetch populates the slice.
-		if (!credentialsStore.hasFetchedUsableCredentials) return;
+		// watcher re-fires once the fetch populates the slice. A host-supplied list
+		// is complete on its own, so it does not wait for the fetch.
+		if (!props.credentials && !credentialsStore.hasFetchedUsableCredentials) return;
 
 		const isInitialEvaluation = !hasEvaluatedCredentials;
 		hasEvaluatedCredentials = true;
