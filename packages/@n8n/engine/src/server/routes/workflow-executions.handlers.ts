@@ -43,7 +43,14 @@ const SearchExecutionsBody = z
 			.strict()
 			.optional(),
 	})
-	.strict();
+	.strict()
+	// The cursor only walks its own `(createdAt, id)` order, so a status-first
+	// sort would drop the rows that sort after the cursor row. Ask for one or the
+	// other.
+	.refine((body) => !(body.before && body.order?.top), {
+		message: 'before cannot be combined with order.top',
+		path: ['before'],
+	});
 
 export function createSearchExecutionsHandler(
 	executionQuery: ExecutionQueryService,

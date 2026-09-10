@@ -1,6 +1,7 @@
 import type { Repository, SelectQueryBuilder } from '@n8n/typeorm';
 
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { UnexpectedError } from '../common';
 import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
 	ExecutionViewStore,
@@ -13,6 +14,19 @@ import type {
 
 /** The execution row, with its steps aggregated into one column. */
 type ExecutionWithStepsRow = ExecutionView & { steps: StepView[] };
+
+/**
+ * The cursor compares `(created_at, id)`, so it only walks that order. A
+ * status-bucket sort puts newer rows behind the top bucket, and the next page
+ * drops every one of them: they sort after the cursor row but were never
+ * reported. Callers pick one or the other. The API rejects the pair with a 400;
+ * this holds the rule for every other caller.
+ */
+function assertPageableOrder(query: ExecutionListQuery): void {
+	if (query.before && query.order?.top) {
+		throw new UnexpectedError('An execution cursor cannot page a status-first sort');
+	}
+}
 
 /**
  * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
@@ -29,6 +43,8 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	) {}
 
 	async listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]> {
+		assertPageableOrder(query);
+
 		const qb = this.buildListQuery(query)
 			.select('execution.id', 'id')
 			.addSelect('execution.workflow_id', 'workflowId')
@@ -40,9 +56,6 @@ export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 		if (query.before) {
 			qb.andWhere('(execution.created_at, execution.id) < (:createdAt, :id)', query.before);
 		}
-		// A sort order other than the cursor's own (created_at, id) can skip or
-		// repeat rows at the page boundary if a row's status changes after the
-		// fact. Same limitation as the control plane's equivalent query.
 		if (query.order?.top) {
 			qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 		}
