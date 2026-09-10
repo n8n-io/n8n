@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -213,7 +213,7 @@
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@typescript-eslint/typescript-estree": "^8.35.0",
+    "@typescript-eslint/typescript-estree": "catalog:",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/express": "catalog:",

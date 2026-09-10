@@ -158,7 +158,7 @@ async function mountColumn(
 		props: {
 			activeMainTab: overrides.activeMainTab ?? 'agent',
 			mainTabOptions: overrides.mainTabOptions ?? [
-				{ label: 'Agent', value: 'agent' },
+				{ label: 'Build', value: 'agent' },
 				{ label: 'Knowledge', value: 'knowledge' },
 				{ label: 'Sessions', value: 'sessions' },
 				{ label: 'Settings', value: 'settings' },
@@ -210,11 +210,11 @@ describe('AgentBuilderEditorColumn', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders Agent, Knowledge, Sessions, and Settings tabs without Raw', async () => {
+	it('renders Build, Knowledge, Sessions, and Settings tabs without Raw', async () => {
 		const wrapper = await mountColumn();
 
 		const tabs = wrapper.find('[data-testid="agent-header-tabs"]');
-		expect(tabs.text()).toContain('Agent');
+		expect(tabs.text()).toContain('Build');
 		expect(tabs.text()).toContain('Knowledge');
 		expect(tabs.text()).toContain('Sessions');
 		expect(tabs.text()).toContain('Settings');

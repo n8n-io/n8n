@@ -7,9 +7,12 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionSnapshot, StepDetail } from '@n8n/engine';
 import { parse } from 'flatted';
+import type { INode } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -152,12 +155,23 @@ describe('GET /executions/:id', () => {
 			getExecution.mockReset();
 		});
 
+		/** The workflow as the data plane stored it when the run started. */
+		const ranWorkflow = (workflowId: string) => ({
+			id: workflowId,
+			name: 'As it ran',
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
+			connections: {},
+			settings: {},
+			nodeGroups: [],
+		});
+
 		const snapshot = (workflowId: string, steps?: StepDetail[]): ExecutionSnapshot => ({
 			id: V2_EXECUTION_ID,
 			workflowId,
 			status: 'completed',
 			mode: 'manual',
 			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
+			workflow: ranWorkflow(workflowId),
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',
@@ -183,6 +197,35 @@ describe('GET /executions/:id', () => {
 			});
 			// Redaction reads the policy off the workflow.
 			expect(response.body.data.workflowData.id).toBe(workflow.id);
+		});
+
+		test('reports the workflow that ran after the live one is edited', async () => {
+			const liveNode = (name: string): INode => ({
+				id: 'trigger-id',
+				name,
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+			const workflow = await createWorkflow({ nodes: [liveNode('Trigger')] }, owner);
+			getExecution.mockResolvedValue(snapshot(workflow.id));
+
+			// Rename the workflow and its node, the way a user would after the run.
+			await Container.get(WorkflowRepository).update(workflow.id, {
+				name: 'Renamed since',
+				nodes: [liveNode('Renamed Trigger')],
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${V2_EXECUTION_ID}`)
+				.expect(200);
+
+			expect(response.body.data.workflowData.name).toBe('As it ran');
+			expect(response.body.data.workflowData.nodes).toEqual([
+				{ name: 'Trigger', type: MANUAL_TRIGGER_NODE_TYPE },
+			]);
 		});
 
 		test('serves the step outputs as v1 run data', async () => {

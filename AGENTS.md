@@ -41,6 +41,13 @@ frontend, and extensible node-based workflow engine.
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
+  PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
+  parsing, …), you MUST check the shared packages for an existing
+  implementation and use it: `@n8n/utils` (generic helpers, redaction),
+  `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
+  (workflow graph and traversal). A new shared helper usually belongs in one of
+  these packages too; domain logic stays in the package that owns the domain.
 
 ## Agent Skills and Claude Code Plugin
 
@@ -324,7 +331,9 @@ When implementing features:
 2. Implement backend logic in `packages/cli` module, follow
    `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/frontend/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
+   frontend feature module, obey
+   `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

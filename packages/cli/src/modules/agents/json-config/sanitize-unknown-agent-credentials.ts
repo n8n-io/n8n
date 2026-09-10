@@ -128,7 +128,6 @@ function sanitizeUnknownCredentialsInValue(
 
 	return sanitized;
 }
-
 /**
  * Replace credential IDs that are not accessible to the agent project with `""`.
  * Walks the config recursively and only targets credential-like fields:

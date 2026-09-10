@@ -10,6 +10,7 @@ import {
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
@@ -68,6 +69,7 @@ import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.ser
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
+import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
@@ -95,6 +97,7 @@ export class InstanceAiController {
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
+		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly evalExecutionService: EvalExecutionService,
@@ -872,6 +875,25 @@ export class InstanceAiController {
 		return { thread };
 	}
 
+	/**
+	 * Persist the pending new-agent artifact this thread has open, and bind it to
+	 * the thread in the same request. Idempotent under a concurrent writer on the
+	 * same client-minted id (the chat's build-agent tool), unlike the strict
+	 * project-scoped agent create.
+	 */
+	@Post('/threads/:threadId/agent')
+	@GlobalScope('instanceAi:message')
+	async persistPendingAgent(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiPersistPendingAgentRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
+	}
+
 	@Get('/threads/:threadId/messages')
 	@GlobalScope('instanceAi:message')
 	async getThreadMessages(
@@ -1024,8 +1046,9 @@ export class InstanceAiController {
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
 	 * recreate the artifacts the history references — workflows (node credentials
-	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
-	 * write the native message log verbatim. The thread then continues as if the
+	 * resolved against the project's — see `EvalThreadRestoreService`), data tables
+	 * and agents — publish the workflows the seed flags `published`, then write the
+	 * native message log verbatim. The thread then continues as if the
 	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
@@ -1070,18 +1093,27 @@ export class InstanceAiController {
 		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let publishedWorkflowIds: string[] = [];
 		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 			);
+			// BEFORE the messages, which the rollback cannot undo: a refused activation
+			// (no trigger, webhook conflict, unresolved credential) must fail while the
+			// restore is still fully rollback-able. The rollback unpublishes.
+			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
@@ -1130,6 +1162,9 @@ export class InstanceAiController {
 				}
 			}
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
+			// Every seed this restore published, not only the created ones: a re-applied
+			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
+			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;

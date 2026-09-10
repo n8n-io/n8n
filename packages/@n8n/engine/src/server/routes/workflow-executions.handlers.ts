@@ -35,6 +35,7 @@ function toExecutionSnapshot(record: ExecutionView | ExecutionWithStepsView): Ex
 		status: record.status,
 		mode: record.mode,
 		graph: record.graph,
+		workflow: record.workflow,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 		finishedAt: record.finishedAt?.toISOString() ?? null,
@@ -52,8 +53,8 @@ function toStepDetail(record: StepView): StepDetail {
 		status: record.status,
 		outputs: record.outputs,
 		error: record.error,
-		createdAt: record.createdAt.toISOString(),
-		updatedAt: record.updatedAt.toISOString(),
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
 	};
 }
 

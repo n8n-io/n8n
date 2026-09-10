@@ -29,6 +29,8 @@ const SeedWorkflowSchema = z.object({
 	name: z.string().min(1),
 	nodes: z.array(z.record(z.unknown())),
 	connections: z.record(z.unknown()),
+	/** Restore it published (see `instanceAiEvalSeedWorkflowSchema`). */
+	published: z.boolean().optional(),
 });
 
 /** A project seeded before the live turn. Only the name is authored: the

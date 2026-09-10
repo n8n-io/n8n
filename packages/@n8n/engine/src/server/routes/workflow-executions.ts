@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { createGetExecutionHandler } from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
-import { jsonValueSchema, UnimplementedError } from '../../common';
+import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
@@ -39,6 +39,11 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
+	/**
+	 * The workflow the graph came from. Only its JSON-ness is checked: the engine
+	 * stores and reports it without reading a field out of it.
+	 */
+	workflow: jsonObjectSchema,
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
