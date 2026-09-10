@@ -235,9 +235,18 @@ describe('GatewayOpportunitySwitchModal', () => {
 		});
 
 		it.each([
-			['unsupportedModel', 'Gateway credits supports this node but not the selected model.'],
-			['unsupportedAction', 'Gateway credits supports this node but not the selected operation.'],
-			['hiddenPropertySet', 'Gateway credits supports this node but not one of its settings.'],
+			[
+				'unsupportedModel',
+				'This node works with Gateway credits, but the selected model does not.',
+			],
+			[
+				'unsupportedAction',
+				'This node works with Gateway credits, but the selected operation does not.',
+			],
+			[
+				'hiddenPropertySet',
+				'This node works with Gateway credits, but one of its settings does not.',
+			],
 		] as const)('renders its own message for the %s caveat', (caveat, expectedMessage) => {
 			const { getByTestId } = renderModal([makeOpportunity({ caveat })]);
 
