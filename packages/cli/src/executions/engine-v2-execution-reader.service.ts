@@ -68,7 +68,8 @@ export class EngineV2ExecutionReader {
 		if (scope !== 'all' && !scope.length) return this.empty();
 
 		const status = resolveV2Statuses(query.status);
-		if (!status.length) return this.empty();
+		// A filter that matches no v2 status can only return nothing.
+		if (status?.length === 0) return this.empty();
 
 		const request = this.buildSearchRequest(
 			query,
@@ -106,7 +107,7 @@ export class EngineV2ExecutionReader {
 	private buildSearchRequest(
 		query: EngineV2SearchQuery,
 		scope: V2Scope,
-		status: ExecutionStatus[],
+		status: ExecutionStatus[] | undefined,
 		includeTotal: boolean,
 	): SearchExecutionsRequest {
 		return {
