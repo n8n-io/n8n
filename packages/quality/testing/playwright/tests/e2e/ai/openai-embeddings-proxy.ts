@@ -37,6 +37,9 @@ export async function setupEmbeddingsProxy(proxy: ProxyServer): Promise<void> {
 	}
 }
 
+/** Response headers worth replaying; everything else (project id, CDN cookies, request ids) is dropped. */
+const KEPT_RESPONSE_HEADERS = /^(content-type|x-ratelimit-)/i;
+
 /** Persists the embeddings responses captured during a recording run. */
 export async function recordEmbeddingsExpectations(proxy: ProxyServer): Promise<void> {
 	if (!isRecordingEmbeddings) return;
@@ -47,7 +50,9 @@ export async function recordEmbeddingsExpectations(proxy: ProxyServer): Promise<
 		transform: (expectation) => {
 			const response = expectation.httpResponse as { headers?: Record<string, string[]> };
 			if (response?.headers) {
-				delete response.headers['openai-organization'];
+				response.headers = Object.fromEntries(
+					Object.entries(response.headers).filter(([name]) => KEPT_RESPONSE_HEADERS.test(name)),
+				);
 			}
 			return expectation;
 		},
