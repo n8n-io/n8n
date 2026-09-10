@@ -12,6 +12,11 @@ import ButtonBlockConfig from './ButtonBlockConfig.vue';
 type ButtonBlockData = ButtonBlock['data'];
 
 export class ButtonBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'Button' };
 	}

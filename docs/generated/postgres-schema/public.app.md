@@ -71,6 +71,7 @@ erDiagram
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json layout
   varchar_36_ parentPageId FK
   varchar_255_ route
   timestamp_3__with_time_zone updatedAt

@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 
+import { blockStaticData } from '../block-context';
 import { interpolate } from '../interpolate';
 import { renderPartial } from '../templates';
 import type { BlockRenderContext, BlockRenderer } from '../types';
@@ -63,13 +64,7 @@ export const tableBlockRenderer: BlockRenderer<'table'> = {
 	type: 'table',
 	async render(block, ctx) {
 		const pageContext = Container.get(PageContextFactory).build({
-			app: ctx.app,
-			page: ctx.page,
-			blockId: block.id,
-			params: ctx.params,
-			query: ctx.query,
-			viewer: ctx.viewer,
-			baseUrl: ctx.baseUrl,
+			...blockStaticData(ctx, block.id),
 			logs: [],
 		});
 

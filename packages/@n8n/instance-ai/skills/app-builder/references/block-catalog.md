@@ -165,17 +165,31 @@ conditionals; use `code` when you need data or logic.
   "id": "code1",
   "type": "code",
   "data": {
-    "source": "export async function render(ctx: PageContext) {\n  const table = await ctx.dataTables.get('orders');\n  const { data } = await table.getManyRowsAndCount({ take: 10 });\n  return `<ul>${data.map(r => `<li>${r.name}</li>`).join('')}</ul>`;\n}\n"
+    "source": "export async function render(ctx: PageContext) {\n  const table = await ctx.dataTables.get('orders');\n  const { data } = await table.getManyRowsAndCount({ take: 10 });\n  return <ul>{data.map((r) => <li>{r.name}</li>)}</ul>;\n}\n"
   }
 }
 ```
 
-TypeScript, evaluated server-side against `PageContext`. See
+TSX, evaluated server-side against `PageContext`. JSX compiles to the
+built-in `h` / `Fragment` and renders to HTML: text children and attribute
+values are escaped, unsafe URL attributes are dropped. `render` may return
+JSX, a string (raw HTML), a number, `null`, a boolean or an array of those.
+Output is **not sanitized**: `raw(html)` and returned strings are inserted
+as-is, and external `<script src>` is allowed. See
 [code-examples.md](code-examples.md) for `render` + `actions`, and load
 `apps(action="code-api")` for the full type surface before writing one.
-Output is inserted **as-is** — not sanitized, external `<script src>` is
-allowed, but never sanitize-adjacent risk this yourself: escape any
-user-controlled value you interpolate into the returned HTML.
+
+## Layout-only block
+
+### `slot`
+
+```json
+{ "id": "slot", "type": "slot", "data": {} }
+```
+
+Marks where the page content goes inside a layout. A layout must contain
+exactly one `slot`; page `content` must not contain one. See
+[layouts.md](layouts.md).
 
 ## Interpolation reference
 

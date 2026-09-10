@@ -220,6 +220,28 @@ describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.text).toContain('Draft heading');
+		expect(response.headers['x-n8n-app-render-errors']).toBeUndefined();
+	});
+
+	test('reports a block that fails to render in a header and leaves it out of the html', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [
+				{ id: 'broken', type: 'html', data: { template: '{{#if}}' } },
+				{ id: 'h1', type: 'header', data: { text: 'Still here', level: 1 } },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		const errors = JSON.parse(response.headers['x-n8n-app-render-errors']);
+		expect(Object.keys(errors)).toEqual(['broken']);
+		expect(errors.broken).toMatch(/Parse error[^]*\nat /);
+		expect(response.text).toContain('Still here');
+		expect(response.text).not.toContain('Parse error');
 	});
 
 	test('fills a dynamic segment from ?params= into the interpolated content', async () => {
@@ -243,6 +265,103 @@ describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
 
 		await authMemberAgent
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(403);
+	});
+});
+
+describe('Page layouts', () => {
+	const slot = { id: 'slot', type: 'slot', data: {} };
+	const banner = { id: 'banner', type: 'header', data: { text: 'Banner', level: 2 } };
+
+	test('PATCH stores a layout and null resets it to inherit', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: [banner, slot] })
+			.expect(200);
+		expect(response.body.data.layout).toEqual([banner, slot]);
+
+		const reset = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: null })
+			.expect(200);
+		expect(reset.body.data.layout).toBeNull();
+	});
+
+	test('PATCH rejects a layout without a slot', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: [banner] })
+			.expect(400);
+	});
+
+	test('GET layout-preview returns the inherited layout, sanitized, with an empty slot', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const parent = await pageRepository.createPage(app.id, null, 'clients');
+		await pageRepository.updatePage(parent, {
+			layout: [
+				{
+					id: 'menu',
+					type: 'html',
+					data: { template: '<nav>Menu</nav><script>alert(1)</script>' },
+				},
+				slot,
+			],
+		});
+		const child = await pageRepository.createPage(app.id, parent.id, 'orders', [
+			{ id: 'h1', type: 'header', data: { text: 'Orders', level: 1 } },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${child.id}/layout-preview`)
+			.expect(200);
+
+		expect(response.body.data.ownerPageId).toBe(parent.id);
+		expect(response.body.data.html).toContain('data-block-id="menu"');
+		expect(response.body.data.html).toContain('<nav>Menu</nav>');
+		expect(response.body.data.html).toContain('<main class="app-main" data-app-slot></main>');
+		expect(response.body.data.html).not.toContain('script');
+		expect(response.body.data.html).not.toContain('Orders');
+		expect(response.body.data.errors).toEqual({});
+	});
+
+	test('GET layout-preview reports a layout block that fails to render', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			layout: [{ id: 'menu', type: 'html', data: { template: '{{#if}}' } }, slot],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
+			.expect(200);
+
+		expect(Object.keys(response.body.data.errors)).toEqual(['menu']);
+		expect(response.body.data.html).toContain('data-block-id="menu"');
+	});
+
+	test('GET layout-preview returns nulls for the built-in shell', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({ ownerPageId: null, html: null, errors: {} });
+	});
+
+	test('GET layout-preview rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
 			.expect(403);
 	});
 });

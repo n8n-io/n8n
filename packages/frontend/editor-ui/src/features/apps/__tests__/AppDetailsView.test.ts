@@ -49,6 +49,7 @@ const rootPage: Page = {
 	parentPageId: null,
 	route: '',
 	content: [],
+	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -68,7 +69,7 @@ describe('AppDetailsView', () => {
 		appsStore.pages = [rootPage, childPage];
 		appsStore.fetchPages.mockResolvedValue(undefined);
 		appsStore.fetchVersions.mockResolvedValue([]);
-		appsStore.fetchPreview.mockResolvedValue('<html></html>');
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
 	});
 
 	afterEach(() => {

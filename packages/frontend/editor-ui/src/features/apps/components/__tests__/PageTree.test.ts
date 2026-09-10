@@ -19,6 +19,7 @@ const page = (id: string, route: string, parentPageId: string | null = null): Pa
 	parentPageId,
 	route,
 	content: [],
+	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
 });

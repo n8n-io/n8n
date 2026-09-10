@@ -6,10 +6,12 @@ import type { AppActionContext, AppDataTableHandle, AppPageContext } from '../pa
 const staticData: RunStaticData = {
 	app: { id: 'app-1', name: 'My App', namespace: 'my-app', projectId: 'project-1' },
 	page: { id: 'page-1', route: '', path: '/apps/my-app' },
+	actionPageId: 'page-1',
 	blockId: 'block-1',
 	params: {},
 	query: {},
 	viewer: null,
+	menu: [],
 	baseUrl: 'https://n8n.example.com',
 };
 
@@ -20,6 +22,7 @@ function buildCtx(overrides: Partial<AppPageContext> = {}): AppPageContext {
 		params: staticData.params,
 		query: staticData.query,
 		viewer: staticData.viewer,
+		menu: staticData.menu,
 		dataTables: mock(),
 		workflows: mock(),
 		credentials: mock(),
@@ -52,16 +55,162 @@ describe('AppCodeRuntime', () => {
 		expect(logs).toEqual([]);
 	});
 
+	it('exposes ctx.menu and the owner page in ctx.actionUrl() inside the isolate', async () => {
+		const source = `
+			export function render(ctx: PageContext) {
+				return ctx.menu.map((item) => item.title + (item.current ? '*' : '')).join(',') + ' ' + ctx.actionUrl('go');
+			}
+		`;
+		const menu = [
+			{ title: 'Home', path: '/apps/my-app', current: false, children: [] },
+			{ title: 'clients', path: '/apps/my-app/clients', current: true, children: [] },
+		];
+		const { value } = await runtime.render(source, buildCtx({ menu }), {
+			...staticData,
+			menu,
+			actionPageId: 'parent-page',
+		});
+		expect(value).toBe(
+			'Home,clients* https://n8n.example.com/apps/my-app/_actions/parent-page/block-1/go',
+		);
+	});
+
 	it('throws when the module exports no render()', async () => {
 		await expect(runtime.render('export const x = 1;', buildCtx(), staticData)).rejects.toThrow(
 			/render/,
 		);
 	});
 
-	it('throws when render() does not return a string', async () => {
-		await expect(
-			runtime.render('export function render() { return 42; }', buildCtx(), staticData),
-		).rejects.toThrow();
+	describe('render() result', () => {
+		const render = async (expression: string) =>
+			(
+				await runtime.render(
+					`export function render() { return ${expression}; }`,
+					buildCtx(),
+					staticData,
+				)
+			).value;
+
+		it.each([
+			['null', ''],
+			['undefined', ''],
+			['42', '42'],
+			['true', ''],
+			["['a', <b/>]", 'a<b></b>'],
+		])('turns %s into %j', async (expression, expected) => {
+			expect(await render(expression)).toBe(expected);
+		});
+
+		it('inserts a returned string as raw HTML', async () => {
+			expect(await render("'<p>' + 'x & y' + '</p>'")).toBe('<p>x & y</p>');
+		});
+
+		it('rejects a plain object', async () => {
+			await expect(render('{ a: 1 }')).rejects.toThrow(
+				'render() must return HTML, text, a number, null or an array of those',
+			);
+		});
+	});
+
+	describe('JSX', () => {
+		const renderJsx = async (body: string, query: Record<string, string> = {}) =>
+			(
+				await runtime.render(
+					`export function render(ctx: PageContext) { ${body} }`,
+					buildCtx({ query }),
+					{ ...staticData, query },
+				)
+			).value;
+
+		it('escapes text children and attribute values', async () => {
+			const value = await renderJsx('return <p title={ctx.query.q}>{ctx.query.q}</p>;', {
+				q: '<b>"x" & \'y\'</b>',
+			});
+			expect(value).toBe(
+				'<p title="&lt;b&gt;&quot;x&quot; &amp; &#39;y&#39;&lt;/b&gt;">&lt;b&gt;&quot;x&quot; &amp; &#39;y&#39;&lt;/b&gt;</p>',
+			);
+		});
+
+		it('does not escape nested elements twice', async () => {
+			expect(await renderJsx('return <div><span>{"<i>"}</span></div>;')).toBe(
+				'<div><span>&lt;i&gt;</span></div>',
+			);
+		});
+
+		it('renders a Fragment without a wrapping element', async () => {
+			expect(await renderJsx('return <><a>1</a><b>2</b></>;')).toBe('<a>1</a><b>2</b>');
+		});
+
+		it('renders arrays of elements in order', async () => {
+			expect(await renderJsx('return <ul>{[1, 2].map((n) => <li>{n}</li>)}</ul>;')).toBe(
+				'<ul><li>1</li><li>2</li></ul>',
+			);
+		});
+
+		it('inserts raw() HTML as-is', async () => {
+			expect(await renderJsx("return <div>{raw('<hr>')}</div>;")).toBe('<div><hr></div>');
+		});
+
+		it('renders void elements without a closing tag', async () => {
+			expect(await renderJsx('return <p><br/><img src="/a.png"/></p>;')).toBe(
+				'<p><br><img src="/a.png"></p>',
+			);
+		});
+
+		it('renders true as a bare attribute and skips false, null and undefined', async () => {
+			expect(
+				await renderJsx(
+					'return <input disabled={true} checked={false} name={null} id={undefined}/>;',
+				),
+			).toBe('<input disabled>');
+		});
+
+		it('drops an href with a javascript: scheme and keeps safe URLs', async () => {
+			const value = await renderJsx(
+				'return <><a href={ctx.query.q}>x</a><a href="https://n8n.io">y</a><a href="?p=1">z</a><a href="clients/1">r</a><img src={ctx.query.d} /></>;',
+				{ q: ' javascript:alert(1)', d: 'data:text/html,<script>1</script>' },
+			);
+			expect(value).toBe(
+				'<a>x</a><a href="https://n8n.io">y</a><a href="?p=1">z</a><a href="clients/1">r</a><img>',
+			);
+		});
+
+		it('maps className and htmlFor and serialises a style object', async () => {
+			expect(
+				await renderJsx(
+					'return <label className="a" htmlFor="b" style={{ marginTop: "1px", color: "red" }}>x</label>;',
+				),
+			).toBe('<label class="a" for="b" style="margin-top: 1px; color: red;">x</label>');
+		});
+
+		it('calls a function component with props and children and escapes a string it returns', async () => {
+			const source = `
+				const Card = (props: { title: string; children?: Renderable }) =>
+					<section><h2>{props.title}</h2>{props.children}</section>;
+				const Text = (props: { value: string }) => props.value;
+				export function render() {
+					return <Card title="<t>"><Text value="<v>"/></Card>;
+				}
+			`;
+			const { value } = await runtime.render(source, buildCtx(), staticData);
+			expect(value).toBe('<section><h2>&lt;t&gt;</h2>&lt;v&gt;</section>');
+		});
+
+		it('keeps an existing template-string block unchanged', async () => {
+			const source = `
+				export function render(ctx: PageContext) {
+					return \`<div class="p-md"><h2>\${ctx.app.name}</h2></div>\`;
+				}
+			`;
+			const { value } = await runtime.render(source, buildCtx(), staticData);
+			expect(value).toBe('<div class="p-md"><h2>My App</h2></div>');
+		});
+
+		it('fails to compile an angle-bracket type assertion', async () => {
+			const source =
+				'export function render() { const n = <number>(1 as unknown); return String(n); }';
+			await expect(runtime.render(source, buildCtx(), staticData)).rejects.toThrow();
+		});
 	});
 
 	it('throws when render() output exceeds the 1 MB limit', async () => {

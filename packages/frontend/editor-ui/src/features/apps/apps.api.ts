@@ -1,10 +1,14 @@
-import { makeRestApiRequest, request } from '@n8n/rest-api-client';
+import { makeRestApiRequest, rawRequest } from '@n8n/rest-api-client';
+import { jsonParse } from 'n8n-workflow';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	App,
 	AppVersionSummary,
+	LayoutPreview,
 	Page,
+	PagePreview,
 	PreviewParams,
+	RenderErrors,
 	UpdateAppInput,
 	UpdatePageInput,
 } from '@/features/apps/apps.types';
@@ -128,11 +132,27 @@ export const activateVersionApi = async (
 	);
 };
 
+export const fetchLayoutPreviewApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	pageId: string,
+) => {
+	return await makeRestApiRequest<LayoutPreview>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/pages/${pageId}/layout-preview`,
+	);
+};
+
+const RENDER_ERRORS_HEADER = 'x-n8n-app-render-errors';
+
 /**
  * Draft preview HTML for a page (`text/html`), fetched through the session so
  * `srcdoc` never has to navigate the iframe to a REST URL. `makeRestApiRequest`
  * assumes every response body is JSON wrapped in a `data` key, which an HTML
- * response isn't, so this calls the lower-level `request` directly.
+ * response isn't, so this calls the lower-level `rawRequest` directly; the
+ * render errors travel in a header next to the body.
  */
 export const fetchPreviewApi = async (
 	context: IRestApiContext,
@@ -140,15 +160,20 @@ export const fetchPreviewApi = async (
 	appId: string,
 	pageId: string,
 	{ path, params }: PreviewParams,
-): Promise<string> => {
+): Promise<PagePreview> => {
 	const query = new URLSearchParams({ path });
 	if (params && Object.keys(params).length > 0) {
 		query.set('params', JSON.stringify(params));
 	}
-	return await request({
+	const response = await rawRequest({
 		method: 'GET',
 		baseURL: context.baseUrl,
 		endpoint: `/projects/${projectId}/apps/${appId}/pages/${pageId}/preview?${query.toString()}`,
 		headers: { 'push-ref': context.pushRef },
 	});
+	const errorsHeader: unknown = response.headers[RENDER_ERRORS_HEADER];
+	return {
+		html: String(response.data),
+		errors: typeof errorsHeader === 'string' ? jsonParse<RenderErrors>(errorsHeader) : {},
+	};
 };

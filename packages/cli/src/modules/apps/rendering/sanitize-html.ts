@@ -1,6 +1,7 @@
 import xss from 'xss';
 
-const GLOBAL_ATTRS = ['class', 'id', 'title'];
+/** `data-*` hooks the editor needs to place its content editor into a layout preview. */
+const GLOBAL_ATTRS = ['class', 'id', 'title', 'data-block-id', 'data-app-slot'];
 
 /** Every element the `html` block may render, and the attributes each one keeps. */
 const ALLOWED_TAGS: Record<string, string[]> = {

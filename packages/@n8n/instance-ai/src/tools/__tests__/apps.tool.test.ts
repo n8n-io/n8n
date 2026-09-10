@@ -459,6 +459,7 @@ describe('apps tool', () => {
 				path: '/clients',
 				hasContent: true,
 				content: [{ id: 'b1', type: 'paragraph', data: { text: 'Hi' } }],
+				layout: [{ id: 's1', type: 'slot', data: {} }],
 			};
 			const context = createMockContext();
 			(context.appService?.getPage as Mock).mockResolvedValue(page);
@@ -476,6 +477,7 @@ describe('apps tool', () => {
 				route: 'clients',
 				path: '/clients',
 				content: page.content,
+				layout: page.layout,
 			});
 		});
 	});
@@ -531,6 +533,86 @@ describe('apps tool', () => {
 			);
 
 			expect(result).toMatchObject({ denied: true, reason: 'Invalid page content' });
+			expect(context.appService?.updatePage).not.toHaveBeenCalled();
+		});
+	});
+
+	// ── set-layout ──────────────────────────────────────────────────────────
+
+	describe('set-layout action', () => {
+		const page = {
+			id: 'page-1',
+			route: 'clients',
+			parentPageId: null,
+			path: '/clients',
+			hasContent: false,
+		};
+
+		it('validates, backfills ids, and stores the layout', async () => {
+			const context = createMockContext();
+			(context.appService?.updatePage as Mock).mockResolvedValue(page);
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'set-layout' as const,
+					appId: 'app-1',
+					pageId: 'page-1',
+					layout: [
+						{ type: 'header', data: { text: 'Banner', level: 2 } },
+						{ id: 'slot', type: 'slot', data: {} },
+					],
+				},
+				noSuspendCtx(),
+			);
+
+			const call = (context.appService?.updatePage as Mock).mock.calls[0][2];
+			expect(call.layout).toHaveLength(2);
+			expect(typeof call.layout[0].id).toBe('string');
+			expect(call.layout[1]).toEqual({ id: 'slot', type: 'slot', data: {} });
+			expect(result).toEqual({ appId: 'app-1', pageId: 'page-1', path: '/clients', blockCount: 2 });
+		});
+
+		it('passes null through to inherit the parent layout', async () => {
+			const context = createMockContext();
+			(context.appService?.updatePage as Mock).mockResolvedValue(page);
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'set-layout' as const, appId: 'app-1', pageId: 'page-1', layout: null },
+				noSuspendCtx(),
+			);
+
+			expect(context.appService?.updatePage).toHaveBeenCalledWith('app-1', 'page-1', {
+				layout: null,
+			});
+			expect(result).toEqual({
+				appId: 'app-1',
+				pageId: 'page-1',
+				path: '/clients',
+				blockCount: null,
+			});
+		});
+
+		it('returns denied with issues when the layout has no slot', async () => {
+			const context = createMockContext();
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'set-layout' as const,
+					appId: 'app-1',
+					pageId: 'page-1',
+					layout: [{ id: 'h', type: 'header', data: { text: 'Banner', level: 2 } }],
+				},
+				noSuspendCtx(),
+			);
+
+			expect(result).toMatchObject({ denied: true, reason: 'Invalid page layout' });
+			expect(result).toHaveProperty('issues');
 			expect(context.appService?.updatePage).not.toHaveBeenCalled();
 		});
 	});

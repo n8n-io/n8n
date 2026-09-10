@@ -63,7 +63,7 @@ async function createEditor() {
 		EditorView.lineWrapping,
 		EditorState.readOnly.of(props.isReadOnly),
 		codeEditorTheme({ isReadOnly: props.isReadOnly, maxHeight: '100%', minHeight: '240px' }),
-		tsCompartment.of(javascript({ typescript: true })),
+		tsCompartment.of(javascript({ typescript: true, jsx: true })),
 	];
 
 	if (!props.isReadOnly) {

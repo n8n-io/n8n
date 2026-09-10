@@ -10,7 +10,17 @@ import CodeBlockConfig from './CodeBlockConfig.vue';
 
 type CodeBlockData = CodeBlock['data'];
 
+export const DEFAULT_CODE_BLOCK_SOURCE = `export function render(ctx: PageContext) {
+	return <div>n8n rocks</div>;
+}
+`;
+
 export class CodeBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'Code' };
 	}
@@ -19,7 +29,7 @@ export class CodeBlockTool implements BlockTool {
 	private handle: VueToolHandle | null = null;
 
 	constructor({ data }: BlockToolConstructorOptions<Partial<CodeBlockData>>) {
-		this.data = data;
+		this.data = data.source ? data : { ...data, source: DEFAULT_CODE_BLOCK_SOURCE };
 	}
 
 	render(): HTMLElement {

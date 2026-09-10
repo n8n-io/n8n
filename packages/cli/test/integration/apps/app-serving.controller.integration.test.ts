@@ -1,5 +1,5 @@
 import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { AppContent } from '@n8n/api-types';
+import type { AppContent, AppLayout } from '@n8n/api-types';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -51,6 +51,7 @@ const publish = async (app: Awaited<ReturnType<typeof createApp>>) => {
 				route: page.route,
 				parentPageId: page.parentPageId,
 				content: page.content as AppContent | null,
+				layout: page.layout as AppLayout | null,
 			})),
 			theme: null,
 		},
@@ -211,6 +212,53 @@ describe('GET /apps/:namespace', () => {
 
 		expect(response.text).toContain('<p>hi</p>');
 		expect(response.text).not.toContain('<script>alert(1)</script>');
+	});
+});
+
+describe('GET /apps/:namespace with layouts', () => {
+	const slot = { id: 'slot', type: 'slot', data: {} };
+	const banner = (text: string) => ({ id: 'banner', type: 'header', data: { text, level: 2 } });
+
+	test('renders the built-in shell when no page on the way up has a layout', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '');
+		await publish(app);
+
+		const response = await visitor.get('/apps/acme').redirects(1).expect(200);
+
+		expect(response.text).toContain("<div class='app-shell' data-app-root>");
+		expect(response.text).not.toContain('app-layout');
+	});
+
+	test("a subpage inherits its parent's layout", async () => {
+		const app = await createApp();
+		const clients = await pageRepository.createPage(app.id, null, 'clients');
+		await pageRepository.updatePage(clients, { layout: [banner('Parent banner'), slot] });
+		await pageRepository.createPage(app.id, clients.id, 'orders', [
+			{ id: 'h1', type: 'header', data: { text: 'Orders', level: 1 } },
+		]);
+		await publish(app);
+
+		const response = await visitor.get('/apps/acme/clients/orders').redirects(1).expect(200);
+
+		expect(response.text).toContain("<div class='app-layout' data-app-root>");
+		expect(response.text).toContain('Parent banner');
+		expect(response.text).toMatch(/<main class='app-main' data-app-slot>\s*<h1[^>]*>Orders/);
+		expect(response.text).not.toContain('app-shell');
+	});
+
+	test('a page with its own layout does not inherit', async () => {
+		const app = await createApp();
+		const clients = await pageRepository.createPage(app.id, null, 'clients');
+		await pageRepository.updatePage(clients, { layout: [banner('Parent banner'), slot] });
+		const orders = await pageRepository.createPage(app.id, clients.id, 'orders');
+		await pageRepository.updatePage(orders, { layout: [banner('Own banner'), slot] });
+		await publish(app);
+
+		const response = await visitor.get('/apps/acme/clients/orders').redirects(1).expect(200);
+
+		expect(response.text).toContain('Own banner');
+		expect(response.text).not.toContain('Parent banner');
 	});
 });
 

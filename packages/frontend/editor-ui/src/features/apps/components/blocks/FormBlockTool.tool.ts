@@ -11,6 +11,11 @@ import FormBlockConfig from './FormBlockConfig.vue';
 type FormBlockData = FormBlock['data'];
 
 export class FormBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'Form' };
 	}

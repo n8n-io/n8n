@@ -11,6 +11,11 @@ import TableBlockConfig from './TableBlockConfig.vue';
 type TableBlockData = TableBlock['data'];
 
 export class TableBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'Data table' };
 	}

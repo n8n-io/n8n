@@ -4,6 +4,8 @@ import { interpolate } from '../interpolate';
 const ctx = (overrides: Partial<BlockRenderContext> = {}): BlockRenderContext => ({
 	app: { id: 'app-1', name: 'App', namespace: 'app', projectId: 'p1', theme: null },
 	page: { id: 'page-1', route: '', path: '/apps/app' },
+	actionPageId: 'page-1',
+	menu: [],
 	params: { id: '42' },
 	query: { q: 'search' },
 	viewer: { id: 'user-1', email: 'user@example.com' },

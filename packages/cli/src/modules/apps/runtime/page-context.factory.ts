@@ -26,6 +26,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { MenuItem } from '../serving/page-menu';
 import { DataTableProxyService } from '../../data-table/data-table-proxy.service';
 import { DataTableService } from '../../data-table/data-table.service';
 import {
@@ -134,6 +135,7 @@ export interface AppPageContext {
 	readonly params: Readonly<Record<string, string>>;
 	readonly query: Readonly<Record<string, string>>;
 	readonly viewer: { id: string; email: string } | null;
+	readonly menu: MenuItem[];
 	readonly dataTables: AppDataTablesApi;
 	readonly workflows: AppWorkflowsApi;
 	readonly credentials: AppCredentialsApi;
@@ -152,11 +154,14 @@ export interface AppActionContext extends AppPageContext {
 export interface PageContextInput {
 	app: { id: string; name: string; namespace: string; projectId: string };
 	page: { id: string; route: string; path: string };
+	/** The page whose `content` or `layout` holds the block; `actionUrl()` points at it. */
+	actionPageId: string;
 	/** The block whose actions `actionUrl()` resolves. */
 	blockId: string;
 	params: Record<string, string>;
 	query: Record<string, string>;
 	viewer: { id: string; email: string } | null;
+	menu: MenuItem[];
 	baseUrl: string;
 	/** Collects `ctx.log(...)` lines for the caller (preview response / production log). */
 	logs: string[];
@@ -255,11 +260,12 @@ export class PageContextFactory {
 			params: input.params,
 			query: input.query,
 			viewer: input.viewer,
+			menu: input.menu,
 			dataTables,
 			workflows,
 			credentials,
 			actionUrl: (name) =>
-				`${input.baseUrl}/apps/${app.namespace}/_actions/${input.page.id}/${input.blockId}/${name}`,
+				`${input.baseUrl}/apps/${app.namespace}/_actions/${input.actionPageId}/${input.blockId}/${name}`,
 			fetch: async (url, init) => await this.fetch(url, init),
 			log: (...args) => {
 				input.logs.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));

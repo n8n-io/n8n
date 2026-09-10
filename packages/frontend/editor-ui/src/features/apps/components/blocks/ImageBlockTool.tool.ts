@@ -11,6 +11,11 @@ import ImageBlockConfig from './ImageBlockConfig.vue';
 type ImageBlockData = ImageBlock['data'];
 
 export class ImageBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'Image' };
 	}

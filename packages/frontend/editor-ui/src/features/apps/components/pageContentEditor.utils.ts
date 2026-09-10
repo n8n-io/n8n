@@ -1,12 +1,13 @@
 import type { OutputBlockData } from '@editorjs/editorjs';
-import { appContentSchema, type AppContent } from '@n8n/api-types';
+import { appContentSchema, appLayoutSchema, type AppContent, type AppLayout } from '@n8n/api-types';
+import type { z } from 'zod';
 
 // Editor.js's built-in divider tool is named `delimiter`; every other type
 // name (including our custom tools) matches the storage type as-is.
 const TYPE_TO_TOOL: Record<string, string> = { divider: 'delimiter' };
 const TOOL_TO_TYPE: Record<string, string> = { delimiter: 'divider' };
 
-export function toEditorBlocks(content: AppContent): OutputBlockData[] {
+export function toEditorBlocks(content: AppLayout): OutputBlockData[] {
 	return content.map((block) => ({
 		id: block.id,
 		type: TYPE_TO_TOOL[block.type] ?? block.type,
@@ -31,17 +32,20 @@ export function fromEditorBlocks(blocks: OutputBlockData[]): unknown[] {
 	}));
 }
 
+export type EditorSchema = 'content' | 'layout';
+
 export interface ContentValidationResult {
+	/** Set in `content` mode when every block passed. */
 	content?: AppContent;
+	/** Set in `layout` mode when every block passed. */
+	layout?: AppLayout;
 	/** Zod issue message per block id, for blocks that failed validation. */
 	issues: Record<string, string>;
 }
 
-/** Validates Editor.js output against `appContentSchema`, attributing each issue to its block id. */
-export function validateEditorBlocks(blocks: OutputBlockData[]): ContentValidationResult {
-	const candidate = fromEditorBlocks(blocks);
-	const result = appContentSchema.safeParse(candidate);
-	if (result.success) return { content: result.data, issues: {} };
+function parseBlocks<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, candidate: unknown[]) {
+	const result = schema.safeParse(candidate);
+	if (result.success) return { data: result.data, issues: {} };
 
 	const issues: Record<string, string> = {};
 	for (const issue of result.error.issues) {
@@ -54,4 +58,18 @@ export function validateEditorBlocks(blocks: OutputBlockData[]): ContentValidati
 		if (blockId) issues[blockId] = issue.message;
 	}
 	return { issues };
+}
+
+/** Validates Editor.js output against the page content or layout schema, attributing each issue to its block id. */
+export function validateEditorBlocks(
+	blocks: OutputBlockData[],
+	schema: EditorSchema = 'content',
+): ContentValidationResult {
+	const candidate = fromEditorBlocks(blocks);
+	if (schema === 'layout') {
+		const { data, issues } = parseBlocks(appLayoutSchema, candidate);
+		return { layout: data, issues };
+	}
+	const { data, issues } = parseBlocks(appContentSchema, candidate);
+	return { content: data, issues };
 }

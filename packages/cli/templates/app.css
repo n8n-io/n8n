@@ -13458,9 +13458,6 @@
 	.text-2xl {
 		font-size: var(--font-size--2xl);
 	}
-	.text-2xs {
-		font-size: var(--font-size--2xs);
-	}
 	.text-lg {
 		font-size: var(--font-size--lg);
 	}
@@ -13639,6 +13636,12 @@
 	min-width: 0;
 	padding: var(--spacing--xl);
 	flex: 1;
+}
+.app-layout {
+	gap: var(--spacing--md);
+	padding: var(--spacing--xl);
+	flex-direction: column;
+	display: flex;
 }
 .app-notice {
 	background: var(--app-color-surface, var(--background--surface));

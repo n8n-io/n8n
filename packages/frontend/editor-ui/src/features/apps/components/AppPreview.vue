@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	N8nCallout,
 	N8nIconButton,
 	N8nInput,
 	N8nOption,
@@ -18,7 +19,7 @@ import { DEBOUNCE_TIME } from '@/app/constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
-import type { App } from '@/features/apps/apps.types';
+import type { App, RenderErrors } from '@/features/apps/apps.types';
 import {
 	getAncestorPages,
 	getDynamicParamNames,
@@ -48,6 +49,7 @@ const appsStore = useAppsStore();
 const device = ref<PreviewDevice>('desktop');
 const paramValues = ref<Record<string, string>>({});
 const html = ref<string | null>(null);
+const renderErrors = ref<RenderErrors>({});
 const loading = ref(false);
 
 const page = computed(() => appsStore.pages.find((p) => p.id === props.pageId));
@@ -59,6 +61,8 @@ const path = computed(() =>
 );
 const paramNames = computed(() => getDynamicParamNames(path.value));
 
+const hasRenderErrors = computed(() => Object.keys(renderErrors.value).length > 0);
+
 const fetchHtml = async () => {
 	if (!page.value) {
 		html.value = null;
@@ -66,13 +70,16 @@ const fetchHtml = async () => {
 	}
 	loading.value = true;
 	try {
-		html.value = await appsStore.fetchPreview(props.projectId, props.appId, page.value.id, {
+		const preview = await appsStore.fetchPreview(props.projectId, props.appId, page.value.id, {
 			path: path.value,
 			params: paramValues.value,
 		});
+		html.value = preview.html;
+		renderErrors.value = preview.errors;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.builder.preview.error'));
 		html.value = null;
+		renderErrors.value = {};
 	} finally {
 		loading.value = false;
 	}
@@ -158,6 +165,14 @@ watch(paramValues, debouncedFetchHtml, { deep: true });
 				</N8nTooltip>
 			</div>
 		</div>
+		<N8nCallout v-if="hasRenderErrors" theme="danger" data-test-id="app-preview-render-errors">
+			{{ i18n.baseText('apps.preview.renderErrors') }}
+			<ul :class="$style.renderErrorList">
+				<li v-for="(message, blockId) in renderErrors" :key="blockId">
+					{{ i18n.baseText('apps.layout.renderError', { interpolate: { id: blockId, message } }) }}
+				</li>
+			</ul>
+		</N8nCallout>
 		<AppPreviewFrame :html="html" :loading="loading" :width="PREVIEW_WIDTHS[device]" />
 	</div>
 </template>
@@ -190,5 +205,12 @@ watch(paramValues, debouncedFetchHtml, { deep: true });
 
 .paramInput {
 	width: 140px;
+}
+
+.renderErrorList {
+	margin: var(--spacing--3xs) 0 0;
+	padding-left: var(--spacing--md);
+	white-space: pre-line;
+	word-break: break-word;
 }
 </style>

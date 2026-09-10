@@ -72,7 +72,8 @@ limits, and one example per type: `header`, `paragraph`, `list`, `image`,
 `divider` (layout/text), `table` (rows from a Data Table), `form` (fields of
 a workflow's Form Trigger), `button` (runs a workflow or a `code` block
 action), `html` (Handlebars over params/query/viewer, sanitized), `code`
-(TypeScript against `PageContext`, output inserted as-is).
+(TSX against `PageContext`; JSX output is escaped, a returned string is
+inserted as-is).
 
 Prefer the typed block that matches the job over `html`/`code` — `table` for
 a plain listing, `form` for a plain submission. Reach for `html` or `code`
@@ -87,31 +88,56 @@ only when a typed block can't express what's needed.
   [references/styling.md](references/styling.md).
 - **`code`** whenever the page needs data (a filtered/joined/computed view a
   `table` block can't express), custom logic, or an action a `button` should
-  call. Output is inserted raw — you own escaping.
+  call. Output is not sanitized: JSX escapes text and attributes for you;
+  `raw()` and returned strings are inserted as-is.
 
 ## Code rules
 
 - Call `apps(action="code-api")` before writing a `code` block and follow
   the returned types exactly — `import`/`require` is not available inside
   the isolate.
-- Export `render(ctx: PageContext): Promise<string> | string`, and
-  `actions` (an object of named handlers) only if a `button` on the page
-  targets one.
+- Write TSX. Return JSX from `render`: `<div class="p-md">{name}</div>`.
+  JSX compiles to the built-in `h` / `Fragment`; do not import a library.
+- Export `render(ctx: PageContext)`, and `actions` (an object of named
+  handlers) only if a `button` on the page targets one. `render` may return
+  JSX, a string, a number, `null`, a boolean or an array of those; `null`,
+  `undefined` and booleans render nothing.
+- JSX escapes every text child and attribute value. Do not escape
+  `ctx.query`, `ctx.params` or `ctx.input` values yourself; put them into
+  JSX directly.
+- Use `raw(html)` only for trusted HTML you built or escaped yourself. A
+  string returned from `render` is also raw HTML: template strings still
+  work, but then you own the escaping.
+- A URL attribute (`href`, `src`, `action`, `formaction`, `poster`) is kept
+  when it is relative (no scheme) or uses `http:`, `https:`, `mailto:` or
+  `tel:`. Any other scheme (`javascript:`, `data:`, …) is dropped.
+- Reuse markup with a function component: a function that takes `props`
+  (with `children`) and returns JSX; use it as `<Card title="x">...</Card>`.
 - Post to `ctx.actionUrl(name)` as-is: the served page's script adds the
   Authorization header to any form or fetch inside the app, so a code block
   never handles tokens.
 - Use `ctx.dataTables` / `ctx.workflows` / `ctx.credentials` for data and
   side effects; never fabricate data.
-- Never put a secret or credential value in the string `render`/an action
+- Never put a secret or credential value in what `render`/an action
   returns — resolve it with `ctx.credentials.get()` and use it only in
   server-side calls, not in the HTML.
 - External `<script src="...">` is allowed in returned HTML; inline
-  `<script>` logic is fine too, but keep output small — this isn't a
-  bundler.
-- Escape any value you interpolate from `ctx.query`, `ctx.params`, or
-  `ctx.input` before splicing it into the returned HTML.
-- See [references/code-examples.md](references/code-examples.md) for three
-  worked pages, including a `button` → `code` action.
+  `<script>` logic is fine too (write it with `raw()`), but keep output
+  small — this isn't a bundler.
+- See [references/code-examples.md](references/code-examples.md) for worked
+  pages, including a `button` → `code` action and a function component.
+
+## Layouts
+
+A page can carry a `layout`: blocks the server renders around the page
+content, in place of the built-in menu-and-card shell. A layout is a flat
+block list with exactly one `slot` block. The slot is where the page content
+goes. Every page below it inherits the layout until one of them sets its own.
+Set it with `apps(action="set-layout", appId, pageId, layout=[...])`; pass
+`layout: null` to inherit again. Render a menu from `ctx.menu` in a `code`
+block; turn the vertical stack into columns with `theme.customCss`. See
+[references/layouts.md](references/layouts.md) for the model, the menu
+example and the CSS hooks.
 
 ## Styling
 

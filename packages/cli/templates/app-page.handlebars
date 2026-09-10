@@ -19,16 +19,20 @@
 </head>
 
 <body class='app-canvas app-text min-h-screen'>
-	<div class='app-shell'>
-		<nav class='app-menu'>
-			<span class='block text-xs font-semibold app-muted uppercase mb-sm'>{{appName}}</span>
-			{{> appPageMenu menu}}
-		</nav>
+	{{#if layout}}
+		{{> appLayout}}
+	{{else}}
+		<div class='app-shell' data-app-root>
+			<nav class='app-menu'>
+				<span class='block text-xs font-semibold app-muted uppercase mb-sm'>{{appName}}</span>
+				{{> appPageMenu menu}}
+			</nav>
 
-		<main class='app-main'>
-			{{#each blocks}}{{{this}}}{{/each}}
-		</main>
-	</div>
+			<main class='app-main'>
+				{{#each blocks}}{{{this}}}{{/each}}
+			</main>
+		</div>
+	{{/if}}
 </body>
 
 </html>

@@ -5,10 +5,17 @@ import type {
 	UpdateAppDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
-import { appContentSchema } from '@n8n/api-types';
+import { appContentSchema, appLayoutSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import type { z } from 'zod';
 
-import { renderPage } from './rendering/page-renderer';
+import {
+	renderLayout,
+	renderPage,
+	type PageToRender,
+	type RenderErrors,
+} from './rendering/page-renderer';
+import { sanitizeHtml } from './rendering/sanitize-html';
 import type { InvalidPageContent } from './errors/app-content-invalid.error';
 
 import { UrlService } from '@/services/url.service';
@@ -25,7 +32,26 @@ import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { PageRepository } from './page.repository';
 import type { Page } from './page.entity';
 import { appBasePath, pagePath } from './serving/page-menu';
+import { resolveLayout } from './serving/resolve-layout';
 import { isDynamicRoute } from './serving/resolve-page-path';
+
+/** A draft JSON column against its schema: `null` stays `null`, issues are prefixed with the field. */
+function parseDraftField<T>(
+	field: 'content' | 'layout',
+	schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+	value: unknown,
+): { data: T | null; issues: z.ZodIssue[] } {
+	if (value === null) return { data: null, issues: [] };
+	const parsed = schema.safeParse(value);
+	if (parsed.success) return { data: parsed.data, issues: [] };
+	return {
+		data: null,
+		issues: parsed.error.issues.map((issue) => ({ ...issue, path: [field, ...issue.path] })),
+	};
+}
+
+/** A draft page's layout as the renderer needs it; an invalid draft layout counts as none. */
+const draftLayout = (page: Page) => appLayoutSchema.safeParse(page.layout).data ?? null;
 
 @Service()
 export class AppsService {
@@ -87,6 +113,7 @@ export class AppsService {
 			parentPageId,
 			dto.route,
 			dto.content ?? null,
+			dto.layout ?? null,
 		);
 	}
 
@@ -131,33 +158,32 @@ export class AppsService {
 		await this.pageRepository.deletePage(pageId);
 	}
 
-	/** Validates every draft page's content, freezes it as a version, and activates it. */
+	/** Validates every draft page's content and layout, freezes them as a version, and activates it. */
 	async publish(appId: string, userId: string) {
 		const app = await this.getApp(appId);
 		const pages = await this.pageRepository.findManyByAppId(appId);
 
 		const invalidPages: InvalidPageContent[] = [];
-		const validatedContent = new Map<string, AppVersionSnapshot['pages'][number]['content']>();
+		const snapshotPages: AppVersionSnapshot['pages'] = [];
 		for (const page of pages) {
-			if (page.content === null) {
-				validatedContent.set(page.id, null);
+			const content = parseDraftField('content', appContentSchema, page.content);
+			const layout = parseDraftField('layout', appLayoutSchema, page.layout);
+			const issues = [...content.issues, ...layout.issues];
+			if (issues.length > 0) {
+				invalidPages.push({ pageId: page.id, issues });
 				continue;
 			}
-			const parsed = appContentSchema.safeParse(page.content);
-			if (parsed.success) validatedContent.set(page.id, parsed.data);
-			else invalidPages.push({ pageId: page.id, issues: parsed.error.issues });
-		}
-		if (invalidPages.length > 0) throw new AppContentInvalidError({ pages: invalidPages });
-
-		const snapshot: AppVersionSnapshot = {
-			pages: pages.map((page) => ({
+			snapshotPages.push({
 				id: page.id,
 				route: page.route,
 				parentPageId: page.parentPageId,
-				content: validatedContent.get(page.id) ?? null,
-			})),
-			theme: app.theme ?? null,
-		};
+				content: content.data,
+				layout: layout.data,
+			});
+		}
+		if (invalidPages.length > 0) throw new AppContentInvalidError({ pages: invalidPages });
+
+		const snapshot: AppVersionSnapshot = { pages: snapshotPages, theme: app.theme ?? null };
 
 		const version = await this.appVersionRepository.createFromSnapshot(appId, snapshot, userId);
 		await this.appRepository.setActiveVersionId(app, version.id);
@@ -189,11 +215,35 @@ export class AppsService {
 		path: string | undefined,
 		params: Record<string, string>,
 	) {
+		return await renderPage(await this.draftPageToRender(appId, pageId, path, params));
+	}
+
+	/**
+	 * The effective draft layout of a page, rendered around an empty slot and
+	 * sanitized, so the editor can show it on its own origin around the content
+	 * editor. `ownerPageId` and `html` are null when the page falls back to the built-in shell.
+	 */
+	async previewLayout(
+		appId: string,
+		pageId: string,
+	): Promise<{ ownerPageId: string | null; html: string | null; errors: RenderErrors }> {
+		const input = await this.draftPageToRender(appId, pageId, undefined, {});
+		if (!input.layout) return { ownerPageId: null, html: null, errors: {} };
+		const { html, errors } = await renderLayout({ ...input, layout: input.layout });
+		return { ownerPageId: input.layout.ownerPageId, html: sanitizeHtml(html), errors };
+	}
+
+	private async draftPageToRender(
+		appId: string,
+		pageId: string,
+		path: string | undefined,
+		params: Record<string, string>,
+	): Promise<PageToRender> {
 		const app = await this.getApp(appId);
 		const page = await this.getPage(appId, pageId);
 		const pages = await this.pageRepository.findManyByAppId(appId);
 
-		return await renderPage({
+		return {
 			app: {
 				id: app.id,
 				name: app.name,
@@ -208,12 +258,21 @@ export class AppsService {
 				path: path ?? this.draftPagePath(app.namespace, page, pages, params),
 			},
 			pages,
+			layout: resolveLayout(
+				pages.map((p) => ({
+					id: p.id,
+					route: p.route,
+					parentPageId: p.parentPageId,
+					layout: draftLayout(p),
+				})),
+				page.id,
+			),
 			params,
 			query: {},
 			viewer: null,
 			baseUrl: this.urlService.getInstanceBaseUrl(),
 			preview: true,
-		});
+		};
 	}
 
 	/** The public path this draft page would have, filling `:param` segments from `params` where given. */

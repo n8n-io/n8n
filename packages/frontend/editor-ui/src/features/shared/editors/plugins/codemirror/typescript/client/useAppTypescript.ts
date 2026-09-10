@@ -1,5 +1,5 @@
 import { autocompletion, type CompletionSource } from '@codemirror/autocomplete';
-import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { tsxLanguage } from '@codemirror/lang-javascript';
 import { LanguageSupport } from '@codemirror/language';
 import { linter } from '@codemirror/lint';
 import { Text, type Extension } from '@codemirror/state';
@@ -49,8 +49,8 @@ export function useAppTypescript(
 
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
-			new LanguageSupport(javascriptLanguage, [
-				javascriptLanguage.data.of({ autocomplete: appTypescriptCompletionSource }),
+			new LanguageSupport(tsxLanguage, [
+				tsxLanguage.data.of({ autocomplete: appTypescriptCompletionSource }),
 			]),
 			autocompletion({ icons: false, aboveCursor: true }),
 			linter(typescriptLintSource),

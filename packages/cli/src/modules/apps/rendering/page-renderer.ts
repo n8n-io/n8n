@@ -2,7 +2,8 @@ import type { AppBlock, AppContent, AppTheme } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
-import { buildMenu, pageTitle, type MenuItem } from '../serving/page-menu';
+import { buildMenu, pageTitle } from '../serving/page-menu';
+import type { ResolvedLayout } from '../serving/resolve-layout';
 import type { PageNode } from '../serving/resolve-page-path';
 import { getBlockRenderer } from './renderer-registry';
 import { renderPartial, renderTemplate } from './templates';
@@ -13,6 +14,8 @@ export type PageToRender = {
 	page: { id: string; route: string; content: AppContent | null; path: string };
 	/** Every page of the same tree (draft or snapshot), for the menu. */
 	pages: PageNode[];
+	/** Null renders the built-in shell. */
+	layout: ResolvedLayout | null;
 	params: Record<string, string>;
 	query: Record<string, string>;
 	viewer: { id: string; email: string } | null;
@@ -57,7 +60,18 @@ function renderThemeStyle(theme: AppTheme | null): string {
 	return variables + customCss;
 }
 
-async function renderBlock(block: AppBlock, ctx: BlockRenderContext): Promise<string> {
+export type RenderErrors = Record<string, string>;
+export type RenderResult = { html: string; errors: RenderErrors };
+
+const describeError = (error: unknown): string =>
+	error instanceof Error ? error.message : String(error);
+
+/** A block whose renderer throws renders as nothing; the error goes to `errors` under its id. */
+async function renderBlock(
+	block: AppBlock,
+	ctx: BlockRenderContext,
+	errors: RenderErrors,
+): Promise<string> {
 	const renderer = getBlockRenderer(block.type);
 	if (!renderer) return await renderPartial('block-unsupported', { type: block.type });
 
@@ -70,37 +84,77 @@ async function renderBlock(block: AppBlock, ctx: BlockRenderContext): Promise<st
 			blockId: block.id,
 			error,
 		});
-		const message = error instanceof Error ? error.message : String(error);
-		const stack = error instanceof Error ? error.stack : undefined;
-		return await renderPartial('block-error', ctx.preview ? { preview: true, message, stack } : {});
+		errors[block.id] = describeError(error);
+		return '';
 	}
 }
 
-export async function renderPage(input: PageToRender): Promise<string> {
-	const ctx: BlockRenderContext = {
-		app: input.app,
-		page: { id: input.page.id, route: input.page.route, path: input.page.path },
-		params: input.params,
-		query: input.query,
-		viewer: input.viewer,
-		baseUrl: input.baseUrl,
-		preview: input.preview,
-	};
+const renderBlocks = async (
+	blocks: AppBlock[],
+	ctx: BlockRenderContext,
+	errors: RenderErrors,
+): Promise<string[]> =>
+	await Promise.all(blocks.map(async (block) => await renderBlock(block, ctx, errors)));
 
-	const blocks = await Promise.all(
-		(input.page.content ?? []).map(async (block) => await renderBlock(block, ctx)),
+/** One entry per layout block, as the `appLayout` partial reads it. */
+type LayoutBlockView = { id: string; slot: true } | { id: string; html: string };
+
+/** Layout blocks belong to the owner page, so their action URLs point there. */
+const renderLayoutBlocks = async (
+	layout: ResolvedLayout,
+	ctx: BlockRenderContext,
+	errors: RenderErrors,
+): Promise<LayoutBlockView[]> => {
+	const ownerCtx: BlockRenderContext = { ...ctx, actionPageId: layout.ownerPageId };
+	return await Promise.all(
+		layout.blocks.map(async (block) =>
+			block.type === 'slot'
+				? { id: block.id, slot: true as const }
+				: { id: block.id, html: await renderBlock(block, ownerCtx, errors) },
+		),
 	);
+};
 
-	const menu: MenuItem[] = buildMenu(input.app.namespace, input.pages, input.page.id, input.params);
+const buildContext = (input: PageToRender): BlockRenderContext => ({
+	app: input.app,
+	page: { id: input.page.id, route: input.page.route, path: input.page.path },
+	actionPageId: input.page.id,
+	params: input.params,
+	query: input.query,
+	viewer: input.viewer,
+	menu: buildMenu(input.app.namespace, input.pages, input.page.id, input.params),
+	baseUrl: input.baseUrl,
+	preview: input.preview,
+});
 
-	return await renderTemplate('app-page', {
+export async function renderPage(input: PageToRender): Promise<RenderResult> {
+	const ctx = buildContext(input);
+	const errors: RenderErrors = {};
+
+	const [blocks, layout] = await Promise.all([
+		renderBlocks(input.page.content ?? [], ctx, errors),
+		input.layout ? renderLayoutBlocks(input.layout, ctx, errors) : null,
+	]);
+
+	const html = await renderTemplate('app-page', {
 		title: pageTitle(input.page.route, input.params) ?? input.app.name,
 		appName: input.app.name,
-		menu,
+		menu: ctx.menu,
 		blocks,
+		layout,
 		cssHref: `${input.baseUrl}/apps/_static/app.css`,
 		jsHref: `${input.baseUrl}/apps/_static/app.js`,
 		appBase: `${input.baseUrl}/apps/${input.app.namespace}`,
 		themeStyle: renderThemeStyle(input.app.theme),
 	});
+	return { html, errors };
+}
+
+/** The layout alone, with an empty slot, for the editor to place its content editor into. */
+export async function renderLayout(
+	input: Omit<PageToRender, 'layout'> & { layout: ResolvedLayout },
+): Promise<RenderResult> {
+	const errors: RenderErrors = {};
+	const layout = await renderLayoutBlocks(input.layout, buildContext(input), errors);
+	return { html: await renderPartial('layout', { layout, blocks: [] }), errors };
 }

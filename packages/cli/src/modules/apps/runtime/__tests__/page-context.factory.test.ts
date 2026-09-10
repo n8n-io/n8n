@@ -76,10 +76,12 @@ function buildInput(overrides: Partial<Parameters<PageContextFactory['build']>[0
 	return {
 		app,
 		page,
+		actionPageId: 'page-1',
 		blockId: 'block-1',
 		params: {},
 		query: {},
 		viewer: null,
+		menu: [],
 		baseUrl: 'https://n8n.example.com',
 		logs: [],
 		...overrides,
@@ -98,6 +100,22 @@ describe('PageContextFactory', () => {
 			expect(ctx.actionUrl('submit')).toBe(
 				'https://n8n.example.com/apps/my-app/_actions/page-1/block-1/submit',
 			);
+		});
+
+		it('names the page that owns the block, not the page being rendered', () => {
+			const { factory } = buildFactory();
+			const ctx = factory.build(buildInput({ actionPageId: 'parent-page' }));
+			expect(ctx.actionUrl('go')).toBe(
+				'https://n8n.example.com/apps/my-app/_actions/parent-page/block-1/go',
+			);
+		});
+	});
+
+	describe('menu', () => {
+		it('exposes the menu it was built with', () => {
+			const { factory } = buildFactory();
+			const menu = [{ title: 'Home', path: '/apps/my-app', current: true, children: [] }];
+			expect(factory.build(buildInput({ menu })).menu).toBe(menu);
 		});
 	});
 

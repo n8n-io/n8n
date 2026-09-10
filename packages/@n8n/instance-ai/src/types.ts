@@ -17,6 +17,7 @@ import type {
 	AgentSkill,
 	AppAuth,
 	AppContent,
+	AppLayout,
 	AppTheme,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
@@ -1071,7 +1072,11 @@ export interface InstanceAiAppService {
 		input: { name?: string; theme?: AppTheme | null; auth?: AppAuth },
 	): Promise<AppSummary>;
 	listPages(appId: string): Promise<PageSummary[]>;
-	getPage(appId: string, pageId: string): Promise<PageSummary & { content: AppContent | null }>;
+	/** `layout` is the page's own; `null` means it inherits the nearest ancestor's or the built-in shell. */
+	getPage(
+		appId: string,
+		pageId: string,
+	): Promise<PageSummary & { content: AppContent | null; layout: AppLayout | null }>;
 	createPage(
 		appId: string,
 		input: { route: string; parentPageId?: string; content?: AppContent },
@@ -1079,7 +1084,7 @@ export interface InstanceAiAppService {
 	updatePage(
 		appId: string,
 		pageId: string,
-		input: { route?: string; content?: AppContent | null },
+		input: { route?: string; content?: AppContent | null; layout?: AppLayout | null },
 	): Promise<PageSummary>;
 	deletePage(appId: string, pageId: string): Promise<void>;
 	publish(appId: string): Promise<{ versionId: string; url: string }>;

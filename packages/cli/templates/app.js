@@ -74,8 +74,8 @@
 		const doc = response.ok
 			? new DOMParser().parseFromString(await response.text(), 'text/html')
 			: null;
-		const shell = doc && doc.querySelector('.app-shell');
-		const current = document.querySelector('.app-shell');
+		const shell = doc && doc.querySelector('[data-app-root]');
+		const current = document.querySelector('[data-app-root]');
 		if (!shell || !current) {
 			if (response.status === 401) access = refresh = null;
 			const main = document.querySelector('.app-main');
