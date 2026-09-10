@@ -1,0 +1,70 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_f132370d90443c::t_feb0347e720218 250-252
+packages/cli/src/errors/response-errors/source-control-push-conflict.error.ts
+  s_f132370d90443c::t_07f21391ac270e 1-11
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_60c7a258390287 1-7,12,17,20,27
+  s_f132370d90443c::t_ab4aca87addfb4 74-121
+packages/@n8n/api-types/src/dto/source-control/source-control-push-conflict-error-public.dto.ts
+  s_f132370d90443c::t_daca198f8fc342 1-9
+packages/@n8n/permissions/src/__tests__/types.test.ts
+  s_f132370d90443c::t_4ec1d35ebcefd0 86
+  s_f132370d90443c::t_96a92d85629281 25
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.utils.test.ts
+  s_f132370d90443c::t_7deff980df9f45 36
+packages/@n8n/api-types/src/dto/source-control/source-control-push-response-public.dto.ts
+  s_f132370d90443c::t_314973c5270e36 1-8
+packages/@n8n/api-types/src/dto/index.ts
+  s_f132370d90443c::t_733247db448a90 103-105
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f132370d90443c::t_296adb06c55943 395,403
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f132370d90443c::t_686d88fa27b9e7 111
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f132370d90443c::t_9dfd4ea94d1fdb 730
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_f132370d90443c::t_67f33e033ae2b4 522-525
+  s_f132370d90443c::t_13a8946b11ee32 381-382
+  s_f132370d90443c::t_9e2edb89ddcf85 317-318,325,338
+  s_f132370d90443c::t_28a2b4695af080 1
+  s_f132370d90443c::t_74b2eb661264ed 47-57
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_f132370d90443c::t_12e5e4d6c2ed11 10
+  s_f132370d90443c::t_9e2b3eb35e2725 152-183
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_f132370d90443c::t_89ac015bb45935 16
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_f132370d90443c::t_8ceec3f93c803b 341-349,353-570
+  s_f132370d90443c::t_5296cc64752ca2 6-7
+  s_f132370d90443c::t_9e4ed5c2b82643 350-352
+  s_f132370d90443c::t_3fcd422b664c73 571-573
+packages/cli/src/errors/http-error-serializers.ts
+  s_f132370d90443c::t_715b119f4bd76d 34-38
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f132370d90443c::t_564bce05b7b6d6 484,495-517
+packages/@n8n/api-types/src/dto/source-control/source-control-push-request-public.dto.ts
+  s_f132370d90443c::t_18697143e1bea6 1-24
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_f132370d90443c::t_cbf063f46a9f67 337-349,351
+  s_f132370d90443c::t_a25cf899bd04d3 384-393,396
+  s_f132370d90443c::t_f5ca4258b6501d 477-486,488
+  s_f132370d90443c::t_0bd81f96a39fdf 425-434,437
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_f132370d90443c::t_e6977cc0a8da9e 85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "40c173591652be224c474e9da8a6025266bb8c58",
+  "prompts": {},
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "unknown"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

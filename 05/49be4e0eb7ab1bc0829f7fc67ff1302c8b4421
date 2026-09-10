@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_96bd9c38782085::t_fda15b18a24488 309
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_96bd9c38782085::t_83410dce0f8613 311,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0549be4e0eb7ab1bc0829f7fc67ff1302c8b4421",
+  "prompts": {},
+  "sessions": {
+    "s_96bd9c38782085": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "584b53d7-484a-4ec4-a931-974232f2d3e8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

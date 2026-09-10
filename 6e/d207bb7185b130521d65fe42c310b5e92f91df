@@ -1,0 +1,25 @@
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_8eb3cc8f7c5911::t_2f4f40a582344d 68-69
+  s_8eb3cc8f7c5911::t_6a3fba67dc82c7 1-67,70-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6ed207bb7185b130521d65fe42c310b5e92f91df",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8eb3cc8f7c5911": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ea6e1bfa-4c4a-4e84-9919-ed26ac6a9d0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

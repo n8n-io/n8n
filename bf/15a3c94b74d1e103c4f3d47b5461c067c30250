@@ -1,0 +1,9 @@
+packages/frontend/@n8n/design-system/vite.config.mts
+  ai_agent 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf15a3c94b74d1e103c4f3d47b5461c067c30250",
+  "prompts": {}
+}

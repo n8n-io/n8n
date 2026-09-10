@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_19c108ca02ed6d::t_a80aa2a5b593f1 50-55
+  s_19c108ca02ed6d::t_88d5419928844a 56
+  s_19c108ca02ed6d::t_55f8cfad4dccaf 28-30,34-42,104,171-185,201-204,207-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fc5fe5522f7c7e118c0e4c45a856e15038bcbfe5",
+  "prompts": {},
+  "sessions": {
+    "s_19c108ca02ed6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c92-b5f8-7720-8bf6-29b2466e189a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

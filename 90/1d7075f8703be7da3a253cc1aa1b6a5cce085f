@@ -1,0 +1,26 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_53e549b8763b0f::t_eba30c7dbcb147 155-164
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_53e549b8763b0f::t_a79db5e7f1cb90 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "901d7075f8703be7da3a253cc1aa1b6a5cce085f",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53e549b8763b0f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3428e6bd-4b21-4803-a50f-84a30613ac21",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

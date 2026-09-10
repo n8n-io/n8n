@@ -1,0 +1,40 @@
+packages/@n8n/db/src/migrations/common/1788524073521-AddActivityEventResourceIndex.ts
+  ai_agent 1-27
+packages/@n8n/db/src/entities/activity-event.ts
+  ai_agent 43-44
+packages/cli/test/integration/activity-event.repository.test.ts
+  ai_agent 78-196
+docs/generated/postgres-schema/public.activity_event.md
+  ai_agent 38
+packages/@n8n/db/src/repositories/activity-event.repository.ts
+  s_c6542a835c36e8::t_a82e036e5852f8 7,109-148
+  s_088ff38dd5d51f::t_7d0fa1a516b3bd 152-153,161,175,189-191,196,218-220
+packages/cli/test/migration/1788524073521-add-activity-event-resource-index.test.ts
+  s_c6542a835c36e8::t_bb71c32ce8798c 1-63
+docs/generated/sqlite-schema/activity_event.md
+  ai_agent 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f998e46c2927471062a42683962dc043c9f024c3",
+  "prompts": {},
+  "sessions": {
+    "s_088ff38dd5d51f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95b8e2c8-0712-4f25-a78d-8e30044b968c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    },
+    "s_c6542a835c36e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "952fe7f2-30d3-40e1-833a-f7eb7386f5a6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

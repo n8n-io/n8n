@@ -1,0 +1,22 @@
+packages/cli/src/modules/git-connections.ee/manifest-merge.ts
+  s_5ddf40544fde37::t_936906676ff55f 3
+  s_5ddf40544fde37::t_7d0016c54dd64a 59
+packages/cli/src/modules/git-connections.ee/__tests__/manifest-merge.test.ts
+  s_5ddf40544fde37::t_2c712eb962c806 195,199,205,211-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ced88c8733c741e3c431138470546ed0ae569885",
+  "prompts": {},
+  "sessions": {
+    "s_5ddf40544fde37": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1dc9397-a2af-4555-bcd1-7cc4e923e0e5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

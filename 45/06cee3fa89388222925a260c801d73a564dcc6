@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useSetupPanelActions.test.ts
+  s_38a97526681bca::t_7f48d94ef31595 417-508
+  s_38a97526681bca::t_a4073cc42f2299 8-9,14-15,32-36
+  s_38a97526681bca::t_42774fce9a1159 95-96
+  s_38a97526681bca::t_de594e455629f8 37-38
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.ts
+  s_38a97526681bca::t_8d46f77dd02a54 506-513,523
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useSetupPanelActions.ts
+  s_38a97526681bca::t_012f376c656976 2,12,17-18
+  s_38a97526681bca::t_1c3a6177d03349 299-306
+  s_38a97526681bca::t_8b9d329025aa61 146-147
+  s_38a97526681bca::t_e1ebf0e04b381d 77-82
+  s_38a97526681bca::t_0de678b9ac6ac0 327
+  s_38a97526681bca::t_ac15c99ad38ea7 182-190,192-197,203,209-217,219-221,228-265
+  s_38a97526681bca::t_ae491289437891 76
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodes.test.ts
+  s_38a97526681bca::t_aa684803e78054 593-623
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4506cee3fa89388222925a260c801d73a564dcc6",
+  "prompts": {},
+  "sessions": {
+    "s_38a97526681bca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f790004-de0e-4d7a-ac99-8d7e1a2d6612",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

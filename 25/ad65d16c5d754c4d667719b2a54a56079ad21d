@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.test.ts
+  s_a3c0d644af6da0::t_157204c9cf9a06 34,45-49,59
+  s_a3c0d644af6da0::t_a59944417a8f46 85-89,91-95,98-101
+  s_a3c0d644af6da0::t_51836405c2e31e 28
+  s_a3c0d644af6da0::t_dc449d540960d1 105-111,113,115-117
+  s_a3c0d644af6da0::t_055a6f1f636d0a 12,16,22-27
+  s_a3c0d644af6da0::t_09147536c94565 102-104
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_a3c0d644af6da0::t_f023e18a3e8f1b 2
+  s_a3c0d644af6da0::t_80e398f03d822b 102-103,106-107,114,116
+  s_a3c0d644af6da0::t_f460df49534ec6 104-105,108-113,115
+  s_ecdf2f2961dcf9::t_0891b413d91fd3 3,10,92,117
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_a3c0d644af6da0::t_5a829d8c3d8898 282-284
+packages/frontend/editor-ui/src/features/agents/agentNodeCanvasGeometry.store.ts
+  s_a3c0d644af6da0::t_b83d6a8996311c 4-6,8-9,11-13,17-21,23-27,31-34,40,42-51,72-73,78-79,81-82
+  s_a3c0d644af6da0::t_c6b085181e1a3f 7,14,35-39,41
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.ts
+  s_a3c0d644af6da0::t_07fb7b786f5e93 11-12,16,18-22,28-39,47
+  s_a3c0d644af6da0::t_4d7b1125ec00bd 49-57,59-62,66-68
+  s_a3c0d644af6da0::t_71a34258e6aab1 48
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_a3c0d644af6da0::t_efbd65ec61dc3d 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "25ad65d16c5d754c4d667719b2a54a56079ad21d",
+  "prompts": {},
+  "sessions": {
+    "s_a3c0d644af6da0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e5bf55fd-f866-4569-bbc0-721158cacb4e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

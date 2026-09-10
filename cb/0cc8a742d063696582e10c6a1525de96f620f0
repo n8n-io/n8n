@@ -1,0 +1,36 @@
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_f2a55d56b713ec::t_aa953176785032 75
+  s_f2a55d56b713ec::t_8122412ec9d2cb 91,95-101
+  s_f2a55d56b713ec::t_c03abcbd7ff43e 73-74,76-77,85,88-90,92-94,102-104
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_f2a55d56b713ec::t_e986344aa3e841 312
+  s_f2a55d56b713ec::t_6a368a324d494e 273
+  s_f2a55d56b713ec::t_6cb3f844952951 72
+  s_f2a55d56b713ec::t_f74d5ca26014b7 335-339,341,343-360
+  s_f2a55d56b713ec::t_031f51bf547a6e 340
+  s_f2a55d56b713ec::t_acc80b84228c84 342
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_f2a55d56b713ec::t_6913d2ae679ffa 808-835
+  s_f2a55d56b713ec::t_4aa1d553f6bc2a 836,843,850-853
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb0cc8a742d063696582e10c6a1525de96f620f0",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f2a55d56b713ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05d53be8-83a6-40f3-a419-803d87e93d27",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

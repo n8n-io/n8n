@@ -1,0 +1,25 @@
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_8cd1a0d19700c3::t_a787e24c03f1cc 345
+  s_8cd1a0d19700c3::t_6db7260f151976 74-93
+packages/cli/src/modules/agents/repositories/agent-workflow-dependency.repository.ts
+  s_8cd1a0d19700c3::t_debd80deab4393 2-7,9
+  s_8cd1a0d19700c3::t_ade90ecacc8ead 118
+packages/@n8n/db/src/repositories/index.ts
+  s_8cd1a0d19700c3::t_a2b0ac0823783c 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d4341b7bb4abbafe15b6953111323abbe9d5c41a",
+  "prompts": {},
+  "sessions": {
+    "s_8cd1a0d19700c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aa4d6b3b-305d-40d9-a0aa-5c144e99d387",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

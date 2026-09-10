@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getUsers.test.ts
+  s_aa4dc5d9a1db02::t_b0f5f2fd3ffdbe 316-317,320-325,328-329
+  s_aa4dc5d9a1db02::t_61b18a3bbc7649 306-307
+  s_aa4dc5d9a1db02::t_b104280c1187ba 205-211,319
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channelMessage/create.mentions.test.ts
+  s_aa4dc5d9a1db02::t_193877f7ef5f46 114-117
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils.ts
+  s_aa4dc5d9a1db02::t_3c3c0cdc4b443f 73-75,77-80,131-132,155-156,163-164,168,229,240-247,260-263
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/versionDescription.ts
+  s_aa4dc5d9a1db02::t_426d19aca95fad 73
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/create.perItem.test.ts
+  s_aa4dc5d9a1db02::t_193877f7ef5f46 110-114
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/common.description.ts
+  s_aa4dc5d9a1db02::t_1c81838b29cbb3 46-47,50
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/getTags.test.ts
+  s_aa4dc5d9a1db02::t_9d8b90817ef499 27,45,62-64,139,142
+  s_aa4dc5d9a1db02::t_a72d3c445c9486 28
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/utils.test.ts
+  s_aa4dc5d9a1db02::t_b104280c1187ba 619
+  s_aa4dc5d9a1db02::t_fc7112579c1c72 46-47,499,513-521,525,612,615-618,620-628,668,671
+packages/nodes-base/nodes/Microsoft/Teams/v2/descriptions/rlc.description.ts
+  s_aa4dc5d9a1db02::t_426d19aca95fad 406
+packages/nodes-base/nodes/Microsoft/Teams/v2/methods/listSearch.ts
+  s_aa4dc5d9a1db02::t_426d19aca95fad 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "498c64a23e6b71f49ec29c83129046cfc56d2791",
+  "prompts": {},
+  "sessions": {
+    "s_aa4dc5d9a1db02": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3be6a95-6503-4192-954e-1d5f96c876b3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
