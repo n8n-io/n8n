@@ -480,6 +480,7 @@ type TerminalGuardOrderServiceInternals = {
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -592,6 +593,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {};
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -707,6 +709,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			eventLog: { getSetupItemsSnapshots: Mock };
@@ -772,6 +775,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		const initialSnapshots = [{ workflowId: 'wf-old', items: [] }];
@@ -1023,6 +1027,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: { warn: Mock };
@@ -1089,6 +1094,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = { warn: vi.fn() };

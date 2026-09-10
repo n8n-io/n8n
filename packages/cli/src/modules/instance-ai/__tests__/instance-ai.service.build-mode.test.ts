@@ -13,6 +13,7 @@ import type {
 type Persistence = NonNullable<SerializableAgentState['persistence']>;
 type ServiceInternals = {
 	instanceAiConfig: { runDebugEnabled: boolean };
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	runState: RunStateRegistry<User>;
 	modeWhenEnvironmentBuilt?: InstanceAiBuildMode;
 	threadPushRef: Map<string, string>;
@@ -55,6 +56,7 @@ const orphan = mock<ResumableOrphan>({
 function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 	const service = Object.create(InstanceAiService.prototype) as ServiceInternals;
 	service.instanceAiConfig = { runDebugEnabled: false };
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.runState = new RunStateRegistry((owner: User) => owner.id);
 	service.threadPushRef = new Map();
 	service.checkpointStore = { load: vi.fn(async () => checkpoint) };

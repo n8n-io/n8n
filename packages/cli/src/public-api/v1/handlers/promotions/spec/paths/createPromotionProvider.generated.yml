@@ -1,0 +1,147 @@
+operationId: createPromotionProvider
+tags:
+  - Promotions
+summary: Create a promotion provider
+description: Creates a provider and its authentication material. An SSH provider returns the generated public key; add it to the remote as a deploy key.
+x-required-scope: gitConnection:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          type:
+            type: string
+            enum:
+              - git
+          auth:
+            oneOf:
+              - type: object
+                properties:
+                  authType:
+                    type: string
+                    enum:
+                      - ssh-key
+                  keyType:
+                    type: string
+                    enum:
+                      - ed25519
+                      - rsa
+                    default: ed25519
+                required:
+                  - authType
+                additionalProperties: false
+              - type: object
+                properties:
+                  authType:
+                    type: string
+                    enum:
+                      - token
+                  username:
+                    type: string
+                    minLength: 1
+                  password:
+                    type: string
+                    minLength: 1
+                required:
+                  - authType
+                  - username
+                  - password
+                additionalProperties: false
+        required:
+          - name
+          - type
+          - auth
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            provider:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum:
+                    - git
+                authType:
+                  type: string
+                  enum:
+                    - ssh-key
+                    - token
+                config:
+                  anyOf:
+                    - type: object
+                      properties:
+                        schemaVersion:
+                          type: number
+                          enum:
+                            - 1
+                        publicKey:
+                          type: string
+                          minLength: 1
+                        keyType:
+                          type: string
+                          enum:
+                            - ed25519
+                            - rsa
+                      required:
+                        - schemaVersion
+                        - publicKey
+                        - keyType
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        schemaVersion:
+                          type: number
+                          enum:
+                            - 1
+                      required:
+                        - schemaVersion
+                      additionalProperties: false
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+              required:
+                - id
+                - name
+                - type
+                - authType
+                - config
+                - createdAt
+                - updatedAt
+            publicKey:
+              type: string
+              nullable: true
+          required:
+            - provider
+            - publicKey
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

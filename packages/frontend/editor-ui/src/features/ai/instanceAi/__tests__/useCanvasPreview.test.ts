@@ -1257,4 +1257,132 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 	});
+	describe('tab picked by the user during a run', () => {
+		function buildMessage(toolCallId: string, workflowId: string) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId,
+							toolName: 'build-workflow',
+							result: { success: true, workflowId },
+						}),
+					],
+				}),
+			});
+		}
+
+		async function startRunOnWf1() {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			return ctx;
+		}
+
+		test('stays on the picked tab when the agent builds another workflow', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			const refreshKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			// wf-1 is off screen; it mounts fresh when opened later.
+			expect(ctx.workflowRefreshKey.value).toBe(refreshKey);
+		});
+
+		test('still refreshes the picked tab when the agent builds that one', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			const refreshKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-2')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.workflowRefreshKey.value).toBe(refreshKey + 1);
+		});
+
+		test('stays on the picked tab when a builder starts editing another workflow', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('drops the pick when the picked data table is deleted', async () => {
+			const ctx = await startRunOnWf1();
+			registerDataTable(ctx.thread, 'dt-1', 'Table', 'proj-1');
+			ctx.selectTab('dt-1');
+
+			const deleteMessage = makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-delete',
+							toolName: 'data-tables',
+							args: { action: 'delete', dataTableId: 'dt-1' },
+							result: { success: true },
+						}),
+					],
+				}),
+			});
+			ctx.thread.messages = [deleteMessage];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-1');
+
+			ctx.thread.messages = [deleteMessage, buildMessage('tc-2', 'wf-2')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('follows the agent again once the run ends', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+
+			ctx.thread.isStreaming = false;
+			await nextTick();
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('closing the preview drops the pick', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			ctx.closePreview();
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
 });

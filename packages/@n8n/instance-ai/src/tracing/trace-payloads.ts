@@ -1,12 +1,13 @@
 import {
 	redactText,
-	SUPPORTED_PII_CATEGORIES,
 	type AttributeValue,
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
 import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
@@ -29,8 +30,6 @@ const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
-const SENSITIVE_TELEMETRY_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
  * LangSmith structural identifier attributes. These carry the run/trace/span IDs
@@ -187,7 +186,7 @@ function redactTelemetryJsonValue(
 		return '[redacted-depth-limit]';
 	}
 
-	if (keyHint && SENSITIVE_TELEMETRY_KEY_PATTERN.test(keyHint)) {
+	if (keyHint && isSensitiveKey(keyHint)) {
 		return '[redacted]';
 	}
 
@@ -233,7 +232,7 @@ function redactTelemetryAttribute(key: string, value: unknown, completionDepth?:
 		return value;
 	}
 
-	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
+	if (isSensitiveKey(key)) {
 		return '[redacted]';
 	}
 
