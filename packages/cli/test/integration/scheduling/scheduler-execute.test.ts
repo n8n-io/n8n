@@ -7,6 +7,8 @@ import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
+import { selfOwned } from './shared/job-factory';
+
 /**
  * The composed path against a real database: the storage bindings
  * (`buildMaterializerTransaction` plus the repositories as the task store)
@@ -57,10 +59,12 @@ describe('scheduler execution over the storage bindings', () => {
 	});
 
 	let seq = 0;
-	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const createJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const jobName = `job-exec-${++seq}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `job-exec-${++seq}`,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -71,6 +75,7 @@ describe('scheduler execution over the storage bindings', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 10_000) => {
 		const deadline = Date.now() + timeoutMs;

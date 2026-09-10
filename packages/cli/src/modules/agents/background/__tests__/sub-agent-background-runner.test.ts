@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type {
 	AgentBackgroundJob,
 	AgentBackgroundJobSuspension,
@@ -58,6 +59,7 @@ const request: BackgroundSpawnRequest = {
 	goal: 'find things',
 	parentThreadId: 'thread-1',
 	parentResourceId: 'resource-1',
+	parentSandboxPrincipalHash: 'principal-hash',
 };
 
 function setup() {
@@ -121,6 +123,11 @@ describe('spawn', () => {
 		const spawnRequest = runner.run.mock.calls[0][0];
 		expect(spawnRequest.childThreadId).toBe(registered.childThreadId);
 		expect(registered.childThreadId).toBeTruthy();
+		// The parent identity travels from the request onto the job row.
+		expect(registered).toMatchObject({
+			parentResourceId: 'resource-1',
+			parentPrincipalHash: 'principal-hash',
+		});
 	});
 
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
@@ -144,6 +151,19 @@ describe('spawn', () => {
 		await flushDetachedRun();
 
 		expect(runner.run.mock.calls[0][1].selfDelegationDifficulty).toBe('high');
+	});
+
+	it('forwards a parent workspace handle to the run and omits the key when none is supplied', async () => {
+		const { backgroundRunner, runner, context } = setup();
+		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
+
+		await backgroundRunner.spawn(request, { ...context, parentWorkspaceHandle });
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[0][1].parentWorkspaceHandle).toBe(parentWorkspaceHandle);
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[1][1]).not.toHaveProperty('parentWorkspaceHandle');
 	});
 
 	it('does not start a run when the receipt is limit-reached', async () => {
@@ -272,8 +292,14 @@ describe('resume', () => {
 	it('continues the child from its checkpoint with the parent context and settles the answer', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		const user = { id: 'user-1' } as User;
+		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
 
-		backgroundRunner.resume(job, suspension, { approved: true }, { ...context, user });
+		backgroundRunner.resume(
+			job,
+			suspension,
+			{ approved: true },
+			{ ...context, user, parentWorkspaceHandle },
+		);
 		await flushDetachedRun();
 
 		expect(runner.resumeForeground).toHaveBeenCalledWith(
@@ -289,6 +315,7 @@ describe('resume', () => {
 				runType: 'production',
 				credentialProvider: context.credentialProvider,
 				user,
+				parentWorkspaceHandle,
 			}),
 		);
 		expect(jobService.settle).toHaveBeenCalledWith('job-1', {

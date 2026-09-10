@@ -1,13 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { sleep } from '@n8n/utils/sleep';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { WsStatusCodes } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
@@ -21,11 +22,17 @@ import {
 	type TaskRunnerLifecycleEventMap,
 } from '@/task-runners/task-runner-lifecycle-events';
 
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
+import { TaskBroker, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
+
+/**
+ * Share of the graceful-shutdown window that task work may use. The remainder is
+ * the budget for failed executions to persist before the force-kill timer fires.
+ */
+export const SHUTDOWN_TASK_BUDGET_RATIO = 0.8;
 
 type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 
@@ -104,6 +111,22 @@ export class TaskBrokerWsServer {
 		}
 	}
 
+	/**
+	 * Runs at shutdown start, concurrently with the worker's execution drain. The
+	 * regular `stop()` runs only after that drain - too late for a task timeout that
+	 * outlasts the force-kill deadline while an execution stuck on it blocks the drain.
+	 */
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	capTaskTimeoutsForShutdown() {
+		const deadline =
+			Date.now() +
+			this.globalConfig.generic.gracefulShutdownTimeout *
+				SHUTDOWN_TASK_BUDGET_RATIO *
+				Time.seconds.toMilliseconds;
+
+		this.taskBroker.capTaskTimeoutsForShutdown(deadline);
+	}
+
 	async stop() {
 		this.runnerLifecycleEvents.off('runner:unresponsive', this.onRunnerUnresponsive);
 
@@ -165,7 +188,7 @@ export class TaskBrokerWsServer {
 								lastSeen: new Date(),
 								name: message.name,
 							},
-							this.sendMessage.bind(this, id) as MessageCallback,
+							this.sendMessage.bind(this, id),
 							() => this.isRunnerReachable(id, connection),
 						);
 
@@ -191,9 +214,7 @@ export class TaskBrokerWsServer {
 		});
 
 		connection.on('message', onMessage);
-		connection.send(
-			JSON.stringify({ type: 'broker:inforequest' } as BrokerMessage.ToRunner.InfoRequest),
-		);
+		connection.send(JSON.stringify({ type: 'broker:inforequest' }));
 	}
 
 	async removeConnection(
@@ -292,7 +313,9 @@ export class TaskBrokerWsServer {
 	}
 
 	private async drainActiveTasks() {
-		const drainTimeout = Math.floor(this.globalConfig.generic.gracefulShutdownTimeout * 0.8);
+		const drainTimeout = Math.floor(
+			this.globalConfig.generic.gracefulShutdownTimeout * SHUTDOWN_TASK_BUDGET_RATIO,
+		);
 
 		const drainTimeoutMs = drainTimeout * Time.seconds.toMilliseconds;
 

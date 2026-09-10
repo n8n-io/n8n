@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
+import { OperationalError } from 'n8n-workflow';
 
 import {
 	AgentBackgroundJob,
@@ -12,6 +13,8 @@ type NewAgentBackgroundJobBase = {
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
+	parentResourceId: string;
+	parentPrincipalHash: string;
 	title: string;
 };
 
@@ -46,8 +49,32 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		await this.insert({ ...job, status: 'running' });
 	}
 
-	async countRunningByParentThread(parentThreadId: string): Promise<number> {
-		return await this.count({ where: { parentThreadId, status: 'running' } });
+	/**
+	 * Insert a workflow job, or read back the job already tracking the same
+	 * execution.
+	 */
+	async insertWorkflowJobOrGetExisting(
+		job: NewWorkflowJob,
+	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
+		await this.createQueryBuilder()
+			.insert()
+			.into(AgentBackgroundJob)
+			.values({ ...job, status: 'running' })
+			.orIgnore()
+			.execute();
+
+		const inserted = await this.existsBy({ id: job.id });
+		if (inserted) return { inserted: true };
+
+		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
+		if (existing) return { inserted: false, existing };
+
+		throw new OperationalError('Failed to register workflow background job');
+	}
+
+	/** Running sub-agent jobs only: parked workflow jobs do not count toward the cap. */
+	async countRunningSubAgentsByParentThread(parentThreadId: string): Promise<number> {
+		return await this.count({ where: { parentThreadId, kind: 'subagent', status: 'running' } });
 	}
 
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {
@@ -78,6 +105,42 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return await this.find({
 			where: { status: 'running', suspension: Not(IsNull()) },
 		});
+	}
+
+	/** Settled rows the parent thread has not consumed yet, oldest first. */
+	async findWakeableUnconsumedSettled(parentThreadId: string): Promise<AgentBackgroundJob[]> {
+		// Use IS NOT NULL directly so SQLite can use the partial index.
+		return await this.createQueryBuilder('job')
+			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
+			.andWhere('job.settledAt IS NOT NULL')
+			.andWhere('job.notifiedAt IS NULL')
+			.orderBy('job.settledAt', 'ASC')
+			.addOrderBy('job.createdAt', 'ASC')
+			.getMany();
+	}
+
+	async markMailConsumed(parentThreadId: string, ids: string[]): Promise<number> {
+		if (ids.length === 0) return 0;
+
+		const result = await this.createQueryBuilder()
+			.update()
+			.set({ notifiedAt: new Date() })
+			.where({ parentThreadId, id: In(ids) })
+			.andWhere('settledAt IS NOT NULL')
+			.andWhere('notifiedAt IS NULL')
+			.execute();
+		return result.affected ?? 0;
+	}
+
+	/** Threads with settled rows their parent has not consumed yet. */
+	async findThreadsWithUnconsumedMail(): Promise<string[]> {
+		const rows = await this.createQueryBuilder('job')
+			.select('DISTINCT job.parentThreadId', 'parentThreadId')
+			.where('job.settledAt IS NOT NULL')
+			.andWhere('job.notifiedAt IS NULL')
+			.getRawMany<{ parentThreadId: string }>();
+
+		return rows.map(({ parentThreadId }) => parentThreadId);
 	}
 
 	async findRunningWorkflowJobByExecutionId(
@@ -133,8 +196,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return result.affected === 1;
 	}
 
-	/** Retention: drop settled rows past the cutoff. */
+	/** Delete settled jobs older than the cutoff only if their results are marked as delivered. */
 	async deleteSettledBefore(cutoff: Date): Promise<void> {
-		await this.delete({ status: Not('running'), settledAt: LessThan(cutoff) });
+		await this.delete({
+			status: Not('running'),
+			settledAt: LessThan(cutoff),
+			notifiedAt: Not(IsNull()),
+		});
 	}
 }

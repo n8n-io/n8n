@@ -69,7 +69,8 @@ pnpm lint                    # Before commit
 | Package | Purpose |
 |---------|---------|
 | `packages/cli` | Backend API |
-| `packages/frontend/editor-ui` | Vue 3 frontend |
+| `packages/frontend/editor-ui` | Vue 3 frontend shell |
+| `packages/modules/<name>/frontend` | Frontend feature modules. Guide: `packages/@n8n/module-cli/frontend-module-guide.md` |
 | `packages/@n8n/api-types` | Shared types |
 | `packages/@n8n/db` | TypeORM entities |
 | `packages/workflow` | Core interfaces |

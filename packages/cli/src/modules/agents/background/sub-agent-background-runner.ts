@@ -31,7 +31,12 @@ import {
 /** The parent run's context a detached child inherits at spawn and at resume. */
 export type BackgroundRunContext = { projectId: string } & Pick<
 	SubAgentRunContext,
-	'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
+	| 'credentialProvider'
+	| 'runType'
+	| 'workflowToolExecutionMode'
+	| 'user'
+	| 'instrumentation'
+	| 'parentWorkspaceHandle'
 >;
 
 export interface BackgroundSpawnRequest {
@@ -45,7 +50,7 @@ export interface BackgroundSpawnRequest {
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
 	parentResourceId: string;
-	parentSandboxPrincipalHash?: string;
+	parentSandboxPrincipalHash: string;
 }
 
 type DispatchedJob = Pick<
@@ -89,6 +94,8 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			parentResourceId: request.parentResourceId,
+			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
@@ -115,9 +122,7 @@ export class SubAgentBackgroundRunner {
 							: {}),
 						parentThreadId: request.parentThreadId,
 						parentResourceId: request.parentResourceId,
-						...(request.parentSandboxPrincipalHash !== undefined
-							? { parentSandboxPrincipalHash: request.parentSandboxPrincipalHash }
-							: {}),
+						parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 						childThreadId,
 						taskPath,
 					},
@@ -132,6 +137,9 @@ export class SubAgentBackgroundRunner {
 						abortSignal,
 						...(request.difficulty !== undefined
 							? { selfDelegationDifficulty: request.difficulty }
+							: {}),
+						...(context.parentWorkspaceHandle !== undefined
+							? { parentWorkspaceHandle: context.parentWorkspaceHandle }
 							: {}),
 					},
 				),
@@ -184,6 +192,9 @@ export class SubAgentBackgroundRunner {
 						abortSignal,
 						...(suspension.difficulty !== undefined
 							? { selfDelegationDifficulty: suspension.difficulty }
+							: {}),
+						...(context.parentWorkspaceHandle !== undefined
+							? { parentWorkspaceHandle: context.parentWorkspaceHandle }
 							: {}),
 					},
 				),

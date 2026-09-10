@@ -11,8 +11,13 @@ export {
 	AGENT_NODE_TYPE,
 	isAiRootNodeType,
 	describeAiRootShape,
+	buildAiRootPlaceholder,
 	findEnvelopeKey,
 } from './ai-root-shapes';
+export {
+	buildSchemaPlaceholderItem,
+	type PlaceholderItemOptions,
+} from './placeholder';
 export {
 	buildSchemaContexts,
 	findOutputParserTargets,

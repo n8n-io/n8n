@@ -719,6 +719,7 @@ const onUnpublish = () => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.id,
 			versionName: activeVersion.value.name,
 			eventBus: unpublishEventBus,
 		},

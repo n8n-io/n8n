@@ -1,21 +1,54 @@
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
 
+export type AgentNodeMeasurement = {
+	height: number;
+	// What the card showed when it was measured (see setNodeContentKey).
+	contentKey: string;
+};
+
 export const useAgentNodeCanvasGeometryStore = defineStore('agentNodeCanvasGeometry', () => {
-	const nodeHeightsByCanvas = shallowReactive(new Map<string, Map<string, number>>());
+	const measurementsByCanvas = shallowReactive(
+		new Map<string, Map<string, AgentNodeMeasurement>>(),
+	);
+	const contentKeysByCanvas = new Map<string, Map<string, string | undefined>>();
 	const pendingCenterYByCanvas = new Map<string, Map<string, number>>();
 
-	function setNodeHeight(canvasId: string, nodeId: string, height: number) {
-		let heightsByNode = nodeHeightsByCanvas.get(canvasId);
-		if (!heightsByNode) {
-			heightsByNode = shallowReactive(new Map<string, number>());
-			nodeHeightsByCanvas.set(canvasId, heightsByNode);
+	function setNodeMeasurement(canvasId: string, nodeId: string, measurement: AgentNodeMeasurement) {
+		let measurementsByNode = measurementsByCanvas.get(canvasId);
+		if (!measurementsByNode) {
+			measurementsByNode = shallowReactive(new Map<string, AgentNodeMeasurement>());
+			measurementsByCanvas.set(canvasId, measurementsByNode);
 		}
-		heightsByNode.set(nodeId, height);
+		measurementsByNode.set(nodeId, measurement);
+	}
+
+	function getNodeMeasurement(canvasId: string, nodeId: string) {
+		return measurementsByCanvas.get(canvasId)?.get(nodeId);
 	}
 
 	function getNodeHeight(canvasId: string, nodeId: string) {
-		return nodeHeightsByCanvas.get(canvasId)?.get(nodeId);
+		return getNodeMeasurement(canvasId, nodeId)?.height;
+	}
+
+	/**
+	 * The card reports the content it currently renders, by value. `undefined`
+	 * means the content is still loading, so the card's size is not meaningful
+	 * yet. A card measured under a different key than before has new content
+	 * (agent picked or edited); the same key means only load-time rendering
+	 * settled.
+	 */
+	function setNodeContentKey(canvasId: string, nodeId: string, contentKey: string | undefined) {
+		let contentKeysByNode = contentKeysByCanvas.get(canvasId);
+		if (!contentKeysByNode) {
+			contentKeysByNode = new Map();
+			contentKeysByCanvas.set(canvasId, contentKeysByNode);
+		}
+		contentKeysByNode.set(nodeId, contentKey);
+	}
+
+	function getNodeContentKey(canvasId: string, nodeId: string) {
+		return contentKeysByCanvas.get(canvasId)?.get(nodeId);
 	}
 
 	function setPendingCenterY(canvasId: string, nodeId: string, centerY: number) {
@@ -36,13 +69,17 @@ export const useAgentNodeCanvasGeometryStore = defineStore('agentNodeCanvasGeome
 	}
 
 	function clearCanvas(canvasId: string) {
-		nodeHeightsByCanvas.delete(canvasId);
+		measurementsByCanvas.delete(canvasId);
+		contentKeysByCanvas.delete(canvasId);
 		pendingCenterYByCanvas.delete(canvasId);
 	}
 
 	return {
-		setNodeHeight,
+		setNodeMeasurement,
+		getNodeMeasurement,
 		getNodeHeight,
+		setNodeContentKey,
+		getNodeContentKey,
 		setPendingCenterY,
 		consumePendingCenterY,
 		clearCanvas,

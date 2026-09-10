@@ -6,22 +6,39 @@
 import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';
-import { setup } from '@storybook/vue3';
-import { DARK_MODE_EVENT_NAME } from '@vueless/storybook-dark-mode';
+import { DecoratorHelpers } from '@storybook/addon-themes';
+import { setup, type Decorator } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
 // @ts-expect-error no types
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
-import { addons } from 'storybook/preview-api';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import { applyN8nTheme, isDarkModeStored } from './applyN8nTheme';
+import { applyN8nTheme } from './applyN8nTheme';
 import { ThemedDocsContainer } from './ThemedDocsContainer';
 import './storybook.scss';
 
-const channel = addons.getChannel();
-applyN8nTheme(isDarkModeStored());
-channel.on(DARK_MODE_EVENT_NAME, applyN8nTheme);
+const { initializeThemeState, pluckThemeFromContext } = DecoratorHelpers;
+
+const THEME_NAMES = ['light', 'dark'] as const;
+const DEFAULT_THEME = 'light';
+
+initializeThemeState([...THEME_NAMES], DEFAULT_THEME);
+
+function themeOverrideFromParameters(parameters: Record<string, unknown>): string | undefined {
+	const themes = parameters.themes;
+	if (typeof themes !== 'object' || themes === null || !('themeOverride' in themes)) {
+		return undefined;
+	}
+
+	const override = themes.themeOverride;
+	return typeof override === 'string' ? override : undefined;
+}
+
+function hasAppliedTheme(): boolean {
+	const current = document.body.dataset.theme;
+	return current === 'light' || current === 'dark';
+}
 
 setup((app) => {
 	app.provide(IconBodyLoaderKey, loadLucideIconBody);
@@ -54,12 +71,6 @@ export const parameters = {
 	backgrounds: {
 		disable: true,
 	},
-	themes: {
-		disable: true,
-	},
-	darkMode: {
-		stylePreview: true,
-	},
 	options: {
 		storySort: {
 			method: 'alphabetical',
@@ -74,5 +85,24 @@ export const parameters = {
 		disableSnapshot: false,
 	},
 };
+
+const withN8nTheme: Decorator = (storyFn, context) => {
+	const selected = pluckThemeFromContext(context);
+	const theme =
+		themeOverrideFromParameters(context.parameters) ?? (selected?.length ? selected : undefined);
+
+	// Docs remounts every embedded story on a toolbar change. Those stories can
+	// render before `globals.theme` is set; falling back to light paints the
+	// page white after it already went dark.
+	if (theme) {
+		applyN8nTheme(theme);
+	} else if (!hasAppliedTheme()) {
+		applyN8nTheme(DEFAULT_THEME);
+	}
+
+	return storyFn();
+};
+
+export const decorators = [withN8nTheme];
 
 export const tags = ['autodocs'];

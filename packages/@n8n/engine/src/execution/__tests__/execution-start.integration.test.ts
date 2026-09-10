@@ -97,8 +97,10 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
+			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
+			callerContext: {},
 		});
 		await ready;
 
@@ -143,7 +145,9 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
+			workflow: {},
 			triggerOutputs: null,
+			callerContext: {},
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

@@ -6,6 +6,7 @@ import { VIEWS } from '../constants';
 const isAiGatewayCloudUbbEnabled = ref(false);
 const isAiGatewayEnabled = ref(true);
 const balance = ref<number>();
+const moduleSettings = ref<Record<string, unknown>>({});
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
@@ -32,12 +33,12 @@ vi.mock('@n8n/stores/settings.store', () => ({
 		isPublicApiEnabled: false,
 		isQueueModeEnabled: false,
 		isModuleActive: vi.fn(() => false),
+		get moduleSettings() {
+			return moduleSettings.value;
+		},
 	})),
 }));
 vi.mock('../utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => false) }));
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({ check: computed(() => () => false) })),
-}));
 
 describe('useSettingsItems', () => {
 	beforeEach(() => {
@@ -45,6 +46,25 @@ describe('useSettingsItems', () => {
 		isAiGatewayEnabled.value = true;
 		isAiGatewayCloudUbbEnabled.value = false;
 		balance.value = undefined;
+		moduleSettings.value = {};
+	});
+
+	it('hides the encryption keys item while rotation is disabled', () => {
+		const item = useSettingsItems().settingsItems.value.find(
+			({ id }) => id === 'settings-encryption-keys',
+		);
+
+		expect(item).toBeUndefined();
+	});
+
+	it('shows the encryption keys item when the module reports rotation as enabled', () => {
+		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
+
+		const item = useSettingsItems().settingsItems.value.find(
+			({ id }) => id === 'settings-encryption-keys',
+		);
+
+		expect(item?.available).toBe(true);
 	});
 
 	it('links to the n8n Connect settings page for the legacy cohort', () => {

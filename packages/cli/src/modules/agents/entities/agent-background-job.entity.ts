@@ -32,6 +32,7 @@ export interface AgentBackgroundJobSuspension {
 @Index(['settledAt'])
 @Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
 @Index(['timeoutAt'], { where: '"status" = \'running\'' })
+@Index(['parentThreadId'], { where: '"settledAt" IS NOT NULL AND "notifiedAt" IS NULL' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
@@ -47,6 +48,14 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	// agent_execution_threads.id.
 	@Column({ type: 'varchar', length: 128 })
 	parentThreadId: string;
+
+	/** Memory resource of the parent run. */
+	@Column({ type: 'varchar', length: 255 })
+	parentResourceId: string;
+
+	/** Sandbox principal of the parent run. */
+	@Column({ type: 'varchar', length: 64 })
+	parentPrincipalHash: string;
 
 	/** Task name or workflow name, echoed in status-check listings. */
 	@Column({ type: 'varchar', length: 255 })
@@ -81,6 +90,10 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
+
+	/** When the parent agent consumed this settled job. */
+	@DateTimeColumn({ precision: 3, nullable: true })
+	notifiedAt: Date | null;
 
 	@JsonColumn({ nullable: true })
 	suspension: AgentBackgroundJobSuspension | null;

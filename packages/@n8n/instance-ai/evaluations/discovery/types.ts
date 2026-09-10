@@ -62,6 +62,8 @@ export interface DiscoveryInstanceState {
 	localGateway?: LocalGatewayStatus;
 	browserAvailable?: boolean;
 	mcp?: DiscoveryMcpState;
+	/** Turn the folder-exploration capability on for the run (default off). */
+	folderExploration?: boolean;
 }
 
 export type ConfirmationDecision = 'approve' | 'deny';

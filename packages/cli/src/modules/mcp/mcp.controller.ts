@@ -13,25 +13,24 @@ import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import { McpConfig } from './mcp.config';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
-	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 	MCP_DISCOVER_METHOD,
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService, type McpFeatureFlags } from './mcp.service';
-import { McpSettingsService } from './mcp.settings.service';
+import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type {
 	McpAuthContext,
 	McpAuthenticatedRequest,
 	UserConnectedToMCPEventPayload,
 } from './mcp.types';
-import { getClientInfo, getProtocolVersion } from './mcp.utils';
+import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
 const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
+const getEnabledMiddleware = () => Container.get(McpServerMiddlewareService).getEnabledMiddleware();
 
 const mcpConfig = Container.get(McpConfig);
 
@@ -40,7 +39,6 @@ export class McpController {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly mcpService: McpService,
-		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
 		private readonly mcpProtectedResource: McpProtectedResource,
@@ -77,6 +75,7 @@ export class McpController {
 	 * This allows MCP clients to probe the endpoint and discover Bearer token authentication
 	 */
 	@Head('/http', {
+		middlewares: [getEnabledMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
@@ -97,18 +96,12 @@ export class McpController {
 	 */
 	@Get('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [getEnabledMiddleware(), getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
 	async handleGet(_req: AuthenticatedRequest, res: Response) {
 		this.setCorsHeaders(res);
-
-		const enabled = await this.mcpSettingsService.getEnabled();
-		if (!enabled) {
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
-			return;
-		}
 
 		res.header('Allow', 'POST');
 		res.status(405).json({
@@ -123,7 +116,7 @@ export class McpController {
 
 	@Post('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [getEnabledMiddleware(), getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
@@ -138,41 +131,18 @@ export class McpController {
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
 		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
-		const isConnectionHandshake =
-			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
+		const isHandshake = isConnectionHandshake(body);
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
-		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+		const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
+
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
 			protocol_version: getProtocolVersion(req),
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
-		};
-
-		const enabled = await this.mcpSettingsService.getEnabled();
-
-		if (!enabled) {
-			if (isConnectionHandshake) {
-				this.trackConnectionEvent({
-					...baseTelemetryPayload,
-					mcp_connection_status: 'error',
-					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
-					// Literal, not res.statusCode: the event is tracked before the
-					// response is written, so the status is still the default 200 here.
-					http_status: 403,
-				});
-			}
-			// Return 403 Forbidden
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
-			return;
-		}
-
-		const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
-
-		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
-			...baseTelemetryPayload,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
 			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
@@ -182,8 +152,10 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
-			if (isConnectionHandshake) {
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body, {
+				isConnectionHandshake: isHandshake,
+			});
+			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
@@ -211,7 +183,7 @@ export class McpController {
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',
@@ -246,6 +218,7 @@ export class McpController {
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
 		body: unknown,
+		options: McpServerBuildOptions,
 	): Promise<string | undefined> {
 		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -266,7 +239,8 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth, options),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {

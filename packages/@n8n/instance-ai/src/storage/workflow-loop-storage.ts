@@ -87,6 +87,30 @@ export class WorkflowLoopStorage {
 		});
 	}
 
+	async updateWorkItem(
+		threadId: string,
+		workItemId: string,
+		update: (record: WorkflowLoopWorkItemRecord) => WorkflowLoopWorkItemRecord | null,
+	): Promise<boolean> {
+		let updated = false;
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const all = this.parse(metadata[METADATA_KEY]);
+				const record = all[workItemId];
+				if (!record) return null;
+
+				const next = update(record);
+				if (!next) return null;
+
+				all[workItemId] = next;
+				updated = true;
+				return { metadata: { ...metadata, [METADATA_KEY]: all } };
+			},
+		});
+		return updated;
+	}
+
 	async getActiveWorkItem(threadId: string): Promise<WorkflowLoopWorkItemRecord | null> {
 		const all = await this.loadAll(threadId);
 		for (const record of Object.values(all)) {
@@ -182,7 +206,7 @@ export class WorkflowLoopStorage {
 			update: ({ metadata = {} }) => {
 				const all = this.parse(metadata[METADATA_KEY]);
 				const record = all[workItemId];
-				if (!record || record.state.setupRoutingClaimId !== claimId) return null;
+				if (record?.state.setupRoutingClaimId !== claimId) return null;
 
 				all[workItemId] = {
 					state: clearSetupRoutingClaim(record.state),

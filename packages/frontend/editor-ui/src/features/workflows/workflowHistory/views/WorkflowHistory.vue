@@ -390,6 +390,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: workflowId.value,
 			versionName: data.versionName,
 			eventBus: unpublishEventBus,
 		},

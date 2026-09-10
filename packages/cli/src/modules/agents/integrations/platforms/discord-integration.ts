@@ -5,6 +5,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Logger as ChatLogger, Message, Thread } from 'chat';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -34,11 +35,7 @@ import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
 } from '../integration-tool-definitions';
-import {
-	DiscordGateway,
-	type DiscordConnection,
-	type DiscordGatewayAdapter,
-} from './discord-gateway';
+import { DiscordGateway, type DiscordConnection } from './discord-gateway';
 import {
 	executeDiscordContextQuery,
 	fetchDiscordApplicationMetadata,
@@ -243,7 +240,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		});
 
 		this.pendingConnections.set(this.sessionKey(ctx), {
-			adapter: adapter as unknown as DiscordGatewayAdapter,
+			adapter,
 			botToken,
 		});
 
@@ -578,9 +575,4 @@ function stripDiscordSelfMention(text: string, userId: string): string {
 		.replace(new RegExp(`(^|\\s)<@!?${escapeRegExp(userId)}>`, 'g'), '$1')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-/** Application IDs come from a user-editable credential field, so never trust them as a pattern. */
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

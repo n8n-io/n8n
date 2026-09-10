@@ -9,6 +9,17 @@ import {
 } from '../../../__tests__/helpers/slack/synthetic-fixtures';
 import { SlackIntegration } from '../../slack/slack-integration';
 
+// The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
+// `new Function()` hack to dodge the CJS transform, which can't run under vitest;
+// redirect the loaders to native dynamic imports so the real adapters are used.
+vi.mock('../../../esm-loader', () => ({
+	loadChatSdk: async () => await import('chat'),
+	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
+	loadTelegramAdapter: async () => await import('@chat-adapter/telegram'),
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadLinearAdapter: async () => await import('@chat-adapter/linear'),
+}));
+
 describe('Slack channel integration scenarios', () => {
 	it('handles Slack URL verification without an active connection', () => {
 		const integration = new SlackIntegration(mock<AgentRepository>());

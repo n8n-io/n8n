@@ -17,6 +17,21 @@ pnpm --filter=n8n-playwright typecheck
 
 Always trim output: `--reporter=list 2>&1 | tail -50`
 
+## Test Layout
+
+Product Playwright tests live under `tests/`. Keep product E2E specs under
+`tests/e2e/` and keep infrastructure, performance, evaluation, and related
+suites in their existing directories under `tests/`.
+
+Framework and harness tests live under `tests/framework/`. Use this directory
+for tests of fixtures, startup lifecycle, diagnostics, telemetry, and harness
+contracts. These tests are not product E2E specs and must not be placed under
+`tests/e2e/`.
+
+Framework unit tests use the package Vitest configuration. Browser-backed
+harness contract tests use `vitest.harness.config.ts` so they stay separate
+from browser-free unit tests.
+
 ## Test Maintenance (Janitor)
 
 Static analysis for Playwright test architecture. Catches problems before they spread.
@@ -227,6 +242,30 @@ PLAYWRIGHT_A11Y_MAX_VIOLATIONS=5 pnpm --filter=n8n-playwright test:local
 Unset (the default), empty or malformed all mean "no budget", so the violations
 that already exist can't turn CI red. The budget is not applied to a test that
 already failed for another reason.
+
+### Per-bucket scores
+
+The reporter also scores each bucket the run exercised and writes one line for
+each of them, worst first:
+
+```
+[a11y] score bucket=canvas scans=2 rules=3 elements=7 score=31 critical=1 serious=3 moderate=1 minor=2
+```
+
+`elements` counts the distinct violating elements. An element is counted once
+for each screen it is broken on, however many rules it trips there, so a bucket
+the run scanned twice on the same screen reports its elements once. `score`
+weights those elements by impact (critical 10, serious 5, moderate 3, minor 1),
+taking the worst impact reported for each element, so it goes to zero as the
+bucket gets fixed. The same numbers go into the GitHub job summary as a bucket
+table.
+
+When `QA_METRICS_WEBHOOK_*` is set - CI sets it for the e2e workflow - the
+reporter sends the scores to the QA metrics webhook the perf metrics use. Each
+bucket writes three `qa_performance_metrics` rows (`a11y-score`,
+`a11y-violated-rules`, `a11y-violating-elements`) under the `a11y-buckets`
+benchmark, with the bucket in `dimensions`. The send is best-effort: a failure
+warns and the run carries on. See [.github/CI-TELEMETRY.md](../../../.github/CI-TELEMETRY.md).
 
 ## Test Isolation
 
