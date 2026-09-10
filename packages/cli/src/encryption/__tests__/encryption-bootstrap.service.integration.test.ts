@@ -95,7 +95,7 @@ describe('EncryptionBootstrapService (integration)', () => {
 
 	describe('end-to-end write path (real key store, real cipher)', () => {
 		beforeEach(() => {
-			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
 		});
 
 		it('writes the legacy no-prefix format while rotation is off', async () => {
