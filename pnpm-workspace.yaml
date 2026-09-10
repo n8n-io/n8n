@@ -181,6 +181,7 @@ catalog:
   '@typescript-eslint/rule-tester': 8.70.0
   '@typescript-eslint/typescript-estree': 8.70.0
   '@typescript-eslint/utils': 8.70.0
+  '@unicode/unicode-17.0.0': 2.0.2
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0

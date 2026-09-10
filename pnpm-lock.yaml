@@ -446,6 +446,9 @@ catalogs:
     '@typescript-eslint/utils':
       specifier: 8.70.0
       version: 8.70.0
+    '@unicode/unicode-17.0.0':
+      specifier: 2.0.2
+      version: 2.0.2
     '@vitest/browser-playwright':
       specifier: ^4.1.9
       version: 4.1.9
@@ -7410,12 +7413,18 @@ importers:
       '@types/xml2js':
         specifier: 'catalog:'
         version: 0.4.14
+      '@unicode/unicode-17.0.0':
+        specifier: 'catalog:'
+        version: 2.0.2
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.10)(vitest@4.1.9)
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
         version: 1.16.7(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       n8n-containers:
         specifier: workspace:*
         version: link:../testing/containers
@@ -14967,6 +14976,9 @@ packages:
 
   '@ungap/structured-clone@1.3.1':
     resolution: {integrity: sha512-mUFwbeTqrVgDQxFveS+df2yfap6iuP20NAKAsBt5jDEoOTDew+zwLAOilHCeQJOVSvmgCX4ogqIrA0mnyr08yQ==}
+
+  '@unicode/unicode-17.0.0@2.0.2':
+    resolution: {integrity: sha512-Hbn+Gzleef51c+x0tCbhFMYliWJjf7+kA82D9r7ljadl1NM2c+Dg9oggmGzXW96pIZU23v3N646cjSEaLmoMtw==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     resolution: {integrity: sha512-tS+lqTU3N0kkthU+rYp0spAYq15DU8ld9kXkaKg9sbQqJNF+WPMuNHZQGCgdxrUOEO0j22RKMwRVhF1HTl+X8A==}
@@ -34658,6 +34670,8 @@ snapshots:
       - supports-color
 
   '@ungap/structured-clone@1.3.1': {}
+
+  '@unicode/unicode-17.0.0@2.0.2': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.9.2':
     optional: true

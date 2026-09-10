@@ -24,6 +24,17 @@ import {
 import { versionDescription as versionDescriptionV1 } from '../v1/VersionDescription';
 import { versionDescription as versionDescriptionV2 } from '../v2/VersionDescription';
 import type { Mock } from 'vitest';
+import fc from 'fast-check';
+
+import {
+	asciiWord,
+	homoglyphPair,
+	isAscii,
+	mixedScriptWord,
+	nonAsciiChar,
+	unicodeText,
+	zalgoText,
+} from '@test/unicode-arbitraries';
 
 const collectNotionUrlExpressions = (value: unknown): string[] => {
 	if (Array.isArray(value)) {
@@ -603,6 +614,23 @@ describe('Test Notion, simplifyObjects', () => {
 		},
 	});
 
+	/** Simplified keys that a single property with the given name produces, without the title key. */
+	const keysFor = (propertyName: string, version: number) =>
+		Object.keys(
+			simplifyObjects([page({ [propertyName]: richText('x') })], false, version)[0],
+		).filter((key) => key.startsWith('property_') && key !== 'property_name');
+
+	const keyFor = (propertyName: string, version: number) => keysFor(propertyName, version)[0];
+
+	const ASCII_SNAKE_CASE = /^property_[a-z0-9_]*$/;
+
+	// Names that could collide with the fixture's `Name` title key are skipped.
+	// `__proto__` is dropped by the object spread inside simplifyObjects on every version.
+	const isUsablePropertyName = (name: string) =>
+		name.toLowerCase().replace(/[^a-z]/g, '') !== 'name' && name !== '__proto__';
+
+	const propertyName = (arbitrary: fc.Arbitrary<string>) => arbitrary.filter(isUsablePropertyName);
+
 	describe('v3 keeps change-case v5 Unicode-aware keys', () => {
 		it('preserves non-ASCII characters in simplified property keys', () => {
 			const result = simplifyObjects([page({ Prénom: richText('Jean') })], false, 3);
@@ -610,17 +638,30 @@ describe('Test Notion, simplifyObjects', () => {
 			expect(result[0]).toMatchObject({ property_prénom: 'Jean' });
 		});
 
-		it.each([
-			['naïve', 'property_naïve'],
-			['café', 'property_café'],
-			['Mädchen', 'property_mädchen'],
-			['Köln', 'property_köln'],
-			['Prüfung', 'property_prüfung'],
-			['Straße', 'property_straße'],
-		])('keeps %s as %s', (propertyName, expectedKey) => {
-			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 3);
+		it('keeps lowercase letters of any script verbatim', () => {
+			const lowercaseLetters = propertyName(
+				unicodeText({ maxLength: 12 }).filter((name) => /^\p{Ll}+$/u.test(name)),
+			);
 
-			expect(result[0]).toHaveProperty(expectedKey, 'x');
+			fc.assert(
+				fc.property(lowercaseLetters, (name) => {
+					expect(keyFor(name, 3)).toBe(`property_${name}`);
+				}),
+				{ examples: [['prénom'], ['straße'], ['κόσμος'], ['имя']] },
+			);
+		});
+
+		// A look-alike letter survives into the key, so `$json.property_nаme` with a
+		// Cyrillic а is a different key from `$json.property_name` while looking identical.
+		it('keeps look-alike characters distinct from their ASCII twins', () => {
+			fc.assert(
+				fc.property(
+					homoglyphPair.filter(([word]) => isUsablePropertyName(word)),
+					([word, lookAlike]) => {
+						expect(keyFor(lookAlike, 3)).not.toBe(keyFor(word, 3));
+					},
+				),
+			);
 		});
 	});
 
@@ -650,18 +691,80 @@ describe('Test Notion, simplifyObjects', () => {
 			expect(result[0]).toMatchObject({ property_pre_nom: 'Jean' });
 		});
 
-		it.each([
-			['naïve', 'property_na_ve'],
-			['café', 'property_caf'],
-			['Prix (€)', 'property_prix'],
-			['Mädchen', 'property_m_dchen'],
-			['Köln', 'property_k_ln'],
-			['Prüfung', 'property_pr_fung'],
-			['Straße', 'property_stra_e'],
-		])('folds %s to %s', (propertyName, expectedKey) => {
-			const result = simplifyObjects([page({ [propertyName]: richText('x') })], false, 2);
+		it('produces ASCII snake_case keys for any Unicode property name', () => {
+			const weirdName = propertyName(
+				fc.oneof(
+					unicodeText(),
+					mixedScriptWord,
+					zalgoText(),
+					homoglyphPair.map(([, h]) => h),
+				),
+			);
 
-			expect(result[0]).toHaveProperty(expectedKey, 'x');
+			fc.assert(
+				fc.property(weirdName, (name) => {
+					for (const key of keysFor(name, 2)) expect(key).toMatch(ASCII_SNAKE_CASE);
+				}),
+				{ examples: [['Prénom'], ['Straße'], ['Prix (€)'], ['日本語 名前'], ['Pre\u0301nom']] },
+			);
+		});
+
+		it('treats every non-ASCII character as a word separator', () => {
+			const wordsWithSeparators = fc
+				.tuple(
+					fc.array(asciiWord, { minLength: 1, maxLength: 4 }),
+					fc.array(nonAsciiChar, { minLength: 1, maxLength: 4 }),
+				)
+				.map(([words, separators]) => ({
+					name: words
+						.map((word, index) => word + (separators[index % separators.length] ?? ''))
+						.join(''),
+					expectedKey: `property_${words.join('_')}`,
+				}))
+				.filter(({ name }) => isUsablePropertyName(name));
+
+			fc.assert(
+				fc.property(wordsWithSeparators, ({ name, expectedKey }) => {
+					expect(keyFor(name, 2)).toBe(expectedKey);
+				}),
+			);
+		});
+
+		// Every character of a non-Latin script folds away, so all such names share one key
+		// and only the last property survives. v3 keeps one key per property.
+		it('collapses all-Greek property names into one key', () => {
+			const properties = { Όνομα: richText('Maria'), κόσμος: richText('Athens') };
+
+			expect(simplifyObjects([page(properties)], false, 2)[0]).toMatchObject({
+				property_: 'Athens',
+			});
+			expect(simplifyObjects([page(properties)], false, 3)[0]).toMatchObject({
+				property_όνομα: 'Maria',
+				property_κόσμος: 'Athens',
+			});
+		});
+
+		it('gives any two names of a non-Latin script the same key', () => {
+			const greekName = propertyName(
+				unicodeText({ maxLength: 8 }).filter((name) => /^\p{Script=Greek}+$/u.test(name)),
+			);
+
+			fc.assert(
+				fc.property(greekName, greekName, (first, second) => {
+					expect(keyFor(first, 2)).toBe('property_');
+					expect(keyFor(first, 2)).toBe(keyFor(second, 2));
+				}),
+			);
+		});
+
+		it('agrees with v3 on pure ASCII property names', () => {
+			const asciiName = propertyName(fc.string({ minLength: 1, maxLength: 16 }).filter(isAscii));
+
+			fc.assert(
+				fc.property(asciiName, (name) => {
+					expect(keysFor(name, 2)).toEqual(keysFor(name, 3));
+				}),
+			);
 		});
 	});
 });
