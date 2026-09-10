@@ -572,6 +572,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					severity: 'warning',
 					message: 'Connect workflow "Echo" (wf-1) to app "Runner" as "submit"',
 					appBinding: {
+						kind: 'workflow',
 						appId: 'app-1',
 						appName: 'Runner',
 						appNamespace: 'runner',

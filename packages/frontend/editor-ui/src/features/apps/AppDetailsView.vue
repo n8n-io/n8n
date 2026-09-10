@@ -210,7 +210,7 @@ const bindingWarnings = (key: string) => {
 		.map((warning) => warning.slice(prefix.length).trim());
 };
 
-// Warnings about bindings the API left out (workflow gone or incompatible) have no row.
+// Warnings about bindings the API left out have no row.
 const unlistedBindingWarnings = computed(() =>
 	appsStore.bindingWarnings.filter(
 		(warning) =>
@@ -721,8 +721,29 @@ watch(
 						:class="$style.connectionRow"
 						data-test-id="app-connection"
 					>
-						<N8nIcon icon="workflow" size="large" />
+						<N8nIcon :icon="binding.kind === 'dataTable' ? 'table' : 'workflow'" size="large" />
+						<N8nText
+							v-if="binding.missing"
+							size="small"
+							color="text-light"
+							:class="$style.connectionName"
+							data-test-id="app-connection-missing"
+						>
+							{{ binding.name }}
+						</N8nText>
 						<N8nLink
+							v-else-if="binding.kind === 'dataTable'"
+							:to="`/projects/${projectId}/datatables/${binding.dataTableId}`"
+							new-window
+							theme="text"
+							size="small"
+							:class="$style.connectionName"
+							data-test-id="app-connection-data-table"
+						>
+							{{ binding.name }}
+						</N8nLink>
+						<N8nLink
+							v-else
 							:to="`/workflow/${binding.workflowId}`"
 							new-window
 							theme="text"
@@ -732,6 +753,20 @@ watch(
 						>
 							{{ binding.name }}
 						</N8nLink>
+						<N8nText
+							v-if="binding.kind === 'dataTable' && !binding.missing"
+							size="small"
+							color="text-light"
+							data-test-id="app-connection-access"
+						>
+							{{
+								i18n.baseText(
+									binding.permissions.includes('write')
+										? 'apps.connections.access.readWrite'
+										: 'apps.connections.access.read',
+								)
+							}}
+						</N8nText>
 						<N8nTooltip
 							v-if="bindingWarnings(binding.key).length > 0"
 							:content="bindingWarnings(binding.key).join(' ')"

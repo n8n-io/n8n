@@ -728,6 +728,104 @@ describe('AppDetailsView', () => {
 			expect(getByTestId('app-connections-warning')).not.toHaveTextContent("Binding 'notify'");
 		});
 
+		const tasksBinding: DescribedBinding = {
+			key: 'tasks',
+			kind: 'dataTable',
+			dataTableId: 'dt-1',
+			name: 'Tasks',
+			permissions: ['read', 'write'],
+			columns: [{ name: 'title', type: 'string' }],
+			row: { type: 'object' },
+		};
+
+		it('lists a connected data table with a link and its access level', async () => {
+			appsStore.bindings = [tasksBinding, { ...tasksBinding, key: 'log', permissions: ['read'] }];
+			const { getByRole, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			const rows = getAllByTestId('app-connection');
+			expect(rows).toHaveLength(2);
+			const links = getAllByTestId('app-connection-data-table');
+			expect(links[0]).toHaveAttribute('href', '/projects/proj-1/datatables/dt-1');
+			expect(links[0]).toHaveAttribute('target', '_blank');
+			expect(links[0]).toHaveTextContent('Tasks');
+			expect(rows[0].querySelector('[data-icon="table"]')).not.toBeNull();
+			const access = getAllByTestId('app-connection-access');
+			expect(access[0]).toHaveTextContent('Read & write');
+			expect(access[1]).toHaveTextContent('Read');
+			expect(access[1]).not.toHaveTextContent('write');
+			expect(queryByTestId('app-connection-workflow')).toBeNull();
+			expect(queryByTestId('app-connection-warning')).toBeNull();
+		});
+
+		it('lists a missing connection without a link and disconnects it with its kind copy', async () => {
+			appsStore.bindings = [
+				{ key: 'tasks', kind: 'dataTable', name: 'tasks', missing: true },
+				{ key: 'submit', kind: 'workflow', name: 'submit', missing: true },
+			];
+			appsStore.bindingWarnings = [
+				"Binding 'tasks': data table 'dt-1' no longer exists in the app's project.",
+				"Binding 'submit': workflow 'wf-1' no longer exists in the app's project.",
+			];
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const { getByRole, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			const rows = getAllByTestId('app-connection');
+			expect(rows).toHaveLength(2);
+			expect(rows[0].querySelector('a')).toBeNull();
+			expect(rows[1].querySelector('a')).toBeNull();
+			expect(getAllByTestId('app-connection-missing')[0]).toHaveTextContent('tasks');
+			expect(getAllByTestId('app-connection-missing')[1]).toHaveTextContent('submit');
+			expect(rows[0].querySelector('[data-icon="table"]')).not.toBeNull();
+			expect(rows[1].querySelector('[data-icon="workflow"]')).not.toBeNull();
+			expect(queryByTestId('app-connection-data-table')).toBeNull();
+			expect(queryByTestId('app-connection-workflow')).toBeNull();
+			expect(queryByTestId('app-connection-access')).toBeNull();
+			expect(queryByTestId('app-connections-warning')).toBeNull();
+
+			const warned = rows[0].querySelector('[data-test-id="app-connection-warning"]');
+			expect(warned).not.toBeNull();
+			await userEvent.hover(warned!);
+			expect(await screen.findByText(/data table 'dt-1' no longer exists/)).toBeInTheDocument();
+
+			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
+			expect(confirm).toHaveBeenLastCalledWith(
+				expect.stringContaining('disconnect the "tasks" table'),
+				'Disconnect data table',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenLastCalledWith('proj-1', 'app-1', 'tasks');
+
+			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
+			expect(confirm).toHaveBeenLastCalledWith(
+				expect.stringContaining('disconnect the "submit" workflow'),
+				'Disconnect workflow',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenLastCalledWith('proj-1', 'app-1', 'submit');
+		});
+
+		it('disconnects a data table after confirmation with the table copy', async () => {
+			appsStore.bindings = [tasksBinding];
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const { getByRole, getByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-connection-delete'));
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'disconnect the "Tasks" table? The app will no longer be able to read or change its rows.',
+				),
+				'Disconnect data table',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'tasks');
+		});
+
 		it('deletes a connection after confirmation', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue(MODAL_CONFIRM);
@@ -755,12 +853,14 @@ describe('AppDetailsView', () => {
 			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
 		});
 
-		it('shows the empty state when no workflow is connected', async () => {
+		it('shows the empty state when nothing is connected', async () => {
 			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
 
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
-			expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
+			expect(getByTestId('app-connections-empty')).toHaveTextContent(
+				'No workflows or data tables connected yet.',
+			);
 			expect(queryByTestId('app-connection')).not.toBeInTheDocument();
 		});
 	});
