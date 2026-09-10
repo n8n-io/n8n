@@ -81,11 +81,28 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+const e164PhoneNumber = z
+	.string()
+	.trim()
+	.regex(/^\+[1-9]\d{1,14}$/, 'Enter a phone number in E.164 format');
+
+export const AgentTwilioVoiceSettingsSchema = z
+	.object({
+		phoneNumber: e164PhoneNumber,
+		allowedCallers: z
+			.array(e164PhoneNumber)
+			.min(1)
+			.transform((items) => [...new Set(items)]),
+	})
+	.strict();
+export type AgentTwilioVoiceIntegrationSettings = z.infer<typeof AgentTwilioVoiceSettingsSchema>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentTwilioVoiceSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -105,6 +122,7 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('twilioVoice', AgentTwilioVoiceSettingsSchema),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -120,6 +138,7 @@ const draftCredentialIntegrations = [
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createDraftCredIntegrationSchema('twilioVoice', AgentTwilioVoiceSettingsSchema),
 ] as const;
 
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);

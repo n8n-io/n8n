@@ -364,6 +364,22 @@ export class AgentRepository extends Repository<Agent> {
 		);
 	}
 
+	async findByTwilioVoicePhoneNumber(
+		phoneNumber: string,
+		projectId: string,
+		excludeAgentId: string,
+	): Promise<Agent[]> {
+		const agents = await this.find({ where: { projectId } });
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some(
+					(integration) =>
+						integration.type === 'twilioVoice' && integration.settings.phoneNumber === phoneNumber,
+				),
+		);
+	}
+
 	/**
 	 * Atomically advances publication state only when the row's `revision` still
 	 * matches the value the caller observed at load — the optimistic revision

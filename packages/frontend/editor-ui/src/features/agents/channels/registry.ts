@@ -13,6 +13,7 @@ import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
+import AgentChannelTwilioVoiceSetup from './twilio/AgentChannelTwilioVoiceSetup.vue';
 import type {
 	AgentChannelPlatform,
 	AgentChannelRuntime,
@@ -105,6 +106,14 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	twilioVoice: {
+		type: 'twilioVoice',
+		setupComponent: AgentChannelTwilioVoiceSetup,
+		editComponent: AgentChannelTwilioVoiceSetup,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getConnectedDescription: ({ text }) =>
+			text('agents.builder.addTrigger.connectedText.twilioVoice'),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 
