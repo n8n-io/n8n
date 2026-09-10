@@ -31,9 +31,6 @@ const STAGING_DIR = '.app-builds';
 const RESTORE_TIMEOUT_MS = 600_000;
 const LOG_TAIL_BYTES = 4096;
 
-/** The thread sandbox whose edits must be stored before the build reads the newest source. */
-export type AppPublishDraft = { threadId: string; workspace: Workspace };
-
 /**
  * Empties the app directory except `node_modules` (kept so the install after
  * the unpack is incremental) and prepares the staging directory. Scoped to
@@ -48,10 +45,10 @@ export function buildResetAppDirScript(input: { root: string; namespace: string 
 }
 
 /**
- * Publishes an app: stores the thread's current draft as a snapshot, unpacks
- * the newest source into n8n's own per-app build sandbox and builds it there,
- * so a publish never competes with the dev server for the thread sandbox's
- * memory. The new version becomes the served one.
+ * Publishes an app: stores the app sandbox's current draft as a snapshot,
+ * unpacks the newest source into n8n's own per-app build sandbox and builds it
+ * there, so a publish never competes with the dev server for the app
+ * sandbox's memory. The new version becomes the served one.
  */
 @Service()
 export class AppPublishService {
@@ -122,20 +119,17 @@ export class AppPublishService {
 		};
 	}
 
+	/** `draft`: the app's live sandbox workspace, whose edits are stored before the build reads the newest source. */
 	async publish(
 		appId: string,
 		user: User,
-		options: { draft?: AppPublishDraft } = {},
+		options: { draft?: Workspace } = {},
 	): Promise<AppPublishResult> {
 		const app = await this.appsService.getApp(appId);
 
 		if (options.draft) {
 			try {
-				await this.snapshotService.snapshotAfterRun(
-					options.draft.threadId,
-					user,
-					options.draft.workspace,
-				);
+				await this.snapshotService.snapshotAfterRun(appId, user, options.draft);
 			} catch (error) {
 				return { error: true, stage: 'snapshot', message: getErrorMessage(error) };
 			}

@@ -5098,9 +5098,7 @@ describe('createContext — app service wiring', () => {
 
 		await expect(appService?.publish('app-1')).resolves.toEqual(published);
 		expect(getAppWorkspace).toHaveBeenCalledWith('app-1');
-		expect(publish).toHaveBeenCalledWith('app-1', mockUser, {
-			draft: { threadId: 'thread-1', workspace },
-		});
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, { draft: workspace });
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
 			projectId: 'proj-1',
 		});

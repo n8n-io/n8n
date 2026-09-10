@@ -141,9 +141,9 @@ describe('AppPublishService', () => {
 			return SOURCE;
 		});
 
-		await service.publish('app-1', USER, { draft: { threadId: 'thread-1', workspace } });
+		await service.publish('app-1', USER, { draft: workspace });
 
-		expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('thread-1', USER, workspace);
+		expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('app-1', USER, workspace);
 		expect(order).toEqual(['snapshot', 'read']);
 	});
 
@@ -152,7 +152,7 @@ describe('AppPublishService', () => {
 		snapshotService.snapshotAfterRun.mockRejectedValue(new Error('blob store down'));
 
 		const result = await service.publish('app-1', USER, {
-			draft: { threadId: 'thread-1', workspace: mock<Workspace>() },
+			draft: mock<Workspace>(),
 		});
 
 		expect(result).toEqual({ error: true, stage: 'snapshot', message: 'blob store down' });

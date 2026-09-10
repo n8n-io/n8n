@@ -834,7 +834,7 @@ export class InstanceAiService {
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
-	/** End-of-turn app source snapshots in flight, by thread. */
+	/** End-of-turn app source snapshots in flight, by app. */
 	private readonly pendingAppSnapshots = new Map<string, Promise<void>>();
 
 	/**
@@ -1978,10 +1978,6 @@ export class InstanceAiService {
 		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
 		this.appIdByThread.delete(threadId);
-		Container.get(AppPreviewService).clearThread(threadId);
-		if (Container.get(ModuleRegistry).isActive('apps')) {
-			Container.get(AppSourceSnapshotService).clearThread(threadId);
-		}
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
@@ -2031,18 +2027,20 @@ export class InstanceAiService {
 		return false;
 	}
 
-	/** The app is gone: its sandbox and every preview served from it go with it. */
+	/** The app is gone: its sandbox and the preview served from it go with it. */
 	async destroyAppSandbox(appId: string): Promise<void> {
 		await this.sandboxService.destroySandbox(appSandboxKey(appId), 'app_deleted');
+		Container.get(AppPreviewService).clearApp(appId);
+		Container.get(AppSourceSnapshotService).clearApp(appId);
 	}
 
 	/**
-	 * Resolves once the thread's end-of-turn app snapshot (and preview rebuild)
+	 * Resolves once the app's end-of-turn source snapshot (and preview rebuild)
 	 * has landed, at once when none is in flight, and after `APP_SNAPSHOT_WAIT_MS`
 	 * at the latest. Never rejects.
 	 */
-	async awaitPendingSnapshot(threadId: string): Promise<void> {
-		const pending = this.pendingAppSnapshots.get(threadId);
+	async awaitPendingSnapshot(appId: string): Promise<void> {
+		const pending = this.pendingAppSnapshots.get(appId);
 		if (pending) await settlesWithin(pending, APP_SNAPSHOT_WAIT_MS);
 	}
 
@@ -6957,15 +6955,16 @@ export class InstanceAiService {
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
-		if (status === 'completed' && options?.user) {
+		const appId = status === 'completed' && options?.user && this.appIdByThread.get(threadId);
+		if (appId && options?.user) {
 			// Registered before the first await, so a preview request that follows the
 			// run-finish event can wait for the snapshot to land.
-			const snapshot = this.snapshotAppSources(threadId, options.user).finally(() => {
-				if (this.pendingAppSnapshots.get(threadId) === snapshot) {
-					this.pendingAppSnapshots.delete(threadId);
+			const snapshot = this.snapshotAppSources(appId, threadId, options.user).finally(() => {
+				if (this.pendingAppSnapshots.get(appId) === snapshot) {
+					this.pendingAppSnapshots.delete(appId);
 				}
 			});
-			this.pendingAppSnapshots.set(threadId, snapshot);
+			this.pendingAppSnapshots.set(appId, snapshot);
 		}
 	}
 
@@ -6975,29 +6974,26 @@ export class InstanceAiService {
 	 * Best-effort: only a sandbox already in the cache is looked at, and any
 	 * failure is logged.
 	 */
-	private async snapshotAppSources(threadId: string, user: User): Promise<void> {
+	private async snapshotAppSources(appId: string, threadId: string, user: User): Promise<void> {
 		try {
 			if (!Container.get(ModuleRegistry).isActive('apps')) return;
-			const appId = this.appIdByThread.get(threadId);
-			const entry = appId
-				? this.sandboxService.getCachedWorkspaceEntry(appSandboxKey(appId))
-				: undefined;
+			const entry = this.sandboxService.getCachedWorkspaceEntry(appSandboxKey(appId));
 			if (!entry) {
-				this.logger.debug('No cached app sandbox to snapshot app sources from', { threadId });
+				this.logger.debug('No cached app sandbox to snapshot app sources from', {
+					threadId,
+					appId,
+				});
 				return;
 			}
 			// Marked before the first await: the run-finish event is already out, and the
 			// client's ensure that follows it must find the rebuild in flight.
-			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(threadId, entry.workspace);
-			await Container.get(AppSourceSnapshotService).snapshotAfterRun(
-				threadId,
-				user,
-				entry.workspace,
-			);
+			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(appId, entry.workspace);
+			await Container.get(AppSourceSnapshotService).snapshotAfterRun(appId, user, entry.workspace);
 			await rebuilt;
 		} catch (error) {
 			this.logger.warn('App source snapshot failed', {
 				threadId,
+				appId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

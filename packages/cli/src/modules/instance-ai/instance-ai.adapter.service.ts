@@ -3286,9 +3286,8 @@ export class InstanceAiAdapterService {
 			async publish(appId) {
 				assertNotReadOnly();
 				const app = await getAccessibleApp(['app:update'], appId);
-				const workspace = run.getAppWorkspace?.(app.id);
 				return await appPublishService.publish(app.id, user, {
-					draft: run.threadId && workspace ? { threadId: run.threadId, workspace } : undefined,
+					draft: run.getAppWorkspace?.(app.id),
 				});
 			},
 		};

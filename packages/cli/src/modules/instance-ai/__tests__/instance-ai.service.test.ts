@@ -681,6 +681,7 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	pendingAppSnapshots: Map<string, Promise<void>>;
+	appIdByThread: Map<string, string>;
 	pendingBrowserCredentialSetups: Map<
 		string,
 		{
@@ -791,6 +792,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.threadPushRef = new Map();
 	service.pendingAppSnapshots = new Map();
+	service.appIdByThread = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
