@@ -196,8 +196,14 @@ export {
 	appBindingSchema,
 	appBindingsSchema,
 	workflowBindingSchema,
+	dataTableBindingSchema,
+	dataTablePermissionSchema,
 	type AppBinding,
+	type DataTablePermission,
 	type DescribedBinding,
+	type DescribedWorkflowBinding,
+	type DescribedDataTableBinding,
+	type DescribedMissingBinding,
 	type OutputSource,
 } from './schemas/app-binding.schema';
 
