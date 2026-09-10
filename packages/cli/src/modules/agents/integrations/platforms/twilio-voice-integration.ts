@@ -92,12 +92,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 		}
 
 		const webhookUrl = ctx.webhookUrlFor(this.type);
-		if (phoneNumber.voice_url && phoneNumber.voice_url !== webhookUrl) {
-			throw new BadRequestError(
-				'This Twilio number already has a Voice URL. Remove it in Twilio and try again.',
-			);
-		}
-
 		const state = await this.agentRepository.findIntegrationState(ctx.agentId);
 		const previous = state?.integrations?.find(
 			(integration) =>
