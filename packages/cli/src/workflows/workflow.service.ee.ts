@@ -200,7 +200,7 @@ export class EnterpriseWorkflowService {
 		 * We only need to check nodes that use credentials the current user cannot access,
 		 * since these can be 2 possibilities:
 		 * - Same ID already exist: it's a read only node and therefore cannot be changed
-		 * - It's a new node, or an existing node that newly references such a credential,
+		 * - It's a new node, or an editable node that newly references such a credential,
 		 *   which indicates tampering and therefore must fail saving
 		 */
 
@@ -216,23 +216,20 @@ export class EnterpriseWorkflowService {
 			return newWorkflowVersion;
 		}
 
-		// Restoring the previous version of a node keeps a credential that version
-		// did not have, so a credential that is new on the node fails the save the
-		// same way a new node does.
-		const introducesInaccessibleCredential = (node: INode, previousNodeVersion: INode) => {
-			const previous = this.getNodeCredentialRefs(previousNodeVersion);
-			const current = this.getNodeCredentialRefs(node);
-			return (
-				current.unresolved.some((ref) => !previous.unresolved.includes(ref)) ||
-				current.ids.some((id) => !allowedCredentialIds.includes(id) && !previous.ids.includes(id))
-			);
-		};
+		// A node the user could not use before stays read only and is restored. A node
+		// the user could edit that now carries a credential they cannot use fails the
+		// save like a new node does; restoring it would drop the other edits silently.
+		const readOnlyNodeIds = new Set(
+			this.getNodesWithInaccessibleCreds(previousWorkflowVersion, allowedCredentialIds).map(
+				(node) => node.id,
+			),
+		);
 
 		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 			const previousNodeVersion = previousWorkflowVersion.nodes.find(
 				(previousNode) => previousNode.id === node.id,
 			);
-			if (!previousNodeVersion || introducesInaccessibleCredential(node, previousNodeVersion)) {
+			if (!previousNodeVersion || !readOnlyNodeIds.has(node.id)) {
 				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
@@ -277,8 +274,8 @@ export class EnterpriseWorkflowService {
 		}
 		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
-			const { ids, unresolved } = this.getNodeCredentialRefs(node);
-			return unresolved.length > 0 || ids.some((credId) => !allowedCredentialIds.has(credId));
+			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
+			return hasUnresolved || ids.some((credId) => !allowedCredentialIds.has(credId));
 		});
 	}
 
@@ -292,7 +289,7 @@ export class EnterpriseWorkflowService {
 		for (const node of workflow.nodes ?? []) {
 			const references = this.getNodeCredentialRefs(node);
 			for (const id of references.ids) ids.add(id);
-			hasUnresolved ||= references.unresolved.length > 0;
+			hasUnresolved ||= references.hasUnresolved;
 		}
 
 		return { ids, hasUnresolved };
@@ -305,9 +302,8 @@ export class EnterpriseWorkflowService {
 	 * including its nodes' credentials — inside its `workflowJson` string
 	 * parameter, so those references are walked as well.
 	 *
-	 * Returns `ids` (resolvable credential ids) and `unresolved` (one JSON
-	 * `[type, name]` key per non-managed credential carrying no id; a joined string
-	 * could collide when a type or name contains the separator). A name-only reference can be
+	 * Returns `ids` (resolvable credential ids) and `hasUnresolved` (a non-managed
+	 * credential carrying no id, i.e. only a name). A name-only reference can be
 	 * resolved by name to a credential the user cannot access, so callers gating a
 	 * save must reject it rather than treat the node as credential-free.
 	 * `__aiGatewayManaged` credentials with a null id are resolved at execution and
@@ -320,23 +316,23 @@ export class EnterpriseWorkflowService {
 	 * the request size (each level embeds its child as literal escaped JSON) and
 	 * cannot cycle, so the stack cannot grow unbounded.
 	 */
-	private getNodeCredentialRefs(node: INode): { ids: string[]; unresolved: string[] } {
+	private getNodeCredentialRefs(node: INode): { ids: string[]; hasUnresolved: boolean } {
 		const ids: string[] = [];
-		const unresolved: string[] = [];
+		let hasUnresolved = false;
 		const stack: INode[] = [node];
 
 		while (stack.length > 0) {
 			const current = stack.pop()!;
 
 			if (current.credentials) {
-				for (const [type, nodeCred] of Object.entries(current.credentials)) {
+				for (const nodeCred of Object.values(current.credentials)) {
 					const id = nodeCred.id?.toString();
 					if (id) {
 						ids.push(id);
 					} else if (nodeCred.__aiGatewayManaged && nodeCred.id === null) {
 						// Managed credential, resolved at execution — exempt.
 					} else if (nodeCred.id === null || nodeCred.id === '') {
-						unresolved.push(JSON.stringify([type, nodeCred.name]));
+						hasUnresolved = true;
 					}
 				}
 			}
@@ -346,7 +342,7 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		return { ids, unresolved };
+		return { ids, hasUnresolved };
 	}
 
 	/**

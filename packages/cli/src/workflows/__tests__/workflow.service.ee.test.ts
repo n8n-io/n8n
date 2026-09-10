@@ -375,30 +375,41 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0].parameters).toEqual({ url: '' });
 		});
 
-		it('rejects an unresolved credential that replaces a different one on an existing node', () => {
-			const previousVersion = {
-				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'Old' } })],
+		it('restores a read-only node whose credential is swapped for another the user cannot use', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const newVersion = {
+				nodes: [
+					httpNode(
+						{ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } },
+						{ url: 'https://changed.test' },
+					),
+				],
 			} as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(previous);
+		});
+
+		it('restores a read-only node whose unresolved credential is replaced', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: null, name: 'Old' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
 			const newVersion = {
 				nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } }, { url: 'https://x.test' })],
 			} as unknown as IWorkflowBase;
 
-			expect(() =>
-				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
-			).toThrow(/credentials in the 'Call' node/);
-		});
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
 
-		it('compares unresolved credentials by type and name, not by a joined string', () => {
-			const previousVersion = {
-				nodes: [httpNode({ a: { id: null, name: 'b:c' } })],
-			} as unknown as IWorkflowBase;
-			const newVersion = {
-				nodes: [httpNode({ 'a:b': { id: null, name: 'c' } })],
-			} as unknown as IWorkflowBase;
-
-			expect(() =>
-				service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
-			).toThrow(/credentials in the 'Call' node/);
+			expect(result.nodes[0]).toEqual(previous);
 		});
 	});
 
