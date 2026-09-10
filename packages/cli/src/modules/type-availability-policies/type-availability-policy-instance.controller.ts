@@ -16,17 +16,12 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { NODE_TYPES_KIND } from './constants';
 import { CreatePolicyDocumentDto } from './dto/create-policy-document.dto';
 import { PutInstancePolicyDto } from './dto/put-instance-policy.dto';
 import { ReplaceAttachmentsDto } from './dto/replace-attachments.dto';
 import { UpdatePolicyDocumentDto } from './dto/update-policy-document.dto';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
-
-/**
- * The one `kind` this REST surface manages. Other kinds (e.g. credential types) would get
- * their own controller mounted on their own path, reusing the same service and DTOs.
- */
-const NODE_TYPES_KIND = 'node-types';
 
 /**
  * Instance-scope REST surface for node type availability policies. Every route requires

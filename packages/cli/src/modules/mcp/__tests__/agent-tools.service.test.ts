@@ -27,6 +27,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -37,6 +38,7 @@ import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import type { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -212,11 +214,13 @@ describe('McpAgentToolsService', () => {
 		agentTaskRepository.findByAgentId.mockResolvedValue([]);
 		agentsService.findByIdForUser.mockResolvedValue(agent);
 
+		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 		const customToolsService = new AgentCustomToolsService(
 			mockLogger(),
 			agentRepository,
 			runtimeCacheService,
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
@@ -230,6 +234,7 @@ describe('McpAgentToolsService', () => {
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
+			agentUpdateBroadcaster,
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -472,6 +477,28 @@ describe('McpAgentToolsService', () => {
 			);
 		});
 
+		it('returns the latest hash when the config changes during the mutation', async () => {
+			const latestConfig = { ...composedConfig, instructions: 'Newer work' };
+			agentConfigService.updateConfig.mockRejectedValue(
+				new ConflictError('Agent config was changed elsewhere; reload to get the latest version'),
+			);
+			agentConfigService.getConfig.mockResolvedValue(latestConfig);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({ type: 'config.replace', config: { name: 'Renamed' } }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				code: 'stale_config',
+				agentId: 'agent-1',
+				configHash: getAgentConfigHash(latestConfig),
+				message: 'Call get_agent before retrying the mutation.',
+			});
+		});
+
 		it('rejects a patch with entries the config sanitizer would silently drop', async () => {
 			const result = await callTool(
 				'mutate_agent',
@@ -504,6 +531,7 @@ describe('McpAgentToolsService', () => {
 			const stored = { ...baseConfig, name: 'Renamed' };
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: stored,
+				configHash: getAgentConfigHash(stored),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -518,7 +546,11 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ name: 'Renamed' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			// The resolved entity's config is reused; the response hash comes
 			// from updateConfig's return value, not a re-fetch.
@@ -538,6 +570,7 @@ describe('McpAgentToolsService', () => {
 		it('applies a valid config.patch to the current config', async () => {
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: { ...baseConfig, name: 'Patched' },
+				configHash: getAgentConfigHash({ ...baseConfig, name: 'Patched' }),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -555,7 +588,11 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...composedConfig, name: 'Patched' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, operation: 'config.patch' });
 		});
@@ -660,6 +697,7 @@ describe('McpAgentToolsService', () => {
 				mutateInput({
 					type: 'skill.upsert',
 					skillId: 'skill-1',
+					baseSkillHash: 'skill-hash-0',
 					skill: { name: 'Skill', body: 'v2' },
 				}),
 			);
@@ -670,6 +708,7 @@ describe('McpAgentToolsService', () => {
 				'skill-1',
 				{ name: 'Skill', body: 'v2' },
 				{ user, modifiedBy: 'mcp' },
+				'skill-hash-0',
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'skill', id: 'skill-1' },
@@ -823,6 +862,7 @@ describe('McpAgentToolsService', () => {
 			});
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: baseConfig,
+				configHash: getAgentConfigHash(baseConfig),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -845,7 +885,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...initialConfig, name: 'My Agent' },
 				user,
-				{ modifiedBy: 'mcp' },
+				{ baseConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/), modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -1363,7 +1403,7 @@ describe('McpAgentToolsService', () => {
 						{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' },
 						{ runId: 'run-2', toolCallId: 'tool-call-2', toolName: 'choose_date' },
 					],
-					previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1/preview',
+					previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1?openPreview=true',
 					...(canOpenPreview ? {} : { previewAccessNote: expect.any(String) }),
 				});
 			},
@@ -1398,7 +1438,7 @@ describe('McpAgentToolsService', () => {
 				ok: false,
 				code: 'cancellation_failed',
 				sessionId: 'session-1',
-				previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1/preview',
+				previewUrl: 'https://n8n.test/projects/project-1/agents/agent-1?openPreview=true',
 				previewAccessNote: expect.any(String),
 			});
 		});
@@ -1859,6 +1899,7 @@ describe('McpAgentToolsService', () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: baseConfig,
+				configHash: getAgentConfigHash(baseConfig),
 				updatedAt: 'now',
 				versionId: 'v2',
 			});
@@ -1874,7 +1915,11 @@ describe('McpAgentToolsService', () => {
 				'project-9',
 				{ name: 'My Agent' },
 				user,
-				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
+				{
+					baseConfigHash: getAgentConfigHash(composedConfig),
+					clearOmittedOptionalFields: true,
+					modifiedBy: 'mcp',
+				},
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});
