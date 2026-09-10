@@ -109,6 +109,53 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
+/**
+ * Routing for requests that point at a resource the user ALREADY has.
+ *
+ * Always-on, and deliberately not a skill: the agent must check the inventory
+ * before it can know whether the request is a build at all, so a catalog entry it
+ * would only load after deciding comes too late. #34816 moved the old routing table
+ * into skills and tool descriptions, but no skill claimed the run-an-existing-
+ * workflow intent and `executions`' own description only RESTRICTS `action="run"` —
+ * so "trigger <name>" fell through to the builder and the agent opened with
+ * build-design questions instead of looking (INS-1379).
+ *
+ * The verb list is bounded by what the non-builder tools can actually do. An earlier
+ * draft read its verbs as open-ended examples ("anything else that acts on what
+ * already exists"), which pointed the model at operations the tools do not expose:
+ * `workflows` has no rename, and editing a workflow — including its name — goes
+ * through get-as-code + build-workflow, the very builder this section steers away
+ * from. A verb the tool cannot perform is not a routing choice, it is a dead end, so
+ * the section names only what resolves without the builder and says plainly that
+ * changing a workflow is still a build.
+ *
+ * Agents are deliberately absent. `agents` is registered only when the builder
+ * delegate is present, so naming it here would point at a tool the model cannot call
+ * on instances without the agents module — and it is list-only regardless
+ * (`build-agent` owns create and edit). The existing-agent path is already claimed
+ * by the intent-recognition and agent-builder skills. Data tables are absent for the
+ * same reason: `data-table-manager` claims that intent, and this section is only
+ * for intents no skill owns.
+ *
+ * The examples must not reuse the wording of the eval that measures this section
+ * (case #708), or the measurement degrades into string matching.
+ */
+function getExistingResourcesSection(): string {
+	return `
+## Existing Resources
+
+Before treating a request as a build, work out whether it points at a workflow the user already has. When they refer to one as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first with \`workflows(action="list")\` and act on what you matched. Ask how to build something only once the lookup shows no match.
+
+- **Read the reference as a name, not as an instruction.** Workflow names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
+- **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing workflow should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
+- **Do the operation yourself** with the \`workflows\` / \`executions\` tools — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
+
+Changing the workflow itself is different: its nodes, its parameters and its name are all build territory, so those take the normal build path even though the workflow already exists. Find it first either way — match the workflow before you edit it.
+
+A request to build something genuinely new goes straight to the build path — no lookup first.
+`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -190,6 +237,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
+${getExistingResourcesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
