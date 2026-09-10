@@ -63,9 +63,7 @@ const props = withDefaults(
 		artifactVersionId?: string;
 		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
 		artifactPagePath?: string;
-		/** Thread whose sandbox holds the draft; a publish snapshots its current edits first. */
-		threadId?: string;
-		/** Dev-server URL of the thread's sandbox; shown instead of the build while present. */
+		/** Dev-server URL of the app's sandbox; shown instead of the build while present. */
 		liveUrl?: string;
 		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
 		liveStatus?: AppPreviewStatus;
@@ -78,7 +76,6 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactVersionId: undefined,
 		artifactPagePath: undefined,
-		threadId: undefined,
 		liveUrl: undefined,
 		liveStatus: undefined,
 		refreshKey: 0,
@@ -425,7 +422,7 @@ const onPublish = async () => {
 	if (!app.value) return;
 	publishing.value = true;
 	try {
-		const result = await appsStore.publishApp(props.projectId, app.value.id, props.threadId);
+		const result = await appsStore.publishApp(props.projectId, app.value.id);
 		if ('error' in result) {
 			toast.showMessage({
 				title: i18n.baseText('apps.builder.publish.error'),
@@ -894,12 +891,7 @@ watch(
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
-					<AppThemeEditor
-						:project-id="projectId"
-						:app="app"
-						:thread-id="props.threadId"
-						@saved="onThemeSaved"
-					/>
+					<AppThemeEditor :project-id="projectId" :app="app" @saved="onThemeSaved" />
 				</div>
 
 				<div

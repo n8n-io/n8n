@@ -85,7 +85,7 @@ describe('previewContentKey', () => {
 });
 
 describe('useAppLivePreview', () => {
-	const target = { projectId: 'proj-1', appId: 'app-1', threadId: 'thread-1' };
+	const target = { projectId: 'proj-1', appId: 'app-1' };
 
 	async function flush() {
 		await Promise.resolve();
@@ -121,12 +121,7 @@ describe('useAppLivePreview', () => {
 		const live = mountLive();
 		await flush();
 
-		expect(ensureAppPreviewApi).toHaveBeenCalledWith(
-			expect.anything(),
-			'proj-1',
-			'app-1',
-			'thread-1',
-		);
+		expect(ensureAppPreviewApi).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'app-1');
 		expect(live.status.value).toEqual(STARTING);
 		expect(live.liveUrl.value).toBeUndefined();
 

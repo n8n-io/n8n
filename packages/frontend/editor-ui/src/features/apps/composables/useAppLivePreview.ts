@@ -58,11 +58,10 @@ export function previewContentKey(
 export type AppLivePreviewTarget = {
 	projectId: MaybeRefOrGetter<string>;
 	appId: MaybeRefOrGetter<string>;
-	threadId: MaybeRefOrGetter<string>;
 };
 
 /**
- * Keeps the thread's dev server alive while `visible` is true: ensures on
+ * Keeps the app's dev server alive while `visible` is true: ensures on
  * start and on every return to visibility, polls while it starts, and
  * heartbeats once it is ready. Hidden pauses everything. A new
  * `builtVersionId` retries a preview that stopped for lack of a build. The end
@@ -112,7 +111,6 @@ export function useAppLivePreview(
 			rootStore.restApiContext,
 			toValue(target.projectId),
 			toValue(target.appId),
-			toValue(target.threadId),
 		).catch((): AppPreviewStatus => ({ status: 'unavailable', reason: 'sandbox' }));
 		if (seq !== requestSeq) return;
 

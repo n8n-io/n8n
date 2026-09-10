@@ -75,10 +75,10 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
 			AppThemeEditor: {
-				props: ['projectId', 'app', 'threadId'],
+				props: ['projectId', 'app'],
 				emits: ['saved'],
 				template:
-					'<div data-test-id="app-theme-editor-stub" :data-thread-id="threadId" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
+					'<div data-test-id="app-theme-editor-stub" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
 			},
 			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
 			AppCodeViewer: { template: '<div data-test-id="app-code-viewer-stub" />' },
@@ -368,11 +368,10 @@ describe('AppDetailsView', () => {
 			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
 		});
 
-		it('publishes the thread draft in artifact mode, then refreshes the app and confirms', async () => {
+		it('publishes the draft in artifact mode, then refreshes the app and confirms', async () => {
 			appsStore.publishApp.mockResolvedValue(published);
 			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }), {
 				artifactMode: true,
-				threadId: 'thread-1',
 			});
 			appsStore.getApp.mockResolvedValue(
 				makeApp({ activeVersionId: 'v-8', hasUnpublishedChanges: false }),
@@ -381,7 +380,7 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getByTestId('app-publish'));
 			await waitAllPromises();
 
-			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', 'thread-1');
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1');
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				title: 'App published',
 				message: published.url,
@@ -392,14 +391,14 @@ describe('AppDetailsView', () => {
 			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
 		});
 
-		it('publishes without a thread outside artifact mode', async () => {
+		it('publishes outside artifact mode', async () => {
 			appsStore.publishApp.mockResolvedValue(published);
 			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
 
 			await userEvent.click(getByTestId('app-publish'));
 			await waitAllPromises();
 
-			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', undefined);
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1');
 		});
 
 		it('shows the build failure with its log tail and keeps the draft flagged', async () => {
@@ -803,15 +802,14 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('hands the thread to the theme editor and flags the draft after a save, staying on Build', async () => {
+	it('flags the draft after a theme save, staying on Build', async () => {
 		const { getByTestId, getByRole, queryByTestId } = await renderApp(
 			makeApp({ activeVersionId: 'v-7' }),
-			{ artifactMode: true, threadId: 'thread-1' },
+			{ artifactMode: true },
 		);
 		await userEvent.click(getByTestId('app-builder-mode-build'));
 
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
-		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
 		expect(getByTestId('app-publish')).toBeDisabled();
 
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
@@ -825,7 +823,6 @@ describe('AppDetailsView', () => {
 	it('switches to the live preview after a theme save when the dev server is showing', async () => {
 		const { getByTestId, getByRole } = await renderApp(makeApp(), {
 			artifactMode: true,
-			threadId: 'thread-1',
 			liveUrl: '/apps-preview/tok/',
 			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
 		});
