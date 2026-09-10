@@ -17,6 +17,7 @@ import {
 	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { AgentsApiHelper } from './agents-api-helper';
 import { CredentialApiHelper } from './credential-api-helper';
 import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
 import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
@@ -87,6 +88,7 @@ export class ApiHelpers {
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
 	instanceAi: InstanceAiApiHelper;
+	agents: AgentsApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -109,6 +111,7 @@ export class ApiHelpers {
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
 		this.instanceAi = new InstanceAiApiHelper(this);
+		this.agents = new AgentsApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
