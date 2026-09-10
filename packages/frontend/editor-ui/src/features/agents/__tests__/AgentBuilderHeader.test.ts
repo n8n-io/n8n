@@ -42,6 +42,12 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled', 'href'],
 		emits: ['click'],
 	},
+	N8nToggle: {
+		template:
+			'<button v-bind="$attrs" :data-icon="icon" :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
+	},
 	N8nDropdownMenuItem: {
 		name: 'N8nDropdownMenuItem',
 		template: '<button :data-testid="testId" @click="$emit(\'select\', id)">{{ label }}</button>',
@@ -138,7 +144,7 @@ function mountHeader(
 ) {
 	return mount(AgentBuilderHeader, {
 		props: {
-			agent: overrides.agent ?? baseAgent,
+			agent: 'agent' in overrides ? (overrides.agent ?? null) : baseAgent,
 			projectId: 'p1',
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
