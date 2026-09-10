@@ -4,6 +4,7 @@ import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
+import { UserError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
@@ -173,6 +174,43 @@ describe('POST /apps/:namespace/api/agents/:key/chat', () => {
 				sandboxPrincipalHash: expect.any(String),
 			}),
 		);
+	});
+
+	test('replaces an internal failure of the run with a fixed message', async () => {
+		await createAgent();
+		await createBoundApp();
+		executeForChatPublished.mockImplementation(async function* () {
+			yield { type: 'error', error: new Error('ECONNREFUSED 10.0.0.7:5432') } as StreamChunk;
+		});
+
+		const response = await visitor
+			.post(CHAT)
+			.send({ message: 'Hi', sessionId: randomUUID() })
+			.expect(200);
+
+		expect(events(response.text)).toEqual([
+			{ type: 'error', message: 'The agent could not answer.' },
+			{ type: 'done', sessionId: expect.any(String) },
+		]);
+	});
+
+	test('forwards a user error of the run as is', async () => {
+		await createAgent();
+		await createBoundApp();
+		executeForChatPublished.mockImplementation(async function* () {
+			yield { type: 'text-start', id: 'msg-1' } as StreamChunk;
+			throw new UserError('The agent has no model configured');
+		});
+
+		const response = await visitor
+			.post(CHAT)
+			.send({ message: 'Hi', sessionId: randomUUID() })
+			.expect(200);
+
+		expect(events(response.text)).toEqual([
+			{ type: 'text-start', id: 'msg-1' },
+			{ type: 'error', message: 'The agent has no model configured' },
+		]);
 	});
 
 	test('answers 403 permission_denied for a history-only binding', async () => {

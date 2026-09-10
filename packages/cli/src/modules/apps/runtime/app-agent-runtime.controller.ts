@@ -1,3 +1,4 @@
+import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -5,6 +6,7 @@ import { createIpRateLimit, Get, Post, RootLevelController } from '@n8n/decorato
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 
 import {
 	type FlushableResponse,
@@ -18,6 +20,9 @@ import { AppRuntimeError } from './app-runtime.error';
 import { applyCors } from './cors';
 
 const MAX_BODY_BYTES = 1024 * 1024;
+
+// Visitors are anonymous, so only messages written for users leave the instance.
+const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 
 const rateLimit = createIpRateLimit(
 	Container.get(GlobalConfig).apps.runtimeRateLimit,
@@ -96,13 +101,27 @@ export class AppAgentRuntimeController {
 			if (!res.writableEnded && !res.destroyed) write(event);
 		};
 		try {
-			const suspended = await pumpChunks(turn.stream, send);
+			const suspended = await pumpChunks(this.scrubErrors(turn.stream), send);
 			if (!suspended) send({ type: 'done', sessionId: turn.sessionId });
 		} catch (error) {
-			send({ type: 'error', message: error instanceof Error ? error.message : 'Chat failed' });
+			send({ type: 'error', message: this.messageForVisitor(error) });
 		} finally {
 			res.end();
 		}
+	}
+
+	private async *scrubErrors(stream: AsyncGenerator<StreamChunk>): AsyncGenerator<StreamChunk> {
+		for await (const chunk of stream) {
+			yield chunk.type === 'error'
+				? { type: 'error', error: new Error(this.messageForVisitor(chunk.error)) }
+				: chunk;
+		}
+	}
+
+	private messageForVisitor(error: unknown): string {
+		if (error instanceof UserError) return error.message;
+		this.errorReporter.error(error);
+		return VISITOR_ERROR_MESSAGE;
 	}
 
 	/** Runs `call` behind the CORS check and body cap. Returns null once a refusal has been written. */
