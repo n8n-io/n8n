@@ -1,10 +1,10 @@
-import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
 	nonDelegatingPolicyActionSchema,
 	nonDelegatingPolicyRuleListSchema,
 } from './policy-rule.schema';
+import { Z } from '../../zod-class';
 
 /**
  * Request body for setting a project's composed policy. Same shape as
