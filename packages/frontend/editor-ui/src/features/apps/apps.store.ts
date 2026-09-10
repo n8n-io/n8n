@@ -8,6 +8,7 @@ import {
 	createAppApi,
 	deleteAppApi,
 	deleteBindingApi,
+	fetchAppThreadsApi,
 	fetchAppVersionsApi,
 	fetchAppsApi,
 	fetchBindingsApi,
@@ -72,6 +73,9 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const publishApp = async (projectId: string, appId: string, threadId?: string) => {
 		return await publishAppApi(rootStore.restApiContext, projectId, appId, threadId);
 	};
+
+	const fetchThreads = async (projectId: string, appId: string) =>
+		await fetchAppThreadsApi(rootStore.restApiContext, projectId, appId);
 
 	const fetchVersions = async (projectId: string, appId: string) => {
 		versions.value = await fetchAppVersionsApi(rootStore.restApiContext, projectId, appId);
@@ -160,6 +164,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		updateApp,
 		applyAppTheme,
 		publishApp,
+		fetchThreads,
 		fetchVersions,
 		setActiveVersion,
 		deleteApp,

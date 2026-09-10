@@ -1,5 +1,4 @@
-import type { DescribedBinding } from '@n8n/api-types';
-import type { AppPreviewStatus } from '@n8n/api-types';
+import type { AppPreviewStatus, DescribedBinding, InstanceAiThreadInfo } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -94,6 +93,20 @@ export const publishAppApi = async (
 };
 
 /** Newest first. */
+/** The caller's assistant threads that build the app, newest activity first. */
+export const fetchAppThreadsApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+) => {
+	const { threads } = await makeRestApiRequest<{ threads: InstanceAiThreadInfo[] }>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/threads`,
+	);
+	return threads;
+};
+
 export const fetchAppVersionsApi = async (
 	context: IRestApiContext,
 	projectId: string,

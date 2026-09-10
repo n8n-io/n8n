@@ -467,6 +467,51 @@ export function useInstanceAiHandoff() {
 	 * (`isNewApp`, no `appId`). The attachment travels with the first message; the
 	 * metadata key is written now only when the app row already exists.
 	 */
+	/**
+	 * Creates a thread that targets an app (or the app to create) and stashes the
+	 * attachment its first message carries. Returns the thread id, or undefined
+	 * after showing the failure toast. Does not navigate.
+	 */
+	async function createAppArtifactThread(
+		attachment: InstanceAiAppAttachment,
+		launch: InstanceAiThreadLaunch,
+		options?: { initialDraft?: string; initialElementAttachment?: InstanceAiElementAttachment },
+	): Promise<string | undefined> {
+		const threadId = uuidv4();
+		try {
+			await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
+		} catch {
+			showOpenFailed();
+			return undefined;
+		}
+		if (attachment.appId) {
+			try {
+				// A picked element's route becomes the preview's initial page too,
+				// so opening the thread doesn't strand the user looking at the app
+				// root when they picked the element from a different page.
+				const pagePath = options?.initialElementAttachment?.route;
+				await instanceAiStore.updateThreadMetadata(threadId, {
+					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+						appId: attachment.appId,
+						projectId: attachment.projectId,
+						name: attachment.name,
+						...(pagePath ? { pagePath } : {}),
+					},
+				});
+			} catch {
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return undefined;
+			}
+		}
+		stashPendingAppAttachment(threadId, attachment);
+		if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+		if (options?.initialElementAttachment) {
+			stashPendingElementAttachment(threadId, options.initialElementAttachment);
+		}
+		return threadId;
+	}
+
 	async function openAppArtifactThread(
 		attachment: InstanceAiAppAttachment,
 		launch: InstanceAiThreadLaunch,
@@ -479,38 +524,8 @@ export function useInstanceAiHandoff() {
 		if (handoffInFlight) return false;
 		handoffInFlight = true;
 		try {
-			const threadId = uuidv4();
-			try {
-				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
-			} catch {
-				showOpenFailed();
-				return false;
-			}
-			if (attachment.appId) {
-				try {
-					// A picked element's route becomes the preview's initial page too,
-					// so opening the thread doesn't strand the user looking at the app
-					// root when they picked the element from a different page.
-					const pagePath = options?.initialElementAttachment?.route;
-					await instanceAiStore.updateThreadMetadata(threadId, {
-						[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
-							appId: attachment.appId,
-							projectId: attachment.projectId,
-							name: attachment.name,
-							...(pagePath ? { pagePath } : {}),
-						},
-					});
-				} catch {
-					await instanceAiStore.deleteThread(threadId);
-					showOpenFailed();
-					return false;
-				}
-			}
-			stashPendingAppAttachment(threadId, attachment);
-			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
-			if (options?.initialElementAttachment) {
-				stashPendingElementAttachment(threadId, options.initialElementAttachment);
-			}
+			const threadId = await createAppArtifactThread(attachment, launch, options);
+			if (!threadId) return false;
 			try {
 				const failure = await router.push({
 					name: INSTANCE_AI_THREAD_VIEW,
@@ -671,6 +686,7 @@ export function useInstanceAiHandoff() {
 		startThread,
 		openThreadWithContext,
 		openAgentArtifactThread,
+		createAppArtifactThread,
 		openAppArtifactThread,
 		openThreadForDraft,
 	};
