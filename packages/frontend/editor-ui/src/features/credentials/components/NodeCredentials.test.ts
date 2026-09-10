@@ -401,8 +401,9 @@ describe('NodeCredentials', () => {
 
 		// A plain function, not vi.fn(): the spy attaches its own handlers to the returned
 		// promise and would hide a missing catch. Vitest fails the run on an unhandled rejection.
+		// The mocked store type only accepts mocks, so assign through the plain store type.
 		let requestedScope: unknown;
-		credentialsStore.fetchUsableCredentials = async (scope) => {
+		useCredentialsStore().fetchUsableCredentials = async (scope) => {
 			requestedScope = scope;
 			throw new Error('offline');
 		};
