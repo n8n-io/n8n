@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfig.test.ts
+  s_ecdf2f2961dcf9::t_ff30bcf1aff779 25-28,83
+  s_ecdf2f2961dcf9::t_703935a48654c1 59-81
+  s_d0ba2cf2d624e5::t_a0c6bf897fc421 82
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfig.ts
+  s_ecdf2f2961dcf9::t_2eb68c6aa11fd5 77-78,90-91
+  s_ecdf2f2961dcf9::t_69406a763023cf 65-68
+  s_ecdf2f2961dcf9::t_937b9d635d2045 12-18
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_ecdf2f2961dcf9::t_47e57a8cbea649 900-901,903-904
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2c0c636ff1626f3241c3564370b5b47bdf3e10d1",
+  "prompts": {},
+  "sessions": {
+    "s_d0ba2cf2d624e5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "69928efb-4f05-40d9-ab4e-e8fd4cebb2a6",
+        "model": "claude-fable-5-1-thinking-max"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ecdf2f2961dcf9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0475ca00-eb98-4b38-b867-bbb22a8bcde4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
