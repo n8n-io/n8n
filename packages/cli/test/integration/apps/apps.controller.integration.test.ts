@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { createWorkflow, getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,6 +10,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -27,6 +29,7 @@ const testServer = utils.setupTestServer({
 
 let appRepository: AppRepository;
 let pageRepository: PageRepository;
+const instanceAiService = mockInstance(InstanceAiService);
 
 beforeAll(async () => {
 	appRepository = Container.get(AppRepository);
@@ -472,6 +475,22 @@ describe('App pages', () => {
 
 		const remaining = await pageRepository.findManyByAppId(app.id);
 		expect(remaining).toHaveLength(0);
+		expect(instanceAiService.destroyAppSandbox).not.toHaveBeenCalled();
+	});
+
+	test("deleting an app destroys the app's sandbox when instance-ai is active", async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const isActive = vi
+			.spyOn(Container.get(ModuleRegistry), 'isActive')
+			.mockImplementation((name) => name === 'instance-ai');
+
+		try {
+			await authOwnerAgent.delete(`/projects/${ownerProject.id}/apps/${app.id}`).expect(200);
+		} finally {
+			isActive.mockRestore();
+		}
+
+		expect(instanceAiService.destroyAppSandbox).toHaveBeenCalledWith(app.id);
 	});
 
 	test("rejects updating a page through a different app's URL", async () => {

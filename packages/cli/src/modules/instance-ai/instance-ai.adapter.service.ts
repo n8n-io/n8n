@@ -403,7 +403,7 @@ export class InstanceAiAdapterService {
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
 			/** The thread's live sandbox, if a run created it: `apps publish` snapshots its draft first. */
-			getThreadWorkspace?: () => Workspace | undefined;
+			getAppWorkspace?: (appId: string) => Workspace | undefined;
 			/** Called when the run creates or builds an app, so the caller can bind the thread to it. */
 			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
@@ -421,7 +421,7 @@ export class InstanceAiAdapterService {
 			nodeUsageEnabled,
 			conversationHistory,
 			modelId,
-			getThreadWorkspace,
+			getAppWorkspace,
 			onAppTouched,
 		} = options ?? {};
 
@@ -469,7 +469,7 @@ export class InstanceAiAdapterService {
 								appPublishService: this.appPublishService,
 							},
 							user,
-							{ boundProjectId: projectId, threadId, getThreadWorkspace, onAppTouched },
+							{ boundProjectId: projectId, threadId, getAppWorkspace, onAppTouched },
 						),
 					}
 				: {}),
@@ -3186,7 +3186,7 @@ export class InstanceAiAdapterService {
 		run: {
 			boundProjectId?: string;
 			threadId?: string;
-			getThreadWorkspace?: () => Workspace | undefined;
+			getAppWorkspace?: (appId: string) => Workspace | undefined;
 			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiAppService {
@@ -3286,7 +3286,7 @@ export class InstanceAiAdapterService {
 			async publish(appId) {
 				assertNotReadOnly();
 				const app = await getAccessibleApp(['app:update'], appId);
-				const workspace = run.threadId ? run.getThreadWorkspace?.() : undefined;
+				const workspace = run.getAppWorkspace?.(app.id);
 				return await appPublishService.publish(app.id, user, {
 					draft: run.threadId && workspace ? { threadId: run.threadId, workspace } : undefined,
 				});

@@ -291,6 +291,10 @@ export class InstanceAiMemoryService {
 		);
 	}
 
+	async getThreadAppId(threadId: string): Promise<string | undefined> {
+		return await this.threadRepository.findAppId(threadId);
+	}
+
 	/** Records which app a thread builds, in the same shape the editor writes when it opens a thread for an app. */
 	async bindThreadToApp(
 		threadId: string,

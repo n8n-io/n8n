@@ -124,7 +124,7 @@ describe('AppPublishService', () => {
 		expect(commands[1]).toContain('npm install --ignore-scripts');
 		expect(executeCommand.mock.calls[1][2]).toEqual({ env: { CI: 'true' }, timeout: 600_000 });
 		expect(buildApp).toHaveBeenCalledWith(
-			expect.objectContaining({ appService: expect.any(Object), workspace: expect.any(Object) }),
+			expect.objectContaining({ appService: expect.any(Object), appWorkspace: expect.any(Object) }),
 			{ action: 'build', appId: 'app-1' },
 		);
 	});

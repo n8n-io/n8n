@@ -5083,19 +5083,21 @@ describe('createContext — app service wiring', () => {
 		});
 	});
 
-	it('publishes after checking app:update, handing over the thread sandbox as the draft', async () => {
+	it("publishes after checking app:update, handing over the app's sandbox as the draft", async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
 		const published = { versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' };
 		const publish = vi.fn().mockResolvedValue(published);
 		const workspace = { sandbox: {} };
+		const getAppWorkspace = vi.fn(() => workspace as never);
 		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
 		const appService = service.createContext(mockUser, {
 			threadId: 'thread-1',
-			getThreadWorkspace: () => workspace as never,
+			getAppWorkspace,
 		}).appService;
 
 		await expect(appService?.publish('app-1')).resolves.toEqual(published);
+		expect(getAppWorkspace).toHaveBeenCalledWith('app-1');
 		expect(publish).toHaveBeenCalledWith('app-1', mockUser, {
 			draft: { threadId: 'thread-1', workspace },
 		});
@@ -5104,14 +5106,14 @@ describe('createContext — app service wiring', () => {
 		});
 	});
 
-	it('publishes without a draft when the thread has no live sandbox', async () => {
+	it('publishes without a draft when the app has no live sandbox', async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
 		const publish = vi.fn().mockResolvedValue({ versionId: 'v-2', url: 'u' });
 		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
 		const appService = service.createContext(mockUser, {
 			threadId: 'thread-1',
-			getThreadWorkspace: () => undefined,
+			getAppWorkspace: () => undefined,
 		}).appService;
 
 		await appService?.publish('app-1');

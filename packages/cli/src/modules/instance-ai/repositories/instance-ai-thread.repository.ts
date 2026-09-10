@@ -17,6 +17,12 @@ export class InstanceAiThreadRepository extends Repository<InstanceAiThread> {
 		});
 	}
 
+	/** The app a thread builds, or undefined for a thread without one. */
+	async findAppId(threadId: string): Promise<string | undefined> {
+		const thread = await this.findOne({ where: { id: threadId }, select: ['appId'] });
+		return thread?.appId ?? undefined;
+	}
+
 	async setApp(threadId: string, appId: string): Promise<void> {
 		await this.update({ id: threadId }, { appId });
 	}

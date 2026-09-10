@@ -13,7 +13,7 @@ import {
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { InstanceAiSandboxService } from '@/modules/instance-ai/sandbox';
+import { appSandboxKey, InstanceAiSandboxService } from '@/modules/instance-ai/sandbox';
 import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-settings.service';
 import { AiService } from '@/services/ai.service';
 import { UrlService } from '@/services/url.service';
@@ -22,16 +22,14 @@ import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from './app-sdk-tarball';
 import { AppVersionService } from './app-version.service';
 import { AppsService } from './apps.service';
 
-/** Deterministic per-app sandbox id: repeated file saves for the same app reuse a warm sandbox. */
-const sandboxIdForApp = (appId: string) => `app-code-${appId}`;
-
 export type FileSaveResult = { versionId: string; url: string } | { error: true; message: string };
 
 /**
- * Saves one edited source file by writing it into the app's own sandbox
- * source and rebuilding — same mechanism `AppThemeBuildService` uses for
- * theme-overrides.css, generalized to any existing source file. Runs outside
- * any Instance AI conversation, on its own headless sandbox.
+ * Saves one edited source file by writing it into the app's sandbox and
+ * rebuilding — same mechanism `AppThemeBuildService` uses for
+ * theme-overrides.css, generalized to any existing source file. The sandbox
+ * is the one the app's threads and preview use, so a running dev server
+ * picks the save up.
  *
  * Only overwrites a file already present in the active version's source;
  * creating new files is a later iteration (see the write-mode plan).
@@ -135,7 +133,7 @@ export class AppSourceEditBuildService {
 		}
 
 		const entry = await this.getSandboxService().getOrCreateWorkspaceEntry(
-			sandboxIdForApp(appId),
+			appSandboxKey(appId),
 			user,
 		);
 		// `.bind`: sandbox.executeCommand reads `this.ensureRunning()` internally, so
@@ -155,7 +153,7 @@ export class AppSourceEditBuildService {
 		}
 		const sandboxContext: AppSandboxContext = {
 			appService: this.createAppServiceAdapter(),
-			workspace,
+			appWorkspace: workspace,
 		};
 
 		const appDirRelative = `apps/${app.namespace}`;

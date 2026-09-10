@@ -208,7 +208,7 @@ export class AppPublishService {
 
 		const sandboxContext: AppSandboxContext = {
 			appService: this.createAppServiceAdapter(),
-			workspace,
+			appWorkspace: workspace,
 		};
 		const built = await buildApp(sandboxContext, { action: 'build', appId });
 		if ('denied' in built) return { error: true, stage: 'build', message: built.reason };
