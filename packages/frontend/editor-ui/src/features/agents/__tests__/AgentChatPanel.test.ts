@@ -683,7 +683,6 @@ describe('AgentChatPanel', () => {
 describe('AgentPreviewDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		messagesMock.value = [];
 		isStreamingMock.value = true;
 		isCancellingMock.value = false;

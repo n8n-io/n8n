@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
@@ -231,10 +232,6 @@ function buildContext(args: {
 
 function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

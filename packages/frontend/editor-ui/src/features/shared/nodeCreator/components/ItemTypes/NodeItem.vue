@@ -273,6 +273,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .nodeItem {
 	--trigger-icon--color--background: #{$trigger-icon-background-color};
 	--trigger-icon--border-color: #{$trigger-icon-border-color};

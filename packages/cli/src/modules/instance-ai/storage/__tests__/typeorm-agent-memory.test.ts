@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentDbMessage } from '@n8n/instance-ai';
+import type { AgentDbMessage } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
@@ -299,7 +299,8 @@ describe('TypeORMAgentMemory', () => {
 	it('saveThread derives a sub-agent thread project from its parent', async () => {
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		const parentThreadId = '00000000-0000-4000-8000-000000000001';
-		threadRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
+		threadRepo.updateThread.mockResolvedValueOnce(null);
+		threadRepo.findOneBy.mockResolvedValueOnce({
 			id: parentThreadId,
 			resourceId: 'user-1',
 			title: '',

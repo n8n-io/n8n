@@ -5,11 +5,13 @@ import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME } from '../constants';
@@ -94,10 +96,12 @@ describe('ScalingService', () => {
 	// The service scopes its logger on construction, so assertions go to the scoped mock.
 	const scopedLogger = mock<Logger>();
 	const logger = mock<Logger>({ scoped: () => scopedLogger });
+	const errorReporter = mock<ErrorReporter>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const executionCrashService = mockInstance(ExecutionCrashService);
 	const webhookResponseRelay = mock<WebhookResponseRelay>();
 
 	let scalingService: ScalingService;
@@ -132,7 +136,7 @@ describe('ScalingService', () => {
 
 		scalingService = new ScalingService(
 			logger,
-			mock(),
+			errorReporter,
 			activeExecutions,
 			jobProcessor,
 			globalConfig,
@@ -141,6 +145,7 @@ describe('ScalingService', () => {
 			instanceSettings,
 			mock(),
 			webhookResponseRelay,
+			executionCrashService,
 		);
 
 		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
@@ -299,6 +304,28 @@ describe('ScalingService', () => {
 			instanceSettings.instanceType = 'worker';
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
+		});
+
+		it('should report the original error even if notifying main of the failure fails', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			const originalError = new Error('execution errored');
+			jobProcessor.processJob.mockRejectedValueOnce(originalError);
+			// e.g. the job key was already deleted from Redis by a stall sweep
+			job.progress.mockRejectedValueOnce(new Error('Missing key for job 1 updateProgress'));
+
+			await expect(processFn(job)).rejects.toThrow(originalError);
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				'Failed to notify main of failed execution 123 (job 1)',
+				expect.objectContaining({ executionId: '123', jobId: '1' }),
+			);
+			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
 	});
 
@@ -719,6 +746,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -757,6 +785,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -790,6 +819,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -826,6 +856,7 @@ describe('ScalingService', () => {
 				instanceSettings,
 				mock(),
 				webhookResponseRelay,
+				executionCrashService,
 			);
 
 			await scalingService.setupQueue();
@@ -867,7 +898,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123']);
 		});
 
 		it('should mark running executions as crashed if they are missing from the queue and queue is not empty', async () => {
@@ -877,7 +908,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123']);
 		});
 
 		it('should not mark running executions as crashed if they are present in the queue', async () => {
@@ -887,7 +918,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		});
 	});
 
