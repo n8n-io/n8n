@@ -431,7 +431,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
-		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
+		expect(loaded?.instructions).toMatch(/inline setup card in\s+the AI Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
