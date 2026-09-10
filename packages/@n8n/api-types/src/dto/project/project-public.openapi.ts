@@ -16,7 +16,7 @@ export const projectListFieldDocs = {
 		description:
 			'Paginate through projects by setting the cursor parameter to a nextCursor attribute ' +
 			'returned by a previous request. Default value fetches the first "page" of the collection.',
-		example: 'MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA',
+		example: 'eyJvZmZzZXQiOjEwMCwibGltaXQiOjEwMH0=',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
