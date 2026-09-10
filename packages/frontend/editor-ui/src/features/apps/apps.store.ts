@@ -6,22 +6,26 @@ import {
 	applyAppThemeApi,
 	createAppApi,
 	deleteAppApi,
+	fetchAppVersionsApi,
 	fetchAppsApi,
 	fetchAppVersionFileContentApi,
 	fetchAppVersionFilesApi,
 	fetchRoutesApi,
 	getAppApi,
+	publishAppApi,
+	setActiveAppVersionApi,
 	saveAppVersionFileContentApi,
 	updateAppApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type { App, AppTheme, Page, UpdateAppInput } from '@/features/apps/apps.types';
+import type { App, AppTheme, AppVersion, Page, UpdateAppInput } from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
+	const versions = ref<AppVersion[]>([]);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
@@ -43,8 +47,38 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return updated;
 	};
 
-	const applyAppTheme = async (projectId: string, appId: string, theme: AppTheme) => {
-		const updated = await applyAppThemeApi(rootStore.restApiContext, projectId, appId, theme);
+	const applyAppTheme = async (
+		projectId: string,
+		appId: string,
+		theme: AppTheme,
+		threadId?: string,
+	) => {
+		const updated = await applyAppThemeApi(
+			rootStore.restApiContext,
+			projectId,
+			appId,
+			theme,
+			threadId,
+		);
+		apps.value = apps.value.map((a) => (a.id === appId ? updated : a));
+		return updated;
+	};
+
+	const publishApp = async (projectId: string, appId: string, threadId?: string) => {
+		return await publishAppApi(rootStore.restApiContext, projectId, appId, threadId);
+	};
+
+	const fetchVersions = async (projectId: string, appId: string) => {
+		versions.value = await fetchAppVersionsApi(rootStore.restApiContext, projectId, appId);
+	};
+
+	const setActiveVersion = async (projectId: string, appId: string, versionId: string | null) => {
+		const updated = await setActiveAppVersionApi(
+			rootStore.restApiContext,
+			projectId,
+			appId,
+			versionId,
+		);
 		apps.value = apps.value.map((a) => (a.id === appId ? updated : a));
 		return updated;
 	};
@@ -99,11 +133,15 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	return {
 		apps,
 		pages,
+		versions,
 		fetchApps,
 		getApp,
 		createApp,
 		updateApp,
 		applyAppTheme,
+		publishApp,
+		fetchVersions,
+		setActiveVersion,
 		deleteApp,
 		fetchPages,
 		fetchAppVersionFiles,

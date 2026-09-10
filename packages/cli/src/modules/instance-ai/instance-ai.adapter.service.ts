@@ -1,3 +1,4 @@
+import type { Workspace } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -142,6 +143,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { AppPublishService } from '@/modules/apps/app-publish.service';
 import { AppsService } from '@/modules/apps/apps.service';
 import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -359,6 +361,7 @@ export class InstanceAiAdapterService {
 		// Apps: optional so adapter tests can omit them; `createContext` also checks the module is active.
 		private readonly appsService?: AppsService,
 		private readonly urlService?: UrlService,
+		private readonly appPublishService?: AppPublishService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -398,6 +401,8 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** The thread's live sandbox, if a run created it: `apps publish` snapshots its draft first. */
+			getThreadWorkspace?: () => Workspace | undefined;
 		},
 	): InstanceAiContext {
 		const {
@@ -413,6 +418,7 @@ export class InstanceAiAdapterService {
 			nodeUsageEnabled,
 			conversationHistory,
 			modelId,
+			getThreadWorkspace,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -447,9 +453,20 @@ export class InstanceAiAdapterService {
 			conversationHistoryService: conversationHistory,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
-			...(this.appsService && this.urlService && Container.get(ModuleRegistry).isActive('apps')
+			...(this.appsService &&
+			this.urlService &&
+			this.appPublishService &&
+			Container.get(ModuleRegistry).isActive('apps')
 				? {
-						appService: this.createAppAdapter(this.appsService, this.urlService, user, projectId),
+						appService: this.createAppAdapter(
+							{
+								appsService: this.appsService,
+								urlService: this.urlService,
+								appPublishService: this.appPublishService,
+							},
+							user,
+							{ boundProjectId: projectId, threadId, getThreadWorkspace },
+						),
 					}
 				: {}),
 			templatesService: this.getTemplatesService(),
@@ -3156,15 +3173,23 @@ export class InstanceAiAdapterService {
 	}
 
 	private createAppAdapter(
-		appsService: AppsService,
-		urlService: UrlService,
+		services: {
+			appsService: AppsService;
+			urlService: UrlService;
+			appPublishService: AppPublishService;
+		},
 		user: User,
-		boundProjectId?: string,
+		run: {
+			boundProjectId?: string;
+			threadId?: string;
+			getThreadWorkspace?: () => Workspace | undefined;
+		},
 	): InstanceAiAppService {
+		const { appsService, urlService, appPublishService } = services;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('apps');
 		const { resolveProjectId, assertProjectScope } = this.createProjectScopeHelpers(
 			user,
-			boundProjectId,
+			run.boundProjectId,
 		);
 
 		const getAccessibleApp = async (scopes: Scope[], appId: string) => {
@@ -3218,6 +3243,15 @@ export class InstanceAiAdapterService {
 					versionId: version.id,
 					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
 				};
+			},
+
+			async publish(appId) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const workspace = run.threadId ? run.getThreadWorkspace?.() : undefined;
+				return await appPublishService.publish(app.id, user, {
+					draft: run.threadId && workspace ? { threadId: run.threadId, workspace } : undefined,
+				});
 			},
 		};
 	}

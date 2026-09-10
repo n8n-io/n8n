@@ -56,9 +56,23 @@ export class AppVersionRepository extends Repository<AppVersion> {
 		return withDist.slice(keep).filter((version) => version.id !== activeVersionId);
 	}
 
+	/** Source-only versions beyond the newest `keep`, never the active one. */
+	async findSourceOnlyPrunable(appId: string, keep: number, activeVersionId: string | null) {
+		const sourceOnly = await this.find({
+			where: { appId, distStorageKey: IsNull() },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+		return sourceOnly.slice(keep).filter((version) => version.id !== activeVersionId);
+	}
+
 	async clearDist(ids: string[]) {
 		if (ids.length === 0) return;
 		await this.update({ id: In(ids) }, { distStorageKey: null, distSizeBytes: null });
+	}
+
+	async deleteByIds(ids: string[]) {
+		if (ids.length === 0) return;
+		await this.delete({ id: In(ids) });
 	}
 
 	async deleteByAppId(appId: string) {

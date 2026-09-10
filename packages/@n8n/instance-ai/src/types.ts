@@ -1040,19 +1040,34 @@ export interface AppSummary {
 export interface InstanceAiAppService {
 	/** `conflict` when the namespace is already taken instance-wide, so the tool can guide a retry. */
 	create(input: {
-		projectId: string;
+		/** Omitted → the project bound to the conversation, else the user's personal project. */
+		projectId?: string;
 		name: string;
 		namespace: string;
 	}): Promise<{ app: AppSummary } | { conflict: true }>;
 	get(appId: string): Promise<Omit<AppSummary, 'createdAt'>>;
-	/** Gzipped source tarball of the active version (or the newest one); `null` when the app has no version. */
+	/** Gzipped source tarball of the newest version (per-turn snapshot or build); `null` when the app has none. */
 	getSourceTarball(appId: string): Promise<{ versionId: string; data: Uint8Array } | null>;
 	/** Stores both gzipped tarballs as a new version and makes it the served one. */
 	storeVersion(
 		appId: string,
 		files: { source: Buffer; dist: Buffer },
 	): Promise<{ versionId: string; url: string }>;
+	/**
+	 * Builds the newest stored source (after snapshotting the thread's draft) in
+	 * n8n's own build sandbox and makes the result the served version.
+	 */
+	publish(appId: string): Promise<AppPublishResult>;
 }
+
+export type AppPublishResult =
+	| { versionId: string; url: string }
+	| {
+			error: true;
+			stage: 'sandbox' | 'snapshot' | 'restore' | 'install' | 'build' | 'check' | 'store';
+			message: string;
+			log?: string;
+	  };
 
 // ── Workflow template service ────────────────────────────────────────────────
 

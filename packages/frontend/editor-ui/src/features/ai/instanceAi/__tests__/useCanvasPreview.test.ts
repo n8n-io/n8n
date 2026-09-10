@@ -1047,14 +1047,14 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-open app preview', () => {
-		function appBuildMessage(overrides: Partial<InstanceAiToolCallState> = {}) {
+		function appPublishMessage(overrides: Partial<InstanceAiToolCallState> = {}) {
 			return makeMessage({
 				agentTree: makeAgentNode({
 					toolCalls: [
 						makeToolCall({
-							toolCallId: 'tc-build-app',
+							toolCallId: 'tc-publish-app',
 							toolName: 'apps',
-							args: { action: 'build', appId: 'app-1' },
+							args: { action: 'publish', appId: 'app-1' },
 							result: { appId: 'app-1', versionId: 'v-1', namespace: 'app-1' },
 							...overrides,
 						}),
@@ -1063,14 +1063,14 @@ describe('useCanvasPreview', () => {
 			});
 		}
 
-		test('switches to the app preview when a build completes', async () => {
+		test('switches to the app preview when a publish completes', async () => {
 			const ctx = setup();
 			ctx.thread.isStreaming = true;
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
 			ctx.openWorkflowPreview('wf-1');
 
-			ctx.thread.messages = [appBuildMessage()];
+			ctx.thread.messages = [appPublishMessage()];
 			await nextTick();
 
 			expect(ctx.activeAppId.value).toBe('app-1');
@@ -1083,24 +1083,77 @@ describe('useCanvasPreview', () => {
 			ctx.thread.isHydratingThread = true;
 			registerApp(ctx.thread, 'app-1');
 
-			ctx.thread.messages = [appBuildMessage()];
+			ctx.thread.messages = [appPublishMessage()];
 			await nextTick();
 
 			expect(ctx.activeAppId.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('does not auto-open the app preview on a failed build', async () => {
+		test('does not auto-open the app preview on a failed publish', async () => {
 			const ctx = setup();
 			ctx.thread.isStreaming = true;
 			registerApp(ctx.thread, 'app-1');
 
 			ctx.thread.messages = [
-				appBuildMessage({ result: { error: true, stage: 'compile', message: 'boom' } }),
+				appPublishMessage({ result: { error: true, stage: 'compile', message: 'boom' } }),
 			];
 			await nextTick();
 
 			expect(ctx.activeAppId.value).toBeNull();
+		});
+
+		function appCreateMessage(result: unknown) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-create-app',
+							toolName: 'apps',
+							args: { action: 'create', projectId: 'proj-1', name: 'Greeter' },
+							result,
+						}),
+					],
+				}),
+			});
+		}
+
+		test('switches to the app preview when an app is created, before any build', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerApp(ctx.thread, 'app-1', 'Greeter', 'proj-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.thread.messages = [
+				appCreateMessage({
+					app: { id: 'app-1', name: 'Greeter', namespace: 'greeter', projectId: 'proj-1' },
+					workspacePath: '/w/apps/greeter',
+					installed: true,
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeAppId.value).toBe('app-1');
+			expect(ctx.activeAppVersionId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open the app preview on a denied create or while hydrating', async () => {
+			const denied = setup();
+			denied.thread.isStreaming = true;
+			registerApp(denied.thread, 'app-1');
+			denied.thread.messages = [appCreateMessage({ denied: true, reason: 'taken' })];
+			await nextTick();
+			expect(denied.activeAppId.value).toBeNull();
+
+			const hydrating = setup();
+			hydrating.thread.isHydratingThread = true;
+			registerApp(hydrating.thread, 'app-1');
+			hydrating.thread.messages = [appCreateMessage({ app: { id: 'app-1' } })];
+			await nextTick();
+			expect(hydrating.activeAppId.value).toBeNull();
+			expect(hydrating.isPreviewVisible.value).toBe(false);
 		});
 	});
 

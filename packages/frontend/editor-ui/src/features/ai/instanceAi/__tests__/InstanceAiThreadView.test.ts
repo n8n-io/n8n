@@ -30,6 +30,7 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 } as Ref<number>,
@@ -351,15 +352,40 @@ const InstanceAiAppPreviewStub = defineComponent({
 		versionId: { type: String, required: false },
 	},
 	setup(props) {
+		const diagnostics = inject<AppPreviewDiagnostics | undefined>(
+			'appPreviewDiagnostics',
+			undefined,
+		);
 		return () =>
-			h('div', {
-				'data-test-id': 'instance-ai-app-preview-stub',
-				'data-app-id': props.appId,
-				'data-project-id': props.projectId,
-				'data-version-id': props.versionId,
-			});
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-app-preview-stub',
+					'data-app-id': props.appId,
+					'data-project-id': props.projectId,
+					'data-version-id': props.versionId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-app-preview-report-error',
+							onClick: () => diagnostics?.add(PREVIEW_DIAGNOSTIC),
+						},
+						'Report error',
+					),
+				],
+			);
 	},
 });
+
+const PREVIEW_DIAGNOSTIC = {
+	kind: 'uncaught' as const,
+	message: 'boom',
+	file: '/src/pages/Home.vue',
+	line: 12,
+	at: '2026-09-08T10:00:00.000Z',
+};
 
 const InstanceAiConfirmationPanelStub = defineComponent({
 	name: 'InstanceAiConfirmationPanelStub',
@@ -1397,6 +1423,69 @@ describe('InstanceAiThreadView', () => {
 				expect(getPendingAppAttachment('thread-1')).toBeNull();
 				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 			});
+		});
+
+		it('attaches buffered preview errors to the next message and clears them', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				[
+					boundApp,
+					{ type: 'app-preview-diagnostics', appId: 'app-1', items: [PREVIEW_DIAGNOSTIC] },
+				],
+				expect.any(String),
+				undefined,
+			);
+
+			await vi.waitFor(() => {
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenLastCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+
+		it('shows buffered preview errors as a chip and dismisses them without sending', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('1 preview error');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent(
+				'triangle-alert',
+			);
+
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
 		});
 
 		it('dismisses the app chip without sending it', async () => {

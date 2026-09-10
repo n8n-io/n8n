@@ -3,7 +3,13 @@ import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiAppService, InstanceAiContext } from '../../types';
-import { buildCheckScript, createAppsTool, slugifyNamespace, tailLog } from '../apps.tool';
+import {
+	buildCheckScript,
+	createAppsTool,
+	handleBuild,
+	slugifyNamespace,
+	tailLog,
+} from '../apps.tool';
 
 vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
@@ -34,6 +40,9 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
+		publish: vi
+			.fn()
+			.mockResolvedValue({ versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' }),
 	};
 	return {
 		userId: 'user-1',
@@ -77,10 +86,32 @@ function inputSchema(tool: unknown): z.ZodTypeAny {
 	return (tool as { inputSchema: z.ZodTypeAny }).inputSchema;
 }
 
-async function runBuild(context: InstanceAiContext, input: Record<string, unknown> = {}) {
+/** `build` is no tool action any more; n8n's publish pipeline calls `handleBuild` directly. */
+async function runBuild(
+	context: InstanceAiContext,
+	input: { command?: string; outDir?: string } = {},
+	abortSignal?: AbortSignal,
+) {
+	const result: unknown = await handleBuild(
+		context,
+		{ action: 'build', appId: 'app-1', ...input },
+		abortSignal,
+	);
+	return result as Record<string, unknown>;
+}
+
+function suspendCtx(suspendFn: Mock) {
+	return { resumeData: undefined, suspend: suspendFn } as never;
+}
+
+function resumeCtx(approved: boolean, scope?: 'once' | 'session') {
+	return { resumeData: { approved, ...(scope ? { scope } : {}) } } as never;
+}
+
+async function runPublish(context: InstanceAiContext, ctx: unknown) {
 	const tool = createAppsTool(context);
-	const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1', ...input });
-	return await executeTool<Record<string, unknown>>(tool, parsed);
+	const parsed: unknown = inputSchema(tool).parse({ action: 'publish', appId: 'app-1' });
+	return await executeTool<Record<string, unknown>>(tool, parsed, ctx);
 }
 
 async function runRestore(context: InstanceAiContext) {
@@ -126,11 +157,10 @@ describe('apps tool', () => {
 			expect(parsed.success).toBe(false);
 		});
 
-		it('accepts a bare build call; defaults are applied by the handler', async () => {
-			const context = createMockContext();
-			await runBuild(context);
-			expect(commandsRun(context)[1]).toBe(`${BUILD_PREFIX} npm run build`);
-			expect(commandsRun(context)[2]).toContain("'dist/index.html'");
+		it('rejects the build action: publishing goes through publish', () => {
+			const tool = createAppsTool(createMockContext());
+			expect(inputSchema(tool).safeParse({ action: 'build', appId: 'app-1' }).success).toBe(false);
+			expect(inputSchema(tool).safeParse({ action: 'publish', appId: 'app-1' }).success).toBe(true);
 		});
 
 		it('points the agent at the app-builder skill', () => {
@@ -189,6 +219,43 @@ describe('apps tool', () => {
 			expect(result).toEqual({
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: true,
+			});
+		});
+
+		it('installs the dependencies after the scaffold so the live preview can start', async () => {
+			const context = createMockContext();
+			await runCreate(context);
+
+			const calls = executeCommandMock(context).mock.calls as Array<
+				[string, string[], { cwd: string; env?: Record<string, string>; timeout?: number }]
+			>;
+			expect(calls[4][0]).toBe(
+				'ulimit -c 0; if [ -f package.json ]; then npm install --ignore-scripts --no-audit --no-fund --prefer-offline; else exit 99; fi',
+			);
+			expect(calls[4][2]).toMatchObject({
+				cwd: '/home/daytona/workspace/apps/greeter',
+				env: { CI: 'true' },
+				timeout: 600_000,
+			});
+		});
+
+		it('returns the created app with a warning when the install fails', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(
+				async (command: string) =>
+					await Promise.resolve(
+						command.includes('npm install') ? fail('npm ERR! code E404 left-pad') : ok(),
+					),
+			);
+
+			const result = await runCreate(context);
+
+			expect(result).toEqual({
+				app: APP,
+				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: false,
+				warnings: [expect.stringMatching(/npm install failed.*run `npm install`.*E404 left-pad/)],
 			});
 		});
 
@@ -200,6 +267,7 @@ describe('apps tool', () => {
 				expect.objectContaining({ namespace: 'hello' }),
 			);
 			expect(commandsRun(context).some((command) => command.includes('cp -r'))).toBe(false);
+			expect(commandsRun(context).some((command) => command.includes('npm install'))).toBe(false);
 		});
 
 		it('returns denied on a namespace conflict without touching the workspace', async () => {
@@ -228,6 +296,7 @@ describe('apps tool', () => {
 
 			expect(result).toMatchObject({
 				app: APP,
+				installed: true,
 				warnings: [expect.stringContaining('git is unavailable')],
 			});
 		});
@@ -239,7 +308,7 @@ describe('apps tool', () => {
 				.mockResolvedValueOnce(fail('cp: cannot stat template'));
 
 			await expect(runCreate(context)).rejects.toThrow(
-				/id app-1, namespace "greeter".*cp: cannot stat template.*\/home\/daytona\/workspace\/apps\/greeter.*appId app-1/,
+				/id app-1, namespace "greeter".*cp: cannot stat template.*\/home\/daytona\/workspace\/apps\/greeter.*app id app-1/,
 			);
 			expect(context.appService?.create).toHaveBeenCalledTimes(1);
 		});
@@ -259,12 +328,82 @@ describe('apps tool', () => {
 			const calls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(calls).toHaveLength(4);
+			expect(calls).toHaveLength(5);
 			for (const call of calls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
 
-	describe('build', () => {
+	describe('publish', () => {
+		it('suspends for confirmation first, naming the app and its URL', async () => {
+			const context = createMockContext();
+			const suspendFn = vi.fn();
+
+			await runPublish(context, suspendCtx(suspendFn));
+
+			expect(suspendFn).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message: 'Publish Greeter to /apps/greeter/',
+				severity: 'info',
+			});
+			expect(context.appService?.publish).not.toHaveBeenCalled();
+		});
+
+		it('publishes through the app service once approved and returns the registry shape', async () => {
+			const context = createMockContext();
+
+			const result = await runPublish(context, resumeCtx(true));
+
+			expect(context.appService?.publish).toHaveBeenCalledWith('app-1');
+			expect(result).toEqual({
+				appId: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				versionId: 'v-2',
+				url: 'http://localhost:5678/apps/greeter/',
+			});
+		});
+
+		it('returns denied when the user declines', async () => {
+			const context = createMockContext();
+
+			const result = await runPublish(context, resumeCtx(false));
+
+			expect(result).toEqual({ denied: true, reason: 'user_declined' });
+			expect(context.appService?.publish).not.toHaveBeenCalled();
+		});
+
+		it('skips the confirmation when the thread granted always allow, and records a new grant', async () => {
+			const granted = createMockContext({ sessionApprovedToolKeys: new Set(['apps:publish']) });
+			const suspendFn = vi.fn();
+
+			await runPublish(granted, suspendCtx(suspendFn));
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(granted.appService?.publish).toHaveBeenCalledWith('app-1');
+
+			const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ grantSessionToolApproval });
+			await runPublish(context, resumeCtx(true, 'session'));
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('apps:publish');
+		});
+
+		it('passes a publish failure through unchanged', async () => {
+			const context = createMockContext();
+			const failure = { error: true, stage: 'build', message: 'vite failed', log: 'boom' };
+			(context.appService?.publish as Mock).mockResolvedValue(failure);
+
+			await expect(runPublish(context, resumeCtx(true))).resolves.toEqual(failure);
+		});
+	});
+
+	describe('handleBuild', () => {
+		it('applies the default command and outDir', async () => {
+			const context = createMockContext();
+			await runBuild(context);
+			expect(commandsRun(context)[1]).toBe(`${BUILD_PREFIX} npm run build`);
+			expect(commandsRun(context)[2]).toContain("'dist/index.html'");
+		});
+
 		it('runs install, build and check, stores both tarballs and returns the url', async () => {
 			const context = createMockContext();
 			readFileMock(context)
@@ -461,10 +600,8 @@ describe('apps tool', () => {
 		it('forwards the run abort signal to every sandbox command and tarball read', async () => {
 			const context = createMockContext();
 			const abortSignal = new AbortController().signal;
-			const tool = createAppsTool(context);
-			const parsed: unknown = inputSchema(tool).parse({ action: 'build', appId: 'app-1' });
 
-			await executeTool(tool, parsed, { abortSignal });
+			await runBuild(context, {}, abortSignal);
 
 			const commandCalls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
@@ -504,7 +641,10 @@ describe('apps tool', () => {
 			);
 			expect(commands[3]).toContain('git init');
 			expect(commands[3]).toContain('commit -qm restore --allow-empty');
-			expect(commands[4]).toMatch(
+			expect(commands[4]).toBe(
+				'ulimit -c 0; if [ -f package.json ]; then npm install --ignore-scripts --no-audit --no-fund --prefer-offline; else exit 99; fi',
+			);
+			expect(commands[5]).toMatch(
 				/^rm -f '\/home\/daytona\/workspace\/\.app-builds\/greeter-\d+-restore\.tgz'$/,
 			);
 			expect(result).toEqual({
@@ -514,8 +654,32 @@ describe('apps tool', () => {
 				projectId: 'proj-1',
 				versionId: 'v-1',
 				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: true,
 				warnings: [],
 			});
+		});
+
+		it('restores with a warning when the install fails, and without one when there is no package.json', async () => {
+			const context = createMockContext();
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('npm install')) return await Promise.resolve(fail('npm ERR! E404'));
+				return await Promise.resolve(ok());
+			});
+
+			expect(await runRestore(context)).toMatchObject({
+				versionId: 'v-1',
+				installed: false,
+				warnings: [expect.stringMatching(/npm install failed.*E404/)],
+			});
+
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('npm install')) return await Promise.resolve(fail('', 99));
+				return await Promise.resolve(ok());
+			});
+
+			expect(await runRestore(context)).toMatchObject({ installed: false, warnings: [] });
 		});
 
 		it('returns denied when the app has no stored version', async () => {
@@ -527,7 +691,7 @@ describe('apps tool', () => {
 
 			expect(result).toEqual({
 				denied: true,
-				reason: expect.stringContaining('no stored version'),
+				reason: expect.stringContaining('no stored source'),
 			});
 			expect(writeFileMock(context)).not.toHaveBeenCalled();
 			expect(commandsRun(context)).toHaveLength(1);
@@ -605,7 +769,7 @@ describe('apps tool', () => {
 			const commandCalls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
 			>;
-			expect(commandCalls).toHaveLength(5);
+			expect(commandCalls).toHaveLength(6);
 			for (const call of commandCalls) expect(call[2].abortSignal).toBe(abortSignal);
 
 			const writeCalls = writeFileMock(context).mock.calls as Array<
@@ -686,7 +850,7 @@ describe('apps tool', () => {
 				if [ -d 'dist/server' ] || [ -d .output/server ]; then echo 'APP_CHECK_FAIL: server output found (dist/server or .output/server). Only a static export can be served.'; exit 1; fi
 				mkdir -p '/home/daytona/workspace/.app-builds'
 				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz' -C 'dist' .
-				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git --exclude='./core' --exclude='./core.*' --exclude='./*.core' -C . .
+				tar -czf '/home/daytona/workspace/.app-builds/greeter-1-src.tgz' --exclude=node_modules --exclude='dist' --exclude=.git --exclude=.n8n-dev.log --exclude=.n8n-dev.pid --exclude=.n8n-preview-dist --exclude='./core' --exclude='./core.*' --exclude='./*.core' -C . .
 				dist_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-dist.tgz')
 				src_size=$(stat -c %s '/home/daytona/workspace/.app-builds/greeter-1-src.tgz')
 				if [ "$dist_size" -gt 20971520 ]; then echo "APP_CHECK_FAIL: build output is $dist_size bytes compressed; the limit is 20971520. Remove large assets from dist."; exit 1; fi
@@ -705,6 +869,9 @@ describe('apps tool', () => {
 			});
 			const tarLine = script.split('\n').find((line) => line.includes("'/ws/.app-builds/s.tgz'"));
 			expect(tarLine).toContain("--exclude='./core' --exclude='./core.*' --exclude='./*.core'");
+			expect(tarLine).toContain(
+				'--exclude=.n8n-dev.log --exclude=.n8n-dev.pid --exclude=.n8n-preview-dist',
+			);
 			expect(script).toContain(
 				"du -ah --exclude=node_modules --exclude=.git --exclude='out' . | sort -rh",
 			);
@@ -719,6 +886,19 @@ describe('apps tool', () => {
 				sourceTarball: '/ws/.app-builds/s.tgz',
 			});
 			expect(script).toContain("cd '/ws/apps/it'\\''s'");
+		});
+	});
+});
+
+describe('create without a project id', () => {
+	it('leaves the project to the adapter when none is given', async () => {
+		const context = createMockContext();
+		await runCreate(context, { projectId: undefined });
+
+		expect(context.appService?.create).toHaveBeenCalledWith({
+			projectId: undefined,
+			name: 'Greeter',
+			namespace: 'greeter',
 		});
 	});
 });

@@ -15,6 +15,8 @@ import { AppVersionRepository } from './app-version.repository';
 import type { App } from './app.entity';
 import { AppRepository } from './app.repository';
 import { AppBlobSizeQuotaExceededError } from './errors/app-blob-size-quota-exceeded.error';
+import { AppNotFoundError } from './errors/app-not-found.error';
+import { AppVersionNotPublishableError } from './errors/app-version-not-publishable.error';
 import { AppVersionQuotaExceededError } from './errors/app-version-quota-exceeded.error';
 import { InvalidAppVersionTarballError } from './errors/invalid-app-version-tarball.error';
 import { createDistTarFilter, DIST_TAR_LIMITS } from './serving/dist-tar-filter';
@@ -33,6 +35,13 @@ const SOURCE_TAR_LIMITS = { maxEntries: 20_000, maxBytes: MAX_UNPACKED_BYTES.sou
  * always kept. Older versions keep their source only.
  */
 const DIST_RETENTION = 5;
+
+/**
+ * Source snapshots (versions without a dist) are taken after every assistant
+ * turn; the newest twenty are kept. Old builds whose dist was pruned count as
+ * source-only too, so this also bounds the history of published sources.
+ */
+const SOURCE_SNAPSHOT_RETENTION = 20;
 
 const GZIP_MAGIC = Buffer.from([0x1f, 0x8b]);
 
@@ -55,7 +64,7 @@ export class AppVersionService {
 		source: Buffer,
 		dist: Buffer,
 	): Promise<AppVersion> {
-		await this.assertUnderQuota(appId, projectId, source, dist);
+		await this.assertUnderQuota(appId, projectId, source.length + dist.length);
 
 		await this.assertTarball('source', source);
 		const distEntries = await this.assertTarball('dist', dist, createDistTarFilter());
@@ -73,14 +82,12 @@ export class AppVersionService {
 
 	/**
 	 * Cheapest checks first, before any tarball parsing CPU cost. The app's
-	 * existence is guaranteed by the caller (`AppsService.createVersion` calls
-	 * `getApp` first), so this only checks quotas.
+	 * existence is guaranteed by the caller, so this only checks quotas.
 	 */
 	private async assertUnderQuota(
 		appId: string,
 		projectId: string,
-		source: Buffer,
-		dist: Buffer,
+		addedBytes: number,
 	): Promise<void> {
 		const versionCount = await this.appVersionRepository.countByAppId(appId);
 		if (versionCount >= this.globalConfig.apps.maxVersionsPerApp) {
@@ -91,10 +98,41 @@ export class AppVersionService {
 		}
 
 		const projectSize = await this.appVersionRepository.sumSizeByProjectId(projectId);
-		const newSize = projectSize + source.length + dist.length;
+		const newSize = projectSize + addedBytes;
 		if (newSize > this.globalConfig.apps.maxProjectBlobSize) {
 			throw new AppBlobSizeQuotaExceededError(this.globalConfig.apps.maxProjectBlobSize, newSize);
 		}
+	}
+
+	/**
+	 * Stores the working copy without publishing it: no dist, the active version
+	 * stays as it is. `readSource` (and so `apps restore`) picks it up as the newest.
+	 */
+	async createSourceSnapshot(appId: string, source: Buffer): Promise<AppVersion> {
+		const app = await this.appRepository.findOneBy({ id: appId });
+		if (!app) throw new AppNotFoundError(appId);
+		await this.assertUnderQuota(appId, app.projectId, source.length);
+		await this.assertTarball('source', source);
+
+		const versionId = generateNanoId();
+		const sourceBlob = await this.blobStore.write({ appId, versionId, kind: 'source' }, source);
+		const version = await this.appVersionRepository
+			.insertVersion({
+				id: versionId,
+				appId,
+				storedAt: sourceBlob.storedAt,
+				sourceStorageKey: sourceBlob.storageKey,
+				distStorageKey: null,
+				sourceSizeBytes: source.length,
+				distSizeBytes: null,
+			})
+			.catch(async (error: unknown) => {
+				await this.blobStore.delete([sourceBlob]);
+				throw error;
+			});
+		await this.pruneSourceSnapshots(appId, app.activeVersionId);
+
+		return version;
 	}
 
 	/** Writes both blobs and the row; a failure at any step deletes the blobs written so far. */
@@ -129,21 +167,17 @@ export class AppVersionService {
 		return await this.appVersionRepository.listByAppId(appId);
 	}
 
-	/** The active version, or the newest version when none is active; `null` when the app has none yet. */
-	private async resolveVersion(app: App): Promise<AppVersion | null> {
-		const active = app.activeVersionId
-			? await this.appVersionRepository.findById(app.activeVersionId)
-			: null;
-		return active ?? (await this.appVersionRepository.listByAppId(app.id))[0] ?? null;
-	}
-
 	async findById(versionId: string): Promise<AppVersion | null> {
 		return await this.appVersionRepository.findById(versionId);
 	}
 
-	/** Source tarball of the active version, or of the newest version when none is active. */
+	/**
+	 * Source tarball of the newest version, snapshot or build. The active version
+	 * is the published one; the newest is the working copy, which is what a
+	 * restore, publish, or Theme-tab save must continue from.
+	 */
 	async readSource(app: App): Promise<{ versionId: string; data: Buffer } | null> {
-		const version = await this.resolveVersion(app);
+		const [version] = await this.appVersionRepository.listByAppId(app.id);
 		if (!version) return null;
 
 		const data = await this.blobStore.readAsBuffer({
@@ -185,12 +219,44 @@ export class AppVersionService {
 		}
 	}
 
-	toResponse(version: AppVersion): AppVersionResponse {
+	/**
+	 * True when a version newer than the published one exists: a per-turn snapshot
+	 * after the last publish, or any version while nothing is published yet.
+	 */
+	async hasUnpublishedChanges(app: App): Promise<boolean> {
+		const versions = await this.appVersionRepository.listByAppId(app.id);
+		const [newest] = versions;
+		if (!newest) return false;
+		const active = versions.find((version) => version.id === app.activeVersionId);
+		return !active || newest.createdAt > active.createdAt;
+	}
+
+	/**
+	 * Serves `versionId` at `/apps/<namespace>/`, or nothing when null. Only a
+	 * version of this app that still has its dist can be served.
+	 */
+	async setActiveVersion(app: App, versionId: string | null): Promise<void> {
+		if (versionId !== null) {
+			const version = await this.appVersionRepository.findById(versionId);
+			if (!version || version.appId !== app.id) {
+				throw new AppVersionNotPublishableError(versionId, 'it does not belong to this app');
+			}
+			if (!version.distStorageKey) {
+				throw new AppVersionNotPublishableError(versionId, 'it has no build to serve');
+			}
+		}
+		await this.appRepository.setActiveVersionId(app.id, versionId);
+	}
+
+	toResponse(version: AppVersion, activeVersionId: string | null): AppVersionResponse {
+		const hasDist = version.distStorageKey !== null;
 		return {
 			id: version.id,
 			appId: version.appId,
 			createdAt: version.createdAt.toISOString(),
-			hasDist: version.distStorageKey !== null,
+			hasDist,
+			isActive: version.id === activeVersionId,
+			kind: hasDist ? 'publish' : 'snapshot',
 		};
 	}
 
@@ -290,6 +356,23 @@ export class AppVersionService {
 		await this.removeCacheDirs(versionIds);
 		await this.removeSourceCacheDirs(versionIds);
 		await this.appVersionRepository.deleteByAppId(appId);
+	}
+
+	private async pruneSourceSnapshots(appId: string, activeVersionId: string | null) {
+		const prunable = await this.appVersionRepository.findSourceOnlyPrunable(
+			appId,
+			SOURCE_SNAPSHOT_RETENTION,
+			activeVersionId,
+		);
+		if (prunable.length === 0) return;
+
+		await this.blobStore.delete(
+			prunable.map((version) => ({
+				storedAt: version.storedAt,
+				storageKey: version.sourceStorageKey,
+			})),
+		);
+		await this.appVersionRepository.deleteByIds(prunable.map((version) => version.id));
 	}
 
 	private async pruneDist(appId: string, activeVersionId: string): Promise<void> {

@@ -700,6 +700,7 @@ export type {
 	InstanceAiWorkspaceService,
 	InstanceAiAppService,
 	AppSummary,
+	AppPublishResult,
 	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,

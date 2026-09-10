@@ -1,5 +1,6 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import escapeRegExp from 'lodash/escapeRegExp';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -48,9 +49,9 @@ export interface DataTableResult {
 	toolCallId: string;
 }
 
-export interface AppBuildResult {
+export interface AppResult {
 	appId: string;
-	/** Unique per build — changes even when the same app is rebuilt. */
+	/** Unique per call — changes even when the same app is created or built again. */
 	toolCallId: string;
 }
 
@@ -319,7 +320,7 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 }
 
 /**
- * Whether an `apps build` call for `appId` is in flight somewhere in this agent
+ * Whether an `apps publish` call for `appId` is in flight somewhere in this agent
  * tree. Apps have no builder sub-agent, so the in-flight tool call is the only
  * signal; `create` is excluded because the app id does not exist until it returns.
  */
@@ -327,12 +328,43 @@ export function isAgentBuildingApp(node: InstanceAiAgentNode, appId: string): bo
 	for (const tc of node.toolCalls) {
 		if (!tc.isLoading || tc.toolName !== 'apps') continue;
 		const args = tc.args as { action?: string; appId?: string } | undefined;
-		if (args?.action === 'build' && args.appId === appId) return true;
+		if (args?.action === 'publish' && args.appId === appId) return true;
 	}
 	for (const child of node.children) {
 		if (isAgentBuildingApp(child, appId)) return true;
 	}
 	return false;
+}
+
+const APP_SOURCE_EDIT_TOOLS = new Set(['workspace_write_file', 'workspace_str_replace_file']);
+
+/**
+ * Id of the most recent tool call in this agent tree that edits the source of
+ * the app: a workspace write under `apps/<namespace>/` or an `apps add-component`
+ * for its id. In-flight calls count, so the signal moves with the dev server's
+ * HMR. `apps restore` only fills an empty directory with the newest stored
+ * source, which the server already accounts for, so it is not an edit.
+ */
+export function getLatestAppSourceEditId(
+	node: InstanceAiAgentNode,
+	target: { appId: string; namespace: string },
+): string | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childId = getLatestAppSourceEditId(node.children[i], target);
+		if (childId) return childId;
+	}
+	const appDir = new RegExp(`(^|/)apps/${escapeRegExp(target.namespace)}/`);
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const { path, action, appId } = tc.args;
+		if (APP_SOURCE_EDIT_TOOLS.has(tc.toolName) && typeof path === 'string' && appDir.test(path)) {
+			return tc.toolCallId;
+		}
+		if (tc.toolName === 'apps' && action === 'add-component' && appId === target.appId) {
+			return tc.toolCallId;
+		}
+	}
+	return undefined;
 }
 
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
@@ -437,21 +469,28 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the appId and
- * toolCallId from the latest successful `apps build` tool result. Failed builds
- * return `{ error: true }` and carry no `versionId`, so they are skipped.
+ * toolCallId from the latest successful `apps create` or `apps publish` tool
+ * result. A create carries `app.id`; a publish carries `appId` + `versionId`.
+ * Failures return `{ error: true }` or `{ denied: true }` and are skipped.
  */
-export function getLatestAppBuildResult(node: InstanceAiAgentNode): AppBuildResult | undefined {
+export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAppBuildResult(node.children[i]);
+		const childResult = getLatestAppResult(node.children[i]);
 		if (childResult) return childResult;
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		if (tc.toolName !== 'apps' || args?.action !== 'build' || tc.isLoading) continue;
-		if (!isRecord(tc.result)) continue;
-		if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
-			return { appId: tc.result.appId, toolCallId: tc.toolCallId };
+		if (tc.toolName !== 'apps' || tc.isLoading || !isRecord(tc.result)) continue;
+		if (args?.action === 'create' && isRecord(tc.result.app)) {
+			if (typeof tc.result.app.id === 'string') {
+				return { appId: tc.result.app.id, toolCallId: tc.toolCallId };
+			}
+		}
+		if (args?.action === 'publish') {
+			if (typeof tc.result.appId === 'string' && typeof tc.result.versionId === 'string') {
+				return { appId: tc.result.appId, toolCallId: tc.toolCallId };
+			}
 		}
 	}
 	return undefined;

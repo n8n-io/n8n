@@ -236,6 +236,8 @@ import type { Mock, MockedFunction } from 'vitest';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AppPreviewService } from '../app-preview/app-preview.service';
+import { AppSourceSnapshotService } from '../app-preview/app-source-snapshot.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
@@ -678,6 +680,7 @@ type TerminalGuardOrderServiceInternals = {
 		registerTraceContext: Mock;
 	};
 	threadPushRef: Map<string, string>;
+	pendingAppSnapshots: Map<string, Promise<void>>;
 	pendingBrowserCredentialSetups: Map<
 		string,
 		{
@@ -787,6 +790,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		registerTraceContext: vi.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.pendingAppSnapshots = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
@@ -5568,6 +5572,8 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -5584,6 +5590,8 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 			if (token === InstanceAiBuilderDelegateAdapterService) {
 				return { deleteBuilderSessions };
 			}
+			if (token === AppPreviewService) return { clearThread: vi.fn() };
+			if (token === AppSourceSnapshotService) return { clearThread: vi.fn() };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 

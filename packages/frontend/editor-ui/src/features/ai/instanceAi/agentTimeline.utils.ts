@@ -347,7 +347,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 			continue;
 		}
 
-		// App artifacts: apps create → { app: { id, name, projectId } }, apps build → { appId, name, projectId }
+		// App artifacts: apps create → { app: { id, name, projectId } }, apps publish → { appId, name, projectId }
 		if (tc.toolName === 'apps') {
 			const created = result.app && typeof result.app === 'object' ? result.app : undefined;
 			const source = (created ?? result) as Record<string, unknown>;
