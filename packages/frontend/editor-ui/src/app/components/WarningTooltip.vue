@@ -14,6 +14,8 @@ import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .icon {
 	font-size: 14px;
 	height: 18px;

@@ -235,14 +235,16 @@ describe('Cipher', () => {
 		});
 
 		it('should write the byte-compatible legacy format when the descriptor is no-prefix', async () => {
+			const legacyDescriptor = {
+				id: 'legacy',
+				value: cipher.encryptDEKWithInstanceKey(instanceKey),
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix' as const,
+			};
 			withProvider({
-				getActiveKey: async () => ({
-					id: 'legacy',
-					value: cipher.encryptDEKWithInstanceKey(instanceKey),
-					algorithm: 'aes-256-cbc',
-					format: 'no-prefix',
-				}),
+				getActiveKey: async () => legacyDescriptor,
 				getKeyById: async () => null,
+				getLegacyKey: async () => legacyDescriptor,
 			});
 
 			const encrypted = await cipher.encryptV2('legacy-write');
@@ -302,9 +304,14 @@ describe('Cipher', () => {
 			expect(getKeyById).not.toHaveBeenCalled();
 		});
 
-		it('should decrypt unprefixed data with the instance key without consulting the provider', async () => {
+		it('should decrypt unprefixed data through the legacy key from the provider', async () => {
 			const getKeyById = vi.fn();
-			const getLegacyKey = vi.fn();
+			const getLegacyKey = vi.fn(async () => ({
+				id: 'legacy',
+				value: cipher.encryptDEKWithInstanceKey(instanceKey),
+				algorithm: 'aes-256-cbc',
+				format: 'no-prefix' as const,
+			}));
 			withProvider({ getKeyById, getLegacyKey });
 
 			const legacyCiphertext = cipher.encryptWithKey('legacy-data', instanceKey, 'aes-256-cbc');
@@ -312,7 +319,7 @@ describe('Cipher', () => {
 			const decrypted = await cipher.decryptV2(legacyCiphertext);
 			expect(decrypted).toEqual('legacy-data');
 			expect(getKeyById).not.toHaveBeenCalled();
-			expect(getLegacyKey).not.toHaveBeenCalled();
+			expect(getLegacyKey).toHaveBeenCalled();
 		});
 
 		it('should bypass the provider when customEncryptionKey is provided', async () => {
@@ -326,11 +333,13 @@ describe('Cipher', () => {
 			expect(getActiveKey).not.toHaveBeenCalled();
 		});
 
-		it('should fall back to the instance key when no provider is configured', async () => {
-			const encrypted = await cipher.encryptV2('no-provider');
-			expect(encrypted.includes(':')).toBe(false);
-			expect(await cipher.decryptV2(encrypted)).toEqual('no-provider');
-			expect(cipher.decryptWithInstanceKey(encrypted)).toEqual('no-provider');
+		it('should throw when no provider is configured', async () => {
+			await expect(cipher.encryptV2('no-provider')).rejects.toThrow(
+				'Encryption key provider is not configured',
+			);
+			await expect(cipher.decryptV2('some-data')).rejects.toThrow(
+				'Encryption key provider is not configured',
+			);
 		});
 	});
 });

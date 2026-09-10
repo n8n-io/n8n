@@ -197,14 +197,15 @@ describe('ExecutionRepository', () => {
 				createdAt: new Date(),
 				...extra,
 			});
-			return identifiers[0].id as string;
+			// Postgres returns the inserted id as a number, SQLite as a string.
+			return { id: String(identifiers[0].id), workflow };
 		};
 
 		it('should crash in-progress and indeterminate executions', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const newId = await createExecution('new');
-			const runningId = await createExecution('running');
-			const unknownId = await createExecution('unknown');
+			const { id: newId } = await createExecution('new');
+			const { id: runningId } = await createExecution('running');
+			const { id: unknownId } = await createExecution('unknown');
 
 			await executionRepo.markAsCrashed([newId, runningId, unknownId]);
 
@@ -222,7 +223,7 @@ describe('ExecutionRepository', () => {
 		it('should not overwrite a waiting execution or clear its waitTill', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
 			const waitTill = new Date(Date.now() + 1000 * 60 * 60);
-			const waitingId = await createExecution('waiting', { waitTill });
+			const { id: waitingId } = await createExecution('waiting', { waitTill });
 
 			await executionRepo.markAsCrashed([waitingId]);
 
@@ -233,10 +234,10 @@ describe('ExecutionRepository', () => {
 
 		it('should not overwrite executions in a terminal status', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const successId = await createExecution('success');
-			const errorId = await createExecution('error');
-			const canceledId = await createExecution('canceled');
-			const crashedId = await createExecution('crashed');
+			const { id: successId } = await createExecution('success');
+			const { id: errorId } = await createExecution('error');
+			const { id: canceledId } = await createExecution('canceled');
+			const { id: crashedId } = await createExecution('crashed');
 
 			await executionRepo.markAsCrashed([successId, errorId, canceledId, crashedId]);
 
@@ -256,9 +257,9 @@ describe('ExecutionRepository', () => {
 		it('should crash only the crashable executions in a mixed batch', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
 			const waitTill = new Date(Date.now() + 1000 * 60 * 60);
-			const runningId = await createExecution('running');
-			const waitingId = await createExecution('waiting', { waitTill });
-			const successId = await createExecution('success');
+			const { id: runningId } = await createExecution('running');
+			const { id: waitingId } = await createExecution('waiting', { waitTill });
+			const { id: successId } = await createExecution('success');
 
 			await executionRepo.markAsCrashed([runningId, waitingId, successId]);
 
@@ -277,6 +278,28 @@ describe('ExecutionRepository', () => {
 			expect(waitingExec?.status).toBe('waiting');
 			expect(waitingExec?.waitTill?.getTime()).toBe(waitTill.getTime());
 			expect(successExec?.status).toBe('success');
+		});
+
+		it('should crash a soft-deleted in-progress execution', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const { id: runningId, workflow } = await createExecution('running');
+			await executionRepo.softDelete(runningId);
+
+			const crashed = await executionRepo.markAsCrashed([runningId]);
+
+			const runningExec = await executionRepo.findOne({
+				where: { id: runningId },
+				withDeleted: true,
+			});
+			expect(runningExec?.status).toBe('crashed');
+			expect(crashed).toEqual([
+				{
+					id: runningId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					mode: 'manual',
+				},
+			]);
 		});
 	});
 

@@ -321,7 +321,12 @@ export class WorkflowPublicationOutboxConsumer {
 				},
 			},
 			async (span) => {
-				await this.lifecycleLock.runExclusive(record.workflowId, async () => {
+				const startedAt = Date.now();
+				let entered = false;
+
+				const process = async () => {
+					entered = true;
+
 					// A record claimed while leader can reach here after stepdown (e.g. while
 					// waiting on the lock during teardown). Activating triggers now would leave
 					// them running on a demoted instance, so hand the record back to the queue.
@@ -334,50 +339,53 @@ export class WorkflowPublicationOutboxConsumer {
 						return;
 					}
 
-					// The worker may have aborted this record while it queued on the lock;
-					// starting now would apply work long after it was abandoned. The row is
-					// left `in_progress` for lease reclaim rather than returned to pending:
-					// the wait may have outlived the lease, and flipping the row here would
-					// release the claim of whichever worker has since reclaimed it.
-					if (signal.aborted) {
-						this.logger.debug('Skipped applying publication outbox record: aborted', {
-							outboxId: record.id,
-							workflowId: record.workflowId,
-						});
-						return;
-					}
-
-					this.logger.debug('Started processing workflow publication outbox record', {
-						outboxId: record.id,
-						workflowId: record.workflowId,
-						publishedVersionId: record.publishedVersionId,
-					});
-
-					const startedAt = Date.now();
 					let result: PublicationResult;
 
 					// An aborted per-node operation is abandoned, not cancelled; collect
 					// every orphan so the lock outlives whatever may still mutate this
 					// workflow's registrations.
 					const detachedWork: Array<Promise<unknown>> = [];
-					const abort: TriggerOperationAbort = {
-						signal,
-						onDetached: (work) => detachedWork.push(work),
-					};
 
-					try {
-						result = await this.applier.apply(record, abort);
-					} catch (error) {
-						const cause = ensureError(error);
+					if (signal.aborted) {
+						// The deadline fired before applying could start, i.e. while this
+						// record queued on the lock behind an earlier one for the workflow.
+						this.logger.warn('Failing publication outbox record: aborted before applying', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+						});
 						result = {
 							type: 'failed',
-							// An abort is our own doing and a UserError is a known cause (e.g.
-							// a missing credential), not an unexpected applier failure.
-							error:
-								signal.aborted || cause instanceof UserError
-									? cause
-									: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							error: new OperationalError(
+								'Workflow publication timed out waiting for a previous publication of this workflow to finish',
+								{ cause: ensureError(signal.reason) },
+							),
 						};
+					} else {
+						this.logger.debug('Started processing workflow publication outbox record', {
+							outboxId: record.id,
+							workflowId: record.workflowId,
+							publishedVersionId: record.publishedVersionId,
+						});
+
+						const abort: TriggerOperationAbort = {
+							signal,
+							onDetached: (work) => detachedWork.push(work),
+						};
+
+						try {
+							result = await this.applier.apply(record, abort);
+						} catch (error) {
+							const cause = ensureError(error);
+							result = {
+								type: 'failed',
+								// An abort is our own doing and a UserError is a known cause (e.g.
+								// a missing credential), not an unexpected applier failure.
+								error:
+									signal.aborted || cause instanceof UserError
+										? cause
+										: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							};
+						}
 					}
 
 					let reporterFailed = false;
@@ -411,7 +419,21 @@ export class WorkflowPublicationOutboxConsumer {
 						);
 						await Promise.allSettled(detachedWork);
 					}
-				});
+				};
+
+				try {
+					await this.lifecycleLock.runExclusive({
+						workflowId: record.workflowId,
+						fn: process,
+						signal,
+					});
+				} catch (error) {
+					// Aborted while still queued on the lock. `process` then only settles the
+					// record (back to the queue, or failed) and applies nothing, so it needs
+					// no lock.
+					if (entered || !signal.aborted) throw error;
+					await process();
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},

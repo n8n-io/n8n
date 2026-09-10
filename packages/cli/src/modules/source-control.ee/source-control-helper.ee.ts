@@ -18,7 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
-import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
 import { containsExpression } from '@/utils';
 
 import {

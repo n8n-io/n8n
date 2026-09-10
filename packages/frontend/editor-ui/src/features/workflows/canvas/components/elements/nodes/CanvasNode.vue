@@ -36,6 +36,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from './render-types/parts/CanvasNodeTrigger.vue';
 import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { getAgentNodeHandleOffsetCss } from '@/features/agents/utils/agentNode';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -203,9 +204,11 @@ const createEndpointMappingFn =
 		const offsetValue =
 			position === Position.Bottom
 				? `${CONFIGURATION_NODE_RADIUS + GRID_SIZE * (3 * index)}px`
-				: isExperimentalNdvActive.value && endpoints.length === 1
-					? `${(1 + index) * (GRID_SIZE * 1.5)}px`
-					: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
+				: renderType.value === CanvasNodeRenderType.Agent
+					? getAgentNodeHandleOffsetCss(index, endpoints.length)
+					: isExperimentalNdvActive.value && endpoints.length === 1
+						? `${(1 + index) * (GRID_SIZE * 1.5)}px`
+						: `${(100 / (endpoints.length + 1)) * (index + 1)}%`;
 
 		return {
 			...endpoint,

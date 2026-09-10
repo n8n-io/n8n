@@ -1,5 +1,12 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { WorkflowTaskService } from '../types';
+import { terminalRemediationFromState } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
+import {
+	isNeedsSetupRemediation,
+	stateForPendingSetupVerification,
+} from './setup-verification-policy';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
@@ -60,12 +67,49 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 		workItemId: string,
 		update: Partial<WorkflowBuildOutcome>,
 	): Promise<void> {
-		const item = await this.storage.getWorkItem(this.threadId, workItemId);
-		if (!item?.lastBuildOutcome) return;
+		await this.storage.updateWorkItem(this.threadId, workItemId, (item) => {
+			if (!item.lastBuildOutcome) return null;
+			return { ...item, lastBuildOutcome: { ...item.lastBuildOutcome, ...update } };
+		});
+	}
 
-		await this.storage.saveWorkItem(this.threadId, item.state, item.attempts, {
-			...item.lastBuildOutcome,
-			...update,
+	/** Bind verification and its later verdict to the build and state that the caller read. */
+	async beginVerification(
+		outcome: WorkflowBuildOutcome,
+		expectedState: WorkflowLoopState,
+		runId: string,
+	): Promise<boolean> {
+		return await this.storage.updateWorkItem(this.threadId, outcome.workItemId, (item) => {
+			if (
+				!item.lastBuildOutcome ||
+				!isDeepStrictEqual(item.lastBuildOutcome, outcome) ||
+				!isDeepStrictEqual(item.state, expectedState)
+			) {
+				return null;
+			}
+
+			const setupState = stateForPendingSetupVerification(item.state, outcome, runId);
+			if (outcome.verificationReadiness?.status === 'needs_setup' && !setupState) return null;
+			const state = setupState ?? item.state;
+			if (
+				(setupState || state.status === 'blocked' || state.lastRemediation?.shouldEdit === false) &&
+				terminalRemediationFromState(state)
+			)
+				return null;
+
+			return {
+				...item,
+				state: { ...state, runId, phase: 'verifying', status: 'active' },
+				lastBuildOutcome: setupState
+					? {
+							...outcome,
+							verificationReadiness: { status: 'ready' },
+							remediation: isNeedsSetupRemediation(outcome.remediation)
+								? undefined
+								: outcome.remediation,
+						}
+					: outcome,
+			};
 		});
 	}
 }
