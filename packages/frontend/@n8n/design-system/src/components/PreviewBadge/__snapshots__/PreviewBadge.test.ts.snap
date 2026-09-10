@@ -3,13 +3,13 @@
 exports[`PreviewBadge > renders medium preview badge correctly 1`] = `
 <div>
   <span
-    class="n8n-badge badge secondary xsmall preview medium"
+    class="n8n-badge badge secondary small preview"
   >
     <!--v-if-->
     
     
     <span
-      class="n8n-text step-2xs bold label label"
+      class="n8n-text step-xs bold label label"
     >
       
       
@@ -27,7 +27,7 @@ exports[`PreviewBadge > renders medium preview badge correctly 1`] = `
 exports[`PreviewBadge > renders small preview badge correctly 1`] = `
 <div>
   <span
-    class="n8n-badge badge secondary xsmall preview small"
+    class="n8n-badge badge secondary xsmall preview"
   >
     <!--v-if-->
     
