@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, toRef, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, toRef, useTemplateRef } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import { useResizablePanel, type ResizablePanel } from '../../composables/useResizablePanel';
@@ -111,11 +111,16 @@ const resizer =
 		gridSize: toRef(props, 'gridSize'),
 	});
 const { activeDirection } = resizer;
+let cancelDrag: (() => void) | undefined;
+
+onBeforeUnmount(function cancelWrapperDrag() {
+	cancelDrag?.();
+});
 
 function startResize(event: MouseEvent): void {
 	const element = resizeWrapper.value;
 	if (!element) return;
-	resizer.startResize(event, {
+	cancelDrag = resizer.startResize(event, {
 		window: props.window,
 		displayedSize: { width: element.offsetWidth, height: element.offsetHeight },
 		onResizeStart: function emitResizeStart() {
@@ -131,6 +136,14 @@ function startResize(event: MouseEvent): void {
 }
 
 function resetSize(event: MouseEvent, direction: Direction): void {
+	if (!props.resizer && props.defaultWidth === undefined && props.defaultHeight === undefined) {
+		if (import.meta.env.IS_DEV) {
+			console.warn(
+				'[N8nResizeWrapper]: Set defaultWidth, defaultHeight, or resizer to enable double-click reset.',
+			);
+		}
+		return;
+	}
 	resizer.resetSize({ width: props.defaultWidth, height: props.defaultHeight });
 	emit('resize', {
 		width: resizer.width.value,
