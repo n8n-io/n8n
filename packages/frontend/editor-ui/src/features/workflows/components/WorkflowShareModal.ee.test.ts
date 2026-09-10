@@ -67,7 +67,8 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 const mockGetResourcePermissions = vi.fn(() => ({
 	workflow: { share: true },
 }));
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => mockGetResourcePermissions(),
 }));
 vi.mock('@n8n/utils/event-bus', () => ({
