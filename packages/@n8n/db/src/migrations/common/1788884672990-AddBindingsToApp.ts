@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'app';
 
-export class AddBindingsToApp1788877694000 implements ReversibleMigration {
+export class AddBindingsToApp1788884672990 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			table,

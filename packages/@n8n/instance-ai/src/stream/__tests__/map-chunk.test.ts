@@ -564,8 +564,6 @@ describe('mapAgentChunkToEvent', () => {
 			workflowId: 'wf-1',
 			workflowName: 'Echo',
 			key: 'submit',
-			inputSchema: { type: 'object', additionalProperties: true },
-			outputSchema: { type: 'array', items: { type: 'object', additionalProperties: true } },
 		};
 		const suspended = (payload: unknown) =>
 			map({
