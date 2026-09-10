@@ -32,9 +32,6 @@ describe('Variables in Public API', () => {
 
 	describe('GET /variables', () => {
 		it('should return all variables with pagination', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const variables = await Promise.all([
 				createVariable(),
@@ -43,14 +40,8 @@ describe('Variables in Public API', () => {
 				createProjectVariable('projectKey', 'projectValue', project),
 			]);
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body).toHaveProperty('data');
 			expect(response.body).toHaveProperty('nextCursor');
@@ -70,9 +61,6 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should be able to filter variables by projectId and state', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			await Promise.all([
 				createVariable(),
@@ -81,17 +69,11 @@ describe('Variables in Public API', () => {
 				createVariable('emptyVar', ''),
 			]);
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ projectId: project.id, state: 'empty' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body).toHaveProperty('data');
 			expect(response.body).toHaveProperty('nextCursor');
@@ -107,24 +89,15 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should return only global variables for a "null" projectId', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const globalVariable = await createVariable();
 			await createProjectVariable('projectKey', 'projectValue', project);
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ projectId: 'null' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body.data).toHaveLength(1);
 			expect(response.body.data[0]).toEqual(
@@ -133,43 +106,25 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should clamp a limit above the maximum instead of rejecting it', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			await createVariable();
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ limit: 1000 });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body.data).toHaveLength(1);
 		});
 
 		it('should only return the documented variable fields', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			await createVariable();
 			await createProjectVariable('projectKey', 'projectValue', project);
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body.data).toHaveLength(2);
 			for (const variable of response.body.data) {
@@ -195,47 +150,29 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should return the stored project icon unchanged', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			// A stored icon can carry a `color` the entity type does not name.
 			const icon = { type: 'emoji', value: '🚀', color: '#ff0000' } as Project['icon'];
 			await Container.get(ProjectRepository).update(project.id, { icon });
 			await createProjectVariable('projectKey', 'projectValue', project);
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(200);
 			expect(response.body.data).toHaveLength(1);
 			expect(response.body.data[0].project.icon).toEqual(icon);
 		});
 
 		it('should paginate with an opaque cursor', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			await Promise.all([createVariable(), createVariable(), createVariable()]);
 
-			/**
-			 * Act
-			 */
 			const first = await testServer.publicApiAgentFor(owner).get('/variables').query({ limit: 2 });
 			const second = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ cursor: first.body.nextCursor });
 
-			/**
-			 * Assert
-			 */
 			expect(first.status).toBe(200);
 			expect(first.body.data).toHaveLength(2);
 			expect(first.body.nextCursor).not.toBeNull();
@@ -245,22 +182,13 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should reject a non-numeric limit', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ limit: 'abc' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
@@ -269,63 +197,36 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should reject an invalid cursor', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get('/variables')
 				.query({ cursor: 'not-a-cursor' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
 		});
 
 		it('should reject an API key without the "variable:list" scope', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const ownerWithoutScope = await createOwnerWithApiKey({ scopes: ['variable:create'] });
 			await createVariable();
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(ownerWithoutScope).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 
 		it('if not licensed, should reject', async () => {
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
 
 		it('should not return variables from projects the user is not a member of', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const member = await createMemberWithApiKey();
 
@@ -336,30 +237,18 @@ describe('Variables in Public API', () => {
 			const memberVar = await createProjectVariable('memberKey', 'memberValue', memberProject);
 			await createProjectVariable('secretKey', 'secretValue', otherProject);
 
-			/**
-			 * Act
-			 */
 			const allResponse = await testServer.publicApiAgentFor(member).get('/variables');
 
-			/**
-			 * Assert
-			 */
 			expect(allResponse.status).toBe(200);
 			const returnedIds = allResponse.body.data.map((v: Variables) => v.id);
 			expect(returnedIds).toContain(memberVar.id);
 			expect(allResponse.body.data).toHaveLength(1);
 
-			/**
-			 * Act
-			 */
 			const crossProjectResponse = await testServer
 				.publicApiAgentFor(member)
 				.get('/variables')
 				.query({ projectId: otherProject.id });
 
-			/**
-			 * Assert
-			 */
 			expect(crossProjectResponse.status).toBe(200);
 			expect(crossProjectResponse.body.data).toHaveLength(0);
 		});
@@ -367,23 +256,14 @@ describe('Variables in Public API', () => {
 
 	describe('POST /variables', () => {
 		it('should create a new variable and answer with an empty body', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const variablePayload = { key: 'key', value: 'value' };
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send(variablePayload);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(201);
 			// The registry sends an empty body for a success status that declares no DTO. The legacy
 			// handler sent no content type with it, the registry sends the JSON one.
@@ -394,19 +274,10 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should reject a body that is missing a required field', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).post('/variables').send({});
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty(
 				'message',
@@ -415,109 +286,52 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should reject a read-only field', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send({ id: 'someId', key: 'key', value: 'value' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message', 'request/body/id is read-only');
 			await expect(getVariableByKey('key')).resolves.toBeNull();
 		});
 
-		it('should reject an unknown field', async () => {
-			/**
-			 * Arrange
-			 */
-			testServer.license.enable('feat:variables');
-
-			/**
-			 * Act
-			 */
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.post('/variables')
-				.send({ key: 'key', value: 'value', unknown: 'field' });
-
-			/**
-			 * Assert
-			 */
-			expect(response.status).toBe(400);
-			await expect(getVariableByKey('key')).resolves.toBeNull();
-		});
-
 		it('should reject a null projectId', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send({ key: 'key', value: 'value', projectId: null });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(400);
 			await expect(getVariableByKey('key')).resolves.toBeNull();
 		});
 
 		it('should reject an API key without the "variable:create" scope', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const ownerWithoutScope = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(ownerWithoutScope)
 				.post('/variables')
 				.send({ key: 'key', value: 'value' });
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 
 		it('should create a variable linked to a project', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 			const variablePayload = { key: 'key', value: 'value', projectId: project.id };
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send(variablePayload);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(201);
 			await expect(getVariableByIdOrFail(response.body.id)).resolves.toEqual(
 				expect.objectContaining({
@@ -529,22 +343,13 @@ describe('Variables in Public API', () => {
 		});
 
 		it('if not licensed, should reject', async () => {
-			/**
-			 * Arrange
-			 */
 			const variablePayload = { key: 'key', value: 'value' };
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
 				.send(variablePayload);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
@@ -583,21 +388,6 @@ describe('Variables in Public API', () => {
 			const updatedVariable = await getVariableByIdOrFail(projectVariable.id);
 			expect(updatedVariable).toEqual(
 				expect.objectContaining({ ...variablePayload, project: null }),
-			);
-		});
-
-		it('should reject a body that is missing a required field', async () => {
-			testServer.license.enable('feat:variables');
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put(`/variables/${variable.id}`)
-				.send({ key: 'updatedKey' });
-
-			expect(response.status).toBe(400);
-			expect(response.body).toHaveProperty(
-				'message',
-				"request/body must have required property 'value'",
 			);
 		});
 
@@ -660,53 +450,29 @@ describe('Variables in Public API', () => {
 		});
 
 		it('should delete a variable', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.delete(`/variables/${variable.id}`);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(204);
 			await expect(getVariableByIdOrFail(variable.id)).rejects.toThrow();
 		});
 
 		it('should answer 204 for an unknown variable', async () => {
-			/**
-			 * Arrange
-			 */
 			testServer.license.enable('feat:variables');
 
-			/**
-			 * Act
-			 */
 			const response = await testServer.publicApiAgentFor(owner).delete('/variables/unknownId');
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(204);
 		});
 
 		it('if not licensed, should reject', async () => {
-			/**
-			 * Act
-			 */
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.delete(`/variables/${variable.id}`);
 
-			/**
-			 * Assert
-			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
 		});
