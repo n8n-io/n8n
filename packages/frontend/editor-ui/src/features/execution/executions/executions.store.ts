@@ -174,6 +174,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 	type PageToLoad = 'first' | 'more' | 'refresh';
 
 	async function loadExecutionsPage(filter: ExecutionsQueryFilter, page: PageToLoad) {
+		// `executionFilterToQueryFilter` writes the keys in a fixed order, so equal
+		// filters stringify the same way. A stable stringify is not necessary.
 		const filterKey = JSON.stringify(filter);
 
 		// A different filter invalidates every loaded page, and every cursor into them.
