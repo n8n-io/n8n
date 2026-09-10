@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nSwitch, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import type { PromotableResourceStatus } from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
 
@@ -21,13 +20,9 @@ interface Props {
 const props = defineProps<Props>();
 
 const i18n = useI18n();
-const toast = useToast();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const modalBus = createEventBus();
-
-const createBranch = ref(false);
-const isPromoting = ref(false);
 
 const {
 	changes,
@@ -42,7 +37,6 @@ const {
 	fetchChanges,
 	toggleSelected,
 	toggleSelectAll,
-	promote,
 } = usePromotionChanges(props.data.projectId);
 
 // No visible rows despite a loaded, non-empty change set means the search excluded everything.
@@ -90,25 +84,6 @@ function isSelected(id: string): boolean {
 	return selectedIds.value.has(id);
 }
 
-async function onPromote() {
-	isPromoting.value = true;
-	try {
-		await promote(createBranch.value);
-		toast.showMessage({
-			title: i18n.baseText('promotions.modal.promoteSuccess'),
-			type: 'success',
-		});
-		uiStore.closeModal(props.modalName);
-	} catch (e) {
-		toast.showError(
-			e instanceof Error ? e : new Error(String(e)),
-			i18n.baseText('promotions.modal.promoteError'),
-		);
-	} finally {
-		isPromoting.value = false;
-	}
-}
-
 function onClose() {
 	uiStore.closeModal(props.modalName);
 }
@@ -154,6 +129,7 @@ onMounted(async () => {
 						size="small"
 						icon="refresh-cw"
 						data-test-id="promotion-refresh"
+						:disabled="isLoading"
 						@click="onRefresh"
 					>
 						{{ i18n.baseText('promotions.modal.refresh') }}
@@ -272,23 +248,15 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerLeft">
-					<N8nSwitch
-						v-model="createBranch"
-						:label="i18n.baseText('promotions.modal.createBranch')"
-						size="small"
-						data-test-id="promotion-create-branch"
-					/>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('promotions.modal.previewOnly') }}
+					</N8nText>
 				</div>
 				<div :class="$style.footerRight">
 					<N8nButton variant="subtle" @click="onClose">
 						{{ i18n.baseText('promotions.modal.close') }}
 					</N8nButton>
-					<N8nButton
-						:disabled="selectedCount === 0 || isLoading || !!error || isPromoting"
-						:loading="isPromoting"
-						data-test-id="promotion-submit"
-						@click="onPromote"
-					>
+					<N8nButton disabled data-test-id="promotion-submit">
 						{{ getPromoteButtonLabel() }}
 					</N8nButton>
 				</div>

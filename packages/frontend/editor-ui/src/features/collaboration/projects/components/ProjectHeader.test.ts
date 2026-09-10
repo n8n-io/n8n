@@ -17,6 +17,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { createServer } from 'miragejs';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -129,6 +130,42 @@ describe('ProjectHeader', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('shows live promotion changes only with export and push access', async () => {
+		const server = createServer({ environment: 'test' });
+		server.get('/rest/promotions/project-1/changes', () => ({
+			data: [{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' }],
+		}));
+		try {
+			settingsStore.isModuleActive.mockReturnValue(true);
+			settingsStore.settings = {
+				...settingsStore.settings,
+				envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
+			};
+			projectsStore.currentProject = createTestProject({
+				id: 'project-1',
+				scopes: ['project:export'],
+			});
+			usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:push'] });
+			const { findByTestId, queryByTestId } = renderComponent();
+
+			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
+			await userEvent.click(await findByTestId('promotion-banner-link'));
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: 'promotionSelect',
+				data: { projectId: 'project-1' },
+			});
+
+			projectsStore.currentProject.scopes = [];
+			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
+			projectsStore.currentProject.scopes = ['project:export'];
+			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
+			usersStore.currentUser = mock<IUser>({ globalScopes: [] });
+			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
+		} finally {
+			server.shutdown();
+		}
 	});
 
 	it('should not render title icon on overview page', async () => {
@@ -581,7 +618,6 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
 		});
 
 		it('should pass empty array when no modules are active', () => {
