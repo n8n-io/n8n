@@ -173,10 +173,11 @@ describe('node grouping validation', () => {
 		expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
 	});
 
-	it('returns invalid-subgraph when selected nodes skip an intermediate node', () => {
+	it('returns invalid-subgraph for extraction when selected nodes skip an intermediate node', () => {
 		const graph = makeLinearGraph();
 
-		const result = validateGrouping({
+		const result = validateNodeSelectionForExtraction({
+			getNodeType: () => makeNodeType(),
 			nodes: [graph.nodes[0], graph.nodes[2]],
 			connectionsBySourceNode: graph.connections,
 		});
@@ -187,10 +188,11 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns invalid-subgraph when selected nodes are disconnected', () => {
+	it('returns invalid-subgraph for extraction when selected nodes are disconnected', () => {
 		const nodes = [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })];
 
-		const result = validateGrouping({
+		const result = validateNodeSelectionForExtraction({
+			getNodeType: () => makeNodeType(),
 			nodes,
 			connectionsBySourceNode: {},
 		});
@@ -203,9 +205,15 @@ describe('node grouping validation', () => {
 
 	it('validates against the provided candidate connections', () => {
 		const graph = makeLinearGraph();
+		// Adds an ai_languageModel edge crossing the {A, B} boundary, which groups
+		// still reject — so the result must differ from the base connections.
 		const candidateConnections: IConnections = {
 			...graph.connections,
-			C: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Model: {
+				[NodeConnectionTypes.AiLanguageModel]: [
+					[{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
+				],
+			},
 		};
 
 		expect(
@@ -222,7 +230,7 @@ describe('node grouping validation', () => {
 
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
-			expect(result.reason).toBe('invalid-subgraph');
+			expect(result.reason).toBe('non-main-boundary');
 		}
 	});
 
@@ -442,7 +450,8 @@ describe('node grouping validation', () => {
 			expect(result.valid).toBe(true);
 		});
 
-		it('still rejects disconnected connectable nodes when a sticky is present', () => {
+		it('accepts unconnected connectable nodes when a sticky is present', () => {
+			// Groups no longer require connected members; the sticky rides along.
 			const graph = makeLinearGraph();
 
 			const result = validateGrouping({
@@ -451,10 +460,7 @@ describe('node grouping validation', () => {
 				nodeTypes: stickyNodeTypes,
 			});
 
-			expect(result.valid).toBe(false);
-			if (!result.valid) {
-				expect(result.reason).toBe('invalid-subgraph');
-			}
+			expect(result.valid).toBe(true);
 		});
 
 		it('treats sticky-only selections as valid group data', () => {
@@ -821,21 +827,25 @@ describe('validateWorkflowGroups', () => {
 		]);
 	});
 
-	it('reports a disconnected selection as an invalid subgraph', () => {
+	it('reports a trigger in a group as a rule violation', () => {
 		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
 
 		const result = validateWorkflowGroups({
-			nodes: graph.nodes,
+			nodes: [...graph.nodes, trigger],
 			connectionsBySourceNode: graph.connections,
-			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c'] }],
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }],
 			getNodeType,
 		});
 
 		expectViolations(result, [
 			{
-				code: 'invalid-subgraph',
-				message:
-					'Node group "Group" must form a single connected subgraph with a single entry and exit.',
+				code: 'trigger-selected',
+				message: 'Node group "Group" cannot contain trigger nodes: Trigger.',
 			},
 		]);
 	});
@@ -844,11 +854,16 @@ describe('validateWorkflowGroups', () => {
 		// The id is deliberately absent from the message: a group that fails these
 		// rules may never have been persisted. Consumers use `groupId` instead.
 		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
 
 		const result = validateWorkflowGroups({
-			nodes: graph.nodes,
+			nodes: [...graph.nodes, trigger],
 			connectionsBySourceNode: graph.connections,
-			nodeGroups: [{ id: 'group-uuid-1', name: 'Group', nodeIds: ['a', 'c'] }],
+			nodeGroups: [{ id: 'group-uuid-1', name: 'Group', nodeIds: ['trigger', 'a'] }],
 			getNodeType,
 		});
 
@@ -862,11 +877,17 @@ describe('validateWorkflowGroups', () => {
 	it('skips graph rules for a group that already has a basic violation', () => {
 		const graph = makeLinearGraph();
 
-		// Without the skip, {a, c} would additionally report invalid-subgraph.
+		// Without the skip, the trigger member would additionally report
+		// trigger-selected on top of the unknown-node-id basic violation.
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
 		const result = validateWorkflowGroups({
-			nodes: graph.nodes,
+			nodes: [...graph.nodes, trigger],
 			connectionsBySourceNode: graph.connections,
-			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'c', 'missing'] }],
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a', 'missing'] }],
 			getNodeType,
 		});
 
@@ -903,20 +924,25 @@ describe('validateWorkflowGroups', () => {
 
 	it('collects all violations, basic checks first', () => {
 		const graph = makeLinearGraph();
+		const trigger = makeNode({
+			id: 'trigger',
+			name: 'Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
 
 		const result = validateWorkflowGroups({
-			nodes: graph.nodes,
+			nodes: [...graph.nodes, trigger],
 			connectionsBySourceNode: graph.connections,
 			nodeGroups: [
 				{ id: 'g1', name: 'Broken', nodeIds: [] },
-				{ id: 'g2', name: 'Disconnected', nodeIds: ['a', 'c'] },
+				{ id: 'g2', name: 'HasTrigger', nodeIds: ['trigger', 'a'] },
 			],
 			getNodeType,
 		});
 
 		expectViolations(result, [
 			{ groupId: 'g1', code: 'empty-group' },
-			{ groupId: 'g2', code: 'invalid-subgraph' },
+			{ groupId: 'g2', code: 'trigger-selected' },
 		]);
 	});
 });
@@ -1075,5 +1101,124 @@ describe('dropInvalidWorkflowGroups', () => {
 			).toEqual([]);
 			expect(workflow.nodeGroups).toHaveLength(2);
 		});
+	});
+});
+
+describe('multi-entry/exit groups', () => {
+	const getNodeType = () => makeNodeType();
+
+	// Outside -> B and Outside2 -> C, so the group {B, C, D} has two entries.
+	// D -> Out1 and D -> Out2 give it two exits.
+	const nodes = ['B', 'C', 'D'].map((name) => makeNode({ id: name, name }));
+	const connections: IConnections = {
+		Outside: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+		Outside2: { main: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]] },
+		B: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+		C: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+		D: {
+			main: [
+				[
+					{ node: 'Out1', type: NodeConnectionTypes.Main, index: 0 },
+					{ node: 'Out2', type: NodeConnectionTypes.Main, index: 0 },
+				],
+			],
+		},
+	};
+
+	it('accepts a connection into a mid-group member', () => {
+		// Outside -> D, where D already receives from B inside the group.
+		const result = validateNodeSelectionForGrouping({
+			nodes,
+			connectionsBySourceNode: {
+				...connections,
+				Outside3: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(true);
+		// The true entry is still preferred over the mid-chain one.
+		if (result.valid) expect(['B', 'C']).toContain(result.subGraphData.start);
+	});
+
+	it('accepts a connection out of a mid-group member', () => {
+		// B -> Outside4, where B also feeds D inside the group.
+		const result = validateNodeSelectionForGrouping({
+			nodes,
+			connectionsBySourceNode: {
+				...connections,
+				B: {
+					main: [
+						[
+							{ node: 'D', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Outside4', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			},
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(true);
+		if (result.valid) expect(result.subGraphData.end).toBe('D');
+	});
+
+	it('accepts a multi-entry/exit selection, resolving endpoints', () => {
+		const result = validateNodeSelectionForGrouping({
+			nodes,
+			connectionsBySourceNode: connections,
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(true);
+		// Endpoints must be members, so the collapsed block can anchor its handles.
+		if (result.valid) {
+			expect(['B', 'C']).toContain(result.subGraphData.start);
+			expect(result.subGraphData.end).toBe('D');
+		}
+	});
+
+	it('accepts parallel members that do not connect to each other', () => {
+		// Two branches framed together: each member links only to outside nodes.
+		const parallel: IConnections = {
+			In: {
+				main: [
+					[
+						{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+						{ node: 'C', type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
+			},
+			B: { main: [[{ node: 'Out1', type: NodeConnectionTypes.Main, index: 0 }]] },
+			C: { main: [[{ node: 'Out2', type: NodeConnectionTypes.Main, index: 0 }]] },
+		};
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: [makeNode({ id: 'B', name: 'B' }), makeNode({ id: 'C', name: 'C' })],
+			connectionsBySourceNode: parallel,
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('still rejects a disconnected selection for extraction', () => {
+		const result = validateNodeSelectionForExtraction({
+			nodes: [makeNode({ id: 'B', name: 'B' }), makeNode({ id: 'Z', name: 'Z' })],
+			connectionsBySourceNode: connections,
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+	});
+
+	it('does not relax extraction, which needs a single entry and exit', () => {
+		const result = validateNodeSelectionForExtraction({
+			nodes,
+			connectionsBySourceNode: connections,
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
 	});
 });

@@ -206,9 +206,9 @@ describe('useSelectionValidation', () => {
 		}
 	});
 
-	it('returns invalid-subgraph when the selection skips an intermediate node', () => {
-		// A → B → C; selecting only A and C leaves B (on the path) outside the
-		// selection, so the subgraph parser rejects the selection.
+	it('accepts a selection that skips an intermediate node', () => {
+		// A → B → C; selecting only A and C leaves B outside the group, which a
+		// visual frame allows.
 		const graph = makeLinearGraph();
 		setupGraph(graph, {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
@@ -217,10 +217,10 @@ describe('useSelectionValidation', () => {
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'c']);
 
-		expect(result.valid).toBe(false);
+		expect(result.valid).toBe(true);
 	});
 
-	it('returns invalid-subgraph when selected nodes are disconnected', () => {
+	it('accepts selected nodes that are not connected to each other', () => {
 		const a = makeNode({ id: 'a', name: 'A' });
 		const b = makeNode({ id: 'b', name: 'B' });
 		setupGraph(
@@ -231,10 +231,7 @@ describe('useSelectionValidation', () => {
 		const { isSelectionGroupable } = useSelectionValidation();
 		const result = isSelectionGroupable(['a', 'b']);
 
-		expect(result.valid).toBe(false);
-		if (!result.valid) {
-			expect(result.reason).toBe('invalid-subgraph');
-		}
+		expect(result.valid).toBe(true);
 	});
 
 	it('validates against candidate connections when provided', () => {
@@ -243,9 +240,11 @@ describe('useSelectionValidation', () => {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
 		});
 
+		// Adds an ai_languageModel edge crossing the {A, B} boundary, which groups
+		// still reject — so the candidate must change the result.
 		const candidateConnections: IConnections = {
 			...graph.connections,
-			C: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+			Model: { ai_languageModel: [[{ node: 'B', type: 'ai_languageModel', index: 0 }]] },
 		};
 
 		const { isSelectionGroupable } = useSelectionValidation();
@@ -255,7 +254,7 @@ describe('useSelectionValidation', () => {
 
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
-			expect(result.reason).toBe('invalid-subgraph');
+			expect(result.reason).toBe('non-main-boundary');
 		}
 	});
 
@@ -361,15 +360,24 @@ describe('useSelectionValidation', () => {
 		});
 
 		it('returns null when the resolved selection is not groupable', () => {
-			// A → B → C; selecting only A and C is an invalid subgraph
+			// A trigger cannot be grouped, so the selection stays ungroupable.
 			const graph = makeLinearGraph();
+			graph.nodes.trigger = makeNode({
+				id: 'trigger',
+				name: 'Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+			});
 			setupGraph(graph, {
 				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+				'n8n-nodes-base.manualTrigger': makeNodeType({
+					name: 'n8n-nodes-base.manualTrigger',
+					group: ['trigger'],
+				}),
 			});
 
 			const { resolveGroupableNodeIds } = useSelectionValidation();
 
-			expect(resolveGroupableNodeIds(['a', 'c'])).toBeNull();
+			expect(resolveGroupableNodeIds(['trigger', 'a'])).toBeNull();
 		});
 
 		it('includes stickies when the selection also has a connectable node', () => {

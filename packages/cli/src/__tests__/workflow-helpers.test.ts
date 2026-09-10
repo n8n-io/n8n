@@ -745,19 +745,18 @@ describe('validateWorkflowNodeGroups', () => {
 				).not.toThrow();
 			});
 
-			it('still rejects disconnected connectable nodes when a sticky is present', () => {
+			it('accepts unconnected connectable nodes when a sticky is present', () => {
+				// Groups no longer require connected members.
 				expect(() =>
 					validateWorkflowNodeGroups(
 						{
 							nodes: [makeNode('n1'), makeNode('n2'), makeStickyNode('s1')],
 							connections: {},
-							nodeGroups: [{ id: 'g1', name: 'Disconnected', nodeIds: ['n1', 'n2', 's1'] }],
+							nodeGroups: [{ id: 'g1', name: 'Unconnected', nodeIds: ['n1', 'n2', 's1'] }],
 						},
 						getNodeType,
 					),
-				).toThrow(
-					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
-				);
+				).not.toThrow();
 			});
 		});
 	});
