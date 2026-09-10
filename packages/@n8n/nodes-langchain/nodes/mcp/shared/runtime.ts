@@ -180,6 +180,7 @@ export async function buildMcpToolkit(
 						() => ctx.getExecutionCancelSignal(),
 						attribution,
 					),
+					attribution,
 				),
 				ctx,
 			);
