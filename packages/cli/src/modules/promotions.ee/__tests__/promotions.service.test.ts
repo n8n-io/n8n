@@ -519,11 +519,14 @@ describe('PromotionsService', () => {
 
 		it('asks the exporter for the selected workflows of the project with reference-only dependencies', async () => {
 			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
 			});
 			mockExport({
-				'manifest.json': buildManifest({ projects: [alpha] }),
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1'), wf('w2')] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
 			});
 
 			await service.promoteSelection(
@@ -546,34 +549,42 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('bootstraps from an empty branch when no prior package exists', async () => {
+		it('refuses a selection when the branch has no package', async () => {
 			await mkdir(repositoryFolder, { recursive: true });
+
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'first selective', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('Promote the instance first');
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('refuses a selection when the export does not match the selected workflows', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
 			mockExport({
-				'manifest.json': buildManifest({ workflows: [wf('w1')], projects: [alpha] }),
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			const result = await service.promoteSelection(
-				'conn1',
-				actor,
-				{ commitMessage: 'first selective', canExportVariableValues: true },
-				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
-			);
-
-			expect(result).toEqual({
-				connectionId: 'conn1',
-				configId: CONFIG_ID,
-				counts: {
-					workflows: 1,
-					folders: 0,
-					credentials: 0,
-					dataTables: 0,
-					variables: 0,
-					tags: 0,
-				},
-				git: { commitSha: 'selsha', branchName: 'staging' },
-			});
+			await expect(
+				service.promoteSelection(
+					'conn1',
+					actor,
+					{ commitMessage: 'm', canExportVariableValues: true },
+					{ projectId: 'p1', workflowIds: ['w1', 'w2'], deletedWorkflowIds: [] },
+				),
+			).rejects.toThrow('The export does not match the selection (missing w2)');
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
 			);
@@ -581,6 +592,7 @@ describe('PromotionsService', () => {
 
 		it('cleans up the staging folder even when the export fails', async () => {
 			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
 			});
 			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
@@ -602,6 +614,7 @@ describe('PromotionsService', () => {
 
 		it('validates the selection against the branch during apply', async () => {
 			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
 				'projects/alpha/project.json': JSON.stringify(alpha),
 				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
@@ -628,6 +641,10 @@ describe('PromotionsService', () => {
 		it('refuses a workflow that moved out of another project during apply', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
 			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({
+					projects: [alpha, beta],
+					workflows: [{ id: 'w1', name: 'W1', target: 'projects/beta/workflows/w1' }],
+				}),
 				'projects/alpha/project.json': JSON.stringify(alpha),
 				'projects/beta/project.json': JSON.stringify(beta),
 				'projects/beta/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
@@ -683,6 +700,7 @@ describe('PromotionsService', () => {
 
 		it('restores the package when the remote push fails', async () => {
 			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
 				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});

@@ -14,6 +14,7 @@ import path from 'node:path';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
@@ -218,9 +219,10 @@ export class PromotionsService {
 		const branchName = checkoutBranchName(input.config);
 		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
 		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
-
-		if (!(await isDirectory(packageFolder))) {
-			await mkdir(packageFolder, { recursive: true });
+		if (!(await this.hasExportedPackage(packageFolder))) {
+			throw new BadRequestError(
+				'The remote branch has no exported package. Promote the instance first, then promote a selection.',
+			);
 		}
 
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
@@ -358,6 +360,14 @@ export class PromotionsService {
 		if (!project) throw new NotFoundError('Project not found');
 		if (project.type !== 'team') {
 			throw new BadRequestError('Only team projects can use a promotion connection');
+		}
+	}
+
+	private async hasExportedPackage(packageFolder: string): Promise<boolean> {
+		try {
+			return (await stat(path.join(packageFolder, MANIFEST_FILE))).isFile();
+		} catch {
+			return false;
 		}
 	}
 

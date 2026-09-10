@@ -176,6 +176,35 @@ describe('WorkingCopyUpdater', () => {
 		});
 	});
 
+	describe('assertStagingMatchesSelection', () => {
+		it('rejects selected workflows the export did not write', () => {
+			expect(() =>
+				updater.assertStagingMatchesSelection(
+					makeManifest({ workflows: [wf('w1')] }),
+					selection({ workflowIds: ['w1', 'w2'] }),
+				),
+			).toThrow('The export does not match the selection (missing w2)');
+		});
+
+		it('rejects extra workflows the export wrote', () => {
+			expect(() =>
+				updater.assertStagingMatchesSelection(
+					makeManifest({ workflows: [wf('w1'), wf('w2')] }),
+					selection({ workflowIds: ['w1'] }),
+				),
+			).toThrow('The export does not match the selection (extra w2)');
+		});
+
+		it('accepts a delete-only selection when the export has no workflows', () => {
+			expect(() =>
+				updater.assertStagingMatchesSelection(
+					makeManifest({ projects: [alpha] }),
+					selection({ deletedWorkflowIds: ['w1'] }),
+				),
+			).not.toThrow();
+		});
+	});
+
 	describe('readBranchState', () => {
 		it('takes projects, folders and workflows from their json files', async () => {
 			await writeTree(exportFolder, {

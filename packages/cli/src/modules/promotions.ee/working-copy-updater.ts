@@ -93,6 +93,24 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
+	 * The exporter must write exactly the selected workflows. Extra or missing
+	 * ids mean the overlay would change the branch in a way the caller did not
+	 * ask for, so stop before any file work.
+	 */
+	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
+		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
+		const selectedIds = new Set(selection.workflowIds);
+		const missing = selection.workflowIds.filter((id) => !stagedIds.has(id));
+		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
+		if (missing.length === 0 && extra.length === 0) return;
+
+		const parts: string[] = [];
+		if (missing.length > 0) parts.push(`missing ${missing.join(', ')}`);
+		if (extra.length > 0) parts.push(`extra ${extra.join(', ')}`);
+		throw new BadRequestError(`The export does not match the selection (${parts.join('; ')})`);
+	}
+
+	/**
 	 * What the branch holds, from `project.json`, `folder.json` and
 	 * `workflow.json`. Placement and guards only need those collections.
 	 */
@@ -270,6 +288,7 @@ export class WorkingCopyUpdater {
 		selection: SelectivePushOptions,
 	): Promise<void> {
 		this.validateSelection(selection);
+		this.assertStagingMatchesSelection(staging, selection);
 		const { state: existing, dependencies } = await this.scanBranch(exportFolder);
 		this.assertDeletionsOnBranch(existing, selection);
 		this.assertNoCrossProjectMoves(existing, selection);

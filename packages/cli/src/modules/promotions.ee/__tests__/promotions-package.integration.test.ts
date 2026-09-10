@@ -490,6 +490,22 @@ describe('Promote and Apply', () => {
 });
 
 describe('Promote a selection', () => {
+	it('refuses a selection when the branch has no package yet', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
+
+		await expect(
+			service.promoteSelection(
+				connection.id,
+				owner,
+				{ canExportVariableValues: true, commitMessage: 'Add w1' },
+				{ projectId: project.id, workflowIds: [workflows[0].id], deletedWorkflowIds: [] },
+			),
+		).rejects.toThrow('Promote the instance first');
+	});
+
 	it('adds only the selected workflow, leaving existing workflows untouched', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);
