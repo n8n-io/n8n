@@ -79,6 +79,15 @@ describe('EngineV2ExecutionReader', () => {
 			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
 		});
 
+		// Narrowing an unfiltered list to the mapped statuses would hide any status
+		// the data plane adds later.
+		it('sends no status filter when the caller asked for none', async () => {
+			await reader.findMany(query, 'all');
+			expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
+				expect.objectContaining({ status: undefined }),
+			);
+		});
+
 		it('searches once, deduplicating the workflow IDs', async () => {
 			const ids = Array.from({ length: 3 }, (_, i) => `wf-${i}`);
 

@@ -47,7 +47,8 @@ export const parseRangeQuery = (req: Request, res: Response, next: NextFunction)
 		if (req.query.cursor !== undefined && typeof req.query.cursor !== 'string')
 			throw new BadRequestError('Invalid execution cursor');
 
-		const cursor = req.query.cursor ? parseExecutionCursor(req.query.cursor) : undefined;
+		const cursor =
+			req.query.cursor === undefined ? undefined : parseExecutionCursor(req.query.cursor);
 
 		const pageLimit = limit === undefined ? 20 : Number(limit);
 		if (!Number.isInteger(pageLimit) || pageLimit < 1 || pageLimit > 100)

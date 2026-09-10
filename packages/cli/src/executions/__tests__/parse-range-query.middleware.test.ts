@@ -176,8 +176,8 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should reject an invalid cursor', () => {
-			const req = request({ cursor: 'not-a-real-cursor' });
+		test.each(['not-a-real-cursor', ''])('should reject the invalid cursor %j', (cursor) => {
+			const req = request({ cursor });
 
 			parseRangeQuery(req, res, nextFn);
 

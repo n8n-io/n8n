@@ -504,6 +504,9 @@ export class McpService {
 		);
 		registerIfAllowed(getExecutionTool);
 
+		// TODO(CAT-4510): the search lists engine 2.0 executions, but
+		// `get_workflow_execution` above still reads only the control plane, so an
+		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,
