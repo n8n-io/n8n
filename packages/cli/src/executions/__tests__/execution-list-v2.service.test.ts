@@ -275,13 +275,7 @@ describe('ExecutionListV2Service', () => {
 			expect(rangeQueries()).toHaveLength(1);
 			expect(rangeQueries()[0].status).toBeUndefined();
 			expect(searchRequests()).toHaveLength(1);
-			expect(searchRequests()[0].status).toEqual([
-				'queued',
-				'running',
-				'completed',
-				'failed',
-				'cancelled',
-			]);
+			expect(searchRequests()[0].status).toBeUndefined();
 		});
 
 		it('resolves v2 workflow names', async () => {
