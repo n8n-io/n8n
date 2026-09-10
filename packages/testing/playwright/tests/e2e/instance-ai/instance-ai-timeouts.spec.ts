@@ -2,7 +2,7 @@ import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI timeouts',
+	'Instance AI timeouts @capability:sandbox',
 	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
 	() => {
 		test.fixme(

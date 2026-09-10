@@ -54,11 +54,14 @@ const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
 
 const CAPABILITY_IMAGES = {
+	'dynamic-credentials': ['keycloak'],
 	email: ['mailpit'],
+	'external-secrets': ['localstack'],
 	kafka: ['kafka'],
 	observability: ['victoriaLogs', 'victoriaMetrics', 'vector', 'jaeger', 'n8nTracer'],
 	oidc: ['keycloak'],
 	proxy: ['mockserver'],
+	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
 	'source-control': ['gitea'],
 };
 

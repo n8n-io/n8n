@@ -222,7 +222,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 }
 
 test.describe(
-	'Instance AI remediation guard @capability:proxy',
+	'Instance AI remediation guard @capability:proxy @capability:sandbox',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

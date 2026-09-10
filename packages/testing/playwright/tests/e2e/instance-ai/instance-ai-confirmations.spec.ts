@@ -170,7 +170,7 @@ async function expectApprovedExecutionComplete({
 }
 
 test.describe(
-	'Instance AI confirmations @capability:proxy',
+	'Instance AI confirmations @capability:proxy @capability:sandbox',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

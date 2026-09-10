@@ -14,7 +14,7 @@ test.use({
 });
 
 test.describe(
-	'n8n Assistant self-hosted onboarding @db:reset',
+	'n8n Assistant self-hosted onboarding @capability:sandbox @db:reset',
 	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
 	() => {
 		test('should verify search and complete onboarding', async ({ n8n }) => {

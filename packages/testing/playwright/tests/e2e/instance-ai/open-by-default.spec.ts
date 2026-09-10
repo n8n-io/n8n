@@ -12,7 +12,7 @@ const requirements: TestRequirements = {
 test.use(instanceAiTestConfig);
 
 test.describe(
-	'Open workflows in assistant by default @capability:proxy',
+	'Open workflows in assistant by default @capability:proxy @capability:sandbox',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
