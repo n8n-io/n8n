@@ -1478,6 +1478,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `app_builder_page` — Instance AI hand-off from the apps list or app details page
+ * - `app_builder_canvas_info_card` — canvas nudge suggesting a workflow could power a web app
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
@@ -1496,6 +1497,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credentials_list',
 	'agent_builder_page',
 	'app_builder_page',
+	'app_builder_canvas_info_card',
 	'agent_preview',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.

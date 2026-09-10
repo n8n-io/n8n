@@ -10,6 +10,7 @@ description: >-
   for it. Not for n8n workflows, agents, or data tables on their own.
 recommended_tools:
   - apps
+  - workflows
   - workspace_write_file
   - workspace_str_replace_file
   - workspace_read_file
@@ -124,6 +125,38 @@ not only the last published build. Then continue with step 2. `{ denied, reason 
   app directory yourself (the dev server does not; publishing installs on its
   own), and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
+
+## Migrating an HTML webhook workflow
+
+Some workflows already act as a crude web app: a Webhook trigger feeds a
+Respond to Webhook node that returns raw HTML. When the user asks to replace
+one of these with a proper app, treat it as a migration, not a fresh build:
+
+- Read the workflow (`workflows(action="get-json", workflowId)`) and mimic
+  its existing HTML as closely as you reasonably can — same layout, copy and
+  fields — rather than redesigning it. Still follow this skill's normal
+  defaults while you do: reach for a catalog component (`Button`, `Card`,
+  `Input`, …) for anything the catalog already covers, and factor markup
+  you'd otherwise repeat (a repeated card, a repeated row) into your own
+  component instead of copy-pasting it.
+- Carry the HTML's color palette into the app's theme instead of hardcoding
+  it in component markup: map its accent color onto `--primary` (and
+  `--primary-foreground` for contrast) and any secondary/muted tones onto
+  `--secondary`, `--muted`, `--accent`, etc. in `theme-overrides.css`'s
+  `:root` block — see `references/design-system.md` for the full variable
+  list. This keeps the retained palette adjustable from the app's Theme tab
+  like everything else, instead of baked into the page.
+- The app calls the workflow for its data instead of rendering the HTML it
+  used to return, so the workflow's Respond to Webhook node usually needs to
+  change from HTML to JSON as part of the same migration. Editing that node
+  in the workspace only changes the workflow's draft — never publish the
+  workflow on your own initiative, not even to "finish the migration". Only
+  publish it when the user asks to publish, deploy, share or go live, exactly
+  like step 4 above. When they do ask, publish the workflow
+  (`workflows(action="publish", workflowId)`) before publishing the app
+  (`apps(action="publish", appId)`), so the old HTML response is never live
+  at the same time the app depends on JSON it doesn't yet serve — the two
+  ship together as one migration step, both gated on that same ask.
 
 ## Template
 
