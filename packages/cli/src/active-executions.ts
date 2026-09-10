@@ -40,6 +40,25 @@ import { EventService } from './events/event.service';
 
 const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
+/**
+ * Resolve the n8n user who started this execution, for the insert row.
+ *
+ * A root run on the main process establishes its own context first. Its
+ * `runtimeData.startedByUserId` is already set at this point.
+ * A sub-workflow calls `add()` before it establishes its own context. This
+ * function falls back to the parent context in that case. A later save
+ * fills in the child's own value once its context is established
+ * (see `shared-hook-functions.ts`). A child that fails before that still
+ * gets the parent's value from this insert.
+ */
+function resolveStartedByUserId(executionData: IWorkflowExecutionDataProcess): string | null {
+	return (
+		executionData.executionData?.executionData?.runtimeData?.startedByUserId ??
+		executionData.executionData?.parentExecution?.executionContext?.startedByUserId ??
+		null
+	);
+}
+
 @Service()
 export class ActiveExecutions {
 	/**
@@ -102,9 +121,7 @@ export class ActiveExecutions {
 					retryOf: executionData.retryOf ?? undefined,
 					tracingContext: executionData.tracingContext ?? null,
 					deduplicationKey: executionData.deduplicationKey,
-					// Context is established before this insert (WorkflowRunner.establishContextForPersistence).
-					startedByUserId:
-						executionData.executionData?.executionData?.runtimeData?.startedByUserId ?? null,
+					startedByUserId: resolveStartedByUserId(executionData),
 				};
 
 				const workflowId = executionData.workflowData.id;

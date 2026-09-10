@@ -208,6 +208,30 @@ describe('ActiveExecutions', () => {
 		);
 	});
 
+	test('Should fall back to the parent context for a sub-workflow with no own context yet', async () => {
+		const executionDataWithParentContext: IWorkflowExecutionDataProcess = {
+			...executionData,
+			executionData: createRunExecutionData({
+				parentExecution: {
+					executionId: 'parent-execution-id',
+					workflowId: 'parent-workflow-id',
+					executionContext: {
+						version: 1,
+						establishedAt: 1,
+						source: 'manual',
+						startedByUserId: 'parent-user',
+					},
+				},
+			}),
+		};
+
+		await activeExecutions.add(executionDataWithParentContext);
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.objectContaining({ startedByUserId: 'parent-user' }),
+		);
+	});
+
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
 		executionPersistence.updateExistingExecution.mockResolvedValue(false);
