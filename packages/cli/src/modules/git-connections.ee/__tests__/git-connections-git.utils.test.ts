@@ -19,6 +19,8 @@ describe('git-connections-git.utils', () => {
 				'no_proxy',
 				'ALL_PROXY',
 				'all_proxy',
+				'GIT_SSL_CAINFO',
+				'GIT_SSL_CAPATH',
 			]) {
 				delete process.env[key];
 			}
@@ -81,6 +83,18 @@ describe('git-connections-git.utils', () => {
 
 			expect(config).toContain('http.lowSpeedLimit=1000');
 			expect(config).toContain('http.lowSpeedTime=30');
+		});
+		it('carries the CA settings from the environment over as config', () => {
+			process.env.GIT_SSL_CAINFO = '/certs/bundle.crt';
+			process.env.GIT_SSL_CAPATH = '/certs';
+
+			const config = buildHttpsGitConfig('https://github.com/user/repo.git', {
+				username: 'testuser',
+				password: 'testpass',
+			});
+
+			expect(config).toContain('http.sslCAInfo=/certs/bundle.crt');
+			expect(config).toContain('http.sslCAPath=/certs');
 		});
 	});
 
