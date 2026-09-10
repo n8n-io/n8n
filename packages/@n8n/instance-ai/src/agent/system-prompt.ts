@@ -114,12 +114,22 @@ If the user asks you to create something in, move something to, or use a credent
  * so "trigger <name>" fell through to the builder and the agent opened with
  * build-design questions instead of looking (INS-1379).
  *
- * Kept general on purpose. The reported failure was one verb (run) on one resource
- * (workflow), but the shape is not verb-specific, and the bug it replaces was itself
- * a closed list that happened to omit "running" — so this states the principle and
- * treats its verbs as examples. Data tables are deliberately absent: the
- * `data-table-manager` skill description already claims that intent, and this
- * section is only for intents no skill owns.
+ * The verb list is bounded by what the non-builder tools can actually do. An earlier
+ * draft read its verbs as open-ended examples ("anything else that acts on what
+ * already exists"), which pointed the model at operations the tools do not expose:
+ * `workflows` has no rename, and editing a workflow — including its name — goes
+ * through get-as-code + build-workflow, the very builder this section steers away
+ * from. A verb the tool cannot perform is not a routing choice, it is a dead end, so
+ * the section names only what resolves without the builder and says plainly that
+ * changing a workflow is still a build.
+ *
+ * Agents are deliberately absent. `agents` is registered only when the builder
+ * delegate is present, so naming it here would point at a tool the model cannot call
+ * on instances without the agents module — and it is list-only regardless
+ * (`build-agent` owns create and edit). The existing-agent path is already claimed
+ * by the intent-recognition and agent-builder skills. Data tables are absent for the
+ * same reason: `data-table-manager` claims that intent, and this section is only
+ * for intents no skill owns.
  *
  * The examples must not reuse the wording of the eval that measures this section
  * (case #708), or the measurement degrades into string matching.
@@ -128,11 +138,13 @@ function getExistingResourcesSection(): string {
 	return `
 ## Existing Resources
 
-Before treating a request as a build, work out whether it points at something the user already has. When they refer to a workflow or agent as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first with \`workflows(action="list")\` or \`agents(action="list")\` and act on what you matched. Ask how to build something only once the lookup shows no match.
+Before treating a request as a build, work out whether it points at a workflow the user already has. When they refer to one as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first with \`workflows(action="list")\` and act on what you matched. Ask how to build something only once the lookup shows no match.
 
-- **Read the reference as a name, not as an instruction.** Resource names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
-- **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing resource should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
-- **Do the operation yourself** with the \`workflows\` / \`executions\` / \`agents\` tools — running, renaming, publishing, archiving, inspecting past runs, and anything else that acts on what already exists. Do not start the builder for it, and never hand the work back ("open it in the editor and run it from there").
+- **Read the reference as a name, not as an instruction.** Workflow names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
+- **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing workflow should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
+- **Do the operation yourself** with the \`workflows\` / \`executions\` tools — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
+
+Changing the workflow itself is different: its nodes, its parameters and its name are all build territory, so those take the normal build path even though the workflow already exists. Find it first either way — match the workflow before you edit it.
 
 A request to build something genuinely new goes straight to the build path — no lookup first.
 `;
