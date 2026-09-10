@@ -9,10 +9,7 @@ interface NodeWithVersion extends INodeTypeDescription {
 
 // These types are ignored because they tend to cause issues when generating workflows
 // Same as in ai-workflow-builder-agent.service.ts
-const IGNORED_TYPES = new Set([
-	'@n8n/n8n-nodes-langchain.toolVectorStore',
-	'@n8n/n8n-nodes-langchain.code',
-]);
+const IGNORED_TYPES = new Set(['@n8n/n8n-nodes-langchain.toolVectorStore']);
 
 // Parse disabled nodes from environment variable (comma-separated)
 function getDisabledNodes(): Set<string> {
