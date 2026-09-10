@@ -305,7 +305,16 @@ export async function getTags(
 			buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/tags']),
 		);
 	} catch (error) {
-		throw tagPermissionError(error, this.getNode(), 'Could not load team tags') ?? error;
+		// The action belongs in the message, not the description: the resource-locator dropdown
+		// renders only the message and drops the description, so guidance put there is invisible.
+		// Verified in the editor against a credential without the scope, 2026-09-10.
+		throw (
+			tagPermissionError(
+				error,
+				this.getNode(),
+				'Could not load team tags. Add TeamworkTag.Read to the credential, then reconnect it.',
+			) ?? error
+		);
 	}
 
 	// Graph sends `memberCount` as a number when listing and as a string when getting one tag.
