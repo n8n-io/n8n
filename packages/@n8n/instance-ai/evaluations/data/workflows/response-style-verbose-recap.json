@@ -1,0 +1,43 @@
+{
+	"description": "Response style: replies are concise, scannable, and free of repetition and filler. Sourced from thread dd20a480-0c37-4701-89bf-c8cad9a8646f (reviewer observation #3825 'verbose-triple-recap-response'): after the user deferred credential setup, the agent repeated the identical pending-setup recap two to three times per reply, plus filler ('Setup is still deferred — no problem') and a self-answered question. Capability-gap finding: current build pads replies with repeated recaps and filler — a real style gap (flips to a regression guard once the response-style prompt change lands). Style bar and rewrite reference live in Dylan's PM workspace: projects/Concise Natural Responses/response-style-bar.md and source-transcript-and-rewrite.md. Calibration note: the WhatsApp messaging-window caveat expectation is a loosen-candidate — confirm the agent surfaces it before treating a red as a style failure.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create AI Agent and will run every day 8 am. I need to run and get the latest tech news that got released"
+		},
+		{
+			"role": "assistant",
+			"text": "Where should the daily tech news digest be delivered, and which AI model should power the agent?"
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Answer any clarifying questions as follows: deliver the digest via WhatsApp to +1 555 010 0123; use Anthropic Claude as the model.",
+				"Whenever the agent shows a credential/setup card, skip setup — do not connect any credentials.",
+				"After the agent's reply following the build, send exactly one follow-up request, in these words: 'Can I do send to Gmail - jane.doe@example.com'. If setup is offered again, skip it again. After the agent's reply to the Gmail change, the conversation is over — do not ask for anything else.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "medium",
+	"tags": ["behaviour", "style", "conciseness", "schedule", "ai-agent"],
+	"triggerType": "schedule",
+	"processExpectations": [
+		"No assistant reply states the same information twice. In particular, the pending-setup/credential status and the instruction for how to resume setup each appear at most once per reply.",
+		"No reply restates the user's request back to them, and no reply narrates what the agent is about to do ('I'll now...', 'Let me...', 'Next I'm going to...').",
+		"No filler: no generic closers ('let me know if you need anything'), no standalone reassurance lines ('no problem, it's ready whenever you are'), and no rhetorical questions the reply immediately answers itself.",
+		"Every reply leads with the outcome — what was built or changed, or the answer — before any explanation or caveats.",
+		"Where a reply presents multiple parallel items the user must act on (credentials to add, values to fill in), they appear as a list; reasoning and caveats appear as prose, not bullets.",
+		"Replies are lightly formatted: no headings, no nested lists, bold only on key names, values, or actions. No reply stacks several competing formats.",
+		"In every reply that requires a user action, that action is identifiable at a glance without reading the full prose.",
+		"No sycophancy openers ('Great question!'), no chatbot closers ('let me know if...', 'hope this helps'), and none of: delve, leverage, seamless, robust, crucial, elevate, harness, showcase.",
+		"The agent asked which delivery channel and which AI model to use before building, since the prompt named neither.",
+		"The reply after the build lists everything still required before the workflow can run (the credentials and the phone/recipient details) and how to resume setup — conciseness never drops a required user action.",
+		"The reply after building WhatsApp delivery mentions WhatsApp Business Cloud's constraint on unprompted scheduled messages (24-hour window / pre-approved template), stated once — a genuine limitation kept despite the conciseness bar."
+	],
+	"outcomeExpectations": [
+		"A Schedule Trigger runs the workflow once a day at 8:00 AM.",
+		"An AI agent gathers the latest tech news from real sources (e.g. RSS feeds or news APIs) and composes a digest.",
+		"The final workflow sends the digest by email to jane.doe@example.com via a Gmail node, reflecting the user's change of delivery channel away from WhatsApp."
+	]
+}
