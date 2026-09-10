@@ -251,6 +251,24 @@ describe('GET /binary-data (execution ownership)', () => {
 			.expect(400);
 	});
 
+	// A trigger node writes its binary before the execution row exists, so the path
+	// carries the literal `temp` where an execution id normally sits.
+	test('lets the owner download a binary stored in the temp execution dir', async () => {
+		const workflow = await createWorkflow({}, victim);
+		await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(victim)
+			.get('/binary-data')
+			.query({
+				id: executionBinaryId(workflow.id, 'temp'),
+				action: 'download',
+				fileName,
+				mimeType,
+			})
+			.expect(200);
+	});
+
 	test('lets the owner download a binary from their own soft-deleted execution', async () => {
 		const workflow = await createWorkflow({}, victim);
 		const execution = await createSuccessfulExecution(workflow);
