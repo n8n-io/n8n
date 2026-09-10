@@ -142,6 +142,20 @@ export class PostHogClient {
 		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
 	}
 
+	/**
+	 * Flags for an actor known only by id.
+	 *
+	 * `created_at_timestamp` goes out as the epoch, so a flag whose release conditions read
+	 * signup date will misjudge these calls. A percentage rollout is unaffected — bucketing
+	 * hashes `instanceId#userId` and never reads person properties.
+	 *
+	 * For callers that genuinely hold no `User`, such as an event relay whose payload
+	 * carries a narrower actor. Prefer {@link getFeatureFlags} everywhere else.
+	 */
+	async getFeatureFlagsByUserId(userId: string): Promise<FeatureFlags> {
+		return await this.getFeatureFlags({ id: userId, createdAt: new Date(0) });
+	}
+
 	async getFeatureFlagsAndPayloads(
 		user: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {

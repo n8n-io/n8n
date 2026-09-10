@@ -2462,29 +2462,30 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * Rollout flag for reading instance-activity context: the per-turn
  * `<instance-context>` block, the `activity` tool, and the skill that explains them.
  *
- * One flag over the whole feature rather than one per side. Either control turns the
- * read on and neither one means nothing is read:
+ * One flag over the whole feature rather than one per side, and **the record and the read
+ * always move together** — there is no state where one is on and the other is off:
  *
  * | `N8N_ACTIVITY_LOG_ENABLED` | this flag in PostHog | writes | reads |
  * | -- | -- | -- | -- |
  * | off | off | off | off |
- * | off | on | off | on |
+ * | off | on | on | on |
  * | on | anything | on | on |
  * | on | explicit `false` override | on | off |
  *
- * The env var force-enables this flag unless an explicit override says otherwise, so
- * this flag alone answers for both controls — which is why the read gate reads only it.
- * The last row is the kill switch: an operator can stop the read without giving up the
- * record it already has.
+ * The env var is the local override: set it and the feature is on, with no PostHog
+ * involved, which is all that is needed to try this on a dev instance. With it unset the
+ * flag decides, and both sides follow it — the relay evaluates it for the acting user of
+ * each recorded event, so a rollout reaches writes and reads at the same time and needs
+ * no deploy.
  *
- * Row two is the degraded case, and deliberate. The rollout can turn the read on with no
- * deploy, and the record then holds only what accrued before, so the edit leg is thin.
- * The other two legs are unaffected: what exists comes from the workflows themselves and
- * runs come from `execution_entity`, neither of which is the log.
+ * The last row is the kill switch and the one asymmetry left: an explicit override stops
+ * the read while the env var keeps the record accruing, so a token regression can be
+ * rolled back without losing history.
  *
- * The write side stays instance-wide because its actor arrives as `UserLike`, which
- * carries no `createdAt` for PostHog to evaluate against — gating it per user would cost
- * a user lookup on every recorded event.
+ * Two costs of coupling this way, both deliberate. Recording consults the flag per acting
+ * user rather than once at startup, which is a cached lookup per recorded event; and with
+ * diagnostics off there is no PostHog to consult, so the relay keeps its original
+ * zero-cost path and registers no listeners at all.
  *
  * Roll the read back if the agent starts answering about the most recent thing rather
  * than the question, or if turn tokens rise with no matching fall in clarifying

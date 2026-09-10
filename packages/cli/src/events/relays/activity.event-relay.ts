@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { ActivityLogConfig } from '@n8n/config';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import { ActivityLogConfig, GlobalConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -13,6 +14,7 @@ import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import { PostHogClient } from '@/posthog';
 
 /** Carried by nearly every core node type. Dropping it buys room inside the `data` budget. */
 const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
@@ -22,6 +24,20 @@ const maxListedNodeTypes = 5;
 
 /** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
 const maxDetailStringLength = 64;
+
+/**
+ * The acting user's id on any of the recorded events. Read defensively rather than by
+ * narrowing each payload type: all eleven carry a `user`, and a shape that does not is
+ * one this relay has no business recording anyway.
+ */
+function actingUserId(payload: unknown): string | undefined {
+	if (typeof payload !== 'object' || payload === null || !('user' in payload)) return undefined;
+	const { user } = payload as { user?: unknown };
+	if (typeof user !== 'object' || user === null || !('id' in user)) return undefined;
+
+	const { id } = user as { id?: unknown };
+	return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
 
 /** An entry that resolves no project, since one written without a project could never be read. */
 type UnresolvedProject = { projectId: string | undefined };
@@ -53,6 +69,8 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly activityLogConfig: ActivityLogConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly postHogClient: PostHogClient,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -60,8 +78,13 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
-		// Checked once, so a disabled instance registers no listeners and pays nothing per event.
-		if (!this.activityLogConfig.enabled) return;
+		// The record and the assistant's read of it move together, and the rollout flag can
+		// turn both on for a user without a deploy — so this cannot be decided once here.
+		//
+		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so
+		// the flag can only ever come from the env override, and a disabled instance registers
+		// no listeners and pays nothing per event exactly as before.
+		if (!this.activityLogConfig.enabled && !this.globalConfig.diagnostics.enabled) return;
 
 		this.setupListeners(
 			this.guarded({
@@ -87,6 +110,26 @@ export class ActivityEventRelay extends EventRelay {
 	 *
 	 * Wrapping the map rather than each entry is what lets the log name the event it came from.
 	 */
+	/**
+	 * Whether this event's actor has the feature on.
+	 *
+	 * Per acting user, because that is the unit the rollout exposes. The env var short-
+	 * circuits it, so a local instance never consults PostHog, and `getFeatureFlags`
+	 * caches per user, so a busy user costs one evaluation rather than one per event.
+	 *
+	 * Fails closed: an unreadable flag means no row, never a row written on a guess.
+	 */
+	private async shouldRecord(userId: string): Promise<boolean> {
+		if (this.activityLogConfig.enabled) return true;
+
+		try {
+			const flags = await this.postHogClient.getFeatureFlagsByUserId(userId);
+			return flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true;
+		} catch {
+			return false;
+		}
+	}
+
 	private guarded<EventNames extends keyof RelayEventMap>(
 		handlers: ActivityHandlers<EventNames>,
 	): ActivityHandlers<EventNames> {
@@ -98,6 +141,8 @@ export class ActivityEventRelay extends EventRelay {
 			event,
 			async (payload: RelayEventMap[EventNames]) => {
 				try {
+					const userId = actingUserId(payload);
+					if (!userId || !(await this.shouldRecord(userId))) return;
 					await handle(payload);
 				} catch (error) {
 					this.logger.warn('Failed to record activity for an event', { event, error });

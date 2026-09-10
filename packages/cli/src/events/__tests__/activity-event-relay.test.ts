@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ActivityLogConfig } from '@n8n/config';
+import type { ActivityLogConfig, GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
 	WorkflowHistory,
@@ -12,6 +12,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import type { PostHogClient } from '@/posthog';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 
@@ -40,13 +41,30 @@ describe('ActivityEventRelay', () => {
 
 	let eventService: EventService;
 
-	const relayWith = (enabled: boolean) => {
+	/**
+	 * `enabled` is the env var and `rolloutFlag` is what PostHog answers for the acting
+	 * user. Either turns recording on, so both have to be settable to test the gate.
+	 */
+	const relayWith = (
+		enabled: boolean,
+		{
+			rolloutFlag = false,
+			diagnostics = true,
+		}: { rolloutFlag?: boolean; diagnostics?: boolean } = {},
+	) => {
+		const postHogClient = mock<PostHogClient>();
+		postHogClient.getFeatureFlagsByUserId.mockResolvedValue(
+			rolloutFlag ? { '114_instance_activity_context': true } : {},
+		);
+
 		const relay = new ActivityEventRelay(
 			eventService,
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			mock<ActivityLogConfig>({ enabled }),
+			mock<GlobalConfig>({ diagnostics: { enabled: diagnostics } }),
+			postHogClient,
 			logger,
 		);
 		relay.init();
@@ -65,14 +83,8 @@ describe('ActivityEventRelay', () => {
 		);
 	});
 
-	describe('the write flag', () => {
-		it('registers no listeners at all when disabled, so no event costs anything', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith(false);
-
-			expect(onSpy).not.toHaveBeenCalled();
-
+	describe('the write gate', () => {
+		const emitDeletion = async () => {
 			eventService.emit('workflow-deleted', {
 				user,
 				workflowId: 'workflow1',
@@ -81,6 +93,48 @@ describe('ActivityEventRelay', () => {
 				publicApi: false,
 			});
 			await flushPromises();
+		};
+
+		/**
+		 * The record and the assistant's read of it move together, so the rollout can turn
+		 * both on for a user without a deploy.
+		 */
+		it('records for a user the rollout has turned on, with the env var unset', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
+		});
+
+		it('records when the env var is set, whatever the rollout says', async () => {
+			relayWith(true, { rolloutFlag: false });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
+		});
+
+		it('records nothing when neither control is on', async () => {
+			relayWith(false, { rolloutFlag: false });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * With no PostHog to consult, the flag can only come from the env override — so the
+		 * old zero-cost path is kept for instances that will never see a rollout.
+		 */
+		it('registers no listeners when the env var is unset and diagnostics are off', async () => {
+			const onSpy = vi.spyOn(eventService, 'on');
+
+			relayWith(false, { diagnostics: false });
+
+			expect(onSpy).not.toHaveBeenCalled();
+
+			await emitDeletion();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
 		});
