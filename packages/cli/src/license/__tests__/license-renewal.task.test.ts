@@ -18,6 +18,7 @@ describe('LicenseRenewalTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 900 });
 		expect(task.effects).toBe('non-idempotent');
 		expect(task.durable).toBe(false);
+		expect(task.runOnTakeover).toBe(true);
 	});
 
 	it('should run one renewal pass', async () => {

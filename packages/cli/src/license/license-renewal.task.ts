@@ -23,6 +23,9 @@ export class LicenseRenewalTask implements SystemTask {
 
 	readonly durable = false;
 
+	/** A new leader may inherit a due renewal whose window closes before the next interval. */
+	readonly runOnTakeover = true;
+
 	constructor(private readonly license: License) {}
 
 	async run(): Promise<void> {
