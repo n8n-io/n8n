@@ -417,7 +417,6 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/license.ts',
 			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
