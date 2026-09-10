@@ -20,6 +20,7 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiFileAttachment,
 	type InstanceAiNodesAttachment,
+	type InstanceAiAppPreviewDiagnosticsAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -140,6 +141,8 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { AppPreviewService, settlesWithin } from './app-preview/app-preview.service';
+import { AppSourceSnapshotService } from './app-preview/app-source-snapshot.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
@@ -310,6 +313,24 @@ function buildElementAttachmentLine(attachment: InstanceAiElementAttachment): st
 	return `- The user selected a \`<${attachment.tagName}>\` element${text}${selector}${where} in app \`${attachment.appId}\`'s preview. Find it in the app's source and act on the user's instruction about it.`;
 }
 
+/**
+ * Renders the errors the live preview reported since the user's last message
+ * as plain text. The message and stack are the app's own strings, so they go
+ * in a fenced block and never as markup.
+ */
+function buildAppPreviewDiagnosticsBlock(
+	attachment: InstanceAiAppPreviewDiagnosticsAttachment,
+): string {
+	const items = attachment.items.map((item) => {
+		const where = item.file
+			? ` at ${item.file}${item.line !== undefined ? `:${item.line}` : ''}${item.column !== undefined ? `:${item.column}` : ''}`
+			: '';
+		const stack = item.stack ? `\n${item.stack}` : '';
+		return `[${item.at}] ${item.kind}${where}: ${item.message}${stack}`;
+	});
+	return `Errors observed in the live preview of app \`${attachment.appId}\` since your last message (${items.length}). Fix them before anything else:\n\`\`\`text\n${items.join('\n\n')}\n\`\`\``;
+}
+
 export function buildContextResourcesBlock(
 	contextAttachments: InstanceAiResourceAttachment[],
 ): string {
@@ -317,7 +338,20 @@ export function buildContextResourcesBlock(
 		return '';
 	}
 
-	const lines = contextAttachments.map((attachment) => {
+	const diagnosticsBlocks = contextAttachments
+		.filter(
+			(attachment): attachment is InstanceAiAppPreviewDiagnosticsAttachment =>
+				attachment.type === 'app-preview-diagnostics',
+		)
+		.map(buildAppPreviewDiagnosticsBlock);
+	const resourceAttachments = contextAttachments.filter(
+		(attachment) => attachment.type !== 'app-preview-diagnostics',
+	);
+	if (resourceAttachments.length === 0) {
+		return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${diagnosticsBlocks.join('\n\n')}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+	}
+
+	const lines = resourceAttachments.map((attachment) => {
 		if (attachment.type === 'nodes') {
 			return buildNodesAttachmentLine(attachment);
 		}
@@ -348,15 +382,15 @@ export function buildContextResourcesBlock(
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
 
-	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
+	const header = resourceAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
-		: contextAttachments.some(
+		: resourceAttachments.some(
 					(attachment) => attachment.type === 'app' || attachment.type === 'element',
 				)
 			? 'The user opened this conversation from the apps page, where they are looking at:'
 			: 'The user opened this conversation from the workflow editor, where they are looking at:';
 
-	const pendingAgentGuidance = contextAttachments.some(
+	const pendingAgentGuidance = resourceAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
 		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
@@ -366,6 +400,7 @@ export function buildContextResourcesBlock(
 		header,
 		...lines,
 		pendingAgentGuidance,
+		...diagnosticsBlocks,
 		"Treat this purely as context. Until the user tells you what they need, don't read, inspect, run, or otherwise call tools on these resources, and don't make claims about their contents — just briefly acknowledge what they're working on and ask how you can help.",
 	]
 		.filter(Boolean)
@@ -384,7 +419,12 @@ function isNamedResourceAttachment(
 	| InstanceAiWorkflowAttachment
 	| InstanceAiAgentAttachment
 	| InstanceAiAppAttachment {
-	return attachment.type !== 'nodes' && attachment.type !== 'element' && Boolean(attachment.name);
+	return (
+		attachment.type !== 'nodes' &&
+		attachment.type !== 'element' &&
+		attachment.type !== 'app-preview-diagnostics' &&
+		Boolean(attachment.name)
+	);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -719,6 +759,9 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
+/** Longest an app preview request waits for the end-of-turn source snapshot. */
+const APP_SNAPSHOT_WAIT_MS = 15 * 1000;
+
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
@@ -790,6 +833,9 @@ export class InstanceAiService {
 
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
+
+	/** End-of-turn app source snapshots in flight, by thread. */
+	private readonly pendingAppSnapshots = new Map<string, Promise<void>>();
 
 	/**
 	 * Consecutive machine-started follow-up runs that errored, per thread.
@@ -1925,9 +1971,58 @@ export class InstanceAiService {
 		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
+		Container.get(AppPreviewService).clearThread(threadId);
+		if (Container.get(ModuleRegistry).isActive('apps')) {
+			Container.get(AppSourceSnapshotService).clearThread(threadId);
+		}
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
+	}
+
+	/**
+	 * How the live app preview reaches a thread's sandbox. Only the n8n sandbox
+	 * service can route to a port inside the sandbox, so `n8nSandbox` is set for
+	 * that provider alone; other providers get a preview built into the workspace.
+	 */
+	async getAppPreviewSandbox(
+		user: User,
+	): Promise<
+		{ enabled: false } | { enabled: true; n8nSandbox?: { url: string; apiKey?: string } }
+	> {
+		try {
+			const config = await this.sandboxService.resolveSandboxConfig(user);
+			if (!config.enabled) return { enabled: false };
+			if (config.provider !== 'n8n-sandbox') return { enabled: true };
+			return { enabled: true, n8nSandbox: { url: config.serviceUrl, apiKey: config.apiKey } };
+		} catch {
+			return { enabled: false };
+		}
+	}
+
+	/**
+	 * The thread's runtime workspace, created together with its sandbox when the
+	 * thread has none yet; undefined when the sandbox is disabled. Skills are not
+	 * materialised here, the next run does that on the same entry.
+	 */
+	async getOrCreateWorkspace(threadId: string, user: User): Promise<Workspace | undefined> {
+		const entry = await this.sandboxService.getOrCreateWorkspaceEntry(threadId, user);
+		return entry?.workspace;
+	}
+
+	/** The thread's runtime workspace only if a run already created it; never creates one. */
+	getCachedWorkspace(threadId: string): Workspace | undefined {
+		return this.sandboxService.getCachedWorkspaceEntry(threadId)?.workspace;
+	}
+
+	/**
+	 * Resolves once the thread's end-of-turn app snapshot (and preview rebuild)
+	 * has landed, at once when none is in flight, and after `APP_SNAPSHOT_WAIT_MS`
+	 * at the latest. Never rejects.
+	 */
+	async awaitPendingSnapshot(threadId: string): Promise<void> {
+		const pending = this.pendingAppSnapshots.get(threadId);
+		if (pending) await settlesWithin(pending, APP_SNAPSHOT_WAIT_MS);
 	}
 
 	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
@@ -2495,6 +2590,7 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 			conversationHistory,
 			modelId,
+			getThreadWorkspace: () => this.getCachedWorkspace(threadId),
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -3663,6 +3759,11 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
 
+		const previewDiagnostics = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiAppPreviewDiagnosticsAttachment =>
+				attachment.type === 'app-preview-diagnostics',
+		);
+
 		const canvasNodeContextEnabled =
 			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
 
@@ -3672,6 +3773,7 @@ export class InstanceAiService {
 			...appAttachments,
 			...elementAttachments,
 			...(canvasNodeContextEnabled ? nodeAttachments : []),
+			...previewDiagnostics,
 		];
 	}
 
@@ -3753,6 +3855,10 @@ export class InstanceAiService {
 				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
 					if (attachment.type === 'nodes') {
 						return { type: attachment.type, id: attachment.workflowId };
+					}
+
+					if (attachment.type === 'app-preview-diagnostics') {
+						return { type: attachment.type, id: attachment.appId };
 					}
 
 					if (attachment.type === 'app') {
@@ -4423,6 +4529,7 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(threadId, runId, result.status, {
 				userId: user.id,
+				user,
 				modelId,
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
@@ -5795,6 +5902,7 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				userId: opts.user.id,
+				user: opts.user,
 				// Forward modelId so title refinement fires on the resume path too — a run
 				// that suspends for HITL and completes here would otherwise never be titled.
 				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
@@ -6761,6 +6869,8 @@ export class InstanceAiService {
 		status: 'completed' | 'cancelled' | 'errored',
 		options?: {
 			userId?: string;
+			/** Enables the end-of-turn app source snapshot; it needs the user's scopes. */
+			user?: User;
 			modelId?: ModelConfig;
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
@@ -6781,6 +6891,47 @@ export class InstanceAiService {
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
+		}
+		if (status === 'completed' && options?.user) {
+			// Registered before the first await, so a preview request that follows the
+			// run-finish event can wait for the snapshot to land.
+			const snapshot = this.snapshotAppSources(threadId, options.user).finally(() => {
+				if (this.pendingAppSnapshots.get(threadId) === snapshot) {
+					this.pendingAppSnapshots.delete(threadId);
+				}
+			});
+			this.pendingAppSnapshots.set(threadId, snapshot);
+		}
+	}
+
+	/**
+	 * Persist the working copy of every app in the thread's sandbox once the
+	 * turn is over, so the source outlives the sandbox without a build.
+	 * Best-effort: only a sandbox the run already used is looked at, and any
+	 * failure is logged.
+	 */
+	private async snapshotAppSources(threadId: string, user: User): Promise<void> {
+		try {
+			if (!Container.get(ModuleRegistry).isActive('apps')) return;
+			const entry = this.sandboxService.getCachedWorkspaceEntry(threadId);
+			if (!entry) {
+				this.logger.debug('No cached sandbox to snapshot app sources from', { threadId });
+				return;
+			}
+			// Marked before the first await: the run-finish event is already out, and the
+			// client's ensure that follows it must find the rebuild in flight.
+			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(threadId, entry.workspace);
+			await Container.get(AppSourceSnapshotService).snapshotAfterRun(
+				threadId,
+				user,
+				entry.workspace,
+			);
+			await rebuilt;
+		} catch (error) {
+			this.logger.warn('App source snapshot failed', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

@@ -8,16 +8,27 @@ import { MODAL_CONFIRM } from '@/app/constants';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
 import type { DescribedBinding } from '@n8n/api-types';
-import type { App } from './apps.types';
+import type { App, AppVersion } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
-const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
 const confirm = vi.hoisted(() => vi.fn());
+const clipboardCopy = vi.hoisted(() => vi.fn());
+const instanceAiAvailable = vi.hoisted(() => ({ value: true }));
+const toast = vi.hoisted(() => ({ showError: vi.fn(), showMessage: vi.fn() }));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => toast,
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
+}));
+
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: clipboardCopy }),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -63,7 +74,13 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 		stubs: {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
-			AppThemeEditor: { template: '<div data-test-id="app-theme-editor-stub" />' },
+			AppThemeEditor: {
+				props: ['projectId', 'app', 'threadId'],
+				emits: ['saved'],
+				template:
+					'<div data-test-id="app-theme-editor-stub" :data-thread-id="threadId" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
+			},
+			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
 			AppCodeViewer: { template: '<div data-test-id="app-code-viewer-stub" />' },
 		},
 	},
@@ -77,6 +94,7 @@ function makeApp(overrides: Partial<App> = {}): App {
 		theme: null,
 		projectId: 'proj-1',
 		activeVersionId: null,
+		hasUnpublishedChanges: false,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		updatedAt: '2026-04-01T00:00:00.000Z',
 		...overrides,
@@ -89,18 +107,24 @@ describe('AppDetailsView', () => {
 	beforeEach(async () => {
 		createTestingPinia();
 		openAppArtifactThread.mockReset();
+		confirm.mockReset();
+		clipboardCopy.mockReset();
+		toast.showError.mockReset();
+		toast.showMessage.mockReset();
 		instanceAiAvailable.value = true;
 		await router.push('/projects/proj-1/apps/app-1');
 		await router.isReady();
 
 		appsStore = mockedStore(useAppsStore);
 		appsStore.pages = [];
+		appsStore.versions = [];
 		appsStore.fetchPages.mockResolvedValue(undefined);
 		appsStore.bindings = [];
 		appsStore.bindingWarnings = [];
 		appsStore.fetchBindings.mockResolvedValue(undefined);
 		appsStore.deleteBinding.mockResolvedValue(undefined);
 		confirm.mockReset();
+		appsStore.fetchVersions.mockResolvedValue(undefined);
 	});
 
 	async function renderApp(app: App, props: Record<string, unknown> = {}) {
@@ -208,15 +232,234 @@ describe('AppDetailsView', () => {
 		);
 	});
 
-	it('links and copies the served app URL', async () => {
-		const { getByTestId } = await renderApp(makeApp());
+	describe('publish menu', () => {
+		const appUrl = `${window.location.origin}/apps/greeter/`;
 
-		expect(getByTestId('app-open')).toHaveAttribute(
-			'href',
-			`${window.location.origin}/apps/greeter/`,
-		);
-		expect(getByTestId('app-open')).toHaveAttribute('target', '_blank');
-		expect(getByTestId('app-url')).toHaveTextContent(`${window.location.origin}/apps/greeter/`);
+		async function openPublishMenu(app: App) {
+			const rendered = await renderApp(app);
+			await userEvent.click(rendered.getByTestId('app-publish-menu-button'));
+			return rendered;
+		}
+
+		it('is hidden until something is published', async () => {
+			const { queryByTestId } = await renderApp(makeApp());
+
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('opens the served app in a new tab', async () => {
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId } = await openPublishMenu(makeApp({ activeVersionId: 'v-7' }));
+
+			await userEvent.click(getByTestId('app-publish-menu-item-open'));
+
+			expect(open).toHaveBeenCalledWith(appUrl, '_blank', 'noopener');
+			open.mockRestore();
+		});
+
+		it('copies the served app URL and confirms', async () => {
+			const { getByTestId } = await openPublishMenu(makeApp({ activeVersionId: 'v-7' }));
+
+			await userEvent.click(getByTestId('app-publish-menu-item-copy-url'));
+
+			expect(clipboardCopy).toHaveBeenCalledWith(appUrl);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Copied to clipboard',
+				type: 'success',
+			});
+		});
+
+		it('unpublishes the app after confirmation and hides itself', async () => {
+			confirm.mockResolvedValue('confirm');
+			appsStore.setActiveVersion.mockResolvedValue(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+			const { getByTestId, queryByTestId } = await openPublishMenu(
+				makeApp({ activeVersionId: 'v-7' }),
+			);
+
+			await userEvent.click(getByTestId('app-publish-menu-item-unpublish'));
+			await waitAllPromises();
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('/apps/greeter/'),
+				'Unpublish app?',
+				expect.objectContaining({ confirmButtonText: 'Unpublish app' }),
+			);
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', null);
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+			expect(queryByTestId('app-publish-indicator')).not.toBeInTheDocument();
+			expect(getByTestId('app-publish')).toBeEnabled();
+		});
+	});
+
+	describe('publish', () => {
+		const published = { versionId: 'v-8', url: 'http://localhost/apps/greeter/' };
+
+		it('reads "Published" with a green dot, disabled, when the published version is the newest', async () => {
+			const { getByTestId } = await renderApp(
+				makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: false }),
+			);
+
+			expect(getByTestId('app-publish')).toBeDisabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Published');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
+		});
+
+		it('is enabled with a yellow dot when a draft is newer than the published version', async () => {
+			const { getByTestId } = await renderApp(
+				makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: true }),
+			);
+
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
+		});
+
+		it('is enabled without a dot or menu when nothing is published yet', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+			expect(queryByTestId('app-publish-indicator')).not.toBeInTheDocument();
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('publishes the thread draft in artifact mode, then refreshes the app and confirms', async () => {
+			appsStore.publishApp.mockResolvedValue(published);
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }), {
+				artifactMode: true,
+				threadId: 'thread-1',
+			});
+			appsStore.getApp.mockResolvedValue(
+				makeApp({ activeVersionId: 'v-8', hasUnpublishedChanges: false }),
+			);
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', 'thread-1');
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'App published',
+				message: published.url,
+				type: 'success',
+			});
+			expect(getByTestId('app-publish')).toBeDisabled();
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
+		});
+
+		it('publishes without a thread outside artifact mode', async () => {
+			appsStore.publishApp.mockResolvedValue(published);
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', undefined);
+		});
+
+		it('shows the build failure with its log tail and keeps the draft flagged', async () => {
+			appsStore.publishApp.mockResolvedValue({
+				error: true,
+				stage: 'build',
+				message: 'vite build exited with code 1.',
+				log: 'src/pages/Home.vue: unexpected token',
+			});
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+			appsStore.getApp.mockClear();
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: "Couldn't publish the app",
+				message: 'vite build exited with code 1.\nsrc/pages/Home.vue: unexpected token',
+				type: 'error',
+			});
+			expect(appsStore.getApp).not.toHaveBeenCalled();
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+		});
+
+		it('reports a request failure through the error toast', async () => {
+			appsStore.publishApp.mockRejectedValue(new Error('network'));
+			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
+
+			await userEvent.click(getByTestId('app-publish'));
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't publish the app");
+		});
+	});
+
+	describe('publish state after a turn', () => {
+		const published = makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: false });
+
+		it('re-reads the app when refreshKey changes and flips the dot to the fetched state', async () => {
+			const { getByTestId, rerender, emitted } = await renderApp(published, {
+				artifactMode: true,
+				refreshKey: 0,
+			});
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(emitted('app-loaded')).toEqual([[published]]);
+			const changed = makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: true });
+			appsStore.getApp.mockResolvedValue(changed);
+
+			await rerender({ artifactMode: true, refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(appsStore.getApp).toHaveBeenCalledTimes(2);
+			expect(appsStore.fetchVersions).not.toHaveBeenCalled();
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(emitted('app-loaded')).toEqual([[published], [changed]]);
+		});
+
+		it('refreshes the version list too while the versions tab is open', async () => {
+			const { getByTestId, getByRole, rerender } = await renderApp(published, { refreshKey: 0 });
+			await userEvent.click(getByTestId('radio-button-build'));
+			await userEvent.click(getByRole('tab', { name: 'Versions' }));
+			await waitAllPromises();
+			appsStore.fetchVersions.mockClear();
+
+			await rerender({ refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(appsStore.fetchVersions).toHaveBeenCalledTimes(1);
+		});
+
+		it('toasts when the re-read fails and keeps the last state', async () => {
+			const { getByTestId, rerender } = await renderApp(published, { refreshKey: 0 });
+			appsStore.getApp.mockRejectedValue(new Error('offline'));
+
+			await rerender({ refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), 'Error loading app');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+		});
+
+		it('shows changes as soon as the live preview is ahead, without a re-read', async () => {
+			const { getByTestId, rerender } = await renderApp(published, { artifactMode: true });
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+
+			await rerender({ artifactMode: true, draftDirty: true });
+
+			expect(appsStore.getApp).toHaveBeenCalledTimes(1);
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+
+			await rerender({ artifactMode: true, draftDirty: false });
+
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish')).toBeDisabled();
+		});
 	});
 
 	it('hands the app off to the assistant from the toolbar', async () => {
@@ -238,11 +481,138 @@ describe('AppDetailsView', () => {
 		expect(queryByTestId('app-delete')).not.toBeInTheDocument();
 		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
 		expect(getByTestId('app-builder-mode')).toBeInTheDocument();
-		expect(getByTestId('app-open')).toBeInTheDocument();
+		expect(getByTestId('app-publish')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId('radio-button-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
+	});
+
+	describe('versions tab', () => {
+		const version = (overrides: Partial<AppVersion>): AppVersion => ({
+			id: 'v-1',
+			appId: 'app-1',
+			createdAt: '2026-04-02T00:00:00.000Z',
+			hasDist: true,
+			isActive: false,
+			kind: 'publish',
+			...overrides,
+		});
+		const versions = [
+			version({ id: 's-3', hasDist: false, kind: 'snapshot' }),
+			version({ id: 'v-2', isActive: true }),
+			version({ id: 'v-1' }),
+		];
+
+		async function openVersionsTab(app: App) {
+			const rendered = await renderApp(app);
+			await userEvent.click(rendered.getByTestId('radio-button-build'));
+			await userEvent.click(rendered.getByRole('tab', { name: 'Versions' }));
+			await waitAllPromises();
+			return rendered;
+		}
+
+		it('fetches the versions when opened and lists them with kind, badge, and actions', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			const { getAllByTestId, getAllByRole, getByTestId } = await openVersionsTab(
+				makeApp({ activeVersionId: 'v-2' }),
+			);
+
+			expect(appsStore.fetchVersions).toHaveBeenCalledWith('proj-1', 'app-1');
+			const rows = getAllByTestId('app-version-row');
+			expect(rows).toHaveLength(3);
+			expect(rows[0]).toHaveTextContent('Draft snapshot');
+			expect(rows[1]).toHaveTextContent('Published build');
+			expect(getByTestId('app-version-active')).toBe(
+				rows[1].querySelector('[data-test-id="app-version-active"]'),
+			);
+			expect(rows[0].querySelector('[data-test-id="app-version-activate"]')).toBeNull();
+			expect(rows[1].querySelector('[data-test-id="app-version-unpublish"]')).not.toBeNull();
+			expect(rows[2].querySelector('[data-test-id="app-version-activate"]')).not.toBeNull();
+			expect(getAllByRole('button', { name: 'Publish this version' })).toHaveLength(1);
+		});
+
+		it('shows an empty state without versions', async () => {
+			const { getByTestId } = await openVersionsTab(makeApp());
+
+			expect(getByTestId('app-versions')).toHaveTextContent('No versions yet');
+		});
+
+		it('publishes an older built version, then refreshes the app and the list', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			const updated = makeApp({ activeVersionId: 'v-1', hasUnpublishedChanges: true });
+			appsStore.setActiveVersion.mockResolvedValue(updated);
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-activate'));
+			await waitAllPromises();
+
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', 'v-1');
+			expect(appsStore.fetchVersions).toHaveBeenCalledTimes(2);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Version published',
+				type: 'success',
+			});
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+		});
+
+		it('unpublishes the active version after confirmation', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			confirm.mockResolvedValue('confirm');
+			appsStore.setActiveVersion.mockResolvedValue(
+				makeApp({ activeVersionId: null, hasUnpublishedChanges: true }),
+			);
+			const { getByTestId, queryByTestId } = await openVersionsTab(
+				makeApp({ activeVersionId: 'v-2' }),
+			);
+
+			await userEvent.click(getByTestId('app-version-unpublish'));
+			await waitAllPromises();
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('/apps/greeter/'),
+				'Unpublish app?',
+				expect.objectContaining({ confirmButtonText: 'Unpublish app' }),
+			);
+			expect(appsStore.setActiveVersion).toHaveBeenCalledWith('proj-1', 'app-1', null);
+			expect(toast.showMessage).toHaveBeenCalledWith({ title: 'App unpublished', type: 'success' });
+			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('keeps the version when the unpublish is cancelled', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			confirm.mockResolvedValue('cancel');
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-unpublish'));
+			await waitAllPromises();
+
+			expect(appsStore.setActiveVersion).not.toHaveBeenCalled();
+		});
+
+		it('reports a failed activation through the error toast', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			appsStore.setActiveVersion.mockRejectedValue(new Error('no build'));
+			const { getByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getByTestId('app-version-activate'));
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				"Couldn't publish this version",
+			);
+		});
 	});
 
 	it('shows the Theme tab, enabled, alongside Pages and Code', async () => {
@@ -395,6 +765,40 @@ describe('AppDetailsView', () => {
 		});
 	});
 
+	it('hands the thread to the theme editor and flags the draft after a save, staying on Build', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7' }),
+			{ artifactMode: true, threadId: 'thread-1' },
+		);
+		await userEvent.click(getByTestId('radio-button-build'));
+
+		await userEvent.click(getByRole('tab', { name: 'Theme' }));
+		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
+		expect(getByTestId('app-publish')).toBeDisabled();
+
+		await userEvent.click(getByTestId('app-theme-editor-stub'));
+
+		expect(getByTestId('app-publish')).toBeEnabled();
+		expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+	});
+
+	it('switches to the live preview after a theme save when the dev server is showing', async () => {
+		const { getByTestId, getByRole } = await renderApp(makeApp(), {
+			artifactMode: true,
+			threadId: 'thread-1',
+			liveUrl: '/apps-preview/tok/',
+			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
+		});
+		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByRole('tab', { name: 'Theme' }));
+
+		await userEvent.click(getByTestId('app-theme-editor-stub'));
+
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+	});
+
 	it('shows the Code tab, enabled, and renders AppCodeViewer with the active version', async () => {
 		const { getByRole, getByTestId, queryByTestId } = await renderApp(
 			makeApp({ activeVersionId: 'v-7' }),
@@ -428,5 +832,215 @@ describe('AppDetailsView', () => {
 			'src',
 			'/apps/greeter/?v=v-1',
 		);
+	});
+
+	describe('live preview', () => {
+		const liveProps = {
+			projectId: 'proj-1',
+			appId: 'app-1',
+			artifactMode: true,
+			liveUrl: '/apps-preview/tok/',
+			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
+		};
+
+		function postFromFrame(iframe: HTMLIFrameElement, data: unknown, source?: MessageEventSource) {
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data,
+					origin: 'null',
+					source: source ?? iframe.contentWindow,
+				}),
+			);
+		}
+
+		it('shows the live URL over the build, marks it Live, and keeps the frame across builds', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(
+				makeApp({ activeVersionId: 'v-7' }),
+				liveProps,
+			);
+
+			const iframe = getByTestId('instance-ai-app-preview-iframe');
+			expect(iframe).toHaveAttribute('src', '/apps-preview/tok/');
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+
+			await rerender({ ...liveProps, artifactVersionId: 'v-8' });
+
+			expect(getByTestId('instance-ai-app-preview-iframe')).toBe(iframe);
+			expect(iframe).toHaveAttribute('src', '/apps-preview/tok/');
+		});
+
+		it('reloads the live document on refresh', async () => {
+			const { getByTestId } = await renderApp(makeApp(), liveProps);
+
+			await userEvent.click(getByTestId('app-preview-refresh'));
+
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps-preview/tok/?r=1',
+			);
+		});
+
+		it('opens Preview on the live URL even before the first build', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+			});
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+
+			await rerender(liveProps);
+
+			expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps-preview/tok/',
+			);
+		});
+
+		it.each([
+			[{ status: 'starting' }, 'Starting live preview…'],
+			[
+				{ status: 'no-source' },
+				"Live preview isn't available in this chat yet. This is the last build.",
+			],
+			[
+				{ status: 'unsupported', reason: 'provider' },
+				"Live preview isn't supported on this instance. This is the last build.",
+			],
+			[
+				{ status: 'unavailable', reason: 'sandbox' },
+				"Live preview isn't available right now. This is the last build.",
+			],
+			[
+				{ status: 'unavailable', reason: 'start-failed' },
+				"Live preview couldn't start. This is the last build.",
+			],
+		])('shows the %o banner above the last build', async (liveStatus, text) => {
+			const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
+				artifactMode: true,
+				liveStatus,
+			});
+
+			expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
+			expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+				'src',
+				'/apps/greeter/?v=v-7',
+			);
+		});
+
+		it.each([
+			[{ status: 'starting' }, 'Starting live preview…'],
+			[
+				{ status: 'unsupported', reason: 'provider' },
+				"Live preview isn't supported on this instance.",
+			],
+			[{ status: 'unavailable', reason: 'sandbox' }, "Live preview isn't available right now."],
+			[{ status: 'unavailable', reason: 'start-failed' }, "Live preview couldn't start."],
+		])(
+			'opens Preview with only the %o banner while an app without a build restores',
+			async (liveStatus, text) => {
+				const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+					artifactMode: true,
+					liveStatus,
+				});
+
+				expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+				expect(getByTestId('app-preview-live-banner')).toHaveTextContent(text);
+				expect(getByTestId('app-preview-live-banner')).not.toHaveTextContent('last build');
+				expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+				expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
+			},
+		);
+
+		it('switches from the empty state to Preview once the first ensure answer arrives', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+			});
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+
+			await rerender({ artifactMode: true, liveStatus: { status: 'starting' } });
+
+			expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+			expect(getByTestId('app-preview-live-banner')).toHaveTextContent('Starting live preview…');
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+		});
+
+		it('shows the empty state for an app with no stored source and no build', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+				artifactMode: true,
+				liveStatus: { status: 'no-source' },
+			});
+
+			await userEvent.click(getByTestId('radio-button-preview'));
+
+			expect(getByTestId('app-preview-empty')).toHaveTextContent('Nothing to preview yet');
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
+		});
+
+		it('stays on Build for a starting preview outside artifact mode', async () => {
+			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
+
+			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		});
+
+		it('arms the inspector in the live frame and stages the picked element in the thread', async () => {
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+			const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), liveProps);
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+			const postMessage = vi.spyOn(iframe.contentWindow!, 'postMessage');
+			const element = { tagName: 'button', text: 'Submit', selector: '#go', route: '/clients' };
+
+			await userEvent.click(getByTestId('app-preview-inspect'));
+			iframe.dispatchEvent(new Event('load'));
+			postFromFrame(iframe, { source: 'n8nable', type: 'inspect:selected', element });
+			await waitAllPromises();
+
+			expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
+				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'inspect:disable' },
+			]);
+			expect(instanceAiStore.stageElementSelection).toHaveBeenCalledWith({
+				type: 'element',
+				appId: 'app-1',
+				...element,
+			});
+			expect(instanceAiStore.requestComposerFocus).toHaveBeenCalled();
+			expect(openAppArtifactThread).not.toHaveBeenCalled();
+		});
+
+		it('emits a diagnostic only for a valid message from its own frame', async () => {
+			const { getByTestId, emitted } = await renderApp(makeApp(), liveProps);
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+			const payload = {
+				source: 'n8n-app-preview',
+				v: 1,
+				at: '2026-09-08T10:00:00.000Z',
+				kind: 'uncaught',
+				message: 'boom',
+				file: '/src/pages/Home.vue',
+				line: 12,
+			};
+
+			postFromFrame(iframe, payload, window);
+			postFromFrame(iframe, { ...payload, source: 'someone-else' });
+			postFromFrame(iframe, { ...payload, v: 2 });
+			postFromFrame(iframe, { ...payload, kind: 'console' });
+			postFromFrame(iframe, 'not an object');
+			expect(emitted('diagnostic')).toBeUndefined();
+
+			postFromFrame(iframe, payload);
+
+			expect(emitted('diagnostic')).toEqual([
+				[
+					{
+						at: '2026-09-08T10:00:00.000Z',
+						kind: 'uncaught',
+						message: 'boom',
+						file: '/src/pages/Home.vue',
+						line: 12,
+					},
+				],
+			]);
+		});
 	});
 });

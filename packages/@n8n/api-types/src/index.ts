@@ -189,6 +189,8 @@ export {
 	type AppTheme,
 	appRouteSchema,
 	type AppRoute,
+	appPreviewStatusSchema,
+	type AppPreviewStatus,
 } from './schemas/app.schema';
 export {
 	appBindingSchema,
@@ -422,6 +424,8 @@ export {
 	InstanceAiEnsureThreadRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAppAttachmentSchema,
+	instanceAiAppPreviewDiagnosticSchema,
+	instanceAiAppPreviewDiagnosticsAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiElementAttachmentSchema,
 	instanceAiFileAttachmentSchema,
@@ -521,6 +525,8 @@ export type {
 	InstanceAiEvent,
 	InstanceAiAgentAttachment,
 	InstanceAiAppAttachment,
+	InstanceAiAppPreviewDiagnostic,
+	InstanceAiAppPreviewDiagnosticsAttachment,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,

@@ -1292,6 +1292,7 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import type { AppPublishService } from '@/modules/apps/app-publish.service';
 import type { AppsService } from '@/modules/apps/apps.service';
 import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -4159,6 +4160,7 @@ function createAdapterWithGatewayMock(
 		getWallet?: Mock;
 		appsService?: unknown;
 		urlService?: unknown;
+		appPublishService?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -4211,6 +4213,9 @@ function createAdapterWithGatewayMock(
 	if (overrides?.appsService) {
 		args[40] = overrides.appsService as ConstructorParameters<typeof InstanceAiAdapterService>[40];
 		args[41] = overrides.urlService as ConstructorParameters<typeof InstanceAiAdapterService>[41];
+		args[42] = (overrides.appPublishService ?? {}) as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[42];
 	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
@@ -4926,10 +4931,14 @@ describe('createContext — app service wiring', () => {
 		});
 	}
 
-	function createAdapterWithApps(appsService: Partial<AppsService>) {
+	function createAdapterWithApps(
+		appsService: Partial<AppsService>,
+		appPublishService: Partial<AppPublishService> = {},
+	) {
 		return createAdapterWithGatewayMock(vi.fn(), {
 			appsService,
 			urlService: { getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678') },
+			appPublishService,
 		});
 	}
 
@@ -5041,6 +5050,53 @@ describe('createContext — app service wiring', () => {
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
 			projectId: 'proj-1',
 		});
+	});
+
+	it('publishes after checking app:update, handing over the thread sandbox as the draft', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const published = { versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' };
+		const publish = vi.fn().mockResolvedValue(published);
+		const workspace = { sandbox: {} };
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser, {
+			threadId: 'thread-1',
+			getThreadWorkspace: () => workspace as never,
+		}).appService;
+
+		await expect(appService?.publish('app-1')).resolves.toEqual(published);
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, {
+			draft: { threadId: 'thread-1', workspace },
+		});
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('publishes without a draft when the thread has no live sandbox', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const publish = vi.fn().mockResolvedValue({ versionId: 'v-2', url: 'u' });
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser, {
+			threadId: 'thread-1',
+			getThreadWorkspace: () => undefined,
+		}).appService;
+
+		await appService?.publish('app-1');
+
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, { draft: undefined });
+	});
+
+	it('does not publish an app in a project the user cannot update', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const publish = vi.fn();
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.publish('app-1')).rejects.toThrow('required permissions');
+		expect(publish).not.toHaveBeenCalled();
 	});
 
 	it('does not read the source tarball of an app in a project the user cannot access', async () => {

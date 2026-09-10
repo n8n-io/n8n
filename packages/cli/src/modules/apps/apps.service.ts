@@ -61,6 +61,9 @@ function inputJsonSchema(triggerNode: INode, triggerType: string): JSONSchema7 {
 	return { type, properties, ...(required ? { required } : {}), additionalProperties };
 }
 
+/** What the REST API returns for an app: the entity plus its draft-versus-published state. */
+export type AppResponse = App & { hasUnpublishedChanges: boolean };
+
 @Service()
 export class AppsService {
 	constructor(
@@ -91,6 +94,11 @@ export class AppsService {
 		return app;
 	}
 
+	async toResponse(app: App): Promise<AppResponse> {
+		const hasUnpublishedChanges = await this.appVersionService.hasUnpublishedChanges(app);
+		return { ...app, hasUnpublishedChanges };
+	}
+
 	async updateApp(appId: string, dto: UpdateAppDto) {
 		const app = await this.getApp(appId);
 		return await this.appRepository.updateApp(app, dto);
@@ -105,7 +113,21 @@ export class AppsService {
 	async createVersion(appId: string, source: Buffer, dist: Buffer) {
 		const app = await this.getApp(appId);
 		const version = await this.appVersionService.create(appId, app.projectId, source, dist);
-		return this.appVersionService.toResponse(version);
+		// `create` made this version the active one.
+		return this.appVersionService.toResponse(version, version.id);
+	}
+
+	async createSourceSnapshot(appId: string, source: Buffer) {
+		const app = await this.getApp(appId);
+		const version = await this.appVersionService.createSourceSnapshot(appId, source);
+		return this.appVersionService.toResponse(version, app.activeVersionId);
+	}
+
+	/** Serves `versionId` (a built version of this app), or unpublishes the app when null. */
+	async setActiveVersion(appId: string, versionId: string | null) {
+		const app = await this.getApp(appId);
+		await this.appVersionService.setActiveVersion(app, versionId);
+		return await this.getApp(appId);
 	}
 
 	async getSourceTarball(appId: string) {
@@ -114,9 +136,11 @@ export class AppsService {
 	}
 
 	async listVersions(appId: string) {
-		await this.getApp(appId);
+		const app = await this.getApp(appId);
 		const versions = await this.appVersionService.list(appId);
-		return versions.map((version) => this.appVersionService.toResponse(version));
+		return versions.map((version) =>
+			this.appVersionService.toResponse(version, app.activeVersionId),
+		);
 	}
 
 	/**

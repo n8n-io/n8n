@@ -543,12 +543,20 @@ export class Server extends AbstractServer {
 		Container.get(WorkflowIndexService).init();
 	}
 
-	protected setupPushServer(): void {
+	protected async setupPushServer(): Promise<void> {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
-		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (moduleRegistry.isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);
+			if (moduleRegistry.isActive('apps')) {
+				// Already loaded by the instance-ai module init when the apps module is active.
+				const { AppPreviewProxyController } = await import(
+					'./modules/instance-ai/app-preview/app-preview-proxy.controller.js'
+				);
+				Container.get(AppPreviewProxyController).setupUpgrade(server);
+			}
 		}
 	}
 }

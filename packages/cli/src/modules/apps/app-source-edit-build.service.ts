@@ -70,10 +70,12 @@ export class AppSourceEditBuildService {
 	/** Thin, unscoped adapter: the controller already checked the caller's project scope. */
 	private createAppServiceAdapter(): InstanceAiAppService {
 		const { appsService, urlService } = this;
+		const unsupported = (action: string) => () => {
+			throw new UnexpectedError(`${action} is not supported by the file-save rebuild pipeline`);
+		};
 		return {
-			create() {
-				throw new UnexpectedError('create is not supported by the file-save rebuild pipeline');
-			},
+			create: unsupported('create'),
+			publish: unsupported('publish'),
 			async get(appId) {
 				const app = await appsService.getApp(appId);
 				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };

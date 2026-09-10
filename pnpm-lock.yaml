@@ -4324,6 +4324,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/sandbox-client':
+        specifier: 0.1.0
+        version: 0.1.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@n8n/scheduler':
         specifier: workspace:*
         version: link:../@n8n/scheduler
@@ -30402,6 +30405,13 @@ snapshots:
       is-node-process: 1.2.0
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
+
+  '@n8n/sandbox-client@0.1.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+    dependencies:
+      axios: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+    transitivePeerDependencies:
+      - debug
+      - supports-color
 
   '@n8n/sandbox-client@0.1.0(supports-color@8.1.1)':
     dependencies:

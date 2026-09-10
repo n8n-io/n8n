@@ -9,6 +9,7 @@ import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-to
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { AppVersion } from '../app-version.entity';
 import type { AppVersionService } from '../app-version.service';
 import type { App } from '../app.entity';
 import type { AppRepository } from '../app.repository';
@@ -77,12 +78,14 @@ describe('AppsService', () => {
 		it('passes the app projectId through to appVersionService.create', async () => {
 			const app = mock<App>({ id: 'app-1', projectId: 'project-1' });
 			appRepository.findOneBy.mockResolvedValue(app);
+			appVersionService.create.mockResolvedValue(mock<AppVersion>({ id: 'v-1' }));
 			const source = Buffer.from('source');
 			const dist = Buffer.from('dist');
 
 			await service.createVersion('app-1', source, dist);
 
 			expect(appVersionService.create).toHaveBeenCalledWith('app-1', 'project-1', source, dist);
+			expect(appVersionService.toResponse).toHaveBeenCalledWith(expect.anything(), 'v-1');
 		});
 	});
 });

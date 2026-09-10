@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { DescribedBinding } from '@n8n/api-types';
+import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
+	type ActionDropdownItem,
+	N8nActionDropdown,
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
@@ -14,12 +18,15 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppCodeViewer from '@/features/apps/components/AppCodeViewer.vue';
@@ -31,7 +38,7 @@ import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
-import type { App } from '@/features/apps/apps.types';
+import type { App, AppVersion } from '@/features/apps/apps.types';
 import { buildPageRows, getChildCounts, getFullRoutePath } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
@@ -39,7 +46,8 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'connections' | 'theme' | 'code';
+type BuildTab = 'pages' | 'connections' | 'theme' | 'versions' | 'code';
+type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
@@ -53,14 +61,40 @@ const props = withDefaults(
 		artifactVersionId?: string;
 		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
 		artifactPagePath?: string;
+		/** Thread whose sandbox holds the draft; a publish snapshots its current edits first. */
+		threadId?: string;
+		/** Dev-server URL of the thread's sandbox; shown instead of the build while present. */
+		liveUrl?: string;
+		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
+		liveStatus?: AppPreviewStatus;
+		/** Changes when an assistant turn has landed on the server; the app is re-read then. */
+		refreshKey?: number;
+		/** The live preview shows edits the stored publish state does not know about yet. */
+		draftDirty?: boolean;
 	}>(),
-	{ artifactMode: false, artifactVersionId: undefined, artifactPagePath: undefined },
+	{
+		artifactMode: false,
+		artifactVersionId: undefined,
+		artifactPagePath: undefined,
+		threadId: undefined,
+		liveUrl: undefined,
+		liveStatus: undefined,
+		refreshKey: 0,
+		draftDirty: false,
+	},
 );
 
-const emit = defineEmits<{ 'assistant-handoff': [prompt: string] }>();
+const emit = defineEmits<{
+	'assistant-handoff': [prompt: string];
+	diagnostic: [InstanceAiAppPreviewDiagnostic];
+	/** The app as the server last returned it; carries its namespace and publish state. */
+	'app-loaded': [App];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
+const clipboard = useClipboard();
+const message = useMessage();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp, confirmAndDeleteBinding } = useAppDeletion();
@@ -72,7 +106,14 @@ const { openAppArtifactThread } = useInstanceAiHandoff();
 const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
+const setApp = (next: App) => {
+	app.value = next;
+	emit('app-loaded', next);
+};
 const loading = ref(false);
+const publishing = ref(false);
+/** Id of the version whose activate/unpublish request is in flight. */
+const switchingVersionId = ref<string | null>(null);
 const mode = ref<BuilderMode>('build');
 const device = ref<PreviewDevice>('desktop');
 const buildTab = ref<BuildTab>('pages');
@@ -94,6 +135,59 @@ const versionId = computed(
 	() => props.artifactVersionId ?? app.value?.activeVersionId ?? undefined,
 );
 
+const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value));
+
+// Nothing to publish once the newest source is the served one.
+const publishUpToDate = computed(
+	() =>
+		Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges && !props.draftDirty,
+);
+const publishLabelKey = computed(() => {
+	if (publishing.value) return 'apps.builder.publish.inProgress' as const;
+	return publishUpToDate.value ? ('generic.published' as const) : ('apps.builder.publish' as const);
+});
+
+const publishMenuActions = computed<Array<ActionDropdownItem<PublishMenuAction>>>(() => [
+	{ id: 'open', label: i18n.baseText('apps.builder.openApp') },
+	{ id: 'copy-url', label: i18n.baseText('apps.builder.copyUrl') },
+	{ id: 'unpublish', label: i18n.baseText('apps.builder.versions.unpublish'), divided: true },
+]);
+
+// Without a build the preview pane shows the banner alone while n8n restores the
+// app and starts its dev server; only `no-source` (nothing stored for the app at
+// all) falls back to the "ask the assistant" empty state.
+const livePending = computed(
+	() =>
+		props.artifactMode &&
+		!hasPreviewSource.value &&
+		props.liveStatus !== undefined &&
+		props.liveStatus.status !== 'no-source',
+);
+
+const showPreviewPane = computed(() => hasPreviewSource.value || livePending.value);
+
+const LIVE_BANNER_KEYS = {
+	starting: 'apps.builder.live.starting',
+	'no-source': 'apps.builder.live.noSource',
+	unsupported: 'apps.builder.live.unsupported',
+	unavailable: 'apps.builder.live.unavailable',
+} as const;
+
+// "This is the last build." only when the frame below shows one.
+const liveBanner = computed(() => {
+	const live = props.liveStatus;
+	if (!live || live.status === 'ready' || !(versionId.value || livePending.value)) return undefined;
+	const theme = live.status === 'starting' || live.status === 'no-source' ? 'info' : 'warning';
+	const key =
+		live.status === 'unavailable' && live.reason === 'start-failed'
+			? 'apps.builder.live.startFailed'
+			: LIVE_BANNER_KEYS[live.status];
+	const text = versionId.value
+		? `${i18n.baseText(key)} ${i18n.baseText('apps.builder.live.lastBuild')}`
+		: i18n.baseText(key);
+	return { text, theme } as const;
+});
+
 const modeOptions = computed(() => [
 	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
 	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
@@ -103,6 +197,7 @@ const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
 	{ value: 'connections' as const, label: i18n.baseText('apps.connections') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
+	{ value: 'versions' as const, label: i18n.baseText('apps.builder.versions') },
 	{ value: 'code' as const, label: i18n.baseText('apps.builder.code') },
 ]);
 
@@ -137,8 +232,9 @@ const initialize = async () => {
 			appsStore.fetchPages(props.projectId, props.appId),
 			appsStore.fetchBindings(props.projectId, props.appId),
 		]);
-		app.value = result;
-		mode.value = versionId.value ? 'preview' : 'build';
+		setApp(result);
+		mode.value = showPreviewPane.value ? 'preview' : 'build';
+		if (buildTab.value === 'versions') await refreshVersions();
 		if (!props.artifactMode) {
 			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
 		}
@@ -233,14 +329,100 @@ const onElementSelected = async (element: InspectedElement) => {
 	await selectElement(app.value, element, props.artifactMode);
 };
 
-const onThemeApplied = (updated: App) => {
-	app.value = updated;
-	mode.value = 'preview';
+// Only the live preview shows the draft; the published build stays as it was until a publish.
+const onThemeSaved = (updated: App) => {
+	setApp(updated);
+	if (props.liveUrl) mode.value = 'preview';
+};
+
+const refreshVersions = async () => {
+	try {
+		await appsStore.fetchVersions(props.projectId, props.appId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.versions.error'));
+	}
+};
+
+const setActiveVersion = async (versionId: string | null, errorTitle: string) => {
+	switchingVersionId.value = versionId ?? app.value?.activeVersionId ?? null;
+	try {
+		setApp(await appsStore.setActiveVersion(props.projectId, props.appId, versionId));
+		await refreshVersions();
+		toast.showMessage({
+			title: i18n.baseText(
+				versionId
+					? 'apps.builder.versions.activate.success'
+					: 'apps.builder.versions.unpublish.success',
+			),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, errorTitle);
+	} finally {
+		switchingVersionId.value = null;
+	}
+};
+
+const onActivateVersion = async (version: AppVersion) => {
+	await setActiveVersion(version.id, i18n.baseText('apps.builder.versions.activate.error'));
+};
+
+const onUnpublish = async () => {
+	const response = await message.confirm(
+		i18n.baseText('apps.builder.versions.unpublish.confirm.message', {
+			interpolate: { url: appUrl.value },
+		}),
+		i18n.baseText('apps.builder.versions.unpublish.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('apps.builder.versions.unpublish.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (response !== MODAL_CONFIRM) return;
+	await setActiveVersion(null, i18n.baseText('apps.builder.versions.unpublish.error'));
+};
+
+const onPublish = async () => {
+	if (!app.value) return;
+	publishing.value = true;
+	try {
+		const result = await appsStore.publishApp(props.projectId, app.value.id, props.threadId);
+		if ('error' in result) {
+			toast.showMessage({
+				title: i18n.baseText('apps.builder.publish.error'),
+				message: result.log ? `${result.message}\n${result.log.slice(-1024)}` : result.message,
+				type: 'error',
+			});
+			return;
+		}
+		setApp(await appsStore.getApp(props.projectId, app.value.id));
+		if (buildTab.value === 'versions') await refreshVersions();
+		toast.showMessage({
+			title: i18n.baseText('apps.builder.publish.success'),
+			message: result.url,
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.publish.error'));
+	} finally {
+		publishing.value = false;
+	}
+};
+
+const onPublishMenuSelect = async (action: PublishMenuAction) => {
+	if (action === 'open') {
+		window.open(appUrl.value, '_blank', 'noopener');
+	} else if (action === 'copy-url') {
+		await clipboard.copy(appUrl.value);
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	} else {
+		await onUnpublish();
+	}
 };
 
 // Unlike a theme save, stay on the Code tab: the user is likely still editing.
 const onCodeSaved = (updated: App) => {
-	app.value = updated;
+	setApp(updated);
 };
 
 const onOpenInAssistant = async () => {
@@ -257,10 +439,28 @@ onMounted(initialize);
 // onMounted only fires once, so re-run on an appId change.
 watch(() => props.appId, initialize);
 
-// The first build is what the user was waiting for while on Build.
-watch(versionId, (next, previous) => {
+// The first build (or the live preview coming up) is what the user was waiting for while on Build.
+watch(showPreviewPane, (next, previous) => {
 	if (next && !previous) mode.value = 'preview';
 });
+
+// Fetched on demand: the list changes with every assistant turn and publish.
+watch(buildTab, async (tab) => {
+	if (tab === 'versions') await refreshVersions();
+});
+
+// The turn's snapshot decides whether the draft has unpublished changes.
+watch(
+	() => props.refreshKey,
+	async () => {
+		try {
+			setApp(await appsStore.getApp(props.projectId, props.appId));
+			if (buildTab.value === 'versions') await refreshVersions();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('apps.getDetails.error'));
+		}
+	},
+);
 </script>
 
 <template>
@@ -288,18 +488,52 @@ watch(versionId, (next, previous) => {
 				/>
 				<div :class="$style.toolbarEnd">
 					<template v-if="app">
-						<CopyInput :class="$style.urlCopy" :value="appUrl" collapse data-test-id="app-url" />
-						<N8nButton
-							:href="appUrl"
-							target="_blank"
-							variant="subtle"
-							size="small"
-							icon="external-link"
-							:disabled="!versionId"
-							data-test-id="app-open"
-						>
-							{{ i18n.baseText('apps.builder.openApp') }}
-						</N8nButton>
+						<div :class="$style.buttonGroup">
+							<N8nTooltip :disabled="!publishUpToDate">
+								<template #content>{{ i18n.baseText('apps.builder.publish.upToDate') }}</template>
+								<N8nButton
+									:class="{ [$style.groupButtonLeft]: app.activeVersionId }"
+									variant="ghost"
+									size="small"
+									:loading="publishing"
+									:disabled="publishUpToDate"
+									data-test-id="app-publish"
+									@click="onPublish"
+								>
+									<span :class="$style.publishLabel">
+										<span
+											v-if="app.activeVersionId"
+											:class="[
+												$style.indicatorDot,
+												publishUpToDate ? $style.indicatorPublished : $style.indicatorChanges,
+											]"
+											data-test-id="app-publish-indicator"
+										/>
+										<span :class="{ [$style.indicatorPublishedText]: publishUpToDate }">
+											{{ i18n.baseText(publishLabelKey) }}
+										</span>
+									</span>
+								</N8nButton>
+							</N8nTooltip>
+							<N8nActionDropdown
+								v-if="app.activeVersionId"
+								:items="publishMenuActions"
+								placement="bottom-end"
+								data-test-id="app-publish-menu"
+								@select="onPublishMenuSelect"
+							>
+								<template #activator>
+									<N8nIconButton
+										:class="$style.groupButtonRight"
+										variant="ghost"
+										size="small"
+										icon="chevron-down"
+										:aria-label="i18n.baseText('node.moreActions')"
+										data-test-id="app-publish-menu-button"
+									/>
+								</template>
+							</N8nActionDropdown>
+						</div>
 						<N8nButton
 							v-if="!props.artifactMode && instanceAiAvailable"
 							variant="subtle"
@@ -363,7 +597,7 @@ watch(versionId, (next, previous) => {
 								icon="mouse-pointer"
 								:variant="inspecting ? 'subtle' : 'ghost'"
 								size="small"
-								:disabled="!versionId"
+								:disabled="!hasPreviewSource"
 								:aria-label="i18n.baseText('apps.builder.inspect')"
 								data-test-id="app-preview-inspect"
 								@click="onToggleInspect"
@@ -374,7 +608,7 @@ watch(versionId, (next, previous) => {
 								icon="refresh-cw"
 								variant="ghost"
 								size="small"
-								:disabled="!versionId"
+								:disabled="!hasPreviewSource"
 								:aria-label="i18n.baseText('apps.builder.refresh')"
 								data-test-id="app-preview-refresh"
 								@click="previewFrame?.refresh()"
@@ -382,16 +616,31 @@ watch(versionId, (next, previous) => {
 						</N8nTooltip>
 					</div>
 				</div>
+				<N8nCallout
+					v-if="liveBanner"
+					:theme="liveBanner.theme"
+					slim
+					:round-corners="false"
+					data-test-id="app-preview-live-banner"
+				>
+					{{ liveBanner.text }}
+				</N8nCallout>
 				<AppPreviewFrame
-					v-if="app && versionId"
+					v-if="app && hasPreviewSource"
 					ref="previewFrame"
 					:namespace="app.namespace"
 					:version-id="versionId"
 					:path="props.artifactPagePath"
+					:live-url="props.liveUrl"
 					:width="PREVIEW_WIDTHS[device]"
+					@diagnostic="emit('diagnostic', $event)"
 					@element-selected="onElementSelected"
 				/>
-				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">
+				<div
+					v-else-if="!loading && !livePending"
+					:class="$style.emptyState"
+					data-test-id="app-preview-empty"
+				>
 					<N8nText tag="h2" size="medium" bold>{{
 						i18n.baseText('apps.builder.empty.title')
 					}}</N8nText>
@@ -516,7 +765,68 @@ watch(versionId, (next, previous) => {
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
-					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
+					<AppThemeEditor
+						:project-id="projectId"
+						:app="app"
+						:thread-id="props.threadId"
+						@saved="onThemeSaved"
+					/>
+				</div>
+
+				<div
+					v-else-if="buildTab === 'versions'"
+					:class="$style.container"
+					data-test-id="app-versions"
+				>
+					<N8nText v-if="appsStore.versions.length === 0" color="text-light">
+						{{ i18n.baseText('apps.builder.versions.empty') }}
+					</N8nText>
+					<div
+						v-for="version in appsStore.versions"
+						:key="version.id"
+						:class="$style.versionRow"
+						data-test-id="app-version-row"
+					>
+						<div :class="$style.versionInfo">
+							<N8nText size="small" bold>
+								{{
+									i18n.baseText(
+										version.kind === 'publish'
+											? 'apps.builder.versions.kind.publish'
+											: 'apps.builder.versions.kind.snapshot',
+									)
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								<TimeAgo :date="version.createdAt" capitalize />
+							</N8nText>
+							<N8nBadge v-if="version.isActive" theme="success" data-test-id="app-version-active">
+								{{ i18n.baseText('apps.builder.versions.active') }}
+							</N8nBadge>
+						</div>
+						<N8nButton
+							v-if="version.isActive"
+							variant="subtle"
+							size="small"
+							:loading="switchingVersionId === version.id"
+							:disabled="switchingVersionId !== null"
+							data-test-id="app-version-unpublish"
+							@click="onUnpublish"
+						>
+							{{ i18n.baseText('apps.builder.versions.unpublish') }}
+						</N8nButton>
+						<N8nButton
+							v-else-if="version.hasDist"
+							variant="subtle"
+							size="small"
+							:loading="switchingVersionId === version.id"
+							:disabled="switchingVersionId !== null"
+							data-test-id="app-version-activate"
+							@click="onActivateVersion(version)"
+						>
+							{{ i18n.baseText('apps.builder.versions.activate') }}
+						</N8nButton>
+					</div>
 				</div>
 
 				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
@@ -567,9 +877,57 @@ watch(versionId, (next, previous) => {
 	justify-content: flex-end;
 }
 
-.urlCopy {
-	max-width: 260px;
-	min-width: 0;
+.buttonGroup {
+	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
+}
+
+.groupButtonLeft,
+.groupButtonLeft:disabled,
+.groupButtonLeft:hover:disabled {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	border-right-color: transparent;
+}
+
+.groupButtonLeft:hover {
+	border-right-color: inherit;
+}
+
+.groupButtonRight {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-left: var(--border);
+}
+
+.buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
+	border-left-color: transparent;
+}
+
+.publishLabel {
+	display: flex;
+	align-items: center;
+}
+
+.indicatorDot {
+	height: var(--spacing--2xs);
+	width: var(--spacing--2xs);
+	border-radius: 50%;
+	display: inline-block;
+	margin-right: var(--spacing--2xs);
+}
+
+.indicatorPublished {
+	background-color: var(--color--mint-600);
+}
+
+.indicatorChanges {
+	background-color: var(--color--yellow-500);
+}
+
+.indicatorPublishedText {
+	color: var(--color--text--tint-1);
 }
 
 .preview {
@@ -665,5 +1023,23 @@ watch(versionId, (next, previous) => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.versionRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+}
+
+.versionInfo {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 </style>

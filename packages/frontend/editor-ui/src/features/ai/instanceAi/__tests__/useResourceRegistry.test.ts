@@ -692,7 +692,7 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.get('greeter')?.id).toBe('app-1');
 		});
 
-		test('an apps build result adds versionId and url to the same entry and keeps namespace', async () => {
+		test('an apps publish result adds versionId and url to the same entry and keeps namespace', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -703,7 +703,7 @@ describe('useResourceRegistry', () => {
 							makeToolCall({
 								toolCallId: 'tc-2',
 								toolName: 'apps',
-								args: { action: 'build', appId: 'app-1' },
+								args: { action: 'publish', appId: 'app-1' },
 								result: { ...buildResult, name: undefined, namespace: undefined },
 							}),
 						],
@@ -799,7 +799,7 @@ describe('useResourceRegistry', () => {
 							makeToolCall({
 								toolCallId: 'tc-1',
 								toolName: 'apps',
-								args: { action: 'build', appId: 'app-1' },
+								args: { action: 'publish', appId: 'app-1' },
 								result: { error: true, stage: 'build', message: 'vite failed', log: '' },
 							}),
 							makeToolCall({

@@ -26,6 +26,7 @@ import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAppAttachment,
+	InstanceAiAppPreviewDiagnosticsAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
@@ -114,6 +115,7 @@ import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAg
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAppPreviewDiagnostics } from './composables/useAppPreviewDiagnostics';
 
 const props = defineProps<{
 	threadId: string;
@@ -160,6 +162,8 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 });
 
 const pendingAppAttachment = ref<InstanceAiAppAttachment | null>(null);
+// Errors the live app preview reported; they ride along with the next message.
+const appPreviewDiagnostics = useAppPreviewDiagnostics();
 // A pending (new) app takes its id from the thread's bound target once the
 // agent's `apps.create` result has been recorded there.
 const currentAppAttachment = computed<InstanceAiAppAttachment | null>(() => {
@@ -405,6 +409,7 @@ provide('openAgentPreview', preview.openAgentPreview);
 provide('openAppPreview', preview.openAppPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
+provide('appPreviewDiagnostics', appPreviewDiagnostics);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -838,6 +843,22 @@ const composerContextChip = computed(() => {
 		};
 	}
 
+	const diagnosticsCount = appPreviewDiagnostics.count.value;
+	if (diagnosticsCount > 0) {
+		return {
+			type: 'app-preview-diagnostics' as const,
+			count: diagnosticsCount,
+			key: 'app-preview-diagnostics',
+			label: i18n.baseText('instanceAi.appPreview.diagnostics.chip', {
+				interpolate: { count: diagnosticsCount },
+				adjustToNumber: diagnosticsCount,
+			}),
+			icon: 'triangle-alert',
+			testId: 'instance-ai-app-preview-diagnostics-chip',
+			isPending: true,
+		};
+	}
+
 	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
 	for (const message of [...thread.messages].reverse()) {
 		if (message.role !== 'user' || message.context?.source !== 'agent-preview') continue;
@@ -1017,7 +1038,8 @@ function handleSubmit(
 	const agentAttachment = currentAgentAttachment.value;
 	const queuedAppAttachment = pendingAppAttachment.value;
 	const appAttachment = currentAppAttachment.value;
-	const resourceAttachments = [agentAttachment, appAttachment].filter(
+	const diagnosticsAttachment = takeAppPreviewDiagnosticsAttachment();
+	const resourceAttachments = [agentAttachment, appAttachment, diagnosticsAttachment].filter(
 		(attachment) => attachment !== null,
 	);
 	const submittedAttachments =
@@ -1029,6 +1051,7 @@ function handleSubmit(
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) {
+				diagnosticsAttachment?.items.forEach(appPreviewDiagnostics.add);
 				if (restoreDraft?.()) return;
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
@@ -1207,8 +1230,23 @@ function dismissPendingComposerContext(key: string): boolean {
 	return true;
 }
 
+// The previewed app is the one that reported; the bound target covers a closed preview tab.
+function takeAppPreviewDiagnosticsAttachment(): InstanceAiAppPreviewDiagnosticsAttachment | null {
+	if (appPreviewDiagnostics.count.value === 0) return null;
+	const appId =
+		preview.activeAppId.value ??
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id))?.appId;
+	if (!appId) return null;
+	return { type: 'app-preview-diagnostics', appId, items: appPreviewDiagnostics.takeAll() };
+}
+
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
+
+	if (composerContextChip.value.type === 'app-preview-diagnostics') {
+		appPreviewDiagnostics.clear();
+		return;
+	}
 
 	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);

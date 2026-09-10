@@ -26,7 +26,7 @@ const BUILDING_SIGNALS: Partial<
  * Reuses the per-artifact editing-lock signals (`isAgentEditingWorkflow` /
  * `isAgentEditingAgent`), so the indicator covers the same window as the
  * editing lock: from sub-agent spawn (or first mutating tool call) until the
- * run settles. Apps use the in-flight `apps build` call (`isAgentBuildingApp`).
+ * run settles. Apps use the in-flight `apps publish` call (`isAgentBuildingApp`).
  * Data tables have no lock signal and are not tracked.
  *
  * Pass `runtime` from the component that *provides* the thread — it can't
