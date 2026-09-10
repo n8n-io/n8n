@@ -219,12 +219,13 @@ workflows and tables that may be public. `principal` is `null`.
   mode `integrated` and the custom data `appId`, `appNamespace` and
   `appBindingKey`.
 - Only the published version runs. Draft changes take effect on publish.
-- Rate limit: 60 calls per minute per IP by default (instance setting).
+- Rate limit: 60 calls per minute per IP for each runtime route by default
+  (instance setting).
 - Concurrency: at most 10 calls per main process hold a run at the same time by
   default (instance setting). A call holds its run until it ends or until the
   call answers 202.
 - Body limit: 1 MiB, JSON object only (arrays are rejected).
 - Table calls run as the app's project too, with the permissions of the
-  binding (`read`: list; `write`: insert, update, delete). They share the IP
-  rate limit with workflow calls and do not count against the run
+  binding (`read`: list; `write`: insert, update, delete). Each table route
+  has its own IP rate limit and does not count against the run
   concurrency. `list` returns at most 250 rows; `insert` takes at most 100.

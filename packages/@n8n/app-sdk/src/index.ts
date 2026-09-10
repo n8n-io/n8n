@@ -45,7 +45,7 @@ export interface TableFilter<K extends TableKey = TableKey> {
 
 export interface TableListOptions<K extends TableKey> {
 	filter?: TableFilter<K>;
-	/** Substring match over the string columns. */
+	/** Case-insensitive substring match over every column as text. */
 	search?: string;
 	sortBy?: `${ColumnName<K>}:${'asc' | 'desc'}`;
 	/** Default 10, at most 250. */
