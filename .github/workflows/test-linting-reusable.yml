@@ -27,10 +27,10 @@ jobs:
       matrix:
         include:
           - name: Backend
-            command: pnpm turbo run lint --concurrency=2 --cache=local:r,remote:r --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend'
+            command: pnpm turbo run lint --concurrency=2 --cache=local:r,remote:r --filter=!./packages/frontend/** --filter=!./packages/modules/*/frontend --filter=!./packages/extensions/**
             run-global-checks: true
           - name: Frontend
-            command: pnpm turbo run lint lint:styles --concurrency=2 --cache=local:r,remote:r --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend'
+            command: pnpm turbo run lint lint:styles --concurrency=2 --cache=local:r,remote:r --filter=./packages/frontend/** --filter=./packages/modules/*/frontend --filter=./packages/extensions/**
             run-global-checks: false
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
