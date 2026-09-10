@@ -40,6 +40,17 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		}, PUBLICATION_STATUS_POLL_INTERVAL_MS);
 	}
 
+	/**
+	 * Saved check for the document this composable is scoped to. The global
+	 * `workflowsStore.isNewWorkflow` describes the currently active workflow, which
+	 * can still be uninitialized while this document already points at a saved
+	 * workflow — the fetch would then be skipped and the status stay stale.
+	 */
+	function isDocumentWorkflowSaved() {
+		const workflowId = useWorkflowDocumentStore(toValue(documentId)).workflowId;
+		return Boolean(workflowId && workflowsStore.isWorkflowSaved[workflowId]);
+	}
+
 	async function refetch() {
 		if (disposed || !settingsStore.isWorkflowPublicationServiceEnabled) return;
 
@@ -47,7 +58,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		// workflow switch is immediately reflected without remounting.
 		const workflowDocumentStore = useWorkflowDocumentStore(toValue(documentId));
 		const workflowId = workflowDocumentStore.workflowId;
-		if (!workflowId) return;
+		// An unsaved workflow has no publication status on the backend yet. The
+		// watcher below re-runs the fetch as soon as the document becomes saved.
+		if (!isDocumentWorkflowSaved()) return;
 
 		// Cancel any pending poll before awaiting so an overlapping call can't re-arm a stale timer.
 		clearTimeout(timer);
@@ -79,20 +92,19 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		}
 	}
 
-	// Re-sync whenever the document switches (component is not keyed per workflow).
-	watch(
-		() => toValue(documentId),
-		() => {
-			void refetch();
-		},
-	);
+	// Re-sync whenever the document switches (component is not keyed per workflow),
+	// and when its workflow becomes saved — the save is the first moment a new
+	// workflow has a publication status to read.
+	watch([() => toValue(documentId), isDocumentWorkflowSaved], () => {
+		void refetch();
+	});
 
 	// Back every "publishing" state with an authoritative poll so a state clobbered
 	// before its confirming push (multi-main race) self-heals within one interval.
 	watch(
 		() => useWorkflowDocumentStore(toValue(documentId)).publicationStatus,
 		(status) => {
-			if (status === 'publishing') armPoll();
+			if (status === 'publishing' && isDocumentWorkflowSaved()) armPoll();
 		},
 	);
 

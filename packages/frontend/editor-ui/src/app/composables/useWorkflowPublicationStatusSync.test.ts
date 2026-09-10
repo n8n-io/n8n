@@ -9,6 +9,7 @@ import {
 	PUBLICATION_STATUS_POLL_INTERVAL_MS,
 } from './useWorkflowPublicationStatusSync';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
@@ -16,10 +17,18 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 
 const TEST_WORKFLOW_ID = 'wf-pub-sync';
 const TEST_DOCUMENT_ID = createWorkflowDocumentId(TEST_WORKFLOW_ID);
+
+/**
+ * A workflow counts as saved once it is in the workflows list cache — the same
+ * signal the composable reads. Anything not seeded here is a new workflow.
+ */
+function markWorkflowSaved(workflowId: string) {
+	useWorkflowsListStore().addWorkflow({ id: workflowId, name: workflowId } as IWorkflowDb);
+}
 
 vi.mock('@/app/composables/useDocumentVisibility', () => ({
 	useDocumentVisibility: () => ({
@@ -73,6 +82,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 		settingsStore = mockedStore(useSettingsStore);
 		workflowDocumentStore = useWorkflowDocumentStore(TEST_DOCUMENT_ID);
 
+		markWorkflowSaved(TEST_WORKFLOW_ID);
 		settingsStore.isWorkflowPublicationServiceEnabled = true;
 
 		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue(makeStatus('published'));
@@ -102,6 +112,44 @@ describe('useWorkflowPublicationStatusSync', () => {
 		expect(workflowsStore.fetchPublicationStatus).not.toHaveBeenCalled();
 	});
 
+	it('should not fetch or arm a poll for a new (unsaved) workflow', async () => {
+		const NEW_WORKFLOW_ID = 'wf-unsaved';
+		const documentId = createWorkflowDocumentId(NEW_WORKFLOW_ID);
+		const store = useWorkflowDocumentStore(documentId);
+
+		await mountComposable(documentId);
+
+		expect(workflowsStore.fetchPublicationStatus).not.toHaveBeenCalled();
+
+		// A 'publishing' state on an unsaved document must not arm a poll either.
+		store.setPublicationStatus({ status: 'publishing' });
+		await nextTick();
+		await vi.advanceTimersByTimeAsync(PUBLICATION_STATUS_POLL_INTERVAL_MS * 2);
+
+		expect(workflowsStore.fetchPublicationStatus).not.toHaveBeenCalled();
+	});
+
+	it('should fetch when a new workflow becomes saved', async () => {
+		const NEW_WORKFLOW_ID = 'wf-new-then-saved';
+		const documentId = createWorkflowDocumentId(NEW_WORKFLOW_ID);
+		const store = useWorkflowDocumentStore(documentId);
+
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue(makeStatus('published'));
+
+		await mountComposable(documentId);
+
+		expect(workflowsStore.fetchPublicationStatus).not.toHaveBeenCalled();
+
+		// The save adds the workflow to the list cache — the saved-state watcher
+		// then runs the fetch the mount guard skipped.
+		markWorkflowSaved(NEW_WORKFLOW_ID);
+		await nextTick();
+		await nextTick();
+
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledWith(NEW_WORKFLOW_ID);
+		expect(store.publicationStatus).toBe('published');
+	});
+
 	it('should map all API statuses to lifecycle values', async () => {
 		const cases: Array<[WorkflowPublicationStatus['status'], string]> = [
 			['in_progress', 'publishing'],
@@ -113,7 +161,9 @@ describe('useWorkflowPublicationStatusSync', () => {
 
 		for (const [apiStatus, expectedLifecycle] of cases) {
 			vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue(makeStatus(apiStatus));
-			const documentId = createWorkflowDocumentId(`wf-map-${apiStatus}`);
+			const workflowId = `wf-map-${apiStatus}`;
+			markWorkflowSaved(workflowId);
+			const documentId = createWorkflowDocumentId(workflowId);
 			const store = useWorkflowDocumentStore(documentId);
 
 			renderComponent(
@@ -274,6 +324,9 @@ describe('useWorkflowPublicationStatusSync', () => {
 		const WF_B_ID = 'wf-react-b';
 		const docIdA = createWorkflowDocumentId(WF_A_ID);
 		const docIdB = createWorkflowDocumentId(WF_B_ID);
+
+		markWorkflowSaved(WF_A_ID);
+		markWorkflowSaved(WF_B_ID);
 
 		const storeA = useWorkflowDocumentStore(docIdA);
 		const storeB = useWorkflowDocumentStore(docIdB);
