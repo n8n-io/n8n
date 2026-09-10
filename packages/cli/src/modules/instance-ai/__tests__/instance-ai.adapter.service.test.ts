@@ -68,6 +68,8 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -5275,6 +5277,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
 		[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
@@ -5287,6 +5290,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
+			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			instanceContextEnabled: true,
 			folderExplorationEnabled: true,
@@ -5323,6 +5327,7 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
 			[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
@@ -5332,6 +5337,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
@@ -5345,6 +5351,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
@@ -5359,6 +5366,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			instanceContextEnabled: false,
 			folderExplorationEnabled: false,
@@ -5879,6 +5887,56 @@ describe('createCredentialAdapter', () => {
 			}).credentialService;
 
 			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('unknown');
+		});
+	});
+
+	// A scope/setup answer has to be grounded in the credential's own docs page rather
+	// than recalled, so every search result carries the URL to look up (AGENT-743).
+	describe('searchCredentialTypes', () => {
+		/** An adapter over one credential type declaring `documentationUrl`. */
+		const adapterFor = (documentationUrl: string | undefined, { loadable = true } = {}) =>
+			createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: () => {
+						if (!loadable) throw new Error('not loadable');
+						return { type: { name: 'slackApi', displayName: 'Slack API', documentationUrl } };
+					},
+					knownCredentials: { slackApi: {} },
+				},
+			}).credentialService;
+
+		it('resolves a docs slug to the credential docs URL', async () => {
+			const results = await adapterFor('slack').searchCredentialTypes!('slack');
+
+			expect(results).toEqual([
+				{
+					type: 'slackApi',
+					displayName: 'Slack API',
+					documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/slack/',
+				},
+			]);
+		});
+
+		// A few classes declare a full URL instead of a slug; it must not be re-prefixed.
+		it('passes a full documentation URL through unchanged', async () => {
+			const url = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
+			const results = await adapterFor(url).searchCredentialTypes!('slack');
+
+			expect(results[0].documentationUrl).toBe(url);
+		});
+
+		it('omits the URL when the type declares none', async () => {
+			const results = await adapterFor(undefined).searchCredentialTypes!('slack');
+
+			expect(results[0]).not.toHaveProperty('documentationUrl');
+		});
+
+		it('still returns a match when the class will not load, without a URL', async () => {
+			const results = await adapterFor('slack', { loadable: false }).searchCredentialTypes!(
+				'slack',
+			);
+
+			expect(results).toEqual([{ type: 'slackApi', displayName: 'slackApi' }]);
 		});
 	});
 

@@ -167,6 +167,47 @@ apply RBAC, project scope, session grants, and HITL confirmation rules.
 The workspace is for Instance AI build and runtime-skill work. It is not a
 general user workload platform.
 
+## Tracing
+
+Sandbox operations use the active Instance AI trace. Each span inherits the
+thread metadata. The sandbox does not retain a turn's trace handle. Skill
+preparation runs inside the agent's lazy build and uses the same trace context.
+
+| Operation | Trace data |
+|-----------|------------|
+| Acquire and start | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors |
+| Initialize workspace | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
+| Sync skills and knowledge base | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result |
+| Read, write, and edit files | File operations under the existing tool span, paths, byte counts, and errors |
+| Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
+| Retry and fallback | File path, failed attempt, retry delay, and command fallback |
+| Evict cache and destroy | Reason, provider, sandbox ID, and cleanup errors |
+
+Batch operations reject on the first failure. Their spans end at that point.
+Transfers that already started can continue. Batch spans omit individual successful
+file operations. Retry and fallback spans remain visible. Internal file spans
+omit file contents. Command spans record byte counts instead of raw commands. Failed
+commands include stdout and stderr after filtering, limited to 2,000 characters
+each. The export filter also covers status messages and exception events.
+Nonzero exit codes are command results and do not mark command spans as errors.
+Timeouts, killed commands, and thrown execution errors still mark spans as errors.
+
+Cache eviction keeps the remote sandbox. Its trace records the time of eviction.
+Uncached cleanup checks the provider before creating a trace. Disabled sandboxing
+and uncached Daytona sandboxes require no cleanup trace.
+Cleanup between turns creates an internal operation trace with the same
+`thread_id`. These sandbox lifecycle traces use the normal LangSmith settings.
+They do not require `N8N_INSTANCE_AI_TRACE_INTERNAL`. Proxy deployments resolve
+fresh trace configuration for cleanup. Cleanup requests carry the owner ID so
+other processes can trace cleanup after the thread row is deleted. Timers create
+detached traces even when they inherit an earlier turn context. Trace setup and
+finalization each have a one-second deadline. Trace failures do not change
+sandbox results or prevent cleanup. Operations still open when a turn closes
+end with a cancelled status; their underlying work can finish independently.
+
+Provider-side automatic stop and deletion are not reported. They require
+provider notifications or polling.
+
 ## Configuration
 
 | Variable | Default | Purpose |

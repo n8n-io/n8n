@@ -28,9 +28,9 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_INDEX_BATCH_SIZE')
 	indexingBatchSize: number = 10;
 
-	/** Whether to use the workflow publication service. Still under development. */
+	/** Whether to use the workflow publication service. */
 	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
-	useWorkflowPublicationService: boolean = false;
+	useWorkflowPublicationService: boolean = true;
 
 	/** Interval in milliseconds between polls of the workflow publication outbox on the leader. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS')

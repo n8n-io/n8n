@@ -6,19 +6,15 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
-	validCursor,
 } from '../../shared/middlewares/global.middleware';
-import { paginateArray } from '../../shared/services/pagination.service';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { VariablesRequest } from '@/requests';
 
 type VariablesHandlers = {
 	createVariable: PublicAPIEndpoint<AuthenticatedRequest>;
 	updateVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
 	deleteVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
-	getVariables: PublicAPIEndpoint<VariablesRequest.GetAll>;
 };
 
 const variablesHandlers: VariablesHandlers = {
@@ -55,21 +51,6 @@ const variablesHandlers: VariablesHandlers = {
 			await Container.get(VariablesService).deleteForUser(req.user, req.params.id);
 
 			return res.status(204).send();
-		},
-	],
-	getVariables: [
-		isLicensed('feat:variables'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
-		validCursor,
-		async (req, res) => {
-			const { offset = 0, limit = 100, projectId, state } = req.query;
-
-			const variables = await Container.get(VariablesService).getAllForUser(req.user, {
-				state,
-				projectId: projectId === 'null' ? null : projectId,
-			});
-
-			return res.json(paginateArray(variables, { offset, limit }));
 		},
 	],
 };

@@ -58,7 +58,7 @@ export const NoDeploymentKeyDeleteRule = ESLintUtils.RuleCreator.withoutDocs({
 				node.type === TSESTree.AST_NODE_TYPES.TemplateLiteral &&
 				node.expressions.length === 0 &&
 				node.quasis.length === 1 &&
-				ENTITY_NAMES.has(node.quasis[0].value.cooked)
+				ENTITY_NAMES.has(node.quasis[0].value.cooked ?? '')
 			);
 		};
 

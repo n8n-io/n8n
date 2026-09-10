@@ -557,7 +557,7 @@ export function getInlineDelegateSubAgentToolOptions(
 ): DelegateSubAgentToolMetadata | undefined {
 	const value = tool.metadata?.[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY];
 	if (typeof value !== 'object' || value === null) return undefined;
-	return value as DelegateSubAgentToolMetadata;
+	return value;
 }
 
 /** Whether a tool is a delegate sub-agent tool built by {@link createDelegateSubAgentTool}, regardless of its configured name. */

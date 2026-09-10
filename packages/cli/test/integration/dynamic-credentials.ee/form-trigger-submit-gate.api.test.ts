@@ -6,7 +6,11 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, WebhookRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	WebhookRepository,
+	WorkflowPublishedVersionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
@@ -79,6 +83,10 @@ const setupPublishedForm = async () => {
 
 	const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
 	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 	await Container.get(WebhookRepository).insert({
 		workflowId: workflow.id,
 		webhookPath,

@@ -307,7 +307,7 @@ export async function executeWorkflowWithPinData(
 		}
 
 		// Set up execution lifecycle hooks
-		const hooks = new imports.ExecutionLifecycleHooks('trigger', '1', {} as never);
+		const hooks = new imports.ExecutionLifecycleHooks('trigger', '1', {});
 		hooks.addHandler('nodeExecuteAfter', (nodeName: unknown) => {
 			if (typeof nodeName === 'string') {
 				executedNodes.push(nodeName);
