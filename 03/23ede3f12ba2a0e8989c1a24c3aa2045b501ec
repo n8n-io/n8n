@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_92a7a75845d057::t_ee9fc3e8ebcdf5 369-384,388-393
+  s_92a7a75845d057::t_4cad85d83de674 385,387
+  s_92a7a75845d057::t_5461470ebabc70 386
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_92a7a75845d057::t_45e3742f90b5dd 1010-1013,1017-1018
+  s_92a7a75845d057::t_5b852a506611ad 1014-1016
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0323ede3f12ba2a0e8989c1a24c3aa2045b501ec",
+  "prompts": {},
+  "sessions": {
+    "s_92a7a75845d057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8732cc5d-32fb-4984-a453-2336070d33ab",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
