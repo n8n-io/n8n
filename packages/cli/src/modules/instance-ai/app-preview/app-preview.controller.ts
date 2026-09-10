@@ -58,7 +58,9 @@ export class AppPreviewController {
 	 * its URL: a dev server where the sandbox service can route to it, a build
 	 * served from the sandbox filesystem otherwise. A thread that has not held
 	 * the app yet gets its sandbox created and the app's newest stored source
-	 * restored into it first.
+	 * restored into it first. A request that follows the end of a turn answers
+	 * only after the turn's source snapshot has landed, so the caller can read
+	 * the app's publish state right after.
 	 */
 	@Post('/:appId/preview')
 	@ProjectScope('app:read')
@@ -74,6 +76,7 @@ export class AppPreviewController {
 		const access = await this.instanceAiService.getAppPreviewSandbox(req.user);
 		if (!access.enabled) return { status: 'unsupported', reason: 'provider' };
 
+		await this.instanceAiService.awaitPendingSnapshot(dto.threadId);
 		return await this.appPreviewService.ensure({
 			threadId: dto.threadId,
 			appId: app.id,

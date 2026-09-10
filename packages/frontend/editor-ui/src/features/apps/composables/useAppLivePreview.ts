@@ -41,6 +41,20 @@ export function transitionLivePreview(
 	return { status: answer, next: 'stop', pollingSince: null };
 }
 
+/**
+ * Names the content the frame shows: the build sequence of a built preview
+ * (`?b=`), else the latest source edit the dev server has picked up. Undefined
+ * while there is no frame.
+ */
+export function previewContentKey(
+	liveUrl: string | undefined,
+	latestSourceEditId: string | undefined,
+): string | undefined {
+	if (liveUrl === undefined) return undefined;
+	const buildSeq = new URL(liveUrl, window.location.origin).searchParams.get('b');
+	return buildSeq === null ? latestSourceEditId : `b:${buildSeq}`;
+}
+
 export type AppLivePreviewTarget = {
 	projectId: MaybeRefOrGetter<string>;
 	appId: MaybeRefOrGetter<string>;
@@ -53,16 +67,24 @@ export type AppLivePreviewTarget = {
  * heartbeats once it is ready. Hidden pauses everything. A new
  * `builtVersionId` retries a preview that stopped for lack of a build. The end
  * of a run (`running` true → false) ensures again: a built preview answers
- * with the URL of the turn's rebuild, a dev server with the same URL.
+ * with the URL of the turn's rebuild, a dev server with the same URL; the
+ * server answers it only once the turn's source snapshot has landed, and
+ * `settledCount` moves so the host can re-read the app's publish state.
+ * `previewAhead` says whether the frame shows content newer than what
+ * `markPreviewPublished` last confirmed as published: a newer build sequence,
+ * or (dev server) a newer `latestSourceEditId`.
  */
 export function useAppLivePreview(
 	target: AppLivePreviewTarget,
 	visible: Ref<boolean>,
 	builtVersionId?: MaybeRefOrGetter<string | undefined>,
 	running?: MaybeRefOrGetter<boolean>,
+	latestSourceEditId?: MaybeRefOrGetter<string | undefined>,
 ) {
 	const rootStore = useRootStore();
 	const status = ref<AppPreviewStatus>();
+	const settledCount = ref(0);
+	const publishedContentKey = ref<string>();
 
 	let pollingSince: number | null = null;
 	let pollTimer: ReturnType<typeof setTimeout> | undefined;
@@ -139,7 +161,9 @@ export function useAppLivePreview(
 			if (isRunning || !wasRunning || !visible.value) return;
 			if (current !== 'ready' && current !== 'no-source' && current !== 'unavailable') return;
 			pollingSince = null;
-			void ensure();
+			void ensure().then(() => {
+				settledCount.value += 1;
+			});
 		},
 	);
 
@@ -149,6 +173,15 @@ export function useAppLivePreview(
 	const reason = computed(() =>
 		status.value && 'reason' in status.value ? status.value.reason : undefined,
 	);
+	const contentKey = computed(() => previewContentKey(liveUrl.value, toValue(latestSourceEditId)));
+	const previewAhead = computed(
+		() => contentKey.value !== undefined && contentKey.value !== publishedContentKey.value,
+	);
 
-	return { status, liveUrl, reason };
+	/** The server confirmed that the published version matches what the frame shows now. */
+	function markPreviewPublished() {
+		publishedContentKey.value = contentKey.value;
+	}
+
+	return { status, liveUrl, reason, settledCount, previewAhead, markPreviewPublished };
 }

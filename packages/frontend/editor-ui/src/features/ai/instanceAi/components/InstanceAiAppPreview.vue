@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, inject, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import AppDetailsView from '@/features/apps/AppDetailsView.vue';
 import { useAppLivePreview } from '@/features/apps/composables/useAppLivePreview';
+import type { App } from '@/features/apps/apps.types';
+import { getLatestAppSourceEditId } from '../canvasPreview.utils';
 import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY } from '../constants';
@@ -27,6 +29,25 @@ const instanceAiStore = useInstanceAiStore();
 const i18n = useI18n();
 const toast = useToast();
 
+// The registry knows the namespace once an `apps create`/`publish` result is in
+// the thread; a thread opened from the apps page learns it from the details view.
+const loadedApp = ref<App>();
+const namespace = computed(
+	() => thread.producedArtifacts.get(props.appId)?.namespace ?? loadedApp.value?.namespace,
+);
+
+const latestSourceEditId = computed(() => {
+	if (!namespace.value) return undefined;
+	const target = { appId: props.appId, namespace: namespace.value };
+	for (let i = thread.messages.length - 1; i >= 0; i--) {
+		const tree = thread.messages[i].agentTree;
+		if (!tree) continue;
+		const editId = getLatestAppSourceEditId(tree, target);
+		if (editId) return editId;
+	}
+	return undefined;
+});
+
 // The thread view only mounts this component while the preview tab is shown,
 // so the document's visibility is the remaining gate for the dev server.
 const { isVisible } = useDocumentVisibility();
@@ -35,7 +56,13 @@ const live = useAppLivePreview(
 	isVisible,
 	() => props.versionId,
 	() => thread.isStreaming,
+	latestSourceEditId,
 );
+
+function onAppLoaded(app: App) {
+	loadedApp.value = app;
+	if (!app.hasUnpublishedChanges) live.markPreviewPublished();
+}
 
 const diagnostics = inject<AppPreviewDiagnostics | undefined>('appPreviewDiagnostics', undefined);
 
@@ -95,6 +122,9 @@ const pagePath = computed(
 			:thread-id="thread.id"
 			:live-url="live.liveUrl.value"
 			:live-status="live.status.value"
+			:refresh-key="live.settledCount.value"
+			:draft-dirty="live.previewAhead.value"
+			@app-loaded="onAppLoaded"
 			@diagnostic="diagnostics?.add($event)"
 			@assistant-handoff="$emit('assistant-handoff', $event)"
 		/>

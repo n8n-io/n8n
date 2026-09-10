@@ -63,6 +63,10 @@ const props = withDefaults(
 		liveUrl?: string;
 		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
 		liveStatus?: AppPreviewStatus;
+		/** Changes when an assistant turn has landed on the server; the app is re-read then. */
+		refreshKey?: number;
+		/** The live preview shows edits the stored publish state does not know about yet. */
+		draftDirty?: boolean;
 	}>(),
 	{
 		artifactMode: false,
@@ -71,12 +75,16 @@ const props = withDefaults(
 		threadId: undefined,
 		liveUrl: undefined,
 		liveStatus: undefined,
+		refreshKey: 0,
+		draftDirty: false,
 	},
 );
 
 const emit = defineEmits<{
 	'assistant-handoff': [prompt: string];
 	diagnostic: [InstanceAiAppPreviewDiagnostic];
+	/** The app as the server last returned it; carries its namespace and publish state. */
+	'app-loaded': [App];
 }>();
 
 const i18n = useI18n();
@@ -94,6 +102,10 @@ const { openAppArtifactThread } = useInstanceAiHandoff();
 const appsStore = useAppsStore();
 
 const app = ref<App | null>(null);
+const setApp = (next: App) => {
+	app.value = next;
+	emit('app-loaded', next);
+};
 const loading = ref(false);
 const publishing = ref(false);
 /** Id of the version whose activate/unpublish request is in flight. */
@@ -123,7 +135,8 @@ const hasPreviewSource = computed(() => Boolean(props.liveUrl ?? versionId.value
 
 // Nothing to publish once the newest source is the served one.
 const publishUpToDate = computed(
-	() => Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges,
+	() =>
+		Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges && !props.draftDirty,
 );
 
 const publishMenuActions = computed<Array<ActionDropdownItem<PublishMenuAction>>>(() => [
@@ -197,7 +210,7 @@ const initialize = async () => {
 			appsStore.getApp(props.projectId, props.appId),
 			appsStore.fetchPages(props.projectId, props.appId),
 		]);
-		app.value = result;
+		setApp(result);
 		mode.value = showPreviewPane.value ? 'preview' : 'build';
 		if (buildTab.value === 'versions') await refreshVersions();
 		if (!props.artifactMode) {
@@ -292,7 +305,7 @@ const onElementSelected = async (element: InspectedElement) => {
 
 // Only the live preview shows the draft; the published build stays as it was until a publish.
 const onThemeSaved = (updated: App) => {
-	app.value = updated;
+	setApp(updated);
 	if (props.liveUrl) mode.value = 'preview';
 };
 
@@ -307,7 +320,7 @@ const refreshVersions = async () => {
 const setActiveVersion = async (versionId: string | null, errorTitle: string) => {
 	switchingVersionId.value = versionId ?? app.value?.activeVersionId ?? null;
 	try {
-		app.value = await appsStore.setActiveVersion(props.projectId, props.appId, versionId);
+		setApp(await appsStore.setActiveVersion(props.projectId, props.appId, versionId));
 		await refreshVersions();
 		toast.showMessage({
 			title: i18n.baseText(
@@ -356,7 +369,7 @@ const onPublish = async () => {
 			});
 			return;
 		}
-		app.value = await appsStore.getApp(props.projectId, app.value.id);
+		setApp(await appsStore.getApp(props.projectId, app.value.id));
 		if (buildTab.value === 'versions') await refreshVersions();
 		toast.showMessage({
 			title: i18n.baseText('apps.builder.publish.success'),
@@ -404,6 +417,19 @@ watch(showPreviewPane, (next, previous) => {
 watch(buildTab, async (tab) => {
 	if (tab === 'versions') await refreshVersions();
 });
+
+// The turn's snapshot decides whether the draft has unpublished changes.
+watch(
+	() => props.refreshKey,
+	async () => {
+		try {
+			setApp(await appsStore.getApp(props.projectId, props.appId));
+			if (buildTab.value === 'versions') await refreshVersions();
+		} catch (error) {
+			toast.showError(error, i18n.baseText('apps.getDetails.error'));
+		}
+	},
+);
 </script>
 
 <template>

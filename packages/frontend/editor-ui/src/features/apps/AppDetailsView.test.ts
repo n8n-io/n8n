@@ -383,6 +383,71 @@ describe('AppDetailsView', () => {
 		});
 	});
 
+	describe('publish state after a turn', () => {
+		const published = makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: false });
+
+		it('re-reads the app when refreshKey changes and flips the dot to the fetched state', async () => {
+			const { getByTestId, rerender, emitted } = await renderApp(published, {
+				artifactMode: true,
+				refreshKey: 0,
+			});
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(emitted('app-loaded')).toEqual([[published]]);
+			const changed = makeApp({ activeVersionId: 'v-7', hasUnpublishedChanges: true });
+			appsStore.getApp.mockResolvedValue(changed);
+
+			await rerender({ artifactMode: true, refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(appsStore.getApp).toHaveBeenCalledTimes(2);
+			expect(appsStore.fetchVersions).not.toHaveBeenCalled();
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(emitted('app-loaded')).toEqual([[published], [changed]]);
+		});
+
+		it('refreshes the version list too while the versions tab is open', async () => {
+			const { getByTestId, getByRole, rerender } = await renderApp(published, { refreshKey: 0 });
+			await userEvent.click(getByTestId('radio-button-build'));
+			await userEvent.click(getByRole('tab', { name: 'Versions' }));
+			await waitAllPromises();
+			appsStore.fetchVersions.mockClear();
+
+			await rerender({ refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(appsStore.fetchVersions).toHaveBeenCalledTimes(1);
+		});
+
+		it('toasts when the re-read fails and keeps the last state', async () => {
+			const { getByTestId, rerender } = await renderApp(published, { refreshKey: 0 });
+			appsStore.getApp.mockRejectedValue(new Error('offline'));
+
+			await rerender({ refreshKey: 1 });
+			await waitAllPromises();
+
+			expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), 'Error loading app');
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+		});
+
+		it('shows changes as soon as the live preview is ahead, without a re-read', async () => {
+			const { getByTestId, rerender } = await renderApp(published, { artifactMode: true });
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+
+			await rerender({ artifactMode: true, draftDirty: true });
+
+			expect(appsStore.getApp).toHaveBeenCalledTimes(1);
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+			expect(getByTestId('app-publish')).toBeEnabled();
+			expect(getByTestId('app-publish')).toHaveTextContent('Publish');
+
+			await rerender({ artifactMode: true, draftDirty: false });
+
+			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorPublished');
+			expect(getByTestId('app-publish')).toBeDisabled();
+		});
+	});
+
 	it('hands the app off to the assistant from the toolbar', async () => {
 		const { getByTestId } = await renderApp(makeApp());
 

@@ -141,7 +141,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
-import { AppPreviewService } from './app-preview/app-preview.service';
+import { AppPreviewService, settlesWithin } from './app-preview/app-preview.service';
 import { AppSourceSnapshotService } from './app-preview/app-source-snapshot.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -759,6 +759,9 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
+/** Longest an app preview request waits for the end-of-turn source snapshot. */
+const APP_SNAPSHOT_WAIT_MS = 15 * 1000;
+
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
@@ -830,6 +833,9 @@ export class InstanceAiService {
 
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
+
+	/** End-of-turn app source snapshots in flight, by thread. */
+	private readonly pendingAppSnapshots = new Map<string, Promise<void>>();
 
 	/**
 	 * Consecutive machine-started follow-up runs that errored, per thread.
@@ -2007,6 +2013,16 @@ export class InstanceAiService {
 	/** The thread's runtime workspace only if a run already created it; never creates one. */
 	getCachedWorkspace(threadId: string): Workspace | undefined {
 		return this.sandboxService.getCachedWorkspaceEntry(threadId)?.workspace;
+	}
+
+	/**
+	 * Resolves once the thread's end-of-turn app snapshot (and preview rebuild)
+	 * has landed, at once when none is in flight, and after `APP_SNAPSHOT_WAIT_MS`
+	 * at the latest. Never rejects.
+	 */
+	async awaitPendingSnapshot(threadId: string): Promise<void> {
+		const pending = this.pendingAppSnapshots.get(threadId);
+		if (pending) await settlesWithin(pending, APP_SNAPSHOT_WAIT_MS);
 	}
 
 	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
@@ -6877,7 +6893,14 @@ export class InstanceAiService {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
 		if (status === 'completed' && options?.user) {
-			void this.snapshotAppSources(threadId, options.user);
+			// Registered before the first await, so a preview request that follows the
+			// run-finish event can wait for the snapshot to land.
+			const snapshot = this.snapshotAppSources(threadId, options.user).finally(() => {
+				if (this.pendingAppSnapshots.get(threadId) === snapshot) {
+					this.pendingAppSnapshots.delete(threadId);
+				}
+			});
+			this.pendingAppSnapshots.set(threadId, snapshot);
 		}
 	}
 

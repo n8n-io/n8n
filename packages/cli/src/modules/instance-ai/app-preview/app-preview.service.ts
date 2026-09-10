@@ -165,7 +165,7 @@ export function buildRestoreScript(input: { appDir: string; tarballPath: string 
 const entryKey = (threadId: string, appId: string) => `${threadId}:${appId}`;
 
 /** Resolves to true when `promise` settles within `ms`, false otherwise. */
-async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+export async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
 	const settled = promise.then(
 		() => true,
 		() => true,

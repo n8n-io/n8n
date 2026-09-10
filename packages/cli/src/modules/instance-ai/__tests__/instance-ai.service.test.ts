@@ -680,6 +680,7 @@ type TerminalGuardOrderServiceInternals = {
 		registerTraceContext: Mock;
 	};
 	threadPushRef: Map<string, string>;
+	pendingAppSnapshots: Map<string, Promise<void>>;
 	pendingBrowserCredentialSetups: Map<
 		string,
 		{
@@ -789,6 +790,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		registerTraceContext: vi.fn(),
 	};
 	service.threadPushRef = new Map();
+	service.pendingAppSnapshots = new Map();
 	service.pendingBrowserCredentialSetups = new Map();
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };

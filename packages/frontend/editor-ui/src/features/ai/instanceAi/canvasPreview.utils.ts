@@ -1,5 +1,6 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import escapeRegExp from 'lodash/escapeRegExp';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -333,6 +334,37 @@ export function isAgentBuildingApp(node: InstanceAiAgentNode, appId: string): bo
 		if (isAgentBuildingApp(child, appId)) return true;
 	}
 	return false;
+}
+
+const APP_SOURCE_EDIT_TOOLS = new Set(['workspace_write_file', 'workspace_str_replace_file']);
+
+/**
+ * Id of the most recent tool call in this agent tree that edits the source of
+ * the app: a workspace write under `apps/<namespace>/` or an `apps add-component`
+ * for its id. In-flight calls count, so the signal moves with the dev server's
+ * HMR. `apps restore` only fills an empty directory with the newest stored
+ * source, which the server already accounts for, so it is not an edit.
+ */
+export function getLatestAppSourceEditId(
+	node: InstanceAiAgentNode,
+	target: { appId: string; namespace: string },
+): string | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childId = getLatestAppSourceEditId(node.children[i], target);
+		if (childId) return childId;
+	}
+	const appDir = new RegExp(`(^|/)apps/${escapeRegExp(target.namespace)}/`);
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const { path, action, appId } = tc.args;
+		if (APP_SOURCE_EDIT_TOOLS.has(tc.toolName) && typeof path === 'string' && appDir.test(path)) {
+			return tc.toolCallId;
+		}
+		if (tc.toolName === 'apps' && action === 'add-component' && appId === target.appId) {
+			return tc.toolCallId;
+		}
+	}
+	return undefined;
 }
 
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([

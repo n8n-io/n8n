@@ -54,6 +54,7 @@ describe('AppPreviewController', () => {
 			n8nSandbox: sandbox,
 		});
 		appPreviewService.ensure.mockResolvedValue({ status: 'starting' });
+		instanceAiService.awaitPendingSnapshot.mockResolvedValue(undefined);
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 		instanceAiService.getCachedWorkspace.mockReturnValue(undefined);
 		appPublishService.publish.mockResolvedValue({
@@ -236,6 +237,22 @@ describe('AppPreviewController', () => {
 			getWorkspace: expect.any(Function),
 			getSourceTarball: expect.any(Function),
 		});
+	});
+
+	it('waits for the end-of-turn snapshot of the thread before ensuring the preview', async () => {
+		let landSnapshot!: () => void;
+		instanceAiService.awaitPendingSnapshot.mockReturnValue(
+			new Promise<void>((resolve) => (landSnapshot = resolve)),
+		);
+
+		const ensured = controller.ensure(req, res, 'app-1', { threadId: 'thread-1' });
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(instanceAiService.awaitPendingSnapshot).toHaveBeenCalledWith('thread-1');
+		expect(appPreviewService.ensure).not.toHaveBeenCalled();
+
+		landSnapshot();
+		await expect(ensured).resolves.toEqual({ status: 'starting' });
+		expect(appPreviewService.ensure).toHaveBeenCalledTimes(1);
 	});
 
 	it('tells the preview service whether the thread has a live run', async () => {

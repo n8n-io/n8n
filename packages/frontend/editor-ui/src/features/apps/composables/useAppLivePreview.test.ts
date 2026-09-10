@@ -6,6 +6,7 @@ import {
 	LIVE_PREVIEW_HEARTBEAT_MS,
 	LIVE_PREVIEW_POLL_MS,
 	LIVE_PREVIEW_POLL_TIMEOUT_MS,
+	previewContentKey,
 	transitionLivePreview,
 	useAppLivePreview,
 } from './useAppLivePreview';
@@ -67,6 +68,22 @@ describe('transitionLivePreview', () => {
 	});
 });
 
+describe('previewContentKey', () => {
+	it('is the build sequence of a built preview, whatever the dev server would show', () => {
+		expect(previewContentKey('/apps-preview/tok/?b=2', 'call-9')).toBe('b:2');
+		expect(previewContentKey('/apps-preview/tok/?b=2', undefined)).toBe('b:2');
+	});
+
+	it('is the latest source edit for a dev server', () => {
+		expect(previewContentKey('/apps-preview/tok/', 'call-9')).toBe('call-9');
+		expect(previewContentKey('/apps-preview/tok/', undefined)).toBeUndefined();
+	});
+
+	it('is undefined without a frame', () => {
+		expect(previewContentKey(undefined, 'call-9')).toBeUndefined();
+	});
+});
+
 describe('useAppLivePreview', () => {
 	const target = { projectId: 'proj-1', appId: 'app-1', threadId: 'thread-1' };
 
@@ -79,11 +96,14 @@ describe('useAppLivePreview', () => {
 		visible = ref(true),
 		builtVersionId = ref<string | undefined>(),
 		running = ref(false),
+		latestSourceEditId = ref<string | undefined>(),
 	) {
 		const scope = effectScope();
-		const live = scope.run(() => useAppLivePreview(target, visible, builtVersionId, running));
+		const live = scope.run(() =>
+			useAppLivePreview(target, visible, builtVersionId, running, latestSourceEditId),
+		);
 		if (!live) throw new Error('scope did not run');
-		return { ...live, visible, builtVersionId, running, scope };
+		return { ...live, visible, builtVersionId, running, latestSourceEditId, scope };
 	}
 
 	beforeEach(() => {
@@ -247,6 +267,99 @@ describe('useAppLivePreview', () => {
 		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
 		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(3);
 		live.scope.stop();
+	});
+
+	it('settles once per run end, after the ensure has answered', async () => {
+		let answer!: (status: AppPreviewStatus) => void;
+		ensureAppPreviewApi
+			.mockResolvedValueOnce(READY)
+			.mockImplementationOnce(async () => await new Promise((resolve) => (answer = resolve)))
+			.mockResolvedValue(READY);
+		const live = mountLive();
+		await flush();
+		expect(live.settledCount.value).toBe(0);
+
+		live.running.value = true;
+		await flush();
+		live.running.value = false;
+		await flush();
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(2);
+		expect(live.settledCount.value).toBe(0);
+
+		answer({ ...READY, url: '/apps-preview/tok/?b=2' });
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.liveUrl.value).toBe('/apps-preview/tok/?b=2');
+		expect(live.settledCount.value).toBe(1);
+
+		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(3);
+		expect(live.settledCount.value).toBe(1);
+		live.scope.stop();
+	});
+
+	it('does not settle for a run end that ensures nothing', async () => {
+		ensureAppPreviewApi.mockResolvedValue({ status: 'unsupported', reason: 'provider' });
+		const live = mountLive(ref(true), ref(), ref(true));
+		await flush();
+
+		live.running.value = false;
+		await flush();
+
+		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
+		expect(live.settledCount.value).toBe(0);
+		live.scope.stop();
+	});
+
+	describe('previewAhead', () => {
+		it('follows the source edits of a dev server until they are marked published', async () => {
+			ensureAppPreviewApi.mockResolvedValue(READY);
+			const live = mountLive();
+			await flush();
+			expect(live.previewAhead.value).toBe(false);
+
+			live.latestSourceEditId.value = 'call-1';
+			expect(live.previewAhead.value).toBe(true);
+
+			live.markPreviewPublished();
+			expect(live.previewAhead.value).toBe(false);
+
+			live.latestSourceEditId.value = 'call-2';
+			expect(live.previewAhead.value).toBe(true);
+			live.scope.stop();
+		});
+
+		it('follows the build sequence of a built preview and ignores source edits', async () => {
+			ensureAppPreviewApi
+				.mockResolvedValueOnce({ ...READY, url: '/apps-preview/tok/?b=1' })
+				.mockResolvedValue({ ...READY, url: '/apps-preview/tok/?b=2' });
+			const live = mountLive();
+			await flush();
+			live.markPreviewPublished();
+			expect(live.previewAhead.value).toBe(false);
+
+			live.latestSourceEditId.value = 'call-1';
+			expect(live.previewAhead.value).toBe(false);
+
+			live.running.value = true;
+			await flush();
+			live.running.value = false;
+			await flush();
+			expect(live.liveUrl.value).toBe('/apps-preview/tok/?b=2');
+			expect(live.previewAhead.value).toBe(true);
+
+			live.markPreviewPublished();
+			expect(live.previewAhead.value).toBe(false);
+			live.scope.stop();
+		});
+
+		it('is never ahead without a frame', async () => {
+			ensureAppPreviewApi.mockResolvedValue(STARTING);
+			const live = mountLive(ref(true), ref(), ref(false), ref('call-1'));
+			await flush();
+
+			expect(live.previewAhead.value).toBe(false);
+			live.scope.stop();
+		});
 	});
 
 	it.each([
