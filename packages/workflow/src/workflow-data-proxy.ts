@@ -1007,11 +1007,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
-<<<<<<< HEAD
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
-			nodeBeforeLast?: string,
-=======
-			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
 		): INodeExecutionData =>
 			resolvePairedItem(
 				destinationNodeName,
@@ -1032,7 +1028,6 @@ export class WorkflowDataProxy {
 			usedMethodName: PairedItemMethod,
 			nodeBeforeLast: string | undefined,
 			memo: PairedItemMemo,
->>>>>>> cf8df4fa6c9c0389f2d4411bb6da3f2912147549
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
