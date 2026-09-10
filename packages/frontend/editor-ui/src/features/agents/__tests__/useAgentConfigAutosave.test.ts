@@ -42,6 +42,8 @@ describe('useAgentConfigAutosave', () => {
 
 		await expect(autosave.flushAutosave()).rejects.toBe(error);
 		expect(onError).toHaveBeenCalledWith(error);
+		// The snapshot is restored for a retry, so the loop still reports it as pending.
+		expect(autosave.hasPendingSave.value).toBe(true);
 	});
 
 	it('does not restore a failed flush snapshot over a newer pending snapshot', async () => {
@@ -144,6 +146,45 @@ describe('useAgentConfigAutosave', () => {
 		expect(autosave.saveStatus.value).toBe('idle');
 	});
 
+	it('drops saves queued before a stale response but accepts later edits', async () => {
+		vi.useFakeTimers();
+		let resolveFirstSave: (result: 'stale') => void = () => {};
+		const save = vi.fn((snapshot: { value: string }) =>
+			snapshot.value === 'stale'
+				? new Promise<'stale'>((resolve) => {
+						resolveFirstSave = resolve;
+					})
+				: Promise.resolve(undefined),
+		);
+		const onSaved = vi.fn();
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			onSaved,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'stale' });
+		await vi.advanceTimersByTimeAsync(500);
+		autosave.scheduleAutosave({ value: 'queued-before-conflict' });
+		await vi.advanceTimersByTimeAsync(500);
+
+		resolveFirstSave('stale');
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(autosave.saveStatus.value).toBe('idle');
+		expect(autosave.hasPendingSave.value).toBe(false);
+
+		autosave.scheduleAutosave({ value: 'new-after-conflict' });
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(2);
+		expect(save).toHaveBeenLastCalledWith({ value: 'new-after-conflict' });
+		expect(onSaved).toHaveBeenCalledWith({ value: 'new-after-conflict' });
+	});
+
 	it('reset() clears saveStatus and drops a pending debounced snapshot', async () => {
 		vi.useFakeTimers();
 		const save = vi.fn().mockResolvedValue(undefined);
@@ -204,6 +245,31 @@ describe('useAgentConfigAutosave', () => {
 
 		// The `saved` hold timer queued by the stale save must not fire for B.
 		await vi.advanceTimersByTimeAsync(5000);
+		expect(autosave.saveStatus.value).toBe('idle');
+	});
+
+	it('a save chained behind an in-flight one does not mark the new target as saving after reset()', async () => {
+		vi.useFakeTimers();
+		let resolveFirstSave: () => void = () => {};
+		const save = vi.fn((snapshot: { value: string }) =>
+			snapshot.value === 'a1'
+				? new Promise<undefined>((resolve) => void (resolveFirstSave = () => resolve(undefined)))
+				: Promise.resolve(undefined),
+		);
+		const autosave = useAgentConfigAutosave<{ value: string }>({ save, debounceMs: 500 });
+
+		autosave.scheduleAutosave({ value: 'a1' });
+		await vi.advanceTimersByTimeAsync(500);
+		// A second A edit queues behind the in-flight save.
+		autosave.scheduleAutosave({ value: 'a2' });
+		await vi.advanceTimersByTimeAsync(500);
+
+		// Switch to B while both A saves are outstanding, then let them run.
+		autosave.reset();
+		resolveFirstSave();
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(2);
 		expect(autosave.saveStatus.value).toBe('idle');
 	});
 });

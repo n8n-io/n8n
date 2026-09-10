@@ -259,6 +259,7 @@ export class InstanceAiSandboxService {
 			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
 			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
+			ephemeral: sandboxEphemeral,
 		};
 	}
 

@@ -2,6 +2,7 @@ import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
+import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -11,7 +12,19 @@ import {
 	SupplyDataContext,
 	StructuredToolkit,
 } from 'n8n-core';
+import {
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TimeoutExecutionCancelledError,
+	Workflow,
+	UnexpectedError,
+	createRunExecutionData,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 import type {
+	CancellationReason,
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
@@ -24,16 +37,6 @@ import type {
 	StructuredChunk,
 	CloseFunction,
 	GenericValue,
-} from 'n8n-workflow';
-import {
-	ManualExecutionCancelledError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	Workflow,
-	UnexpectedError,
-	createRunExecutionData,
-	runDataAttemptedDynamicCredentials,
-	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -70,11 +73,35 @@ function isInvokableTool(value: unknown): value is Pick<Tool, 'invoke'> {
 }
 
 /**
+ * Runs `fn` at `timestamp`, returning a function to cancel it. `setTimeout` truncates delays past
+ * its 32-bit signed limit (~24.8 days) and fires almost immediately, so longer waits are split
+ * into bounded chunks.
+ */
+function scheduleAt(timestamp: number, fn: () => void): () => void {
+	let timer: NodeJS.Timeout;
+
+	const schedule = () => {
+		const delay = Math.max(timestamp - Date.now(), 0);
+		timer =
+			delay > MAX_INTEGER_32BITS_SIGNED
+				? setTimeout(schedule, MAX_INTEGER_32BITS_SIGNED)
+				: setTimeout(fn, delay);
+		timer.unref(); // A pending tick must not hold the process open on its own.
+	};
+	schedule();
+
+	return () => clearTimeout(timer);
+}
+
+/**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
  */
 @Service()
 export class JobProcessor {
 	private readonly runningJobs: Record<JobId, RunningJob> = {};
+
+	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
+	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -339,17 +366,43 @@ export class JobProcessor {
 
 		this.runningJobs[job.id] = runningJob;
 
+		// The engine only checks `executionTimeoutTimestamp` between node executions, so it cannot
+		// interrupt a node stuck mid-execution (e.g. a hanging HTTP call). This watchdog cancels
+		// the job for abort-aware operations, mirroring the regular-process timeout in
+		// `WorkflowRunner.runMainProcess`.
+		const clearTimeoutWatchdog =
+			executionTimeoutTimestamp !== undefined
+				? scheduleAt(executionTimeoutTimestamp, () => this.cancelJob(job.id, 'timeout'))
+				: undefined;
+
 		let run: IRun;
+		let cancellationReason: CancellationReason | undefined;
 		try {
 			run = await workflowRun;
 		} finally {
+			// A pending watchdog would cancel the job belatedly.
+			clearTimeoutWatchdog?.();
+			cancellationReason = this.cancellationReasons[job.id];
+			delete this.cancellationReasons[job.id];
 			// An entry left behind on rejection keeps the count of running jobs
 			// above zero forever, which prevents shutdown from ever completing.
 			delete this.runningJobs[job.id];
 		}
 
-		if (run?.status === 'canceled') {
-			throw new ManualExecutionCancelledError(executionId);
+		// A cancel this worker performed names its own cause. The engine cancels itself when its
+		// between-node check finds the deadline passed, and records no reason, so read the
+		// deadline the same way the engine does.
+		const timedOut =
+			cancellationReason === undefined
+				? executionTimeoutTimestamp !== undefined && Date.now() >= executionTimeoutTimestamp
+				: cancellationReason === 'timeout';
+
+		// A cancelled job is already reported as cancelled through `execution-cancelled`, even
+		// when the run itself ignored the cancel and ran to completion.
+		if (run?.status === 'canceled' || cancellationReason !== undefined) {
+			throw timedOut
+				? new TimeoutExecutionCancelledError(executionId)
+				: new ManualExecutionCancelledError(executionId);
 		}
 
 		const props = this.deriveJobFinishedProps(run, startedAt);
@@ -503,6 +556,10 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
+		this.cancelJob(jobId, 'manual'); // Job stops via scaling service are always user-initiated
+	}
+
+	private cancelJob(jobId: JobId, reason: CancellationReason) {
 		const runningJob = this.runningJobs[jobId];
 		if (!runningJob) return;
 
@@ -511,11 +568,12 @@ export class JobProcessor {
 			executionId,
 			workflowId,
 			workflowName,
-			reason: 'manual', // Job stops via scaling service are always user-initiated
+			reason,
 		});
 
 		runningJob.run.cancel();
 		delete this.runningJobs[jobId];
+		this.cancellationReasons[jobId] = reason;
 	}
 
 	getRunningJobIds(): JobId[] {

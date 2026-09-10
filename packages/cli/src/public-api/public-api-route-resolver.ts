@@ -14,6 +14,7 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
+import type { ZodTypeAny } from 'zod';
 
 export const HTTP_METHODS = [
 	'get',
@@ -28,7 +29,7 @@ export const HTTP_METHODS = [
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
 export type ResolvedRouteArg =
-	| { type: 'param'; key: string }
+	| { type: 'param'; key: string; schema?: ZodTypeAny }
 	| { type: 'body' | 'query'; dto: ZodClass };
 
 export function isDtoArg(
