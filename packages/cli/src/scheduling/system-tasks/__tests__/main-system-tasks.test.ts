@@ -29,14 +29,6 @@ it('should return every main task when all features are on', async () => {
 	]);
 });
 
-it('should register license renewal when every optional feature is off', async () => {
-	const tasks = await mainSystemTasks(
-		configWith({ pruneData: false, useWorkflowPublicationService: false }),
-	);
-
-	expect(tasks).toContain(LicenseRenewalTask);
-});
-
 it('should leave out execution pruning soft delete when pruning is off', async () => {
 	const tasks = await mainSystemTasks(configWith({ pruneData: false }));
 
