@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { AppsConfig } from '@n8n/config';
 import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -13,6 +13,7 @@ import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { Header, type types } from 'tar';
 
+import { AppSourceEditBuildService } from '@/modules/apps/app-source-edit-build.service';
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
@@ -42,6 +43,12 @@ let appVersionRepository: AppVersionRepository;
 let pageRepository: PageRepository;
 let binaryDataRepository: BinaryDataRepository;
 let cacheRoot: string;
+
+// Mocked at module scope, before `setupTestServer`'s own `beforeAll` constructs
+// `AppsController` — a later `Container.set` wouldn't reach an already-injected
+// instance. The build pipeline itself (sandbox, restore, rebuild) is covered by
+// `app-source-edit-build.service.test.ts`; this only exercises the route.
+const appSourceEditBuildService = mockInstance(AppSourceEditBuildService);
 
 type TarEntry = {
 	path: string;
@@ -420,6 +427,88 @@ describe('GET /projects/:projectId/apps/:appId/versions/:versionId/files', () =>
 		await authMemberAgent
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files`)
 			.expect(403);
+	});
+});
+
+describe('PUT /projects/:projectId/apps/:appId/versions/:versionId/files', () => {
+	beforeEach(() => appSourceEditBuildService.saveFile.mockReset());
+
+	const saveFile = (appId: string, versionId: string, filePath: string, content: string) =>
+		authOwnerAgent
+			.put(`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files/${filePath}`)
+			.send({ content });
+
+	test('saves a file and returns the app', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		appSourceEditBuildService.saveFile.mockResolvedValue({
+			versionId: 'v-new',
+			url: 'http://localhost:5678/apps/hello/',
+		});
+
+		const response = await saveFile(
+			app.id,
+			body.data.id,
+			'src/main.ts',
+			'export const x = 1;',
+		).expect(200);
+
+		expect(appSourceEditBuildService.saveFile).toHaveBeenCalledWith(
+			app.id,
+			'src/main.ts',
+			'export const x = 1;',
+			expect.objectContaining({ id: owner.id }),
+		);
+		expect(response.body.data).toMatchObject({ id: app.id });
+	});
+
+	test('rejects a non-member with 403, without calling the build pipeline', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authMemberAgent
+			.put(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files/src/main.ts`)
+			.send({ content: 'x' })
+			.expect(403);
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('rejects the save on a protected instance with 403, without calling the build pipeline', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		const writeAccess = Container.get(InstanceWriteAccessService);
+		writeAccess.setReadOnly(true);
+
+		try {
+			await saveFile(app.id, body.data.id, 'src/main.ts', 'x').expect(403);
+		} finally {
+			writeAccess.setReadOnly(false);
+		}
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('rejects a save with no file path with 400', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authOwnerAgent
+			.put(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files`)
+			.send({ content: 'x' })
+			.expect(400);
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('surfaces a build failure as 400', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		appSourceEditBuildService.saveFile.mockResolvedValue({
+			error: true,
+			message: 'Build failed: syntax error',
+		});
+
+		const response = await saveFile(app.id, body.data.id, 'src/main.ts', 'not valid(').expect(400);
+
+		expect(response.body.message).toContain('Build failed: syntax error');
 	});
 });
 

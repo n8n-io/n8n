@@ -15,6 +15,8 @@ const props = defineProps<{
 	content: string;
 }>();
 
+const emit = defineEmits<{ 'update:content': [string] }>();
+
 /** No CodeMirror language mode covers Vue SFCs (or other unrecognized types) today; they fall back to plain text. */
 function languageExtension(path: string): Extension[] {
 	const extension = path.split('.').pop() ?? '';
@@ -47,19 +49,23 @@ function createEditor() {
 			doc: props.content,
 			extensions: [
 				...languageExtension(props.path),
-				EditorState.readOnly.of(true),
-				EditorView.editable.of(false),
 				lineNumbers(),
 				foldGutter(),
 				EditorView.lineWrapping,
-				codeEditorTheme({ isReadOnly: true, maxHeight: '100%', minHeight: '100%' }),
+				EditorView.updateListener.of((update) => {
+					if (update.docChanged) emit('update:content', update.state.doc.toString());
+				}),
+				codeEditorTheme({ maxHeight: '100%', minHeight: '100%' }),
 			],
 		}),
 	});
 }
 
-watch(containerRef, createEditor);
-watch(() => [props.path, props.content], createEditor);
+// Only switching files recreates the editor and reseeds its content — typing
+// updates CodeMirror's own state and is pushed out via the emit above, not
+// fed back in as a controlled prop (that would recreate the editor on every
+// keystroke and lose cursor position/undo history).
+watch([containerRef, () => props.path], createEditor);
 
 onBeforeUnmount(() => editor?.destroy());
 </script>

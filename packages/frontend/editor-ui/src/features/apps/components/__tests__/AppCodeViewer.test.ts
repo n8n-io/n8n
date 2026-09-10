@@ -5,11 +5,18 @@ import { type MockedStore, mockedStore, waitAllPromises } from '@/__tests__/util
 
 import AppCodeViewer from '../AppCodeViewer.vue';
 import { useAppsStore } from '../../apps.store';
+import type { App } from '../../apps.types';
 
 const showError = vi.hoisted(() => vi.fn());
+const showMessage = vi.hoisted(() => vi.fn());
+const confirm = vi.hoisted(() => vi.fn().mockResolvedValue('confirm'));
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError, showMessage: vi.fn() }),
+	useToast: () => ({ showError, showMessage }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 const renderViewer = createComponentRenderer(AppCodeViewer, {
@@ -17,11 +24,31 @@ const renderViewer = createComponentRenderer(AppCodeViewer, {
 		stubs: {
 			FileCodeViewer: {
 				props: ['path', 'content'],
-				template: '<div data-test-id="file-code-viewer-stub">{{ path }}:{{ content }}</div>',
+				emits: ['update:content'],
+				template: `
+					<div data-test-id="file-code-viewer-stub">
+						<span data-test-id="fcv-content">{{ path }}:{{ content }}</span>
+						<button data-test-id="fcv-edit" @click="$emit('update:content', content + '!')">edit</button>
+					</div>
+				`,
 			},
 		},
 	},
 });
+
+function makeApp(overrides: Partial<App> = {}): App {
+	return {
+		id: 'app-1',
+		name: 'Greeter',
+		namespace: 'greeter',
+		theme: null,
+		projectId: 'proj-1',
+		activeVersionId: 'v-2',
+		createdAt: '2026-04-01T00:00:00.000Z',
+		updatedAt: '2026-04-01T00:00:00.000Z',
+		...overrides,
+	};
+}
 
 describe('AppCodeViewer', () => {
 	let appsStore: MockedStore<typeof useAppsStore>;
@@ -30,6 +57,8 @@ describe('AppCodeViewer', () => {
 		createTestingPinia();
 		appsStore = mockedStore(useAppsStore);
 		showError.mockReset();
+		showMessage.mockReset();
+		confirm.mockReset().mockResolvedValue('confirm');
 	});
 
 	it('shows an empty state and fetches nothing when the app has no active version', async () => {
@@ -82,5 +111,116 @@ describe('AppCodeViewer', () => {
 		await waitAllPromises();
 
 		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Error loading file');
+	});
+
+	it('enables Save only once the file is edited, and disables it again after a successful save', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		appsStore.saveAppVersionFileContent.mockResolvedValue(makeApp({ activeVersionId: 'v-3' }));
+		const { getByText, getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+
+		expect(getByTestId('app-code-save')).toHaveAttribute('aria-disabled', 'true');
+
+		await userEvent.click(getByTestId('fcv-edit'));
+		expect(getByTestId('app-code-save')).not.toHaveAttribute('aria-disabled', 'true');
+
+		await userEvent.click(getByTestId('app-code-save'));
+		await waitAllPromises();
+
+		expect(appsStore.saveAppVersionFileContent).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			'v-2',
+			'main.ts',
+			'export {};!',
+		);
+		expect(getByTestId('app-code-save')).toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('emits saved with the updated app on a successful save', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		const updated = makeApp({ activeVersionId: 'v-3' });
+		appsStore.saveAppVersionFileContent.mockResolvedValue(updated);
+		const { getByText, getByTestId, emitted } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+
+		await userEvent.click(getByTestId('app-code-save'));
+		await waitAllPromises();
+
+		expect(emitted().saved[0]).toEqual([updated]);
+	});
+
+	it('shows the build error and keeps the edited content when saving fails', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		appsStore.saveAppVersionFileContent.mockRejectedValue(new Error('Build failed: syntax error'));
+		const { getByText, getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+
+		await userEvent.click(getByTestId('app-code-save'));
+		await waitAllPromises();
+
+		expect(getByTestId('app-code-build-error')).toHaveTextContent('Build failed: syntax error');
+		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};!');
+		expect(getByTestId('app-code-save')).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('keeps the current file when the user cancels the discard confirmation', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		appsStore.fetchAppVersionFileContent.mockImplementation(async (_p, _a, _v, path) =>
+			path === 'a.ts' ? 'a content' : 'b content',
+		);
+		confirm.mockResolvedValue('cancel');
+		const { getByText, getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('a.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+
+		await userEvent.click(getByText('b.ts'));
+		await waitAllPromises();
+
+		expect(confirm).toHaveBeenCalled();
+		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledTimes(1);
+		expect(getByTestId('fcv-content')).toHaveTextContent('a.ts:a content!');
+	});
+
+	it('switches files once the user confirms discarding unsaved changes', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		appsStore.fetchAppVersionFileContent.mockImplementation(async (_p, _a, _v, path) =>
+			path === 'a.ts' ? 'a content' : 'b content',
+		);
+		confirm.mockResolvedValue('confirm');
+		const { getByText, getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('a.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+
+		await userEvent.click(getByText('b.ts'));
+		await waitAllPromises();
+
+		expect(confirm).toHaveBeenCalled();
+		expect(getByTestId('fcv-content')).toHaveTextContent('b.ts:b content');
 	});
 });

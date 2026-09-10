@@ -211,6 +211,11 @@ const onThemeApplied = (updated: App) => {
 	mode.value = 'preview';
 };
 
+// Unlike a theme save, stay on the Code tab: the user is likely still editing.
+const onCodeSaved = (updated: App) => {
+	app.value = updated;
+};
+
 const onOpenInAssistant = async () => {
 	if (!app.value) return;
 	await openAppArtifactThread(
@@ -422,7 +427,12 @@ watch(versionId, (next, previous) => {
 				</div>
 
 				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
-					<AppCodeViewer :project-id="projectId" :app-id="appId" :version-id="versionId" />
+					<AppCodeViewer
+						:project-id="projectId"
+						:app-id="appId"
+						:version-id="versionId"
+						@saved="onCodeSaved"
+					/>
 				</div>
 			</div>
 		</div>

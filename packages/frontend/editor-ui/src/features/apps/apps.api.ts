@@ -96,3 +96,21 @@ export const fetchAppVersionFileContentApi = async (
 	);
 	return content;
 };
+
+/** Overwrites one existing source file and rebuilds the app; returns the app with its new active version. */
+export const saveAppVersionFileContentApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+	filePath: string,
+	content: string,
+) => {
+	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+	return await makeRestApiRequest<App>(
+		context,
+		'PUT',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+		{ content },
+	);
+};

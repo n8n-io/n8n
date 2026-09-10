@@ -11,6 +11,7 @@ import {
 	fetchAppVersionFilesApi,
 	fetchRoutesApi,
 	getAppApi,
+	saveAppVersionFileContentApi,
 	updateAppApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
@@ -76,6 +77,25 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		);
 	};
 
+	const saveAppVersionFileContent = async (
+		projectId: string,
+		appId: string,
+		versionId: string,
+		filePath: string,
+		content: string,
+	) => {
+		const updated = await saveAppVersionFileContentApi(
+			rootStore.restApiContext,
+			projectId,
+			appId,
+			versionId,
+			filePath,
+			content,
+		);
+		apps.value = apps.value.map((a) => (a.id === appId ? updated : a));
+		return updated;
+	};
+
 	return {
 		apps,
 		pages,
@@ -88,5 +108,6 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		fetchPages,
 		fetchAppVersionFiles,
 		fetchAppVersionFileContent,
+		saveAppVersionFileContent,
 	};
 });
