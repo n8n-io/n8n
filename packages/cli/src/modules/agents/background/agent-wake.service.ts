@@ -120,7 +120,7 @@ export class AgentWakeService {
 				return `${JSON.stringify(title)} (${job.status})`;
 			})
 			.join(', ');
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs before you finish this turn.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
 
 	private scheduleLocal(threadId: string): void {
