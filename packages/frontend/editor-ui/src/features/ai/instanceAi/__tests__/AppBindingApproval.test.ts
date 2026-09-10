@@ -27,6 +27,19 @@ const DATA_TABLE_BINDING: AppBindingMeta = {
 	projectId: 'proj-1',
 };
 
+const AGENT_BINDING: AppBindingMeta = {
+	kind: 'agent',
+	appId: 'app-1',
+	appName: 'Helpdesk',
+	appNamespace: 'helpdesk',
+	agentId: 'agent-1',
+	agentName: 'Support',
+	key: 'support',
+	permissions: ['chat', 'history'],
+	published: true,
+	projectId: 'proj-1',
+};
+
 const OPTIONS: ApprovalOption[] = [
 	{ key: 'always-allow', icon: 'check-check', label: 'Always allow', testId: 'opt-always-allow' },
 	{ key: 'allow-once', icon: 'check', label: 'Allow once', testId: 'opt-allow-once' },
@@ -107,5 +120,50 @@ describe('AppBindingApproval', () => {
 		await userEvent.click(getByTestId('opt-always-allow'));
 
 		expect(emitted('select')).toEqual([['always-allow']]);
+	});
+
+	it('shows the app, the agent linked in a new tab, the chat-and-history access line and the approvals line', () => {
+		const { getByTestId, getByText, queryByTestId, queryByText } = renderComponent({
+			props: { appBinding: AGENT_BINDING },
+		});
+
+		expect(getByText('Allow AI Assistant to connect an agent to the app?')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-binding-app')).toHaveTextContent('Helpdesk');
+		const link = getByTestId('instance-ai-app-binding-agent');
+		expect(link).toHaveTextContent('Support');
+		expect(link).toHaveAttribute('href', '/projects/proj-1/agents/agent-1');
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link.parentElement?.querySelector('[data-icon="robot"]')).not.toBeNull();
+		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(
+			'Visitors can chat with this agent and read back their conversation.',
+		);
+		expect(getByTestId('instance-ai-app-binding-approvals')).toHaveTextContent(
+			"Visitors answer the agent's approval requests.",
+		);
+		expect(queryByTestId('instance-ai-app-binding-not-published')).toBeNull();
+		expect(queryByTestId('instance-ai-app-binding-workflow')).toBeNull();
+		expect(queryByTestId('instance-ai-app-binding-data-table')).toBeNull();
+		expect(queryByText(/support/)).toBeNull();
+	});
+
+	it.each([
+		[['chat'], 'Visitors can chat with this agent.'],
+		[['history'], 'Visitors can read back their conversation with this agent.'],
+	] as const)('shows the access line for agent permissions %j', (permissions, text) => {
+		const { getByTestId } = renderComponent({
+			props: { appBinding: { ...AGENT_BINDING, permissions: [...permissions] } },
+		});
+
+		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(text);
+	});
+
+	it('warns when the agent is not published', () => {
+		const { getByTestId } = renderComponent({
+			props: { appBinding: { ...AGENT_BINDING, published: false } },
+		});
+
+		expect(getByTestId('instance-ai-app-binding-not-published')).toHaveTextContent(
+			'Not published — the app cannot chat yet',
+		);
 	});
 });

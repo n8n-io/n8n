@@ -45,7 +45,9 @@ export function useAppDeletion() {
 		const copy =
 			binding.kind === 'dataTable'
 				? 'apps.connections.delete.confirm.dataTable'
-				: 'apps.connections.delete.confirm';
+				: binding.kind === 'agent'
+					? 'apps.connections.delete.confirm.agent'
+					: 'apps.connections.delete.confirm';
 		const response = await message.confirm(
 			i18n.baseText(`${copy}.message`, {
 				interpolate: { name: escapeHtml(binding.name) },

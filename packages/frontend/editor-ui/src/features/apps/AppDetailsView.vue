@@ -3,6 +3,7 @@ import type { DescribedBinding } from '@n8n/api-types';
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
 	type ActionDropdownItem,
+	type IconName,
 	N8nActionDropdown,
 	N8nBadge,
 	N8nButton,
@@ -17,7 +18,7 @@ import {
 	N8nToggleGroup,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -220,10 +221,40 @@ const buildTabOptions = computed(() => [
 	},
 ]);
 
+const BINDING_ICONS: Record<DescribedBinding['kind'], IconName> = {
+	workflow: 'workflow',
+	dataTable: 'table',
+	agent: 'robot',
+};
+
+const bindingAccessLabel = (binding: DescribedBinding): string | null => {
+	if (binding.missing) return null;
+	const key = ((): BaseTextKey | null => {
+		if (binding.kind === 'dataTable') {
+			return binding.permissions.includes('read')
+				? binding.permissions.includes('write')
+					? 'apps.connections.access.readWrite'
+					: 'apps.connections.access.read'
+				: 'apps.connections.access.write';
+		}
+		if (binding.kind === 'agent') {
+			return binding.permissions.includes('chat')
+				? binding.permissions.includes('history')
+					? 'apps.connections.access.chatHistory'
+					: 'apps.connections.access.chat'
+				: 'apps.connections.access.history';
+		}
+		return null;
+	})();
+	return key ? i18n.baseText(key) : null;
+};
+
 // The API reports warnings as one flat list; each starts with the quoted binding key.
-// The key is not shown in the UI, so the tooltip drops that prefix.
-const bindingWarnings = (key: string) => {
-	const prefix = `Binding '${key}':`;
+// The key is not shown in the UI, so the tooltip drops that prefix. An unpublished
+// agent's only warning is the one its badge already shows, so it gets no icon.
+const bindingWarnings = (binding: DescribedBinding) => {
+	if (binding.kind === 'agent' && !binding.missing && !binding.published) return [];
+	const prefix = `Binding '${binding.key}':`;
 	return appsStore.bindingWarnings
 		.filter((warning) => warning.startsWith(prefix))
 		.map((warning) => warning.slice(prefix.length).trim());
@@ -849,7 +880,7 @@ watch(
 							:class="$style.connectionRow"
 							data-test-id="app-connection"
 						>
-							<N8nIcon :icon="binding.kind === 'dataTable' ? 'table' : 'workflow'" size="large" />
+							<N8nIcon :icon="BINDING_ICONS[binding.kind]" size="large" />
 							<N8nText
 								v-if="binding.missing"
 								size="small"
@@ -871,6 +902,17 @@ watch(
 								{{ binding.name }}
 							</N8nLink>
 							<N8nLink
+								v-else-if="binding.kind === 'agent'"
+								:to="`/projects/${projectId}/agents/${binding.agentId}`"
+								new-window
+								theme="text"
+								size="small"
+								:class="$style.connectionName"
+								data-test-id="app-connection-agent"
+							>
+								{{ binding.name }}
+							</N8nLink>
+							<N8nLink
 								v-else
 								:to="`/workflow/${binding.workflowId}`"
 								new-window
@@ -881,25 +923,24 @@ watch(
 							>
 								{{ binding.name }}
 							</N8nLink>
+							<N8nBadge
+								v-if="binding.kind === 'agent' && !binding.missing && !binding.published"
+								theme="warning"
+								data-test-id="app-connection-not-published"
+							>
+								{{ i18n.baseText('apps.connections.agent.notPublished') }}
+							</N8nBadge>
 							<N8nText
-								v-if="binding.kind === 'dataTable' && !binding.missing"
+								v-if="bindingAccessLabel(binding)"
 								size="small"
 								color="text-light"
 								data-test-id="app-connection-access"
 							>
-								{{
-									i18n.baseText(
-										binding.permissions.includes('read')
-											? binding.permissions.includes('write')
-												? 'apps.connections.access.readWrite'
-												: 'apps.connections.access.read'
-											: 'apps.connections.access.write',
-									)
-								}}
+								{{ bindingAccessLabel(binding) }}
 							</N8nText>
 							<N8nTooltip
-								v-if="bindingWarnings(binding.key).length > 0"
-								:content="bindingWarnings(binding.key).join(' ')"
+								v-if="bindingWarnings(binding).length > 0"
+								:content="bindingWarnings(binding).join(' ')"
 							>
 								<N8nIcon
 									icon="triangle-alert"
