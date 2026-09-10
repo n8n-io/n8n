@@ -48,6 +48,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -165,6 +166,19 @@ export class WorkflowRunner {
 							data: fullExecutionData.data,
 							storedAt: fullExecutionData.storedAt,
 						};
+
+						// The normal completion path never ran for this execution (Bull
+						// reported it stalled), so the retention decision that would have
+						// pruned it there never ran either. Make it here, for production
+						// executions, against the same setting.
+						const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+						if (fullExecutionData.mode !== 'manual' && !saveSettings.success) {
+							await this.executionPersistence.deleteInFlightExecution({
+								workflowId: fullExecutionData.workflowId,
+								executionId,
+								storedAt: fullExecutionData.storedAt,
+							});
+						}
 					}
 				} catch (readError) {
 					this.logger.warn('Could not read execution data for a successful execution', {
