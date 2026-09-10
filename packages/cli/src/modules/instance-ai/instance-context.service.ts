@@ -172,14 +172,19 @@ export function toContextInjection(result: InstanceContextResult): InstanceConte
  * Whether an outcome is worth a row in the trace.
  *
  * An empty block earns one: a turn told nothing has to be distinguishable from one that
- * was told and ignored it, and only the absent row can say which. The other two absences
- * do not. A turn where the feature was off has no reader to inform — a row on every turn
- * of every instance that never enabled this would be noise standing in for a signal — and
- * a machine follow-up is the agent continuing its own task, where nobody is reading
- * intent. Both still reach telemetry, where the off arm is the denominator.
+ * was told and ignored it, and only the absent row can say which. A failed read earns one
+ * too — that is the case someone is most likely to be looking for.
+ *
+ * The other two absences do not. A turn where the feature was off has no reader to inform
+ * — a row on every turn of every instance that never enabled this would be noise standing
+ * in for a signal — and a machine follow-up is the agent continuing its own task, where
+ * nobody is reading intent. Both still reach telemetry, where the off arm is the
+ * denominator.
  */
 export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
-	return injection.state === 'injected' || injection.reason === 'empty';
+	return (
+		injection.state === 'injected' || injection.reason === 'empty' || injection.reason === 'failed'
+	);
 }
 
 /**
@@ -288,10 +293,11 @@ export class InstanceContextService {
 			};
 		} catch (error) {
 			// Context is an enhancement; failing to build it must not fail the user's turn.
-			// Reported as empty rather than disabled: the feature was in play, it just came back
-			// with nothing, and a reader chasing a bad answer should not be told it was off.
+			// Reported as its own reason: neither `disabled` nor `empty` is true here, and
+			// calling a broken read "nothing happened" would send someone debugging a bad
+			// answer to look at a quiet instance rather than at this log line.
 			this.logger.warn('Failed to build the instance-context block', { error });
-			return { state: 'absent', reason: 'empty' };
+			return { state: 'absent', reason: 'failed' };
 		}
 	}
 

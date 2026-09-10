@@ -335,15 +335,20 @@ export const instanceContextLegsSchema = z.object({
 export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
 
 /**
- * Why a turn got no block. Kept distinct because they mean opposite things to a
- * reader: `disabled` says the feature was not in play, `empty` says it was and
- * found nothing worth sending — which is the case where an agent that guessed
- * was not, in fact, withholding anything.
+ * Why a turn got no block. Kept distinct because they mean different things to a
+ * reader: `disabled` says the feature was not in play, `empty` says it was and found
+ * nothing worth sending — the case where an agent that guessed was not withholding
+ * anything — and `failed` says the read broke, which is neither of those.
+ *
+ * `failed` is separate from `empty` on purpose. Reporting a broken read as "nothing
+ * happened here" sends someone debugging a bad answer to look at a quiet instance
+ * rather than at the warning in the log.
  */
 export const instanceContextAbsenceReasonSchema = z.enum([
 	'disabled',
 	'machine-follow-up',
 	'empty',
+	'failed',
 ]);
 
 export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;

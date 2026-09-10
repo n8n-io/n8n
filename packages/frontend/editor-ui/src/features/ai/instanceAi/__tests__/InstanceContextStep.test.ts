@@ -98,6 +98,21 @@ describe('InstanceContextStep', () => {
 		expect(text).not.toContain('Read instance context');
 	});
 
+	/** A broken read is a different finding from a quiet instance. */
+	it('says a read failed rather than calling it empty', () => {
+		const entry = injected({
+			injection: { state: 'absent', reason: 'failed' },
+			block: undefined,
+		});
+
+		const text = renderComponent({ props: { entry } }).getByTestId(
+			'instance-ai-context-step',
+		).textContent;
+
+		expect(text).toContain('could not be read');
+		expect(text).not.toContain('No instance context to read');
+	});
+
 	it('names each surface the turn used', () => {
 		const entry = injected({
 			reach: { surfaces: ['activity-list', 'workflow-read'] },

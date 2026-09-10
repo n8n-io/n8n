@@ -468,7 +468,12 @@ describe('InstanceContextService', () => {
 			});
 		});
 
-		it('returns nothing rather than failing the turn when a read throws', async () => {
+		/**
+		 * Reported as `failed`, not `empty`. A broken read and a quiet instance are
+		 * different findings, and calling the first one the second sends whoever is
+		 * debugging a bad answer to the wrong place.
+		 */
+		it('reports a failed read as such rather than failing the turn', async () => {
 			const service = serviceWith();
 			activityEventRepository.findFeed.mockRejectedValue(new Error('db is down'));
 
@@ -480,7 +485,7 @@ describe('InstanceContextService', () => {
 					now: NOW,
 					enabled: true,
 				}),
-			).toMatchObject({ state: 'absent', reason: 'empty' });
+			).toMatchObject({ state: 'absent', reason: 'failed' });
 		});
 	});
 
@@ -678,7 +683,7 @@ describe('toContextInjection', () => {
 		});
 	});
 
-	it.each(['disabled', 'machine-follow-up', 'empty'] as const)(
+	it.each(['disabled', 'machine-follow-up', 'empty', 'failed'] as const)(
 		'passes an absent result through with its %s reason intact',
 		(reason) => {
 			expect(toContextInjection({ state: 'absent', reason })).toEqual({
@@ -707,6 +712,11 @@ describe('shouldTraceContextInjection', () => {
 	 */
 	it('traces an empty block, so a turn told nothing stays distinguishable', () => {
 		expect(shouldTraceContextInjection({ state: 'absent', reason: 'empty' })).toBe(true);
+	});
+
+	/** The outcome a reader is most likely hunting for, so it must not be silent. */
+	it('traces a failed read', () => {
+		expect(shouldTraceContextInjection({ state: 'absent', reason: 'failed' })).toBe(true);
 	});
 
 	it.each(['disabled', 'machine-follow-up'] as const)(

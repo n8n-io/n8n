@@ -368,7 +368,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	INSTANCE_CONTEXT_TURN: {
 		name: 'Instance AI instance-context turn',
 		description:
-			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`: count turns by distinct `run_id` and sum token counts over it, never by rows.',
+			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`. Every per-turn figure is therefore an aggregate over the `run_id` — count distinct for turns, sum for tokens, OR for the question flag. Do not reduce a turn to a single row: a turn the user never answers has only its suspended segment, and those are the turns that asked.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),
@@ -386,10 +386,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('Whether this user had the node-usage surface on, which is a separate rung'),
 			block_state: z.enum(['injected', 'absent']).describe('Whether a block rode this turn at all'),
 			absence_reason: z
-				.enum(['disabled', 'machine-follow-up', 'empty'])
+				.enum(['disabled', 'machine-follow-up', 'empty', 'failed'])
 				.optional()
 				.describe(
-					'Only when absent. `disabled` means the feature was not in play, `empty` means it was and found nothing — an agent that guessed on an `empty` turn was not withholding anything',
+					'Only when absent. `disabled` means the feature was not in play; `empty` means it was and found nothing, so an agent that guessed on such a turn was not withholding anything; `failed` means the read broke and the turn ran without context it should have had',
 				),
 			block_is_update: z
 				.boolean()
@@ -425,7 +425,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 			asked_clarifying_question: z
 				.boolean()
-				.describe('Whether the turn put a question back to the user rather than proceeding'),
+				.describe(
+					'Whether THIS SEGMENT put a question back to the user rather than proceeding. Per segment, like the token counts: the segment that asks is the one that suspends, and the segment that resumes afterwards reports `false`. OR this over a `run_id` to get the turn — do not read it off one row, and in particular do not take the last row, because a turn the user never answers has only the suspended one',
+				),
 			tool_calls: z.number().int().describe('Total tool calls in the turn, as a denominator'),
 			turn_prompt_tokens: z
 				.number()

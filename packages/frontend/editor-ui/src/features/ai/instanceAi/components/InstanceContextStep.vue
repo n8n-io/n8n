@@ -64,9 +64,14 @@ const label = computed<string>(() => {
 	// gated by the flag, not by whether a block was built. So a turn told nothing can
 	// still have gone looking, and the row has to say so.
 	if (injection.value.state === 'absent') {
-		return [i18n.baseText('aiAssistant.instanceContext.trace.none'), reachSummary.value]
-			.filter(Boolean)
-			.join(' — ');
+		// A broken read is not the same as a quiet instance, and it is the one a reader is
+		// most likely hunting for, so it says so rather than blending into the empty case.
+		const head =
+			injection.value.reason === 'failed'
+				? i18n.baseText('aiAssistant.instanceContext.trace.failed')
+				: i18n.baseText('aiAssistant.instanceContext.trace.none');
+
+		return [head, reachSummary.value].filter(Boolean).join(' — ');
 	}
 
 	const head = injection.value.isUpdate
@@ -83,6 +88,14 @@ const label = computed<string>(() => {
  * than inside it, so an absent entry carrying a block is representable — and rendering it
  * would put the block under a "nothing to read" label.
  */
+const absentHintKey = computed<
+	'aiAssistant.instanceContext.trace.failedHint' | 'aiAssistant.instanceContext.trace.noneHint'
+>(() =>
+	injection.value.state === 'absent' && injection.value.reason === 'failed'
+		? 'aiAssistant.instanceContext.trace.failedHint'
+		: 'aiAssistant.instanceContext.trace.noneHint',
+);
+
 const blockText = computed<string | undefined>(() =>
 	injection.value.state === 'injected' ? props.entry.block : undefined,
 );
@@ -102,7 +115,7 @@ const blockText = computed<string | undefined>(() =>
 			<pre :class="$style.pre">{{ blockText }}</pre>
 		</div>
 		<div v-else :class="$style.heading">
-			{{ i18n.baseText('aiAssistant.instanceContext.trace.noneHint') }}
+			{{ i18n.baseText(absentHintKey) }}
 		</div>
 	</N8nAiActivityStep>
 </template>
