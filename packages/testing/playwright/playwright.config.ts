@@ -68,10 +68,17 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 		process.env.N8N_TEST_USER_FOLDER =
 			typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	}
+	// Probe `/healthz/readiness`, not a static asset. The startup middleware
+	// answers 200 while the migrations still run, so an asset probe lets global
+	// setup POST `/rest/e2e/reset` before n8n registers the E2E controller.
+	// Readiness answers 503 until the database is migrated and the server is
+	// fully initialized.
 	webServer.push({
 		command: 'pnpm --dir ../../.. start',
-		url: `${BACKEND_URL}/favicon.ico`,
-		timeout: 30000,
+		url: `${BACKEND_URL}/healthz/readiness`,
+		// Readiness comes later than a bound port: allow for the migrations on a
+		// fresh user folder on top of module startup.
+		timeout: 120000,
 		reuseExistingServer: IS_DEV ? false : true,
 		env: {
 			DB_SQLITE_POOL_SIZE: '40',
