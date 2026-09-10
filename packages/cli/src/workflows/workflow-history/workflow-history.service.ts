@@ -1,3 +1,4 @@
+import type { WorkflowChangelog } from '@n8n/api-types';
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -11,8 +12,8 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -21,6 +22,9 @@ import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+
+// Authors in the changelog are aggregated from at most this many versions
+const MAX_CHANGELOG_AUTHOR_VERSIONS = 500;
 
 @Service()
 export class WorkflowHistoryService {
@@ -307,6 +311,50 @@ export class WorkflowHistoryService {
 		});
 
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
+	}
+
+	/** Authors and date range of the versions created since the workflow's published version. */
+	async getChangelog(user: User, workflowId: string): Promise<WorkflowChangelog> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		if (!workflow.activeVersionId) {
+			return null;
+		}
+
+		const publishedVersion = await this.workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.activeVersionId },
+			select: ['createdAt'],
+		});
+
+		// Published version already pruned - changes since it cannot be determined
+		if (!publishedVersion) {
+			return null;
+		}
+
+		const changelog = await this.workflowHistoryRepository.findChangelogCreatedAfter(
+			workflow.id,
+			publishedVersion.createdAt,
+			MAX_CHANGELOG_AUTHOR_VERSIONS,
+		);
+
+		if (!changelog) {
+			return null;
+		}
+
+		// `authorLists` are comma-separated strings, one per version
+		const authors = [...new Set(changelog.authorLists.flatMap((a) => a.split(', ')))];
+
+		return {
+			authors,
+			from: changelog.from.toISOString(),
+			to: changelog.to.toISOString(),
+		};
 	}
 
 	async getPublishTimeline(user: User, workflowId: string) {
