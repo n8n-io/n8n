@@ -527,7 +527,7 @@ watch(versionId, (next, previous) => {
 .codeContainer {
 	flex: 1;
 	min-height: 0;
-	padding-bottom: 0;
+	padding-bottom: var(--spacing--2xs);
 }
 
 .header {

@@ -51,6 +51,7 @@ function createEditor() {
 				EditorView.editable.of(false),
 				lineNumbers(),
 				foldGutter(),
+				EditorView.lineWrapping,
 				codeEditorTheme({ isReadOnly: true, maxHeight: '100%', minHeight: '100%' }),
 			],
 		}),
