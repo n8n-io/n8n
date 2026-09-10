@@ -6,7 +6,6 @@ import {
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
-	createAgent,
 	duplicateAgent,
 } from '../composables/useAgentApi';
 import type { AgentResource, AgentJsonConfig } from '../types';

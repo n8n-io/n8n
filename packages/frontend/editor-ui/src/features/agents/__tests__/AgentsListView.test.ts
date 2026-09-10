@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	setTitle: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
-	track: vi.fn(),
+	trackDuplicatedAgent: vi.fn(),
 	duplicateAgent: vi.fn(),
 	upsertProjectAgentsListCache: vi.fn(),
 	routeProjectId: undefined as string | undefined,
@@ -47,10 +47,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: mocks.toastShowMessage, showError: mocks.toastShowError }),
-}));
-
-vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: mocks.track }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -92,7 +88,10 @@ vi.mock('../composables/useAgentPermissions', async () => {
 });
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackClickedNewAgent: mocks.trackClickedNewAgent }),
+	useAgentTelemetry: () => ({
+		trackClickedNewAgent: mocks.trackClickedNewAgent,
+		trackDuplicatedAgent: mocks.trackDuplicatedAgent,
+	}),
 }));
 
 vi.mock('@/app/components/layouts/ResourcesListLayout.vue', async () => {
@@ -280,10 +279,12 @@ describe('AgentsListView — project page', () => {
 		// A duplicate is born configured, so the backend creation events never
 		// fire for it; the duplicate is tracked directly, mirroring
 		// "User duplicated workflow" — the source agent id distinguishes it.
-		expect(mocks.track).toHaveBeenCalledWith('User duplicated agent', {
-			source_agent_id: 'agent-1',
-			agent_id: 'agent-2',
-			project_id: 'project-1',
+		// Routed through the safe wrapper so a telemetry failure can't
+		// misreport a successful duplicate.
+		expect(mocks.trackDuplicatedAgent).toHaveBeenCalledWith({
+			sourceAgentId: 'agent-1',
+			agentId: 'agent-2',
+			projectId: 'project-1',
 		});
 	});
 
