@@ -85,43 +85,14 @@ function defaultBaseUrl(): string {
 	return `/${root}/${namespace}/api`;
 }
 
-const PAGE_TOKEN_META_NAME = 'n8n-app-token';
-
-/** n8n puts the page token into the served `index.html`; every call sends it back. */
-function pageToken(): string | undefined {
-	if (typeof document === 'undefined') return undefined;
-	return (
-		document.querySelector(`meta[name="${PAGE_TOKEN_META_NAME}"]`)?.getAttribute('content') ??
-		undefined
-	);
-}
-
-// A 401 for a call that sent a token means it expired (15 min): a fresh navigation re-mints
-// it. Without a token the page was not served by n8n (a dev preview), and a reload would
-// change nothing.
-// Once per page load, so a server that keeps answering 401 cannot loop the page. The call
-// still rejects, because the reload is asynchronous and the caller's error handling must not
-// hang on it.
-let reloadedOnce = false;
-
-function reloadOnce(): void {
-	if (reloadedOnce || typeof location === 'undefined') return;
-	reloadedOnce = true;
-	location.reload();
-}
-
 export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 	return {
 		workflows: {
 			async run(key, input, runOpts) {
 				const baseUrl = (opts.baseUrl ?? defaultBaseUrl()).replace(/\/+$/, '');
-				const token = pageToken();
 				const response = await fetch(`${baseUrl}/workflows/${encodeURIComponent(key)}`, {
 					method: 'POST',
-					headers: [
-						['Content-Type', 'application/json'],
-						...(token ? [['Authorization', `Bearer ${token}`] as [string, string]] : []),
-					],
+					headers: [['Content-Type', 'application/json']],
 					body: JSON.stringify(input ?? {}),
 					signal: runOpts?.signal,
 				}).catch((error: unknown) => {
@@ -136,7 +107,6 @@ export function createClient(opts: { baseUrl?: string } = {}): N8nAppClient {
 				});
 				const body = await readJson(response);
 
-				if (response.status === 401 && token) reloadOnce();
 				if (!response.ok) {
 					const error = isRecord(body) ? body : {};
 					throw new N8nAppError(

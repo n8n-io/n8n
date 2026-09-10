@@ -69,10 +69,7 @@ const tgz = (entries: TarEntry[]) => {
 	return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]));
 };
 
-const INDEX_HTML = '<!doctype html><html><head></head><body>hello app</body></html>';
-/** Every served HTML document carries the page token; the rest must be the file as uploaded. */
-const withoutPageToken = (html: string) =>
-	html.replace(/<meta name="n8n-app-token" content="[^"]+">/, '');
+const INDEX_HTML = '<!doctype html><html><body>hello app</body></html>';
 const APP_JS = 'console.log("hello");';
 
 const distTgz = (indexHtml = INDEX_HTML) =>
@@ -389,8 +386,8 @@ describe('GET /apps/:namespace with an active version', () => {
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
-		expect(response.headers['cache-control']).toBe('no-store');
-		expect(withoutPageToken(response.text)).toBe(injectInspectorScript(INDEX_HTML));
+		expect(response.headers['cache-control']).toBe('no-cache');
+		expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('serves every html file with the sandbox policy and no caching', async () => {
@@ -406,8 +403,8 @@ describe('GET /apps/:namespace with an active version', () => {
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
-		expect(response.headers['cache-control']).toBe('no-store');
-		expect(withoutPageToken(response.text)).toBe(injectInspectorScript(about));
+		expect(response.headers['cache-control']).toBe('no-cache');
+		expect(response.text).toBe(injectInspectorScript(about));
 	});
 
 	test('serves assets with their own content type, the sandbox policy and revalidation', async () => {
@@ -446,7 +443,7 @@ describe('GET /apps/:namespace with an active version', () => {
 		const response = await visitor.get('/apps/hello/deep/route').expect(200);
 
 		expect(response.headers['content-type']).toContain('text/html');
-		expect(withoutPageToken(response.text)).toBe(injectInspectorScript(INDEX_HTML));
+		expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('never serves a file outside the dist directory', async () => {
@@ -459,13 +456,13 @@ describe('GET /apps/:namespace with an active version', () => {
 			'/apps/hello/%2Fetc%2Fpasswd',
 		]) {
 			const response = await visitor.get(url).expect(200);
-			expect(withoutPageToken(response.text)).toBe(injectInspectorScript(INDEX_HTML));
+			expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 		}
 
 		// superagent normalises `..` before the request leaves the process.
 		const raw = await rawGet('/apps/hello/../../config');
 		expect(raw.statusCode).toBe(200);
-		expect(withoutPageToken(raw.body)).toBe(injectInspectorScript(INDEX_HTML));
+		expect(raw.body).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('serves the newest version after a second upload', async () => {
@@ -475,7 +472,7 @@ describe('GET /apps/:namespace with an active version', () => {
 
 		const response = await visitor.get('/apps/hello/').expect(200);
 
-		expect(withoutPageToken(response.text)).toBe(injectInspectorScript('second'));
+		expect(response.text).toBe(injectInspectorScript('second'));
 	});
 });
 

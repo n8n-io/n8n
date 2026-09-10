@@ -7,7 +7,6 @@ import { Header } from 'tar';
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
-import { AppPageTokenService } from '@/modules/apps/serving/app-page-token';
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -38,8 +37,7 @@ beforeEach(async () => {
 	await testDb.truncate(['App', 'Page']);
 });
 
-const createApp = async (namespace = 'acme') =>
-	await appRepository.createApp(ownerProject.id, 'Acme Portal', namespace);
+const createApp = async () => await appRepository.createApp(ownerProject.id, 'Acme Portal', 'acme');
 
 const tgz = (files: Record<string, string>) => {
 	const blocks = Object.entries(files).map(([path, text]) => {
@@ -57,8 +55,8 @@ const INDEX_HTML = '<!doctype html><html><head><title>Acme</title></head><body>a
 const APP_JS = 'console.log("app")';
 
 /** An app with a served version. */
-const createBuiltApp = async (namespace = 'acme') => {
-	const app = await createApp(namespace);
+const createBuiltApp = async () => {
+	const app = await createApp();
 	await Container.get(AppVersionService).create(
 		app.id,
 		app.projectId,
@@ -68,35 +66,17 @@ const createBuiltApp = async (namespace = 'acme') => {
 	return app;
 };
 
-const pageTokenOf = (html: string) =>
-	html.match(/<meta name="n8n-app-token" content="([^"]+)">/)?.[1];
-
 describe('GET /apps/:namespace/ with an active version', () => {
-	test('serves index.html with a page token for the anonymous visitor', async () => {
-		const app = await createBuiltApp();
+	test('serves index.html unchanged to the anonymous visitor', async () => {
+		await createBuiltApp();
 
 		const response = await visitor.get('/apps/acme/').expect(200);
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');
-		expect(response.headers['cache-control']).toBe('no-store');
+		expect(response.headers['cache-control']).toBe('no-cache');
 		expect(response.headers['set-cookie']).toBeUndefined();
-		const token = pageTokenOf(response.text);
-		expect(response.text).toBe(
-			INDEX_HTML.replace('</head>', `<meta name="n8n-app-token" content="${token}"></head>`),
-		);
-		expect(Container.get(AppPageTokenService).verify(token!, app.id)).toBe(true);
-	});
-
-	test('mints a token for the app that serves the page, not another one', async () => {
-		await createBuiltApp();
-		const other = await createBuiltApp('other');
-
-		const response = await visitor.get('/apps/acme/').expect(200);
-
-		expect(Container.get(AppPageTokenService).verify(pageTokenOf(response.text)!, other.id)).toBe(
-			false,
-		);
+		expect(response.text).toBe(INDEX_HTML);
 	});
 
 	test('serves assets unchanged', async () => {

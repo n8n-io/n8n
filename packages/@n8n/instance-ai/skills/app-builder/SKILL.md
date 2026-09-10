@@ -191,12 +191,9 @@ Rules:
 ## Who may open the app
 
 All apps are public: anyone with the URL opens the app and can run its bound
-workflows; `result.principal` is `null`. The runtime API accepts only the
-page token: n8n puts a short-lived token into the served page and the SDK
-sends it with every call; the app never handles it. Honest limit: the token
-only stops cross-site and casual `curl` use. Anyone who can load the page can
-script "load the page, read the token, call the API". The bindings
-allow-list, the rate limit and the concurrency cap are the real protections.
+workflows; `result.principal` is `null`. The runtime API is callable from the
+app's own page only (CORS). Like a public webhook, anyone who can reach the
+instance can call a bound workflow, so bind only workflows that may be public.
 
 ## Template
 

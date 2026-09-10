@@ -10,11 +10,6 @@ import { AppRuntimeService } from './app-runtime.service';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
-const bearerToken = (req: Request) => {
-	const header = req.headers.authorization;
-	return header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : undefined;
-};
-
 const rateLimit = createIpRateLimit(
 	Container.get(GlobalConfig).apps.runtimeRateLimit,
 	Time.minutes.toMilliseconds,
@@ -22,13 +17,12 @@ const rateLimit = createIpRateLimit(
 
 /**
  * The served page runs on an opaque origin (`sandbox` CSP), so every call is
- * cross-origin with `Origin: null`. `*` is safe because no cookie is ever accepted;
- * the page token travels in `Authorization`, which the preflight has to allow.
+ * cross-origin with `Origin: null`. `*` is safe because no cookie is ever accepted.
  */
 function setCorsHeaders(res: Response) {
 	res.setHeader('Access-Control-Allow-Origin', '*');
 	res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 	// The dev-only global cors middleware sets this before the controller runs. This
 	// public route never allows credentials, so drop it rather than send `*` with it.
 	res.removeHeader('Access-Control-Allow-Credentials');
@@ -53,10 +47,7 @@ export class AppRuntimeController {
 		res.status(204).end();
 	}
 
-	/**
-	 * `skipAuth`: the caller is the served page, which has no session; it proves itself
-	 * with the page token n8n put into its HTML, checked by the service against the app.
-	 */
+	/** `skipAuth`: the caller is the served page, which has no session; every app is public. */
 	@Post('/:namespace/api/workflows/:key', { skipAuth: true, ipRateLimit: rateLimit })
 	async runWorkflow(req: Request<{ namespace: string; key: string }>, res: Response) {
 		setCorsHeaders(res);
@@ -75,7 +66,6 @@ export class AppRuntimeController {
 				req.params.namespace,
 				req.params.key,
 				req.body,
-				bearerToken(req),
 			);
 			res.status(result.status === 'running' ? 202 : 200).json(result);
 		} catch (error) {

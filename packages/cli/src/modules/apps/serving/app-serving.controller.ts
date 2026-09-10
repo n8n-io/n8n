@@ -4,20 +4,9 @@ import { getHtmlSandboxCSP } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { AppPageTokenService } from './app-page-token';
 import { AppServingService } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
 import { renderAppPage, renderAppPageNotFound } from './render-page';
-
-/** Read by `@n8n/app-sdk`, which sends the token as the runtime API's bearer token. */
-export const APP_PAGE_TOKEN_META_NAME = 'n8n-app-token';
-
-/** Before `</head>` when there is one, else in front of the document. */
-export function injectPageToken(html: string, token: string): string {
-	const meta = `<meta name="${APP_PAGE_TOKEN_META_NAME}" content="${token}">`;
-	const headEnd = html.search(/<\/head\s*>/i);
-	return headEnd === -1 ? meta + html : html.slice(0, headEnd) + meta + html.slice(headEnd);
-}
 
 /** Express 5 hands a wildcard path over as its segments; an empty path has none. */
 const pathSegments = (path: unknown): string[] => {
@@ -28,10 +17,7 @@ const pathSegments = (path: unknown): string[] => {
 
 @RootLevelController('/apps')
 export class AppServingController {
-	constructor(
-		private readonly appServingService: AppServingService,
-		private readonly appPageTokenService: AppPageTokenService,
-	) {}
+	constructor(private readonly appServingService: AppServingService) {}
 
 	/**
 	 * Serves an App to anyone with the URL: a file of its active version's
@@ -60,11 +46,7 @@ export class AppServingController {
 		}
 
 		if (resolved?.kind === 'static') {
-			if (path.extname(resolved.filePath) === '.html') {
-				await this.sendHtml(res, resolved.filePath, this.appPageTokenService.mint(resolved.app.id));
-				return;
-			}
-			this.sendStaticFile(res, resolved.filePath);
+			await this.sendStaticFile(res, resolved.filePath);
 			return;
 		}
 
@@ -83,27 +65,27 @@ export class AppServingController {
 		res.type('html').send(await renderAppPage(resolved.context));
 	}
 
-	/** HTML is the entry point: it carries the page token, so no cache may keep it, and a reload shows a new version. */
-	private async sendHtml(res: Response, filePath: string, token: string) {
-		let html: string;
-		try {
-			html = await readFile(filePath, 'utf8');
-		} catch {
-			res.status(404).type('text').send('Not found');
-			return;
-		}
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		res.setHeader('Cache-Control', 'no-store');
-		res.type('html').send(injectInspectorScript(injectPageToken(html, token)));
-	}
-
-	private sendStaticFile(res: Response, filePath: string) {
+	private async sendStaticFile(res: Response, filePath: string) {
 		// Every file gets the sandbox policy: a browser renders `.htm`, `.svg` and
 		// friends as documents too, and the policy is harmless on the rest.
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// Assets revalidate (ETag makes that a 304), because a build may reference
-		// them by an unhashed name that changes content across versions.
-		res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+		// HTML is the entry point and must revalidate so a new version shows up on
+		// reload. Assets revalidate too (ETag makes that a 304), because a build
+		// may reference them by an unhashed name that changes content across versions.
+		const isHtml = path.extname(filePath) === '.html';
+		res.setHeader('Cache-Control', isHtml ? 'no-cache' : 'public, max-age=0, must-revalidate');
+
+		if (isHtml) {
+			// Read rather than stream so the element-picker script can be spliced in;
+			// entry documents are small, so this costs nothing measurable.
+			try {
+				const html = await readFile(filePath, 'utf8');
+				res.type('html').send(injectInspectorScript(html));
+			} catch {
+				if (!res.headersSent) res.status(404).type('text').send('Not found');
+			}
+			return;
+		}
 
 		// `dotfiles: 'allow'` because the cache lives under `.n8n`, which `send`
 		// would otherwise treat as a hidden path and refuse.

@@ -134,7 +134,6 @@ class N8nAppError extends Error {
 | `workflow_incompatible`  | 409  | The workflow lost its "When Executed by Another Workflow" trigger or gained a Form node.     |
 | `workflow_not_callable`  | 403  | The workflow's "This workflow can be called by" setting excludes the app's project.         |
 | `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists each rejected field's `path` and zod `code` (for example `invalid_type`). Fix the call. |
-| `unauthorized`           | 401  | No valid page token: it expired (15 min) or the page was not served by n8n. When the page had a token, the SDK reloads it once to get a new one; the call still rejects either way. |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
 | `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
@@ -143,21 +142,12 @@ class N8nAppError extends Error {
 
 Show `error.message` to the user; it is written for people.
 
-## Who calls: the page token
+## Who calls
 
-All apps are public: anyone with the URL opens the app. The runtime API
-accepts only the page token. n8n injects `<meta name="n8n-app-token"
-content="…">` into the served `index.html`; the SDK reads it and sends
-`Authorization: Bearer <token>` with every call. The token is bound to the
-app and expires after 15 minutes. On a `401` for a call that sent a token the
-SDK calls `location.reload()` once (a fresh navigation re-mints the token) and
-rejects with `N8nAppError`. The token names no user and `principal` is
-`null`.
-
-Honest limit: the token stops cross-site and casual `curl` use, nothing more.
-Anyone who can load the page can script "GET the page, read the token, POST
-to the API". The bindings allow-list, the rate limit, the concurrency cap and
-the generic error messages are the real protections.
+All apps are public: anyone with the URL opens the app. The runtime API is
+callable from the app's own page only (CORS). Like a public webhook, anyone
+who can reach the instance can call a bound workflow, so bind only workflows
+that may be public. `principal` is `null`.
 
 ## Runtime facts
 

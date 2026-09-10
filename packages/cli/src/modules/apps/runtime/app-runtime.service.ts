@@ -31,7 +31,6 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { AppRepository } from '../app.repository';
-import { AppPageTokenService } from '../serving/app-page-token';
 import { AppRuntimeError } from './app-runtime.error';
 
 /**
@@ -87,7 +86,6 @@ export class AppRuntimeService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly appPageTokenService: AppPageTokenService,
 	) {}
 
 	/**
@@ -95,24 +93,10 @@ export class AppRuntimeService {
 	 * tool does. Each refusal has its own code so the app can tell a missing binding from
 	 * an unpublished workflow.
 	 */
-	async runWorkflow(
-		namespace: string,
-		key: string,
-		body: unknown,
-		pageToken: string | undefined,
-	): Promise<AppRuntimeRunResult> {
+	async runWorkflow(namespace: string, key: string, body: unknown): Promise<AppRuntimeRunResult> {
 		const app = await this.appRepository.findByNamespace(namespace);
 		if (!app) {
 			throw new AppRuntimeError(404, 'app_not_found', `No app is served at /apps/${namespace}.`);
-		}
-
-		// The page token proves the call comes from a page n8n served for this app.
-		if (!pageToken || !this.appPageTokenService.verify(pageToken, app.id)) {
-			throw new AppRuntimeError(
-				401,
-				'unauthorized',
-				'The request carries no valid page token. Reload the app to get a new one.',
-			);
 		}
 
 		const binding = app.bindings.find((b) => b.key === key && b.kind === 'workflow');

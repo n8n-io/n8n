@@ -22,7 +22,6 @@ import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { App } from '../../app.entity';
 import type { AppRepository } from '../../app.repository';
-import type { AppPageTokenService } from '../../serving/app-page-token';
 import { AppRuntimeError } from '../app-runtime.error';
 import { AppRuntimeService } from '../app-runtime.service';
 
@@ -58,8 +57,6 @@ const app = {
 	projectId: 'proj-1',
 	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
 } as unknown as App;
-
-const PAGE_TOKEN = 'page-token';
 
 const failedRun = (lastNodeExecuted: string, message: string): IRun =>
 	({
@@ -109,11 +106,9 @@ describe('AppRuntimeService', () => {
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let appsConfig: AppsConfig;
-	let appPageTokenService: ReturnType<typeof mock<AppPageTokenService>>;
 	let service: AppRuntimeService;
 
-	const run = async (body: unknown = {}, ...token: [string | undefined] | []) =>
-		await service.runWorkflow('runner', 'submit', body, token.length === 0 ? PAGE_TOKEN : token[0]);
+	const run = async (body: unknown = {}) => await service.runWorkflow('runner', 'submit', body);
 
 	beforeEach(() => {
 		appRepository = mock<AppRepository>();
@@ -125,7 +120,6 @@ describe('AppRuntimeService', () => {
 		executionPersistence = mock<ExecutionPersistence>();
 		logger = mock<Logger>();
 		appsConfig = mock<AppsConfig>({ runtimeMaxConcurrent: 10 });
-		appPageTokenService = mock<AppPageTokenService>();
 		service = new AppRuntimeService(
 			appRepository,
 			workflowLoader,
@@ -136,12 +130,8 @@ describe('AppRuntimeService', () => {
 			executionPersistence,
 			logger,
 			mock<GlobalConfig>({ apps: appsConfig }),
-			appPageTokenService,
 		);
 
-		appPageTokenService.verify.mockImplementation(
-			(token, appId) => token === PAGE_TOKEN && appId === 'app-1',
-		);
 		appRepository.findByNamespace.mockResolvedValue(app);
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow());
 		subworkflowPolicyChecker.checkForProject.mockResolvedValue(undefined);
@@ -155,17 +145,7 @@ describe('AppRuntimeService', () => {
 		vi.useRealTimers();
 	});
 
-	describe('authentication', () => {
-		it('returns unauthorized without a page token', async () => {
-			await expectRuntimeError(run({}, undefined), 401, 'unauthorized');
-			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
-		});
-
-		it('returns unauthorized for a token the app does not verify', async () => {
-			await expectRuntimeError(run({}, 'other-token'), 401, 'unauthorized');
-			expect(appPageTokenService.verify).toHaveBeenCalledWith('other-token', 'app-1');
-		});
-
+	describe('principal', () => {
 		it('answers with principal null for the anonymous visitor', async () => {
 			const result = await run({ message: 'hi' });
 
@@ -177,20 +157,12 @@ describe('AppRuntimeService', () => {
 		it('returns app_not_found for an unknown namespace', async () => {
 			appRepository.findByNamespace.mockResolvedValue(null);
 
-			await expectRuntimeError(
-				service.runWorkflow('nobody', 'submit', {}, PAGE_TOKEN),
-				404,
-				'app_not_found',
-			);
+			await expectRuntimeError(service.runWorkflow('nobody', 'submit', {}), 404, 'app_not_found');
 			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('returns binding_not_found for a key the app has not bound', async () => {
-			await expectRuntimeError(
-				service.runWorkflow('runner', 'nope', {}, PAGE_TOKEN),
-				404,
-				'binding_not_found',
-			);
+			await expectRuntimeError(service.runWorkflow('runner', 'nope', {}), 404, 'binding_not_found');
 			expect(workflowLoader.loadWorkflow).not.toHaveBeenCalled();
 		});
 
