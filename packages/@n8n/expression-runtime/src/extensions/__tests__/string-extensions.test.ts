@@ -65,6 +65,15 @@ describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 		'https://example.com/emoji/😀',
 		'https://example.com/path?q=1',
 		'https://example.com/path#frag',
+		'https://example.com/a/%2e%2e/b',
+		'https://example.com/a/%2E./b',
+		'https://example.com/a/%2e/b',
+		'https://example.com/a%2eb',
+		'https://example.com/a\\b',
+		'https://example.com\\a\\b',
+		'https://example.com/a\\..\\b',
+		'ws://example.com/a\\b',
+		'ftp://example.com/a/../b',
 	])('should give the same path as new URL() for %s', (input) => {
 		expect(extractUrlPath(input)).toBe(new URL(input).pathname);
 	});

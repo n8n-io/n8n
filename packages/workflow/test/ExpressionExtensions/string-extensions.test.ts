@@ -328,6 +328,8 @@ describe('Data Transformation Functions', () => {
 			['https://de.wikipedia.org/wiki/Käse', '/wiki/K%C3%A4se'],
 			['https://example.com/my report.pdf', '/my%20report.pdf'],
 			['https://example.com/a<b>c', '/a%3Cb%3Ec'],
+			['https://example.com/a/%2e%2e/b', '/b'],
+			['https://example.com/a\\b', '/a/b'],
 			['https://example.com/a%2fb', '/a%2fb'],
 			['https://example.com/a+b;c=d', '/a+b;c=d'],
 		])('.extractUrlPath should normalize the path of %s', (url, expected) => {

@@ -375,6 +375,9 @@ function isDigit(ch: number): boolean {
 	return ch >= 48 && ch <= 57;
 }
 
+// The schemes for which the WHATWG URL parser reads "\" as a path separator
+const SPECIAL_SCHEMES = new Set(['ftp', 'file', 'http', 'https', 'ws', 'wss']);
+
 // The punctuation in the path percent-encode set of the WHATWG URL parser. The
 // set also holds `?` and `#`, but they end the path and cannot reach here.
 const PATH_PERCENT_ENCODE_PUNCTUATION = '"<>^`{}';
@@ -400,6 +403,15 @@ function percentEncodePath(path: string): string {
 	return encoded;
 }
 
+// Count the dots in a single-dot or double-dot path segment. The URL parser
+// reads `%2e` as a dot here, in either case, so `.%2E` is a double-dot segment.
+function dotSegmentDots(segment: string): number {
+	const dots = segment.toLowerCase().replaceAll('%2e', '.');
+	if (dots === '.') return 1;
+	if (dots === '..') return 2;
+	return 0;
+}
+
 // Resolve `.` and `..` segments, as RFC 3986 section 5.2.4 specifies. `path`
 // always starts with a "/", so the first segment is empty and the join adds it
 // back.
@@ -407,14 +419,14 @@ function removeDotSegments(path: string): string {
 	const segments = path.split('/');
 	const kept: string[] = [];
 	for (let i = 1; i < segments.length; i++) {
-		const segment = segments[i];
-		if (segment === '.' || segment === '..') {
-			if (segment === '..') kept.pop();
-			// A trailing dot segment leaves the path ending in a slash
-			if (i === segments.length - 1) kept.push('');
-		} else {
-			kept.push(segment);
+		const dots = dotSegmentDots(segments[i]);
+		if (dots === 0) {
+			kept.push(segments[i]);
+			continue;
 		}
+		if (dots === 2) kept.pop();
+		// A trailing dot segment leaves the path ending in a slash
+		if (i === segments.length - 1) kept.push('');
 	}
 	return `/${kept.join('/')}`;
 }
@@ -439,14 +451,18 @@ function extractUrlPath(value: string) {
 		}
 	}
 
+	// For a special scheme the URL parser reads "\" as a path separator too
+	const isSpecial = SPECIAL_SCHEMES.has(value.slice(0, protoEnd).toLowerCase());
+	const startsPath = (char: string) => char === '/' || (isSpecial && char === '\\');
+
 	const hostStart = protoEnd + 3;
 	if (hostStart >= value.length) return undefined;
 
-	// Find where host ends (first /, ?, or #)
+	// Find where host ends (first path separator, ?, or #)
 	let pathStart = hostStart;
 	while (
 		pathStart < value.length &&
-		value[pathStart] !== '/' &&
+		!startsPath(value[pathStart]) &&
 		value[pathStart] !== '?' &&
 		value[pathStart] !== '#'
 	) {
@@ -454,7 +470,7 @@ function extractUrlPath(value: string) {
 	}
 
 	// No path segment found
-	if (pathStart >= value.length || value[pathStart] !== '/') return '/';
+	if (pathStart >= value.length || !startsPath(value[pathStart])) return '/';
 
 	// Find where path ends (first ? or #)
 	let pathEnd = pathStart;
@@ -463,7 +479,8 @@ function extractUrlPath(value: string) {
 	}
 
 	// The URL parser removes tabs and newlines before it reads the path.
-	const path = value.slice(pathStart, pathEnd).replace(/[\t\n\r]/g, '') || '/';
+	let path = value.slice(pathStart, pathEnd).replace(/[\t\n\r]/g, '') || '/';
+	if (isSpecial) path = path.replaceAll('\\', '/');
 	return percentEncodePath(removeDotSegments(path));
 }
 
