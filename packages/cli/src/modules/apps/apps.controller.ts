@@ -235,7 +235,6 @@ export class AppsController {
 		@Param('appId') appId: string,
 	) {
 		this.checkInstanceWriteAccess();
-		// Manual parse: `@Body` reflection cannot resolve a zod discriminated union.
 		const parsed = CreateAppBindingDto.safeParse(req.body);
 		if (!parsed.success) throw new BadRequestError(parsed.error.errors[0].message);
 		const described = await this.appsService.addBinding(appId, parsed.data, req.user);
