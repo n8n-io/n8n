@@ -10,6 +10,7 @@ export class AppsModule implements ModuleInterface {
 		// catch-all would otherwise answer `/apps/<ns>/api/*` with the SPA's index.html.
 		await import('./runtime/app-runtime.controller.js');
 		await import('./runtime/app-table-runtime.controller.js');
+		await import('./runtime/app-agent-runtime.controller.js');
 		await import('./serving/app-serving.controller.js');
 		await import('./serving/app-inspector-script.controller.js');
 
