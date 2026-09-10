@@ -256,6 +256,10 @@ export const createInternalOperationTraceContext: typeof LangsmithTracingMod.cre
 export const createTraceReplayOnlyContext: typeof LangsmithTracingMod.createTraceReplayOnlyContext =
 	lazyFunction(() => loadLangsmithTracing().createTraceReplayOnlyContext);
 
+export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVersion = lazyFunction(
+	() => loadLangsmithTracing().setTracePromptVersion,
+);
+
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
 

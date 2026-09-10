@@ -24,7 +24,11 @@ import {
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	mergeTraceRunInputs,
+	setTracePromptVersion,
+} from '../tracing/langsmith-tracing';
 import type {
 	CreateInstanceAgentOptions,
 	InstanceAiContext,
@@ -221,6 +225,10 @@ export async function createInstanceAgent(
 		},
 	);
 
+	setTracePromptVersion(
+		orchestrationContext?.tracing,
+		orchestrationContext?.promptConfiguration?.version,
+	);
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',

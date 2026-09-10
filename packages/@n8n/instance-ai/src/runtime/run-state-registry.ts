@@ -703,11 +703,15 @@ export class RunStateRegistry<TUser = unknown> {
 	 * confirmation Promise.
 	 */
 	shutdown(): {
-		activeRuns: ActiveRunState[];
+		activeRuns: Array<ActiveRunState & { promptVersion?: string }>;
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
 		pendingThreadIds: string[];
 	} {
-		const activeRuns = [...this.activeRuns.values()];
+		// Capture the resolved profile before clearing per-thread state.
+		const activeRuns = [...this.activeRuns.values()].map((run) => ({
+			...run,
+			promptVersion: this.getPromptConfiguration(run.threadId)?.version,
+		}));
 		const suspendedRuns = [...this.suspendedRuns.values()];
 		const pendingThreadIds = [
 			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),

@@ -17,6 +17,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		describePromptProfile: profiles.describePromptProfile,
+		setTracePromptVersion: vi.fn(),
 		// Wiring-only stub: the real mapping has its own unit tests
 		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
 		// service tests pin is that its OUTPUT reaches the trace — spreading an
@@ -2933,6 +2934,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('persists the resumed-run fallback error before cleanup', async () => {
 		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
 		const abortController = new AbortController();
 		vi.mocked(resumeAgentRun).mockImplementationOnce(async (_agent, _data, resumeOptions) => {
 			const onResumeClaimed = resumeOptions.onResumeClaimed;
@@ -2961,6 +2963,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			run_id: 'run-1',
 			status: 'error',
 			user_id: 'user-1',
+			prompt_version: 'progressive@1',
 		});
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
 			thread_id: 'thread-a',
@@ -2968,6 +2971,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_message: 'provider failed',
 			error_source: 'exception',
 			user_id: 'user-1',
+			prompt_version: 'progressive@1',
 		});
 	});
 
@@ -3034,6 +3038,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('tracks "Builder generation errored" when a resumed stream reports an error', async () => {
 		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'default@1' });
 		const abortController = new AbortController();
 		mockClaimedResumeResult({
 			status: 'errored',
@@ -3063,6 +3068,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			error_message: 'model overloaded',
 			error_source: 'stream',
 			user_id: 'user-1',
+			prompt_version: 'default@1',
 		});
 	});
 
@@ -3103,7 +3109,11 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits when a resumed run completes', async () => {
 		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
 		const abortController = new AbortController();
+		service.creditService.claimRunUsage.mockImplementationOnce(async () => {
+			service.runState.getPromptConfiguration.mockReturnValue({ version: 'default@1' });
+		});
 		mockClaimedResumeResult({
 			status: 'completed',
 			agentRunId: 'agent-run-1',
@@ -3132,12 +3142,19 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			[],
 			'completed',
 		);
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder sent message', {
+			thread_id: 'thread-a',
+			message: 'done',
+			prompt_version: 'progressive@1',
+		});
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder satisfied user intent', {
 			thread_id: 'thread-a',
+			prompt_version: 'progressive@1',
 		});
 		// user_id must be present so the heartbeat event reaches PostHog
 		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
 			thread_id: 'thread-a',
+			prompt_version: 'progressive@1',
 			run_id: 'run-1',
 			status: 'completed',
 			user_id: 'user-1',

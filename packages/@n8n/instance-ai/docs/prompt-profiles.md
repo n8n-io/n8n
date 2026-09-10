@@ -63,6 +63,12 @@ Traces include `prompt_configuration` and the rendered `system_prompt_hash`.
 Thread status includes `promptConfiguration` with the selected version and skill
 hash. Both include fallback information when available.
 
+Trace metadata also includes `prompt_version`, such as `progressive@1`, for
+filtering. The same property is sent with `instance_ai_run_finished`,
+`Builder sent message`, `Builder satisfied user intent`, and
+`Builder generation errored`. It identifies the resolved profile for that run,
+including after a resume. Events omit it when no resolved profile is available.
+
 ## Evaluate profiles
 
 Set `promptVersion` in a local eval case, or set `N8N_EVAL_PROMPT_VERSION` for a

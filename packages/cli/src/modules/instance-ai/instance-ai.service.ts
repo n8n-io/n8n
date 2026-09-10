@@ -48,6 +48,7 @@ import {
 	loadInstanceAiPromptSkills,
 	resolvePromptProfile,
 	describePromptProfile,
+	setTracePromptVersion,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -640,6 +641,8 @@ type RunFinishErrorInfo = {
 	errorSource?: 'stream' | 'exception';
 };
 
+type RunFinishMetadata = RunFinishErrorInfo & { promptVersion?: string };
+
 type UnclaimedResumeContext = {
 	threadId: string;
 	runId: string;
@@ -935,8 +938,10 @@ export class InstanceAiService {
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
 			tracing: this.tracing,
-			publishRunFinish: (threadId, runId, status, reason) => {
-				this.publishRunFinish(threadId, runId, status, reason);
+			publishRunFinish: (threadId, runId, status, reason, promptVersion) => {
+				this.publishRunFinish(threadId, runId, status, reason, undefined, undefined, {
+					promptVersion,
+				});
 			},
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -1975,7 +1980,15 @@ export class InstanceAiService {
 
 			// Truly mid-stream run: the durable run-finish is all history needs —
 			// the fold derives the terminal tree from the log after restart.
-			this.publishRunFinish(run.threadId, run.runId, 'cancelled', 'service_shutdown');
+			this.publishRunFinish(
+				run.threadId,
+				run.runId,
+				'cancelled',
+				'service_shutdown',
+				undefined,
+				undefined,
+				{ promptVersion: run.promptVersion },
+			);
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
@@ -3687,6 +3700,7 @@ export class InstanceAiService {
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
+		let promptVersion: string | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let messageId = '';
@@ -3845,6 +3859,8 @@ export class InstanceAiService {
 				orchestrationContext,
 				conversationHistory,
 			} = environment;
+			promptVersion = orchestrationContext.promptConfiguration?.version;
+			setTracePromptVersion(tracing, promptVersion);
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			const isPostPlanFollowUp = isReplanFollowUp || checkpoint?.isCheckpointFollowUp === true;
 			// Make the current user message available since memory history only
@@ -4279,6 +4295,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
+						...(promptVersion ? { prompt_version: promptVersion } : {}),
 						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
@@ -4298,6 +4315,7 @@ export class InstanceAiService {
 					messageTraceFinalization = await this.terminalOutcome.finishInvalidConfirmationRun({
 						threadId,
 						runId,
+						promptVersion,
 						abortController,
 						tracing,
 					});
@@ -4420,6 +4438,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			await this.finalizeRun(threadId, runId, result.status, {
+				promptVersion,
 				userId: user.id,
 				modelId,
 				archivedWorkflowIds,
@@ -4451,10 +4470,12 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
+					...(promptVersion ? { prompt_version: promptVersion } : {}),
 					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
+					...(promptVersion ? { prompt_version: promptVersion } : {}),
 				});
 			}
 		} catch (error) {
@@ -4508,6 +4529,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					user.id,
+					{ promptVersion },
 				);
 				return;
 			}
@@ -4580,7 +4602,7 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				user.id,
-				{ errorMessage, errorSource: 'exception' },
+				{ errorMessage, errorSource: 'exception', promptVersion },
 			);
 		} finally {
 			this.runState.clearActiveRun(threadId);
@@ -5363,6 +5385,10 @@ export class InstanceAiService {
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
+		const promptVersion =
+			opts.orchestrationContext?.promptConfiguration?.version ??
+			this.runState.getPromptConfiguration(opts.threadId)?.version;
+		setTracePromptVersion(opts.tracing, promptVersion);
 		let completedSetupWorkflowId: string | undefined;
 		let skipPostRunCleanup = false;
 		let resumeClaimed = false;
@@ -5529,6 +5555,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
+						...(promptVersion ? { prompt_version: promptVersion } : {}),
 						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
@@ -5546,6 +5573,7 @@ export class InstanceAiService {
 					messageTraceFinalization = await this.terminalOutcome.finishInvalidConfirmationRun({
 						threadId: opts.threadId,
 						runId: opts.runId,
+						promptVersion,
 						abortController: opts.abortController,
 						tracing: opts.tracing,
 					});
@@ -5671,6 +5699,7 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
+				promptVersion,
 				userId: opts.user.id,
 				// Forward modelId so title refinement fires on the resume path too — a run
 				// that suspends for HITL and completes here would otherwise never be titled.
@@ -5707,16 +5736,18 @@ export class InstanceAiService {
 				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
+					...(promptVersion ? { prompt_version: promptVersion } : {}),
 					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
+					...(promptVersion ? { prompt_version: promptVersion } : {}),
 				});
 			}
 		} catch (error) {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				await this.settleUnclaimedResume(opts, error, 'exception');
+				await this.settleUnclaimedResume(opts, error, 'exception', promptVersion);
 				return;
 			}
 
@@ -5766,6 +5797,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					opts.user.id,
+					{ promptVersion },
 				);
 				return;
 			}
@@ -5841,7 +5873,7 @@ export class InstanceAiService {
 				userFacingErrorMessage,
 				archivedWorkflowIds,
 				opts.user.id,
-				{ errorMessage, errorSource: 'exception' },
+				{ errorMessage, errorSource: 'exception', promptVersion },
 			);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
@@ -5913,6 +5945,7 @@ export class InstanceAiService {
 		opts: UnclaimedResumeContext,
 		error: unknown,
 		errorSource: NonNullable<RunFinishErrorInfo['errorSource']>,
+		promptVersion?: string,
 	): Promise<void> {
 		const outcome = classifyUnclaimedResume(error, {
 			aborted: opts.signal.aborted,
@@ -5951,6 +5984,7 @@ export class InstanceAiService {
 				await this.emitTerminalRun({
 					threadId: opts.threadId,
 					runId: opts.runId,
+					promptVersion,
 					status: 'cancelled',
 					reason,
 					messageGroupId: opts.messageGroupId,
@@ -5981,6 +6015,7 @@ export class InstanceAiService {
 				await this.emitTerminalRun({
 					threadId: opts.threadId,
 					runId: opts.runId,
+					promptVersion,
 					status: 'errored',
 					reason: outcome.reason,
 					errorCode: outcome.errorCode,
@@ -6005,6 +6040,7 @@ export class InstanceAiService {
 	private async emitTerminalRun(args: {
 		threadId: string;
 		runId: string;
+		promptVersion?: string;
 		status: 'cancelled' | 'errored';
 		reason: string;
 		errorCode?: TerminalErrorCode;
@@ -6038,15 +6074,10 @@ export class InstanceAiService {
 					),
 			)) ?? [];
 
-		this.publishRunFinish(
-			threadId,
-			runId,
-			status,
-			args.reason,
-			archivedWorkflowIds,
-			args.user.id,
-			args.errorInfo,
-		);
+		this.publishRunFinish(threadId, runId, status, args.reason, archivedWorkflowIds, args.user.id, {
+			...args.errorInfo,
+			promptVersion: args.promptVersion,
+		});
 	}
 
 	private async bestEffort<T>(
@@ -6225,6 +6256,7 @@ export class InstanceAiService {
 			reason,
 			archivedWorkflowIds,
 			suspended.user.id,
+			{ promptVersion: suspended.orchestrationContext?.promptConfiguration?.version },
 		);
 
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
@@ -6247,7 +6279,7 @@ export class InstanceAiService {
 		reason?: string,
 		archivedWorkflowIds?: string[],
 		userId?: string,
-		errorInfo?: RunFinishErrorInfo,
+		metadata?: RunFinishMetadata,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -6269,6 +6301,7 @@ export class InstanceAiService {
 		this.telemetry.track('instance_ai_run_finished', {
 			thread_id: threadId,
 			run_id: runId,
+			...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
@@ -6277,8 +6310,9 @@ export class InstanceAiService {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
 				run_id: runId,
-				error_message: redactTelemetryText(errorInfo?.errorMessage ?? reason ?? 'unknown'),
-				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
+				...(metadata?.promptVersion ? { prompt_version: metadata.promptVersion } : {}),
+				error_message: redactTelemetryText(metadata?.errorMessage ?? reason ?? 'unknown'),
+				...(metadata?.errorSource ? { error_source: metadata.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
 			});
 		}
@@ -6397,6 +6431,7 @@ export class InstanceAiService {
 		status: 'completed' | 'cancelled' | 'errored',
 		options?: {
 			userId?: string;
+			promptVersion?: string;
 			modelId?: ModelConfig;
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
@@ -6412,7 +6447,7 @@ export class InstanceAiService {
 			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
-			options?.errorInfo,
+			{ ...options?.errorInfo, promptVersion: options?.promptVersion },
 		);
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {

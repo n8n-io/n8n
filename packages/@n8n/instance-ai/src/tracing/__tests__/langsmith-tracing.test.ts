@@ -18,6 +18,7 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTracePromptVersion,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from '../langsmith-tracing';
@@ -441,6 +442,8 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing?.getTelemetry).toBeDefined();
+		setTracePromptVersion(tracing, undefined);
+		expect(tracing?.rootRun.metadata).not.toHaveProperty('prompt_version');
 
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
@@ -455,6 +458,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(telemetry.recordInputs).toBe(true);
 		expect(telemetry.recordOutputs).toBe(true);
 		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
+		expect(telemetry.metadata).not.toHaveProperty('prompt_version');
 		expect(telemetry.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
@@ -564,6 +568,7 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'What workflows do I have?' },
 		});
 		const actorRun = await startForegroundActor(tracing!);
+		setTracePromptVersion(tracing, 'default@1');
 
 		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
@@ -576,8 +581,15 @@ describe('createInstanceAiTraceContext', () => {
 			expect.objectContaining({
 				langsmith_root_run_id: tracing?.rootRun.id,
 				langsmith_actor_run_id: actorRun.id,
+				prompt_version: 'default@1',
 			}),
 		);
+		expect(tracing?.rootRun.metadata).toHaveProperty('prompt_version', 'default@1');
+		expect(actorRun.metadata).toHaveProperty('prompt_version', 'default@1');
+		for (const run of [tracing!.rootRun, actorRun]) {
+			const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+			expect(span?.attributes).toHaveProperty('langsmith.metadata.prompt_version', 'default@1');
+		}
 
 		await telemetry.provider?.shutdown();
 	});
@@ -1336,6 +1348,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
+		setTracePromptVersion(tracing, 'progressive@1');
 
 		const continuedTracing = await continueInstanceAiTraceContext(tracing!, {
 			threadId: 'thread-1',
@@ -1358,6 +1371,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
+				prompt_version: 'progressive@1',
 			}),
 		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
@@ -1377,6 +1391,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.orchestratorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
+				prompt_version: 'progressive@1',
 			}),
 		);
 	});

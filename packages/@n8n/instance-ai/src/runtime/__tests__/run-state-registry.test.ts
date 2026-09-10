@@ -1066,6 +1066,12 @@ describe('RunStateRegistry', () => {
 	describe('shutdown', () => {
 		it('clears everything and returns all active and suspended runs', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			registry.setPromptConfiguration('thread-1', {
+				version: 'progressive@1',
+				systemPromptVersion: 'instance-agent@1',
+				skillVariants: ['progressive-building@1'],
+				skillsHash: 'selected-skills',
+			});
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
 			registry.suspendRun(
 				'thread-2',
@@ -1076,6 +1082,8 @@ describe('RunStateRegistry', () => {
 
 			expect(result.activeRuns).toHaveLength(1);
 			expect(result.activeRuns[0].runId).toBe('run_id-1');
+			expect(result.activeRuns[0].promptVersion).toBe('progressive@1');
+			expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
 			expect(result.suspendedRuns).toHaveLength(1);
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});
