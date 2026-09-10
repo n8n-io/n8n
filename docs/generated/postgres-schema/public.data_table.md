@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) [public.data_table_mutation_event](public.data_table_mutation_event.md) [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
+| id | varchar(36) |  | false | [public.data_table_column](public.data_table_column.md) [public.data_table_mutation_event](public.data_table_mutation_event.md) [public.data_table_row_automation](public.data_table_row_automation.md) [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
 | metadata | json | '{}'::json | false |  |  | Extensible Data Table configuration |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
@@ -39,6 +39,7 @@ erDiagram
 
 "public.data_table_column" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
 "public.data_table_mutation_event" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
+"public.data_table_row_automation" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
 "public.data_table_trigger_subscription" }o--|| "public.data_table" : "FOREIGN KEY (#quot;dataTableId#quot;) REFERENCES data_table(id) ON DELETE CASCADE"
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
@@ -70,6 +71,18 @@ erDiagram
   json payload
   integer rowId
   timestamp_3__with_time_zone updatedAt
+}
+"public.data_table_row_automation" {
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataTableId FK
+  text error
+  bigint executionId
+  uuid id
+  varchar_36_ nodeId
+  integer rowId
+  varchar_20_ status
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 "public.data_table_trigger_subscription" {
   varchar_36_ columnId FK

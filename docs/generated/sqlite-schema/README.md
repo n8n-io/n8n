@@ -53,6 +53,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [data_table](data_table.md) | 6 |  | table |
 | [data_table_column](data_table_column.md) | 9 |  | table |
 | [data_table_mutation_event](data_table_mutation_event.md) | 8 |  | table |
+| [data_table_row_automation](data_table_row_automation.md) | 10 |  | table |
 | [data_table_trigger_delivery](data_table_trigger_delivery.md) | 16 |  | table |
 | [data_table_trigger_subscription](data_table_trigger_subscription.md) | 9 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -227,6 +228,8 @@ erDiagram
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_mutation_event" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_row_automation" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_row_automation" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_trigger_delivery" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_trigger_delivery" }o--|| "data_table_mutation_event" : "FOREIGN KEY (eventId) REFERENCES data_table_mutation_event (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_trigger_subscription" }o--o| "data_table_column" : "FOREIGN KEY (columnId) REFERENCES data_table_column (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
@@ -856,6 +859,18 @@ erDiagram
   TEXT payload
   INTEGER rowId
   datetime_3_ updatedAt
+}
+"data_table_row_automation" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  TEXT error
+  bigint executionId
+  varchar id PK
+  varchar_36_ nodeId
+  INTEGER rowId
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "data_table_trigger_delivery" {
   smallint attempts

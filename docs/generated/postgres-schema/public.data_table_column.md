@@ -6,11 +6,11 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dataTableId | varchar(36) |  | false |  | [public.data_table](public.data_table.md) |  |
-| defaultValue | varchar(128) |  | true |  |  | Default value for an enum column |
+| defaultValue | varchar(128) |  | true |  |  | Default option ID for an enum column |
 | id | varchar(36) |  | false | [public.data_table_trigger_subscription](public.data_table_trigger_subscription.md) |  |  |
 | index | integer |  | false |  |  | Column order, starting from 0 (0 = first column) |
 | name | varchar(128) |  | false |  |  |  |
-| options | json |  | true |  |  | Allowed values for an enum column |
+| options | json |  | true |  |  | Option IDs, text, and colors for an enum column |
 | type | varchar(32) |  | false |  |  | Expected: string, number, boolean, or date (not enforced as a constraint) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 

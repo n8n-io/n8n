@@ -16,7 +16,7 @@ CREATE TABLE "data_table" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [data_table_column](data_table_column.md) [data_table_mutation_event](data_table_mutation_event.md) [data_table_trigger_subscription](data_table_trigger_subscription.md) |  |  |
+| id | varchar(36) |  | false | [data_table_column](data_table_column.md) [data_table_mutation_event](data_table_mutation_event.md) [data_table_row_automation](data_table_row_automation.md) [data_table_trigger_subscription](data_table_trigger_subscription.md) |  |  |
 | metadata | TEXT | '{}' | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
@@ -45,6 +45,7 @@ erDiagram
 
 "data_table_column" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_mutation_event" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"data_table_row_automation" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table_trigger_subscription" }o--|| "data_table" : "FOREIGN KEY (dataTableId) REFERENCES data_table (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -76,6 +77,18 @@ erDiagram
   TEXT payload
   INTEGER rowId
   datetime_3_ updatedAt
+}
+"data_table_row_automation" {
+  datetime_3_ createdAt
+  varchar_36_ dataTableId FK
+  TEXT error
+  bigint executionId
+  varchar id PK
+  varchar_36_ nodeId
+  INTEGER rowId
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 "data_table_trigger_subscription" {
   varchar_36_ columnId FK
