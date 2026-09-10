@@ -23,6 +23,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -45,6 +46,7 @@ import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { buildProviderToolsForModel } from '../json-config/from-json-config';
+import { modelStreamStallOptions } from '../model-stream-stall-options';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
@@ -121,6 +123,7 @@ export class SubAgentRunner {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
+		private readonly aiConfig: AiConfig,
 	) {}
 
 	async run(
@@ -248,6 +251,7 @@ export class SubAgentRunner {
 			const executionOptions = {
 				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
+				...modelStreamStallOptions(this.aiConfig),
 				executionCounter: context.executionCounter,
 			};
 			const resultStream =

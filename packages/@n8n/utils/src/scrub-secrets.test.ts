@@ -18,6 +18,19 @@ describe('scrubSecretsInText', () => {
 		);
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
+		expect(scrubSecretsInText('Authorization: Bearer short')).toBe('Authorization: [REDACTED]');
+		expect(scrubSecretsInText('Authorization: Basic YTpi')).toBe('Authorization: [REDACTED]');
+		expect(scrubSecretsInText('Authorization: "Token abc"')).toBe('[REDACTED]');
+		expect(scrubSecretsInText('Authorization: "Basic ab\\"cd" next')).toBe('[REDACTED] next');
+		expect(scrubSecretsInText('headers: { Authorization: "Bearer short" }')).not.toContain('short');
+		// Prose mentioning the scheme stays readable.
+		expect(scrubSecretsInText('call it with a Bearer token, then')).toBe(
+			'call it with a Bearer token, then',
+		);
+		// Opaque bearer values (`id|secret`, `user:key`) are redacted whole.
+		expect(scrubSecretsInText('Authorization: Bearer 12345|abc:def, next')).toBe(
+			'Authorization: [REDACTED], next',
+		);
 	});
 
 	it('redacts OpenAI and Anthropic API keys', () => {
@@ -58,6 +71,7 @@ describe('scrubSecretsInText', () => {
 	it('redacts Stripe, Google, and GitHub fine-grained tokens', () => {
 		expect(scrubSecretsInText(join('sk', '_live_abcdefghijklmnop1234'))).toBe('[REDACTED]');
 		expect(scrubSecretsInText(join('AIza', 'B'.repeat(35)))).toBe('[REDACTED]');
+		expect(scrubSecretsInText(join('ya29.', 'B'.repeat(20)))).toBe('[REDACTED]');
 		expect(scrubSecretsInText(join('github_pat_', 'A'.repeat(30)))).toBe('[REDACTED]');
 	});
 
@@ -73,11 +87,35 @@ describe('scrubSecretsInText', () => {
 		);
 		expect(scrubSecretsInText('REFRESH_TOKEN = xyz')).toBe('[REDACTED]');
 		expect(scrubSecretsInText('Authorization: secret-value')).toBe('[REDACTED]');
+		expect(
+			scrubSecretsInText(
+				'token=value and client_secret=value and private_key=value and session_cookie=value',
+			),
+		).toBe('[REDACTED] and [REDACTED] and [REDACTED] and [REDACTED]');
+		expect(
+			scrubSecretsInText('webhook_secret=whsec_x and account_password=hunter2 and bot_token=abc'),
+		).toBe('[REDACTED] and [REDACTED] and [REDACTED]');
+		expect(scrubSecretsInText('webhook_secret="alpha beta" next=1')).toBe('[REDACTED] next=1');
+		expect(scrubSecretsInText("password='it\\'s a b' rest")).toBe('[REDACTED] rest');
+		expect(scrubSecretsInText('max_tokens=500')).toBe('max_tokens=500');
 	});
 
 	it('redacts JSON-shaped credential fields with quoted keys and values', () => {
-		const input = '{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz"}';
-		expect(scrubSecretsInText(input)).toBe('{[REDACTED], [REDACTED], [REDACTED]}');
+		const input =
+			'{"apiKey": "abc123XYZ", "password": "hunter2", "accessToken": "tok-xyz", "client_secret": "value", "webhook_secret": "whsec_x", "slack.token": "xyz"}';
+		expect(scrubSecretsInText(input)).toBe(
+			'{[REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED], [REDACTED]}',
+		);
+	});
+
+	it('redacts credential fields inside a JSON-encoded string value', () => {
+		// An upstream body serialized into an error message: every quote is `\"`,
+		// and the secret itself holds an escaped quote and a backslash.
+		const body = JSON.stringify({ api_key: 'hunter2', password: 'hun"t3r\\2', other: 'v' });
+		const input = JSON.stringify({ message: `401 from API: ${body}` });
+		expect(scrubSecretsInText(input)).toBe(
+			'{"message":"401 from API: {[REDACTED],[REDACTED],\\"other\\":\\"v\\"}"}',
+		);
 	});
 
 	it('redacts a "credentials" field holding a serialized scalar value', () => {
@@ -95,10 +133,13 @@ describe('scrubSecretsInText', () => {
 		expect(out).toContain('[REDACTED]');
 	});
 
-	it('redacts single-quoted JS object credential fields', () => {
+	it('redacts single-quoted and mixed-quote JS object credential fields', () => {
 		const out = scrubSecretsInText("config = {'apiKey': 'abc123XYZ'}");
 		expect(out).not.toContain('abc123XYZ');
 		expect(out).toContain('[REDACTED]');
+		expect(scrubSecretsInText('{"password": \'hunter2\', "user": "it\'s me"}')).toBe(
+			'{[REDACTED], "user": "it\'s me"}',
+		);
 	});
 
 	it('redacts JSON-shaped values containing escaped quotes without leaking the suffix', () => {
@@ -137,6 +178,25 @@ describe('scrubSecretsInText', () => {
 		expect(out).toContain('password');
 	});
 
+	it('scrubs a long hyphenated non-secret token in linear time', () => {
+		// The compound-key prefix must not backtrack through every separator at
+		// every start position; unbounded, this input took seconds.
+		const input = 'ab-'.repeat(32_000);
+		const start = performance.now();
+		expect(scrubSecretsInText(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(500);
+	});
+
+	it('redacts a quoted field whose compound key has a long prefix', () => {
+		const key = 'a'.repeat(200) + '_password';
+		expect(scrubSecretsInText(`{"${key}": "hunter2"}`)).toBe('{[REDACTED]}');
+		// Quote-anchored, so scanning a long non-secret key stays linear.
+		const input = ('"' + 'ab-'.repeat(2_000) + '": "x", ').repeat(50);
+		const start = performance.now();
+		expect(scrubSecretsInText(input)).toBe(input);
+		expect(performance.now() - start).toBeLessThan(500);
+	});
+
 	it('leaves typed redaction markers untouched instead of nesting them', () => {
 		expect(scrubSecretsInText('[REDACTED:secret:1]')).toBe('[REDACTED:secret:1]');
 		expect(scrubSecretsInText('[REDACTED:password:2]')).toBe('[REDACTED:password:2]');
@@ -157,6 +217,8 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText('feedback about the workflow plan')).toBe(
 			'feedback about the workflow plan',
 		);
+		expect(scrubSecretsInText('Token exchange failed')).toBe('Token exchange failed');
+		expect(scrubSecretsInText('Basic usage of the node')).toBe('Basic usage of the node');
 		expect(scrubSecretsInText('/var/lib/n8n/data/some-id-1234')).toBe(
 			'/var/lib/n8n/data/some-id-1234',
 		);

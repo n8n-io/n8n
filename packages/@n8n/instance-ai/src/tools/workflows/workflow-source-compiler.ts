@@ -1,7 +1,11 @@
 import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
-import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	validateWorkflow,
+	workflow as workflowBuilder,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
 import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
@@ -125,7 +129,60 @@ function parseWorkflowJsonSource(source: string): WorkflowSourceCompileResult {
 		};
 	}
 
+	fillMissingNodePositions(parsed);
+
 	return { success: true, workflow: parsed, warnings: [], compiler: 'workflow-json' };
+}
+
+/**
+ * The SDK source path lays nodes out when the builder serializes, but hand-written JSON
+ * never passes through the builder. A node without a position fails the save, so borrow
+ * the builder's layout for the nodes that lack one and leave the rest of the JSON alone.
+ * Every such node leaves here with a position, even when the layout has none to lend.
+ */
+function fillMissingNodePositions(json: WorkflowJSON): void {
+	const needsPosition = (node: WorkflowJSON['nodes'][number]) =>
+		!Array.isArray(node.position) ||
+		node.position.length !== 2 ||
+		!node.position.every((coordinate) => typeof coordinate === 'number');
+
+	if (!json.nodes?.some(needsPosition)) return;
+
+	// The builder treats any present position as explicit, so a malformed one such as
+	// `[100]` survives the layout and would reach the save as `[100, undefined]`. Drop it
+	// first. The declared type says `position` is always a valid pair, but this JSON is
+	// written by hand, so it can be absent or malformed.
+	const layoutNodes = json.nodes.map((node) => {
+		if (!needsPosition(node)) return node;
+		const { position: _malformed, ...withoutPosition } = node;
+		return withoutPosition as WorkflowJSON['nodes'][number];
+	});
+
+	// A layout is a nicety, not the point: fall back to a row so the save never fails on a
+	// missing position. The builder can throw on a workflow the save would still accept,
+	// and it does not have to emit every node it was given.
+	let laidOut: WorkflowJSON | undefined;
+	try {
+		laidOut = workflowBuilder.fromJSON({ ...json, nodes: layoutNodes }).toJSON();
+	} catch {
+		laidOut = undefined;
+	}
+
+	const positionsById = new Map<string, [number, number]>();
+	const positionsByName = new Map<string, [number, number]>();
+	for (const node of laidOut?.nodes ?? []) {
+		if (needsPosition(node)) continue;
+		if (node.id) positionsById.set(node.id, node.position);
+		if (node.name) positionsByName.set(node.name, node.position);
+	}
+
+	json.nodes.forEach((node, index) => {
+		if (!needsPosition(node)) return;
+		const position =
+			(node.id ? positionsById.get(node.id) : undefined) ??
+			(node.name ? positionsByName.get(node.name) : undefined);
+		node.position = position ? [position[0], position[1]] : [index * 200, 0];
+	});
 }
 
 function parseSandboxWarnings(value: unknown): ValidationWarning[] {
