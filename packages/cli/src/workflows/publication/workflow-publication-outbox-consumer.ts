@@ -455,6 +455,8 @@ export class WorkflowPublicationOutboxConsumer {
 		record: WorkflowPublicationOutbox,
 		detachedWork: Array<Promise<unknown>>,
 	): Promise<void> {
+		// Note: detachedWork has already been signaled to abort, so we give it the remaining
+		// lease before we release the lock.
 		const settled = await this.raceTimeout(Promise.allSettled(detachedWork), this.leaseMs);
 		if (settled !== TIMED_OUT) return;
 
