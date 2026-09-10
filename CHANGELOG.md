@@ -1,3 +1,25 @@
+## [2.39.2](https://github.com/n8n-io/n8n/compare/n8n@2.39.1...n8n@2.39.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **core:** Memoize pairedItem ancestry traversal ([#38212](https://github.com/n8n-io/n8n/issues/38212)) ([1feb9f2](https://github.com/n8n-io/n8n/commit/1feb9f2dac99744748e79b382b6f606d63c0ca5f))
+* **core:** Reuse an existing consent grant after the visitor authenticates mid-flow ([#38248](https://github.com/n8n-io/n8n/issues/38248)) ([d1d5801](https://github.com/n8n-io/n8n/commit/d1d58017c81f5d76a3860ba0c216d2faee538617))
+
+
+### Performance Improvements
+
+* **core:** Stop copying user workflows into the Instance AI sandbox ([#38199](https://github.com/n8n-io/n8n/issues/38199)) ([387eeae](https://github.com/n8n-io/n8n/commit/387eeae8683df9dd316a3809325807af3e54e26c))
+
+
+## [2.39.1](https://github.com/n8n-io/n8n/compare/n8n@2.39.0...n8n@2.39.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **core:** Repair legacy-format data-encryption keys during bootstrap ([#38142](https://github.com/n8n-io/n8n/issues/38142)) ([514e20b](https://github.com/n8n-io/n8n/commit/514e20b83d509bd07618cc48650fe783c4bf74f7))
+
+
 # [2.39.0](https://github.com/n8n-io/n8n/compare/n8n@2.38.1...n8n@2.39.0) (2026-09-08)
 
 

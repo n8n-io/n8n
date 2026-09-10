@@ -116,7 +116,6 @@ reattached. The setup creates or materializes:
 | `node-types/index.txt` | Searchable node-type catalog |
 | `src/` | Workflow source files |
 | `chunks/` | Reusable source modules |
-| `workflows/` | Existing workflows materialized as WorkflowJSON |
 | `knowledge-base/` | Best-practice, template, and SDK reference material |
 | `.sandbox-initialized` | Setup marker |
 

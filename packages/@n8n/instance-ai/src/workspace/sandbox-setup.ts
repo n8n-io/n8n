@@ -12,7 +12,6 @@
  *     package.json                    # @n8n/workflow-sdk dependency
  *     tsconfig.json                   # strict, noEmit, skipLibCheck
  *     node_modules/@n8n/workflow-sdk/ # full SDK with .d.ts types
- *     workflows/                      # existing n8n workflows as JSON
  *     node-types/
  *       index.txt                     # searchable catalog: nodeType | displayName | description | version
  *     src/
@@ -307,7 +306,7 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 }
 
 /** Dirs the agent's `list_files` may probe; some providers 404 on missing dirs. */
-const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks', 'workflows'];
+const ALWAYS_PRESENT_DIRS: readonly string[] = ['src', 'chunks'];
 
 async function writeWorkspaceFiles(
 	workspace: SandboxWorkspace,
@@ -463,24 +462,6 @@ export async function setupSandboxWorkspace(
 	);
 	const catalogLines = nodeTypes.map(formatNodeCatalogLine);
 	files.set('node-types/index.txt', catalogLines.join('\n'));
-
-	// Existing workflows as JSON (fetch in parallel)
-	try {
-		const { workflows } = await context.workflowService.list({ limit: 100 });
-		const results = await Promise.allSettled(
-			workflows.map(async (summary) => {
-				const detail = await context.workflowService.get(summary.id);
-				return { id: summary.id, json: JSON.stringify(detail, null, 2) };
-			}),
-		);
-		for (const r of results) {
-			if (r.status === 'fulfilled') {
-				files.set(`workflows/${r.value.id}.json`, r.value.json);
-			}
-		}
-	} catch {
-		// Workflow listing failed — continue without syncing
-	}
 
 	// ── Write workspace files ──────────────────────────────────────────────
 
