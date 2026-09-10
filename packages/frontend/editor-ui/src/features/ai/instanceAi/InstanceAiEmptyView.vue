@@ -461,6 +461,16 @@ onMounted(() => {
 
 onUnmounted(clearPersonalizedPromptMetadataTimeout);
 
+function restoreDraftAfterFailedSubmit(message: string, restoreDraft?: () => boolean) {
+	void nextTick(() => {
+		// Restore text without replacing new text or attachments.
+		if (!restoreDraft?.()) {
+			chatInputRef.value?.setTextIfEmpty(message);
+		}
+		chatInputRef.value?.focus();
+	});
+}
+
 async function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
@@ -495,6 +505,7 @@ async function handleSubmit(
 		});
 	} catch {
 		isStartingThread.value = false;
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
@@ -508,16 +519,7 @@ async function handleSubmit(
 	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
 	if (!sent) {
 		isStartingThread.value = false;
-		void nextTick(() => {
-			// `restoreDraft` puts back text *and* attachments, but the input only supplies it
-			// when files were attached; fall back to the text alone otherwise. Mirrors the
-			// thread-view composer.
-			if (!restoreDraft?.()) {
-				const input = chatInputRef.value;
-				if (input && !input.isDirty()) input.setText(message);
-			}
-			chatInputRef.value?.focus();
-		});
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
 		// so without this every refusal would strand a blank thread in the sidebar and leave
 		// an EventSource open behind it (deleting disposes the runtime, which closes it).

@@ -372,7 +372,7 @@ describe('extractOutcomeFromEvents', () => {
 			// eval-config create → ref is the owning workflow id from the args.
 			call('tc-2', 'eval-config', { action: 'create', workflowId: 'wf-1', name: 'My eval' }),
 			resultEvent('tc-2', { config: { id: 'cfg-1', workflowId: 'wf-1' } }),
-			// A spawn whose targetResource is a workflow (e.g. eval-setup) contributes no agent ref.
+			// A spawn whose targetResource is a workflow contributes no agent ref.
 			spawn('a2', { type: 'workflow', id: 'wf-2' }),
 			// A spawn with no targetResource contributes nothing.
 			spawn('a3'),

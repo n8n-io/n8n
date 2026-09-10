@@ -1,7 +1,9 @@
 import {
 	createTeamProject,
 	createWorkflow,
+	createWorkflowWithHistory,
 	linkUserToProject,
+	setActiveVersion,
 	shareWorkflowWithUsers,
 	testDb,
 	testModules,
@@ -51,10 +53,22 @@ beforeEach(async () => {
 	]);
 });
 
-function workflowJson(entries: UnpackedEntry[], target: string) {
+function workflowFile(entries: UnpackedEntry[], target: string) {
 	const file = entries.find((entry) => entry.name === `${target}/workflow.json`);
 	if (!file) throw new Error(`missing ${target}/workflow.json`);
-	return jsonParse<Record<string, unknown>>(file.content.toString());
+	return file.content.toString();
+}
+
+function workflowJson(entries: UnpackedEntry[], target: string) {
+	return jsonParse<Record<string, unknown>>(workflowFile(entries, target));
+}
+
+function workflowLifecycleJson(entries: UnpackedEntry[], target: string) {
+	const file = entries.find((entry) => entry.name === `${target}/workflow-lifecycle.json`);
+	if (!file) throw new Error(`missing ${target}/workflow-lifecycle.json`);
+	return jsonParse<{ publishedVersionId: string | null; isArchived: boolean }>(
+		file.content.toString(),
+	);
 }
 
 const nodeNames = (workflow: Record<string, unknown>) =>
@@ -116,6 +130,41 @@ describe('workflow package export', () => {
 			expect(serialized.nodes).toHaveLength(1);
 		});
 
+		it('writes lifecycle state beside the workflow rather than inside it', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflow({ name: 'My Workflow' }, project);
+
+			const { manifest, entries } = await exportSingleWorkflow(owner, workflow.id);
+			const target = manifest.workflows![0].target;
+
+			expect(workflowJson(entries, target)).not.toHaveProperty('publishedVersionId');
+			expect(workflowJson(entries, target)).not.toHaveProperty('isArchived');
+			expect(workflowLifecycleJson(entries, target)).toEqual({
+				publishedVersionId: null,
+				isArchived: false,
+			});
+		});
+
+		it('emits the same workflow.json after the workflow is published and archived', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const workflow = await createWorkflowWithHistory({ name: 'My Workflow' }, project);
+
+			const before = await exportSingleWorkflow(owner, workflow.id);
+			const target = before.manifest.workflows![0].target;
+
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await Container.get(WorkflowRepository).update(workflow.id, { isArchived: true });
+			const after = await exportSingleWorkflow(owner, workflow.id);
+
+			expect(workflowFile(after.entries, target)).toBe(workflowFile(before.entries, target));
+			expect(workflowLifecycleJson(after.entries, target)).toEqual({
+				publishedVersionId: workflow.versionId,
+				isArchived: true,
+			});
+		});
+
 		it('exports an explicitly listed archived workflow under the default', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
@@ -131,11 +180,11 @@ describe('workflow package export', () => {
 			expect(exportedPackage.manifest.workflows).toEqual([
 				{ id: workflow.id, name: workflow.name, target: expect.any(String) },
 			]);
-			const serialized = workflowJson(
+			const lifecycle = workflowLifecycleJson(
 				exportedPackage.entries,
 				exportedPackage.manifest.workflows![0].target,
 			);
-			expect(serialized.isArchived).toBe(true);
+			expect(lifecycle.isArchived).toBe(true);
 		});
 
 		it('writes each workflow under a distinct slugged target', async () => {
@@ -897,10 +946,12 @@ describe('workflow package export', () => {
 			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
-			const exported = workflowJson(entries, manifest.workflows![0].target);
+			const target = manifest.workflows![0].target;
+			const exported = workflowJson(entries, target);
 			expect(nodeNames(exported)).toEqual(['v3']);
 			expect(exported.versionId).toBe(versionIds[2]);
-			expect(exported.isPublished).toBe(false);
+			// The lifecycle file still names the live version, which this package does not carry.
+			expect(workflowLifecycleJson(entries, target).publishedVersionId).toBe(versionIds[1]);
 		});
 
 		it('exports the published version rather than the draft', async () => {
@@ -921,10 +972,11 @@ describe('workflow package export', () => {
 			});
 			const { manifest, entries } = await readExport(stream);
 
-			const exported = workflowJson(entries, manifest.workflows![0].target);
+			const target = manifest.workflows![0].target;
+			const exported = workflowJson(entries, target);
 			expect(nodeNames(exported)).toEqual(['v1']);
 			expect(exported.versionId).toBe(versionIds[0]);
-			expect(exported.isPublished).toBe(true);
+			expect(workflowLifecycleJson(entries, target).publishedVersionId).toBe(versionIds[0]);
 			// Workflow history carries no settings, so they always come from the draft.
 			expect(exported.settings).toEqual({ executionOrder: 'v1', timezone: 'Europe/Berlin' });
 		});

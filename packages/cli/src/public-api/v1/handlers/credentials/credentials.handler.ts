@@ -23,16 +23,10 @@ import {
 	validCredentialTypeForUpdate,
 	validCredentialsPropertiesForUpdate,
 } from './credentials.middleware';
-import { buildSharedForCredential, sanitizeCredentials, toJsonSchema } from './credentials.utils';
+import { sanitizeCredentials, toJsonSchema } from './credentials.utils';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import {
-	publicApiScope,
-	apiKeyHasScopeWithGlobalScopeFallback,
-	projectScope,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { publicApiScope, projectScope } from '../../shared/middlewares/global.middleware';
 
 async function buildUpdatePayload({
 	credentialsService,
@@ -106,8 +100,6 @@ async function buildUpdatePayload({
 }
 
 type CredentialsHandlers = {
-	getCredentials: PublicAPIEndpoint<CredentialRequest.GetAll>;
-	getCredential: PublicAPIEndpoint<CredentialRequest.Get>;
 	testCredential: PublicAPIEndpoint<CredentialRequest.Test>;
 	createCredential: PublicAPIEndpoint<CredentialRequest.Create>;
 	updateCredential: PublicAPIEndpoint<CredentialRequest.Update>;
@@ -117,64 +109,6 @@ type CredentialsHandlers = {
 };
 
 const credentialsHandlers: CredentialsHandlers = {
-	getCredentials: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'credential:list' }),
-		validCursor,
-		async (req, res) => {
-			const offset = Number(req.query.offset) || 0;
-			const limit = Math.min(Number(req.query.limit) || 100, 250);
-
-			const { credentials, count } = await Container.get(CredentialsService).getManyAndCount(
-				req.user,
-				{
-					listQueryOptions: {
-						take: limit,
-						skip: offset,
-						sortBy: 'createdAt:desc',
-						// skip eager-loading shared.project.projectRelations to avoid query fan-out
-						relations: ['shared', 'shared.project'],
-					},
-				},
-			);
-
-			const data = credentials.map((credential: CredentialsEntity) => {
-				const shared = buildSharedForCredential(credential);
-				return {
-					id: credential.id,
-					name: credential.name,
-					type: credential.type,
-					createdAt: credential.createdAt,
-					updatedAt: credential.updatedAt,
-					shared,
-				};
-			});
-
-			return res.json({
-				data,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
-		},
-	],
-	getCredential: [
-		publicApiScope('credential:read'),
-		projectScope('credential:read', 'credential'),
-		async (req, res) => {
-			const { id: credentialId } = req.params;
-
-			const credential = await Container.get(CredentialsFinderService).findById(credentialId, {
-				includeSharedProject: true,
-			});
-			if (!credential) {
-				throw new NotFoundError('Credential not found');
-			}
-
-			return res.json(toPublicApiCredentialResponse(credential));
-		},
-	],
 	testCredential: [
 		publicApiScope('credential:read'),
 		projectScope('credential:read', 'credential'),

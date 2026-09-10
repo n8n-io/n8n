@@ -470,6 +470,18 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return decryptedDataObject as T;
 	}
 
+	/**
+	 * Returns the requested decrypted credentials for a context that no real task run backs
+	 * (a trigger, a poll, a webhook, and so on). The placeholder execute data only exists to
+	 * surface `node` to the credentials helper (e.g. for policy checks) — `data`/`source` are
+	 * unused.
+	 */
+	protected async _getRunlessCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+	) {
+		return await this._getCredentials<T>(type, { data: {}, node: this.node, source: null });
+	}
+
 	@Memoized
 	protected get additionalKeys() {
 		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);

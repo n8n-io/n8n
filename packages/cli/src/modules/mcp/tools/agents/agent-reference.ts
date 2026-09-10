@@ -48,7 +48,9 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 7. Report that the draft is ready, include a clickable link using the \`url\` returned by
    validate_agent, and ask whether the user wants to publish it.
 8. Call publish_agent only when the user explicitly requested publication, activation, deployment,
-   or making the Agent live, or confirms publication after the build.
+   or making the Agent live, or confirms publication after the build. If publish_agent fails because
+   the Agent uses workflows that are not published, name those workflows to the user. Publish them
+   with publish_workflow only when the user asks, then call publish_agent again.
 9. Use update_agent_integration to configure chat integrations. Configuration never publishes the
    Agent. A configured channel stays inactive until explicit publication unless the Agent already has an active version.
 
@@ -93,7 +95,8 @@ directly on that object — there is no \`value\` wrapper. For example:
 - config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
   test). Paths under /integrations are rejected; use update_agent_integration for those.
 - skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create and attach a new
-  skill, or pass it to replace an existing skill body.
+  skill, or pass it to replace an existing skill body. When replacing, also pass \`baseSkillHash\`
+  from get_agent's \`skillHashes\` so a skill edited elsewhere in the meantime is not overwritten.
 - skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.

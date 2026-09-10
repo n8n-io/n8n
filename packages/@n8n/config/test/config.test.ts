@@ -272,6 +272,7 @@ describe('GlobalConfig', () => {
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
 				includeSsrfMetrics: false,
+				includeEncryptionMetrics: false,
 				includeDnsCacheMetrics: false,
 				includeWebhookMetrics: false,
 				includeFormMetrics: false,
@@ -374,11 +375,13 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			instanceAiSetupPanelEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			instanceContextEnabled: false,
 		},
 		queue: {
 			health: {
@@ -497,6 +500,7 @@ describe('GlobalConfig', () => {
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
+			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
@@ -575,6 +579,7 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
 		},
 		diagnostics: {
 			enabled: true,

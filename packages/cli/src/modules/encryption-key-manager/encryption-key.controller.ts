@@ -9,7 +9,7 @@ import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decora
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { KeyManagerService } from './key-manager.service';
+import { KeyManagerService } from '@/encryption/key-manager.service';
 
 function toResponseDto(row: DeploymentKey): EncryptionKey {
 	return {

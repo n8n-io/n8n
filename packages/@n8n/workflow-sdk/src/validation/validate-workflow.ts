@@ -40,6 +40,7 @@ export type ValidationErrorCode =
 	| 'INVALID_OUTPUT_INDEX'
 	| 'SUBNODE_NOT_CONNECTED'
 	| 'DUPLICATE_SUBNODE_CONNECTION'
+	| 'MISSING_FALLBACK_MODEL_FLAG'
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
@@ -282,6 +283,11 @@ function reconstructSubnodesFromConnections(
  * Single-value AI inputs (model, memory, embedding, …) accept exactly one connection
  * at runtime. Subnode reconstruction keeps only the last source, so surface duplicates
  * here instead of letting an earlier malformed subnode escape validation.
+ *
+ * Scoped per input INDEX, not per connection type: a node can declare several slots
+ * of one type that each take a single connection. An Agent with `needsFallback` on
+ * has two `ai_languageModel` slots — primary at 0, fallback at 1 — and keying only
+ * on the type rejected that legitimate pair, which blocked the save outright.
  */
 function checkDuplicateSingleValueAiConnections(
 	json: WorkflowJSON,
@@ -299,7 +305,7 @@ function checkDuplicateSingleValueAiConnections(
 			for (const outputs of aiConns) {
 				if (!outputs) continue;
 				for (const conn of outputs) {
-					const key = `${conn.node}:${connType}`;
+					const key = `${conn.node}:${connType}:${conn.index ?? 0}`;
 					const firstSource = firstSourceByInput.get(key);
 					if (firstSource === undefined) {
 						firstSourceByInput.set(key, sourceNodeName);
@@ -317,6 +323,64 @@ function checkDuplicateSingleValueAiConnections(
 				}
 			}
 		}
+	}
+}
+
+/**
+ * Node types whose description declares a `needsFallback` toggle gating a second
+ * `ai_languageModel` input (the "Fallback Model" slot). Other multi-model nodes —
+ * Model Selector, for one — take many models with no such toggle.
+ */
+const FALLBACK_MODEL_NODE_TYPES = new Set([
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.agentTool',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger',
+]);
+
+/**
+ * A model wired to the second `ai_languageModel` slot only takes effect when
+ * `needsFallback` is on — the node hides that input otherwise (see `getInputs` in
+ * the Agent node), leaving the connection pointing at an input the node does not
+ * declare. The workflow then advertises a backup model and has none.
+ *
+ * Reported rather than silently corrected: flipping the flag would start issuing
+ * real (billable) calls to a model the workflow never used.
+ *
+ * Informational, so it never blocks a save. Real workflows already carry this
+ * shape — a user can wire a fallback and switch the toggle back off, and n8n keeps
+ * the orphaned connection — and those users must still be able to save unrelated
+ * edits. It guides the author; it does not gate them.
+ */
+function checkFallbackModelFlag(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	const nodesWithFallbackModel = new Set<string>();
+
+	for (const nodeConnections of Object.values(json.connections)) {
+		for (const outputs of nodeConnections.ai_languageModel ?? []) {
+			for (const conn of outputs ?? []) {
+				if ((conn.index ?? 0) >= 1) nodesWithFallbackModel.add(conn.node);
+			}
+		}
+	}
+
+	if (nodesWithFallbackModel.size === 0) return;
+
+	for (const node of json.nodes) {
+		if (!node.name || !nodesWithFallbackModel.has(node.name)) continue;
+		if (!FALLBACK_MODEL_NODE_TYPES.has(node.type)) continue;
+		if (node.parameters?.needsFallback === true) continue;
+
+		warnings.push(
+			new ValidationWarning(
+				'MISSING_FALLBACK_MODEL_FLAG',
+				`'${node.name}' has a model wired to its Fallback Model input, but 'needsFallback' is not enabled, so the node does not declare that input and the fallback never runs. Set parameters.needsFallback: true, or remove the second model.`,
+				node.name,
+				undefined,
+				undefined,
+				'major',
+				'informational',
+			),
+		);
 	}
 }
 
@@ -710,6 +774,7 @@ export function validateWorkflow(
 
 	// Duplicate connections to single-value AI inputs
 	checkDuplicateSingleValueAiConnections(json, warnings);
+	checkFallbackModelFlag(json, warnings);
 
 	return {
 		valid: errors.length === 0,
