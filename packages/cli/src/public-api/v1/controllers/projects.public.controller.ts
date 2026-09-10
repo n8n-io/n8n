@@ -6,6 +6,7 @@ import {
 	ProjectListPublicDto,
 	ProjectPublicDto,
 	UpdateProjectPublicDto,
+	projectIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Project } from '@n8n/db';
@@ -106,7 +107,7 @@ export class ProjectsPublicController {
 	async updateProject(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body body: UpdateProjectPublicDto,
 	): Promise<void> {
 		await this.projectService.updateProject(req.user, projectId, { name: body.name });
@@ -124,7 +125,7 @@ export class ProjectsPublicController {
 	async deleteProject(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Query _query: DeleteProjectQueryPublicDto,
 	): Promise<void> {
 		await this.projectService.deleteProject(req.user, projectId);
