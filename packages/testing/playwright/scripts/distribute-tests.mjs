@@ -21,6 +21,7 @@
  *
  * Usage:
  *   node distribute-tests.mjs --matrix <shards> --orchestrate  # GitHub Actions matrix with images
+ *   node distribute-tests.mjs --matrix <shards> --orchestrate --include-metadata
  *   node distribute-tests.mjs --matrix <shards>                # Simple matrix (no distribution)
  *   node distribute-tests.mjs <shards> <index>                 # Specs for a single shard
  */
@@ -243,6 +244,7 @@ const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
 const impactMode = args.includes('--impact');
+const includeMetadata = args.includes('--include-metadata');
 const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
 const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
@@ -323,6 +325,13 @@ if (matrixMode) {
 				shard: shard.shard,
 				specs: shard.specs.join(' '),
 				images: getRequiredImages(shard.capabilities).join(' '),
+				...(includeMetadata
+					? {
+						capabilities: shard.capabilities,
+						fixtureCount: shard.fixtureCount,
+						testTime: shard.testTime,
+					}
+					: {}),
 			}));
 			console.log(JSON.stringify(matrix));
 		}

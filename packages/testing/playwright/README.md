@@ -36,6 +36,30 @@ Run the browser-backed harness contract tests with the dedicated configuration:
 pnpm test:harness
 ```
 
+Inspect the full E2E distribution without running tests or containers:
+
+```bash
+pnpm --silent distribution:count
+```
+
+The report counts selected specs, runnable tests, declared container images, and
+the Playwright worker profiles that would each start an n8n stack with one worker.
+It compares those stack starts with the fixture count from the distributor.
+
+Inspect the impact selection for a pull request:
+
+```bash
+pnpm --silent distribution:count -- --pr=37851
+```
+
+Pass an explicit changed-file list when no pull request exists:
+
+```bash
+pnpm --silent distribution:count -- \
+  --files=packages/core/src/example.ts,packages/workflow/src/example.ts \
+  --base=<base-sha>
+```
+
 ## Develop against running containers (avoid docker rebuilds)
 
 Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
