@@ -157,7 +157,7 @@ describe('exported files vs git blob hashes', () => {
 		expect(files).toHaveLength(gitFiles.length);
 		expect(files).toEqual(expect.arrayContaining(gitFiles));
 		expect(files).toContainEqual({
-			path: `${result.manifest.workflows![0].target}/workflow-lifecycle.json`,
+			path: `${result.manifest.workflows![0].target}/workflow-metadata.json`,
 			blobSha: expect.any(String),
 		});
 		expect(emit).not.toHaveBeenCalledWith('n8n-package-exported', expect.anything());
