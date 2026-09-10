@@ -161,6 +161,13 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Workflow version this execution actually ran, read back from the
+	 * execution record. Authoritative: a save landing while the run was in
+	 * flight moves the workflow head, but not this. Null for an execution of an
+	 * unsaved workflow, absent when the record could not be read.
+	 */
+	workflowVersionId?: string | null;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;

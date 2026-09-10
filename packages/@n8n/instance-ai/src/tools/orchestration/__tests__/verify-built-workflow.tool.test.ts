@@ -442,6 +442,7 @@ type ExecutionRunResult = {
 	executedNodeNames?: string[];
 	lastNodeExecuted?: string;
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
+	workflowVersionId?: string | null;
 	error?: string;
 };
 
@@ -1573,24 +1574,51 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(result.liveStateNote).toBeUndefined();
 	});
 
-	it('names the version that ran, not one saved while the run was in flight', async () => {
+	it('names the version the execution ran, not one saved while the run was in flight', async () => {
+		// A save landing mid-run moves the workflow head. The execution keeps
+		// running the version it started with, and the claim must name that one.
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-3', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.claim?.liveState).toBe('live-stale');
+	});
+
+	it('reads the published version after the run, so a publish mid-run is not called stale', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			// The user published the verified draft while the run was in flight.
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('falls back to the workflow head when the run reported no version', async () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome(),
 			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
 			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
 		);
-		const head = vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead);
-		// A save landing during the run moves the head. The claim must still name
-		// the version the execution used.
-		vi.mocked(ctx.domainContext.executionService.run).mockImplementation(async () => {
-			head.mockResolvedValue({
-				versionId: 'draft-3',
-				activeVersionId: 'published-1',
-				updatedAt: 0,
-			});
-			await Promise.resolve();
-			return { executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } };
-		});
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 

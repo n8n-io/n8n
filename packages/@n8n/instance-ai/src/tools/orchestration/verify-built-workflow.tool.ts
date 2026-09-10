@@ -9,9 +9,10 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
-import type { OrchestrationContext } from '../../types';
+import type { InstanceAiWorkflowService, OrchestrationContext } from '../../types';
 import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
+import type { VerificationPublishState } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -39,6 +40,37 @@ function formatLiveStateNote(claim: VerificationClaim): string | undefined {
 	const liveState = describeClaimLiveState(claim);
 	if (liveState === undefined) return undefined;
 	return `${liveState} Do NOT describe the workflow as live, running, or working in production until it is published.`;
+}
+
+/**
+ * Version pair behind `claim.liveState`. The executed version wins over the
+ * workflow head: the head moves when anybody saves, the execution record does
+ * not. A failed lookup returns nothing, so an unknown publish state stays
+ * unknown instead of becoming a claim about production.
+ */
+async function resolvePublishState(args: {
+	workflowService: InstanceAiWorkflowService;
+	workflowId: string;
+	executedVersionId: string | null | undefined;
+	logger: OrchestrationContext['logger'];
+}): Promise<VerificationPublishState | undefined> {
+	const { workflowService, workflowId, executedVersionId, logger } = args;
+
+	try {
+		const head = await workflowService.getWorkflowHead(workflowId);
+		return {
+			activeVersionId: head.activeVersionId,
+			// The head is the fallback for a run that reported no version — an
+			// unsaved workflow, or an execution record we could not read back.
+			draftVersionId: executedVersionId ?? head.versionId,
+		};
+	} catch (error) {
+		logger.warn('Failed to read publish state for the verification claim', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
 }
 
 export const verifyBuiltWorkflowInputSchema = z.object({
@@ -226,27 +258,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				.catch(() => undefined);
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
 
-			// Verification runs the draft, so read the version pair BEFORE the run:
-			// the execution uses the workflow as it stands now, and a save landing
-			// mid-run would otherwise make the claim name a version this run never
-			// executed. A publish landing mid-run leaves the claim saying
-			// `live-stale` for a workflow that just went live — the safe direction,
-			// because it under-claims. A failed lookup leaves the publish state out
-			// of the claim rather than guessing at it.
-			const publishState = await target.domainContext.workflowService
-				.getWorkflowHead(workflowId)
-				.then((head) => ({
-					activeVersionId: head.activeVersionId,
-					draftVersionId: head.versionId,
-				}))
-				.catch((error: unknown) => {
-					context.logger.warn('Failed to read publish state for the verification claim', {
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-					return undefined;
-				});
-
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
 			const { result, analysis } = prepared.gateScript
@@ -303,6 +314,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
+			// Which version passed, and is that version the one production serves?
+			// The executed version comes from the execution record, so a save
+			// landing mid-run cannot make the claim name a version this run never
+			// ran. The published version is read after the run, so a publish
+			// landing mid-run is reflected rather than reported as stale.
+			const publishState = await resolvePublishState({
+				workflowService: target.domainContext.workflowService,
+				workflowId,
+				executedVersionId: result.workflowVersionId,
+				logger: context.logger,
+			});
+
 			const claim = deriveVerificationClaim({
 				analysis,
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
