@@ -3,6 +3,7 @@ import type { RuleSettingsMap } from '@n8n/rules-engine';
 
 import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+import { DerivedOutputKeysRule } from './rules/derived-output-keys.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
@@ -14,6 +15,7 @@ import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.ru
 
 export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
+export { DerivedOutputKeysRule } from './rules/derived-output-keys.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
@@ -59,6 +61,13 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'warning',
 		options: { workspaceFile: 'pnpm-workspace.yaml', lockFile: 'pnpm-lock.yaml' },
+	},
+	'derived-output-keys': {
+		// Existing sites are grandfathered via the baseline; only new derived keys fail.
+		// `--rule=derived-output-keys --ignore-baseline` lists every site.
+		enabled: true,
+		severity: 'warning',
+		options: { packages: ['packages/nodes-base'] },
 	},
 	'endpoint-scope-coverage': {
 		// Disabled by default: enabling gates CI on ~129 existing authenticated-unscoped
@@ -136,6 +145,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new SingleInstanceLibsRule());
 	runner.registerRule(new SingleInstanceLockfileRule());
 	runner.registerRule(new EncryptionBoundaryRule());
+	runner.registerRule(new DerivedOutputKeysRule());
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());

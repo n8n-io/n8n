@@ -1310,6 +1310,204 @@
 				"message": "A bare `eslint-disable` directive silences every lint rule in its range, including the encryption guardrails.",
 				"hash": "7d9779f96d99"
 			}
+		],
+		"packages/nodes-base/utils/utilities.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 279,
+				"message": "keysToLowercase: output key `acc[key.toLowerCase()]` is derived from data through `toLowerCase`. A change in the transform silently renames the field for every user.",
+				"hash": "2403dc75ad5f"
+			},
+			{
+				"rule": "derived-output-keys",
+				"line": 322,
+				"message": "flattenObject: output key `returnData[`${key1}.${key2}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "8c83927d862b"
+			}
+		],
+		"packages/nodes-base/nodes/Bannerbear/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 58,
+				"message": "keysToSnakeCase: output key `element[snakeCase(key)]` is derived from data through `snakeCase`. A change in the transform silently renames the field for every user.",
+				"hash": "64e2192720fa"
+			}
+		],
+		"packages/nodes-base/nodes/Baserow/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 247,
+				"message": "createIdToNameMapping: output key `acc[`field_${cur.id}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "4061a6b8c9a9"
+			}
+		],
+		"packages/nodes-base/nodes/Keap/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 80,
+				"message": "keysToSnakeCase: output key `element[snakeCase(key)]` is derived from data through `snakeCase`. A change in the transform silently renames the field for every user.",
+				"hash": "966c2aebe3b8"
+			}
+		],
+		"packages/nodes-base/nodes/PagerDuty/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 98,
+				"message": "keysToSnakeCase: output key `element[snakeCase(key)]` is derived from data through `snakeCase`. A change in the transform silently renames the field for every user.",
+				"hash": "e6ea60792139"
+			}
+		],
+		"packages/nodes-base/nodes/RenameKeys/RenameKeys.node.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 211,
+				"message": "renameObjectKeys: output key `obj[newKey]` is derived from data through `replace`. A change in the transform silently renames the field for every user.",
+				"hash": "6040070b6d40"
+			}
+		],
+		"packages/nodes-base/nodes/Shopify/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 134,
+				"message": "keysToSnakeCase: output key `element[snakeCase(key)]` is derived from data through `snakeCase`. A change in the transform silently renames the field for every user.",
+				"hash": "72bc22a60ba6"
+			}
+		],
+		"packages/nodes-base/nodes/SurveyMonkey/SurveyMonkeyTrigger.node.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 577,
+				"message": "webhook: output key `results[`${keys[i]}(${i})`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "e61192461b00"
+			}
+		],
+		"packages/nodes-base/nodes/TheHive/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 135,
+				"message": "prepareCustomFields: output key `acc[`customFields.${curr}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "2c97fe7cf728"
+			},
+			{
+				"rule": "derived-output-keys",
+				"line": 172,
+				"message": "prepareCustomFields: output key `acc[updatedField]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "639a67533c86"
+			}
+		],
+		"packages/nodes-base/nodes/Transform/Summarize/utils.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 282,
+				"message": "flattenAggregationResultToArray: output key `v.returnData[normalizeFieldName(result.fieldName)]` is derived from data through `normalizeFieldName`. A change in the transform silently renames the field for every user.",
+				"hash": "b4ad0cab0683"
+			}
+		],
+		"packages/nodes-base/nodes/Aws/Rekognition/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 178,
+				"message": "keysTPascalCase: output key `data[pascalCase(key)]` is derived from data through `pascalCase`. A change in the transform silently renames the field for every user.",
+				"hash": "c620d9086d25"
+			}
+		],
+		"packages/nodes-base/nodes/ItemLists/V1/summarize.operation.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 427,
+				"message": "aggregateData: output key `acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "603045047261"
+			}
+		],
+		"packages/nodes-base/nodes/ItemLists/V2/summarize.operation.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 328,
+				"message": "parseReturnData: output key `returnData[newKey]` is derived from data through `replace`. A change in the transform silently renames the field for every user.",
+				"hash": "e6aa99e6e08a"
+			},
+			{
+				"rule": "derived-output-keys",
+				"line": 457,
+				"message": "aggregateData: output key `acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "32ae0206ad1f"
+			}
+		],
+		"packages/nodes-base/nodes/Merge/v2/utils.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 35,
+				"message": "addSuffixToEntriesKeys: output key `json[`${key}_${suffix}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "3bc32193f024"
+			}
+		],
+		"packages/nodes-base/nodes/Microsoft/Dynamics/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 108,
+				"message": "adjustAddresses: output key `results[`address${index + 1}_${key}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "4d4b5e104d96"
+			}
+		],
+		"packages/nodes-base/nodes/Microsoft/Storage/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 356,
+				"message": "parseHeaders: output key `result[newKey]` is derived from data through `camelCase`. A change in the transform silently renames the field for every user.",
+				"hash": "7a1b0f4de60b"
+			},
+			{
+				"rule": "derived-output-keys",
+				"line": 362,
+				"message": "parseHeaders: output key `(result.metadata as IDataObject)[key.replace(HeaderConstants.PREFIX_X_MS_META, '')]` is derived from data through `replace`. A change in the transform silently renames the field for every user.",
+				"hash": "26a10937db1e"
+			}
+		],
+		"packages/nodes-base/nodes/Notion/shared/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 666,
+				"message": "prepend: output key `properties[`${stringKey}_${toKey(key)}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "468cddc7e4ca"
+			}
+		],
+		"packages/nodes-base/nodes/Splunk/v1/GenericFunctions.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 111,
+				"message": "extractErrorDescription: output key `{ [messages.msg.$.type.toLowerCase()]: … }` is derived from data through `toLowerCase`. A change in the transform silently renames the field for every user.",
+				"hash": "d8ff53767d06"
+			}
+		],
+		"packages/nodes-base/nodes/Merge/v3/helpers/utils.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 37,
+				"message": "addSuffixToEntriesKeys: output key `json[`${key}_${suffix}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "ad091f67bdcf"
+			}
+		],
+		"packages/nodes-base/nodes/Splunk/v2/helpers/utils.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 79,
+				"message": "extractErrorDescription: output key `{ [messages.msg.$.type.toLowerCase()]: … }` is derived from data through `toLowerCase`. A change in the transform silently renames the field for every user.",
+				"hash": "1053f2293241"
+			}
+		],
+		"packages/nodes-base/nodes/ItemLists/V3/actions/itemList/summarize.operation.ts": [
+			{
+				"rule": "derived-output-keys",
+				"line": 316,
+				"message": "parseReturnData: output key `returnData[newKey]` is derived from data through `replace`. A change in the transform silently renames the field for every user.",
+				"hash": "ca907467b864"
+			},
+			{
+				"rule": "derived-output-keys",
+				"line": 456,
+				"message": "aggregateData: output key `acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`]` is derived from data through `template literal`. A change in the transform silently renames the field for every user.",
+				"hash": "d706dd90dde8"
+			}
 		]
 	}
 }
