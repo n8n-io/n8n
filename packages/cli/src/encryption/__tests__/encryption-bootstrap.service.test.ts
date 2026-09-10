@@ -94,11 +94,16 @@ describe('EncryptionBootstrapService', () => {
 		const seedError = new Error('no write access');
 
 		it('does not crash the instance while the rotation flag is off, and still sets the provider', async () => {
-			keyManager.bootstrapLegacyCbcKey.mockRejectedValue(seedError);
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
+			try {
+				keyManager.bootstrapLegacyCbcKey.mockRejectedValue(seedError);
 
-			await expect(createService().run()).resolves.toBeUndefined();
+				await expect(createService().run()).resolves.toBeUndefined();
 
-			expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+				expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
+			} finally {
+				delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			}
 		});
 
 		it('rethrows while the rotation flag is on, because the keys are load-bearing', async () => {
