@@ -171,7 +171,6 @@ describe('executions.store', () => {
 		});
 
 		it('does not fail the executions load when fetchUsers rejects', async () => {
-			vi.spyOn(console, 'error').mockImplementation(() => {});
 			vi.spyOn(useUsersStore(), 'fetchUsers').mockRejectedValue(new Error('network error'));
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
 				count: 2,
@@ -188,6 +187,26 @@ describe('executions.store', () => {
 			await executionsStore.fetchExecutions({});
 
 			expect(executionsStore.executionsCount).toBe(2);
+		});
+
+		it('does not call fetchUsers again for ids already requested', async () => {
+			const fetchUsersSpy = vi.spyOn(useUsersStore(), 'fetchUsers').mockResolvedValue(undefined);
+			const page = {
+				count: 2,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [
+					{ id: '1', scopes: [], startedByUserId: 'u-2' },
+					{ id: '2', scopes: [], startedByUserId: 'u-2' },
+				] as unknown as ExecutionSummaryWithScopes[],
+			} satisfies IExecutionsListResponse;
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(page).mockResolvedValueOnce(page);
+
+			await executionsStore.fetchExecutions({});
+			await executionsStore.fetchExecutions({});
+
+			expect(fetchUsersSpy).toHaveBeenCalledTimes(1);
+			expect(fetchUsersSpy).toHaveBeenCalledWith({ filter: { ids: ['u-2'] } });
 		});
 	});
 

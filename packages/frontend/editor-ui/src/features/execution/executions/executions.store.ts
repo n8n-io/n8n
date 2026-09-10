@@ -29,6 +29,11 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
+// Ids of starting users already requested from the backend. Module scope so the
+// set survives across store instances and stops the 4-second auto-refresh poll
+// from re-requesting the same ids, including ids for since-deleted users.
+const requestedStartedByIds = new Set<string>();
+
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
@@ -186,17 +191,22 @@ export const useExecutionsStore = defineStore('executions', () => {
 			});
 
 			// Resolve starting users to names in one request per page (same approach as
-			// workflow history). `fetchUsers` no-ops for users who cannot list users. A
-			// failure here (network error, non-2xx) must not fail the executions load, since
-			// the execution rows are already merged into the store by this point.
+			// workflow history). Skip ids already known or already requested, so the
+			// 4-second auto-refresh poll does not re-fetch the same users every tick.
 			const startedByIds = new Set(
 				data.results.map((e) => e.startedByUserId).filter((id): id is string => Boolean(id)),
 			);
-			if (startedByIds.size > 0) {
+			const missingIds = Array.from(startedByIds).filter(
+				(id) => !usersStore.usersById[id] && !requestedStartedByIds.has(id),
+			);
+			if (missingIds.length > 0) {
+				missingIds.forEach((id) => requestedStartedByIds.add(id));
 				try {
-					await usersStore.fetchUsers({ filter: { ids: Array.from(startedByIds) } });
-				} catch (error) {
-					console.error('Failed to resolve the users who started these executions', error);
+					await usersStore.fetchUsers({ filter: { ids: missingIds } });
+				} catch {
+					// `fetchUsers` no-ops for users who cannot list users. The name shown is
+					// decorative, so a failure here (network error, non-2xx) must not fail
+					// the executions load: the rows are already merged into the store.
 				}
 			}
 
