@@ -123,23 +123,22 @@ describe('SettingsUsageAndPlan', () => {
 		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
 	});
 
-	it('should vertically center the community registered badge in the heading', async () => {
+	it('should render the community registered badge as a direct child of the centering container', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Registered Community';
 		const { container } = renderComponent();
 
 		const badge = container.querySelector('.n8n-badge');
-		// The only element that centers the badge against the heading text
+		// The element that centers the badge against the heading text
 		// (`display: flex; align-items: center`).
 		const centeringContainer = container.querySelector('.titleTooltip');
 
 		expect(badge).not.toBeNull();
 		expect(centeringContainer).not.toBeNull();
 
-		// The tooltip wraps its slot in a plain inline `<span>` trigger, so that
-		// trigger — not the badge — is the flex item that gets centered. The trigger
-		// is sized by the heading line box and the inline-flex badge sits on its
-		// baseline, which leaves the badge below the optical center of the text.
+		// Only a direct child is a flex item. A tooltip trigger wrapper in between
+		// would take the centering instead, and the inline-flex badge would sit on
+		// the wrapper's line box baseline rather than on the optical center.
 		expect(badge?.parentElement).toBe(centeringContainer);
 	});
 
