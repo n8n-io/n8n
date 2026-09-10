@@ -82,7 +82,6 @@ describe('Microsoft Teams V2 - chatMember:remove error surfacing', () => {
 		expect(error.message).toContain('Insufficient privileges to complete the operation.');
 		expect(error.description).toContain('one-on-one chat');
 		expect(error.description).toContain('ChatMember.ReadWrite');
-		expect(error.description).toContain('Custom Scopes');
 		expect(requestOAuth2).toHaveBeenCalledTimes(1);
 	});
 

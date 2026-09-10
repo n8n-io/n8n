@@ -4,7 +4,10 @@ import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { versionDescription } from '../../actions/versionDescription';
+import * as rlc from '../../descriptions/rlc.description';
 import { getChatMembers, getChats, getUsers } from '../../methods/listSearch';
+import { MicrosoftTeamsV2 } from '../../MicrosoftTeamsV2.node';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 
@@ -343,7 +346,7 @@ describe('Microsoft Teams v2 - getChatMembers', () => {
 	// `id` (base64 membership id) and `userId` are deliberately different values, so a
 	// mapping that returned `userId` cannot pass.
 	const membershipId =
-		'MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==';
+		'MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2U3NmY0NTZmLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjExMQ==';
 	const members = [
 		{
 			id: membershipId,
@@ -355,6 +358,13 @@ describe('Microsoft Teams v2 - getChatMembers', () => {
 			id: 'MCMjMiMj',
 			userId: 'aa11bb22-5c3f-4f1e-9d5e-4d8f0f6ab222',
 			displayName: 'Bob Jones',
+			email: null,
+		},
+		// deleted user still on the roster
+		{
+			id: 'MCMjMyMj',
+			userId: 'cc33dd44-5c3f-4f1e-9d5e-4d8f0f6ab333',
+			displayName: null,
 			email: null,
 		},
 	];
@@ -381,7 +391,11 @@ describe('Microsoft Teams v2 - getChatMembers', () => {
 	it('labels entries with display name and email, falling back to display name when email is missing', async () => {
 		const result = await getChatMembers.call(ctx);
 
-		expect(result.results.map((r) => r.name)).toEqual(['Ann Smith (ann@contoso.com)', 'Bob Jones']);
+		expect(result.results.map((r) => r.name)).toEqual([
+			'Ann Smith (ann@contoso.com)',
+			'Bob Jones',
+			'cc33dd44-5c3f-4f1e-9d5e-4d8f0f6ab333',
+		]);
 	});
 
 	it('filters client-side on the typed filter', async () => {
@@ -397,5 +411,25 @@ describe('Microsoft Teams v2 - getChatMembers', () => {
 
 		expect(result).toEqual({ results: [] });
 		expect(apiRequestAllItems).not.toHaveBeenCalled();
+	});
+});
+
+// `generate-metadata` only checks `loadOptionsMethod`, so a typo in a
+// `searchListMethod` passes the build and leaves the picker dead at runtime.
+describe('Microsoft Teams v2 - resource locator wiring', () => {
+	const searchListMethods = Object.values(rlc)
+		.flatMap((property) => property.modes ?? [])
+		.map((mode) => mode.typeOptions?.searchListMethod)
+		.filter((name): name is string => typeof name === 'string');
+
+	it('every searchListMethod is an exported list-search method on the node', () => {
+		const node = new MicrosoftTeamsV2(versionDescription);
+
+		expect(searchListMethods.length).toBeGreaterThan(0);
+		for (const name of searchListMethods) {
+			expect(node.methods.listSearch[name as keyof typeof node.methods.listSearch]).toBeTypeOf(
+				'function',
+			);
+		}
 	});
 });

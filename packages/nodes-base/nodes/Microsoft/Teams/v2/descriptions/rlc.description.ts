@@ -379,8 +379,7 @@ export const chatMemberRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
-			placeholder:
-				'e.g. MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+			placeholder: 'e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...',
 			// validation missing because Microsoft documents no shape for membership ids.
 		},
 	],

@@ -53,7 +53,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
-					'Microsoft refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself. It also documents the ChatMember.ReadWrite permission for this call, although the default Chat.ReadWrite is accepted in practice. If none of the above applies, add ChatMember.ReadWrite through Custom Scopes on the credential and reconnect.',
+					'Microsoft refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself. If none of the above applies, make sure the credential grants ChatMember.ReadWrite (needs tenant admin consent).',
 			});
 		}
 		throw error;

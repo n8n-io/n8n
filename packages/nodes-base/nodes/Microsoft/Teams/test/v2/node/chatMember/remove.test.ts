@@ -8,7 +8,7 @@ describe('Test MicrosoftTeamsV2, chatMember => remove', () => {
 	// not match.
 	nock('https://graph.microsoft.com')
 		.delete(
-			'/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/members/MCMjMCMjZmJlMmJmNDctMTZjOC00N2NmLWI0YTUtNGI5YTE5YzBmZTI4IyMxOTpiOTVhNTc3NGMxYzc0MjJmYjNkMTljMTU2Y2E5N2I5NEB0aHJlYWQudjIjIzg2MTA0MDBhLTUyYzYtNGI2Yy04MTZjLThjNjIzZDNlZmQ5Yg==',
+			'/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/members/MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDllZTBhMzM3IyMxOTplYmVkOWFkNDJjOTA0ZDZjODNhZGYwZGIzNjAwNTNlY0B0aHJlYWQudjIjI2U3NmY0NTZmLTVjM2YtNGYxZS05ZDVlLTRkOGYwZjZhYjExMQ==',
 		)
 		.reply(204);
 

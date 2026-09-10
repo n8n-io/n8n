@@ -143,11 +143,16 @@ export async function getChatMembers(
 		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/members']),
 	)) as IDataObject[];
 
-	const returnData: INodeListSearchItems[] = value.map((member) => ({
-		name: member.email ? `${member.displayName} (${member.email})` : (member.displayName as string),
-		// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
-		value: member.id as string,
-	}));
+	const returnData: INodeListSearchItems[] = value.map((member) => {
+		// A deleted user can stay on the roster with a null displayName; a null name
+		// would throw in the sort and break the picker for the whole chat.
+		const label = (member.displayName ?? member.userId ?? member.id) as string;
+		return {
+			name: member.email ? `${label} (${member.email})` : label,
+			// `id` is the base64 membership id the DELETE path needs, NOT `userId`.
+			value: member.id as string,
+		};
+	});
 
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
