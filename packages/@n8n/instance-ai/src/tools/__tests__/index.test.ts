@@ -1,10 +1,12 @@
+import { mock } from 'vitest-mock-extended';
+
 import {
 	createOrchestrationTools,
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
@@ -207,6 +209,22 @@ describe('domain tool construction', () => {
 		);
 	});
 
+	it('gates the activity tool on the host-wired activityService', () => {
+		// Gates off: the adapter leaves activityService unset when the reader is disabled.
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('activity')).toBeUndefined();
+
+		const enabled = makeContext({
+			activityService: {} as InstanceAiContext['activityService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('activity')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('activity');
+	});
+
+	it('never defers activity behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
@@ -220,13 +238,10 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it('registers create-tasks but not the removed plan orchestration tool', () => {
-		const context = makeContext({
-			workflowTaskService: {},
-			domainContext: {},
-		} as Partial<InstanceAiContext>);
+	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+		const context = mock<OrchestrationContext>();
 
-		const orchestrationTools = createOrchestrationTools(context as never);
+		const orchestrationTools = createOrchestrationTools(context);
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);

@@ -341,5 +341,142 @@ describe('Cipher', () => {
 				'Encryption key provider is not configured',
 			);
 		});
+
+		describe('latency events', () => {
+			it('should emit key-lookup (prefixed) and decrypt events for prefixed data', async () => {
+				const keyId = 'test-uuid-9012';
+				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+				const ciphertext = cipher.encryptWithKey('metric', plaintextDataKey, 'aes-256-gcm');
+				withProvider({
+					getKeyById: async (id: string) =>
+						id === keyId
+							? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+							: null,
+				});
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await cipher.decryptV2(`${keyId}:${ciphertext}`);
+
+				expect(emitSpy).toHaveBeenCalledWith('key-lookup', {
+					source: 'prefixed',
+					durationMs: expect.any(Number),
+				});
+				expect(emitSpy).toHaveBeenCalledWith('decrypt', {
+					algorithm: 'aes-256-gcm',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('should emit key-lookup (legacy) and decrypt events for unprefixed data', async () => {
+				withProvider({
+					getKeyById: vi.fn(),
+					getLegacyKey: async () => ({
+						id: 'legacy',
+						value: cipher.encryptDEKWithInstanceKey(instanceKey),
+						algorithm: 'aes-256-cbc',
+						format: 'no-prefix',
+					}),
+				});
+				const legacyCiphertext = cipher.encryptWithKey('legacy-metric', instanceKey, 'aes-256-cbc');
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await cipher.decryptV2(legacyCiphertext);
+
+				expect(emitSpy).toHaveBeenCalledWith('key-lookup', {
+					source: 'legacy',
+					durationMs: expect.any(Number),
+				});
+				expect(emitSpy).toHaveBeenCalledWith('decrypt', {
+					algorithm: 'aes-256-cbc',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('should not emit events when customEncryptionKey is provided', async () => {
+				withProvider({ getActiveKey: vi.fn() });
+				const encrypted = await cipher.encryptV2('bypass', 'custom-key');
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await cipher.decryptV2(encrypted, 'custom-key');
+
+				expect(emitSpy).not.toHaveBeenCalled();
+			});
+
+			it('should emit the decrypt event even when decryption fails', async () => {
+				const keyId = 'test-uuid-fail';
+				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+				withProvider({
+					getKeyById: async (id: string) =>
+						id === keyId
+							? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+							: null,
+				});
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await expect(cipher.decryptV2(`${keyId}:not-valid-ciphertext`)).rejects.toThrow();
+
+				expect(emitSpy).toHaveBeenCalledWith('decrypt', {
+					algorithm: 'aes-256-gcm',
+					durationMs: expect.any(Number),
+				});
+			});
+
+			it('should emit the key-lookup event even when the provider rejects', async () => {
+				withProvider({
+					getKeyById: async () => {
+						throw new Error('provider down');
+					},
+				});
+				const emitSpy = vi.spyOn(cipher.events, 'emit');
+
+				await expect(cipher.decryptV2('some-id:abc')).rejects.toThrow('provider down');
+
+				expect(emitSpy).toHaveBeenCalledWith('key-lookup', {
+					source: 'prefixed',
+					durationMs: expect.any(Number),
+				});
+				expect(emitSpy).not.toHaveBeenCalledWith('decrypt', expect.anything());
+			});
+
+			it('should not let a throwing metrics listener break a successful decrypt', async () => {
+				const keyId = 'test-uuid-listener';
+				const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+				const ciphertext = cipher.encryptWithKey('safe', plaintextDataKey, 'aes-256-gcm');
+				withProvider({
+					getKeyById: async (id: string) =>
+						id === keyId
+							? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm', format: 'prefixed' }
+							: null,
+				});
+				const boom = () => {
+					throw new Error('listener boom');
+				};
+				cipher.events.on('decrypt', boom);
+
+				try {
+					await expect(cipher.decryptV2(`${keyId}:${ciphertext}`)).resolves.toEqual('safe');
+				} finally {
+					cipher.events.off('decrypt', boom);
+				}
+			});
+
+			it('should preserve the original error when a metrics listener throws', async () => {
+				withProvider({
+					getKeyById: async () => {
+						throw new Error('provider down');
+					},
+				});
+				const boom = () => {
+					throw new Error('listener boom');
+				};
+				cipher.events.on('key-lookup', boom);
+
+				try {
+					await expect(cipher.decryptV2('some-id:abc')).rejects.toThrow('provider down');
+				} finally {
+					cipher.events.off('key-lookup', boom);
+				}
+			});
+		});
 	});
 });

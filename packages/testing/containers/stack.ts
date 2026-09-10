@@ -9,8 +9,12 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
-import type { N8NStartupDiagnostics } from './services/n8n';
-import { createN8NInstances, N8NStartupError } from './services/n8n';
+import {
+	createN8NInstances,
+	N8NStartupError,
+	type N8NInstancesResult,
+	type N8NStartupDiagnostics,
+} from './services/n8n';
 import { helperFactories, services } from './services/registry';
 import type { TaskRunnerResult } from './services/task-runner';
 import type {
@@ -32,6 +36,7 @@ const SERVICE_REGISTRY: Record<ServiceName, Service> = services;
 export type N8NConfig = StackConfig;
 
 export interface N8NStack {
+	attemptId: string;
 	baseUrl: string;
 	projectName: string;
 	stop: () => Promise<void>;
@@ -135,11 +140,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	let network: StartedNetwork;
 	try {
+		telemetry.startStage('network');
 		const networkStart = performance.now();
 		const uuid = networkName ? { nextUuid: () => networkName } : undefined;
 		network = await new Network(uuid).start();
 		telemetry.recordNetwork(Math.round(performance.now() - networkStart));
+		telemetry.finishStage();
 	} catch (error) {
+		telemetry.finishStage('failure', error);
+		telemetry.setFailurePhase('network');
 		const message = error instanceof Error ? error.message : String(error);
 		telemetry.flush(false, `Network creation failed: ${message}`);
 		throw error;
@@ -178,7 +187,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// env and starts nothing. A service that declines (no config, or the
 		// deployment did not answer) falls through to its local containers below.
 		for (const name of requestedServices) {
-			const hostedEnv = await SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+			telemetry.startStage(`hosted:${name}`, 'hosted');
+			let hostedEnv: Record<string, string> | undefined;
+			try {
+				hostedEnv = await SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+				telemetry.finishStage();
+			} catch (error) {
+				telemetry.finishStage('failure', error);
+				throw error;
+			}
 			if (!hostedEnv) continue;
 			environment = { ...environment, ...hostedEnv };
 			hostedServiceEnv[name] = hostedEnv;
@@ -196,12 +213,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const service = SERVICE_REGISTRY[name];
 			const options = service.getOptions?.(ctx);
 			const serviceStart = performance.now();
+			telemetry.startStage(`service:${name}`);
 			try {
 				const result = await service.start(network, uniqueProjectName, options, ctx);
 				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				telemetry.finishStage();
 				return { name, service, result };
 			} catch (error) {
 				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
+				telemetry.finishStage('failure', error);
 				const message = error instanceof Error ? error.message : String(error);
 				throw new Error(`Service "${service.description}" (${name}) failed to start: ${message}`);
 			}
@@ -250,23 +270,32 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
-		const n8nResult = await createN8NInstances({
-			mains,
-			workers,
-			webhooks,
-			projectName: uniqueProjectName,
-			network,
-			serviceEnvironment: environment,
-			userEnvironment: env,
-			usePostgres,
-			baseUrl: needsLoadBalancer ? undefined : baseUrl,
-			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
-			resourceQuota,
-			workerResourceQuota,
-			webhookResourceQuota,
-			filesToMount,
-			coverageHostDir,
-		});
+		telemetry.startStage('n8n-startup');
+		let n8nResult: N8NInstancesResult;
+		try {
+			n8nResult = await createN8NInstances({
+				attemptId: telemetry.attemptId,
+				mains,
+				workers,
+				webhooks,
+				projectName: uniqueProjectName,
+				network,
+				serviceEnvironment: environment,
+				userEnvironment: env,
+				usePostgres,
+				baseUrl: needsLoadBalancer ? undefined : baseUrl,
+				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
+				resourceQuota,
+				workerResourceQuota,
+				webhookResourceQuota,
+				filesToMount,
+				coverageHostDir,
+			});
+			telemetry.finishStage();
+		} catch (error) {
+			telemetry.finishStage('failure', error);
+			throw error;
+		}
 		containers.push(...n8nResult.containers);
 		telemetry.recordN8nStartup(
 			Math.round(performance.now() - n8nStartupStart),
@@ -275,7 +304,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		log(`n8n ready: ${mains} main(s), ${webhooks} webhook(s), ${workers} worker(s)`);
 
 		if (lbResult) {
-			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+			telemetry.startStage('load-balancer-readiness');
+			try {
+				await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
+				telemetry.finishStage();
+			} catch (error) {
+				telemetry.finishStage('failure', error);
+				throw error;
+			}
 			log('Load balancer ready');
 		}
 
@@ -288,14 +324,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// other, and only from this run, since a reused container keeps its old logs.
 		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
 		if (taskRunnerResult) {
-			await waitForContainerLogMessages(
-				taskRunnerResult.container,
-				[
-					/\[launcher:js\].*Received message `broker:runnerregistered`/,
-					/\[launcher:py\].*Received message `broker:runnerregistered`/,
-				],
-				{ since: n8nStartedAtSeconds },
-			);
+			telemetry.startStage('task-runner-registration');
+			try {
+				await waitForContainerLogMessages(
+					taskRunnerResult.container,
+					[
+						/\[launcher:js\].*Received message `broker:runnerregistered`/,
+						/\[launcher:py\].*Received message `broker:runnerregistered`/,
+					],
+					{ since: n8nStartedAtSeconds },
+				);
+				telemetry.finishStage();
+			} catch (error) {
+				telemetry.finishStage('failure', error);
+				throw error;
+			}
 			log('Task runners registered with broker');
 		}
 
@@ -327,7 +370,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		for (const name of servicesToStart) {
 			const service = SERVICE_REGISTRY[name];
 			if (service.verifyFromN8n && serviceResults[name]) {
-				await service.verifyFromN8n(serviceResults[name], n8nContainers);
+				telemetry.startStage(`verify:${name}`);
+				try {
+					await service.verifyFromN8n(serviceResults[name], n8nContainers);
+					telemetry.finishStage();
+				} catch (error) {
+					telemetry.finishStage('failure', error);
+					throw error;
+				}
 				verifications.push(service.description);
 			}
 		}
@@ -335,7 +385,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			log(`Verified: ${verifications.join(', ')}`);
 		}
 
-		await waitForNetworkQuiet();
+		telemetry.startStage('network-quiet');
+		try {
+			await waitForNetworkQuiet();
+			telemetry.finishStage();
+		} catch (error) {
+			telemetry.finishStage('failure', error);
+			throw error;
+		}
 		telemetry.flush(true);
 
 		const helperCtx: HelperContext = {
@@ -377,6 +434,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		});
 
 		return {
+			attemptId: telemetry.attemptId,
 			baseUrl,
 			projectName: uniqueProjectName,
 			stop: async () => await stopN8NStack(containers, network, uniqueProjectName, coverageHostDir),
@@ -406,8 +464,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		if (error instanceof N8NStartupError) {
-			recordStartupFailure(uniqueProjectName, error.diagnostics, message);
+			recordStartupFailure(
+				uniqueProjectName,
+				error.diagnostics,
+				message,
+				telemetry.failurePhaseValue,
+			);
 		}
+		telemetry.setFailurePhase('stack-startup');
 		telemetry.flush(false, message);
 		throw error;
 	}

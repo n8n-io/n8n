@@ -31,6 +31,7 @@ import {
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
@@ -110,14 +111,17 @@ export class AgentPublishService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
+	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
 	async publishAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
 		emitter: AgentPublishEmitter,
 		versionId?: string,
+		pushRef?: string,
 	): Promise<PublishAgentResult> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -221,6 +225,7 @@ export class AgentPublishService {
 			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -319,6 +324,7 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		by: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -352,6 +358,7 @@ export class AgentPublishService {
 			agent.revision = expectedRevision + 1;
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -465,6 +472,7 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		modifiedBy: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -495,6 +503,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
@@ -513,6 +522,7 @@ export class AgentPublishService {
 		versionId: string,
 		user: User,
 		modifiedBy: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -547,6 +557,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {

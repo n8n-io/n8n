@@ -33,6 +33,9 @@ const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
 );
+const loadActivityTool = lazyMod(
+	() => require('./activity.tool') as typeof import('./activity.tool'),
+);
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
@@ -138,6 +141,13 @@ function getOrchestratorDomainToolFactories(
 		]);
 	}
 
+	// Same pattern: the adapter wires `activityService` only when the reader is enabled, so
+	// presence is the flag as far as the tool layer is concerned. Orchestrator only, because the
+	// block that hands the agent ids to expand rides the orchestrator's turn.
+	if (context.activityService) {
+		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([
 			DOMAIN_TOOL_IDS.PARSE_FILE,
@@ -167,14 +177,15 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
-	const tools: Array<[string, BuiltTool]> = [
-		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
+	const tools: Array<[string, BuiltTool]> = [];
+	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
+	tools.push(
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
 		],
-	];
+	);
 
 	if (context.workflowTaskService) {
 		tools.push([

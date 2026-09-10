@@ -21,6 +21,8 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './types';

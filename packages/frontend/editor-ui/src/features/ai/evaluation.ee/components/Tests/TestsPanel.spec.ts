@@ -2,12 +2,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref } from 'vue';
+import type { PushMessage } from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import TestsPanel from './TestsPanel.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
+import { useEvaluationStore } from '../../evaluation.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type * as SliceInputsModule from '../../composables/useSliceInputs';
+
+// ─── Push connection mock ────────────────────────────────────────────────────
+
+const pushHandlers = new Set<(event: PushMessage) => void>();
+const pushStore = {
+	addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+		pushHandlers.add(handler);
+		return () => pushHandlers.delete(handler);
+	}),
+};
+function emitPush(message: PushMessage) {
+	pushHandlers.forEach((handler) => handler(message));
+}
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
+}));
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
@@ -136,6 +154,7 @@ describe('TestsPanel', () => {
 		mockOpenRegularCreator.mockReset();
 		mockFetchExecutions.mockReset().mockResolvedValue({ results: [] });
 		mockFetchLastSuccessfulExecution.mockReset().mockResolvedValue(undefined);
+		pushHandlers.clear();
 	});
 
 	it('renders the probe-loading state before the probe completes (panel closed)', () => {
@@ -248,5 +267,55 @@ describe('TestsPanel', () => {
 		expect(wizardStore.activeRowIndex).toBeNull();
 		// Consumed exactly once so a later remount doesn't re-seed.
 		expect(wizardStore.pendingSeedExecution).toBeNull();
+	});
+
+	it('re-probes and refetches test runs when this workflow finishes executing', async () => {
+		setup();
+		const evaluationStore = useEvaluationStore();
+		const fetchTestRuns = vi.spyOn(evaluationStore, 'fetchTestRuns').mockResolvedValue([]);
+
+		renderComponent();
+		await new Promise((r) => setTimeout(r, 0));
+		mockFetchLastSuccessfulExecution.mockClear();
+		fetchTestRuns.mockClear();
+
+		emitPush({
+			type: 'executionFinished',
+			data: { executionId: 'exec-1', workflowId: 'wf-1', status: 'success' },
+		} as PushMessage);
+		await new Promise((r) => setTimeout(r, 0));
+
+		expect(mockFetchLastSuccessfulExecution).toHaveBeenCalled();
+		expect(fetchTestRuns).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('ignores an executionFinished push event for a different workflow', async () => {
+		setup();
+		const evaluationStore = useEvaluationStore();
+		const fetchTestRuns = vi.spyOn(evaluationStore, 'fetchTestRuns').mockResolvedValue([]);
+
+		renderComponent();
+		await new Promise((r) => setTimeout(r, 0));
+		mockFetchLastSuccessfulExecution.mockClear();
+		fetchTestRuns.mockClear();
+
+		emitPush({
+			type: 'executionFinished',
+			data: { executionId: 'exec-2', workflowId: 'wf-other', status: 'success' },
+		} as PushMessage);
+		await new Promise((r) => setTimeout(r, 0));
+
+		expect(mockFetchLastSuccessfulExecution).not.toHaveBeenCalled();
+		expect(fetchTestRuns).not.toHaveBeenCalled();
+	});
+
+	it('removes the push listener on unmount', async () => {
+		setup();
+		const { unmount } = renderComponent();
+		await new Promise((r) => setTimeout(r, 0));
+		expect(pushHandlers.size).toBe(1);
+
+		unmount();
+		expect(pushHandlers.size).toBe(0);
 	});
 });

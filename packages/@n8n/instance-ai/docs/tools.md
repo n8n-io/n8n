@@ -196,8 +196,18 @@ waiting-with-output-as-success fallback.
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
+For reusable workflows with multiple enabled triggers, pass `triggerNodeName`
+and run verification once for each trigger. Successful runs accumulate node
+coverage per trigger. Each retry reserves an attempt and clears that trigger's
+old pass before execution. A successful result restores the combined coverage.
+If either write fails, the tool reports an error. The attempt limit still applies.
+
+The returned and saved `claim` use the same cumulative evidence. Pending triggers
+and nodes without real coverage prevent a `verified` claim. Publishing during a
+retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
+
 **Writes on success/failure**: the tool persists a structured `verification`
-record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
@@ -391,6 +401,39 @@ confirmation card.
 **Returns**: `{ completedNodes, nodesStillNeedingSetup, skippedByUser, failedNodes }` —
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
+
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+analyzes the whole workflow, including bound slots. It publishes the `setup-items`
+snapshot and confirms that it reached storage. It then saves the build's setup
+routing marker. Only after both steps succeed does it return
+`{ success: true, announced: true, workflowId, open, configured, validationWarnings, message }`.
+The agent summarizes the result and ends its turn. `open` lists pending items.
+`configured` lists stored bindings. Configuration does not prove that a connection
+test or workflow execution passed. Failed connection checks appear in `validationWarnings`.
+
+Validation and destination approval run before the announcement. The agent follows
+the returned guidance for errors, denials, or approvals. Explicit
+`preferNewCredentials` requests use the selection card. Existing cards keep their
+`apply`, `test-trigger`, and decline paths.
+
+Each new user turn carries a `<workflow-setup-state>` block with current saved
+state and items that settled since the previous look. This observation does not
+publish snapshots or change the current workflow target. It preserves announced
+recipes and does not count temporary credential replacement requests as user progress.
+This observation reads saved bindings and checks required values and placeholders.
+It does not test credentials or fetch provider resource lists. It does not produce
+fresh connection-test warnings. Live checks remain part of setup and verification.
+
+When setup items settle between turns, none remain open, and there are no
+validation warnings, the agent verifies the current configuration on the next
+user turn. Setup changes do not start an agent run by themselves.
+The panel's Execute action sends a normal chat message with
+`context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
+the host adds a private `workflow-test-request` block that identifies the target.
+If required setup remains open, the agent reports those items and ends the turn
+without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
+the output, and reports the test result in chat. Execution approval policy still
+applies. The new panel does not use the wizard's trigger-test resume loop.
 
 ### `workflows(action="publish")`
 

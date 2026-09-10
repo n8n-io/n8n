@@ -19,6 +19,7 @@ import {
 import { StreamSink } from './stream-sink';
 import { isCancellation } from '../../sdk/cancellation';
 import { computeCost, getModelCost, type ModelCost } from '../../sdk/catalog';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type {
 	BuiltFileStore,
 	BuiltMemory,
@@ -44,6 +45,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -51,7 +53,6 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -60,7 +61,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import type { FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -68,6 +69,7 @@ import {
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
+import { ActiveSkills } from '../skills/active-skills';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -82,6 +84,14 @@ import {
 	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
 
+export interface VolatileInstructionsContext {
+	persistence?: AgentPersistenceOptions;
+}
+
+export type VolatileInstructionsProvider = (
+	context: VolatileInstructionsContext,
+) => Promise<string | undefined>;
+
 export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
@@ -92,6 +102,7 @@ export interface AgentRuntimeConfig {
 	 */
 	modelFetch?: FetchFn;
 	instructions: string;
+	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
@@ -138,6 +149,8 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/** The runtime loads these host instructions before each model call but does not save them. */
+	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -200,14 +213,28 @@ export class AgentRuntime {
 	private context: RuntimeContextBuilder;
 
 	private toolExecutor: ToolCallExecutor;
+	private activeSkills?: ActiveSkills;
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		// Keep full tool results when the memory backend cannot persist active skill IDs.
+		if (config.skillSource && (!config.memory || config.memory.skillState)) {
+			this.activeSkills = new ActiveSkills(
+				config.skillSource,
+				config.name,
+				config.memory?.skillState,
+			);
+		}
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				// Let the discovery tools recognize the always-available toolset, so a
+				// `load_tool` call for one of those answers `already_loaded`.
+				activeTools: config.tools,
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
@@ -226,6 +253,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
+			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -392,7 +420,7 @@ export class AgentRuntime {
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
-			resumeData = parseResult.data as JSONValue;
+			resumeData = parseResult.data;
 		}
 
 		try {
@@ -753,6 +781,7 @@ export class AgentRuntime {
 	 */
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
+		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateDeferredToolsFromList(list);
 		// Inject a model-facing note for any MCP servers that failed to connect
 		// during build(). The agent can mention the outage to the user when
@@ -871,16 +900,25 @@ export class AgentRuntime {
 				options?.persistence,
 				options?.executionCounter,
 			);
+			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+				.map((value) => value?.trim())
+				.filter((value): value is string => Boolean(value))
+				.join('\n\n');
 			const { system, messages } = list.forLlm(
-				effectiveInstructions,
+				// Skill content changes only on activation. Keep it cached when memory compacts.
+				[effectiveInstructions, this.activeSkills?.instructions()]
+					.filter(Boolean)
+					.join('\n\n'),
 				instructionProviderOptions,
-				volatileInstructions,
+				combinedVolatileInstructions || undefined,
+				supportsSplitSystemMessages(this.config.model),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
 			const cached = applyRuntimeCacheBreakpoints({
 				system,
-				messages,
+				messages: this.activeSkills?.modelMessages(messages, list) ?? messages,
 				aiTools,
 				promptCaching: this.config.promptCaching,
 				modelId: this.modelIdString,
@@ -983,6 +1021,17 @@ export class AgentRuntime {
 			usage: totalUsage,
 			structuredOutput,
 		});
+	}
+
+	private async resolveVolatileInstructions(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<string | undefined> {
+		try {
+			return await this.config.volatileInstructionsProvider?.({ persistence });
+		} catch (error) {
+			logger.warn('Failed to resolve volatile agent instructions', { runId: this.runId, error });
+			return undefined;
+		}
 	}
 
 	/**
