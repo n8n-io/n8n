@@ -237,6 +237,20 @@ export function isFileType(filename: string, extension: string): boolean {
 	return filename.endsWith(extension);
 }
 
+/**
+ * Whether the given program has a top-level `import` from one of `moduleNames`.
+ */
+export function programImportsModule(
+	program: TSESTree.Program,
+	moduleNames: readonly string[],
+): boolean {
+	return program.body.some(
+		(statement) =>
+			statement.type === AST_NODE_TYPES.ImportDeclaration &&
+			moduleNames.includes(statement.source.value),
+	);
+}
+
 export function isDirectRequireCall(node: TSESTree.CallExpression): boolean {
 	return (
 		node.callee.type === AST_NODE_TYPES.Identifier &&

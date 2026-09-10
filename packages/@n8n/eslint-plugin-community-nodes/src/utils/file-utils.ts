@@ -8,10 +8,12 @@ import {
 	isCredentialTypeClass,
 	isNodeTypeClass,
 	findClassProperty,
+	findObjectProperty,
 	getStringLiteralValue,
 	findArrayLiteralProperty,
 	extractCredentialInfoFromArray,
 	findSimilarStrings,
+	programImportsModule,
 } from './ast-utils.js';
 
 /**
@@ -80,6 +82,56 @@ function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | 
 		return isValidPackageJson(parsed) ? (parsed as Record<string, unknown>) : null;
 	} catch {
 		return null;
+	}
+}
+
+/**
+ * Whether the given `.ts` file has a top-level `import` from one of
+ * `moduleNames`. Used to detect whether a specific node file (not its
+ * package as a whole — a single package can mix AI-SDK nodes with ordinary
+ * ones) is built on n8n's AI Node SDK.
+ */
+export function fileImportsModule(filePath: string, moduleNames: readonly string[]): boolean {
+	try {
+		const sourceCode = readFileSync(filePath, 'utf8');
+		const ast = parse(sourceCode, { jsx: false, range: true });
+		return programImportsModule(ast, moduleNames);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Whether the given `.node.ts` file's `INodeType` class declares an inline
+ * `description.codex` property. n8n's node loader (DirectoryLoader#addCodex)
+ * uses `description.codex` as-is whenever it's set, and only falls back to
+ * reading the sibling `.node.json` codex file when it's absent — there's no
+ * field-by-field merge. So a `.node.json` file's categories/subcategories
+ * have no effect on the running node whenever this returns true.
+ */
+export function fileHasInlineDescriptionCodex(nodeFilePath: string): boolean {
+	try {
+		const sourceCode = readFileSync(nodeFilePath, 'utf8');
+		const ast = parse(sourceCode, { jsx: false, range: true });
+
+		let hasInlineCodex = false;
+		simpleTraverse(ast, {
+			enter(node: TSESTree.Node) {
+				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
+					const descriptionProperty = findClassProperty(node, 'description');
+					if (
+						descriptionProperty?.value?.type === AST_NODE_TYPES.ObjectExpression &&
+						findObjectProperty(descriptionProperty.value, 'codex')
+					) {
+						hasInlineCodex = true;
+					}
+				}
+			},
+		});
+
+		return hasInlineCodex;
+	} catch {
+		return false;
 	}
 }
 
