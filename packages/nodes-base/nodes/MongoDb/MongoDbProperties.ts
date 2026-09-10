@@ -383,6 +383,24 @@ export const nodeProperties: INodeProperties[] = [
 				description: 'Comma-separated list of fields that will be parsed as Mongo Date type',
 			},
 			{
+				displayName: 'Parallel Writes',
+				name: 'parallelWrites',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 16,
+				},
+				default: 1,
+				description:
+					'How many groups of documents to write at the same time. Documents that share an Update Key value are always written in order. Above 1, documents after a failed one can still be written. Index the Update Key before raising this.',
+				displayOptions: {
+					show: {
+						'/operation': ['update', 'findOneAndUpdate'],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Use Dot Notation',
 				name: 'useDotNotation',
 				type: 'boolean',

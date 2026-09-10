@@ -1,11 +1,14 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mockDeep } from 'vitest-mock-extended';
-import { Collection, Db, MongoBulkWriteError, MongoClient, ObjectId } from 'mongodb';
+import type { AnyBulkWriteOperation } from 'mongodb';
+import { BSON, Collection, Db, MongoBulkWriteError, MongoClient, ObjectId } from 'mongodb';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	INode,
+	INodeExecutionData,
 	INodeParameters,
 	NodeParameterValueType,
 	WorkflowTestData,
@@ -459,6 +462,489 @@ describe('MongoDB CRUD Node', () => {
 
 			expect(driverSpy).toHaveBeenCalledTimes(3);
 			expect(bulkWriteSpy).not.toHaveBeenCalled();
+		});
+
+		describe('parallel writes', () => {
+			type BulkParams = NonNullable<Parameters<typeof mockBulkExecuteFunctions>[1]>['params'];
+			type Ops = readonly AnyBulkWriteOperation[];
+			const parallelWritesParam = 'options.parallelWrites';
+			type BulkWriteHooks = {
+				onStart?: (ops: Ops, callIndex: number) => void;
+				handle?: (ops: Ops, callIndex: number) => unknown;
+				onSettled?: (ops: Ops) => void;
+			};
+
+			function inputRows(
+				count: number,
+				build: (index: number) => IDataObject = (index) => ({ id: `k${index}`, value: index }),
+			): INodeExecutionData[] {
+				return Array.from({ length: count }, (_, index) => ({ json: build(index) }));
+			}
+
+			function mockParallelExecuteFunctions(
+				rows: INodeExecutionData[],
+				parallelWrites: NodeParameterValueType,
+				{
+					continueOnFail = false,
+					params = {},
+				}: { continueOnFail?: boolean; params?: BulkParams } = {},
+			) {
+				const executeFunctions = mockBulkExecuteFunctions('update', {
+					continueOnFail,
+					params: { [parallelWritesParam]: parallelWrites, ...params },
+				});
+				executeFunctions.getInputData.mockReturnValue(rows);
+				return executeFunctions;
+			}
+
+			function mockListCollections(collections: unknown[] | Error) {
+				return vi.spyOn(Db.prototype, 'listCollections').mockReturnValue({
+					toArray: async () => {
+						if (collections instanceof Error) throw collections;
+						return await Promise.resolve(collections);
+					},
+				} as never);
+			}
+
+			function deferredBulkWrite({
+				onStart = () => {},
+				handle = () => ({}),
+				onSettled = () => {},
+			}: BulkWriteHooks = {}) {
+				let inFlight = 0;
+				let peak = 0;
+				let callCount = 0;
+				const spy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockImplementation(async (ops: Ops) => {
+						const callIndex = callCount++;
+						inFlight++;
+						peak = Math.max(peak, inFlight);
+						onStart(ops, callIndex);
+						try {
+							await new Promise((resolve) => setTimeout(resolve, 2));
+							return handle(ops, callIndex) as never;
+						} finally {
+							inFlight--;
+							onSettled(ops);
+						}
+					});
+				return { spy, peakInFlight: () => peak };
+			}
+
+			function idsOf(ops: Ops): string[] {
+				return ops.map(
+					(op) => (op as unknown as { updateOne: { filter: { id: string } } }).updateOne.filter.id,
+				);
+			}
+
+			function valuesOf(ops: Ops): unknown[] {
+				return ops.map(
+					(op) =>
+						(op as unknown as { updateOne: { update: { $set: { value: unknown } } } }).updateOne
+							.update.$set.value,
+				);
+			}
+
+			function callsOf(spy: MockInstance): Ops[] {
+				return spy.mock.calls.map(([ops]) => ops as Ops);
+			}
+
+			it('keeps one bulkWrite per collection when Parallel Writes is 1', async () => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+				const listCollectionsSpy = mockListCollections([]);
+
+				const [items] = await node.execute.call(mockParallelExecuteFunctions(inputRows(3000), 1));
+
+				expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+				expect(bulkWriteSpy).toHaveBeenCalledWith(expect.any(Array), { ordered: true });
+				expect(callsOf(bulkWriteSpy)[0]).toHaveLength(3000);
+				expect(listCollectionsSpy).not.toHaveBeenCalled();
+				expect(items.map((item) => item.pairedItem)).toEqual(
+					Array.from({ length: 3000 }, (_, index) => ({ item: index })),
+				);
+			});
+
+			it.each([0, 'abc', undefined])(
+				'treats an unusable Parallel Writes value (%j) as 1',
+				async (value) => {
+					const bulkWriteSpy = vi
+						.spyOn(Collection.prototype, 'bulkWrite')
+						.mockResolvedValue({} as never);
+
+					await node.execute.call(mockParallelExecuteFunctions(inputRows(3000), value));
+
+					expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it('splits a collection into lanes of bounded chunks when Parallel Writes is above 1', async () => {
+				const { spy, peakInFlight } = deferredBulkWrite();
+				mockListCollections([]);
+
+				const [items] = await node.execute.call(mockParallelExecuteFunctions(inputRows(8000), 4));
+
+				const calls = callsOf(spy);
+				expect(calls.length).toBeGreaterThanOrEqual(8);
+				expect(peakInFlight()).toBe(4);
+				for (const ops of calls) expect(ops.length).toBeLessThanOrEqual(1000);
+				expect(calls.reduce((max, ops) => Math.max(max, ops.length), 0)).toBe(1000);
+				expect(calls.flatMap(idsOf).sort()).toEqual(
+					Array.from({ length: 8000 }, (_, index) => `k${index}`).sort(),
+				);
+				expect(spy).toHaveBeenCalledWith(expect.any(Array), { ordered: true });
+				expect(items.map((item) => item.pairedItem)).toEqual(
+					Array.from({ length: 8000 }, (_, index) => ({ item: index })),
+				);
+				expect(items[4242]).toEqual({
+					json: { id: 'k4242', value: 4242 },
+					pairedItem: { item: 4242 },
+				});
+			});
+
+			it('keeps items that share an Update Key value in one lane in input order', async () => {
+				const duplicates = new Map([
+					[10, 'first'],
+					[3010, 'second'],
+					[7990, 'third'],
+				]);
+				const rows = inputRows(8000, (index) =>
+					duplicates.has(index)
+						? { id: 'dup', value: duplicates.get(index) }
+						: { id: `k${index}`, value: index },
+				);
+				const hasDuplicate = (ops: Ops) => idsOf(ops).includes('dup');
+				const seen: unknown[] = [];
+				let inFlightWithDuplicate = 0;
+				let overlapped = false;
+				deferredBulkWrite({
+					onStart: (ops) => {
+						if (!hasDuplicate(ops)) return;
+						if (inFlightWithDuplicate > 0) overlapped = true;
+						inFlightWithDuplicate++;
+						const ids = idsOf(ops);
+						for (const value of valuesOf(ops).filter((_, index) => ids[index] === 'dup'))
+							seen.push(value);
+					},
+					onSettled: (ops) => {
+						if (hasDuplicate(ops)) inFlightWithDuplicate--;
+					},
+				});
+				mockListCollections([]);
+
+				await node.execute.call(mockParallelExecuteFunctions(rows, 8));
+
+				expect(overlapped).toBe(false);
+				expect(seen).toEqual(['first', 'second', 'third']);
+			});
+
+			it('falls back to one bulkWrite when items resolve different Update Key fields', async () => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+				const listCollectionsSpy = mockListCollections([]);
+				const rows = inputRows(4000, (index) => ({
+					id: `k${index}`,
+					email: `k${index}@example.com`,
+					value: index,
+				}));
+
+				await node.execute.call(
+					mockParallelExecuteFunctions(rows, 4, {
+						params: {
+							fields: 'id,email,value',
+							updateKey: (index: number) => (index % 2 === 0 ? 'id' : 'email'),
+						},
+					}),
+				);
+
+				expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+				expect(listCollectionsSpy).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				[
+					'the collection has a default collation',
+					[{ name: 'users', options: { collation: { locale: 'en', strength: 2 } } }],
+				],
+				['the collection list cannot be read', new Error('not authorized on users')],
+			])('falls back to one bulkWrite when %s', async (_label, collections) => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+				const listCollectionsSpy = mockListCollections(collections);
+
+				await node.execute.call(mockParallelExecuteFunctions(inputRows(4000), 4));
+
+				expect(listCollectionsSpy).toHaveBeenCalledWith({ name: 'users' }, { nameOnly: false });
+				expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('closes a chunk before it reaches the driver batch size limit', async () => {
+				const { spy } = deferredBulkWrite();
+				mockListCollections([]);
+				const padding = 'x'.repeat(20 * 1024);
+				const rows = inputRows(2000, (index) => ({ id: `k${index}`, value: padding }));
+
+				await node.execute.call(mockParallelExecuteFunctions(rows, 2));
+
+				const calls = callsOf(spy);
+				expect(calls.length).toBeGreaterThanOrEqual(4);
+				for (const ops of calls) {
+					const bytes = ops.reduce((sum, op) => sum + BSON.calculateObjectSize(op), 0);
+					expect(bytes).toBeLessThan(16 * 1024 * 1024);
+				}
+			});
+
+			it('caps lanes at the client pool size', async () => {
+				const connectSpy = vi
+					.spyOn(MongoClient, 'connect')
+					.mockImplementation(
+						async () =>
+							await Promise.resolve(
+								new MongoClient('mongodb://localhost:27017', { maxPoolSize: 2 }),
+							),
+					);
+				try {
+					const { spy, peakInFlight } = deferredBulkWrite();
+					mockListCollections([]);
+
+					await node.execute.call(mockParallelExecuteFunctions(inputRows(8000), 8));
+
+					expect(peakInFlight()).toBe(2);
+					expect(callsOf(spy).length).toBeGreaterThanOrEqual(8);
+				} finally {
+					connectSpy.mockRestore();
+				}
+			});
+
+			it('caps Parallel Writes at 16', async () => {
+				const { peakInFlight } = deferredBulkWrite();
+				mockListCollections([]);
+
+				await node.execute.call(mockParallelExecuteFunctions(inputRows(20000), 64));
+
+				expect(peakInFlight()).toBe(16);
+			});
+
+			it('stops dispatching after the first failure when continue-on-fail is off', async () => {
+				const { spy } = deferredBulkWrite({
+					handle: (_ops, callIndex) => {
+						if (callIndex === 0)
+							throw bulkWriteError([{ index: 2, errmsg: 'E11000 duplicate key' }]);
+						return {};
+					},
+				});
+				mockListCollections([]);
+
+				const error: unknown = await node.execute
+					.call(mockParallelExecuteFunctions(inputRows(8000), 4))
+					.catch((caught: unknown) => caught);
+
+				expect(error).toBeInstanceOf(NodeOperationError);
+				expect((error as NodeOperationError).message).toBe('E11000 duplicate key');
+				const failingId = idsOf(callsOf(spy)[0])[2];
+				expect((error as NodeOperationError).context.itemIndex).toBe(Number(failingId.slice(1)));
+				expect(spy).toHaveBeenCalledTimes(4);
+			});
+
+			it('rethrows the raw driver error when a single lane fails and continue-on-fail is off', async () => {
+				vi.spyOn(Collection.prototype, 'bulkWrite').mockRejectedValue(
+					bulkWriteError([{ index: 1, errmsg: 'E11000 duplicate key' }], 'bulk write failed'),
+				);
+
+				await expect(
+					node.execute.call(mockParallelExecuteFunctions(inputRows(3000), 1)),
+				).rejects.toThrow('bulk write failed');
+			});
+
+			it('keeps per-chunk verdicts and stops a collection after a chunk fails without them when continue-on-fail is on', async () => {
+				const { spy } = deferredBulkWrite({
+					handle: (_ops, callIndex) => {
+						if (callIndex === 0) throw new Error('connection lost');
+						if (callIndex === 1)
+							throw bulkWriteError([{ index: 0, errmsg: 'E11000 duplicate key' }]);
+						return {};
+					},
+				});
+				mockListCollections([]);
+
+				const [items] = await node.execute.call(
+					mockParallelExecuteFunctions(inputRows(4000), 2, { continueOnFail: true }),
+				);
+
+				expect(spy).toHaveBeenCalledTimes(2);
+				expect(spy).toHaveBeenCalledWith(expect.any(Array), { ordered: false });
+				const [lostIds, [duplicateId, ...writtenIds]] = callsOf(spy).map(idsOf);
+				const written = new Set(writtenIds);
+				expect(lostIds.length).toBeGreaterThan(0);
+				expect(items).toHaveLength(4000);
+				for (const [index, item] of items.entries()) {
+					const id = `k${index}`;
+					expect(item.pairedItem).toEqual({ item: index });
+					if (id === duplicateId) expect(item.json).toEqual({ error: 'E11000 duplicate key' });
+					else if (written.has(id)) expect(item.json).toEqual({ id, value: index });
+					else expect(item.json).toEqual({ error: 'connection lost' });
+				}
+			});
+
+			it('stops dispatching once the execution is cancelled', async () => {
+				const controller = new AbortController();
+				const { spy } = deferredBulkWrite({
+					onStart: (_ops, callIndex) => {
+						if (callIndex === 1) controller.abort();
+					},
+				});
+				mockListCollections([]);
+				const executeFunctions = mockParallelExecuteFunctions(inputRows(4000), 2);
+				executeFunctions.getExecutionCancelSignal.mockReturnValue(controller.signal);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					'The execution was cancelled',
+				);
+				expect(spy).toHaveBeenCalledTimes(2);
+			});
+
+			it('issues no bulkWrite when an item fails to prepare and continue-on-fail is off', async () => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+				const rows = inputRows(3000, (index) =>
+					index === 1500 ? { value: index } : { id: `k${index}`, value: index },
+				);
+
+				await expect(node.execute.call(mockParallelExecuteFunctions(rows, 4))).rejects.toThrow(
+					'Item is missing the updateKey field',
+				);
+				expect(bulkWriteSpy).not.toHaveBeenCalled();
+			});
+
+			it('caps the lane count by the number of chunks', async () => {
+				const { spy, peakInFlight } = deferredBulkWrite();
+				mockListCollections([]);
+
+				await node.execute.call(mockParallelExecuteFunctions(inputRows(1500), 4));
+
+				expect(peakInFlight()).toBe(2);
+				expect(callsOf(spy).length).toBeGreaterThanOrEqual(2);
+			});
+
+			it('routes ObjectId keys that differ only in hex case to the same lane', async () => {
+				const sharedId = '507f1f77bcf86cd799439011';
+				const rows = inputRows(4000, (index) => ({
+					_id:
+						index === 10
+							? sharedId.toUpperCase()
+							: index === 3010
+								? sharedId
+								: index.toString(16).padStart(24, '0'),
+					value: index,
+				}));
+				const sharedOps = (ops: Ops) =>
+					ops.filter(
+						(op) =>
+							String(
+								(op as unknown as { updateOne: { filter: { _id: unknown } } }).updateOne.filter._id,
+							) === sharedId,
+					);
+				const seen: unknown[] = [];
+				let inFlightWithShared = 0;
+				let overlapped = false;
+				deferredBulkWrite({
+					onStart: (ops) => {
+						const shared = sharedOps(ops);
+						if (shared.length === 0) return;
+						if (inFlightWithShared > 0) overlapped = true;
+						inFlightWithShared++;
+						for (const value of valuesOf(shared)) seen.push(value);
+					},
+					onSettled: (ops) => {
+						if (sharedOps(ops).length > 0) inFlightWithShared--;
+					},
+				});
+				mockListCollections([]);
+
+				await node.execute.call(
+					mockParallelExecuteFunctions(rows, 8, {
+						params: { updateKey: '_id', fields: '_id,value' },
+					}),
+				);
+
+				expect(overlapped).toBe(false);
+				expect(seen).toEqual([10, 3010]);
+			});
+
+			it('writes collection groups one after another', async () => {
+				deferredBulkWrite();
+				mockListCollections([]);
+				const executeFunctions = mockParallelExecuteFunctions(inputRows(4000), 4, {
+					params: { collection: (index: number) => (index % 2 === 0 ? 'a' : 'b') },
+				});
+
+				const [items] = await node.execute.call(executeFunctions);
+
+				const names = collectionNames(collectionSpy);
+				expect(names.length).toBeGreaterThanOrEqual(4);
+				expect(names).toEqual([...names].sort());
+				expect(items.map((item) => item.pairedItem)).toEqual(
+					Array.from({ length: 4000 }, (_, index) => ({ item: index })),
+				);
+			});
+
+			it('leaves later collection groups untouched after a failure when continue-on-fail is off', async () => {
+				const { spy } = deferredBulkWrite({
+					handle: (_ops, callIndex) => {
+						if (callIndex === 0) throw new Error('boom');
+						return {};
+					},
+				});
+				mockListCollections([]);
+				const executeFunctions = mockParallelExecuteFunctions(inputRows(4000), 4, {
+					params: { collection: (index: number) => (index % 2 === 0 ? 'a' : 'b') },
+				});
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow('boom');
+				expect(collectionNames(collectionSpy)).toEqual(['a', 'a']);
+				expect(spy).toHaveBeenCalledTimes(2);
+			});
+
+			it('throws the failure of the earliest item when several chunks fail at once', async () => {
+				const { spy } = deferredBulkWrite({
+					handle: (ops, callIndex) => {
+						if (callIndex <= 1)
+							throw bulkWriteError([{ index: 0, errmsg: `failed ${idsOf(ops)[0]}` }]);
+						return {};
+					},
+				});
+				mockListCollections([]);
+
+				const error: unknown = await node.execute
+					.call(mockParallelExecuteFunctions(inputRows(4000), 2))
+					.catch((caught: unknown) => caught);
+
+				const earliest = [0, 1]
+					.map((callIndex) => Number(idsOf(callsOf(spy)[callIndex])[0].slice(1)))
+					.reduce((a, b) => Math.min(a, b));
+				expect((error as NodeOperationError).message).toBe(`failed k${earliest}`);
+				expect((error as NodeOperationError).context.itemIndex).toBe(earliest);
+			});
+
+			it('stops preparing items once the execution is cancelled', async () => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
+				const controller = new AbortController();
+				controller.abort();
+				const executeFunctions = mockParallelExecuteFunctions(inputRows(3000), 1);
+				executeFunctions.getExecutionCancelSignal.mockReturnValue(controller.signal);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					'The execution was cancelled',
+				);
+				expect(bulkWriteSpy).not.toHaveBeenCalled();
+			});
 		});
 	});
 

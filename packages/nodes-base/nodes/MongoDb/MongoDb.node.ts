@@ -7,8 +7,8 @@ import type {
 	Sort,
 	MongoClient,
 } from 'mongodb';
-import { MongoBulkWriteError, ObjectId } from 'mongodb';
-import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
+import { BSON, MongoBulkWriteError, ObjectId } from 'mongodb';
+import { NodeConnectionTypes, NodeOperationError, UnexpectedError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -52,29 +52,155 @@ function resolveIndexDefinition(
 	) as Record<string, unknown>;
 }
 
+const PARALLEL_WRITES_DEFAULT = 1;
+const PARALLEL_WRITES_MAX = 16;
+const BULK_CHUNK_MAX_OPS = 1000;
+const BULK_CHUNK_MAX_BYTES = 15 * 1024 * 1024;
+const PREPARE_YIELD_EVERY = 1000;
+const CANCELLED_MESSAGE = 'The execution was cancelled';
+
 interface BulkUpdateEntry {
 	op: AnyBulkWriteOperation;
+	filter: IDataObject;
+	update: { $set: IDataObject };
+	upsert: boolean;
 	item: IDataObject;
 	originalIndex: number;
+	laneKey: string;
+}
+
+interface BulkUpdateGroup {
+	entries: BulkUpdateEntry[];
+	updateKeys: Set<string>;
+}
+
+interface BulkUpdateGroupState {
+	stopped: boolean;
+	failure?: { error: unknown; firstIndex: number };
+}
+
+function clampParallelWrites(value: unknown): number {
+	const parsed = Math.floor(Number(value));
+	if (!Number.isFinite(parsed)) return PARALLEL_WRITES_DEFAULT;
+	return Math.min(PARALLEL_WRITES_MAX, Math.max(1, parsed));
+}
+
+function toLaneKey(value: unknown): string {
+	return value instanceof Date ? String(value.getTime()) : String(value);
+}
+
+function laneIndexFor(laneKey: string, laneCount: number): number {
+	let hash = 0x811c9dc5;
+	for (let i = 0; i < laneKey.length; i++) {
+		hash = Math.imul(hash ^ laneKey.charCodeAt(i), 0x01000193);
+	}
+	return (hash >>> 0) % laneCount;
+}
+
+function partitionIntoLanes(entries: BulkUpdateEntry[], laneCount: number): BulkUpdateEntry[][] {
+	const lanes: BulkUpdateEntry[][] = Array.from({ length: laneCount }, () => []);
+	for (const entry of entries) {
+		lanes[laneIndexFor(entry.laneKey, laneCount)].push(entry);
+	}
+	return lanes.filter((lane) => lane.length > 0);
+}
+
+function statementSize(entry: BulkUpdateEntry): number {
+	const statement = {
+		q: entry.filter,
+		u: entry.update,
+		multi: false,
+		...(entry.upsert ? { upsert: true } : {}),
+	};
+	return BSON.calculateObjectSize(statement) + 8;
+}
+
+function splitIntoChunks(lane: BulkUpdateEntry[]): BulkUpdateEntry[][] {
+	const chunks: BulkUpdateEntry[][] = [];
+	let chunk: BulkUpdateEntry[] = [];
+	let chunkBytes = 0;
+	for (const entry of lane) {
+		const bytes = statementSize(entry);
+		const full = chunk.length >= BULK_CHUNK_MAX_OPS || chunkBytes + bytes > BULK_CHUNK_MAX_BYTES;
+		if (full && chunk.length > 0) {
+			chunks.push(chunk);
+			chunk = [];
+			chunkBytes = 0;
+		}
+		chunk.push(entry);
+		chunkBytes += bytes;
+	}
+	if (chunk.length > 0) chunks.push(chunk);
+	return chunks;
+}
+
+function resolveLaneCount(
+	group: BulkUpdateGroup,
+	parallelWrites: number,
+	maxPoolSize: number,
+): number {
+	if (parallelWrites <= 1 || group.updateKeys.size > 1) return 1;
+	const chunkCount = Math.ceil(group.entries.length / BULK_CHUNK_MAX_OPS);
+	const poolCap = maxPoolSize > 0 ? maxPoolSize : parallelWrites;
+	return Math.max(1, Math.min(parallelWrites, poolCap, chunkCount));
+}
+
+async function hasDefaultCollation(mdb: Db, collection: string): Promise<boolean> {
+	try {
+		const [info] = await mdb.listCollections({ name: collection }, { nameOnly: false }).toArray();
+		return info?.options !== undefined && 'collation' in info.options;
+	} catch {
+		return true;
+	}
+}
+
+function writeErrorsByOpIndex(error: unknown): Map<number, string> {
+	const verdicts = new Map<number, string>();
+	if (!(error instanceof MongoBulkWriteError)) return verdicts;
+	for (const writeError of [error.writeErrors].flat()) {
+		verdicts.set(writeError.index, writeError.errmsg ?? error.message);
+	}
+	return verdicts;
 }
 
 /**
- * Batches update/findOneAndUpdate items into one `bulkWrite` per collection.
+ * Batches update/findOneAndUpdate items into `bulkWrite` calls per collection.
  * Both operations already discard the driver result and echo the prepared
- * item, so the per-item output contract is unchanged.
+ * item, so the per-item output contract is unchanged. With `Parallel Writes`
+ * above 1, a collection is split into key-partitioned lanes that run at once,
+ * so items that target one document keep their input order.
  */
 async function executeBulkUpdate(
 	ctx: IExecuteFunctions,
+	client: MongoClient,
 	mdb: Db,
 	items: INodeExecutionData[],
 	itemsLength: number,
 	sanitizeErrorMessage: (error: unknown) => string,
 ): Promise<INodeExecutionData[]> {
 	const continueOnFail = ctx.continueOnFail();
-	const returnData: INodeExecutionData[] = [];
-	const groups = new Map<string, BulkUpdateEntry[]>();
+	const parallelWrites = clampParallelWrites(
+		ctx.getNodeParameter('options.parallelWrites', 0, PARALLEL_WRITES_DEFAULT),
+	);
+	const cancelSignal = ctx.getExecutionCancelSignal();
+	const isCancelled = () => cancelSignal?.aborted === true;
+	const results: Array<INodeExecutionData | undefined> = Array.from({ length: itemsLength });
+	const groups = new Map<string, BulkUpdateGroup>();
+
+	const echo = (entry: BulkUpdateEntry): INodeExecutionData => ({
+		json: entry.item,
+		pairedItem: { item: entry.originalIndex },
+	});
+	const failed = (index: number, cause: unknown): INodeExecutionData => ({
+		json: { error: sanitizeErrorMessage(cause) },
+		pairedItem: { item: index },
+	});
 
 	for (let i = 0; i < itemsLength; i++) {
+		if (i > 0 && i % PREPARE_YIELD_EVERY === 0) {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			if (isCancelled()) throw new NodeOperationError(ctx.getNode(), CANCELLED_MESSAGE);
+		}
 		try {
 			const fields = prepareFields(ctx.getNodeParameter('fields', i) as string);
 			const useDotNotation = Boolean(ctx.getNodeParameter('options.useDotNotation', i, false));
@@ -103,70 +229,112 @@ async function executeBulkUpdate(
 				filter[updateKey] = new ObjectId(item[updateKey] as string);
 				delete item._id;
 			}
+			const update = { $set: item };
 
 			const collection = ctx.getNodeParameter('collection', i) as string;
-			const group = groups.get(collection) ?? [];
+			const group = groups.get(collection) ?? { entries: [], updateKeys: new Set<string>() };
 			groups.set(collection, group);
-			group.push({
-				op: { updateOne: { filter, update: { $set: item }, ...(upsert ? { upsert: true } : {}) } },
+			group.updateKeys.add(updateKey);
+			group.entries.push({
+				op: { updateOne: { filter, update, ...(upsert ? { upsert: true } : {}) } },
+				filter,
+				update,
+				upsert,
 				item,
 				originalIndex: i,
+				laneKey: toLaneKey(filter[updateKey]),
 			});
 		} catch (error) {
 			if (!continueOnFail) throw error;
-			returnData.push({
-				json: { error: sanitizeErrorMessage(error) },
-				pairedItem: { item: i },
+			results[i] = failed(i, error);
+		}
+	}
+
+	const maxPoolSize = client.options.maxPoolSize;
+
+	for (const [collection, group] of groups) {
+		let laneCount = resolveLaneCount(group, parallelWrites, maxPoolSize);
+		// A collection default collation can make distinct key values match one document
+		if (laneCount > 1 && (await hasDefaultCollation(mdb, collection))) laneCount = 1;
+		const lanes = laneCount === 1 ? [group.entries] : partitionIntoLanes(group.entries, laneCount);
+		const chunksOf = (lane: BulkUpdateEntry[]) =>
+			laneCount === 1 ? [lane] : splitIntoChunks(lane);
+
+		const state: BulkUpdateGroupState = { stopped: false };
+		const recordFailure = (chunk: BulkUpdateEntry[], error: unknown) => {
+			const firstIndex = chunk[0].originalIndex;
+			if (state.failure === undefined || firstIndex < state.failure.firstIndex) {
+				state.failure = { error, firstIndex };
+			}
+		};
+		const attributeFailure = (
+			chunk: BulkUpdateEntry[],
+			error: unknown,
+			verdicts: Map<number, string>,
+		) => {
+			if (laneCount === 1 || verdicts.size === 0) return error;
+			let opIndex = Number.POSITIVE_INFINITY;
+			for (const index of verdicts.keys()) opIndex = Math.min(opIndex, index);
+			return new NodeOperationError(ctx.getNode(), sanitizeErrorMessage(verdicts.get(opIndex)), {
+				itemIndex: chunk[opIndex].originalIndex,
+			});
+		};
+
+		const runChunk = async (chunk: BulkUpdateEntry[]) => {
+			try {
+				await mdb.collection(collection).bulkWrite(
+					chunk.map((entry) => entry.op),
+					{ ordered: !continueOnFail },
+				);
+				for (const entry of chunk) results[entry.originalIndex] = echo(entry);
+			} catch (error) {
+				const verdicts = writeErrorsByOpIndex(error);
+				const chunkFailed = verdicts.size === 0;
+				if (!continueOnFail) {
+					state.stopped = true;
+					recordFailure(chunk, attributeFailure(chunk, error, verdicts));
+					return;
+				}
+				if (chunkFailed) {
+					state.stopped = true;
+					recordFailure(chunk, error);
+				}
+				for (const [opIndex, entry] of chunk.entries()) {
+					const verdict = verdicts.get(opIndex);
+					results[entry.originalIndex] =
+						verdict !== undefined || chunkFailed
+							? failed(entry.originalIndex, verdict ?? error)
+							: echo(entry);
+				}
+			}
+		};
+
+		const runLane = async (lane: BulkUpdateEntry[]) => {
+			for (const chunk of chunksOf(lane)) {
+				if (state.stopped || isCancelled()) return;
+				await runChunk(chunk);
+			}
+		};
+
+		await Promise.allSettled(lanes.map(runLane));
+
+		if (isCancelled()) throw new NodeOperationError(ctx.getNode(), CANCELLED_MESSAGE);
+		if (state.failure !== undefined) {
+			if (!continueOnFail) throw state.failure.error;
+			for (const entry of group.entries) {
+				results[entry.originalIndex] ??= failed(entry.originalIndex, state.failure.error);
+			}
+		}
+	}
+
+	return results.map((result, index) => {
+		if (result === undefined) {
+			throw new UnexpectedError('MongoDB bulk update produced no output for an item', {
+				extra: { itemIndex: index },
 			});
 		}
-	}
-
-	for (const [collection, entries] of groups) {
-		try {
-			// Ordered stops at the first failure within a collection (the pre-1.5 per-item
-			// behaviour). Across interleaved collections it does not: groups run one at a
-			// time, so a later group's failure can't stop an already-run group — matches
-			// Insert, and only observable when `collection` is a per-item expression.
-			// Continue-on-fail flips to unordered: attempt every item independently.
-			await mdb.collection(collection).bulkWrite(
-				entries.map((entry) => entry.op),
-				{ ordered: !continueOnFail },
-			);
-			for (const entry of entries) {
-				returnData.push({ json: entry.item, pairedItem: { item: entry.originalIndex } });
-			}
-		} catch (error) {
-			if (!continueOnFail) throw error;
-
-			// writeErrors carry the op's position within this bulkWrite call.
-			// The driver types this as OneOrMore<WriteError>, so normalise to an array.
-			const failedOpIndexes = new Map<number, string>();
-			if (error instanceof MongoBulkWriteError) {
-				const writeErrors = [error.writeErrors].flat();
-				for (const writeError of writeErrors) {
-					failedOpIndexes.set(writeError.index, writeError.errmsg ?? error.message);
-				}
-			}
-
-			for (const [opIndex, entry] of entries.entries()) {
-				const failure = failedOpIndexes.get(opIndex);
-				// No per-op verdicts (e.g. a connection failure): treat the whole group as failed
-				if (failure !== undefined || failedOpIndexes.size === 0) {
-					returnData.push({
-						json: { error: sanitizeErrorMessage(failure ?? error) },
-						pairedItem: { item: entry.originalIndex },
-					});
-				} else {
-					returnData.push({ json: entry.item, pairedItem: { item: entry.originalIndex } });
-				}
-			}
-		}
-	}
-
-	returnData.sort(
-		(a, b) => (a.pairedItem as { item: number }).item - (b.pairedItem as { item: number }).item,
-	);
-	return returnData;
+		return result;
+	});
 }
 
 export class MongoDb implements INodeType {
@@ -524,7 +692,7 @@ export class MongoDb implements INodeType {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.5) {
 					returnData = returnData.concat(
-						await executeBulkUpdate(this, mdb, items, itemsLength, sanitizeErrorMessage),
+						await executeBulkUpdate(this, client, mdb, items, itemsLength, sanitizeErrorMessage),
 					);
 				} else if (nodeVersion >= 1.3) {
 					for (let i = 0; i < itemsLength; i++) {
@@ -767,7 +935,7 @@ export class MongoDb implements INodeType {
 				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 				if (nodeVersion >= 1.5) {
 					returnData = returnData.concat(
-						await executeBulkUpdate(this, mdb, items, itemsLength, sanitizeErrorMessage),
+						await executeBulkUpdate(this, client, mdb, items, itemsLength, sanitizeErrorMessage),
 					);
 				} else if (nodeVersion >= 1.3) {
 					for (let i = 0; i < itemsLength; i++) {
