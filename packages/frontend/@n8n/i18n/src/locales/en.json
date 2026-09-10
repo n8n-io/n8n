@@ -1452,6 +1452,7 @@
 	"agentSessions.langsmithExport.error": "Session couldn't be sent to LangSmith. Try again.",
 	"agentSessions.actions": "Actions",
 	"agentSessions.empty": "No agent sessions",
+	"agentSessions.emptyDescription": "Sessions will appear here after you preview your agent.",
 	"agentSessions.emptyWithFilters": "No sessions match these filters",
 	"agentSessions.filters.status": "Status",
 	"agentSessions.filters.anyStatus": "Any status",
