@@ -318,6 +318,7 @@ describe('JobProcessor', () => {
 					pinData,
 				},
 				executionData: undefined,
+				manualData: { userId: 'starting-user-id' },
 			}),
 		});
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -347,6 +348,7 @@ describe('JobProcessor', () => {
 			workflowId: execution.workflowData.id,
 			executionTimeoutTimestamp: undefined,
 			workflowSettings: execution.workflowData.settings,
+			userId: 'starting-user-id',
 		});
 
 		expect(manualExecutionService.runManually).toHaveBeenCalledWith(

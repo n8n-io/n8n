@@ -951,6 +951,19 @@ describe('pre-persist context establishment', () => {
 		expect(callOrder).toEqual(['establishExecutionContext', 'activeExecutions.add']);
 	});
 
+	it('passes the starting user and runner identity to establishExecutionContext', async () => {
+		const data = buildRunData(buildExecutionDataWithHeader());
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect(establishSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			data.executionData,
+			{ encryptedRunnerIdentity: data.encryptedRunnerIdentity, userId: data.userId },
+			data.executionMode,
+		);
+	});
+
 	it('passes masked executionData to activeExecutions.add', async () => {
 		const data = buildRunData(buildExecutionDataWithHeader());
 

@@ -205,6 +205,9 @@ export class JobProcessor {
 			workflowId,
 			executionTimeoutTimestamp,
 			workflowSettings: execution.workflowData.settings,
+			// Same user main passes in runMainProcess. The worker needs it so it
+			// records who started the execution when it establishes context.
+			userId: execution.data.manualData?.userId,
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
