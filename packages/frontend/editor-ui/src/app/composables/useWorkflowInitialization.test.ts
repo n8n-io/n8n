@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
 
 import { useWorkflowInitialization } from './useWorkflowInitialization';
+import { VIEWS } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -255,6 +256,62 @@ describe('useWorkflowInitialization', () => {
 			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'personal-project-id' }),
 			);
+		});
+	});
+
+	describe('template import permissions', () => {
+		function importTemplate() {
+			mockRoute.name = VIEWS.TEMPLATE_IMPORT;
+			mockRoute.params = { id: '11204' };
+
+			let handleTemplateImportRoute!: () => Promise<boolean>;
+			renderWithComposable((init) => {
+				handleTemplateImportRoute = init.handleTemplateImportRoute;
+			});
+			return handleTemplateImportRoute();
+		}
+
+		it('populates scopes and home project on the document store', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update', 'workflow:publish'],
+			} as Project;
+			projectsStore.currentProject = null;
+
+			const handled = await importTemplate();
+
+			expect(handled).toBe(true);
+			expect(mockOpenWorkflowTemplate).toHaveBeenCalledWith('11204');
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'personal-project-id' }),
+			);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith([
+				'workflow:update',
+				'workflow:publish',
+			]);
+		});
+
+		it('prefers the project that refreshCurrentProject resolves', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:read'],
+			} as Project;
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				projectsStore.currentProject = {
+					id: 'team-project-id',
+					scopes: ['workflow:update'],
+				} as Project;
+			});
+
+			await importTemplate();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'team-project-id' }),
+			);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith(['workflow:update']);
 		});
 	});
 

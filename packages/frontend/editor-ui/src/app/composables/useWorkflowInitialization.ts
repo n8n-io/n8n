@@ -177,6 +177,16 @@ export function useWorkflowInitialization() {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
+
+			// The header derives every permission from the document store scopes.
+			// Without them, the first save turns the whole header read-only
+			// (Publish and Save hidden, actions menu disabled).
+			await projectsStore.refreshCurrentProject();
+			const { currentProject, personalProject } = projectsStore;
+			currentWorkflowDocumentStore.value.setHomeProject(currentProject ?? personalProject ?? null);
+			currentWorkflowDocumentStore.value.setScopes(
+				currentProject?.scopes ?? personalProject?.scopes ?? [],
+			);
 		}
 
 		return true;
