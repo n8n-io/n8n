@@ -96,6 +96,10 @@ describe('NodeView', () => {
 					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocStore),
 				},
 				stubs: {
+					// The node creator is an async component that pulls in a large subtree. No
+					// test here needs it, and on a writable canvas the import can still be in
+					// flight when the environment tears down, which fails the whole run.
+					LazyNodeCreation: true,
 					WorkflowCanvas: defineComponent({
 						emits: ['copy:nodes'],
 						setup(_, { expose }) {
