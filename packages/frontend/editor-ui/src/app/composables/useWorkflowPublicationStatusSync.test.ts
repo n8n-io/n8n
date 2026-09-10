@@ -124,6 +124,7 @@ describe('useWorkflowPublicationStatusSync', () => {
 		// A 'publishing' state on an unsaved document must not arm a poll either.
 		store.setPublicationStatus({ status: 'publishing' });
 		await nextTick();
+		expect(vi.getTimerCount()).toBe(0);
 		await vi.advanceTimersByTimeAsync(PUBLICATION_STATUS_POLL_INTERVAL_MS * 2);
 
 		expect(workflowsStore.fetchPublicationStatus).not.toHaveBeenCalled();
