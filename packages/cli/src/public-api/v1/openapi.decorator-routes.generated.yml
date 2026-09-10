@@ -31,38 +31,59 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
-  /git-connections:
+  /promotions/providers:
     post:
-      $ref: ./handlers/git-connections/spec/paths/createGitConnection.generated.yml
+      $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml
     get:
-      $ref: ./handlers/git-connections/spec/paths/getGitConnections.generated.yml
-  /git-connections/{id}:
+      $ref: ./handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  /promotions/providers/{id}:
     get:
-      $ref: ./handlers/git-connections/spec/paths/getGitConnection.generated.yml
+      $ref: ./handlers/promotions/spec/paths/getPromotionProvider.generated.yml
     put:
-      $ref: ./handlers/git-connections/spec/paths/updateGitConnection.generated.yml
+      $ref: ./handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
     delete:
-      $ref: ./handlers/git-connections/spec/paths/deleteGitConnection.generated.yml
-  /git-connections/{id}/clone:
+      $ref: ./handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  /promotions/connections:
     post:
-      $ref: ./handlers/git-connections/spec/paths/cloneGitConnection.generated.yml
-  /git-connections/{id}/disconnect:
-    post:
-      $ref: ./handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
-  /git-connections/{id}/push:
-    post:
-      $ref: ./handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
-  /git-connections/{id}/projects:
+      $ref: ./handlers/promotions/spec/paths/createPromotionConnection.generated.yml
     get:
-      $ref: ./handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
-  /git-connections/{id}/projects/{projectId}:
-    post:
-      $ref: ./handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
+      $ref: ./handlers/promotions/spec/paths/getPromotionConnections.generated.yml
+  /promotions/connections/{id}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionConnection.generated.yml
+    put:
+      $ref: ./handlers/promotions/spec/paths/updatePromotionConnection.generated.yml
     delete:
-      $ref: ./handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
-  /git-connections/{id}/pull:
+      $ref: ./handlers/promotions/spec/paths/deletePromotionConnection.generated.yml
+  /promotions/connections/{id}/configs/apply:
+    put:
+      $ref: ./handlers/promotions/spec/paths/upsertPromotionApplyConfig.generated.yml
+  /promotions/connections/{id}/configs/promote:
+    put:
+      $ref: ./handlers/promotions/spec/paths/upsertPromotionPromoteConfig.generated.yml
+  /promotions/connections/{id}/configs/{direction}:
+    delete:
+      $ref: ./handlers/promotions/spec/paths/deletePromotionConfig.generated.yml
+  /promotions/connections/{id}/{direction}/clone:
     post:
-      $ref: ./handlers/git-connections/spec/paths/pullGitConnectionProjects.generated.yml
+      $ref: ./handlers/promotions/spec/paths/clonePromotionCheckout.generated.yml
+  /promotions/connections/{id}/{direction}/disconnect:
+    post:
+      $ref: ./handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  /promotions/connections/{id}/projects:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionConnectionProjects.generated.yml
+  /promotions/connections/{id}/projects/{projectId}:
+    post:
+      $ref: ./handlers/promotions/spec/paths/addProjectToPromotionConnection.generated.yml
+    delete:
+      $ref: ./handlers/promotions/spec/paths/removeProjectFromPromotionConnection.generated.yml
+  /promotions/connections/{id}/promote:
+    post:
+      $ref: ./handlers/promotions/spec/paths/promotePackage.generated.yml
+  /promotions/connections/{id}/apply:
+    post:
+      $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

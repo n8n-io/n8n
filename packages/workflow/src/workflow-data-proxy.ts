@@ -44,6 +44,7 @@ import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -1007,7 +1008,26 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
-			nodeBeforeLast?: string,
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new PairedItemMemo(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1016,6 +1036,26 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			return memo.resolve(sourceData, pairedItem, () =>
+				resolvePairedItemUncached(
+					destinationNodeName,
+					sourceData,
+					pairedItem,
+					usedMethodName,
+					nodeBeforeLast,
+					memo,
+				),
+			);
+		};
+
+		const resolvePairedItemUncached = (
+			destinationNodeName: string,
+			sourceData: ISourceData,
+			pairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+		): INodeExecutionData => {
 			const taskData = getTaskData(sourceData);
 			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 			const item = outputData[pairedItem.item];
@@ -1047,12 +1087,13 @@ export class WorkflowDataProxy {
 
 				try {
 					return createResultOk(
-						getPairedItem(
+						resolvePairedItem(
 							destinationNodeName,
 							nextSource,
 							{ ...nextPairedItem, input: inputIndex },
 							usedMethodName,
 							sourceData.previousNode,
+							memo,
 						),
 					);
 				} catch (error) {
