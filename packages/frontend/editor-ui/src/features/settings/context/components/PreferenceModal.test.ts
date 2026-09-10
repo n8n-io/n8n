@@ -78,7 +78,7 @@ describe('PreferenceModal', () => {
 
 	describe('scope options', () => {
 		it('always offers "Just you"', () => {
-			renderModal({ props: { mode: 'new' }, global, pinia });
+			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			expect(findOption('Just you')?.className).not.toContain('is-disabled');
 		});
@@ -86,7 +86,7 @@ describe('PreferenceModal', () => {
 		it('disables "Everyone" for a user who is not an instance owner or admin', () => {
 			usersStore.isAdminOrOwner = false;
 
-			renderModal({ props: { mode: 'new' }, global, pinia });
+			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			expect(findOption('Everyone')?.className).toContain('is-disabled');
 		});
@@ -94,13 +94,13 @@ describe('PreferenceModal', () => {
 		it('enables "Everyone" for an instance owner or admin', () => {
 			usersStore.isAdminOrOwner = true;
 
-			renderModal({ props: { mode: 'new' }, global, pinia });
+			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			expect(findOption('Everyone')?.className).not.toContain('is-disabled');
 		});
 
 		it('offers only the projects the user may write', () => {
-			renderModal({ props: { mode: 'new' }, global, pinia });
+			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			expect(findOption('Writable Project')?.className).not.toContain('is-disabled');
 			expect(findOption('Read Only Project')?.className).toContain('is-disabled');
@@ -109,13 +109,13 @@ describe('PreferenceModal', () => {
 
 	describe('validation', () => {
 		it('keeps Save disabled while the text is empty', () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			expect(getByTestId('preference-modal-save-button')).toBeDisabled();
 		});
 
 		it('enables Save once the text is filled', async () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -126,7 +126,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('keeps Save disabled for whitespace-only text', async () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -138,7 +138,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('trims the text it sends', async () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -154,7 +154,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('caps the text at the injection budget', () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			const textarea = getByTestId('preference-modal-text-input').querySelector('textarea');
 			expect(textarea).toHaveAttribute('maxlength', String(PREFERENCE_TEXT_MAX_LENGTH));
@@ -163,7 +163,7 @@ describe('PreferenceModal', () => {
 
 	describe('submitting', () => {
 		it('creates a user-scoped preference by default', async () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -179,7 +179,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('reports a created preference without its text', async () => {
-			const { getByTestId } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId } = renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
@@ -212,7 +212,11 @@ describe('PreferenceModal', () => {
 				}),
 			);
 
-			const { getByTestId, unmount } = renderModal({ props: { mode: 'new' }, global, pinia });
+			const { getByTestId, unmount } = renderModal({
+				props: { data: { mode: 'new' } },
+				global,
+				pinia,
+			});
 			await userEvent.type(
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
 				'Keep replies short.',
@@ -240,7 +244,11 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			const { getByTestId } = renderModal({ props: { mode: 'edit', preference }, global, pinia });
+			const { getByTestId } = renderModal({
+				props: { data: { mode: 'edit', preference } },
+				global,
+				pinia,
+			});
 
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
@@ -263,7 +271,11 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			const { getByTestId } = renderModal({ props: { mode: 'edit', preference }, global, pinia });
+			const { getByTestId } = renderModal({
+				props: { data: { mode: 'edit', preference } },
+				global,
+				pinia,
+			});
 
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 

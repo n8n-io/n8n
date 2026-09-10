@@ -43,7 +43,6 @@ import {
 } from '@/features/shared/tags/tags.constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
-import { PREFERENCE_MODAL_KEY } from '@/features/settings/context/context.constants';
 import {
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
@@ -119,8 +118,6 @@ import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
-import PreferenceModal from '@/features/settings/context/components/PreferenceModal.vue';
-import type { Preference } from '@/features/settings/context/context.types';
 import StopManyExecutionsModal from '@/features/execution/executions/components/StopManyExecutionsModal.vue';
 import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/AddExecutionToDataset/AddExecutionToDatasetModal.vue';
 import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
@@ -441,12 +438,6 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="EXPERIMENT_TEMPLATE_RECO_V3_KEY">
 			<template #default="{ modalName, data }">
 				<NodeRecommendationModalV3 :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="PREFERENCE_MODAL_KEY">
-			<template #default="{ data }: { data: { mode: 'new' | 'edit'; preference?: Preference } }">
-				<PreferenceModal :mode="data?.mode ?? 'new'" :preference="data?.preference" />
 			</template>
 		</ModalRoot>
 

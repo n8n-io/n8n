@@ -26,13 +26,18 @@ import { useContextStore } from '../context.store';
 import type { Preference, PreferenceScopeType } from '../context.types';
 import { canWriteInstanceScope, canWriteProjectScope, preferenceScope } from '../context.utils';
 
+// The modal registry mounts this and hands the payload through `data`, so the
+// shape follows the loader rather than the call site.
 const props = withDefaults(
 	defineProps<{
-		mode?: 'new' | 'edit';
-		preference?: Preference;
+		modalName?: string;
+		data?: { mode?: 'new' | 'edit'; preference?: Preference };
 	}>(),
-	{ mode: 'new', preference: undefined },
+	{ modalName: PREFERENCE_MODAL_KEY, data: () => ({}) },
 );
+
+const mode = computed(() => props.data.mode ?? 'new');
+const preference = computed(() => props.data.preference);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -61,19 +66,19 @@ const projectScopeValue = (id: string) => `project:${id}`;
 const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layer-group' };
 
 function initialScopeValue() {
-	const preference = props.preference;
-	if (!preference) return USER_SCOPE_VALUE;
+	const editing = preference.value;
+	if (!editing) return USER_SCOPE_VALUE;
 
-	const scope = preferenceScope(preference);
+	const scope = preferenceScope(editing);
 	if (scope === 'instance') return INSTANCE_SCOPE_VALUE;
-	if (scope === 'project' && preference.projectId) {
-		return projectScopeValue(preference.projectId);
+	if (scope === 'project' && editing.projectId) {
+		return projectScopeValue(editing.projectId);
 	}
 	return USER_SCOPE_VALUE;
 }
 
 const form = reactive({
-	content: props.preference?.content ?? '',
+	content: preference.value?.content ?? '',
 	scope: initialScopeValue(),
 });
 
@@ -131,7 +136,7 @@ const selectedIcon = computed<IconOrEmoji>(
 );
 
 const modalTitle = computed(() =>
-	props.mode === 'new'
+	mode.value === 'new'
 		? i18n.baseText('settings.context.preferences.modal.title.create')
 		: i18n.baseText('settings.context.preferences.modal.title.edit'),
 );
@@ -156,20 +161,20 @@ async function handleSubmit() {
 
 	try {
 		loading.value = true;
-		if (props.mode === 'new') {
+		if (mode.value === 'new') {
 			await contextStore.createPreference({ content, scope, projectId });
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CREATED_PREFERENCE, {
 				scope_type: scope,
 				text_length: content.length,
 				...(projectId ? { project_id: projectId } : {}),
 			});
-		} else if (props.preference) {
-			await contextStore.updatePreference(props.preference.id, { content, scope, projectId });
+		} else if (preference.value) {
+			await contextStore.updatePreference(preference.value.id, { content, scope, projectId });
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 				scope_type: scope,
 				text_length: content.length,
 				scope_changed:
-					scope !== preferenceScope(props.preference) || projectId !== props.preference.projectId,
+					scope !== preferenceScope(preference.value) || projectId !== preference.value.projectId,
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		}
