@@ -14,7 +14,7 @@ interface PackageSpec {
 	name: string;
 	deps?: string[];
 	/** Written to the package's `janitor.ignoreDepsForScoping` field. */
-	ignoreDeps?: string[];
+	ignoreDeps?: unknown;
 }
 
 interface TurboTaskSpec {
@@ -44,7 +44,7 @@ function makeFixture(opts: {
 		if (spec.deps && spec.deps.length > 0) {
 			pkg.dependencies = Object.fromEntries(spec.deps.map((d) => [d, 'workspace:*']));
 		}
-		if (spec.ignoreDeps) {
+		if (spec.ignoreDeps !== undefined) {
 			pkg.janitor = { ignoreDepsForScoping: spec.ignoreDeps };
 		}
 		writeFileSync(join(pkgDir, 'package.json'), JSON.stringify(pkg));
@@ -133,6 +133,32 @@ describe('affectedPackages', () => {
 			},
 		});
 		expect(affectedPackages({ rootDir, changedFiles: ['packages/app/src/x.ts'] })).toEqual(['app']);
+	});
+
+	it('throws when ignoreDepsForScoping is not an array of strings', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: 'ui' },
+			},
+		});
+		expect(() => affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toThrow(
+			'janitor.ignoreDepsForScoping in package "app" must be an array of package names',
+		);
+	});
+
+	it('throws when ignoreDepsForScoping names a package that is not a workspace dep', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: ['uii'] },
+			},
+		});
+		expect(() => affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toThrow(
+			'janitor.ignoreDepsForScoping in package "app" names non-workspace-dependencies: uii',
+		);
 	});
 
 	it('expands all packages when a universal sink (workflow/core) changes', () => {

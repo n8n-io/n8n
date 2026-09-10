@@ -264,6 +264,8 @@ ignored package no longer marks the declaring package as affected. Use it only
 for dependencies the package does not import, such as a prebuilt asset bundle
 it serves as static files. `n8n` (cli) declares `n8n-editor-ui` this way: cli
 resolves the editor's `dist` directory at runtime and never imports its code.
+The field must be an array of names that the package declares as workspace
+dependencies. Anything else throws, so a typo cannot silently re-widen CI.
 
 **Global triggers force a full workspace run.** Some changes are invisible to
 a per-package import-graph walk: a lockfile / root-manifest change, or an edit
