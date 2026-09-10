@@ -1166,7 +1166,7 @@ async function authenticateFormUserOrRespond(
 			if (typeof formToken === 'string' && formToken) {
 				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
 				if (validation.valid) {
-					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
+					await context.establishTriggerIdentity(formToken, resourceUrl, validation.user.id); // seeds the run
 					return {
 						user: validation.user,
 						token: null,
@@ -1522,7 +1522,7 @@ export async function formWebhook(
 			// OAuth2 token is bound to that resource, same as in the auth path above.
 			const resourceUrl = trimTrailingSlash(context.getWebhookResourceUrl('default') ?? '');
 			if (resourceUrl) {
-				await context.establishTriggerIdentity(oAuth2Token, resourceUrl);
+				await context.establishTriggerIdentity(oAuth2Token, resourceUrl, authedUser.id);
 				const credentialStatus = await context.checkTriggerCredentialStatus();
 				// Gate on "needs end-user accounts", NOT on readiness: a fully connected
 				// submitter must keep the panel — which accounts the form uses, which

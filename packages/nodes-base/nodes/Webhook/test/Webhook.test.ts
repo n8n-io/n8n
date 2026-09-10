@@ -289,6 +289,7 @@ describe('Test Webhook Node', () => {
 			expect(context.establishTriggerIdentity).toHaveBeenCalledWith(
 				'good-token',
 				`${WEBHOOK_URL}?method=GET`,
+				'user-1',
 			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });

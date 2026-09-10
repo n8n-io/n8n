@@ -1130,7 +1130,7 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
-			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith('as-token', resourceUrl);
+			expect(ctx.establishTriggerIdentity).toHaveBeenCalledWith('as-token', resourceUrl, 'user-1');
 			expect(result).toMatchObject({ webhookResponse: { status: 200 } });
 		});
 

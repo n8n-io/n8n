@@ -260,7 +260,11 @@ export class Webhook extends Node {
 					// Token missing/invalid: the helper already sent the response.
 					return { noWebhookResponse: true };
 				}
-				await context.establishTriggerIdentity(authResult.token, authResult.resource);
+				await context.establishTriggerIdentity(
+					authResult.token,
+					authResult.resource,
+					authResult.user.id,
+				);
 			} else {
 				validationData = await this.validateAuth(context);
 			}
