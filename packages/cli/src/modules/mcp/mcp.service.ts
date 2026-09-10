@@ -82,6 +82,8 @@ import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import {
 	createGetInstanceContextTool,
+	EMPTY_INSTANCE_CONTEXT_TEXT,
+	GET_INSTANCE_CONTEXT_TOOL_NAME,
 	INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
 	INSTANCE_CONTEXT_RESOURCE_URI,
 	readInstanceContext,
@@ -467,6 +469,9 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
+		// Same rationale again: a grant that cannot reach the instance-context tools is not told
+		// to start by calling them, and does not get the resource that carries the same data.
+		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -475,7 +480,9 @@ export class McpService {
 			{
 				instructions: getMcpInstructions({
 					isInstanceContextEnabled:
-						featureFlags.instanceContextEnabled && this.moduleRegistry.isActive('instance-ai'),
+						featureFlags.instanceContextEnabled &&
+						this.moduleRegistry.isActive('instance-ai') &&
+						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
@@ -655,25 +662,37 @@ export class McpService {
 				);
 
 				// The opening context, offered three ways because an MCP client has no turn to have
-				// it injected into. Same shape as the SDK reference below: a resource for clients
-				// that read resources, a tool for the rest, and a line in the server instructions
-				// naming both — which is what makes either get called.
-				registerResource({
-					name: 'instance-context',
-					uri: INSTANCE_CONTEXT_RESOURCE_URI,
-					config: { description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION },
-					read: async () => ({
-						contents: [
-							{
-								uri: INSTANCE_CONTEXT_RESOURCE_URI,
-								mimeType: 'text/plain',
-								text:
-									(await readInstanceContext(user, instanceContext)) ??
-									'Nothing has been built on this instance yet.',
-							},
-						],
-					}),
-				});
+				// it injected into: a resource for clients that read resources, a tool for the rest,
+				// and a line in the server instructions naming both.
+				//
+				// The resource carries the same instance data as the tool, so it follows the same
+				// scope gate — `registerResource` does no filtering of its own, and the resources
+				// that predate this one are static documents that needed none. Mirrors
+				// `McpAgentToolsService`, which gates its reference resource on its reference tool.
+				if (contextToolsAllowed) {
+					registerResource({
+						name: 'instance-context',
+						uri: INSTANCE_CONTEXT_RESOURCE_URI,
+						config: {
+							description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+							mimeType: 'text/plain',
+							// Per-user data: never cache it across callers. The SDK defaults to this
+							// today, so this states the requirement rather than changing behaviour.
+							cacheHint: { ttlMs: 0, cacheScope: 'private' },
+						},
+						read: async () => ({
+							contents: [
+								{
+									uri: INSTANCE_CONTEXT_RESOURCE_URI,
+									mimeType: 'text/plain',
+									text:
+										(await readInstanceContext(user, instanceContext)) ??
+										EMPTY_INSTANCE_CONTEXT_TEXT,
+								},
+							],
+						}),
+					});
+				}
 				registerIfAllowed(createGetInstanceContextTool(user, instanceContext, this.telemetry));
 			}
 

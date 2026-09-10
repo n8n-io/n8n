@@ -389,6 +389,29 @@ describe('InstanceContextService', () => {
 		});
 
 		/**
+		 * A chat turn has no error channel so it degrades to no block, but an MCP caller reads an
+		 * empty answer as "nothing exists here yet" — the two must not look the same.
+		 */
+		it('throws on a failed read instead of answering as though the instance were empty', async () => {
+			const spy = vi
+				.spyOn(activity, 'findFeed')
+				.mockRejectedValueOnce(new Error('db is down'))
+				.mockRejectedValueOnce(new Error('db is down'));
+
+			try {
+				await expect(service.buildBlock({ user, scope: mcp(), cursor: null })).rejects.toThrow(
+					'db is down',
+				);
+
+				await expect(
+					service.buildBlock({ user, scope: bound(project.id), cursor: null }),
+				).resolves.toBeNull();
+			} finally {
+				spy.mockRestore();
+			}
+		});
+
+		/**
 		 * Every other MCP read refuses an archived workflow before it looks at the setting, so the
 		 * feed must not be the one door that reports its history.
 		 */

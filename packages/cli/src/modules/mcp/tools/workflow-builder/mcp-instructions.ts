@@ -6,9 +6,10 @@
  * It provides a condensed orchestration guide for the tool calling sequence.
  */
 
-import { GET_INSTANCE_ACTIVITY_TOOL_NAME } from '../instance-activity.tool';
+import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
 import { GET_NODE_USAGE_TOOL_NAME } from '../get-node-usage.tool';
+import { GET_INSTANCE_ACTIVITY_TOOL_NAME } from '../instance-activity.tool';
 import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
@@ -21,7 +22,6 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -71,13 +71,10 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
-	// Named in the instructions rather than left to discovery. An instance is not empty, and a
-	// client that starts by asking the user what to build ignores work already in progress; the
-	// equivalent tool went uncalled in testing whenever nothing pointed at it.
+	// Named in the instructions rather than left to discovery: an instance is not empty, and a
+	// client that opens by asking what to build ignores work already in progress.
 	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
-		? `
-
-Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer. It reports which workflows exist, what changed recently, and what has run or failed. When the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually the most recent thing there. Use ${GET_INSTANCE_ACTIVITY_TOOL_NAME} to look further back, and ${GET_NODE_USAGE_TOOL_NAME} to match how this instance already builds before choosing between equivalent nodes. Do not narrate any of it back unprompted — let it change what you do rather than what you say.`
+		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer. It reports which workflows exist, what changed recently, and what has run or failed. When the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually the most recent thing there. Use ${GET_INSTANCE_ACTIVITY_TOOL_NAME} to look further back, and ${GET_NODE_USAGE_TOOL_NAME} to match how this instance already builds before choosing between equivalent nodes. Do not narrate any of it back unprompted — let it change what you do rather than what you say.`
 		: '';
 
 	// Only appended when the flag is on; keeps the paid-per-session string short.

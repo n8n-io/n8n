@@ -298,8 +298,13 @@ export class InstanceContextService {
 				},
 			};
 		} catch (error) {
-			// Context is an enhancement; failing to build it must not fail the user's turn.
 			this.logger.warn('Failed to build the instance-context block', { error });
+
+			// A chat turn has no error channel, and the block is an enhancement, so a failed read
+			// must not fail the turn. A tool call does have one, and an MCP caller is told to read
+			// an empty answer as "nothing exists here yet" — so returning null on failure would
+			// send it off to rebuild work that is already there.
+			if (input.scope.surface === 'mcp') throw error;
 			return null;
 		}
 	}
@@ -448,9 +453,16 @@ export class InstanceContextService {
 	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
 		const cursor = input.cursor;
 
+		// Withheld workflows are dropped after the read on this surface, so the read has to start
+		// wider or a window whose newest rows are all withheld comes back empty while visible
+		// entries sit just below it. On an instance that predates `availableInMCP` that is the
+		// common case, not the corner one.
+		const fetchLimit =
+			input.scope.surface === 'mcp' ? entryFetchLimit * withheldFetchMultiplier : entryFetchLimit;
+
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
-			limit: entryFetchLimit,
+			limit: fetchLimit,
 			projectIds: input.projectIds,
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
@@ -484,8 +496,13 @@ export class InstanceContextService {
 		);
 
 		const shown = fresh.slice(0, windowSize);
-		// Over everything read, including rows the visibility filter dropped. They will not become
-		// visible later, so leaving the mark behind them would re-read them every turn.
+		// Over everything read, including rows the visibility filter dropped, so a window full of
+		// withheld rows still advances rather than being re-read every turn.
+		//
+		// The cost is real but unreachable today: `availableInMCP` is toggled at runtime, so a row
+		// dropped now could become visible later, and a delta past this mark would miss it. Only a
+		// cursor-bearing caller could hit that, and the MCP surface passes `cursor: null` on every
+		// read. Revisit this the day one carries a cursor.
 		const mark = read.reduce(
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
@@ -504,7 +521,7 @@ export class InstanceContextService {
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
-			truncated: fresh.length > windowSize || arrivals.length === entryFetchLimit,
+			truncated: fresh.length > windowSize || arrivals.length === fetchLimit,
 		};
 	}
 

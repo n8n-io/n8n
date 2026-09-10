@@ -19,12 +19,16 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 export const GET_INSTANCE_CONTEXT_TOOL_NAME = 'get_instance_context';
 export const INSTANCE_CONTEXT_RESOURCE_URI = 'n8n://instance/context';
 
+/** Said only when the read succeeded and the instance is genuinely empty — never on failure. */
+export const EMPTY_INSTANCE_CONTEXT_TEXT = 'Nothing has been built on this instance yet.';
+
 const DESCRIPTION =
 	'Read the opening picture of this n8n instance: which workflows exist, what has recently been ' +
 	'created, changed or deleted, and what has run and failed. Call it once at the start of a ' +
 	'session, before asking the user what they want to do — when they are vague ("fix it", ' +
 	'"carry on"), the answer is usually the most recent thing here. Returns prose, not records: ' +
-	'use search_workflows, get_workflow_details or get_instance_activity with the ids it names.';
+	'pass the workflow ids it names to search_workflows or get_workflow_details, and a bracketed ' +
+	'activity id to expand_instance_activity. get_instance_activity pages further back.';
 
 const inputSchema = {
 	projectId: z
@@ -63,8 +67,9 @@ export async function readInstanceContext(
 		user,
 		scope: {
 			surface: 'mcp',
-			// The block names workflows and runs, never credentials, so the credential grant does
-			// not change what it can say.
+			// Deliberately withheld, not a no-op: the feed does carry credential entries, and the
+			// conversation block renders them. No per-call grant reaches this read, so it takes the
+			// conservative floor and the block never names a credential.
 			credentialGranted: false,
 			...(projectId !== undefined ? { projectId } : {}),
 		},
@@ -100,6 +105,9 @@ export const createGetInstanceContextTool = (
 		};
 
 		try {
+			// A failed read throws rather than answering `empty`. The instructions tell an agent to
+			// treat an empty instance as "start from a blank page", so reporting a database failure
+			// that way would send it off to rebuild work that already exists.
 			const context = await readInstanceContext(user, instanceContext, projectId);
 			const payload = context === null ? { empty: true } : { context };
 
@@ -107,9 +115,7 @@ export const createGetInstanceContextTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [
-					{ type: 'text', text: context ?? 'Nothing has been built on this instance yet.' },
-				],
+				content: [{ type: 'text', text: context ?? EMPTY_INSTANCE_CONTEXT_TEXT }],
 				structuredContent: payload,
 			};
 		} catch (error) {

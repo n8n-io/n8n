@@ -12,6 +12,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
+import { INSTANCE_CONTEXT_RESOURCE_URI } from '../tools/get-instance-context.tool';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
@@ -58,6 +59,11 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	aiPreferencesEnabled: false,
 	...overrides,
 });
+
+const getRegisteredResourceUris = (server: unknown): Set<string> =>
+	new Set(
+		Object.keys((server as { _registeredResources: Record<string, unknown> })._registeredResources),
+	);
 
 const getRegisteredToolNames = (server: unknown): Set<string> =>
 	new Set(Object.keys((server as { _registeredTools: Record<string, unknown> })._registeredTools));
@@ -261,10 +267,7 @@ describe('McpService scope enforcement', () => {
 			mcpFeatureFlags({ instanceContextEnabled: true }),
 		);
 
-		const resources = Object.keys(
-			(server as unknown as { _registeredResources: Record<string, unknown> })._registeredResources,
-		);
-		expect(resources).toContain('n8n://instance/context');
+		expect(getRegisteredResourceUris(server)).toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 		expect(getRegisteredToolNames(server)).toContain('get_instance_context');
 	});
 
@@ -274,10 +277,26 @@ describe('McpService scope enforcement', () => {
 			mcpFeatureFlags({ instanceContextEnabled: false }),
 		);
 
-		const resources = Object.keys(
-			(server as unknown as { _registeredResources: Record<string, unknown> })._registeredResources,
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
+	});
+
+	/**
+	 * The resource carries the same instance data as the tool, so a grant that cannot call the
+	 * tool must not be able to read it instead. `registerResource` does no filtering of its own.
+	 */
+	it('withholds the resource from a grant that does not cover the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+			undefined,
+			{ grantedScopes: ['execution:read'] },
 		);
-		expect(resources).not.toContain('n8n://instance/context');
+
+		expect(getRegisteredToolNames(server)).not.toContain('get_instance_context');
+		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
