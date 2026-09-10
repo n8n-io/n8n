@@ -160,7 +160,7 @@ redactor is a separate layer and is unaffected. There are no
 ## Provider connections
 
 On self-hosted deployments, owners and admins can configure the model, sandbox, and
-web-search connections from the AI Assistant settings page. These connections are
+web-search connections from the n8n Assistant settings page. These connections are
 managed centrally and are not offered as workflow-canvas credentials.
 
 The environment variables above remain the fallback when no provider connection is

@@ -55,7 +55,7 @@ const mockNode = {
 	typeVersion: 1,
 	type: 'mock',
 	position: [0, 0],
-	parameters: {} as INodeParameters,
+	parameters: {},
 } as INode;
 
 const { nodeTypes: mockNodeTypes } = createMockNodeTypes();

@@ -15,6 +15,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -52,6 +53,7 @@ const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
+	aiPreferencesEnabled: false,
 	...overrides,
 });
 
@@ -148,6 +150,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
 			mockInstance(FolderService),
+			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig),
 		);
 

@@ -89,7 +89,7 @@ export class WorkflowExporter {
 					workflowsDir,
 					workflow,
 					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
-					this.workflowSerializer.serializeLifecycle(workflow),
+					this.workflowSerializer.serializeMetadata(workflow),
 				),
 			);
 
