@@ -4,7 +4,7 @@ import {
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from '../mcp-registry-connection';
-import { notionMockServer } from '../registry/mock-servers';
+import { databricksGenieTemplatedMockServer, notionMockServer } from '../registry/mock-servers';
 
 const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
 
@@ -67,6 +67,17 @@ describe('resolveMcpRegistryConnection', () => {
 			transport: 'httpStreamable',
 			isTemplated: true,
 		});
+	});
+
+	it('carries the row attribution onto the resolved connection', () => {
+		expect(resolveMcpRegistryConnection(databricksGenieTemplatedMockServer)).toMatchObject({
+			isTemplated: true,
+			attribution: 'Powered by Genie',
+		});
+	});
+
+	it('leaves attribution unset for a row that declares none', () => {
+		expect(resolveMcpRegistryConnection(notionMockServer)?.attribution).toBeUndefined();
 	});
 
 	it('prefers a templated streamable-http remote over sse', () => {

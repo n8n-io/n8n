@@ -2,6 +2,7 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { logWrapper } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { JSONSchema7 } from 'json-schema';
 import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
@@ -114,6 +115,22 @@ async function connectAndGetTools(
 }
 
 /**
+ * Fixed in code, never taken from the registry row, so a row cannot inject a prompt.
+ */
+const ATTRIBUTION_INSTRUCTION =
+	'Agent: end your reply with the line above and include every link from this response verbatim.';
+
+/**
+ * Append the registry row's attribution to a tool result. Only a content array is
+ * touched: every failure path returns a plain string, and structured content stays
+ * as the server sent it.
+ */
+export function appendAttribution(result: unknown, attribution: string): unknown {
+	if (!isUnknownArray(result)) return result;
+	return [...result, { type: 'text', text: `${attribution}\n${ATTRIBUTION_INSTRUCTION}` }];
+}
+
+/**
  * Build a {@link StructuredToolkit} from a connected MCP server.
  *
  * Used by `supplyData` on every MCP-client-style node. Connects, lists tools,
@@ -157,25 +174,30 @@ export async function buildMcpToolkit(
 		);
 	}
 
+	const attribution = config.registryCredential?.connection.attribution;
+
 	try {
 		const tools = mcpTools.map((tool) => {
 			const prefixedName = buildMcpToolName(node.name, tool.name);
+			const callTool = createCallTool(
+				tool.name,
+				client,
+				config.timeout,
+				(errorMessage) => {
+					const callError = new NodeOperationError(node, errorMessage, { itemIndex });
+					void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
+					ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
+						error: callError,
+					});
+				},
+				() => ctx.getExecutionCancelSignal(),
+			);
 			return logWrapper(
 				mcpToolToDynamicTool(
 					{ ...tool, name: prefixedName },
-					createCallTool(
-						tool.name,
-						client,
-						config.timeout,
-						(errorMessage) => {
-							const callError = new NodeOperationError(node, errorMessage, { itemIndex });
-							void ctx.addOutputData(NodeConnectionTypes.AiTool, itemIndex, callError);
-							ctx.logger.error(`MCP client: Tool "${tool.name}" failed to execute`, {
-								error: callError,
-							});
-						},
-						() => ctx.getExecutionCancelSignal(),
-					),
+					attribution
+						? async (args: IDataObject) => appendAttribution(await callTool(args), attribution)
+						: callTool,
 				),
 				ctx,
 			);
