@@ -513,6 +513,13 @@ export interface ExecutionSummary {
 	startedAt: string;
 	finishedAt?: string;
 	mode: string;
+	/**
+	 * Workflow version this execution ran. Compare it with the workflow's
+	 * `activeVersionId` to tell a run of the published version from a run of a
+	 * draft. Null for executions of an unsaved workflow, and on rows recorded
+	 * before the column existed.
+	 */
+	workflowVersionId?: string | null;
 }
 
 export interface InstanceAiExecutionService {

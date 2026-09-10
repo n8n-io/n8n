@@ -1819,6 +1819,7 @@ export class InstanceAiAdapterService {
 						startedAt: String(e.startedAt ?? ''),
 						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
 						mode: e.mode,
+						workflowVersionId: e.workflowVersionId ?? null,
 					}),
 				);
 			},
