@@ -157,6 +157,24 @@ describe('useCanvasLayout', () => {
 		expect(matchesGrid(result)).toBe(true);
 	});
 
+	test('should ignore an empty explicit node filter', () => {
+		const nodes = [
+			createCanvasGraphNode({ id: 'node1' }),
+			createCanvasGraphNode({ id: 'node2' }),
+			createCanvasGraphNode({ id: 'node3' }),
+		];
+		const connections: Array<[string, string]> = [
+			['node1', 'node2'],
+			['node2', 'node3'],
+		];
+
+		const { layout } = createTestSetup(nodes, connections, ['node1', 'node2']);
+		const result = layout('selection', { nodeIdsFilter: [] });
+
+		expect(result.nodes.map(({ id }) => id)).toEqual(['node1', 'node2']);
+		expect(matchesGrid(result)).toBe(true);
+	});
+
 	test('should layout a workflow with AI nodes', () => {
 		const nodes = [
 			createCanvasGraphNode({ id: 'node1' }),

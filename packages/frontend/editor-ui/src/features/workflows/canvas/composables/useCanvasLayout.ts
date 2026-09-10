@@ -160,7 +160,7 @@ export function useCanvasLayout(
 	const { findNode, getSelectedNodes, edges: allEdges, nodes: allNodes } = useVueFlow(canvasId);
 
 	function getSourceNodes(target: CanvasLayoutTarget, options: CanvasLayoutOptions = {}) {
-		if (options.nodeIdsFilter) {
+		if (options.nodeIdsFilter && options.nodeIdsFilter.length > 0) {
 			const ids = new Set(options.nodeIdsFilter);
 			return allNodes.value.filter((node) => ids.has(node.id));
 		}

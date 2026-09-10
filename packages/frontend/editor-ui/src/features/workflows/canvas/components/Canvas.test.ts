@@ -312,6 +312,56 @@ describe('Canvas', () => {
 		expect(second!.y - first!.y).toBe(0);
 	});
 
+	it('tidies the whole workflow from a single node menu even with a current selection', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'node-1', name: 'Node 1' }),
+			createTestNode({ id: 'node-2', name: 'Node 2' }),
+			createTestNode({ id: 'node-3', name: 'Node 3' }),
+		]);
+		const firstNode = createCanvasNodeElement({ id: 'node-1', label: 'Node 1' });
+		const secondNode = createCanvasNodeElement({ id: 'node-2', label: 'Node 2' });
+		const menuNode = createCanvasNodeElement({
+			id: 'node-3',
+			label: 'Node 3',
+			position: { x: 600, y: 0 },
+		});
+		const { container, emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [firstNode, secondNode, menuNode],
+				connections: [createCanvasConnection(firstNode, secondNode)],
+				renderData: createEmptyCanvasRenderData(),
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector(`[data-id="${menuNode.id}"]`)).toBeInTheDocument(),
+		);
+		const vueFlow = useVueFlow(canvasId);
+		vueFlow.addSelectedNodes([vueFlow.findNode('node-1')!, vueFlow.findNode('node-2')!]);
+		await waitFor(() =>
+			expect(vueFlow.getSelectedNodes.value.map(({ id }) => id)).toEqual(['node-1', 'node-2']),
+		);
+
+		const menuNodeElement = container.querySelector(`[data-id="${menuNode.id}"]`);
+		expect(menuNodeElement).not.toBeNull();
+		await fireEvent.click(
+			within(menuNodeElement as HTMLElement).getByTestId('overflow-node-button'),
+		);
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.target).toBe('all');
+		expect(tidyUpEvent.targetNodeCount).toBe(3);
+		expect(tidyUpEvent.result.nodes).toHaveLength(3);
+		expect(tidyUpEvent.result.nodes.map(({ id }) => id)).toEqual(
+			expect.arrayContaining(['node-1', 'node-2', 'node-3']),
+		);
+	});
+
 	it('settles node group offsets before emitting tidy positions', async () => {
 		workflowDocumentStore.setNodes([
 			createTestNode({ id: 'node-1', name: 'Node 1', position: [0, 0] }),
