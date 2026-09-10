@@ -166,17 +166,34 @@ export class WorkflowRunner {
 							data: fullExecutionData.data,
 							storedAt: fullExecutionData.storedAt,
 						};
+					}
 
-						// The normal completion path never ran for this execution (Bull
-						// reported it stalled), so the retention decision that would have
-						// pruned it there never ran either. Make it here, for production
-						// executions, against the same setting.
-						const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
-						if (fullExecutionData.mode !== 'manual' && !saveSettings.success) {
-							await this.executionPersistence.deleteInFlightExecution({
-								workflowId: fullExecutionData.workflowId,
+					// The normal completion path never ran for this execution (Bull reported
+					// it stalled), so the retention decision that would have pruned it there
+					// never ran either. Make it here, for production and manual executions
+					// alike, against the same settings. Independent of whether the run data
+					// itself was readable above: a workflow configured not to keep successful
+					// executions still shouldn't keep one just because its data came back
+					// empty. Its own failure is logged and swallowed separately, so it can
+					// never turn an otherwise-readable success into the unreadable-result
+					// fallback below.
+					if (fullExecutionData) {
+						try {
+							const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+							const isManualExecution = fullExecutionData.mode === 'manual';
+							if (isManualExecution && !saveSettings.manual) {
+								await this.executionRepository.softDelete(executionId);
+							} else if (!isManualExecution && !saveSettings.success) {
+								await this.executionPersistence.deleteInFlightExecution({
+									workflowId: fullExecutionData.workflowId,
+									executionId,
+									storedAt: fullExecutionData.storedAt,
+								});
+							}
+						} catch (pruneError) {
+							this.logger.warn('Could not prune a recovered false-positive success', {
 								executionId,
-								storedAt: fullExecutionData.storedAt,
+								error: ensureError(pruneError),
 							});
 						}
 					}
