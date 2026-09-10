@@ -1,8 +1,5 @@
 # Local Agent Builder eval setup
 
-Use Node.js 24 and pnpm. Keep secrets in a gitignored environment file. Do not
-put secrets in command arguments.
-
 ## Required LangTracer access
 
 Generate a key on the
