@@ -146,6 +146,23 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(store.allGroups).toHaveLength(0);
 	});
 
+	it('keeps an empty group that has a valid frame', () => {
+		const group: IWorkflowGroup = {
+			id: 'group-1',
+			name: 'Group 1',
+			nodeIds: [],
+			frame: { position: [100, 200], size: [240, 160] },
+			visualLinks: [],
+		};
+		const store = setupDocumentStore({ nodes: [], nodeGroups: [group] });
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toEqual([]);
+		expect(store.allGroups).toEqual([group]);
+	});
+
 	it('removes a group referencing a node that does not exist', () => {
 		const store = setupDocumentStore({
 			nodes: [

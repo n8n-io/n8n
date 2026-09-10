@@ -15,6 +15,7 @@ import {
 	type INodeTypeDescription,
 	type INodeTypes,
 	type IWorkflowGroup,
+	type IWorkflowGroupFrame,
 	type NodeConnectionType,
 } from './interfaces';
 import { isTriggerNode } from './node-helpers';
@@ -179,7 +180,8 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 export type WorkflowGroupViolationCode =
 	| 'duplicate-group-id'
 	| 'duplicate-group-name'
-	| 'empty-group'
+	| 'invalid-empty-group-frame'
+	| 'non-empty-group-data'
 	| 'unknown-node-id'
 	| 'node-in-multiple-groups'
 	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
@@ -212,6 +214,22 @@ export type WorkflowGroupsValidationResult =
 
 export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
 
+function isFinitePair(value: unknown): value is [number, number] {
+	return (
+		Array.isArray(value) &&
+		value.length === 2 &&
+		value.every((part) => typeof part === 'number' && Number.isFinite(part))
+	);
+}
+
+export function isValidWorkflowGroupFrame(frame: unknown): frame is IWorkflowGroupFrame {
+	if (typeof frame !== 'object' || frame === null || Array.isArray(frame)) return false;
+	if (!('position' in frame) || !('size' in frame)) return false;
+	return (
+		isFinitePair(frame.position) && isFinitePair(frame.size) && frame.size.every((part) => part > 0)
+	);
+}
+
 /**
  * Builds the `getNodeType` callback that the grouping validator needs to resolve
  * a node to its type description. Returns `null` for unknown node types so
@@ -233,8 +251,9 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
  * the first violation's message, and validate-time surfaces (e.g. the MCP
  * `validate_workflow` tool) report all of them as errors.
  *
- * Basic checks (always run): unique group IDs, unique group names, at least one
- * member, all referenced node IDs exist, and each node belongs to at most one group.
+ * Basic checks (always run): unique group IDs, unique group names, valid frame
+ * data for empty groups, no empty-group-only data on non-empty groups, all referenced
+ * node IDs exist, and each node belongs to at most one group.
  *
  * Full checks (run only when `getNodeType` is non-null, and skipped for groups that
  * already have a basic violation): each group must satisfy the same grouping rules
@@ -327,7 +346,17 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 		seenGroupNames.add(group.name);
 
 		if (group.nodeIds.length === 0) {
-			addBasicViolation('empty-group', `Group "${group.name}" has no members.`);
+			if (!isValidWorkflowGroupFrame(group.frame)) {
+				addBasicViolation(
+					'invalid-empty-group-frame',
+					`Empty group "${group.name}" must have a finite position and positive finite size.`,
+				);
+			}
+		} else if (group.frame !== undefined || group.visualLinks !== undefined) {
+			addBasicViolation(
+				'non-empty-group-data',
+				`Non-empty group "${group.name}" must not retain empty-group frame or visual-link data.`,
+			);
 		}
 
 		for (const nodeId of group.nodeIds) {
@@ -359,6 +388,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 			// A basic violation makes the group's member set unreliable, so the
 			// graph rules would only produce misleading follow-up violations.
 			if (groupsWithBasicViolations.has(group)) continue;
+			if (group.nodeIds.length === 0) continue;
 
 			const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
 			const result = validateNodeSelectionForGrouping({

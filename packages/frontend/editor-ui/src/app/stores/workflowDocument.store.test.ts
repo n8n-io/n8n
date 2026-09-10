@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections } from 'n8n-workflow';
+import type { IConnections, IWorkflowGroup } from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import {
@@ -304,6 +304,20 @@ describe('workflowDocument.store orchestration', () => {
 			});
 
 			expect(data.connections).not.toHaveProperty('C');
+		});
+
+		it('preserves true empty group data', () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const group: IWorkflowGroup = {
+				id: 'group-1',
+				name: 'Plan later',
+				nodeIds: [],
+				frame: { position: [560, 280], size: [240, 160] },
+				visualLinks: [],
+			};
+			workflowDocumentStore.setNodeGroups([group]);
+
+			expect(workflowDocumentStore.serialize().nodeGroups).toEqual([group]);
 		});
 	});
 

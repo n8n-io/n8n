@@ -1,5 +1,5 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
-import { validateNodeSelectionForGrouping } from 'n8n-workflow';
+import { isValidWorkflowGroupFrame, validateNodeSelectionForGrouping } from 'n8n-workflow';
 import { escapeHtml } from 'xss';
 
 import { useI18n } from '@n8n/i18n';
@@ -33,8 +33,7 @@ export function useInvalidNodeGroupCleanup() {
 		group: IWorkflowGroup,
 		allGroups: IWorkflowGroup[],
 	): boolean {
-		// The backend rejects memberless groups
-		if (group.nodeIds.length === 0) return false;
+		if (group.nodeIds.length === 0) return isValidWorkflowGroupFrame(group.frame);
 
 		const nodes: INodeUi[] = [];
 		for (const nodeId of group.nodeIds) {

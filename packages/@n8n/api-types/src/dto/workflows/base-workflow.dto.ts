@@ -75,6 +75,39 @@ export const workflowPinDataSchema = z.custom<IPinData | null>(
 
 export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 
+const workflowGroupFrameSchema = z.object({
+	position: z.tuple([z.number().finite(), z.number().finite()]),
+	size: z.tuple([z.number().finite().positive(), z.number().finite().positive()]),
+});
+
+const workflowGroupVisualLinkNodeEndpointSchema = z.object({
+	kind: z.literal('node'),
+	id: z.string().min(1),
+	port: z.object({
+		type: z.literal('main'),
+		index: z.number().int().nonnegative(),
+	}),
+});
+
+const workflowGroupVisualLinkGroupEndpointSchema = z.object({
+	kind: z.literal('group'),
+	id: z.string().min(1),
+	port: z.object({
+		type: z.literal('main'),
+		index: z.literal(0),
+	}),
+});
+
+const workflowGroupVisualLinkEndpointSchema = z.discriminatedUnion('kind', [
+	workflowGroupVisualLinkNodeEndpointSchema,
+	workflowGroupVisualLinkGroupEndpointSchema,
+]);
+
+const workflowGroupVisualLinkSchema = z.object({
+	source: workflowGroupVisualLinkEndpointSchema,
+	target: workflowGroupVisualLinkEndpointSchema,
+});
+
 const workflowGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
@@ -85,6 +118,8 @@ const workflowGroupSchema = z.object({
 			message: `Group description must be ${GROUP_DESCRIPTION_MAX_LENGTH} characters or less`,
 		})
 		.optional(),
+	frame: workflowGroupFrameSchema.optional(),
+	visualLinks: z.array(workflowGroupVisualLinkSchema).optional(),
 });
 
 export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);

@@ -85,6 +85,23 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'with a true empty group',
+				request: {
+					name: 'Planning Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'group1',
+							name: 'Plan later',
+							nodeIds: [],
+							frame: { position: [560, 280], size: [240, 160] },
+							visualLinks: [],
+						},
+					],
+				},
+			},
+			{
 				name: 'with empty nodeGroups array',
 				request: {
 					name: 'Empty Groups Workflow',
