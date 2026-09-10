@@ -41,6 +41,7 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -73,6 +74,7 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -119,7 +121,11 @@ function handleFileImport() {
 				inputRef.value = '';
 			}
 
-			nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+			// Gate here, at the emitter: NodeView's 'importWorkflowData' handler is shared with
+			// the AI builder's version restore, which must not nudge.
+			void mcpJsonNudgeTrigger.gate('import_file', () =>
+				nodeViewEventBus.emit('importWorkflowData', { data: workflowData }),
+			);
 		};
 		reader.readAsText(inputRef.files[0]);
 	}
@@ -386,8 +392,11 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			let name = props.name || 'unsaved_workflow';
 			name = sanitizeFilename(name);
 
-			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
-			saveAs(blob, name + '.json');
+			// Inside the gate: an export abandoned via "Connect n8n" must not count as exported.
+			await mcpJsonNudgeTrigger.gate('export', () => {
+				telemetry.track('User exported workflow', { workflow_id: workflowData.id });
+				saveAs(blob, name + '.json');
+			});
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {

@@ -5,7 +5,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
-import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
+import { packageDirectory, writeWorkflowManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -84,12 +84,12 @@ export class WorkflowExporter {
 
 		for (const workflow of workflowsForExport) {
 			entries.push(
-				await writeManifestEntry(
+				await writeWorkflowManifestEntry(
 					request.writer,
-					'workflows',
 					workflowsDir,
 					workflow,
 					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
+					this.workflowSerializer.serializeLifecycle(workflow),
 				),
 			);
 

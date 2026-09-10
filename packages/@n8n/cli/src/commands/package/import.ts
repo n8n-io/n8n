@@ -35,7 +35,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		workflowPublishingPolicy: Flags.string({
 			description:
-				"Whether imported workflows end up published: preserve-published-state (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; match-source follows the package workflow's published flag; publish-all publishes every imported workflow; unpublish-all leaves new workflows unpublished and unpublishes updated ones",
+				"Whether imported workflows end up published: preserve-published-state (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package carries the version the source publishes; match-source publishes the version the package carries when the source publishes it and unpublishes when the source publishes nothing, but leaves the target's published version alone when the source publishes a version the package does not carry; publish-all publishes every imported workflow; unpublish-all leaves new workflows unpublished and unpublishes updated ones",
 			options: ['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			aliases: ['workflow-publishing-policy'],
 		}),

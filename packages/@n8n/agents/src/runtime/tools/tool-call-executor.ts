@@ -1,4 +1,5 @@
-import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import type { JSONSchema7 } from 'json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
@@ -12,6 +13,11 @@ import {
 	guardToolResultForModel,
 	type ToolResultGuardStorage,
 } from './tool-result-guard';
+import {
+	protectUntrustedToolError,
+	protectUntrustedToolMessage,
+	protectUntrustedToolResult,
+} from './untrusted-tool-output';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
@@ -61,7 +67,7 @@ type ToolCallOutcome =
 	| {
 			outcome: 'suspended';
 			payload: unknown;
-			resumeSchema: JsonSchema7Type;
+			resumeSchema: JSONSchema7;
 			continuation?: JSONValue;
 	  }
 	| {
@@ -92,7 +98,7 @@ export interface ToolCallSuspension {
 	input: JSONValue;
 	payload: unknown;
 	/** JSON Schema describing the shape of resume data, derived from the tool's resumeSchema. */
-	resumeSchema: JsonSchema7Type;
+	resumeSchema: JSONSchema7;
 }
 
 /** Info about a tool call that failed — carries enough data for stream chunks. */
@@ -171,10 +177,10 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): JsonSchema7Type | undefined {
+): JSONSchema7 | undefined {
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
-	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
+	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -755,7 +761,7 @@ export class ToolCallExecutor {
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
-			return await this.toolError(params, error as Error);
+			return await this.toolError(params, error as Error, builtTool);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
@@ -858,8 +864,18 @@ export class ToolCallExecutor {
 		});
 	}
 
-	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
-	private async toolError(params: ProcessToolCallParams, error: unknown): Promise<ToolCallOutcome> {
+	/**
+	 * Emit a failed ToolExecutionEnd, record the error on the list, return an
+	 * error outcome. Pass `builtTool` only for errors authored by the tool
+	 * itself (handler or transform failures) so runtime-authored errors such as
+	 * input validation stay plain; tool-authored text from untrusted tools is
+	 * wrapped before the size guard so any offloaded copy stays protected.
+	 */
+	private async toolError(
+		params: ProcessToolCallParams,
+		error: unknown,
+		builtTool?: BuiltTool,
+	): Promise<ToolCallOutcome> {
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId: params.toolCallId,
@@ -867,14 +883,15 @@ export class ToolCallExecutor {
 			result: error,
 			isError: true,
 		});
-		params.list.setToolCallError(
-			params.toolCallId,
-			await guardToolErrorForModel(
-				stringifyError(error),
-				this.deps.tokenCounter,
-				this.getResultStorage(params),
-			),
+		const errorText = stringifyError(error);
+		const guardedError = await guardToolErrorForModel(
+			builtTool?.outputTrust === 'untrusted'
+				? protectUntrustedToolError(errorText, builtTool)
+				: errorText,
+			this.deps.tokenCounter,
+			this.getResultStorage(params),
 		);
+		params.list.setToolCallError(params.toolCallId, guardedError);
 		return { outcome: 'error', error };
 	}
 
@@ -1036,11 +1053,17 @@ export class ToolCallExecutor {
 		// Apply toModelOutput transform before emitting the success event.
 		// If the transform throws, treat it as a tool error so processToolCall
 		// never re-throws (preserving the "never re-throws" contract).
+		// Untrusted results are wrapped before the size guard so any offloaded
+		// or truncated copy stays protected while the guard's own envelope
+		// remains plain runtime text.
 		let modelResult: unknown;
 		try {
 			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+			if (builtTool.outputTrust === 'untrusted') {
+				modelResult = protectUntrustedToolResult(modelResult, builtTool);
+			}
 		} catch (error) {
-			return await this.toolError(params, error);
+			return await this.toolError(params, error, builtTool);
 		}
 		const storage = this.getResultStorage(params);
 		const guardedResult = await guardToolResultForModel(
@@ -1059,7 +1082,10 @@ export class ToolCallExecutor {
 
 		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
-		const customMessage = await builtTool.toMessage?.(toolResult);
+		let customMessage = await builtTool.toMessage?.(toolResult);
+		if (customMessage && builtTool.outputTrust === 'untrusted') {
+			customMessage = protectUntrustedToolMessage(customMessage, builtTool);
+		}
 		let guardedCustomMessage = customMessage
 			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
 			: undefined;

@@ -460,7 +460,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
 
 .panel {
 	display: flex;
@@ -582,7 +582,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 }
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);

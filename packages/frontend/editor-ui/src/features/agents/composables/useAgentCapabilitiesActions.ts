@@ -442,6 +442,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
+						let skillHash: string;
 						let versionId: string | null;
 						let skillId: string;
 						try {
@@ -454,6 +455,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							);
 							skillId = result.id;
 							created = result.skill;
+							skillHash = result.skillHash;
 							versionId = result.versionId;
 						} catch (error) {
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
@@ -463,6 +465,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						agent.value = {
 							...agent.value,
 							versionId,
+							skillHashes: {
+								...(agent.value.skillHashes ?? {}),
+								[skillId]: skillHash,
+							},
 							skills: {
 								...(agent.value.skills ?? {}),
 								[skillId]: created,

@@ -12,6 +12,7 @@ export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
 export type * from './worker-pools';
+export type * from './node-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -121,11 +122,24 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+export { CONTEXT_PREFERENCES_FLAG } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export {
+	credentialIdParamSchema,
+	executionIdParamSchema,
+	projectIdParamSchema,
+	promotionConnectionIdParamSchema,
+	promotionDirectionParamSchema,
+	promotionProviderIdParamSchema,
+	roleMappingRuleIdParamSchema,
+	roleSlugParamSchema,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
+} from './schemas/public-api-path-params.schema';
 export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,

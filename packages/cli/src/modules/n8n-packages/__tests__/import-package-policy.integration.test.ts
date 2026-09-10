@@ -172,7 +172,7 @@ describe('contentImport on a direct package import', () => {
 });
 
 describe('contentImport on a git pull', () => {
-	/** Mirrors what a git-connections pull runs: the working copy is source of truth. */
+	/** Mirrors what a promotions Apply runs: the package is source of truth. */
 	const pullPolicy: Omit<ImportRequest, 'user'> = {
 		projectConflictPolicy: 'overwrite',
 		workflowConflictPolicy: 'new-version',

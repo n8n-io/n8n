@@ -44,6 +44,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -4905,6 +4906,40 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
+	test('should reject manual execution when the instance is read-only', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+		const instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
+
+		try {
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ triggerToStartFrom: { name: 'Start' } });
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		} finally {
+			instanceWriteAccess.setReadOnly(false);
+		}
+	});
+
 	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
 		const dbWorkflow = await createWorkflow(
 			{
