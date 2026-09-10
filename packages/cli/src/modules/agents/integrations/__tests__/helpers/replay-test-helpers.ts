@@ -17,8 +17,6 @@ import type {
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
 
-type AgentExecutorLike = ConstructorParameters<typeof AgentChatBridge>[2];
-
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
 export type ReplayWebhookHandler = (
@@ -225,7 +223,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
-		agentExecutor as AgentExecutorLike,
+		agentExecutor,
 		params.componentMapper ?? mock<ComponentMapper>(),
 		mock<Logger>(),
 		'project-1',

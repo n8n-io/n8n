@@ -375,35 +375,35 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			teamAWorkflows = await Promise.all([
+			teamAWorkflows = [
 				await createWorkflowWithHistory({}, teamProjectA),
 				await createWorkflowWithHistory({}, teamProjectA),
 				await createWorkflowWithHistory({}, teamProjectA),
-			]);
+			];
 
-			teamBWorkflows = await Promise.all([
+			teamBWorkflows = [
 				await createWorkflowWithHistory({}, teamProjectB),
 				await createWorkflowWithHistory({}, teamProjectB),
 				await createWorkflowWithHistory({}, teamProjectB),
-			]);
+			];
 
-			instanceOwnerWorkflows = await Promise.all([
+			instanceOwnerWorkflows = [
 				await createWorkflowWithHistory({}, instanceOwner),
 				await createWorkflowWithHistory({}, instanceOwner),
 				await createWorkflowWithHistory({}, instanceOwner),
-			]);
+			];
 
-			projectAdminWorkflows = await Promise.all([
+			projectAdminWorkflows = [
 				await createWorkflowWithHistory({}, projectAdmin),
 				await createWorkflowWithHistory({}, projectAdmin),
 				await createWorkflowWithHistory({}, projectAdmin),
-			]);
+			];
 
-			projectMemberWorkflows = await Promise.all([
+			projectMemberWorkflows = [
 				await createWorkflowWithHistory({}, projectMember),
 				await createWorkflowWithHistory({}, projectMember),
 				await createWorkflowWithHistory({}, projectMember),
-			]);
+			];
 		});
 
 		describe('if user is an instance owner', () => {
@@ -642,7 +642,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			teamACredentials = await Promise.all([
+			teamACredentials = [
 				await createCredentials(
 					{
 						name: 'credential1',
@@ -667,9 +667,9 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectA,
 				),
-			]);
+			];
 
-			teamBCredentials = await Promise.all([
+			teamBCredentials = [
 				await createCredentials(
 					{
 						name: 'credential4',
@@ -694,7 +694,7 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectB,
 				),
-			]);
+			];
 		});
 
 		it('should get all available credentials on the instance, for an instance owner', async () => {
@@ -860,7 +860,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			foldersProjectA = await Promise.all([
+			foldersProjectA = [
 				await createFolder(teamProjectA, {
 					name: 'folder1',
 				}),
@@ -870,7 +870,7 @@ describe('SourceControlImportService', () => {
 				await createFolder(teamProjectA, {
 					name: 'folder3',
 				}),
-			]);
+			];
 
 			foldersProjectA.push(
 				await createFolder(teamProjectA, {
@@ -879,7 +879,7 @@ describe('SourceControlImportService', () => {
 				}),
 			);
 
-			foldersProjectB = await Promise.all([
+			foldersProjectB = [
 				await createFolder(teamProjectB, {
 					name: 'folder1',
 				}),
@@ -889,7 +889,7 @@ describe('SourceControlImportService', () => {
 				await createFolder(teamProjectB, {
 					name: 'folder3',
 				}),
-			]);
+			];
 		});
 
 		it('should get all available folders on the instance, for an instance owner', async () => {
@@ -989,12 +989,12 @@ describe('SourceControlImportService', () => {
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockTagData));
 
-			[team1, team2] = await Promise.all([
+			[team1, team2] = [
 				await createTeamProject('Team 1', teamAdmin),
 				await createTeamProject('Team 2'),
-			]);
+			];
 
-			workflowTeam1 = await Promise.all([
+			workflowTeam1 = [
 				await createWorkflowWithHistory(
 					{
 						id: 'wf1',
@@ -1016,9 +1016,9 @@ describe('SourceControlImportService', () => {
 					},
 					team1,
 				),
-			]);
+			];
 
-			await Promise.all([
+			[
 				await createWorkflowWithHistory(
 					{
 						id: 'wf4',
@@ -1040,7 +1040,7 @@ describe('SourceControlImportService', () => {
 					},
 					team2,
 				),
-			]);
+			];
 		});
 
 		it('should show all remote tags and all remote mappings for instance admins', async () => {
@@ -1119,7 +1119,7 @@ describe('SourceControlImportService', () => {
 			await linkUserToProject(projectAdmin, teamProjectB, 'project:editor');
 			await linkUserToProject(projectMember, teamProjectB, 'project:editor');
 
-			tags = await Promise.all([
+			tags = [
 				await createTag({
 					name: 'tag1',
 				}),
@@ -1129,9 +1129,9 @@ describe('SourceControlImportService', () => {
 				await createTag({
 					name: 'tag3',
 				}),
-			]);
+			];
 
-			workflowsProjectA = await Promise.all([
+			workflowsProjectA = [
 				await createWorkflowWithHistory(
 					{
 						id: 'workflow1',
@@ -1153,9 +1153,9 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectA,
 				),
-			]);
+			];
 
-			workflowsProjectB = await Promise.all([
+			workflowsProjectB = [
 				await createWorkflowWithHistory(
 					{
 						id: 'workflow4',
@@ -1177,7 +1177,7 @@ describe('SourceControlImportService', () => {
 					},
 					teamProjectB,
 				),
-			]);
+			];
 
 			mappings = [
 				[tags[0], workflowsProjectA[0]],

@@ -108,7 +108,7 @@ function isGmailMessagesList(host: string, path: string, method: string): boolea
 function extractAnswerText(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
-	if (!isRecord(body)) return String(body as number | boolean | bigint);
+	if (!isRecord(body)) return String(body);
 
 	if (typeof body.text === 'string') return body.text;
 	if (typeof body.content === 'string') return body.content;

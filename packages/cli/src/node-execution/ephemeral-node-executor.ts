@@ -141,7 +141,7 @@ export function isUsableAsAgentTool(description: {
 	return outputs.some((o: unknown) => {
 		if (typeof o === 'string') return o === NodeConnectionTypes.AiTool;
 		if (o && typeof o === 'object' && 'type' in o) {
-			return (o as { type: unknown }).type === NodeConnectionTypes.AiTool;
+			return o.type === NodeConnectionTypes.AiTool;
 		}
 		return false;
 	});

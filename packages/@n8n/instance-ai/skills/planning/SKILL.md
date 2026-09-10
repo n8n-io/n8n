@@ -1,5 +1,8 @@
 ---
 name: planning
+dependencies:
+  tools:
+    - create-tasks
 description: >-
   ONLY for coordinated multi-artifact work: multiple workflows with dependencies,
   shared data-table schema/migration across tasks, or the user explicitly asked

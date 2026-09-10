@@ -1,10 +1,10 @@
+import { PutProjectPolicyDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NODE_TYPES_KIND } from './constants';
-import { PutProjectPolicyDto } from './dto/put-project-policy.dto';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**

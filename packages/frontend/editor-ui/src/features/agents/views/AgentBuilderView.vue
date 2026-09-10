@@ -68,6 +68,7 @@ import {
 } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
@@ -79,6 +80,8 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
@@ -166,6 +169,9 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 // singleton agent session/credential stores, so only one builder shell should
 // be mounted at a time.
 const isArtifactMode = computed(() => props.artifactMode);
+const isStandalonePreview = computed(function isStandalonePreview() {
+	return !isArtifactMode.value && route.name === AGENT_PREVIEW_VIEW;
+});
 const projectId = computed(
 	() =>
 		(isArtifactMode.value ? props.artifactProjectId : undefined) ??
@@ -192,8 +198,19 @@ const previewOpenStorageKey = computed(function getPreviewOpenStorageKey() {
 	return `N8N_AGENT_PREVIEW_OPEN:${projectId.value}:${agentId.value}`;
 });
 const persistedPreviewOpen = useStorage(previewOpenStorageKey, false);
-const isPreviewDockOpen = computed(() => persistedPreviewOpen.value);
-const isPreviewActive = computed(() => isPreviewDockOpen.value);
+const isPreviewDockOpen = computed(function isPreviewDockOpen() {
+	return !isStandalonePreview.value && persistedPreviewOpen.value;
+});
+const isPreviewActive = computed(function isPreviewActive() {
+	return isStandalonePreview.value || isPreviewDockOpen.value;
+});
+const agentBuilderHref = computed(function getAgentBuilderHref() {
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { [CONTINUE_SESSION_ID_PARAM]: effectiveSessionId.value },
+	}).href;
+});
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const {
@@ -651,6 +668,10 @@ function closePreviewRoute() {
 		params: { projectId: projectId.value, agentId: agentId.value },
 		query: getBuilderQuery(),
 	});
+}
+
+function returnToBuilderFromPreview() {
+	void router.push(agentBuilderHref.value);
 }
 
 function closePreviewDock() {
@@ -1999,16 +2020,29 @@ function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
-		name: AGENT_BUILDER_VIEW,
+		name: isStandalonePreview.value ? AGENT_PREVIEW_VIEW : AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: nextAgentId },
-		query: route.query,
+		query: isStandalonePreview.value ? {} : route.query,
 	});
 }
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentPreviewHeader
+			v-if="isStandalonePreview"
+			:agent-name="agent?.name ?? agentName"
+			:agent-href="agentBuilderHref"
+			:session-title="currentSessionTitle"
+			:session-options="sessionMenu"
+			:has-trace="currentSessionHasMessages && Boolean(effectiveSessionId)"
+			@back="returnToBuilderFromPreview"
+			@new-session="startNewPreviewSession"
+			@session-select="onSessionPick"
+			@view-trace="viewPreviewTrace"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -2040,7 +2074,7 @@ function onSwitchAgent(nextAgentId: string) {
 			]"
 		>
 			<div
-				v-if="!isPreviewDockOpen && !isArtifactMode && instanceAiAvailable"
+				v-if="!isPreviewActive && !isArtifactMode && instanceAiAvailable"
 				:class="$style.aiButtonWrapper"
 			>
 				<N8nButton
@@ -2064,7 +2098,25 @@ function onSwitchAgent(nextAgentId: string) {
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isStandalonePreview"
+					layout="page"
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
+					:before-send="beforePreviewSend"
+					@continue-loaded="onContinueLoaded"
+					@open-build="returnToBuilderFromPreview"
+					@send-to-assistant="onSendPreviewToAssistant"
+				/>
+
 				<AgentBuilderEditorColumn
+					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
 					:local-config="localConfig"
@@ -2108,10 +2160,11 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
 				/>
 
 				<AgentVersionHistoryPanel
-					v-if="isVersionHistoryOpen"
+					v-if="!isStandalonePreview && isVersionHistoryOpen"
 					ref="versionHistoryPanel"
 					:project-id="projectId"
 					:agent-id="agentId"
@@ -2126,6 +2179,7 @@ function onSwitchAgent(nextAgentId: string) {
 				/>
 
 				<AgentPreviewDock
+					v-if="!isStandalonePreview"
 					:is-open="isPreviewDockOpen"
 					:session-title="currentSessionTitle"
 					:session-options="sessionMenu"

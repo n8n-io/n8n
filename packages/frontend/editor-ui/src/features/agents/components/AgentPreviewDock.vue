@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDropdownMenu,
@@ -9,13 +10,18 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
+import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 
+import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+
 import type {
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
@@ -24,6 +30,7 @@ import type {
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
+import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
 
 interface SessionOption {
 	id: string;
@@ -35,6 +42,11 @@ interface SessionOption {
 
 interface SessionOptionData {
 	when?: string;
+}
+
+enum PreviewLayout {
+	Docked = 'docked',
+	Fullpage = 'fullpage',
 }
 
 const props = defineProps<{
@@ -57,6 +69,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'view-trace': [];
 	'new-session': [];
+	'session-deleted': [sessionId: string];
 	'session-select': [sessionId: string];
 	close: [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
@@ -65,6 +78,10 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const message = useMessage();
+const toast = useToast();
+const sessionsStore = useAgentSessionsStore();
+const isDeletingSession = ref(false);
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -73,6 +90,10 @@ const {
 } = useAgentSessionLangSmithExport();
 const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
+const layout = computed<PreviewLayout>(() =>
+	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
+);
 
 const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
 	() =>
@@ -86,6 +107,8 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
+	/** Dock the chat so it does not cover the session view after navigation. */
+	storedLayout.value = PreviewLayout.Docked;
 	emit('view-trace');
 }
 
@@ -102,12 +125,50 @@ function createNewSession() {
 	emit('new-session');
 }
 
+async function deleteSession() {
+	const { projectId, agentId, effectiveSessionId: sessionId } = props;
+	if (!props.hasSession || !sessionId || isDeletingSession.value) return;
+
+	isDeletingSession.value = true;
+	try {
+		const confirmed = await message.confirm(
+			i18n.baseText('agentSessions.deleteConfirm.message'),
+			i18n.baseText('agentSessions.deleteConfirm.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+				cancelButtonText: '',
+			},
+		);
+		if (confirmed !== MODAL_CONFIRM) return;
+
+		await sessionsStore.deleteThread(projectId, agentId, sessionId);
+		toast.showMessage({
+			title: i18n.baseText('agentSessions.showMessage.deleted'),
+			type: 'success',
+		});
+
+		if (props.projectId !== projectId || props.agentId !== agentId) return;
+		if (props.effectiveSessionId === sessionId) createNewSession();
+		emit('session-deleted', sessionId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+	} finally {
+		isDeletingSession.value = false;
+	}
+}
+
 function close() {
 	emit('close');
 }
 
-function isFocusWithinDock() {
-	return dock.value?.contains(document.activeElement) === true;
+function getConversationMarkdown() {
+	return previewChatPage.value?.getConversationMarkdown() ?? '';
+}
+
+function toggleFullWidth() {
+	storedLayout.value =
+		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
 
 watch(
@@ -122,10 +183,14 @@ watch(
 	{ flush: 'post' },
 );
 
+function isEscapeDisabled() {
+	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+}
+
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 	Escape: {
-		disabled: () => !isFocusWithinDock(),
+		disabled: isEscapeDisabled,
 		run: close,
 	},
 });
@@ -138,9 +203,10 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div :class="$style.dockInner">
+		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -196,25 +262,6 @@ useKeybindings({
 						/>
 					</N8nTooltip>
 
-					<N8nTooltip
-						v-if="isLangSmithExportEnabled && props.hasSession && props.effectiveSessionId"
-						:content="i18n.baseText('agentSessions.langsmithExport.button')"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-						data-testid="agent-preview-langsmith-export-tooltip"
-					>
-						<N8nIconButton
-							icon="bug"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:loading="isExporting"
-							:aria-label="i18n.baseText('agentSessions.langsmithExport.button')"
-							data-testid="agent-preview-langsmith-export-btn"
-							@click="exportSession"
-						/>
-					</N8nTooltip>
-
 					<KeyboardShortcutTooltip
 						placement="bottom"
 						:label="i18n.baseText('agents.builder.chat.newChat.label')"
@@ -228,6 +275,36 @@ useKeybindings({
 							:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 							data-testid="agent-preview-new-chat-btn"
 							@click="createNewSession"
+						/>
+					</KeyboardShortcutTooltip>
+
+					<AgentPreviewMoreMenu
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:effective-session-id="props.effectiveSessionId"
+						:has-session="props.hasSession"
+						:is-deleting-session="isDeletingSession"
+						:is-full-width="layout === PreviewLayout.Fullpage"
+						:is-lang-smith-export-enabled="isLangSmithExportEnabled"
+						:is-exporting="isExporting"
+						:get-conversation-markdown="getConversationMarkdown"
+						@toggle-full-width="toggleFullWidth"
+						@export-session="exportSession"
+						@delete-session="deleteSession"
+					/>
+					<KeyboardShortcutTooltip
+						placement="bottom"
+						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
+					>
+						<N8nIconButton
+							icon="chevrons-right"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							data-testid="agent-preview-close-btn"
+							@click="close"
 						/>
 					</KeyboardShortcutTooltip>
 				</div>
@@ -265,6 +342,10 @@ useKeybindings({
 	min-height: 0;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has(.fullpage) {
+		width: 100%;
+	}
 }
 
 .dockInner {
@@ -290,6 +371,10 @@ useKeybindings({
 		will-change: auto;
 	}
 }
+.fullpage {
+	width: 100%;
+	border-left: 0;
+}
 
 .header {
 	padding: var(--spacing--2xs) var(--spacing--xs);
@@ -300,7 +385,9 @@ useKeybindings({
 }
 
 .sessionTitle {
+	width: 100%;
 	min-width: 0;
+	max-width: 100%;
 	flex: 1 1 auto;
 	margin-left: calc(var(--spacing--3xs) * -1);
 	padding-inline: var(--spacing--2xs);
@@ -313,6 +400,16 @@ useKeybindings({
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--font-size--xs);
+}
+
+/** Let the button's inner container shrink so the session title can truncate. */
+.sessionTitle > div {
+	min-width: 0;
+}
+
+.sessionTitleLabel {
+	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .sessionDropdownMenu {
@@ -332,7 +429,7 @@ useKeybindings({
 }
 
 .actions {
-	margin-left: auto;
+	margin-inline-start: auto;
 	min-width: max-content;
 	flex: 0 0 auto;
 	display: flex;

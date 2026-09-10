@@ -339,7 +339,17 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ focusInput, sendMessageFromOutside });
+function getConversationMarkdown(): string {
+	return messages.value
+		.filter((message) => message.content.trim().length > 0)
+		.map((message) => {
+			const speaker = message.role === 'user' ? 'User' : 'Agent';
+			return `**${speaker}:**\n\n${message.content.trim()}`;
+		})
+		.join('\n\n---\n\n');
+}
+
+defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();

@@ -96,6 +96,8 @@ type MessageSource = 'history' | 'input' | 'response';
  * the full three-way source distinction survives a round-trip.
  */
 export class AgentMessageList {
+	activeSkillIds?: string[];
+
 	private all: AgentDbMessage[] = [];
 
 	private historySet = new Set<AgentDbMessage>();
@@ -289,7 +291,7 @@ export class AgentMessageList {
 		const host = this.findToolCallHost(toolCallId);
 		if (!host) return;
 		const block = this.findToolCallBlock(host, toolCallId);
-		if (!block || block.state !== 'pending') return;
+		if (block?.state !== 'pending') return;
 		block.suspension = suspension;
 	}
 
@@ -418,11 +420,13 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
+		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);

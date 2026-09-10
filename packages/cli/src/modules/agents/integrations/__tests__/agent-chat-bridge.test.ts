@@ -17,6 +17,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
+import * as esmLoader from '../esm-loader';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -690,6 +691,68 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+	});
+
+	it('preserves labelled link URLs without duplicating bare URLs', async () => {
+		const chatSdk = await import('chat');
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+		try {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			await handlers.mention!(makeThread(), {
+				text: 'In this PRD, see https://a.example.com or mail user@example.com',
+				formatted: chatSdk.parseMarkdown(
+					'In [this](https://notion.so/x) PRD, see https://a.example.com or mail user@example.com',
+				),
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'In [this](https://notion.so/x) PRD, see https://a.example.com or mail user@example.com',
+				}),
+			);
+		} finally {
+			loadChatSdkSpy.mockRestore();
+		}
+	});
+
+	it('keeps adapter text unchanged when it is not the plain-text projection', async () => {
+		const chatSdk = await import('chat');
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+		try {
+			const raw = '<@123> see **x** and `code` at [y](https://u)';
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			await handlers.mention!(makeThread(), {
+				text: raw,
+				formatted: chatSdk.parseMarkdown(raw),
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ message: raw }),
+			);
+		} finally {
+			loadChatSdkSpy.mockRestore();
+		}
 	});
 
 	describe('when deriving memory scope', () => {

@@ -25,9 +25,9 @@ interface CreateAuthFetchOptions {
 	baseFetch: CustomFetch;
 	initialHeaders: Record<string, string>;
 	/**
-	 * Called on a 401 response. Should return a fresh set of auth headers, or
-	 * `null` if the refresh failed. The returned headers replace the cached
-	 * set used by subsequent requests.
+	 * Called on a 401 response. Should return fresh auth headers, or `null` if
+	 * the refresh failed. They are layered over the cached non-auth headers
+	 * for subsequent requests.
 	 */
 	onUnauthorized?: (
 		currentHeaders: Record<string, string>,
