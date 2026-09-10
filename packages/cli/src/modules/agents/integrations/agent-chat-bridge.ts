@@ -970,7 +970,7 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
-		this.logger.error('[AgentChatBridge] Error in handler', {
+		this.logger.error(`[AgentChatBridge] Error in handler: ${message}`, {
 			agentId: this.agentId,
 			threadId: thread?.id,
 			error: message,

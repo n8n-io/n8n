@@ -141,6 +141,10 @@ function postableText(message: AdapterPostableMessage): { text: string; endCall:
 	return { text: String(message), endCall: false };
 }
 
+function twilioResponseError(body: unknown): string | undefined {
+	return isRecord(body) && typeof body.message === 'string' ? body.message : undefined;
+}
+
 export class TwilioVoiceClient {
 	constructor(
 		private readonly accountSid: string,
@@ -205,7 +209,10 @@ export class TwilioVoiceClient {
 			ignoreHttpStatusErrors: true,
 		});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new Error('Twilio could not update the active call.');
+			const detail = twilioResponseError(response.body);
+			throw new Error(
+				`Twilio could not update the active call (HTTP ${response.statusCode})${detail ? `: ${detail}` : '.'}`,
+			);
 		}
 	}
 
