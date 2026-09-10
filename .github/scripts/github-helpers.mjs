@@ -1,8 +1,17 @@
-import { getOctokit } from '@actions/github';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import semver from 'semver';
+
+// Scripts that run through `run-workflow-script` have no node_modules: they
+// get their client through `setOctokit` and never call the release helpers.
+const actionsGithub = await import('@actions/github').catch((error) => {
+	if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
+	return null;
+});
+const require = createRequire(import.meta.url);
+/** @returns { typeof import('semver') } */
+const loadSemver = () => require('semver');
 
 export const CURRENT_MAJOR_VERSION = 2;
 export const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
@@ -48,8 +57,8 @@ export function pickHighestReleaseTag(tags) {
 	const versions = tags
 		.filter((t) => t.startsWith(RELEASE_PREFIX))
 		.map((t) => ({ tag: t, v: stripReleasePrefixes(t) }))
-		.filter(({ v }) => semver.valid(v))
-		.sort((a, b) => semver.rcompare(a.v, b.v));
+		.filter(({ v }) => loadSemver().valid(v))
+		.sort((a, b) => loadSemver().rcompare(a.v, b.v));
 
 	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
 }
@@ -128,7 +137,7 @@ export function resolveRcBranchForTrack(track) {
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
 	if (!releaseTag) return null;
 
-	const parsed = semver.parse(stripReleasePrefixes(releaseTag));
+	const parsed = loadSemver().parse(stripReleasePrefixes(releaseTag));
 	if (!parsed) return null;
 
 	return `release-candidate/${parsed.major}.${parsed.minor}.x`;
@@ -145,12 +154,12 @@ export function resolveRcBranchForTrack(track) {
  * */
 export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
 	const version = tagVersionInfo.version;
-	const majorVersion = semver.major(version);
+	const majorVersion = loadSemver().major(version);
 	if (majorVersion < CURRENT_MAJOR_VERSION) {
 		return `${majorVersion}.x`;
 	}
 
-	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${semver.minor(version)}.x`;
+	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${majorVersion}.${loadSemver().minor(version)}.x`;
 }
 
 /**
@@ -351,18 +360,37 @@ export function localRefExists(ref) {
 	return res.ok;
 }
 
+/** @type { GitHubInstance | null } */
+let injectedOctokit = null;
+
 /**
- * Initializes octokit with GITHUB_TOKEN from env vars.
+ * Use a ready client instead of building one from GITHUB_TOKEN.
+ * `run-workflow-script` passes the client that actions/github-script provides.
  *
- * Also ensures the existence of useful environment variables.
+ * @param { GitHubInstance | null } octokit
+ */
+export function setOctokit(octokit) {
+	injectedOctokit = octokit;
+}
+
+/**
+ * Returns the octokit client and the current repository.
+ *
+ * Uses the injected client when set, otherwise builds one from GITHUB_TOKEN.
  * */
 export function initGithub() {
-	const token = ensureEnvVar('GITHUB_TOKEN');
 	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
-
 	const [owner, repo] = repoFullName.split('/');
 
-	const octokit = getOctokit(token);
+	if (injectedOctokit) {
+		return { octokit: injectedOctokit, owner, repo };
+	}
+
+	if (!actionsGithub) {
+		throw new Error('No Octokit client: call setOctokit() or install the .github/scripts dependencies');
+	}
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const octokit = actionsGithub.getOctokit(token);
 
 	return {
 		octokit,

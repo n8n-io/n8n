@@ -133,38 +133,19 @@ jobs:
       # Always check out the base branch, never the PR merge ref: the OWNERS
       # file and the scripts must be trusted input. The 'master' fallback
       # covers workflow_dispatch, so a dispatch from another branch cannot
-      # run that branch's policy.
+      # run that branch's policy. The script reads only `.github/` and the
+      # root files, which cone mode always includes.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.base.ref || 'master' }}
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          # pnpm 11 and 12 resolve a relative lockfile directory from different locations.
-          # Use the checkout path because this workflow can run new workflow code against the old base.
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+          sparse-checkout: .github
 
       - name: Evaluate required reviews
+        uses: ./.github/actions/run-workflow-script
         env:
-          # App token: reading org team membership is beyond GITHUB_TOKEN.
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
-          STATUS_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # Bootstrap: the checkout is the trusted base branch. Until the
-          # enforcement script exists there, there is no policy to enforce.
-          if [ ! -f .github/scripts/owners/required-reviews.mjs ]; then
-            echo "No enforcement script on the base branch; nothing to enforce."
-            if [ -n "$STATUS_SHA" ]; then
-              gh api "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
-                -f state=success \
-                -f context='Required Reviews' \
-                -f description='Owners enforcement is not on the base branch yet'
-            fi
-            exit 0
-          fi
-          node .github/scripts/owners/required-reviews.mjs
+        with:
+          script: .github/scripts/owners/required-reviews.mjs
+          # App token: reading org team membership is beyond GITHUB_TOKEN.
+          github-token: ${{ steps.app-token.outputs.token }}
