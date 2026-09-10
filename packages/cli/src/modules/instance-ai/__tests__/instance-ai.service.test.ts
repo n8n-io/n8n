@@ -50,6 +50,13 @@ vi.mock('@n8n/instance-ai', async () => {
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
+		traceSandboxOperation: vi.fn(
+			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
+		),
+		withSandboxLifecycleTrace: vi.fn(
+			async <T>(_threadId: string, _operation: string, _inputs: unknown, fn: () => Promise<T>) =>
+				await fn(),
+		),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: {
 				skillsHash: 'runtime-skills-hash',
@@ -5298,12 +5305,12 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 		it('routeClearThreadState clears locally and fans out in multi-main', async () => {
 			const service = buildTaskControlService(true);
 
-			await service.routeClearThreadState('thread-a');
+			await service.routeClearThreadState('thread-a', 'owner-a');
 
-			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', 'owner-a');
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-task-control',
-				payload: { threadId: 'thread-a', action: 'clear-thread' },
+				payload: { threadId: 'thread-a', action: 'clear-thread', userId: 'owner-a' },
 			});
 		});
 	});
@@ -5335,22 +5342,29 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			expect(service.sendCorrectionToTask).not.toHaveBeenCalled();
 		});
 
-		it('routes cancel-task / cancel-thread / clear-thread to the local methods', async () => {
-			const service = buildTaskControlService(true);
+		it.each(['owner-a', undefined])(
+			'routes task controls with owner %s to the local methods',
+			async (userId) => {
+				const service = buildTaskControlService(true);
 
-			await service.handleRelayTaskControl({
-				threadId: 'thread-a',
-				taskId: 'task-1',
-				action: 'cancel-task',
-			});
-			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
-			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' });
+				await service.handleRelayTaskControl({
+					threadId: 'thread-a',
+					taskId: 'task-1',
+					action: 'cancel-task',
+				});
+				await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
+				await service.handleRelayTaskControl({
+					threadId: 'thread-a',
+					action: 'clear-thread',
+					userId,
+				});
 
-			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
-			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
-			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
-		});
+				expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+				expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+				expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', userId);
+				expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+			},
+		);
 
 		it('swallows and logs errors from a local action (no unhandled rejection on the sibling main)', async () => {
 			const service = buildTaskControlService(true);
