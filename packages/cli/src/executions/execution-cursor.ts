@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { isExecutionIdV2 } from './execution-id';
+const timestamp = z.string().datetime({ offset: true });
 
 /** An engine 1.0 execution ID: an auto-increment integer. */
 const V1_ID = z
@@ -11,51 +11,39 @@ const V1_ID = z
 	.regex(/^[1-9]\d*$/)
 	.refine((id) => Number(id) <= 2147483647);
 
-/** An engine 2.0 execution ID: a UUID. */
-const V2_ID = z.string().refine(isExecutionIdV2);
+/**
+ * A cursor for a list merging engine 1.0 (integer ID) and engine 2.0 (UUID) rows, since
+ * the two ID spaces don't sort against each other and must each track their own position.
+ */
+const Cursor = z
+	.object({
+		version: z.literal(1),
+		v1: z.object({ timestamp, id: V1_ID }).strict().optional(),
+		v2: z.object({ timestamp, id: z.string().uuid() }).strict().optional(),
+	})
+	.strict();
 
-/** A position holds one ID space, because the two spaces do not sort against each other. */
-const Cursor = z.union([
-	z.object({ version: z.literal(1), v1: V1_ID }).strict(),
-	z.object({ version: z.literal(1), v2: V2_ID }).strict(),
-]);
+export type ExecutionCursor = z.infer<typeof Cursor>;
+export type ExecutionPosition = NonNullable<ExecutionCursor['v1']>;
 
-/** Parse a cursor into the execution ID to page from, or `undefined` for the first page. */
-export function parseExecutionCursor(value?: string): string | undefined {
-	if (value === undefined) return undefined;
-
-	let cursor: z.infer<typeof Cursor>;
+/** Parse a cursor, or an empty one when the caller asks for the first page. */
+export function parseExecutionCursor(value?: string): ExecutionCursor {
+	if (value === undefined) return { version: 1 };
 	try {
 		if (!value.length || value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) {
 			throw new BadRequestError('Invalid execution cursor');
 		}
-		cursor = Cursor.parse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8')));
+		return Cursor.parse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8')));
 	} catch {
 		throw new BadRequestError('Invalid execution cursor');
 	}
-
-	// The executions table pages by its integer `id`, so a v2 position has nothing
-	// to page against yet. Nothing encodes one either - see `encodeCursorForId`.
-	if ('v2' in cursor) throw new BadRequestError('Unsupported execution cursor');
-
-	return cursor.v1;
 }
 
-/** Encode a cursor position. The ID shape picks the ID space it belongs to. */
-export function encodeExecutionCursor(id: string): SerializedCursor {
-	const position = isExecutionIdV2(id) ? { v2: id } : { v1: id };
-
-	return Buffer.from(JSON.stringify({ version: 1, ...position })).toString(
-		'base64url',
-	) as SerializedCursor;
+/** Whether a cursor marks a position, as opposed to asking for the first page. */
+export function hasPosition(cursor?: ExecutionCursor): boolean {
+	return cursor?.v1 !== undefined || cursor?.v2 !== undefined;
 }
 
-/**
- * Encode the cursor that continues a list from just after execution `id`, or `null` if `id`
- * is an engine 2.0 execution ID — those aren't supported as a cursor position yet.
- */
-export function encodeCursorForId(id: string): SerializedCursor | null {
-	if (isExecutionIdV2(id)) return null;
-
-	return encodeExecutionCursor(id);
+export function encodeExecutionCursor(cursor: ExecutionCursor): SerializedCursor {
+	return Buffer.from(JSON.stringify(cursor)).toString('base64url') as SerializedCursor;
 }

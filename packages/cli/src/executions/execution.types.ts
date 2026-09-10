@@ -1,15 +1,15 @@
-import type { ExecutionListPaginationQuery } from '@n8n/api-types';
+import type { SerializedCursor } from '@n8n/api-types';
 import type { AuthenticatedRequest, ExecutionSummaries, ExecutionEntity } from '@n8n/db';
 import type { AnnotationVote, ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+
+import type { ExecutionCursor } from '@/executions/execution-cursor';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
 		type GetMany = {
-			cursor?: ExecutionListPaginationQuery['cursor'];
+			cursor?: SerializedCursor;
 			filter: string; // stringified `FilterFields`
 			limit: string;
-			lastId: string;
-			firstId: string;
 		};
 	}
 
@@ -32,6 +32,7 @@ export declare namespace ExecutionRequest {
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
+		cursor?: ExecutionCursor;
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;

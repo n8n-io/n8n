@@ -5,7 +5,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ExecutionStatusList, type ExecutionStatus, type ExecutionSummary } from 'n8n-workflow';
 
-import { encodeCursorForId } from './execution-cursor';
+import { encodeExecutionCursor, type ExecutionCursor } from './execution-cursor';
 
 export interface ListExecutionsResponse {
 	results: ExecutionSummary[];
@@ -21,7 +21,7 @@ export const COMPLETED_STATUSES = ExecutionStatusList.filter(
 	(status) => !CURRENT_STATUSES.includes(status),
 );
 
-/** Provides the logic for listing engine 1.0 executions. */
+/** Provides the logic for listing engine v1 executions */
 @Service()
 export class ExecutionListV1Service {
 	constructor(
@@ -35,17 +35,24 @@ export class ExecutionListV1Service {
 	 * Return also the total count of all executions that satisfy the query,
 	 * and whether the total is an estimate or not.
 	 */
-	async findPageWithCount(query: ExecutionSummaries.RangeQuery): Promise<ListExecutionsResponse> {
-		const { range: _, ...countQuery } = query;
+	async findPageWithCount(
+		query: ExecutionSummaries.RangeQuery,
+		cursor?: ExecutionCursor,
+	): Promise<ListExecutionsResponse> {
+		const pagedQuery: ExecutionSummaries.RangeQuery = {
+			...query,
+			range: { ...query.range, beforeId: cursor?.v1?.id ?? query.range.beforeId },
+		};
+		const { range: _, ...countQuery } = pagedQuery;
 
 		const [results, executionCount] = await Promise.all([
-			this.executionRepository.findManyByRangeQuery(query),
+			this.executionRepository.findManyByRangeQuery(pagedQuery),
 			this.getExecutionsCountForQuery({ ...countQuery, kind: 'count' }),
 		]);
 
 		return {
 			results,
-			nextCursor: this.nextCursorFor(results, query.range.limit),
+			nextCursor: this.nextCursorFor(results, pagedQuery.range.limit),
 			...executionCount,
 		};
 	}
@@ -83,11 +90,13 @@ export class ExecutionListV1Service {
 		};
 	}
 
-	private async findCurrentExecutions(query: ExecutionSummaries.RangeQuery) {
+	async findCurrentExecutions(query: ExecutionSummaries.RangeQuery) {
 		const currentQuery: ExecutionSummaries.RangeQuery = {
 			...query,
 			// "current" is refetched in full on every page, so it ignores the cursor.
-			range: { limit: query.range.limit },
+			range: {
+				limit: query.range.limit,
+			},
 			status: CURRENT_STATUSES,
 			order: { top: 'running' }, // ensure limit cannot exclude running
 		};
@@ -100,7 +109,15 @@ export class ExecutionListV1Service {
 		if (rows.length < limit) return null;
 
 		const lastRow = rows[rows.length - 1];
-		return lastRow ? encodeCursorForId(lastRow.id) : null;
+		if (!lastRow) return null;
+
+		return encodeExecutionCursor({
+			version: 1,
+			v1: {
+				id: lastRow.id,
+				timestamp: new Date(lastRow.startedAt ?? lastRow.createdAt).toISOString(),
+			},
+		});
 	}
 
 	/**

@@ -118,16 +118,14 @@ export const createSearchExecutionsTool = (
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 			const sharingOptions = await executionListService.buildSharingOptions('workflow:read');
-			const beforeId = parseExecutionCursor(cursor);
+			const parsedCursor = parseExecutionCursor(cursor);
 
 			const query = {
 				kind: 'range' as const,
 				user,
 				sharingOptions,
-				range: {
-					limit: safeLimit,
-					...(beforeId ? { beforeId } : {}),
-				},
+				// The cursor goes to the list service, which bounds each store itself.
+				range: { limit: safeLimit },
 				...(workflowId ? { workflowId } : {}),
 				...(status?.length ? { status } : {}),
 				...(startedAfter ? { startedAfter } : {}),
@@ -137,7 +135,7 @@ export const createSearchExecutionsTool = (
 			};
 
 			const { results, count, estimated, nextCursor } =
-				await executionListService.findPageWithCount(query);
+				await executionListService.findPageWithCount(query, parsedCursor);
 
 			const data = results.map((execution) => ({
 				id: execution.id,

@@ -68,7 +68,11 @@ beforeAll(async () => {
 	webhookTestEndpoint = Container.get(GlobalConfig).endpoints.webhookTest;
 
 	await Container.get(CacheService).init();
-	Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
+	Container.get(EngineDataPlaneProxyService).registerProvider({
+		startExecution,
+		getExecution,
+		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+	});
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {
