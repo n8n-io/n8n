@@ -11,6 +11,7 @@ const renderComponent = createComponentRenderer(InstanceContextStep);
 function injected(overrides: Partial<ContextEntry> = {}): ContextEntry {
 	return {
 		type: 'instance-context',
+		runId: 'run-1',
 		injection: {
 			state: 'injected',
 			isUpdate: false,

@@ -490,9 +490,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// leads the timeline and the trace reads in the order things happened — what the
 			// turn was handed, then what it did with it.
 			const root = ensureAgent(state, state.rootAgentId);
-			if (root && !root.timeline.some((entry) => entry.type === 'instance-context')) {
+			// Keyed by run, not by type. A message group accumulates several runs, so a
+			// follow-up turn in the same group would otherwise look like a duplicate of the
+			// first and be dropped — while a replayed segment of the same run still is one.
+			const alreadyShown = root?.timeline.some(
+				(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+			);
+			if (root && !alreadyShown) {
 				root.timeline.push({
 					type: 'instance-context',
+					runId: event.runId,
 					injection: event.payload.injection,
 					...(event.payload.block !== undefined ? { block: event.payload.block } : {}),
 					...(event.responseId ? { responseId: event.responseId } : {}),
@@ -567,8 +574,12 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				// Completes the entry the turn opened with. Assigned, not merged: a suspension
 				// emits no `run-finish`, so this arrives once per turn, already carrying every
 				// segment's surfaces — the server accumulates them across a confirmation.
+				// Matched on the run, so a group holding several turns attaches each turn's
+				// reach to its own row rather than to the first one.
 				const { contextReach } = event.payload;
-				const contextEntry = root.timeline.find((entry) => entry.type === 'instance-context');
+				const contextEntry = root.timeline.find(
+					(entry) => entry.type === 'instance-context' && entry.runId === event.runId,
+				);
 				if (contextReach && contextEntry?.type === 'instance-context') {
 					contextEntry.reach = contextReach;
 				}

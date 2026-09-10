@@ -309,6 +309,24 @@ describe('PostHog', () => {
 				expect(flags).toMatchObject({ '114_instance_activity_context': true });
 			});
 
+			/**
+			 * The combination is the point: each setting alone passes whether or not the
+			 * precedence guard is there, so without this case the guard could be deleted and
+			 * the suite would stay green.
+			 */
+			it('lets an explicit override disable the flag while the record is on', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = true;
+				globalConfig.featureFlags.override = { '114_instance_activity_context': false };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '114_instance_activity_context': false });
+			});
+
 			it('leaves the instance-activity-context flag to PostHog when the record is off', async () => {
 				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
 				globalConfig.activityLog.enabled = false;

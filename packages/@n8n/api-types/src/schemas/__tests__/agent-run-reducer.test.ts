@@ -232,6 +232,7 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById.root.timeline).toEqual([
 				{
 					type: 'instance-context',
+					runId: 'run-1',
 					injection: INJECTED_PAYLOAD.injection,
 					block: INJECTED_PAYLOAD.block,
 				},
@@ -249,7 +250,11 @@ describe('agent-run-reducer', () => {
 			);
 
 			expect(state.agentsById.root.timeline).toEqual([
-				{ type: 'instance-context', injection: { state: 'absent', reason: 'empty' } },
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: { state: 'absent', reason: 'empty' },
+				},
 			]);
 		});
 
@@ -261,6 +266,41 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
 
 			expect(state.agentsById.root.timeline).toHaveLength(1);
+		});
+
+		/**
+		 * A message group accumulates several runs, so two turns can fold into one state.
+		 * Deduping by type alone dropped the second turn's entry entirely.
+		 */
+		it('keeps an entry for each turn in a group that holds more than one run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(2);
+		});
+
+		it("attaches each turn's reach to its own entry", () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-2',
+				agentId: 'root',
+				payload: { status: 'completed', contextReach: { surfaces: ['workflow-read'] } },
+			});
+
+			const entries = state.agentsById.root.timeline.filter(
+				(e): e is Extract<typeof e, { type: 'instance-context' }> => e.type === 'instance-context',
+			);
+			expect(entries.find((e) => e.runId === 'run-1')?.reach).toBeUndefined();
+			expect(entries.find((e) => e.runId === 'run-2')?.reach).toEqual({
+				surfaces: ['workflow-read'],
+			});
 		});
 
 		it('folds onto the root even when a sub-agent emitted it', () => {

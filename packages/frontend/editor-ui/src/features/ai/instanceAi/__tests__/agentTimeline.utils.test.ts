@@ -810,6 +810,7 @@ describe('isStreamingTimelineEntry', () => {
 describe('buildTimelineBlocks — instance context', () => {
 	const contextEntry: InstanceAiTimelineEntry = {
 		type: 'instance-context',
+		runId: 'run-1',
 		injection: {
 			state: 'injected',
 			isUpdate: false,

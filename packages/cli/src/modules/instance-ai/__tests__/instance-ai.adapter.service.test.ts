@@ -106,7 +106,11 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		activityLogEnabled?: boolean;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
@@ -114,6 +118,9 @@ function globalConfigStub(
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
+		// The instance-context read needs the record to be accruing as well as the flag, so
+		// gate resolution reads this.
+		activityLog: { enabled: overrides.activityLogEnabled ?? false },
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
@@ -4794,6 +4801,7 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		activityLogEnabled?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -4813,7 +4821,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = globalConfigStub();
+	args[1] = globalConfigStub({ activityLogEnabled: overrides?.activityLogEnabled ?? false });
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -5114,9 +5122,13 @@ describe('resolveExperimentGates', () => {
 		return getFeatureFlags;
 	}
 
-	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
+	function createAdapter(
+		mcpAccessEnabled = true,
+		activityLogEnabled = true,
+	): InstanceAiAdapterService {
 		return createAdapterWithGatewayMock(vi.fn(), {
 			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
+			activityLogEnabled,
 		});
 	}
 
@@ -5142,6 +5154,20 @@ describe('resolveExperimentGates', () => {
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
+	});
+
+	/**
+	 * The read needs the record as well as the flag. Without it the relay registers no
+	 * writers while every turn still pays for the reads, and the edit leg can only ever
+	 * be empty.
+	 */
+	it('keeps the instance-context read off when the record is not accruing', async () => {
+		stubContainer(allEnabled);
+
+		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
+			nodeUsageEnabled: true,
+		});
 	});
 
 	it('is off for flags on the control variant', async () => {

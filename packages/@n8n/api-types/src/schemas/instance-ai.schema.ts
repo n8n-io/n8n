@@ -1674,6 +1674,12 @@ export type InstanceAiTimelineEntry =
 	 */
 	| {
 			type: 'instance-context';
+			/**
+			 * The run this entry describes. A message group accumulates several runs, so an
+			 * entry has to say which turn it belongs to — otherwise a follow-up turn's entry
+			 * looks like a duplicate of the first, and its reach lands on the wrong row.
+			 */
+			runId: string;
 			injection: InstanceContextInjection;
 			/** Absent until the run finishes. */
 			reach?: InstanceContextReach;

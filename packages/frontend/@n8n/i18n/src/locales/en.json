@@ -285,7 +285,7 @@
 	"aiAssistant.instanceContext.trace.changes": "{count} recent change | {count} recent changes",
 	"aiAssistant.instanceContext.trace.runs": "{count} workflow with runs | {count} workflows with runs",
 	"aiAssistant.instanceContext.trace.blockHeading": "What the assistant was told",
-	"aiAssistant.instanceContext.trace.noneHint": "Nothing had happened here recently, so this turn had no activity to go on.",
+	"aiAssistant.instanceContext.trace.noneHint": "No instance context was available for this turn.",
 	"aiAssistant.instanceContext.trace.surface.activity-list": "listed more activity",
 	"aiAssistant.instanceContext.trace.surface.activity-expand": "opened an entry",
 	"aiAssistant.instanceContext.trace.surface.node-usage": "checked node usage",

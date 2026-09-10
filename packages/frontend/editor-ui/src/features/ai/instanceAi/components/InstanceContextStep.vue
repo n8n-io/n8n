@@ -60,8 +60,13 @@ const reachSummary = computed<string>(() => {
 });
 
 const label = computed<string>(() => {
+	// An empty block does not stop the agent reading further — the `activity` tool is
+	// gated by the flag, not by whether a block was built. So a turn told nothing can
+	// still have gone looking, and the row has to say so.
 	if (injection.value.state === 'absent') {
-		return i18n.baseText('aiAssistant.instanceContext.trace.none');
+		return [i18n.baseText('aiAssistant.instanceContext.trace.none'), reachSummary.value]
+			.filter(Boolean)
+			.join(' — ');
 	}
 
 	const head = injection.value.isUpdate

@@ -96,6 +96,18 @@ describe('deriveInstanceContextReach', () => {
 		).toEqual({ surfaces: ['node-usage'] });
 	});
 
+	/** Both come off the model's own tool call, so an inherited member must not resolve. */
+	it.each(['constructor', 'toString', '__proto__'])(
+		'ignores an action naming an inherited member (%s)',
+		(action) => {
+			expect(deriveInstanceContextReach([call('activity', action)])).toEqual({ surfaces: [] });
+		},
+	);
+
+	it('ignores a tool name naming an inherited member', () => {
+		expect(deriveInstanceContextReach([call('constructor', 'list')])).toEqual({ surfaces: [] });
+	});
+
 	it('ignores a context tool called without an action', () => {
 		expect(deriveInstanceContextReach([call('activity', undefined)])).toEqual({
 			surfaces: [],

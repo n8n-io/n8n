@@ -33,7 +33,15 @@ function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
 		return 'node-usage';
 	}
 
-	return SURFACE_BY_CALL[call.toolName]?.[call.action];
+	// `toolName` and `action` both come off the model's own tool call, so a plain index
+	// could return an inherited member — `action: "constructor"` would hand back a
+	// function and put it in `surfaces`, where the schema promises a surface name.
+	const byAction = Object.hasOwn(SURFACE_BY_CALL, call.toolName)
+		? SURFACE_BY_CALL[call.toolName]
+		: undefined;
+	if (byAction === undefined || !Object.hasOwn(byAction, call.action)) return undefined;
+
+	return byAction[call.action];
 }
 
 /**

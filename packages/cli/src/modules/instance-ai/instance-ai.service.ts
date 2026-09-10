@@ -5477,9 +5477,13 @@ export class InstanceAiService {
 				});
 				// A turn can stop to ask more than once, so the running total has to survive each
 				// stop. Dropping it here would lose every read before the last question.
+				// This segment's own reads, reported as such: every row carries one segment, so a
+				// consumer can sum them over the shared `run_id` without double-counting.
+				const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+				// The running total, carried on so the next stop inherits it.
 				const resumedSuspendedReach = mergeInstanceContextReach(
 					opts.instanceContext?.reachSoFar,
-					deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+					resumedSegmentReach,
 				);
 				if (opts.instanceContext) {
 					this.emitInstanceContextTurnIfInPlay({
@@ -5489,7 +5493,7 @@ export class InstanceAiService {
 						segment: 'suspended',
 						status: 'suspended',
 						injection: opts.instanceContext.injection,
-						reach: resumedSuspendedReach,
+						reach: resumedSegmentReach,
 						workSummary: result.workSummary,
 						usage: result.usage,
 						instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
@@ -5696,13 +5700,15 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
-			// Accumulated across the suspension, not just this segment. The resumed stream gets
-			// a fresh work summary holding only post-approval calls, and a suspension publishes
-			// no `run-finish`, so without this the reads taken before the question would never
-			// reach the trace at all.
+			// Two different things, deliberately. The telemetry row reports this segment alone,
+			// so rows stay summable over the shared `run_id`. The trace gets the total across
+			// the suspension, because the resumed stream has a fresh work summary and a
+			// suspension publishes no `run-finish` — without it the reads taken before the
+			// question would never reach the trace at all.
+			const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
 			const resumedContextReach = mergeInstanceContextReach(
 				opts.instanceContext?.reachSoFar,
-				deriveInstanceContextReach(result.workSummary?.toolCalls ?? []),
+				resumedSegmentReach,
 			);
 			if (opts.instanceContext) {
 				this.emitInstanceContextTurnIfInPlay({
@@ -5712,7 +5718,7 @@ export class InstanceAiService {
 					segment: 'resumed',
 					status: result.status,
 					injection: opts.instanceContext.injection,
-					reach: resumedContextReach,
+					reach: resumedSegmentReach,
 					workSummary: result.workSummary,
 					usage: result.usage,
 					instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
