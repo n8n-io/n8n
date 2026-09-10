@@ -10,7 +10,16 @@ import type { VerificationAnalysis } from './analyze-result';
 import type {
 	VerificationClaim,
 	VerificationClaimLevel,
+	VerificationLiveState,
 } from '../../../workflow-loop/workflow-loop-state';
+
+/** Version pair that decides whether the verified draft is the version running. */
+export interface VerificationPublishState {
+	/** Published version, or null while the workflow is unpublished. */
+	activeVersionId: string | null;
+	/** Draft version the verification run executed. */
+	draftVersionId: string;
+}
 
 export interface DeriveVerificationClaimArgs {
 	analysis: VerificationAnalysis;
@@ -22,10 +31,15 @@ export interface DeriveVerificationClaimArgs {
 	 * downgrade applies and coverage alone decides the level.
 	 */
 	fixTargetNodeNames?: readonly string[];
+	/**
+	 * Publish state read next to the run. Omitted when the lookup failed: an
+	 * unknown state stays unknown rather than becoming a claim about production.
+	 */
+	publishState?: VerificationPublishState;
 }
 
 export function deriveVerificationClaim(args: DeriveVerificationClaimArgs): VerificationClaim {
-	const { analysis, plannedNodeCount, fixTargetNodeNames = [] } = args;
+	const { analysis, plannedNodeCount, fixTargetNodeNames = [], publishState } = args;
 	const nodesNotReached = [...analysis.nodesNotReached];
 	const simulatedNodes = [...analysis.reachedSimulatedNodes];
 
@@ -52,7 +66,23 @@ export function deriveVerificationClaim(args: DeriveVerificationClaimArgs): Veri
 		unprovenTargets,
 		publishReady: level === 'verified',
 		liveTestRecommended: level === 'partial' || level === 'unproven',
+		...(publishState
+			? {
+					liveState: resolveLiveState(publishState),
+					verifiedVersionId: publishState.draftVersionId,
+				}
+			: {}),
 	};
+}
+
+function resolveLiveState(publishState: VerificationPublishState): VerificationLiveState {
+	if (publishState.activeVersionId === null) return 'unpublished';
+	// Every assistant write saves a draft without republishing, so a published
+	// workflow whose active version is not the verified one keeps serving the
+	// code this run did not test.
+	return publishState.activeVersionId === publishState.draftVersionId
+		? 'live-current'
+		: 'live-stale';
 }
 
 function resolveLevel(facts: {

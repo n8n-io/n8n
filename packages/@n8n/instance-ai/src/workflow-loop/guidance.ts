@@ -1,4 +1,4 @@
-import { describeClaimCoverage, formatClaimHeadline } from './render-claim';
+import { describeClaimCoverage, describeClaimLiveState, formatClaimHeadline } from './render-claim';
 import type { VerificationClaim, WorkflowLoopAction } from './workflow-loop-state';
 
 export interface WorkflowLoopGuidanceOptions {
@@ -13,7 +13,19 @@ export interface WorkflowLoopGuidanceOptions {
  * was the strongest license for the false success claims in AIA-31.
  */
 function formatClaimLead(claim: VerificationClaim | undefined): string {
-	if (claim?.level === 'verified') return 'Workflow verified successfully.';
+	if (claim?.level === 'verified') {
+		// The run proves the draft. While the live version is the older one,
+		// "verified successfully" is the sentence a model turns into "it is live
+		// and working" — the workflow the user depends on is still the old one.
+		if (claim.liveState === 'live-stale') {
+			return (
+				`${formatClaimHeadline(claim)} ${describeClaimLiveState(claim) ?? ''} ` +
+				'Do NOT call the workflow live, running, or working in production. ' +
+				'Say the fix is in the draft, and ask whether to publish it.'
+			);
+		}
+		return 'Workflow verified successfully.';
+	}
 
 	// No claim means no verification run recorded a verdict for this build — a
 	// trigger-only workflow, or a verdict reported without verifying. Saying
@@ -39,8 +51,9 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim), ...rules].join(' ');
 }
 
+/** A verified draft that production does not run yet is not a completed job. */
 function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
-	return claim?.level === 'verified';
+	return claim?.level === 'verified' && claim.liveState !== 'live-stale';
 }
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {

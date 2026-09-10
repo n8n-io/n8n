@@ -20,6 +20,8 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
+import { describeClaimLiveState } from '../../workflow-loop/render-claim';
+import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import {
 	executionNodeErrorSchema,
 	verificationClaimSchema,
@@ -27,6 +29,17 @@ import {
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
+
+/**
+ * The publish sentence for the tool result. A passing run on a stale published
+ * workflow is the case a model reports as "live and working" — say what is
+ * live before it does.
+ */
+function formatLiveStateNote(claim: VerificationClaim): string | undefined {
+	const liveState = describeClaimLiveState(claim);
+	if (liveState === undefined) return undefined;
+	return `${liveState} Do NOT describe the workflow as live, running, or working in production until it is published.`;
+}
 
 export const verifyBuiltWorkflowInputSchema = z.object({
 	workItemId: z
@@ -139,6 +152,12 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	/**
+	 * Present only while the published version is older than the verified
+	 * draft. The claim carries the same fact as `liveState`; this is the
+	 * sentence to relay, because a passing run reads as "production works".
+	 */
+	liveStateNote: z.string().optional(),
 	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
@@ -263,10 +282,29 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
+			// Verification runs the draft. Read the published version next to the
+			// run so the claim can say whether what passed is what production
+			// serves. A failed lookup leaves the publish state out of the claim
+			// rather than guessing at it.
+			const publishState = await target.domainContext.workflowService
+				.getWorkflowHead(workflowId)
+				.then((head) => ({
+					activeVersionId: head.activeVersionId,
+					draftVersionId: head.versionId,
+				}))
+				.catch((error: unknown) => {
+					context.logger.warn('Failed to read publish state for the verification claim', {
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					return undefined;
+				});
+
 			const claim = deriveVerificationClaim({
 				analysis,
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
 				fixTargetNodeNames,
+				publishState,
 			});
 
 			await persistVerificationOutcome({
@@ -297,6 +335,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
+				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,
 				remediation: analysis.remediation,

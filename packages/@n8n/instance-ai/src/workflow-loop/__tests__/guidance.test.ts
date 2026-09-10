@@ -89,6 +89,35 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Report completion');
 		});
 
+		it('should not report completion when the published version is the older one', () => {
+			// The run proved the draft. Production still serves the version this
+			// run never touched, so "verified successfully" would read as "live".
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Fixed',
+				workflowId: 'wf-123',
+				claim: makeClaim({ liveState: 'live-stale', verifiedVersionId: 'draft-2' }),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Verified in the draft, NOT live');
+			expect(result).toContain('The live version is still the previous one');
+			expect(result).toContain('Do NOT call the workflow live');
+			expect(result).toContain('ask whether to publish it');
+			expect(result).not.toContain('Report completion');
+		});
+
+		it('should keep the verified wording when the published version is the verified one', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				claim: makeClaim({ liveState: 'live-current' }),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('Workflow verified successfully');
+			expect(result).toContain('Report completion');
+		});
+
 		it('should downgrade the mocked-credential guidance too', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',

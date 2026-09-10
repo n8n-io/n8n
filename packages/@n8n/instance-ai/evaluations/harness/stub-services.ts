@@ -106,7 +106,7 @@ export async function createStubServices(
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
 		async getWorkflowHead() {
-			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, activeVersionId: null, updatedAt: 0 };
 		},
 		async getWorkflowSnapshot(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];

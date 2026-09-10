@@ -8,7 +8,10 @@ import type {
 	WorkflowTaskService,
 } from '../../../types';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
-import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import type {
+	VerificationClaim,
+	WorkflowBuildOutcome,
+} from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
 type VerifyBuiltWorkflowOutput = {
@@ -32,6 +35,8 @@ type VerifyBuiltWorkflowOutput = {
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
+	liveStateNote?: string;
+	claim?: VerificationClaim;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
@@ -76,6 +81,9 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			userId: 'user_1',
 			workflowService: {
 				getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [] }),
+				getWorkflowHead: vi
+					.fn()
+					.mockResolvedValue({ versionId: 'draft-v1', activeVersionId: null, updatedAt: 0 }),
 			} as unknown as InstanceAiWorkflowService,
 			executionService: {
 				run: vi.fn().mockResolvedValue({
@@ -489,6 +497,7 @@ function makeContext(
 		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		availableCredentials?: Array<{ id: string; name: string; type: string }>;
+		workflowHead?: { versionId: string; activeVersionId: string | null };
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -540,6 +549,11 @@ function makeContext(
 				nodes: overrides.workflowNodes ?? [],
 				connections: overrides.workflowConnections ?? {},
 			};
+		}),
+		getWorkflowHead: vi.fn().mockResolvedValue({
+			versionId: overrides.workflowHead?.versionId ?? 'draft-v1',
+			activeVersionId: overrides.workflowHead?.activeVersionId ?? null,
+			updatedAt: 0,
 		}),
 	} as unknown as InstanceAiWorkflowService;
 
@@ -1525,5 +1539,54 @@ describe('verify-built-workflow tool — trigger selection', () => {
 
 		const run = vi.mocked(ctx.domainContext.executionService.run);
 		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: undefined });
+	});
+});
+
+describe('verify-built-workflow tool — publish state', () => {
+	it('warns that the fix is not live when the published version is an older one', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-stale');
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).toContain('Do NOT describe the workflow as live');
+		const update = updateBuildOutcome.mock.calls[0][1];
+		expect(update.verification?.claim?.liveState).toBe('live-stale');
+	});
+
+	it('says nothing about publishing when the published version is the verified one', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.liveState).toBe('live-current');
+		expect(result.liveStateNote).toBeUndefined();
+	});
+
+	it('leaves the claim without publish state when the lookup fails', async () => {
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: { 'Form Trigger': {} },
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead).mockRejectedValue(
+			new Error('no access'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.liveStateNote).toBeUndefined();
 	});
 });

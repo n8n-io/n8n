@@ -1341,7 +1341,11 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!head) throw new WorkflowNotFoundError(workflowId);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+				return {
+					versionId: head.versionId,
+					activeVersionId: head.activeVersionId,
+					updatedAt: head.updatedAt.getTime(),
+				};
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
