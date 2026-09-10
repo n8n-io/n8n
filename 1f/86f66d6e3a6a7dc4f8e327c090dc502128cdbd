@@ -1,0 +1,88 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_816e8d02944032::t_1310e19a120e8d 285
+  s_816e8d02944032::t_08d01384d148a7 617
+  s_816e8d02944032::t_fc71907e79c52c 651
+  s_816e8d02944032::t_a3a4fa043b675b 1032
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_816e8d02944032::t_00b7ef84424d1e 22
+  s_816e8d02944032::t_2617dff021b378 19
+  s_816e8d02944032::t_3bf82509146245 37
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  s_816e8d02944032::t_581817f429b152 4
+  s_816e8d02944032::t_5192e04b1bd8e2 71
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_816e8d02944032::t_eda84e58d4526d 11
+  s_816e8d02944032::t_30485c95489ab6 5956
+  s_816e8d02944032::t_82540fb7d963ad 6109
+  s_816e8d02944032::t_fda80ea5b6cc44 6529
+  s_816e8d02944032::t_c580a39c8fc3ae 6143,6157-6161,6167,6170,6174-6175,6178,6180,6182-6187
+  s_816e8d02944032::t_eca748af1d4cb7 6538,6540
+  s_816e8d02944032::t_db90b5e10f3452 6549
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_816e8d02944032::t_6e1b48f8599277 152,196
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_816e8d02944032::t_11c128d472d367 85
+  s_816e8d02944032::t_b66ff3b6898c3b 68
+packages/cli/src/modules/agents/episodic-memory.ts
+  s_816e8d02944032::t_de6e5a2efa6d4b 8
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_816e8d02944032::t_b38a412511a297 617-619
+  s_816e8d02944032::t_24057f53412b01 554,559,565-566
+  s_816e8d02944032::t_98175b25e9eb05 571-573
+  s_816e8d02944032::t_25379f24ccb45b 90,104
+  s_816e8d02944032::t_af5756a5160d27 636,642-645,650
+  s_816e8d02944032::t_30cd9d23fb80d9 5
+  s_816e8d02944032::t_91aafb000b9dd8 728
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_816e8d02944032::t_df96cc3270eeb7 566-567
+  s_816e8d02944032::t_bcabfe9afeaba5 568
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_816e8d02944032::t_60b1191d1cb439 775,779,782-785
+  s_816e8d02944032::t_f377c499c0a5f5 762
+  s_816e8d02944032::t_e09e516af011b6 242
+  s_816e8d02944032::t_26a29e9ede06f1 748-753
+  s_816e8d02944032::t_687d732acde515 763-771,791,804-807
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_816e8d02944032::t_9b2fbd4dac8c83 207-209,218
+  s_816e8d02944032::t_fb99608b7fbe8c 29-32
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_816e8d02944032::t_5bf260ef9fd1f4 38
+  s_816e8d02944032::t_7be5d5b0272c42 10
+  s_816e8d02944032::t_b88c5d5f2d536a 46
+  s_816e8d02944032::t_a870a2d4ea291c 54
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_816e8d02944032::t_6e1b48f8599277 280,342,358,368
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_816e8d02944032::t_6e68a559fe4b4d 1200
+packages/@n8n/agents/src/index.ts
+  s_816e8d02944032::t_0bd32f4b6c94ab 369
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_816e8d02944032::t_6f328dfa7da322 41-53
+  s_816e8d02944032::t_059029edaf7fbe 163,166,169-170,172,182-185
+  s_816e8d02944032::t_ccc0b8f5a9cef6 282,286,289,306,319
+  s_816e8d02944032::t_cdb9c4953fff83 54-55,98,153-155,186-187,192,276,280,320-326,369
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_816e8d02944032::t_56d4fcb05f7aa0 12,45,51-52,56-57,61-62,76,78-83,86-89,91,95-96,99,115,133,151,176,182-183,187-188,192-193,207,209-214,217-220,222,226-227,230,251,254,256,269,288,291,293,306,325,328,330,343,357,390,396-397,401-402,406-407,421,423-428,431-434,436,440-441,444,465,468,470,483,497,515,531,556,562-563,567-568,572-573,587,589-594,597-600,602,606-607,610
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_816e8d02944032::t_f0c3f83c0fb531 12,45,51-52,56-57,61-62,76,78-83,86-89,91,95-96,99,115,133,136,146,149,159,162,177,182,187,212,218-219,223-224,228-229,243,245-250,253-256,258,262-263,266,279-281,286,291,294,296,309,323,356,362-363,367-368,372-373,387,389-394,397-400,402,406-407,410,426,444,447-448,457,460-461,470,473,488,493,498,523,529-530,534-535,539-540,554,556-561,564-567,569,573-574,577,590-592,597,602,605,607,617,620,639,642,644,657,676,679,681,694,708,741,747-748,752-753,757-758,772,774-779,782-785,787,791-792,795,818,821,823,836,850,868,884-885,909,915-916,920-921,925-926,940,942-947,950-953,955,959-960,963
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_816e8d02944032::t_aed8dc55dc26eb 12,45,51-52,56-57,61-62,76,78-83,86-89,91,95-96,99,115,133,136,151,176,182-183,187-188,192-193,207,209-214,217-220,222,226-227,230,242-244,248,253,256,258,268,271,285,318,324-325,329-330,334-335,349,351-356,359-362,364,368-369,372,388,406,409,424,449,455-456,460-461,465-466,480,482-487,490-493,495,499-500,503,516,521,526,529,531,541,544,597,606,613,615-620,623-626,628,632-633,636,652,685,691-692,696-697,701-702,716,718-723,726-729,731,735-736,739,760,763,765,775,778,792,810,814,830-831,855,861-862,866-867,871-872,886,888-893,896-899,901,905-906,909
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_816e8d02944032::t_c08a53b32d6715 12,45,51-52,56-57,61-62,76,78-83,86-89,91,95-96,99,115,133,138,151,176,182-183,187-188,192-193,207,209-214,217-220,222,226-227,230,243,248,253,256,258,268,271,290,293,295,308,322,355,361-362,366-367,371-372,386,388-393,396-399,401,405-406,409,430,433,435,448,462,478-481,484,500-501,525,531-532,536-537,541-542,556,558-563,566-569,571,575-576,579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1f86f66d6e3a6a7dc4f8e327c090dc502128cdbd",
+  "prompts": {},
+  "sessions": {
+    "s_816e8d02944032": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e4a4a35f-e2a9-42e5-be67-c9e9bd76db57",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
