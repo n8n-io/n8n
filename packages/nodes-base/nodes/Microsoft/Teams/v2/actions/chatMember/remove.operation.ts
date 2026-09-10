@@ -53,7 +53,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description:
-					'Microsoft refuses this call on a one-on-one chat, when removing the last owner, and when removing yourself. If none of the above applies, make sure the credential grants ChatMember.ReadWrite (needs tenant admin consent).',
+					'Microsoft refuses this call on a one-on-one chat and when removing the last owner.',
 			});
 		}
 		throw error;
