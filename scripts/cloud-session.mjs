@@ -6,7 +6,7 @@
 //   pnpm session                   attach Claude Code in the main checkout
 //   pnpm session <name>            attach Claude Code in a separate worktree
 //   pnpm session:shell [name]      attach a shell
-//   pnpm session:opencode [name]   attach OpenCode in auto mode
+//   pnpm session:opencode [name]   connect a local OpenCode client
 //   pnpm session ls                list Codespaces and tmux sessions
 //   pnpm session tunnel [port…]    forward ports to localhost
 //   pnpm session stop              stop the Codespace
@@ -124,6 +124,29 @@ let launcher = 'claude';
 if (args[0] === '--shell') launcher = 'shell';
 else if (args[0] === '--opencode') launcher = 'opencode';
 if (launcher !== 'claude') args.shift();
+
+// Keep the remote terminal interface available while local clients become the default.
+if (launcher === 'opencode' && !args.includes('--legacy')) {
+	try {
+		const { connectOpenCode, parseOpenCodeArgs } = await import('./cloud-session-opencode.mjs');
+		const options = parseOpenCodeArgs(args);
+		if (options.help) {
+			console.log(`Usage: pnpm session:opencode [name] [--web] [--new] [--port PORT]
+       pnpm session:opencode [name] --legacy [OpenCode flags]
+
+The local TUI requires the same OpenCode version as the server.
+Web mode needs a browser only. Use Ctrl-C to close the local connection.`);
+		} else {
+			await connectOpenCode(options, ensureCodespace);
+		}
+	} catch (error) {
+		console.error(error.message);
+		process.exitCode = 1;
+	}
+	// Do not interpret OpenCode options as legacy session names.
+	process.exit(process.exitCode ?? 0);
+}
+if (launcher === 'opencode') args.splice(args.indexOf('--legacy'), 1);
 const [cmd = 'agent', ...rest] = args;
 
 switch (cmd) {

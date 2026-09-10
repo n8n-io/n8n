@@ -4,6 +4,7 @@ ARG NODE_VERSION=24
 FROM node:${NODE_VERSION}-bookworm
 
 ARG PLAYWRIGHT_VERSION=1.62.1
+ARG OPENCODE_VERSION=1.18.30
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tmux sudo less jq ripgrep postgresql-client \
@@ -14,7 +15,7 @@ RUN npx -y playwright@${PLAYWRIGHT_VERSION} install-deps chromium
 
 # Agent harnesses. Self-update is off: the image is the update mechanism
 ENV DISABLE_AUTOUPDATER=1
-RUN npm install -g @anthropic-ai/claude-code opencode-ai
+RUN npm install -g @anthropic-ai/claude-code opencode-ai@${OPENCODE_VERSION}
 
 COPY codespaces-env.sh /usr/local/lib/codespaces-env.sh
 COPY codespaces-secrets.sh /etc/profile.d/codespaces-secrets.sh

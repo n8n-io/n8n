@@ -59,7 +59,7 @@ function remoteCommand(args) {
 }
 
 test('starts a named OpenCode session in a worktree', () => {
-	const command = remoteCommand(['--opencode', 'fix-flaky', '--model', 'test']);
+	const command = remoteCommand(['--opencode', 'fix-flaky', '--legacy', '--model', 'test']);
 
 	assert.match(command, /tmux new -As fix-flaky-opencode/);
 	assert.match(command, /unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN/);
