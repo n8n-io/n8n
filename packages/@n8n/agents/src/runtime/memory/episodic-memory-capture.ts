@@ -35,13 +35,23 @@ import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime
 export const FLAG_MEMORY_TOOL_NAME = 'flag_memory';
 const EPISODIC_MEMORY_CAPTURE_MAX_ATTEMPTS = 3;
 
-const captureKinds = ['explicit_remember', 'preference', 'decision', 'fact', 'correction'] as const;
+const captureKinds = [
+	'explicit_remember',
+	'preference',
+	'decision',
+	'fact',
+	'correction',
+	'resolution',
+	'request',
+] as const;
 
 const FlagMemoryInputSchema = z.object({
 	content: z
 		.string()
 		.min(1)
-		.describe('Concise durable statement that names the person, company, or account it is about.'),
+		.describe(
+			'Concise durable statement that names the person, company, account, or case it is about.',
+		),
 	evidence: z
 		.string()
 		.min(1)
@@ -51,7 +61,7 @@ const FlagMemoryInputSchema = z.object({
 	kind: z
 		.enum(captureKinds)
 		.describe(
-			'explicit_remember when the user asked you to remember it; otherwise the closest category.',
+			'explicit_remember: the user asked you to remember it; use it even when another kind also fits. preference: how the user wants things done. decision: a choice the user made or rejected. fact: a stable detail about the user, account, or their setup. correction: replaces something stated earlier. resolution: the root cause and the fix that closed a case. request: a change the user asked for that takes effect later.',
 		),
 });
 

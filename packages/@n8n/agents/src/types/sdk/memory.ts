@@ -83,7 +83,9 @@ export type EpisodicMemoryCaptureKind =
 	| 'preference'
 	| 'decision'
 	| 'fact'
-	| 'correction';
+	| 'correction'
+	| 'resolution'
+	| 'request';
 
 export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed';
 
