@@ -10,7 +10,8 @@ export interface BadgeProps {
 		| 'ghost'
 		| 'warning'
 		| 'danger'
-		| 'success';
+		| 'success'
+		| 'info';
 	size?: BadgeSize;
 	clickable?: boolean;
 	disabled?: boolean;
@@ -18,6 +19,6 @@ export interface BadgeProps {
 	trailingIcon?: IconName;
 }
 
-export const BADGE_SIZE = ['xsmall', 'small', 'medium', 'large', 'xlarge'] as const;
+export const BADGE_SIZE = ['xxsmall', 'xsmall', 'small', 'medium', 'large', 'xlarge'] as const;
 
 export type BadgeSize = (typeof BADGE_SIZE)[number];

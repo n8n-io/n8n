@@ -13,6 +13,7 @@ const BADGE_VARIANTS = [
 	'warning',
 	'danger',
 	'success',
+	'info',
 ] as const;
 
 const VARIANT_EXAMPLES = [
@@ -25,6 +26,7 @@ const VARIANT_EXAMPLES = [
 	{ variant: 'warning', label: 'Needs setup', icon: 'triangle-alert' },
 	{ variant: 'danger', label: 'Failed', icon: 'circle-x' },
 	{ variant: 'success', label: 'Active', icon: 'circle-check' },
+	{ variant: 'info', label: 'Information', icon: 'info' },
 ] as const;
 
 const ICON_EXAMPLES = [
