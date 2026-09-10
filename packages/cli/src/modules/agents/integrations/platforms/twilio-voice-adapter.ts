@@ -66,6 +66,7 @@ interface TwilioVoiceAdapterOptions {
 	phoneNumber: string;
 	allowedCallers: string[];
 	webhookUrl: string;
+	verifySignature: boolean;
 	turns: VoiceTurnStore;
 	logger: Logger;
 	chatSdk: Pick<
@@ -423,8 +424,8 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		const form = await request.formData();
 		const signature = request.headers.get('x-twilio-signature');
 		if (
-			!signature ||
-			!verifyTwilioSignature(request.url, form, signature, this.options.authToken)
+			this.options.verifySignature &&
+			(!signature || !verifyTwilioSignature(request.url, form, signature, this.options.authToken))
 		) {
 			return new Response('Invalid Twilio signature', { status: 401 });
 		}

@@ -88,7 +88,6 @@ const e164PhoneNumber = z
 
 export const AgentTwilioVoiceSettingsSchema = z
 	.object({
-		configurationMode: z.enum(['automatic', 'manual']),
 		phoneNumber: e164PhoneNumber,
 		allowedCallers: z
 			.array(e164PhoneNumber)

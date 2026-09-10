@@ -100,6 +100,7 @@ function createAdapter(turns: VoiceTurnStore) {
 		phoneNumber: PHONE_NUMBER,
 		allowedCallers: [CALLER],
 		webhookUrl: WEBHOOK_URL,
+		verifySignature: true,
 		turns,
 		logger: mock(),
 		chatSdk,
