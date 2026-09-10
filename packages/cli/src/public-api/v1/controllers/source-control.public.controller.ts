@@ -145,7 +145,7 @@ export class SourceControlPublicController {
 	async pullSourceControl(
 		req: AuthenticatedRequest,
 		res: Response,
-		@Body body: PullWorkFolderRequestDto,
+		@Body({ required: true }) body: PullWorkFolderRequestDto,
 	): Promise<void> {
 		// Writes the response directly preserving migrated endpoints contract
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {

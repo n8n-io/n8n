@@ -157,6 +157,19 @@ describe('Source Control (Public API)', () => {
 			expect(response.text).toBe('Git operation failed');
 		});
 
+		it('should return HTTP 415 for a request with no body and no Content-Type', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const pullSpy = vi.spyOn(Container.get(SourceControlService), 'pullWorkfolder');
+
+			const response = await testServer.publicApiAgentFor(owner).post(pullUrl);
+
+			expect(response.status).toBe(415);
+			expect(response.body).toEqual({ message: 'unsupported media type undefined' });
+			expect(pullSpy).not.toHaveBeenCalled();
+		});
+
 		it('should return HTTP 400 for an invalid body', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
