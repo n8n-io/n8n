@@ -34,6 +34,7 @@ import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgents
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { useNewWorkflowDocument } from '@/app/composables/useNewWorkflowDocument';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
@@ -58,7 +59,6 @@ import {
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
 } from '@/app/models/history';
-import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { getAutoSelectedCredential } from '@/features/credentials/credentials.utils';
@@ -258,6 +258,7 @@ export function useCanvasOperations() {
 	const i18n = useI18n();
 	const toast = useToast();
 	const workflowHelpers = useWorkflowHelpers();
+	const { initializeNewWorkflowDocument } = useNewWorkflowDocument();
 	const nodeHelpers = useNodeHelpers();
 	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
 	const {
@@ -3511,10 +3512,8 @@ export function useCanvasOperations() {
 	}
 
 	async function importTemplate({
-		name,
 		workflow,
 	}: {
-		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
 	}) {
 		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
@@ -3527,13 +3526,6 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		const workflowData = await workflowsApi.getNewWorkflowData(
-			rootStore.restApiContext,
-			name,
-			projectsStore.currentProjectId,
-		);
-		workflowDocumentStore.value.setName(workflowData.name);
-		workflowDocumentStore.value.setHydrated(true);
 	}
 
 	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {
@@ -3743,7 +3735,8 @@ export function useCanvasOperations() {
 			workflowsStore.setWorkflowId(route.params.workflowId);
 		}
 
-		await importTemplate({ name: data.name, workflow: data.workflow });
+		await initializeNewWorkflowDocument({ name: data.name });
+		await importTemplate({ workflow: data.workflow });
 
 		workflowDocumentStore.value.addToMeta({ templateId: `${templateId}` });
 
@@ -3796,10 +3789,8 @@ export function useCanvasOperations() {
 			workflowsStore.setWorkflowId(route.params.workflowId);
 		}
 
-		await importTemplate({
-			name: workflow.name,
-			workflow,
-		});
+		await initializeNewWorkflowDocument({ name: workflow.name, parentFolderId });
+		await importTemplate({ workflow });
 
 		workflowDocumentStore.value.addToMeta({ templateId: `${templateId}` });
 
