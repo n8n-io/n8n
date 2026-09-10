@@ -81,8 +81,9 @@ export const INSPECTOR_SCRIPT_SOURCE = `(function () {
 		box.style.height = rect.height + 'px';
 	}
 
-	// The served document's own URL is always /apps/<namespace>/<app-relative
-	// path> — strip that prefix so the route is relative to the app itself
+	// The served document's own URL is /apps/<namespace>/<app-relative path>, or
+	// /apps-preview/<token>/<app-relative path> for a thread's live preview —
+	// strip that two-segment prefix so the route is relative to the app itself
 	// (what AppPreviewFrame's \`path\` prop and the app's own router.ts expect),
 	// not the serving path.
 	function appRelativeRoute() {

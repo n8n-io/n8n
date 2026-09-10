@@ -6,6 +6,7 @@ import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
+import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
 import type { App, AppVersion } from './apps.types';
 
@@ -863,6 +864,32 @@ describe('AppDetailsView', () => {
 			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
 
 			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		});
+
+		it('arms the inspector in the live frame and stages the picked element in the thread', async () => {
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+			const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), liveProps);
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+			const postMessage = vi.spyOn(iframe.contentWindow!, 'postMessage');
+			const element = { tagName: 'button', text: 'Submit', selector: '#go', route: '/clients' };
+
+			await userEvent.click(getByTestId('app-preview-inspect'));
+			iframe.dispatchEvent(new Event('load'));
+			postFromFrame(iframe, { source: 'n8nable', type: 'inspect:selected', element });
+			await waitAllPromises();
+
+			expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
+				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'inspect:disable' },
+			]);
+			expect(instanceAiStore.stageElementSelection).toHaveBeenCalledWith({
+				type: 'element',
+				appId: 'app-1',
+				...element,
+			});
+			expect(instanceAiStore.requestComposerFocus).toHaveBeenCalled();
+			expect(openAppArtifactThread).not.toHaveBeenCalled();
 		});
 
 		it('emits a diagnostic only for a valid message from its own frame', async () => {

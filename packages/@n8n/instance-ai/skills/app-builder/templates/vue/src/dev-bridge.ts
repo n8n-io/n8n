@@ -1,9 +1,10 @@
 import type { ErrorPayload } from 'vite';
 
 // Reports compile and runtime errors to the n8n editor that embeds the live
-// preview, so they reach the assistant with the user's next message. Loaded by
-// `vite dev` and by n8n's preview build (see main.ts); a publish build never
-// includes this file.
+// preview, so they reach the assistant with the user's next message, and loads
+// n8n's element picker. Loaded by `vite dev` and by n8n's preview build (see
+// main.ts); a publish build never includes this file — n8n splices the picker
+// into the served document instead.
 
 type PreviewDiagnostic = {
 	kind: 'vite-error' | 'uncaught';
@@ -27,6 +28,16 @@ const post = (diagnostic: PreviewDiagnostic): void => {
 };
 
 const clip = (value: string, max: number): string => value.slice(0, max);
+
+// Same tag n8n splices into a published document; the guard keeps one copy
+// should both ever meet.
+const INSPECTOR_SCRIPT_SRC = '/apps-inspector.js';
+if (!document.querySelector(`script[src="${INSPECTOR_SCRIPT_SRC}"]`)) {
+	const inspector = document.createElement('script');
+	inspector.src = INSPECTOR_SCRIPT_SRC;
+	inspector.defer = true;
+	document.head.appendChild(inspector);
+}
 
 // The dev server's base is the preview's capability URL; script URLs in file
 // names and stack frames must not carry it into the reported diagnostics.

@@ -49,4 +49,61 @@ describe('AppPreviewFrame', () => {
 			'/apps-preview/tok/?b=3',
 		);
 	});
+
+	describe('messages from the frame', () => {
+		const diagnostic = {
+			source: 'n8n-app-preview',
+			v: 1,
+			at: '2026-09-08T10:00:00.000Z',
+			kind: 'uncaught',
+			message: 'boom',
+		};
+		const selection = {
+			source: 'n8nable',
+			type: 'inspect:selected',
+			element: { tagName: 'button', text: 'Submit', selector: '#go', route: '/clients' },
+		};
+
+		function post(iframe: HTMLIFrameElement, data: unknown, source?: MessageEventSource) {
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data,
+					origin: 'null',
+					source: source ?? iframe.contentWindow,
+				}),
+			);
+		}
+
+		it('emits a diagnostic for the dev bridge and a selection for the inspector', () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { namespace: 'greeter', liveUrl: '/apps-preview/tok/' },
+			});
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+
+			post(iframe, diagnostic);
+			post(iframe, selection);
+
+			expect(emitted('diagnostic')).toEqual([
+				[{ at: '2026-09-08T10:00:00.000Z', kind: 'uncaught', message: 'boom' }],
+			]);
+			expect(emitted('element-selected')).toEqual([[selection.element]]);
+		});
+
+		it('ignores messages from other windows, other sources and other inspector types', () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { namespace: 'greeter', liveUrl: '/apps-preview/tok/' },
+			});
+			const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+
+			post(iframe, diagnostic, window);
+			post(iframe, selection, window);
+			post(iframe, { ...diagnostic, source: 'someone-else' });
+			post(iframe, { ...selection, type: 'inspect:enable' });
+			post(iframe, { ...diagnostic, source: 'n8nable' });
+			post(iframe, 'not an object');
+
+			expect(emitted('diagnostic')).toBeUndefined();
+			expect(emitted('element-selected')).toBeUndefined();
+		});
+	});
 });

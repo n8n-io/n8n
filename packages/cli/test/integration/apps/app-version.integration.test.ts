@@ -344,7 +344,9 @@ describe('PATCH /projects/:projectId/apps/:appId/active-version', () => {
 			activeVersionId: firstId,
 			hasUnpublishedChanges: true,
 		});
-		expect((await visitor.get('/apps/hello/').expect(200)).text).toBe('first');
+		expect((await visitor.get('/apps/hello/').expect(200)).text).toBe(
+			injectInspectorScript('first'),
+		);
 		const list = await authOwnerAgent
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions`)
 			.expect(200);
