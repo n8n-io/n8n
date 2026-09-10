@@ -15,33 +15,33 @@ ruleTester.run('no-unbounded-argument-spread', NoArgumentSpreadRule, {
 	invalid: [
 		{
 			code: 'fn(...deps)',
-			output: 'fn.apply(undefined, deps)',
-			errors: [{ messageId: 'replaceWithApply' }],
+			output: null, // no autofix: `.apply` fails at the same argument-count limit
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 		{
 			code: 'obj.fn(...deps)',
-			output: 'obj.fn.apply(obj, deps)',
-			errors: [{ messageId: 'replaceWithApply' }],
+			output: null,
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 		{
 			code: 'instance = metadata.factory(...dependencies);',
-			output: 'instance = metadata.factory.apply(metadata, dependencies);',
-			errors: [{ messageId: 'replaceWithApply' }],
+			output: null,
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 		{
 			code: 'new Foo(...deps)',
-			output: 'Reflect.construct(Foo, deps)',
-			errors: [{ messageId: 'replaceWithReflect' }],
+			output: null, // no autofix: `Reflect.construct` fails at the same argument-count limit
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 		{
 			code: 'someFunction(a, ...deps)',
-			output: null, // multiple args — no fix
-			errors: [{ messageId: 'replaceWithApply' }],
+			output: null,
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 		{
 			code: 'new Bar(a, ...deps)',
 			output: null,
-			errors: [{ messageId: 'replaceWithReflect' }],
+			errors: [{ messageId: 'noUnboundedSpread' }],
 		},
 	],
 });
