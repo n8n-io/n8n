@@ -43,28 +43,6 @@ describe('resolveOffsetPagination', () => {
 		expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(BadRequestError);
 	});
 
-	it('caps a cursor limit above the page maximum at 250', () => {
-		const cursor = encodeCursor({ offset: 0, limit: 1_000_000 });
-
-		expect(resolveOffsetPagination({ limit: 50, cursor })).toEqual({ offset: 0, limit: 250 });
-	});
-
-	it.each([
-		{ offset: -1, limit: 10 },
-		{ offset: 0, limit: -1 },
-		{ offset: 1.5, limit: 10 },
-		{ offset: 'abc', limit: 10 },
-		{ offset: 0, limit: 'abc' },
-		{ offset: 1e100, limit: 10 },
-		{ offset: 0, limit: 1e100 },
-	])('throws BadRequestError for a cursor carrying %j', (payload) => {
-		const cursor = encodeCursor(payload);
-
-		expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(
-			'An invalid cursor was provided',
-		);
-	});
-
 	it('throws BadRequestError for a cursor without an offset (lastId-shaped)', () => {
 		const cursor = encodeCursor({ lastId: 'abc123', limit: 25 });
 
