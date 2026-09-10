@@ -51,9 +51,6 @@
         "application/json"
       ]
     },
-    "cookies": {
-      "__cf_bm": "KtOOrixs61KGwrQonILrhD5fCG320D_.cZMRaRco1rA-1789051937.291413-1.0.1.1-c5YKDH5i43thk_vvYMHsHyfds0kLYmYmIqNJKDxMT6GTL59cm6sLBSGYjyrINeQwRT2J_eOLLTfEFE3q9PXD6iGqz_96losmmBKf0GzwDnbHvbxM.cFvNtzAghNd9H9V"
-    },
     "body": {
       "contentType": "application/json",
       "type": "JSON",
