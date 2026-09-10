@@ -43,7 +43,21 @@ export const useExecutionDebugging = () => {
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const execution = await workflowsStore.getExecution(executionId);
+		let execution = await workflowsStore.getExecution(executionId);
+
+		// getExecution sends no redaction flag, so it always returns the policy-redacted
+		// payload. Pinning that would overwrite nodes with empty placeholder items.
+		// Only fetch again when the user may reveal: an unpermitted reveal request fails
+		// and records an audit event.
+		if (execution?.data?.redactionInfo?.isRedacted && execution.data.redactionInfo.canReveal) {
+			const unredacted = await workflowsStore.fetchExecutionDataById(executionId, {
+				redactExecutionData: false,
+			});
+			if (unredacted?.data) {
+				execution = unredacted;
+			}
+		}
+
 		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {

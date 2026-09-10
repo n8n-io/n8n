@@ -33,6 +33,14 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('auto-refresh-checkbox');
 	}
 
+	/**
+	 * The debug button. The test id sits on the inner label, so step up to the
+	 * button element to assert its state.
+	 */
+	getDebugButton(): Locator {
+		return this.page.getByTestId('execution-debug-button').locator('xpath=ancestor::button');
+	}
+
 	getPreview(): Locator {
 		return this.page.getByTestId('execution-preview-host');
 	}
