@@ -1,6 +1,6 @@
 import type { DescribedBinding } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 
@@ -9,6 +9,8 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IWorkflowDb } from '@/Interface';
 
 import AppConnectionsModal from '../AppConnectionsModal.vue';
@@ -35,11 +37,12 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'header'],
+		props: ['open', 'size', 'header', 'description'],
 		emits: ['update:open'],
 		template: `
 			<div v-if="open" role="dialog">
 				<h2>{{ header }}</h2>
+				<p v-if="description">{{ description }}</p>
 				<slot />
 			</div>
 		`,
@@ -84,6 +87,21 @@ const echoBinding: DescribedBinding = {
 	outputSource: { kind: 'unknown' },
 };
 
+const dataTables = [
+	{ id: 'dt-1', name: 'Orders', columns: [] },
+	{ id: 'dt-2', name: 'Customer Notes', columns: [] },
+] as unknown as DataTable[];
+
+const ordersBinding: DescribedBinding = {
+	key: 'orders',
+	kind: 'dataTable',
+	dataTableId: 'dt-1',
+	name: 'Orders',
+	permissions: ['read', 'write'],
+	columns: [],
+	row: { type: 'object' },
+};
+
 const renderModal = createComponentRenderer(AppConnectionsModal, {
 	props: { modalName: APP_CONNECTIONS_MODAL_KEY, data: { projectId: 'proj-1', appId: 'app-1' } },
 });
@@ -100,19 +118,27 @@ function rowByTitle(rows: HTMLElement[], title: string) {
 	return row;
 }
 
+async function openDataTab() {
+	await userEvent.click(screen.getByRole('tab', { name: /^Data/ }));
+}
+
 describe('AppConnectionsModal', () => {
 	let appsStore: MockedStore<typeof useAppsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
+	let dataTableStore: MockedStore<typeof useDataTableStore>;
 
 	beforeEach(() => {
 		createTestingPinia();
 		appsStore = mockedStore(useAppsStore);
-		appsStore.bindings = [echoBinding];
+		appsStore.bindings = [echoBinding, ordersBinding];
 		appsStore.addBinding.mockResolvedValue(undefined);
 		appsStore.deleteBinding.mockResolvedValue(undefined);
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalStateById = { [APP_CONNECTIONS_MODAL_KEY]: { open: true } };
 		mockedStore(useWorkflowsListStore).searchWorkflows.mockResolvedValue(workflows);
+		dataTableStore = mockedStore(useDataTableStore);
+		dataTableStore.dataTables = dataTables;
+		dataTableStore.fetchDataTables.mockResolvedValue(undefined);
 		showMessage.mockReset();
 		showError.mockReset();
 		confirm.mockReset();
@@ -151,7 +177,7 @@ describe('AppConnectionsModal', () => {
 	it('narrows the rows to the search query', async () => {
 		const { getAllByTestId, getByPlaceholderText } = await renderOpen();
 
-		await fireEvent.update(getByPlaceholderText('Search workflows...'), 'slack');
+		await fireEvent.update(getByPlaceholderText('Search...'), 'slack');
 
 		await waitFor(() => {
 			const rows = getAllByTestId('tools-connection-row');
@@ -236,5 +262,120 @@ describe('AppConnectionsModal', () => {
 		await userEvent.click(within(survey).getByTestId('tools-connection-row-main'));
 
 		expect(appsStore.addBinding).not.toHaveBeenCalled();
+	});
+
+	it('shows an icon on each tab', async () => {
+		const { getByTestId } = await renderOpen();
+
+		expect(getByTestId('tab-workflows').querySelector('[data-icon="workflow"]')).not.toBeNull();
+		expect(getByTestId('tab-data').querySelector('[data-icon="table"]')).not.toBeNull();
+	});
+
+	it('loads the project data tables and lists them on the Data tab with their connection state', async () => {
+		const { getAllByTestId } = await renderOpen();
+
+		expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('proj-1', 1, 250);
+
+		await openDataTab();
+
+		const rows = getAllByTestId('tools-connection-row');
+		expect(rows).toHaveLength(2);
+
+		const orders = rowByTitle(rows, 'Orders');
+		expect(orders.querySelector('[data-icon="table"]')).not.toBeNull();
+		expect(within(orders).getByTestId('tools-connection-row-connected')).toBeInTheDocument();
+
+		const notes = rowByTitle(rows, 'Customer Notes');
+		expect(within(notes).queryByTestId('tools-connection-row-connected')).not.toBeInTheDocument();
+	});
+
+	it('narrows the data tables to the search query', async () => {
+		const { getAllByTestId, getByPlaceholderText } = await renderOpen();
+
+		await openDataTab();
+		await fireEvent.update(getByPlaceholderText('Search...'), 'notes');
+
+		await waitFor(() => {
+			const rows = getAllByTestId('tools-connection-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toHaveTextContent('Customer Notes');
+		});
+	});
+
+	async function openAccessDialog() {
+		const rendered = await renderOpen();
+		await openDataTab();
+		const notes = rowByTitle(rendered.getAllByTestId('tools-connection-row'), 'Customer Notes');
+		await userEvent.click(within(notes).getByTestId('tools-connection-row-main'));
+		return rendered;
+	}
+
+	it('asks for the access level before connecting a data table', async () => {
+		const { getByTestId, getByRole, getByText, queryByTestId } = await openAccessDialog();
+
+		expect(getByTestId('app-data-table-access-dialog')).toBeInTheDocument();
+		expect(getByRole('heading', { name: 'Connect "Customer Notes"' })).toBeInTheDocument();
+		expect(getByText('Anyone who can open the app gets this access.')).toBeInTheDocument();
+		expect(getByRole('checkbox', { name: 'Read' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByTestId('app-data-table-access-connect')).toBeEnabled();
+		expect(queryByTestId('tools-connection-modal')).not.toBeInTheDocument();
+		expect(appsStore.addBinding).not.toHaveBeenCalled();
+	});
+
+	it('disables Connect when neither access level is checked', async () => {
+		const { getByTestId, getByRole } = await openAccessDialog();
+
+		await userEvent.click(getByRole('checkbox', { name: 'Read' }));
+		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
+
+		expect(getByTestId('app-data-table-access-connect')).toBeDisabled();
+	});
+
+	it('connects a data table with the chosen permissions under a derived key', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await openAccessDialog();
+
+		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
+		await userEvent.click(getByTestId('app-data-table-access-connect'));
+
+		expect(appsStore.addBinding).toHaveBeenCalledWith('proj-1', 'app-1', {
+			key: 'customer-notes',
+			kind: 'dataTable',
+			dataTableId: 'dt-2',
+			permissions: ['read'],
+		});
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Connected. Ask the assistant to use "Customer Notes" in the app.',
+			type: 'success',
+		});
+		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
+		expect(getByTestId('tools-connection-modal')).toBeInTheDocument();
+	});
+
+	it('connects nothing when the access dialog is cancelled', async () => {
+		const { getByRole, queryByTestId, getByTestId } = await openAccessDialog();
+
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+		expect(appsStore.addBinding).not.toHaveBeenCalled();
+		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
+		expect(getByTestId('tools-connection-modal')).toBeInTheDocument();
+	});
+
+	it('disconnects a connected data table after confirmation', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
+		const { getAllByTestId, queryByTestId } = await renderOpen();
+
+		await openDataTab();
+		const orders = rowByTitle(getAllByTestId('tools-connection-row'), 'Orders');
+		await userEvent.click(within(orders).getByTestId('tools-connection-row-main'));
+
+		expect(confirm).toHaveBeenCalledWith(
+			expect.stringContaining('disconnect the "Orders" table'),
+			'Disconnect data table',
+			expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+		);
+		expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'orders');
+		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
 	});
 });
