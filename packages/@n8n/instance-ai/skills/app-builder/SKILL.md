@@ -5,9 +5,9 @@ description: >-
   change an app, dashboard, form, landing page, website, UI, or frontend that
   people open in a browser — "build me a hello world app", "make a dashboard
   for X", "add a form page", "make the heading red". Covers the whole loop:
-  create the app, edit its source files in the workspace while the live
-  preview follows, fix the preview errors, and publish only when the user asks
-  for it. Not for n8n workflows, agents, or data tables on their own.
+  create the app, edit its source files in the workspace, build, open the
+  URL, read the build log, fix, build again. Not for n8n workflows, agents,
+  or data tables on their own.
 recommended_tools:
   - apps
   - workspace_write_file
@@ -21,83 +21,60 @@ recommended_tools:
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
 source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-these actions: `create` registers an app and installs its dependencies,
-`publish` builds the current source into the served version after the user
-confirms, `restore` brings the stored source back into a workspace that does
-not have it, `add-component` copies a component from this skill's own catalog
-(built on `@ark-ui/vue`) into an app — `create` uses it for the two the
-starter page needs, and every other component goes through it too — and
-`bind`/`unbind`/`bindings` manage the n8n workflows the app may call (see
-"Calling n8n workflows").
-
-The user sees a live preview of the source in the workspace. n8n runs a dev
-server for it: every file you write appears in the preview by itself (hot
-module reload), without a build. The preview is the source of truth while you
-work; publishing only changes what `/apps/<namespace>/` serves. The user can
-also publish with the Publish button above the preview, without you.
+these actions: `create` registers an app, `build` turns the source into a
+published version, `restore` brings the stored source back into a workspace
+that does not have it, `add-component` copies a component from this skill's
+own catalog (built on `@ark-ui/vue`) into an app — `create` uses it for the
+two the starter page needs, and every other component goes through it too —
+and `bind`/`unbind`/`bindings` manage the n8n workflows and data tables the
+app may use (see "Connecting n8n workflows and data tables").
 
 ## The loop
 
-1. `apps(action="create", name)` once per app. Pass `namespace`
+1. `apps(action="create", projectId, name)` once per app. Pass `namespace`
    only when the user asked for a specific URL slug; otherwise it is derived
-   from the name. The result carries `app.id`, `app.namespace`,
-   `workspacePath` (the absolute app directory) and `installed`. If the
-   result is `{ denied, reason }` the namespace is taken: pick another and
-   call again. `installed: false` comes with a `warnings` entry that holds the
-   `npm install` log; fix the cause, then run `npm install` in the app
-   directory with `workspace_execute_command`.
-   Pass `projectId` only when the user names a project; otherwise the app
-   lands in the project bound to this conversation, else the personal one.
+   from the name. The result carries `app.id`, `app.namespace` and
+   `workspacePath` (the absolute app directory). If the result is
+   `{ denied, reason }` the namespace is taken: pick another and call again.
+   You need a `projectId`: use the one bound to this conversation, or
+   `workspace(action="list-projects")` and ask when there is more than one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
    `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
-   layout. Do not start a dev server and do not run a build to check your
-   work: the live preview updates on its own. Never run a build to check your
-   work. Tell the user what changed and stop; the preview shows it.
-3. Preview errors (compile errors, uncaught exceptions) arrive as context on
-   the user's next message. Fix them before anything else. A
-   `binding_not_found` or `invalid_input` error from `n8n.workflows.run`
-   means the key is not bound or the input does not match the workflow's
-   fields: read the `bind` result or call `apps(action="bindings", appId)`,
-   then fix the call or re-bind. You cannot see the page: do not claim visual
-   results.
-4. Publish only when the user asks to publish, deploy, share or go live:
-   `apps(action="publish", appId)`. The user sees a confirmation card first
-   ("Publish <name> to /apps/<namespace>/") and can approve, decline, or
-   approve for the rest of the conversation. `{ denied, reason:
-   "user_declined" }` means they declined: stop, do not call it again unasked.
-   On approval n8n snapshots your current edits, runs `npm run build` in its
-   own build sandbox and packages `dist/`. Success returns `url`, `versionId`,
-   `namespace`, `projectId`; it stores a version and updates
-   `/apps/<namespace>/`. Give the user the `url`.
-5. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
-   output), fix the cause, publish again. Do not retry the same publish
-   without a change.
-   - `snapshot` or `restore`: n8n could not capture or unpack your source;
-     `message` says why. Usually transient: try once more.
+   layout. Do not run `npm run dev`; there is no dev server.
+3. `apps(action="build", appId)`. Success returns `url`, `versionId`,
+   `namespace`, `projectId`. Give the user the `url`. You cannot see the
+   page: after a styling change, grep the built CSS in `dist/assets/` for the
+   class you added to confirm it compiled, and do not claim visual results.
+4. On `{ error, stage, message, log }` read `log` (last 4 KB of the build
+   output), fix the cause, build again. Do not retry the same build without a
+   change.
    - `install`: `npm install` failed. Check `package.json` dependency names
      and versions; the sandbox has npm and network access to the registry.
-   - `build`: `npm run build` exited non-zero. Missing imports and
-     syntax errors show up here. Exit code 134 or 137 means the build ran
-     out of memory (the sandbox has 512 MiB): drop the heavy dependency, do
-     not retry with a bigger heap.
-   - `check`: the output is not a servable static site: `dist/index.html`
+   - `build`: the build command exited non-zero. Type errors (`vue-tsc`
+     runs first), missing imports and syntax errors show up here. A type
+     error on `n8n.workflows.run` or `n8n.tables.<key>` means the key or a
+     field is not in `src/n8n-bindings.d.ts`: read the `bind` result or call
+     `apps(action="bindings", appId)`, then fix the call or re-bind. Exit
+     code 134 or 137 means the build ran out of memory (the sandbox has
+     512 MiB): drop the heavy dependency, do not retry with a bigger heap.
+   - `check`: the output is not a servable static site: `<outDir>/index.html`
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
+5. Change requests on an existing app: edit, then `build` again. Every build
+   is a new version and becomes the live one.
 
 For an already bound app (the conversation names an app id) skip step 1.
-Before you edit, confirm that `apps/<namespace>/` exists in this workspace
-(`workspace_execute_command` with `ls apps/<namespace>`). If it exists, just
-edit: n8n restored it when the user opened the preview, and its `npm install`
-may still be running. Call `apps(action="restore", appId)` only when it is
-missing: it unpacks the newest stored source into `apps/<namespace>/` (with the
-SDK the app was created with), refreshes `src/n8n-bindings.d.ts` from the
-current bindings, installs the dependencies and returns `workspacePath`,
-`versionId` and `installed`. A directory that holds only that generated file
-(from a `bind` before the restore) counts as empty. n8n stores a snapshot of
-the source after every turn, so this is your latest work, not only the last
-published build. Then continue with step 2. `{ denied, reason }` means there
-is nothing to restore (no source stored yet) or the directory already has
-files; read `reason`.
+Before you edit or build, confirm that `apps/<namespace>/` exists in this
+workspace (`workspace_execute_command` with `ls apps/<namespace>`). If it does
+not, call `apps(action="restore", appId)`: it unpacks the source of the
+latest published version into `apps/<namespace>/` (with the SDK the app was
+created with), refreshes `src/n8n-bindings.d.ts` from the current bindings,
+and returns `workspacePath` and `versionId`. A directory that holds only that
+generated file (from a `bind` before the restore) counts as empty. Then
+continue with step 2. The first build after a restore
+installs dependencies again (about 25 s). `{ denied, reason }` means there is
+nothing to restore (no version yet) or the directory already has files; read
+`reason`.
 
 ## Rules
 
@@ -110,10 +87,10 @@ files; read `reason`.
   `createWebHistory(import.meta.env.BASE_URL)`. Do not hardcode `/`.
 - Default to the Vue template. Use another stack only when the user asks for
   it; then follow `references/frameworks.md` for the static-export and
-  base-path settings. Publishing always runs `npm run build` and serves
-  `dist/`, so the `build` script must write the static site there.
-- The build sandbox has 512 MiB of memory. Keep type checking out of the
-  build script.
+  base-path settings and pass matching `command`/`outDir` to `build`.
+- The build runs in 512 MiB of memory. The Vue template's build is
+  `vue-tsc --noEmit && vite build` and fits (about 300 MiB); do not add
+  other checkers to the build script.
 - Look: build UI from this skill's own catalog components (`Button`, `Input`,
   `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and
@@ -128,15 +105,18 @@ files; read `reason`.
   outside the curated catalog), styled with the same utilities. Only build a
   different look when the user asks for one — and point them at the app's
   Theme tab for color/font/radius changes instead of hardcoding a look.
-- Keep dependencies few. Adding one means you must run `npm install` in the
-  app directory yourself (the dev server does not; publishing installs on its
-  own), and every dependency costs build memory.
+- Keep dependencies few. Adding one means a cold `npm install` on the next
+  build, and every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
-## Calling n8n workflows
+## Connecting n8n workflows and data tables
 
-An app calls an n8n workflow only through `@n8n/app-sdk` and only by a key you
-bound first. Bind before you write the code that calls it.
+An app calls an n8n workflow or reads a data table only through `@n8n/app-sdk`
+and only by a key you bound first. Bind before you write the code that uses it.
+Workflows and data tables go in separate `bind` calls; each call asks the user
+for approval with its own card.
+
+### Workflows
 
 1. Find the workflow. It must be published and start with the trigger "When
    Executed by Another Workflow" (`n8n-nodes-base.executeWorkflowTrigger`) in
@@ -196,29 +176,74 @@ bound first. Bind before you write the code that calls it.
    it is still running. See `references/app-sdk.md` for the full API and the
    error codes.
 4. `apps(action="unbind", appId, key)` removes a binding;
-   `apps(action="bindings", appId)` lists them. Both keep
-   `src/n8n-bindings.d.ts` current.
+   `apps(action="bindings", appId)` lists them. Both rewrite
+   `src/n8n-bindings.d.ts` from the current bindings.
+
+### Data tables
+
+Use a data table when the app stores rows that must survive a reload (tasks,
+entries, settings).
+
+1. Find the table in the app's project with `data-tables(action="list",
+   projectId)`. If it does not exist, create it first:
+   `data-tables(action="create", name, projectId, columns=[{ name, type }])`
+   with column types `string`, `number`, `boolean` or `date`. The result
+   carries `table.id`.
+2. `apps(action="bind", appId, bindings=[{ key: "tasks", kind: "dataTable",
+   dataTableId, permissions: ["read", "write"] }])`. Request `write` only
+   when the app inserts, updates or deletes rows; a display needs `read`
+   only. The result lists the binding with `name`, `columns` and `row` (the
+   JSON Schema of one row) and rewrites `src/n8n-bindings.d.ts` with
+   `tables.<key>.row`: `{ id: number; createdAt: string; updatedAt: string;
+   <column>: <type> | null }`, where a `date` column is an ISO string.
+   `{ denied, reason }` means the table is in another project, the user lacks
+   access to it, or they said no: read `reason`.
+3. Call it from the app:
+
+   ```ts
+   import { n8n } from '@n8n/app-sdk';
+
+   const { data: tasks } = await n8n.tables.tasks.list({ take: 250, sortBy: 'createdAt:desc' });
+   const { data: [created] } = await n8n.tables.tasks.insert([{ title, status: 'todo' }]);
+   await n8n.tables.tasks.update({ filters: [{ columnName: 'id', value: task.id }] }, { status: 'done' });
+   await n8n.tables.tasks.delete({ filters: [{ columnName: 'id', value: task.id }] });
+   ```
+
+   `list` returns `{ count, data }` with at most 250 rows per call (`take`,
+   default 10; page with `skip`). `insert`, `update` and `delete` return the
+   affected rows as `{ data }`. Errors are `N8nAppError` as for workflows:
+   `permission_denied` (403) when the binding lacks `write`,
+   `table_not_found` (404) when the table was deleted, `invalid_input` (400)
+   for a value or filter the columns reject. See `references/app-sdk.md`.
+4. After `data-tables(action="add-column" | "delete-column" |
+   "rename-column")` on a bound table, call `apps(action="bindings", appId)`
+   before the next build: it rewrites `src/n8n-bindings.d.ts` from the
+   current columns.
 
 Rules:
 
 - Only bound keys. Never `fetch` `/rest`, `/webhook`, `/api`, or
-  `/apps/<namespace>/api` by hand; never put a workflow id in the app.
+  `/apps/<namespace>/api` by hand; never put a workflow or table id in the
+  app.
 - `src/n8n-bindings.d.ts` and `vendor/n8n-app-sdk.tgz` are generated by
-  `apps`. Do not edit them; re-run `bind` to change the types.
-- The workflow runs as the app's project, with the project's credentials.
-  All apps are public: a bound workflow is callable by anyone with the app
-  URL. Do not bind a workflow the user would not expose.
+  `apps`. Do not edit them; re-run `bind` or `bindings` to change the types.
+- The workflow runs, and the table is read and written, as the app's
+  project, with the project's credentials. All apps are public: a bound
+  workflow is callable, and a bound table is readable (and with `write`,
+  changeable), by anyone with the app URL. Do not bind a workflow or table
+  the user would not expose.
 - A passthrough trigger (no declared fields) accepts any input: the app
   cannot type-check it and the server does not validate it. Prefer triggers
   with declared fields; the `bind` result warns about each passthrough one.
 
 ## Who may open the app
 
-All apps are public: anyone with the URL opens the app and can run its bound
-workflows; `result.principal` is `null`. The runtime API is callable from the
-app's own page only (CORS; another site's page gets `403 forbidden_origin`).
-Like a public webhook, anyone who can reach the instance can call a bound
-workflow, so bind only workflows that may be public.
+All apps are public: anyone with the URL opens the app and can use its bound
+workflows and tables; `result.principal` is `null`. The runtime API is
+callable from the app's own page only (CORS; another site's page gets
+`403 forbidden_origin`). Like a public webhook, anyone who can reach the
+instance can call a bound workflow or table, so bind only workflows and tables
+that may be public.
 
 ## Template
 
@@ -239,7 +264,7 @@ Layout after create:
 apps/<namespace>/
   AI_RULES.md              stack and conventions for this app
   index.html
-  package.json             scripts: build = vite build, typecheck = vue-tsc -b
+  package.json             scripts: build = vue-tsc --noEmit && vite build, typecheck = vue-tsc -b
   vite.config.ts           base: process.env.APP_BASE ?? '/'
   vendor/n8n-app-sdk.tgz   @n8n/app-sdk, written by create (do not edit)
   src/main.ts              style.css + theme-overrides.css + theme mode + router
@@ -249,7 +274,7 @@ apps/<namespace>/
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route
-  src/n8n-bindings.d.ts    types for n8n.workflows.run, written by bind (do not edit)
+  src/n8n-bindings.d.ts    types for n8n.workflows.run and n8n.tables, written by bind (do not edit)
   src/components/ui/       catalog components (button, switch from create; more via add-component)
   src/lib/utils.ts         cn() helper every component imports
 ```
