@@ -2,6 +2,8 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"noEmit": false,
+		// This emitting program must not reuse the typecheck program's build info file.
+		"incremental": false,
 		"declaration": true,
 		"emitDeclarationOnly": true,
 		"outDir": "dist",
