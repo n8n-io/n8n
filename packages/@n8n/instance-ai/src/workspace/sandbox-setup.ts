@@ -94,27 +94,49 @@ function resolveHostDepVersion(name: string): string {
 }
 
 /**
- * Flags for every `npm install` that runs inside a sandbox or a snapshot build.
+ * Flags shared by every `npm install` that runs inside a sandbox or a snapshot build.
  * `--no-audit` matters most: npm otherwise posts the whole tree to the registry's
  * advisories endpoint and blocks until it answers or its 300s fetch timeout expires,
  * so a slow registry turns a 10s install into minutes. Nobody reads the audit or
- * funding output in a sandbox. `--prefer-offline` lets a warm npm cache skip
- * freshness checks against the registry.
+ * funding output in a sandbox.
  */
-export const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offline';
+const NPM_INSTALL_BASE_FLAGS = '--ignore-scripts --no-audit --no-fund';
 
 /**
- * Same flags, but revalidate registry metadata. The snapshot bake populates the
- * sandbox's npm cache, so a sandbox created from an older snapshot holds a packument
- * that predates a newly published SDK version. `--prefer-offline` trusts that stale
- * packument and fails to resolve the pinned version. Used only to retry a failed
- * install, never as the first attempt.
+ * Install from the warm npm cache and skip freshness checks. Correct only where the
+ * cache was baked from the same pinned `PACKAGE_JSON`: the Daytona snapshot and the
+ * snapshot bake that produces it.
  */
-export const NPM_INSTALL_FLAGS_REFRESH_METADATA =
-	'--ignore-scripts --no-audit --no-fund --prefer-online';
+export const NPM_INSTALL_FLAGS = `${NPM_INSTALL_BASE_FLAGS} --prefer-offline`;
 
 /**
- * Budget for the whole install step, both attempts together. A healthy install runs
+ * Same flags, but revalidate registry metadata before resolving. A cache that predates
+ * the pinned SDK version holds a packument without it, and `--prefer-offline` trusts
+ * that stale packument and fails the install.
+ */
+export const NPM_INSTALL_FLAGS_REFRESH_METADATA = `${NPM_INSTALL_BASE_FLAGS} --prefer-online`;
+
+/**
+ * Pick install flags for the sandbox the workspace runs on. The two providers do not
+ * offer the same cache guarantee:
+ *
+ *   - Daytona installs from a snapshot that `SnapshotManager` bakes per n8n version,
+ *     running this same pinned `PACKAGE_JSON`. The cached packument therefore always
+ *     resolves the pinned SDK version, so take the fast offline path.
+ *   - n8n-sandbox installs against an image cache that can lag the pin, so refresh
+ *     metadata up front rather than pay a failed install first.
+ *
+ * Unknown providers get the refresh path: it works against any cache and only costs
+ * latency, while the offline path fails outright once the pin moves ahead.
+ */
+export function resolveNpmInstallFlags(workspace: SandboxWorkspace): string {
+	return workspace.sandbox?.provider === 'daytona'
+		? NPM_INSTALL_FLAGS
+		: NPM_INSTALL_FLAGS_REFRESH_METADATA;
+}
+
+/**
+ * Budget for the whole install step, every attempt together. A healthy install runs
  * in under a second and the sandbox gateway already cuts a single command at 30s, so
  * this is generous. It exists for the fault case: the sandbox terminates a command at
  * its own timeout and reports that as a non-zero exit code, so without a shared
@@ -236,7 +258,7 @@ export async function linkWorkspaceSdkIfEnabled(
 		.join(' ');
 	const install = await runInSandbox(
 		workspace,
-		`npm install ${tarballArgs} --no-save --force ${NPM_INSTALL_FLAGS}`,
+		`npm install ${tarballArgs} --no-save --force ${resolveNpmInstallFlags(workspace)}`,
 		root,
 	);
 	if (install.exitCode !== 0) {
@@ -502,11 +524,17 @@ export async function setupSandboxWorkspace(
 				abortSignal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
 			});
 
-		let npmResult = await install(NPM_INSTALL_FLAGS);
-		if (npmResult.exitCode !== 0 && Date.now() < deadline) {
-			// The cached packument can be too old to resolve the pinned SDK version. That is
-			// the one failure the cache causes, and refreshing metadata is the only way out,
-			// so retry once with whatever budget is left.
+		const flags = resolveNpmInstallFlags(workspace);
+		let npmResult = await install(flags);
+		if (
+			npmResult.exitCode !== 0 &&
+			flags !== NPM_INSTALL_FLAGS_REFRESH_METADATA &&
+			Date.now() < deadline
+		) {
+			// A snapshot older than the pinned SDK version holds a packument that cannot
+			// resolve it. That is the one failure the cache causes, and refreshing metadata
+			// is the only way out, so retry once with whatever budget is left. Providers
+			// that already refresh have nothing left to try.
 			context.logger.warn('Sandbox npm install failed against the cache; refreshing metadata', {
 				stderr: npmResult.stderr.slice(0, 500),
 				remainingMs: deadline - Date.now(),
