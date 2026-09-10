@@ -45,6 +45,7 @@ async function run(
 		logger,
 		threadId: 'thread',
 		buildMode: 'progressive',
+		promptVersion: 'progressive@1',
 		allowUserExecution: true,
 		beforeUserExecution,
 		events: [
@@ -85,7 +86,13 @@ describe('user execution during a conversation', () => {
 		expect(client.getExecution.mock.invocationCallOrder[0]).toBeLessThan(
 			client.sendMessage.mock.invocationCallOrder[0],
 		);
-		expect(client.sendMessage).toHaveBeenCalledWith('thread', 'I ran it', undefined, 'progressive');
+		expect(client.sendMessage).toHaveBeenCalledWith(
+			'thread',
+			'I ran it',
+			undefined,
+			'progressive',
+			'progressive@1',
+		);
 	});
 
 	it.each([{ events: [] }, { events: [saved('primary', false)] }])(
