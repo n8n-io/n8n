@@ -18,6 +18,7 @@ import type {
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -1275,6 +1276,8 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
+	/** Selected skill source for inline tool guidance. */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -1912,6 +1915,14 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+<<<<<<< HEAD
+=======
+	/** The selected prompt profile owns its skill and tool exclusions. */
+	promptConfiguration?: InstanceAiPromptConfiguration;
+	disabledToolNames?: ReadonlySet<string>;
+	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
+	setupPanelEnabled?: boolean;
+>>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;

@@ -1,5 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+<<<<<<< HEAD
 import type { AgentDbMessage } from '@n8n/instance-ai';
+=======
+import type { AgentDbMessage, Thread } from '@n8n/agents';
+>>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
@@ -62,6 +66,57 @@ function getToolInputs(message: AgentDbMessage | undefined): unknown[] {
 }
 
 describe('TypeORMAgentMemory', () => {
+	it('persists active skills without replacing other thread metadata or another agent state', async () => {
+		const thread = mock<InstanceAiThread>({
+			id: 'thread-1',
+			resourceId: 'user-1',
+			metadata: { titleSource: 'user' },
+		});
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValue(thread);
+		threadRepo.updateThread.mockImplementation(async ({ update }) => {
+			const current: Thread = {
+				id: thread.id,
+				resourceId: thread.resourceId,
+				metadata: thread.metadata ?? undefined,
+				createdAt: thread.createdAt,
+				updatedAt: thread.updatedAt,
+			};
+			const patch = update(current);
+			if (patch?.metadata !== undefined) thread.metadata = patch.metadata;
+			return { ...current, ...patch };
+		});
+		const { memory } = createMemory({ threadRepo });
+		const scope = { threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' };
+		await Promise.all([
+			memory.skillState.save(scope, ['workflow-builder']),
+			memory.skillState.save({ ...scope, agentName: 'reviewer' }, ['review']),
+		]);
+		await expect(memory.skillState.load(scope)).resolves.toEqual(['workflow-builder']);
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
+			'review',
+		]);
+		await expect(
+			memory.skillState.load({ ...scope, resourceId: 'other-user' }),
+		).resolves.toBeUndefined();
+		expect(thread.metadata).toHaveProperty('titleSource', 'user');
+
+		await memory.skillState.save(scope, []);
+		await expect(memory.skillState.load(scope)).resolves.toEqual([]);
+		await expect(memory.skillState.load({ ...scope, agentName: 'reviewer' })).resolves.toEqual([
+			'review',
+		]);
+	});
+
+	it('treats missing skill metadata as a legacy thread', async () => {
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		threadRepo.findOneBy.mockResolvedValue(mock<InstanceAiThread>({ metadata: null }));
+		const { memory } = createMemory({ threadRepo });
+		await expect(
+			memory.skillState.load({ threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' }),
+		).resolves.toBeUndefined();
+	});
+
 	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		messageRepo.find.mockResolvedValueOnce([makeMessageRow()]);

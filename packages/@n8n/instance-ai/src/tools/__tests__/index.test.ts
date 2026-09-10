@@ -1,6 +1,16 @@
+<<<<<<< HEAD
 import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
+=======
+import { mock } from 'vitest-mock-extended';
+
+import {
+	createOrchestrationTools,
+	createOrchestratorDomainTools,
+	getActiveOrchestratorDomainToolNames,
+} from '..';
+>>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
-import type { InstanceAiContext } from '../../types';
+import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
 
 vi.mock('../../parsers/structured-file-parser', () => ({
@@ -241,13 +251,10 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it('registers create-tasks but not the removed plan orchestration tool', () => {
-		const context = makeContext({
-			workflowTaskService: {},
-			domainContext: {},
-		} as Partial<InstanceAiContext>);
+	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+		const context = mock<OrchestrationContext>();
 
-		const orchestrationTools = createOrchestrationTools(context as never);
+		const orchestrationTools = createOrchestrationTools(context);
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);

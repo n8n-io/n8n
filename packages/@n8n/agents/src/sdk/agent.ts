@@ -1114,6 +1114,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
+			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
