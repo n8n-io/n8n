@@ -23,7 +23,7 @@ read-only binding answers writes with a `403 permission_denied` `N8nAppError`.
 `text()` shortcut that joins the reply; `resume({ runId, toolCallId, resumeData })`
 answers a `tool-call-suspended` event (an approval takes `{ approved }`);
 `messages()` returns `{ messages, openSuspensions }` for the visitor's session;
-`sessionId()` mints the session once and keeps it in `localStorage`.
+`sessionId()` mints the session once; the conversation survives a reload in the same tab.
 
 The app-builder skill in `@n8n/instance-ai` documents the API, the error codes
 and the generated `src/n8n-bindings.d.ts` that types the bound keys.

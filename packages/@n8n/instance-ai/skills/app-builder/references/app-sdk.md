@@ -218,8 +218,10 @@ const { messages, openSuspensions } = await n8n.agents.support.messages();
 
 - `chat(message, opts?)` → `AgentChat`: an `AsyncIterable<AgentSseEvent>`
   with `text(): Promise<string>`. One `AgentChat` is one request: iterate it
-  or call `text()`, not both. `opts`: `sessionId` (default `sessionId()`),
-  `signal`.
+  or call `text()`, not both. `text()` throws `N8nAppError` (`status: 200`,
+  `code` from the event or `execution_failed`) when the stream carries an
+  `error` event, so a failed turn never reads as an empty reply. `opts`:
+  `sessionId` (default `sessionId()`), `signal`.
 - The events are the same as the agent editor's stream: `text-start` /
   `text-delta` / `text-end` (the reply, `delta` per event), `reasoning-*`,
   `tool-input-*`, `tool-call` / `tool-execution-*` / `tool-result` (tool
@@ -241,13 +243,15 @@ const { messages, openSuspensions } = await n8n.agents.support.messages();
   { type: 'tool-call', toolName, input, output, state }] }`; render the `text`
   parts. `openSuspensions[]` is `{ toolCallId, runId, suspendPayload }` for
   every card that still waits: render it with `suspendPayload` as the `input`
-  above and `resume` from it. Call `messages()` on page load so a reload keeps
-  the conversation. An unknown session answers `{ messages: [],
-  openSuspensions: [] }`.
+  above and `resume` from it. Call `messages()` on page load so the
+  conversation survives a reload in the same tab. An unknown session answers
+  `{ messages: [], openSuspensions: [] }`.
 - `sessionId()` → the visitor's session for this agent, a uuid minted on
-  first use and kept in `localStorage` under
-  `n8n-app:<namespace>:agent:<key>:session`. Pass `opts.sessionId` only to
-  run several conversations side by side; remove the key to start over.
+  first use under the key `n8n-app:<namespace>:agent:<key>:session`. The
+  served page runs in a sandbox without `localStorage`, so the SDK keeps the
+  key in `window.name`: the conversation survives a reload in the same tab,
+  not a new tab. Pass `opts.sessionId` only to run several conversations side
+  by side.
 - `chat` throws `N8nAppError` `409 run_in_progress` when a card of this
   session still waits for an answer: call `messages()`, render
   `openSuspensions`, and `resume` before the next message.
