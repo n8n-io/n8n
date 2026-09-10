@@ -19,6 +19,7 @@ import type {
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -60,10 +61,13 @@ import type {
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
+	VerificationClaim,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
@@ -1325,6 +1329,8 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
+	/** Selected skill source for inline tool guidance. */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -1911,6 +1917,15 @@ export interface WorkflowTaskService {
 		runId: string,
 	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+	startVerification(
+		workItemId: string,
+		triggerNodeName?: string,
+	): Promise<WorkflowTriggerVerificationProgress | undefined>;
+	recordVerification(
+		workItemId: string,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
+	): Promise<VerificationClaim | undefined>;
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
@@ -1921,6 +1936,9 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** The selected prompt profile owns its skill and tool exclusions. */
+	promptConfiguration?: InstanceAiPromptConfiguration;
+	disabledToolNames?: ReadonlySet<string>;
 	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;
