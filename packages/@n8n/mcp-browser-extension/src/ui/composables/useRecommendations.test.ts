@@ -86,4 +86,31 @@ describe('useRecommendations', () => {
 		});
 		wrapper.unmount();
 	});
+
+	it('ignores a second pick while the first is still in flight', async () => {
+		const { wrapper, result } = mountComposable();
+		await flush();
+
+		let resolveSend!: (value: unknown) => void;
+		chromeMock.runtime.sendMessage.mockImplementation(
+			async (message: { type: string }) =>
+				await (message.type === 'sendRecommendation'
+					? new Promise((resolve) => {
+							resolveSend = resolve;
+						})
+					: Promise.resolve({ success: true })),
+		);
+		chromeMock.runtime.sendMessage.mockClear();
+
+		const firstSend = result().send(idea);
+		expect(result().isSending.value).toBe(true);
+
+		await result().send({ ...idea, id: '2' });
+		expect(chromeMock.runtime.sendMessage).toHaveBeenCalledTimes(1);
+
+		resolveSend(undefined);
+		await firstSend;
+		expect(result().isSending.value).toBe(false);
+		wrapper.unmount();
+	});
 });

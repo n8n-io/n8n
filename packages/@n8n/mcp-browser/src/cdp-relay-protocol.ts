@@ -14,7 +14,7 @@ import type {
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -79,12 +79,18 @@ export interface ExtensionCommands {
 	/** Deliver the automation ideas generated for the page the extension asked about. */
 	recommendationsReady: {
 		params: {
+			/** Echoes the requesting `recommendationsRequested` event, so a client juggling more
+			 *  than one in-flight request (e.g. the drawer and a connect window open at once) can
+			 *  route the answer back to the right caller. */
+			requestId: string;
 			ideas: BrowserAutomationIdea[];
 		};
 	};
 	/** Report whether an accepted idea started an Instance AI conversation. */
 	recommendationAcceptedResult: {
 		params: {
+			/** Echoes the requesting `recommendationAccepted` event — see `recommendationsReady`. */
+			requestId: string;
 			accepted: boolean;
 			threadUrl?: string;
 		};
@@ -145,6 +151,8 @@ export interface ExtensionEvents {
 	/** The popup opened on this page and wants automation ideas for it. */
 	recommendationsRequested: {
 		params: {
+			/** Unique per request, so more than one in-flight request can be told apart. */
+			requestId: string;
 			url: string;
 			pageText: string;
 		};
@@ -152,6 +160,8 @@ export interface ExtensionEvents {
 	/** The user picked one of the offered ideas to build. */
 	recommendationAccepted: {
 		params: {
+			/** Unique per request — see `recommendationsRequested`. */
+			requestId: string;
 			title: string;
 			description: string;
 			/** The page the idea was generated for, so Instance AI doesn't have to ask. */

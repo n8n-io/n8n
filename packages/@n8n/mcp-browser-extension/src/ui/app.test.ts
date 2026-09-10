@@ -26,26 +26,27 @@ const state = {
 	updateRecordingSetting: vi.fn(),
 };
 
+const recordingState = {
+	recording: ref(null),
+	errorMessage: ref(''),
+	start: vi.fn(),
+	stop: vi.fn(),
+	submit: vi.fn(),
+	discard: vi.fn(),
+	recordAgain: vi.fn(),
+	removeAction: vi.fn(),
+	maskAction: vi.fn(),
+};
+
 const recommendationsState = {
 	status: ref<'loading' | 'ready' | 'unavailable' | 'sent'>('unavailable'),
 	ideas: ref<Array<{ id: string; title: string; description: string }>>([]),
+	isSending: ref(false),
 	send: vi.fn(),
 };
 
 vi.mock('./composables/useConnection', () => ({ useConnection: () => state }));
-vi.mock('./composables/useRecording', () => ({
-	useRecording: () => ({
-		recording: ref(null),
-		errorMessage: ref(''),
-		start: vi.fn(),
-		stop: vi.fn(),
-		submit: vi.fn(),
-		discard: vi.fn(),
-		recordAgain: vi.fn(),
-		removeAction: vi.fn(),
-		maskAction: vi.fn(),
-	}),
-}));
+vi.mock('./composables/useRecording', () => ({ useRecording: () => recordingState }));
 vi.mock('./composables/useRecommendations', () => ({
 	useRecommendations: () => recommendationsState,
 }));
@@ -62,6 +63,7 @@ beforeEach(() => {
 	state.recordingSettings.screenshots = false;
 	recommendationsState.status.value = 'unavailable';
 	recommendationsState.ideas.value = [];
+	recommendationsState.isSending.value = false;
 });
 
 describe('connect prompt', () => {
@@ -137,6 +139,19 @@ describe('automation ideas', () => {
 
 		await wrapper.find('.idea-card').trigger('click');
 		expect(recommendationsState.send).toHaveBeenCalledWith(recommendationsState.ideas.value[0]);
+		expect(recordingState.start).not.toHaveBeenCalled();
+	});
+
+	it('disables the idea cards while a pick is in flight, so a second click cannot double-build', () => {
+		recommendationsState.status.value = 'ready';
+		recommendationsState.ideas.value = [
+			{ id: '1', title: 'Triage new issues', description: 'Label and route new GitHub issues' },
+		];
+		recommendationsState.isSending.value = true;
+
+		const wrapper = mount(App);
+
+		expect(wrapper.find('.idea-card').attributes('disabled')).toBeDefined();
 	});
 
 	it('falls back to the static instructional copy when unavailable', () => {

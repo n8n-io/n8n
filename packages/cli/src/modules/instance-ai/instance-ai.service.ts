@@ -11,7 +11,10 @@ import {
 	buildProxyHeaders,
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
+	browserAutomationIdeaSchema,
 	formatAttachmentSizeLimit,
+	MAX_BROWSER_AUTOMATION_IDEA_DESCRIPTION_LENGTH,
+	MAX_BROWSER_AUTOMATION_IDEA_TITLE_LENGTH,
 	MAX_BROWSER_AUTOMATION_IDEAS,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type BrowserAutomationIdea,
@@ -1617,9 +1620,18 @@ export class InstanceAiService {
 		return result.ok ? result.data.summary : undefined;
 	}
 
+	// Deliberately looser than `browserAutomationIdeaSchema` (the actual contract): zod
+	// validates this array all-or-nothing, so a tight bound here would throw away every idea
+	// in the batch over one slightly-long description. `suggestAutomationIdeas` normalizes
+	// each surviving idea down to the contract's real limits before returning it.
 	private static readonly automationIdeasSchema = z.object({
 		ideas: z
-			.array(z.object({ title: z.string().max(80), description: z.string().max(250) }))
+			.array(
+				z.object({
+					title: z.string().max(MAX_BROWSER_AUTOMATION_IDEA_TITLE_LENGTH),
+					description: z.string().max(250),
+				}),
+			)
 			.max(MAX_BROWSER_AUTOMATION_IDEAS),
 	});
 
@@ -1630,7 +1642,7 @@ export class InstanceAiService {
 		url: string;
 		pageText: string;
 	}): Promise<BrowserAutomationIdea[]> {
-		this.logger.debug('Generating automation ideas', { userId: input.userId, url: input.url });
+		this.logger.debug('Generating automation ideas', { userId: input.userId });
 		if (
 			!this.settingsService.isInstanceAiEnabled() ||
 			!this.settingsService.isBrowserUseEnabled() ||
@@ -1672,8 +1684,20 @@ export class InstanceAiService {
 			});
 			return [];
 		}
-		this.logger.debug('Generated automation ideas', { count: result.data.ideas.length });
-		return result.data.ideas.map((idea) => ({ id: randomUUID(), ...idea }));
+		// Normalize each idea down to the actual `BrowserAutomationIdea` contract, then validate
+		// against it — trims whitespace and truncates an overlong description rather than
+		// rejecting the whole batch, but still drops an idea that comes out empty.
+		const ideas = result.data.ideas
+			.map((idea) => ({
+				id: randomUUID(),
+				title: idea.title.trim(),
+				description: idea.description
+					.trim()
+					.slice(0, MAX_BROWSER_AUTOMATION_IDEA_DESCRIPTION_LENGTH),
+			}))
+			.filter((idea) => browserAutomationIdeaSchema.safeParse(idea).success);
+		this.logger.debug('Generated automation ideas', { count: ideas.length });
+		return ideas;
 	}
 
 	/** Start a new Instance AI conversation from an idea the user picked in the extension —

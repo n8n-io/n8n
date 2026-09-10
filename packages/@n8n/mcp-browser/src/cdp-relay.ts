@@ -946,24 +946,37 @@ export class CDPRelayServer {
 				if (!parsed.success) return;
 				this.onRecordingScreenshotCaptured?.(eventParams.recordingId, parsed.data);
 			} else if (method === 'recommendationsRequested') {
-				const { url, pageText } = params as ExtensionEvents['recommendationsRequested']['params'];
-				if (!this.onRecommendationsRequested) return;
+				const { requestId, url, pageText } =
+					params as ExtensionEvents['recommendationsRequested']['params'];
 				const connection = this.extensionConn;
+				if (!this.onRecommendationsRequested) {
+					void connection?.send('recommendationsReady', { requestId, ideas: [] }).catch(() => {});
+					return;
+				}
 				void this.onRecommendationsRequested(url, pageText)
 					.then(async (ideas) => {
-						await connection?.send('recommendationsReady', { ideas });
+						await connection?.send('recommendationsReady', { requestId, ideas });
 					})
 					.catch(async () => {
 						log.error('Could not generate automation ideas');
-						await connection?.send('recommendationsReady', { ideas: [] }).catch(() => {});
+						await connection
+							?.send('recommendationsReady', { requestId, ideas: [] })
+							.catch(() => {});
 					});
 			} else if (method === 'recommendationAccepted') {
-				const idea = params as ExtensionEvents['recommendationAccepted']['params'];
-				if (!this.onRecommendationAccepted) return;
+				const { requestId, ...idea } =
+					params as ExtensionEvents['recommendationAccepted']['params'];
 				const connection = this.extensionConn;
+				if (!this.onRecommendationAccepted) {
+					void connection
+						?.send('recommendationAcceptedResult', { requestId, accepted: false })
+						.catch(() => {});
+					return;
+				}
 				void this.onRecommendationAccepted(idea)
 					.then(async ({ threadUrl }) => {
 						await connection?.send('recommendationAcceptedResult', {
+							requestId,
 							accepted: true,
 							threadUrl,
 						});
@@ -971,7 +984,7 @@ export class CDPRelayServer {
 					.catch(async () => {
 						log.error('Could not start a conversation from the accepted idea');
 						await connection
-							?.send('recommendationAcceptedResult', { accepted: false })
+							?.send('recommendationAcceptedResult', { requestId, accepted: false })
 							.catch(() => {});
 					});
 			}

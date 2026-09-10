@@ -875,10 +875,25 @@ const RECOMMENDATIONS_TIMEOUT_MS = 20_000;
  *  which page it came from without it having to ask. */
 let lastRecommendationsUrl: string | undefined;
 
-let pendingRecommendationsResolve: ((ideas: BrowserAutomationIdea[]) => void) | undefined;
-let pendingRecommendationAcceptedResolve:
-	| ((result: { accepted: boolean; threadUrl?: string }) => void)
-	| undefined;
+// Keyed by a per-request id (not a single shared slot) — the drawer popup and a connect
+// window can both be open and both ask for/accept recommendations, so more than one of each
+// can be genuinely in flight at once.
+const pendingRecommendationsResolvers = new Map<string, (ideas: BrowserAutomationIdea[]) => void>();
+const pendingRecommendationAcceptedResolvers = new Map<
+	string,
+	(result: { accepted: boolean; threadUrl?: string }) => void
+>();
+
+function resetRecommendationsState(): void {
+	for (const resolve of pendingRecommendationsResolvers.values()) resolve([]);
+	pendingRecommendationsResolvers.clear();
+	for (const resolve of pendingRecommendationAcceptedResolvers.values()) {
+		resolve({ accepted: false });
+	}
+	pendingRecommendationAcceptedResolvers.clear();
+	lastRecommendationsUrl = undefined;
+	broadcastRecommendationsChange('unavailable');
+}
 
 function broadcastRecommendationsChange(
 	status: RecommendationsStatus,
@@ -890,7 +905,9 @@ function broadcastRecommendationsChange(
 }
 
 /** Pull the active tab's URL and a short text extract via `chrome.scripting` — no debugger
- *  attach needed, so this works on any tab, not just ones the user shared for recording. */
+ *  attach needed, so this works on any tab, not just ones the user shared for recording. The
+ *  cap is applied inside the injected function so a huge page's full text is never computed
+ *  and transferred just to be immediately truncated. */
 async function extractPageContext(
 	tabId: number,
 ): Promise<{ url: string; pageText: string } | undefined> {
@@ -898,12 +915,13 @@ async function extractPageContext(
 		chrome.tabs.get(tabId),
 		chrome.scripting.executeScript({
 			target: { tabId },
-			func: () => ({ title: document.title, text: document.body?.innerText ?? '' }),
+			func: (limit: number) =>
+				`${document.title}\n${document.body?.innerText ?? ''}`.slice(0, limit),
+			args: [MAX_PAGE_TEXT_LENGTH],
 		}),
 	]);
-	if (!tab.url) return undefined;
-	const { title, text } = injection.result as { title: string; text: string };
-	return { url: tab.url, pageText: `${title}\n${text}`.slice(0, MAX_PAGE_TEXT_LENGTH) };
+	if (!tab.url || typeof injection.result !== 'string') return undefined;
+	return { url: tab.url, pageText: injection.result };
 }
 
 async function requestRecommendations(): Promise<{ success: boolean; error?: string }> {
@@ -929,7 +947,8 @@ async function requestRecommendations(): Promise<{ success: boolean; error?: str
 		log.warn('recommendations unavailable: failed to extract page context:', error);
 		context = undefined;
 	}
-	if (!context || !relay.requestRecommendations(context.url, context.pageText)) {
+	const requestId = crypto.randomUUID();
+	if (!context || !relay.requestRecommendations(context.url, context.pageText, requestId)) {
 		log.warn('recommendations unavailable: could not send the request to the relay');
 		broadcastRecommendationsChange('unavailable');
 		return { success: false, error: 'No automation ideas are available for this page.' };
@@ -937,13 +956,13 @@ async function requestRecommendations(): Promise<{ success: boolean; error?: str
 
 	const ideas = await Promise.race([
 		new Promise<BrowserAutomationIdea[]>((resolve) => {
-			pendingRecommendationsResolve = resolve;
+			pendingRecommendationsResolvers.set(requestId, resolve);
 		}),
 		new Promise<BrowserAutomationIdea[]>((resolve) => {
 			setTimeout(() => resolve([]), RECOMMENDATIONS_TIMEOUT_MS);
 		}),
 	]);
-	pendingRecommendationsResolve = undefined;
+	pendingRecommendationsResolvers.delete(requestId);
 
 	if (ideas.length === 0) {
 		log.warn('recommendations unavailable: no ideas came back before the timeout');
@@ -960,25 +979,25 @@ async function sendRecommendation(idea: BrowserAutomationIdea): Promise<{
 	error?: string;
 }> {
 	const relay = activeConnection?.relay;
+	const requestId = crypto.randomUUID();
 	if (
-		!relay?.sendRecommendationAccepted({
-			title: idea.title,
-			description: idea.description,
-			url: lastRecommendationsUrl,
-		})
+		!relay?.sendRecommendationAccepted(
+			{ title: idea.title, description: idea.description, url: lastRecommendationsUrl },
+			requestId,
+		)
 	) {
 		return { success: false, error: 'The idea could not be sent. Try again.' };
 	}
 
 	const result = await Promise.race([
 		new Promise<{ accepted: boolean; threadUrl?: string }>((resolve) => {
-			pendingRecommendationAcceptedResolve = resolve;
+			pendingRecommendationAcceptedResolvers.set(requestId, resolve);
 		}),
 		new Promise<{ accepted: boolean; threadUrl?: string }>((resolve) => {
 			setTimeout(() => resolve({ accepted: false }), RECOMMENDATIONS_TIMEOUT_MS);
 		}),
 	]);
-	pendingRecommendationAcceptedResolve = undefined;
+	pendingRecommendationAcceptedResolvers.delete(requestId);
 
 	if (!result.accepted) {
 		return { success: false, error: 'n8n did not confirm the idea. Try again.' };
@@ -1476,6 +1495,7 @@ async function connectToRelay(
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
+			resetRecommendationsState();
 		};
 
 		relay.ontabcreated = () => {
@@ -1520,14 +1540,14 @@ async function connectToRelay(
 			);
 		};
 
-		relay.onrecommendationsready = (ideas) => {
-			pendingRecommendationsResolve?.(ideas);
-			pendingRecommendationsResolve = undefined;
+		relay.onrecommendationsready = (requestId, ideas) => {
+			pendingRecommendationsResolvers.get(requestId)?.(ideas);
+			pendingRecommendationsResolvers.delete(requestId);
 		};
 
-		relay.onrecommendationacceptedresult = (accepted, threadUrl) => {
-			pendingRecommendationAcceptedResolve?.({ accepted, threadUrl });
-			pendingRecommendationAcceptedResolve = undefined;
+		relay.onrecommendationacceptedresult = (requestId, accepted, threadUrl) => {
+			pendingRecommendationAcceptedResolvers.get(requestId)?.({ accepted, threadUrl });
+			pendingRecommendationAcceptedResolvers.delete(requestId);
 		};
 
 		const tabCount = relay.getControlledIds().length;

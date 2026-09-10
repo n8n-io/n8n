@@ -555,13 +555,17 @@ describe('CDPRelayServer', () => {
 					ext.send(
 						JSON.stringify({
 							method: 'recommendationsRequested',
-							params: { url: 'https://github.com/org/repo/pull/1', pageText: 'Pull request title' },
+							params: {
+								requestId: 'req-1',
+								url: 'https://github.com/org/repo/pull/1',
+								pageText: 'Pull request title',
+							},
 						}),
 					),
 				),
 			]);
 
-			expect(frame.params).toEqual({ ideas: [idea] });
+			expect(frame.params).toEqual({ requestId: 'req-1', ideas: [idea] });
 			ext.close();
 		});
 
@@ -579,13 +583,35 @@ describe('CDPRelayServer', () => {
 					ext.send(
 						JSON.stringify({
 							method: 'recommendationsRequested',
-							params: { url: 'https://example.com', pageText: 'text' },
+							params: { requestId: 'req-2', url: 'https://example.com', pageText: 'text' },
 						}),
 					),
 				),
 			]);
 
-			expect(frame.params).toEqual({ ideas: [] });
+			expect(frame.params).toEqual({ requestId: 'req-2', ideas: [] });
+			ext.close();
+		});
+
+		it('answers recommendationsRequested with no ideas when no handler is wired', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationsReady'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationsRequested',
+							params: { requestId: 'req-3', url: 'https://example.com', pageText: 'text' },
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-3', ideas: [] });
 			ext.close();
 		});
 
@@ -606,16 +632,47 @@ describe('CDPRelayServer', () => {
 					ext.send(
 						JSON.stringify({
 							method: 'recommendationAccepted',
-							params: { title: 'Triage issues', description: 'Label new issues' },
+							params: {
+								requestId: 'req-4',
+								title: 'Triage issues',
+								description: 'Label new issues',
+							},
 						}),
 					),
 				),
 			]);
 
 			expect(frame.params).toEqual({
+				requestId: 'req-4',
 				accepted: true,
 				threadUrl: 'https://n8n.example.com/assistant/t1',
 			});
+			ext.close();
+		});
+
+		it('answers recommendationAccepted as not accepted when no handler is wired', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationAcceptedResult'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationAccepted',
+							params: {
+								requestId: 'req-5',
+								title: 'Triage issues',
+								description: 'Label new issues',
+							},
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-5', accepted: false });
 			ext.close();
 		});
 	});

@@ -188,6 +188,8 @@ vi.mock('@n8n/instance-ai', async () => {
 			}
 		},
 		resumeAgentRun: vi.fn(),
+		generateValidatedJson: vi.fn(),
+		HAIKU_MODEL: 'anthropic/claude-haiku-4-5-20251001',
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
 		shutdownProductTelemetryProviders: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
@@ -220,6 +222,7 @@ import {
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
 	threadProvenanceMetadata,
+	generateValidatedJson,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -1919,6 +1922,47 @@ describe('InstanceAiService — suggestAutomationIdeas', () => {
 		});
 
 		expect(result).toEqual([]);
+	});
+
+	it('truncates an overlong description instead of rejecting the whole batch', async () => {
+		const service = createBrowserRecordingService();
+		const longDescription = 'x'.repeat(200);
+		vi.mocked(generateValidatedJson).mockResolvedValueOnce({
+			ok: true,
+			data: { ideas: [{ title: 'Triage issues', description: longDescription }] },
+		});
+
+		const result = await service.suggestAutomationIdeas({
+			userId: 'user-1',
+			url: 'https://github.com/org/repo',
+			pageText: '',
+		});
+
+		expect(result).toHaveLength(1);
+		expect(result[0].description).toHaveLength(140);
+		expect(result[0].description).toBe(longDescription.slice(0, 140));
+	});
+
+	it('drops an idea that comes out empty after trimming, without dropping the others', async () => {
+		const service = createBrowserRecordingService();
+		vi.mocked(generateValidatedJson).mockResolvedValueOnce({
+			ok: true,
+			data: {
+				ideas: [
+					{ title: '   ', description: 'Label new issues' },
+					{ title: 'Triage issues', description: 'Label new issues' },
+				],
+			},
+		});
+
+		const result = await service.suggestAutomationIdeas({
+			userId: 'user-1',
+			url: 'https://github.com/org/repo',
+			pageText: '',
+		});
+
+		expect(result).toHaveLength(1);
+		expect(result[0].title).toBe('Triage issues');
 	});
 });
 

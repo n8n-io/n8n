@@ -58,6 +58,7 @@ const {
 const {
 	status: recommendationsStatus,
 	ideas: recommendationIdeas,
+	isSending: isSendingRecommendation,
 	send: sendRecommendation,
 } = useRecommendations();
 
@@ -239,6 +240,7 @@ async function submitToInstanceUrl() {
 					<AutomationIdeas
 						:status="recommendationsStatus"
 						:ideas="recommendationIdeas"
+						:is-sending="isSendingRecommendation"
 						@pick="sendRecommendation"
 					/>
 					<div v-if="recommendationsStatus === 'unavailable'" class="panel">

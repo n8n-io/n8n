@@ -12,6 +12,7 @@ const MAX_IDEAS = 3;
 defineProps<{
 	status: RecommendationsStatus;
 	ideas: BrowserAutomationIdea[];
+	isSending: boolean;
 }>();
 
 defineEmits<{ pick: [idea: BrowserAutomationIdea] }>();
@@ -22,7 +23,13 @@ defineEmits<{ pick: [idea: BrowserAutomationIdea] }>();
 		<div class="idea-card skeleton-card" v-for="n in MAX_IDEAS" :key="n" />
 	</div>
 	<div v-else-if="status === 'ready'" class="ideas">
-		<button v-for="idea in ideas" :key="idea.id" class="idea-card" @click="$emit('pick', idea)">
+		<button
+			v-for="idea in ideas"
+			:key="idea.id"
+			class="idea-card"
+			:disabled="isSending"
+			@click="$emit('pick', idea)"
+		>
 			<span class="marker">
 				<N8nIcon icon="lightbulb" size="large" />
 			</span>
@@ -61,6 +68,11 @@ defineEmits<{ pick: [idea: BrowserAutomationIdea] }>();
 
 	&:hover {
 		border-color: var(--color--foreground--shade-1);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 }
 
