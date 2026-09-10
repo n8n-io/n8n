@@ -1,0 +1,20 @@
+node_modules/
+
+# TypeScript build output. This is NOT the wasm build — see below.
+dist/
+
+# Native build scratch directory (CMake build tree), never committed.
+build/
+
+# Native (non-wasm) pcre2test binary, built on demand from vendor/pcre2 as an
+# independent oracle for scripts/corpus/build-corpus.mjs. Never committed --
+# rebuilt locally by the corpus build script itself.
+native-oracle-build/
+
+# NOTE on wasm output: unlike dist/, the compiled wasm+JS glue in
+# src/generated/ is committed deliberately, the same way other wasm npm
+# packages (e.g. @one-ini/wasm) ship prebuilt binaries instead of requiring
+# consumers to have Emscripten installed. Do NOT add src/generated/ here.
+
+*.log
+.DS_Store

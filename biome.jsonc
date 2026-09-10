@@ -19,7 +19,8 @@
 			"**/o200k_base.json",
 			"**/*.generated.ts",
 			"**/expectations/**",
-			"**/instance-ai-examples.data.json"
+			"**/instance-ai-examples.data.json",
+			"packages/@n8n/regex-engine-pcre2/test/fixtures/**"
 		]
 	},
 	"formatter": {

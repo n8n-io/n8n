@@ -1,0 +1,46 @@
+name: 'CI: Regex Engine (PCRE2)'
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/regex-engine-pcre2/**
+      - .github/workflows/ci-regex-engine-pcre2.yml
+  push:
+    branches:
+      - master
+    paths:
+      - packages/@n8n/regex-engine-pcre2/**
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/@n8n/regex-engine-pcre2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm --filter @n8n/regex-engine-pcre2 build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Verify committed wasm matches native/*.cpp + the pinned PCRE2 submodule
+        run: |
+          EMSDK_VERSION="$(cat .emsdk-version)"
+          docker run --rm -v "$(pwd):/src" -w /src \
+            "emscripten/emsdk:${EMSDK_VERSION}" \
+            node scripts/wasm/verify.mjs

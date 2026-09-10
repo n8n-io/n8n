@@ -1,0 +1,6 @@
+[submodule "packages/@n8n/regex-engine-pcre2/vendor/pcre2"]
+	path = packages/@n8n/regex-engine-pcre2/vendor/pcre2
+	url = https://github.com/PCRE2Project/pcre2.git
+[submodule "packages/@n8n/regex-engine-pcre2/vendor/rust-regex"]
+	path = packages/@n8n/regex-engine-pcre2/vendor/rust-regex
+	url = https://github.com/rust-lang/regex.git
