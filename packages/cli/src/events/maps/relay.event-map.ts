@@ -201,6 +201,7 @@ export type RelayEventMap = {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
 		mode: WorkflowExecuteMode;
+		userId?: string;
 		projectId?: string;
 		projectName?: string;
 	};

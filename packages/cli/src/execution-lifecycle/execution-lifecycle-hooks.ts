@@ -161,12 +161,13 @@ function hookFunctionsWorkflowEvents(
 	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ) {
 	const eventService = Container.get(EventService);
-	hooks.addHandler('workflowExecuteBefore', function () {
+	hooks.addHandler('workflowExecuteBefore', function (_workflow, runExecutionData) {
 		const { executionId, workflowData, mode } = this;
 		eventService.emit('workflow-pre-execute', {
 			executionId,
 			data: workflowData,
 			mode,
+			userId: userId ?? runExecutionData?.executionData?.runtimeData?.startedByUserId,
 			projectId,
 			projectName,
 		});
@@ -204,7 +205,7 @@ function hookFunctionsWorkflowEvents(
 			executionId,
 			runData,
 			workflow,
-			userId,
+			userId: userId ?? runData.data.executionData?.runtimeData?.startedByUserId,
 			projectId,
 			projectName,
 			...(source ? { source } : {}),

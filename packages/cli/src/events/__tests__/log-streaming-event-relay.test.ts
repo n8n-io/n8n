@@ -616,6 +616,44 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `workflow-pre-execute` event with the context user for an IWorkflowBase payload', () => {
+			const workflow = mock<IWorkflowBase>({
+				id: 'wf505',
+				name: 'Worker Workflow',
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [],
+				connections: {},
+				staticData: undefined,
+				settings: {},
+			});
+
+			const event: RelayEventMap['workflow-pre-execute'] = {
+				executionId: 'exec505',
+				data: workflow,
+				mode: 'trigger',
+				userId: 'ctx-user',
+				projectId: 'proj-505',
+				projectName: 'Worker Project',
+			};
+
+			eventService.emit('workflow-pre-execute', event);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.started',
+				payload: {
+					executionId: 'exec505',
+					userId: 'ctx-user',
+					workflowId: 'wf505',
+					isManual: false,
+					mode: 'trigger',
+					workflowName: 'Worker Workflow',
+					projectId: 'proj-505',
+					projectName: 'Worker Project',
+				},
+			});
+		});
+
 		it('should log on `workflow-pre-execute` with IWorkflowExecutionDataProcess data', () => {
 			const executionData = {
 				executionData: undefined,

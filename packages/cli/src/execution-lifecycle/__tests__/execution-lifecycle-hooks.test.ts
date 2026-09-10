@@ -274,12 +274,20 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowEventTests = (expectedUserId?: string) => {
 		describe('workflowExecuteBefore', () => {
 			it('should emit workflow-pre-execute events', async () => {
+				runExecutionData.executionData!.runtimeData = {
+					version: 1,
+					establishedAt: 1,
+					source: 'manual',
+					startedByUserId: 'ctx-user',
+				};
+
 				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
 					data: workflowData,
 					mode: 'manual',
+					userId: expectedUserId ?? 'ctx-user',
 				});
 			});
 		});
@@ -293,6 +301,24 @@ describe('Execution Lifecycle Hooks', () => {
 					runData: successfulRun,
 					workflow: workflowData,
 					userId: expectedUserId,
+				});
+			});
+
+			it('should fall back to the context user when built without an explicit user', async () => {
+				successfulRun.data.executionData!.runtimeData = {
+					version: 1,
+					establishedAt: 1,
+					source: 'manual',
+					startedByUserId: 'ctx-user',
+				};
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-post-execute', {
+					executionId,
+					runData: successfulRun,
+					workflow: workflowData,
+					userId: expectedUserId ?? 'ctx-user',
 				});
 			});
 
