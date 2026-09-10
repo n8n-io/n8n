@@ -17,10 +17,10 @@ import {
 
 /** Setup nouns that read as the agent's own even without "your". */
 const CORE_ASPECT =
-	'instructions?|system prompts?|tools?|skills?|integrations?|channels?|guardrails?|mcp(?: servers?)?|sub-?agents?|vector stores?|evals?|evaluations?|knowledge base|triggers?|schedules?|credentials?|models?|persona(?:lity)?';
+	'instructions?|system prompts?|tools?|skills?|integrations?|channels?|guardrails?|mcp(?: servers?)?|sub-?agents?|vector stores?|evals?|evaluations?|knowledge(?: base)?|triggers?|schedules?|credentials?|models?|persona(?:lity)?';
 
 /** Everyday words — they only mean the agent's setup when tied to the agent. */
-const OWNED_ASPECT = `${CORE_ASPECT}|names?|prompts?|behaviou?rs?|settings?|configuration|config|descriptions?|icons?|rules?|temperature|memor(?:y|ies)|knowledge`;
+const OWNED_ASPECT = `${CORE_ASPECT}|names?|prompts?|behaviou?rs?|settings?|configuration|config|descriptions?|icons?|rules?|temperature|memor(?:y|ies)`;
 
 const CHANGE_VERB =
 	'add|adjust|attach|change|configure|connect|delete|disable|drop|edit|enable|give|hook up|improve|install|modify|remove|rename|replace|set up|setup|swap|tweak|update';
@@ -63,8 +63,11 @@ export function buildAgentChangeRequestPrompt(
 	changeRequest: string,
 	i18n: FixWithAssistantI18n,
 ): string {
-	const sanitized = scrubSecretsInText(
-		sanitizeDiagnosticText(changeRequest.trim()).slice(0, MAX_CHANGE_REQUEST_LENGTH),
+	// Scrub before the cut: slicing first can split a secret, leaving a prefix
+	// the scrubber no longer recognises.
+	const sanitized = scrubSecretsInText(sanitizeDiagnosticText(changeRequest.trim())).slice(
+		0,
+		MAX_CHANGE_REQUEST_LENGTH,
 	);
 	return renderUntrustedDraft(
 		i18n,

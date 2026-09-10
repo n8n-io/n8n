@@ -12,6 +12,7 @@ describe('looksLikeAgentChangeRequest', () => {
 		'give me a schedule that runs every morning',
 		'set up a trigger',
 		'remove the second skill',
+		'add knowledge about our refund policy',
 		// Possessive phrasings.
 		'Can you change your name to Ada?',
 		'Please update your instructions to always answer in German',
