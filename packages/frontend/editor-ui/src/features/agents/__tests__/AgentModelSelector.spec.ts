@@ -2,6 +2,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type * as permissions from '@n8n/permissions';
 
 import type { AgentModelOption, AgentModelsByProvider } from '../model-providers';
 
@@ -90,7 +91,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/permissions')>()),
+	...(await importOriginal<typeof permissions>()),
 	getResourcePermissions: () => ({ credential: { create: canCreateCredentials.value } }),
 }));
 
