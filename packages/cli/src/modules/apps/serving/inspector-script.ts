@@ -155,11 +155,21 @@ export const INSPECTOR_SCRIPT_SOURCE = `(function () {
 		if (overlay) overlay.style.display = 'none';
 	}
 
+	// The editor's preview can try the app in another color scheme without
+	// saving it: the template toggles the same class from its saved theme mode.
+	function setTheme(mode) {
+		var dark =
+			mode === 'dark' ||
+			(mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+		document.documentElement.classList.toggle('dark', dark);
+	}
+
 	window.addEventListener('message', function (event) {
 		var data = event.data;
 		if (!data || data.source !== 'n8nable') return;
 		if (data.type === 'inspect:enable') enable();
 		else if (data.type === 'inspect:disable') disable();
+		else if (data.type === 'theme:set') setTheme(data.mode);
 	});
 })();
 `;

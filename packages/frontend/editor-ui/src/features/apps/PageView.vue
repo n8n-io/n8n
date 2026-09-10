@@ -327,6 +327,7 @@ watch(() => props.pageId, initialize);
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
+	margin-bottom: var(--spacing--lg);
 }
 
 .headerActions {

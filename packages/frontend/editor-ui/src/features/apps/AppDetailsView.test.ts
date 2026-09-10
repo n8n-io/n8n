@@ -134,12 +134,14 @@ describe('AppDetailsView', () => {
 		return rendered;
 	}
 
-	it('opens on Build when the app has no version yet', async () => {
+	it('opens on the empty Preview when the app has no version yet', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-tabs')).toBeInTheDocument();
-		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 	});
 
 	it('opens on Preview and shows the active version in the iframe', async () => {
@@ -174,51 +176,89 @@ describe('AppDetailsView', () => {
 	it('switches between Build and Preview from the mode control', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-build')).toBeInTheDocument();
 		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
-	it('shows the empty preview with a way into the assistant before the first build', async () => {
+	it('shows the empty preview before the first build', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
 		expect(getByTestId('app-preview-refresh')).toHaveAttribute('aria-disabled', 'true');
-
-		await userEvent.click(getByTestId('app-preview-empty-open-in-assistant'));
-		expect(openAppArtifactThread).toHaveBeenCalledWith(
-			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
-			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
-		);
 	});
 
-	it('tells the user to build the app themselves when the assistant is unavailable', async () => {
-		instanceAiAvailable.value = false;
-		const { getByTestId, queryByTestId } = await renderApp(makeApp());
-
-		await userEvent.click(getByTestId('radio-button-preview'));
-
-		expect(getByTestId('app-preview-empty')).toHaveTextContent('Build this app to see it here.');
-		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
-		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
-	});
-
-	it('narrows the frame to a phone width on the mobile toggle', async () => {
+	it('narrows the frame to a phone on the mobile toggle', async () => {
 		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+		expect(getByTestId('app-preview-frame')).not.toHaveClass('mobile');
 
 		await userEvent.click(getByTestId('app-preview-device-mobile'));
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '390px' });
+		expect(getByTestId('app-preview-frame')).toHaveClass('mobile');
 
 		await userEvent.click(getByTestId('app-preview-device-desktop'));
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+		expect(getByTestId('app-preview-frame')).not.toHaveClass('mobile');
+	});
+
+	it('opens on the Build tab with the app basics, and Pages on its own tab', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+
+		expect(getByTestId('app-basics-editor')).toBeInTheDocument();
+		expect(queryByTestId('app-page-add-root')).not.toBeInTheDocument();
+		expect(queryByTestId('tab-code')).not.toBeInTheDocument();
+		expect(getByTestId('app-builder-mode-code')).toBeDisabled();
+
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
+
+		expect(getByTestId('app-page-add-root')).toBeInTheDocument();
+		expect(queryByTestId('app-basics-editor')).not.toBeInTheDocument();
+	});
+
+	it('switches the preview page from the address bar and opens the frame URL in a new tab', async () => {
+		appsStore.pages = [
+			{ id: 'p-index', parentPageId: null, route: '' },
+			{ id: 'p-clients', parentPageId: null, route: 'clients' },
+		];
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { getByTestId, getByText } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		expect(getByTestId('app-preview-page')).toHaveTextContent('/');
+
+		await userEvent.click(getByTestId('app-preview-page'));
+		await userEvent.click(getByText('/clients'));
+
+		expect(getByTestId('app-preview-page')).toHaveTextContent('/clients');
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/clients?v=v-7',
+		);
+
+		await userEvent.click(getByTestId('app-preview-open-tab'));
+		expect(open).toHaveBeenCalledWith('/apps/greeter/clients?v=v-7', '_blank', 'noopener');
+	});
+
+	it('tries the app in another color scheme without saving it', async () => {
+		const { getByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7', theme: { mode: 'light', vars: {} } }),
+		);
+		const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+		const postMessage = vi.spyOn(iframe.contentWindow!, 'postMessage');
+
+		iframe.dispatchEvent(new Event('load'));
+		await userEvent.click(getByTestId('app-preview-theme-dark'));
+
+		expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
+			{ source: 'n8nable', type: 'theme:set', mode: 'light' },
+			{ source: 'n8nable', type: 'theme:set', mode: 'dark' },
+		]);
+		expect(appsStore.applyAppTheme).not.toHaveBeenCalled();
 	});
 
 	it('reloads the iframe on refresh', async () => {
@@ -422,7 +462,7 @@ describe('AppDetailsView', () => {
 
 		it('refreshes the version list too while the versions tab is open', async () => {
 			const { getByTestId, getByRole, rerender } = await renderApp(published, { refreshKey: 0 });
-			await userEvent.click(getByTestId('radio-button-build'));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Versions' }));
 			await waitAllPromises();
 			appsStore.fetchVersions.mockClear();
@@ -462,28 +502,16 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('hands the app off to the assistant from the toolbar', async () => {
-		const { getByTestId } = await renderApp(makeApp());
-
-		await userEvent.click(getByTestId('app-open-in-assistant'));
-
-		expect(openAppArtifactThread).toHaveBeenCalledWith(
-			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
-			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
-		);
-	});
-
 	it('drops the page chrome and navigation actions in artifact mode', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp(), { artifactMode: true });
 
 		expect(queryByTestId('page-view-layout')).not.toBeInTheDocument();
 		expect(queryByTestId('app-breadcrumbs')).not.toBeInTheDocument();
 		expect(queryByTestId('app-delete')).not.toBeInTheDocument();
-		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
 		expect(getByTestId('app-builder-mode')).toBeInTheDocument();
 		expect(getByTestId('app-publish')).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
 	});
@@ -506,7 +534,7 @@ describe('AppDetailsView', () => {
 
 		async function openVersionsTab(app: App) {
 			const rendered = await renderApp(app);
-			await userEvent.click(rendered.getByTestId('radio-button-build'));
+			await userEvent.click(rendered.getByTestId('app-builder-mode-build'));
 			await userEvent.click(rendered.getByRole('tab', { name: 'Versions' }));
 			await waitAllPromises();
 			return rendered;
@@ -615,8 +643,9 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('shows the Theme tab, enabled, alongside Pages and Code', async () => {
+	it('shows the Theme tab, enabled, alongside Build and Pages', async () => {
 		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 
 		const themeTab = getByRole('tab', { name: 'Theme' });
 		expect(getByTestId('tab-theme')).toBeInTheDocument();
@@ -629,7 +658,9 @@ describe('AppDetailsView', () => {
 	});
 
 	it('hands adding a root page off to the assistant with a pre-filled, unsent prompt', async () => {
-		const { getByTestId } = await renderApp(makeApp());
+		const { getByTestId, getByRole } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		await userEvent.click(getByTestId('app-page-add-root'));
 
@@ -642,7 +673,9 @@ describe('AppDetailsView', () => {
 
 	it("hands a page card's add/edit/delete actions off to the assistant with the page's route", async () => {
 		appsStore.pages = [{ id: 'p1', parentPageId: null, route: 'clients' }];
-		const { getByTestId } = await renderApp(makeApp());
+		const { getByTestId, getByRole } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		await userEvent.click(getByTestId('app-page-add-child'));
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
@@ -665,7 +698,9 @@ describe('AppDetailsView', () => {
 			{ id: 'p1', parentPageId: null, route: 'clients' },
 			{ id: 'p2', parentPageId: 'p1', route: ':id' },
 		];
-		const { getAllByTestId } = await renderApp(makeApp());
+		const { getAllByTestId, getByRole, getByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		const routes = getAllByTestId('app-page-route').map((el) => el.textContent);
 		expect(routes).toEqual(['/clients', '/:id']);
@@ -770,7 +805,7 @@ describe('AppDetailsView', () => {
 			makeApp({ activeVersionId: 'v-7' }),
 			{ artifactMode: true, threadId: 'thread-1' },
 		);
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
 		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
@@ -791,7 +826,7 @@ describe('AppDetailsView', () => {
 			liveUrl: '/apps-preview/tok/',
 			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
 		});
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
 
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
@@ -817,7 +852,7 @@ describe('AppDetailsView', () => {
 		const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 			artifactMode: true,
 		});
-
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 		await rerender({
@@ -884,6 +919,7 @@ describe('AppDetailsView', () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 				artifactMode: true,
 			});
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 			await rerender(liveProps);
@@ -955,6 +991,7 @@ describe('AppDetailsView', () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 				artifactMode: true,
 			});
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 			await rerender({ artifactMode: true, liveStatus: { status: 'starting' } });
@@ -970,16 +1007,19 @@ describe('AppDetailsView', () => {
 				liveStatus: { status: 'no-source' },
 			});
 
-			await userEvent.click(getByTestId('radio-button-preview'));
+			await userEvent.click(getByTestId('app-builder-mode-preview'));
 
 			expect(getByTestId('app-preview-empty')).toHaveTextContent('Nothing to preview yet');
 			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
 		});
 
-		it('stays on Build for a starting preview outside artifact mode', async () => {
-			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
+		it('shows the empty state, not the banner, for a starting preview outside artifact mode', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+				liveStatus: { status: 'starting' },
+			});
 
-			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+			expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
 		});
 
 		it('arms the inspector in the live frame and stages the picked element in the thread', async () => {
@@ -997,6 +1037,7 @@ describe('AppDetailsView', () => {
 			expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
 				{ source: 'n8nable', type: 'inspect:enable' },
 				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'theme:set', mode: 'system' },
 				{ source: 'n8nable', type: 'inspect:disable' },
 			]);
 			expect(instanceAiStore.stageElementSelection).toHaveBeenCalledWith({

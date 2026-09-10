@@ -67,16 +67,9 @@ const onItemSelected = async (item: PathItem) => {
 
 <template>
 	<N8nBreadcrumbs
-		:class="$style.breadcrumbs"
 		:items="items"
 		separator="/"
 		data-test-id="app-breadcrumbs"
 		@item-selected="onItemSelected"
 	/>
 </template>
-
-<style lang="scss" module>
-.breadcrumbs {
-	margin-bottom: var(--spacing--lg);
-}
-</style>

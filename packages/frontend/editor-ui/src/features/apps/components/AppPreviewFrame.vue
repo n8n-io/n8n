@@ -21,10 +21,12 @@ const props = withDefaults(
 		liveUrl?: string;
 		/** A specific page's path within the app (e.g. "clients/:id"); the app root when omitted. */
 		path?: string;
-		/** CSS width of the document; `390px` mimics a phone. */
-		width?: string;
+		/** `mobile` shows the document in a centered phone-sized frame. */
+		device?: 'desktop' | 'mobile';
+		/** Color scheme to try the document in; the app's own saved mode applies when omitted. */
+		theme?: 'light' | 'dark' | 'system';
 	}>(),
-	{ versionId: undefined, liveUrl: undefined, path: '', width: '100%' },
+	{ versionId: undefined, liveUrl: undefined, path: '', device: 'desktop', theme: undefined },
 );
 
 const emit = defineEmits<{
@@ -65,9 +67,22 @@ function refresh() {
 }
 
 // The served document is opaque-origin, so `targetOrigin` can only ever be '*'.
-function postInspectCommand(type: 'inspect:enable' | 'inspect:disable') {
-	iframe.value?.contentWindow?.postMessage({ source: 'n8nable', type }, '*');
+function postCommand(message: {
+	type: 'inspect:enable' | 'inspect:disable' | 'theme:set';
+	mode?: string;
+}) {
+	iframe.value?.contentWindow?.postMessage({ source: 'n8nable', ...message }, '*');
 }
+
+function postInspectCommand(type: 'inspect:enable' | 'inspect:disable') {
+	postCommand({ type });
+}
+
+function postTheme() {
+	if (props.theme) postCommand({ type: 'theme:set', mode: props.theme });
+}
+
+watch(() => props.theme, postTheme);
 
 function enableInspect() {
 	inspecting.value = true;
@@ -80,9 +95,11 @@ function disableInspect() {
 }
 
 // A full document reload (new version, manual refresh, page navigation) resets
-// the injected script's state, so inspect mode has to be re-armed after every load.
+// the injected script's state, so inspect mode and the tried-out theme have to
+// be re-applied after every load.
 function onIframeLoad() {
 	if (inspecting.value) postInspectCommand('inspect:enable');
+	postTheme();
 }
 
 // The document has an opaque origin (CSP `sandbox` without `allow-same-origin`),
@@ -107,11 +124,14 @@ function onMessage(event: MessageEvent<unknown>) {
 onMounted(() => window.addEventListener('message', onMessage));
 onBeforeUnmount(() => window.removeEventListener('message', onMessage));
 
-defineExpose({ refresh, enableInspect, disableInspect });
+defineExpose({ refresh, enableInspect, disableInspect, src: iframeSrc });
 </script>
 
 <template>
-	<div :class="$style.frame" data-test-id="app-preview-frame">
+	<div
+		:class="[$style.frame, { [$style.mobile]: props.device === 'mobile' }]"
+		data-test-id="app-preview-frame"
+	>
 		<!-- The served document is CSP-sandboxed by the backend, so the iframe needs no sandbox attribute. -->
 		<iframe
 			:key="iframeKey"
@@ -119,7 +139,6 @@ defineExpose({ refresh, enableInspect, disableInspect });
 			:src="iframeSrc"
 			:title="i18n.baseText('instanceAi.appPreview.title')"
 			:class="$style.iframe"
-			:style="{ width: props.width }"
 			data-test-id="instance-ai-app-preview-iframe"
 			@load="onIframeLoad"
 		/>
@@ -127,18 +146,34 @@ defineExpose({ refresh, enableInspect, disableInspect });
 </template>
 
 <style lang="scss" module>
+// Desktop fills the pane; the pane's own rounded border frames the document.
 .frame {
 	display: flex;
 	justify-content: center;
+	align-items: center;
 	height: 100%;
 	min-height: 0;
 	background: var(--background--subtle);
 }
 
 .iframe {
+	width: 100%;
 	height: 100%;
 	max-width: 100%;
 	border: 0;
 	background: var(--background--surface);
+}
+
+.mobile {
+	padding: var(--spacing--lg);
+	background: transparent;
+}
+
+.mobile .iframe {
+	width: 390px;
+	max-height: 844px;
+	border: var(--border);
+	border-radius: var(--radius--2xl);
+	box-shadow: var(--shadow--xl);
 }
 </style>
