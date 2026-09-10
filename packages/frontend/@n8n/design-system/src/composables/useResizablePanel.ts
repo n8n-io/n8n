@@ -182,7 +182,7 @@ function usePanelDimension(
 	}
 
 	function reset(value?: number): void {
-		if (!defaultSize.value) return;
+		if (value === undefined && !defaultSize.value) return;
 		setSize(value ?? defaultSize.value);
 		if (containerSize.value > 0) persistedSize.value = proportion.value;
 	}
