@@ -1,9 +1,11 @@
 import type { INode, INodeType, IConnections, INodeTypeDescription } from '../src/interfaces';
 import {
 	validateNodeCredentials,
+	getUnconnectedRequiredInputs,
 	isNodeConnected,
 	isTriggerLikeNode,
 	type NodeCredentialIssue,
+	type WorkflowForInputValidation,
 } from '../src/node-validation';
 
 describe('node-validation', () => {
@@ -366,6 +368,120 @@ describe('node-validation', () => {
 			};
 
 			expect(isTriggerLikeNode(nodeType)).toBe(false);
+		});
+	});
+	describe('getUnconnectedRequiredInputs', () => {
+		const parser: INode = {
+			name: 'Parser',
+			type: 'parser',
+			id: 'parser-1',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { autoFix: true },
+		};
+
+		const model: INode = {
+			name: 'Model',
+			type: 'model',
+			id: 'model-1',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		/** An expression, so inputs depend on the node's parameters. */
+		const description = {
+			inputs:
+				'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
+		} as unknown as INodeTypeDescription;
+
+		const makeWorkflow = (
+			parents: string[],
+			nodes: Record<string, INode>,
+		): WorkflowForInputValidation =>
+			({
+				expression: {
+					getSimpleParameterValue: (node: INode) =>
+						(node.parameters as { autoFix?: boolean }).autoFix
+							? [{ displayName: 'Model', type: 'ai_languageModel', required: true }]
+							: [],
+				},
+				getNode: (name: string) => nodes[name] ?? null,
+				getParentNodes: () => parents,
+			}) as unknown as WorkflowForInputValidation;
+
+		it('reports a required input with nothing connected', () => {
+			const result = getUnconnectedRequiredInputs(
+				makeWorkflow([], { Parser: parser }),
+				parser,
+				description,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('ai_languageModel');
+		});
+
+		it('reports nothing once an enabled node is connected', () => {
+			const result = getUnconnectedRequiredInputs(
+				makeWorkflow(['Model'], { Parser: parser, Model: model }),
+				parser,
+				description,
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it('treats a disabled source as not connected', () => {
+			const result = getUnconnectedRequiredInputs(
+				makeWorkflow(['Model'], { Parser: parser, Model: { ...model, disabled: true } }),
+				parser,
+				description,
+			);
+
+			expect(result).toHaveLength(1);
+		});
+
+		it('reports nothing when a failed inputs expression is treated as empty', () => {
+			const throwing = {
+				expression: {
+					getSimpleParameterValue: () => {
+						throw new Error('boom');
+					},
+				},
+				getNode: () => parser,
+				getParentNodes: () => [],
+			} as unknown as WorkflowForInputValidation;
+
+			expect(getUnconnectedRequiredInputs(throwing, parser, description)).toEqual([]);
+		});
+
+		it('surfaces a failed inputs expression when asked to', () => {
+			const throwing = {
+				expression: {
+					getSimpleParameterValue: () => {
+						throw new Error('boom');
+					},
+				},
+				getNode: () => parser,
+				getParentNodes: () => [],
+			} as unknown as WorkflowForInputValidation;
+
+			expect(() =>
+				getUnconnectedRequiredInputs(throwing, parser, description, {
+					throwOnExpressionError: true,
+				}),
+			).toThrow('boom');
+		});
+
+		it('reports nothing when the parameters do not make the input required', () => {
+			const off = { ...parser, parameters: { autoFix: false } };
+			const result = getUnconnectedRequiredInputs(
+				makeWorkflow([], { Parser: off }),
+				off,
+				description,
+			);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

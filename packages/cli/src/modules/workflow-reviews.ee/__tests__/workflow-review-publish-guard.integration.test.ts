@@ -127,7 +127,7 @@ describe('publishing a workflow under review', () => {
 		const request = await createOpenReview(workflow.id, versionId);
 
 		// Activation fails once — after the approval has already committed.
-		workflowValidationService.validateForActivation.mockReturnValueOnce({
+		workflowValidationService.validateForActivation.mockResolvedValueOnce({
 			isValid: false,
 			error: 'The workflow has issues',
 		});

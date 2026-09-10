@@ -2385,6 +2385,169 @@ describe('update-workflow MCP tool', () => {
 				expect(response.validationWarnings).toEqual([]);
 			});
 
+			test('does not re-add a required subnode link that this batch removed', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('keeps the removal when the batch also renames the target node', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+						{ type: 'renameNode', oldName: 'Parser', newName: 'Schema' },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
 			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {
 				findWorkflowMock.mockResolvedValue(
 					Object.assign(new WorkflowEntity(), {

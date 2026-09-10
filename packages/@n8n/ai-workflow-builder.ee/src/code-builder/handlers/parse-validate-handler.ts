@@ -7,8 +7,14 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
+import type { AddedSubnodeConnection, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes } from 'n8n-workflow';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
@@ -65,6 +71,16 @@ export class ParseValidateHandler {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
 		this.nodeTypesProvider = config.nodeTypesProvider;
+	}
+
+	/**
+	 * Complete required AI subnode connections the generated code left unwired,
+	 * e.g. an output parser with `autoFix: true` and no model. Needs node types,
+	 * so a handler built without a provider leaves the workflow untouched.
+	 */
+	private connectRequiredInputs(json: WorkflowJSON): AddedSubnodeConnection[] {
+		if (!this.nodeTypesProvider) return [];
+		return connectRequiredSubnodeInputs(json, this.nodeTypesProvider);
 	}
 
 	/**
@@ -239,6 +255,7 @@ export class ParseValidateHandler {
 
 			// Convert to JSON for JSON-based validation
 			const json = builder.toJSON();
+			this.connectRequiredInputs(json);
 
 			// Run JSON-based validation for additional checks
 			const validationResult = validateWorkflow(json, {
@@ -279,6 +296,10 @@ export class ParseValidateHandler {
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
+			// A fresh serialization, so the links added above have to be re-added.
+			for (const link of this.connectRequiredInputs(workflowJson)) {
+				allWarnings.push(describeAddedSubnodeConnection(link));
+			}
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

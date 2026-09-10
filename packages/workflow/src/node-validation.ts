@@ -1,5 +1,12 @@
-import type { INode, INodeType, IConnections } from './interfaces';
-import { displayParameter } from './node-helpers';
+import type {
+	INode,
+	INodeType,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+	IConnections,
+} from './interfaces';
+import { displayParameter, getNodeInputs } from './node-helpers';
+import type { Workflow } from './workflow';
 
 export interface NodeValidationIssue {
 	credential?: string;
@@ -10,6 +17,45 @@ export interface NodeCredentialIssue {
 	type: 'missing' | 'not-configured';
 	displayName: string;
 	credentialName: string;
+}
+
+/** A `Pick` so both the editor's snapshot accessor and the engine's `Workflow` fit. */
+export type WorkflowForInputValidation = Pick<
+	Workflow,
+	'expression' | 'getNode' | 'getParentNodes'
+>;
+
+/**
+ * Inputs a node declares as required with nothing enabled connected to them.
+ *
+ * Inputs can be conditional, so they are resolved against the node's current
+ * parameters first. A disabled source counts as absent, matching the runtime
+ * ("must be connected and enabled").
+ *
+ * Shared so the editor warning and the publish check agree; callers format their
+ * own message.
+ */
+export function getUnconnectedRequiredInputs(
+	workflow: WorkflowForInputValidation,
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+	options: { throwOnExpressionError?: boolean } = {},
+): INodeInputConfiguration[] {
+	const unconnected: INodeInputConfiguration[] = [];
+
+	for (const input of getNodeInputs(workflow, node, nodeTypeDescription, options)) {
+		if (typeof input === 'string' || input.required !== true) continue;
+
+		const parents = workflow.getParentNodes(node.name, input.type, 1);
+		const hasEnabledParent = parents.some((name) => {
+			const parent = workflow.getNode(name);
+			return parent ? !parent.disabled : false;
+		});
+
+		if (!hasEnabledParent) unconnected.push(input);
+	}
+
+	return unconnected;
 }
 
 /**
