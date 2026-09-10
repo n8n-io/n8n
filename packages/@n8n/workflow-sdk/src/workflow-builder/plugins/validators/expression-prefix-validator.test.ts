@@ -71,6 +71,47 @@ function createProvider(): NodeTypesProvider {
 	};
 }
 
+// Provider shaped like Wait v1.1, where one name is declared twice behind
+// different displayOptions and the declarations disagree about expressions.
+function createDuplicateNameProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'Resume',
+						name: 'resume',
+						type: 'options',
+						default: 'webhook',
+						noDataExpression: true,
+						options: [
+							{ name: 'On Webhook Call', value: 'webhook' },
+							{ name: 'On Form Submitted', value: 'form' },
+						],
+					},
+					{
+						displayName: 'Authentication',
+						name: 'incomingAuthentication',
+						type: 'options',
+						default: 'none',
+						displayOptions: { show: { resume: ['form'] } },
+						options: [{ name: 'None', value: 'none' }],
+					},
+					{
+						displayName: 'Authentication',
+						name: 'incomingAuthentication',
+						type: 'options',
+						default: 'none',
+						noDataExpression: true,
+						displayOptions: { show: { resume: ['webhook'] } },
+						options: [{ name: 'None', value: 'none' }],
+					},
+				],
+			},
+		}),
+	};
+}
+
 describe('expressionPrefixValidator', () => {
 	describe('metadata', () => {
 		it('has correct id', () => {
@@ -303,6 +344,72 @@ describe('expressionPrefixValidator', () => {
 			expect(issues).toHaveLength(1);
 			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
 			expect(issues[0]?.message).toContain('used literally');
+		});
+
+		it('follows displayOptions when one name is declared twice and they disagree', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: {
+					resume: 'form',
+					incomingAuthentication: "={{ $json.requiresAuth ? 'basicAuth' : 'none' }}",
+				},
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('still reports a missing prefix on the declaration that allows expressions', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { resume: 'form', incomingAuthentication: '{{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('MISSING_EXPRESSION_PREFIX');
+		});
+
+		it('reports the prefix on the declaration that forbids expressions', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { resume: 'webhook', incomingAuthentication: '={{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('incomingAuthentication');
+		});
+
+		it('resolves the default of the parameter the declarations branch on', () => {
+			// `resume` is omitted, so its default ('webhook') decides which
+			// declaration is visible.
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { incomingAuthentication: '={{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+		});
+
+		it('drops the inline-template remedy when the value has no template', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT 1' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.message).toContain("Drop the leading '='.");
+			expect(issues[0]?.message).not.toContain('Keep the {{ }} inline');
 		});
 
 		it('leaves the = prefix alone on a parameter that supports expressions', () => {

@@ -4,7 +4,8 @@
  * Validates that expressions have the required '=' prefix.
  */
 
-import { isFromAIOnlyExpression } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { isFromAIOnlyExpression, NodeHelpers } from 'n8n-workflow';
 
 import { isStickyNoteType } from '../../../constants/node-types';
 import type { GraphNode, NodeInstance } from '../../../types/base';
@@ -12,19 +13,29 @@ import { isPlaceholderValue, parseVersion } from '../../string-utils';
 import { findMissingExpressionPrefixes } from '../../validation-helpers';
 import type { ValidatorPlugin, ValidationIssue, PluginContext, NodeTypesProvider } from '../types';
 
-/** Shape of the node-type properties this validator reads. */
-type PropertyLike = {
-	name?: unknown;
-	noDataExpression?: unknown;
-	typeOptions?: { editor?: unknown };
-};
+/**
+ * The node's description, or `undefined` when the provider cannot resolve it.
+ *
+ * `NodeTypesProvider` is structural and deliberately loose, so the description
+ * is narrowed here for the `NodeHelpers` calls below. The provider handed to
+ * plugin validators is already guarded, so a type or version this instance does
+ * not have reads as `undefined` rather than throwing.
+ */
+function resolveDescription(
+	node: NodeInstance<string, string, unknown>,
+	provider: NodeTypesProvider,
+): INodeTypeDescription | undefined {
+	const description = provider.getByNameAndVersion(
+		node.type,
+		parseVersion(node.version),
+	)?.description;
 
-const isPropertyLike = (value: unknown): value is PropertyLike =>
-	typeof value === 'object' && value !== null;
+	return description as INodeTypeDescription | undefined;
+}
 
 /**
- * The node's parameters that cannot hold an expression, mapped to whether the
- * parameter is a SQL editor field.
+ * The node's visible parameters that cannot hold an expression, mapped to
+ * whether the parameter is a SQL editor field.
  *
  * A parameter declared `noDataExpression` loses a leading '=' whenever
  * `getNodeParameters` resolves it, which happens on every editor load and on
@@ -35,45 +46,73 @@ const isPropertyLike = (value: unknown): value is PropertyLike =>
  *   the working form;
  * - any other field uses the value literally.
  *
- * Only top-level properties are scanned. Every SQL editor field is declared
- * there, and a name can be declared more than once (BigQuery declares
- * `sqlQuery` for both SQL dialects), so one SQL editor declaration is enough.
+ * One name can be declared several times behind different `displayOptions`, and
+ * those declarations can disagree. Wait v1.1 declares `incomingAuthentication`
+ * for both `resume: form`, which allows expressions, and `resume: webhook`,
+ * which does not. Only the declaration the node's own values display counts, so
+ * visibility is resolved the way `getNodeParameters` resolves it, defaults
+ * included. A name whose visible declarations disagree is left out, because
+ * neither verdict is safe to report.
  */
 function parametersWithoutExpressionSupport(
 	node: NodeInstance<string, string, unknown>,
+	params: INodeParameters,
 	provider: NodeTypesProvider,
 ): Map<string, boolean> {
-	const properties =
-		provider.getByNameAndVersion(node.type, parseVersion(node.version))?.description?.properties ??
-		[];
+	const description = resolveDescription(node, provider);
+	const properties: INodeProperties[] = description?.properties ?? [];
 
-	const fields = new Map<string, boolean>();
-
-	for (const property of properties) {
-		if (!isPropertyLike(property)) continue;
-		if (property.noDataExpression !== true) continue;
-		if (typeof property.name !== 'string') continue;
-
-		const isSqlEditor = property.typeOptions?.editor === 'sqlEditor';
-		fields.set(property.name, fields.get(property.name) === true || isSqlEditor);
+	// Most nodes declare none, and resolving defaults below is not free.
+	if (!properties.some((property) => property.noDataExpression === true)) {
+		return new Map();
 	}
 
-	return fields;
+	const nodeStub = { typeVersion: parseVersion(node.version) };
+	// `displayOptions` read sibling values, so a parameter left at its default
+	// has to carry that default here or its declaration reads as hidden.
+	const values =
+		NodeHelpers.getNodeParameters(properties, params, true, false, nodeStub, description ?? null) ??
+		params;
+
+	const withoutSupport = new Map<string, boolean>();
+	const withSupport = new Set<string>();
+
+	for (const property of properties) {
+		if (!NodeHelpers.displayParameter(values, property, nodeStub, description ?? null)) continue;
+
+		if (property.noDataExpression === true) {
+			withoutSupport.set(property.name, property.typeOptions?.editor === 'sqlEditor');
+		} else {
+			withSupport.add(property.name);
+		}
+	}
+
+	for (const name of withSupport) {
+		withoutSupport.delete(name);
+	}
+
+	return withoutSupport;
 }
 
 /** Message for a value that a field declared `noDataExpression` cannot carry. */
 function unsupportedExpressionMessage(
 	nodeName: string,
 	parameter: string,
-	{ isSqlEditor, hasPrefix }: { isSqlEditor: boolean; hasPrefix: boolean },
+	{
+		isSqlEditor,
+		hasPrefix,
+		hasTemplate,
+	}: { isSqlEditor: boolean; hasPrefix: boolean; hasTemplate: boolean },
 ): string {
 	if (!hasPrefix) {
 		return `'${nodeName}' has parameter "${parameter}" containing {{ $... }}, but the field does not support expressions, so the value is used literally.`;
 	}
 
-	const remedy = isSqlEditor
-		? "Keep the {{ }} inline and drop the leading '='."
-		: 'Use a static value.';
+	const remedy = !isSqlEditor
+		? 'Use a static value.'
+		: hasTemplate
+			? "Keep the {{ }} inline and drop the leading '='."
+			: "Drop the leading '='.";
 
 	return `'${nodeName}' has parameter "${parameter}" starting with '=', but the field does not support expressions. n8n removes the prefix when the workflow is opened in the editor or executed. ${remedy}`;
 }
@@ -119,7 +158,7 @@ export const expressionPrefixValidator: ValidatorPlugin = {
 		// rule below applies to every path. That is the behavior from before these
 		// checks became node-type aware.
 		const noExpressionParams = provider
-			? parametersWithoutExpressionSupport(node, provider)
+			? parametersWithoutExpressionSupport(node, params as INodeParameters, provider)
 			: new Map<string, boolean>();
 
 		for (const [parameter, isSqlEditor] of noExpressionParams) {
@@ -131,14 +170,20 @@ export const expressionPrefixValidator: ValidatorPlugin = {
 			// is correct as written (see getNodeParameters). Without the prefix it is
 			// not protected by anything, so it is reported like any other template.
 			if (hasPrefix && isFromAIOnlyExpression(value)) continue;
+
+			const hasTemplate = value.includes('{{ $');
 			// A prefix-free inline template is the working form on a SQL editor field,
 			// and a value with neither a prefix nor a template says nothing about
 			// expressions.
-			if (!hasPrefix && (isSqlEditor || !value.includes('{{ $'))) continue;
+			if (!hasPrefix && (isSqlEditor || !hasTemplate)) continue;
 
 			issues.push({
 				code: 'UNSUPPORTED_EXPRESSION',
-				message: unsupportedExpressionMessage(node.name, parameter, { isSqlEditor, hasPrefix }),
+				message: unsupportedExpressionMessage(node.name, parameter, {
+					isSqlEditor,
+					hasPrefix,
+					hasTemplate,
+				}),
 				severity: 'warning',
 				nodeName: node.name,
 				parameterPath: parameter,
