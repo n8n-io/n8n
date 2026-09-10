@@ -107,6 +107,27 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Report completion');
 		});
 
+		it('should not ask about publishing a stale live version below verified', () => {
+			// The lead already says "Do NOT offer to publish it". Asking anyway
+			// would contradict it inside the same message.
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Changed',
+				workflowId: 'wf-123',
+				claim: makeClaim({
+					level: 'partial',
+					liveState: 'live-stale',
+					nodesNotReached: ['Send Email'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('The live version is still the previous one');
+			expect(result).toContain('Do NOT offer to publish it.');
+			expect(result).not.toContain('ask whether to publish the fix');
+		});
+
 		it('should keep the verified wording when the published version is the verified one', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',

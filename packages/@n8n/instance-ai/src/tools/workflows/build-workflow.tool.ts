@@ -148,11 +148,13 @@ function describeSavedPublishState(saved: { versionId: string; activeVersionId?:
 		publishState: { live, activeVersionId, savedVersionId: versionId },
 		...(live === 'stale'
 			? {
+					// Fact only. A save happens before verification and setup, so a
+					// publish question here would jump the post-build flow and offer
+					// to publish a workflow that is not ready.
 					publishStateNote:
 						'This workflow is published, and this save is a draft. The live version is still ' +
 						'the previous one, so nothing changed for production yet. Do NOT describe the ' +
-						'workflow as fixed, live, or working in production until it is published again. ' +
-						'Ask the user whether to publish it.',
+						'workflow as fixed, live, or working in production until it is published again.',
 				}
 			: {}),
 	};
@@ -528,6 +530,16 @@ const buildWorkflowOutputSchema = z.object({
 	credentialResolutionNote: z.string().optional(),
 	referencedWorkflowIds: z.array(z.string()).optional(),
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	/** Where this save landed relative to production. Absent while unpublished. */
+	publishState: z
+		.object({
+			live: z.enum(['current', 'stale']),
+			activeVersionId: z.string(),
+			savedVersionId: z.string(),
+		})
+		.optional(),
+	/** Present only for `live: 'stale'` — the sentence to relay. */
+	publishStateNote: z.string().optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),

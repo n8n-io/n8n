@@ -107,8 +107,11 @@ export function formatWorkflowLoopGuidance(
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
+			// Only a verified draft earns the publish question. Below `verified` the
+			// lead already says "Do NOT offer to publish it", and asking anyway
+			// would contradict it in the same message.
 			const closing =
-				action.claim?.liveState === 'live-stale'
+				action.claim?.level === 'verified' && action.claim.liveState === 'live-stale'
 					? 'Report the outcome to the user, and ask whether to publish the fix.'
 					: isVerifiedClaim(action.claim)
 						? 'Report completion to the user.'

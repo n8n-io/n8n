@@ -39,10 +39,16 @@ const DEFAULT_NODE_PREVIEW_CHARS = 600;
 function formatLiveStateNote(claim: VerificationClaim): string | undefined {
 	const liveState = describeClaimLiveState(claim);
 	if (liveState === undefined) return undefined;
-	return (
+
+	const fact =
 		`${liveState} Do NOT describe the workflow as live, running, or working in production ` +
-		'until it is published. Publishing is what makes this change live — ask the user whether to do it.'
-	);
+		'until it is published.';
+
+	// Only a verified draft is worth publishing. Below `verified` the coverage
+	// rules already refuse a publish offer, so the prompt would contradict them.
+	return claim.level === 'verified'
+		? `${fact} Publishing is what makes this change live — ask the user whether to do it.`
+		: fact;
 }
 
 /**

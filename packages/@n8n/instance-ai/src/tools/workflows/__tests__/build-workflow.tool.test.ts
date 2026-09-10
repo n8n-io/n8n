@@ -280,7 +280,10 @@ describe('createBuildWorkflowTool', () => {
 				savedVersionId: 'v-next',
 			});
 			expect(result.publishStateNote).toContain('this save is a draft');
-			expect(result.publishStateNote).toContain('Ask the user whether to publish it');
+			expect(result.publishStateNote).toContain('Do NOT describe the workflow as fixed');
+			// A save happens before verification and setup, so this is the wrong
+			// moment to ask about publishing.
+			expect(result.publishStateNote).not.toMatch(/ask the user/i);
 		});
 
 		it('reports no publish state for an unpublished workflow', async () => {

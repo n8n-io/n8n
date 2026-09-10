@@ -1566,6 +1566,26 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(update.verification?.claim?.liveState).toBe('live-stale');
 	});
 
+	it('states the stale live version without asking to publish a failed run', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-1',
+				status: 'error',
+				error: 'Send Email failed',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.level).toBe('failed');
+		expect(result.liveStateNote).toContain('The live version is still the previous one');
+		expect(result.liveStateNote).not.toMatch(/ask the user whether/i);
+	});
+
 	it('says nothing about publishing when the published version is the verified one', async () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome(),
