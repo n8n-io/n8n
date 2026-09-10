@@ -596,14 +596,14 @@ describe('apps tool', () => {
 
 			expect(context.appService?.getSourceTarball).toHaveBeenCalledWith('app-1');
 			const writeCalls = writeFileMock(context).mock.calls as Array<[string, Buffer, unknown]>;
-			expect(writeCalls).toHaveLength(3);
+			expect(writeCalls).toHaveLength(2);
 			expect(writeCalls[0][0]).toMatch(/^\.app-builds\/greeter-\d+-restore\.tgz$/);
 			expect(Buffer.isBuffer(writeCalls[0][1])).toBe(true);
 			expect(writeCalls[0][1]).toEqual(SOURCE_TARBALL);
 
 			const commands = commandsRun(context);
 			expect(commands[0]).toBe(
-				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(cd '/home/daytona/workspace/apps/greeter' && find . -type f ! -path './src/n8n-bindings.d.ts' ! -path './vendor/n8n-app-sdk.tgz')\" ]",
+				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(cd '/home/daytona/workspace/apps/greeter' && find . -type f ! -path './src/n8n-bindings.d.ts')\" ]",
 			);
 			expect(commands[1]).toBe("mkdir -p '/home/daytona/workspace/.app-builds'");
 			expect(commands[2]).toMatch(
@@ -625,7 +625,7 @@ describe('apps tool', () => {
 			});
 		});
 
-		it('rewrites the SDK tarball and the binding types from the current bindings after unpacking', async () => {
+		it('rewrites the binding types from the current bindings after unpacking, but not the SDK tarball', async () => {
 			const context = createMockContext();
 			mockEmptyAppDir(context);
 			appServiceMock(context, 'getBindings').mockResolvedValue({
@@ -647,10 +647,10 @@ describe('apps tool', () => {
 
 			const result = await runRestore(context);
 
-			expect(writeFileMock(context)).toHaveBeenCalledWith(
+			expect(writeFileMock(context)).not.toHaveBeenCalledWith(
 				'apps/greeter/vendor/n8n-app-sdk.tgz',
-				SDK_TARBALL,
-				expect.objectContaining({ recursive: true }),
+				expect.anything(),
+				expect.anything(),
 			);
 			expect(writeFileMock(context)).toHaveBeenCalledWith(
 				TYPES_PATH,
@@ -662,7 +662,6 @@ describe('apps tool', () => {
 				'shell',
 				expect.stringMatching(/restore\.tgz$/),
 				'shell',
-				'apps/greeter/vendor/n8n-app-sdk.tgz',
 				TYPES_PATH,
 				'git',
 				'shell',
@@ -763,7 +762,7 @@ describe('apps tool', () => {
 			const writeCalls = writeFileMock(context).mock.calls as Array<
 				[string, Buffer, { abortSignal?: AbortSignal }]
 			>;
-			expect(writeCalls).toHaveLength(3);
+			expect(writeCalls).toHaveLength(2);
 			for (const call of writeCalls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});

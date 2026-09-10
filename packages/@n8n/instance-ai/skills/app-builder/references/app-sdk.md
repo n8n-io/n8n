@@ -8,6 +8,14 @@ workflow as the app's project. Workflow ids never appear in the app.
 `apps(action="create")` writes the package to `vendor/n8n-app-sdk.tgz`; the
 template's `package.json` depends on `"@n8n/app-sdk": "file:vendor/n8n-app-sdk.tgz"`.
 
+## Compatibility
+
+The SDK is copied into the app at create time and never changes afterwards;
+`restore` keeps the copy in the stored source. The runtime API contract is
+additive-only: new fields, endpoints and error codes may appear, nothing is
+renamed, removed or retyped, so any SDK version keeps working. A breaking
+change, if ever needed, ships under a new path next to the existing one.
+
 ## Bind before code
 
 A key is callable only after `apps(action="bind")`, which asks the user for

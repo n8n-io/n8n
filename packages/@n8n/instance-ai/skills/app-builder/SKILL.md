@@ -67,11 +67,11 @@ For an already bound app (the conversation names an app id) skip step 1.
 Before you edit or build, confirm that `apps/<namespace>/` exists in this
 workspace (`workspace_execute_command` with `ls apps/<namespace>`). If it does
 not, call `apps(action="restore", appId)`: it unpacks the source of the
-latest published version into `apps/<namespace>/`, refreshes
-`vendor/n8n-app-sdk.tgz` and `src/n8n-bindings.d.ts` from the current SDK and
-bindings, and returns `workspacePath` and `versionId`. A directory that holds
-only those two generated files (from a `bind` before the restore) counts as
-empty. Then continue with step 2. The first build after a restore
+latest published version into `apps/<namespace>/` (with the SDK the app was
+created with), refreshes `src/n8n-bindings.d.ts` from the current bindings,
+and returns `workspacePath` and `versionId`. A directory that holds only that
+generated file (from a `bind` before the restore) counts as empty. Then
+continue with step 2. The first build after a restore
 installs dependencies again (about 25 s). `{ denied, reason }` means there is
 nothing to restore (no version yet) or the directory already has files; read
 `reason`.

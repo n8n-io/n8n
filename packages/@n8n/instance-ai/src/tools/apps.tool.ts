@@ -649,14 +649,10 @@ export async function handleRestore(
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${app.namespace}`;
 
-	// `bind` may run before `restore` in a fresh sandbox; the files it generates are
-	// rewritten below, so they do not count as the user's work.
-	const sdk = await appService.getSdkTarball();
-	const generated = [BINDINGS_TYPES_PATH, `${SDK_VENDOR_DIR}/${sdk.filename}`]
-		.map((path) => `! -path ${q(`./${path}`)}`)
-		.join(' ');
+	// `bind` may run before `restore` in a fresh sandbox; the file it generates is
+	// rewritten below, so it does not count as the user's work.
 	const occupied = await run(
-		`[ -d ${q(appDir)} ] && [ -n "$(cd ${q(appDir)} && find . -type f ${generated})" ]`,
+		`[ -d ${q(appDir)} ] && [ -n "$(cd ${q(appDir)} && find . -type f ! -path ${q(`./${BINDINGS_TYPES_PATH}`)})" ]`,
 		{ cwd: root },
 	);
 	if (occupied.exitCode === 0) {
@@ -692,9 +688,8 @@ export async function handleRestore(
 			throw new Error(`Could not unpack the stored source: ${tailLog(combinedLog(extract))}`);
 		}
 
-		// The stored source carries the SDK and types of its build time; the restored app
-		// must build against the current ones.
-		await writeSdkTarball(workspace, app.namespace, sdk, abortSignal);
+		// The stored source keeps the SDK the app was created with: a restore must not
+		// upgrade it. The binding types follow the current bindings.
 		const described = await appService.getBindings(app.id);
 		await writeBindingsTypes(workspace, app.namespace, described.bindings, abortSignal);
 
