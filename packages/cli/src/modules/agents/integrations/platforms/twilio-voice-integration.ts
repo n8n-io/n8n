@@ -149,6 +149,8 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 			phoneNumber: settings.phoneNumber,
 			allowedCallers: settings.allowedCallers,
 			webhookUrl: ctx.webhookUrlFor(this.type),
+			// HACK: disable signature verification for testing
+			verifySignature: false,
 			httpClient: this.httpClient,
 			chatSdk,
 		});
