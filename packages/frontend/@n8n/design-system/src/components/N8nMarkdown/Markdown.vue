@@ -444,7 +444,8 @@ input[type='checkbox'] + label {
 
 	pre > code,
 	li > code,
-	p > code {
+	p > code,
+	td > code {
 		color: var(--sticky--code--color--text);
 	}
 
@@ -471,15 +472,9 @@ input[type='checkbox'] + label {
 		border-left: var(--spacing--4xs) solid var(--sticky--border-color, currentColor);
 		font-style: italic;
 
-		p:first-of-type::before {
-			content: open-quote;
-		}
-
-		p:last-of-type::after {
-			content: close-quote;
-		}
-
 		// The blockquote carries the bottom spacing; don't stack the paragraph's.
+		// No open-quote/close-quote pseudos here: the app reset sets
+		// `blockquote { quotes: none }`, so they never render inside n8n.
 		p:last-of-type {
 			margin-bottom: 0;
 		}
