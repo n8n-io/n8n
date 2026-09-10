@@ -203,4 +203,15 @@ export class ExecutionsConfig {
 	 */
 	@Env('N8N_PRE_EXECUTE_ERROR_CREATES_EXECUTION')
 	preExecuteErrorCreatesExecution: boolean = false;
+
+	/**
+	 * When true, a sub-workflow execution streams per-node progress to the parent
+	 * execution's editor session, so the canvas can render live progress on the
+	 * "Execute Sub-workflow" node. Off by default while the feature rolls out.
+	 *
+	 * Named with the `N8N_ENV_FEAT_` prefix so the editor reads the same switch
+	 * through the env-feature-flag channel.
+	 */
+	@Env('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS')
+	subworkflowProgressEnabled: boolean = false;
 }
