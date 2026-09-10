@@ -153,3 +153,5 @@ export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl
 
 /** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+
+// Experiment marker. This makes the CLI run the full affected unit test suite.
