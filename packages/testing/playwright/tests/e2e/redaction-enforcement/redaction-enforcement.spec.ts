@@ -178,6 +178,23 @@ test.describe(
 
 				// Copying redacted data to the editor would pin empty items over the real ones
 				await expect(memberN8n.executions.getDebugButton()).toBeDisabled();
+
+				await memberN8n.executions.hoverDebugButton();
+				await expect(memberN8n.executions.getTooltip()).toContainText(
+					'This execution data is redacted',
+				);
+
+				// The disabled button sits inside the debug route's link. A click on it must
+				// not reach the link: the route change is synchronous, so the URL would
+				// already be the debug one here, before the pin path could redirect back.
+				await memberN8n.executions.getDebugButton().click({ force: true });
+				await expect(memberN8n.executions.getPreview()).toBeVisible();
+				await expect(memberN8n.page).toHaveURL(
+					new RegExp(`/workflow/${execution.workflowId}/executions/${execution.executionId}$`),
+				);
+				await expect(
+					memberN8n.notifications.getNotificationByTitle('Execution data not imported'),
+				).toBeHidden();
 			});
 
 			test('enforces the reveal scope on the executions API', async ({ api }) => {

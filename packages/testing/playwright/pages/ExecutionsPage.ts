@@ -41,6 +41,14 @@ export class ExecutionsPage extends BasePage {
 		return this.page.getByTestId('execution-debug-button').locator('xpath=ancestor::button');
 	}
 
+	/**
+	 * Hover the tooltip's trigger, not the disabled button: Chrome does not
+	 * dispatch mouse events to disabled form controls.
+	 */
+	async hoverDebugButton(): Promise<void> {
+		await this.getDebugButton().locator('xpath=ancestor::a').hover();
+	}
+
 	getPreview(): Locator {
 		return this.page.getByTestId('execution-preview-host');
 	}

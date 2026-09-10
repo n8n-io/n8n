@@ -46,10 +46,26 @@ export const useExecutionDebugging = () => {
 		let execution = await workflowsStore.getExecution(executionId);
 
 		// getExecution sends no redaction flag, so it always returns the policy-redacted
-		// payload. Pinning that would overwrite nodes with empty placeholder items.
-		// Only fetch again when the user may reveal: an unpermitted reveal request fails
-		// and records an audit event.
-		if (execution?.data?.redactionInfo?.isRedacted && execution.data.redactionInfo.canReveal) {
+		// payload: every item is an empty placeholder that would overwrite real node data.
+		const redactionInfo = execution?.data?.redactionInfo;
+		if (redactionInfo?.isRedacted) {
+			if (!redactionInfo.canReveal) {
+				// The preview disables the button for this, but the command bar and a pasted
+				// debug URL both reach here directly.
+				toast.showToast({
+					title: i18n.baseText('nodeView.showMessage.debug.redacted.title'),
+					message: i18n.baseText('executionsList.debug.button.redacted.tooltip'),
+					type: 'warning',
+				});
+				await router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
+				});
+				return;
+			}
+
+			// An unpermitted reveal request fails and records an audit event, so only ask
+			// for one when canReveal says it will succeed.
 			const unredacted = await workflowsStore.fetchExecutionDataById(executionId, {
 				redactExecutionData: false,
 			});

@@ -80,10 +80,6 @@ export class WorkflowSettingsModal extends BasePage {
 		await this.getVisiblePopoverOption(mode, { exact: true }).click();
 	}
 
-	getTooltip(): Locator {
-		return this.page.getByTestId('tooltip-content').filter({ visible: true });
-	}
-
 	getSaveButton(): Locator {
 		// Not scoped to `this.container`: the container test-id lives on the
 		// modal's content slot, while the save button renders in the modal's
