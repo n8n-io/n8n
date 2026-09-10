@@ -2,16 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 
 export const TEMPLATE_REQUEST_TIMEOUT_MS = 5000;
 
 export type WorkflowTemplateResult =
 	| { available: true; template: Record<string, unknown> }
 	| { available: false };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 @Service()
 export class WorkflowTemplatesService {

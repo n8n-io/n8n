@@ -2,7 +2,7 @@ import type { McpRegistryServerResponse } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 
 import { resolveMcpRegistryConnection } from './mcp-registry-connection';
-import { getMcpRegistryCredentialTypeName } from './node-description-transform';
+import { getMcpRegistryCredentialOptions } from './node-description-transform';
 import { McpRegistryService } from './registry/mcp-registry.service';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
 
@@ -35,7 +35,7 @@ function toResponse(server: McpRegistryServer): McpRegistryServerResponse {
 		updatedAt: server.updatedAt,
 		icons: server.icons,
 		websiteUrl: server.websiteUrl,
-		credentialType: getMcpRegistryCredentialTypeName(server),
+		credentials: getMcpRegistryCredentialOptions(server),
 		tools: server.tools,
 		isOfficial: server.isOfficial,
 		status: server.status,

@@ -4,6 +4,7 @@ import type {
 	StepError,
 	StepSlots,
 	StepStatus,
+	WorkflowDocument,
 } from '../execution';
 import type { WorkflowGraph } from '../graph';
 
@@ -21,6 +22,11 @@ export interface ExecutionSnapshot {
 	mode: ExecutionMode;
 	/** The graph captured at start, immutable for the execution's lifetime. */
 	graph: WorkflowGraph;
+	/**
+	 * The workflow the run came from, captured at start. Reported so a caller can
+	 * render the execution against the workflow that ran, not the current one.
+	 */
+	workflow: WorkflowDocument;
 	createdAt: string;
 	updatedAt: string;
 	finishedAt: string | null;

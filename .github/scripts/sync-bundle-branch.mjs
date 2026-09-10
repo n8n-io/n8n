@@ -26,9 +26,17 @@
  * of being re-litigated on every later run. Contrast `sync-master-to-3x.mjs`, which
  * auto-resolves mechanical files and opens a conflict PR.
  *
+ * PUBLISHED HISTORY ONLY: the base is synced in only once the public repo already has it. A cut
+ * squash-merges the bundle branch into private master as `chore: Bundle …`, and the hourly
+ * public→private mirror then DISCARDS that commit in favour of the public cherry-pick of the same
+ * changes. Building on it would strand the discarded commit on a branch that fix PRs are cut
+ * from, and the replacement gets merged in on top of it later. An unpublished cut is a SKIP (the
+ * mirror clears it within the hour, whatever the cut is, so waiting cannot deadlock); a base
+ * ahead of public for any other reason is a FAILURE, because the mirror will not clear it.
+ *
  * Runs from a full checkout (fetch-depth 0) of any branch. Assumes credentials are NOT
- * persisted by checkout — every fetch and the push go through an explicit token URL, which
- * matters because the repository is private.
+ * persisted by checkout — every private fetch and the push go through an explicit token URL,
+ * which matters because the repository is private. The public fetch is anonymous.
  *
  * Env: BUNDLE_BRANCH (e.g. bundle/2.x), BASE_BRANCH (e.g. master),
  *      GH_TOKEN (installation token with contents:write),
@@ -48,6 +56,14 @@ import {
 const BOT_NAME = 'n8n-assistant[bot]';
 const BOT_EMAIL = 'n8n-assistant[bot]@users.noreply.github.com';
 
+// Hard-coded like the mirror in sec-sync-public-to-private.yml, and fetched anonymously: the
+// installation token this script holds is scoped to the private repo.
+const PUBLIC_REMOTE = 'https://github.com/n8n-io/n8n.git';
+
+// What a cut lands on private base before it is published. Anything else ahead of public means
+// the mirror is stuck, not that a cut is in flight.
+const BUNDLE_SUBJECT = /^chore: Bundle/;
+
 function required(env, name) {
 	const value = env[name];
 	if (!value) throw new Error(`${name} env var is required`);
@@ -60,6 +76,47 @@ export function annotation(title, message) {
 	return `::error title=${title}::${message.replace(/\n/g, '%0A')}`;
 }
 
+/**
+ * Whether the base tip is still private-only, and what to do about it.
+ *
+ * `null` means the public repo already has it, so the sync may proceed. The predicate is
+ * containment in public rather than "is not a bundle commit", so a direct push that bypassed
+ * ci-restrict-private-merges.yml is caught too; the subjects only decide how to react.
+ */
+function unconvergedBase({ git, log, bundle, base, baseSha, publicSha }) {
+	if (isAncestor(git, baseSha, publicSha)) return null;
+
+	const ahead = git(['log', '--format=%h %s', `${publicSha}..${baseSha}`])
+		.split('\n')
+		.filter(Boolean);
+	const subjects = ahead.map((line) => line.slice(line.indexOf(' ') + 1));
+
+	// All-or-nothing: one unexplained commit means the mirror will not clear the base on its own.
+	// An empty range here means unrelated histories, which `every` treats as a skip — the safe
+	// direction, since forcing past an ancestry check we could not evaluate is never right.
+	if (subjects.every((subject) => BUNDLE_SUBJECT.test(subject))) {
+		log(
+			`${base} ${baseSha} has not reached public ${base} ${publicSha} yet; leaving ${bundle} ` +
+				'untouched. The hourly public → private sync clears this.',
+		);
+		return { status: 'unconverged' };
+	}
+
+	// Subjects go to the run log, which is private. The annotation stays a count: it is the
+	// headline of a failed run, and a subject hints at the fix.
+	log(ahead.join('\n'));
+	log(
+		annotation(
+			`${base} is ahead of public`,
+			`${base} carries ${ahead.length} commit(s) that public does not have and that are not ` +
+				`bundle cuts, so the mirror cannot clear them. Fix the mirror, then re-run this workflow.`,
+		),
+	);
+	throw new Error(`${base} is ahead of public by commits that are not bundle cuts.`);
+}
+
+// Takes `baseSha` explicitly. This path never fetches the bundle branch, so FETCH_HEAD still
+// holds the PUBLIC tip here, not the base — never swap the argument for FETCH_HEAD.
 function createBundleBranch({ git, log, bundle, base, baseSha, remote }) {
 	log(`${bundle} does not exist yet; creating it at ${base} ${baseSha}.`);
 	git(['checkout', '--force', '-B', bundle, baseSha]);
@@ -75,13 +132,28 @@ function createBundleBranch({ git, log, bundle, base, baseSha, remote }) {
 
 /**
  * One fetch-merge-push cycle. `status: 'rejected'` means the branch moved under us — the
- * caller re-runs from a fresh fetch rather than forcing anything.
+ * caller re-runs from a fresh fetch rather than forcing anything. `status: 'unconverged'` means
+ * the base is not published yet and nothing was touched.
  */
 function mergeBaseIntoBundle({ git, log, bundle, base, remote }) {
-	// Pin both sides to the fetched SHAs — fetching by URL never updates the origin/* tracking
-	// refs, so FETCH_HEAD is the only handle. Base first: the second fetch overwrites it.
+	// Pin every side to the SHA fetched for it — fetching by URL never updates the origin/*
+	// tracking refs, so FETCH_HEAD is the only handle, and each of the three fetches below
+	// overwrites the last. Read FETCH_HEAD on the line after its own fetch; never separate a
+	// fetch from the read that consumes it.
 	git(['fetch', remote, base]);
 	const baseSha = git(['rev-parse', 'FETCH_HEAD']);
+
+	// The base branch is named the same on both sides (master, 1.x). If that ever stops being
+	// true, map it here rather than at the call site.
+	const publicFetch = attempt(git, ['fetch', PUBLIC_REMOTE, base]);
+	if (!publicFetch.ok) {
+		// A guard that cannot be evaluated must stop the run, not be assumed satisfied.
+		throw new Error(`Could not fetch ${base} from the public repo:\n${publicFetch.out}`);
+	}
+	const publicSha = git(['rev-parse', 'FETCH_HEAD']);
+
+	const unconverged = unconvergedBase({ git, log, bundle, base, baseSha, publicSha });
+	if (unconverged) return unconverged;
 
 	const listed = attempt(git, ['ls-remote', '--heads', remote, `refs/heads/${bundle}`]);
 	if (!listed.ok) {

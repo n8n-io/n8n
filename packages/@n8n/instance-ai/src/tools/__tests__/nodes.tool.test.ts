@@ -1,7 +1,13 @@
+import {
+	NodeSearchEngine,
+	suggestedNodesData,
+	type SearchableNodeType,
+} from '@n8n/ai-utilities/node-catalog';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
+import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
 
 function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
@@ -181,6 +187,10 @@ describe('nodes tool', () => {
 			];
 			const context = createMockContext();
 			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				properties: [{ type: 'credentialsSelect' }],
+				credentials: [{ name: 'gmailOAuth2' }],
+			});
 
 			const tool = createNodesTool(context, 'full');
 			const first = await executeTool(
@@ -203,6 +213,8 @@ describe('nodes tool', () => {
 				totalResults: 1,
 				results: [expect.objectContaining({ name: 'n8n-nodes-base.httpRequest' })],
 			});
+			expect(context.nodeService.getDescription).toHaveBeenCalledTimes(2);
+			expect(first).not.toHaveProperty('results.0.setupPreference');
 		});
 
 		it('should search nodes by connection type and enrich results with discriminators', async () => {
@@ -352,6 +364,105 @@ describe('nodes tool', () => {
 			const result = await executeTool(tool, { action: 'search' } as never, {} as never);
 
 			expect(result).toEqual({ results: [], totalResults: 0 });
+		});
+	});
+
+	describe('setup preference', () => {
+		it('should expose credential preferences without changing existing data or order', async () => {
+			const expectedTelegram = addSetupPreference({}, ['telegramApi']).setupPreference;
+			const expectedGmail = addSetupPreference({}, ['gmailOAuth2', 'googleApi']).setupPreference;
+			const credentialsByNode = new Map([
+				['n8n-nodes-base.gmail', ['gmailOAuth2', 'googleApi']],
+				['n8n-nodes-base.httpRequest', ['gmailOAuth2']],
+				['n8n-nodes-base.telegram', ['telegramApi']],
+			]);
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.telegram',
+					displayName: 'Telegram',
+					description: 'Send a notification message',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					aiGateway: { supported: true, minVersion: 1 },
+				},
+				{
+					name: 'n8n-nodes-base.unknownSetupability',
+					displayName: 'Unknown Setupability',
+					description: 'Send a notification message',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+				},
+			] satisfies SearchableNodeType[];
+			const expectedSearchResults = new NodeSearchEngine(searchableNodes).searchByName(
+				'message',
+				5,
+			);
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.nodeService.getDescription as Mock).mockImplementation((nodeType: string) => ({
+				properties:
+					nodeType === 'n8n-nodes-base.httpRequest' ? [{ type: 'credentialsSelect' }] : [],
+				credentials: (credentialsByNode.get(nodeType) ?? []).map((name) => ({ name })),
+			}));
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
+				resource: ['message'],
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const searchResult = await executeTool<{
+				results: Array<{
+					name: string;
+					score: number;
+					note?: string;
+					aiGateway?: unknown;
+					discriminators?: unknown;
+					setupPreference?: unknown;
+				}>;
+			}>(tool, { action: 'search', query: 'message', limit: 5 } as never, {} as never);
+			const suggestedResult = await executeTool<{
+				results: Array<{
+					suggestedNodes: Array<{
+						name: string;
+						note?: string;
+						setupPreference?: unknown;
+					}>;
+				}>;
+			}>(tool, { action: 'suggested', categories: ['notification'] } as never, {} as never);
+
+			expect(searchResult.results.map(({ name, score }) => ({ name, score }))).toEqual(
+				expectedSearchResults.map(({ name, score }) => ({ name, score })),
+			);
+			const searchTelegram = searchResult.results.find(
+				(node) => node.name === 'n8n-nodes-base.telegram',
+			);
+			const searchUnknown = searchResult.results.find(
+				(node) => node.name === 'n8n-nodes-base.unknownSetupability',
+			);
+			const notificationNodes = suggestedResult.results[0]?.suggestedNodes;
+			const suggestedTelegram = notificationNodes?.find(
+				(node) => node.name === 'n8n-nodes-base.telegram',
+			);
+
+			expect(searchTelegram).toMatchObject({
+				aiGateway: { supported: true, minVersion: 1 },
+				discriminators: { resource: ['message'] },
+				setupPreference: expectedTelegram,
+			});
+			expect(suggestedTelegram?.setupPreference).toEqual(searchTelegram?.setupPreference);
+			expect(searchUnknown).not.toHaveProperty('setupPreference');
+			expect(notificationNodes?.map(({ name }) => name)).toEqual(
+				suggestedNodesData.notification.nodes.map(({ name }) => name),
+			);
+			expect(notificationNodes?.find((node) => node.name === 'n8n-nodes-base.gmail')).toEqual({
+				name: 'n8n-nodes-base.gmail',
+				note: "Default to this because it's easy for users to setup",
+				setupPreference: expectedGmail,
+			});
+			expect(
+				notificationNodes?.find((node) => node.name === 'n8n-nodes-base.httpRequest'),
+			).not.toHaveProperty('setupPreference');
 		});
 	});
 

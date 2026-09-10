@@ -1,10 +1,11 @@
+import type { AgentDbMessage } from '@n8n/agents';
 import { normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import type { AgentDbMessage, AgentTreeSnapshot } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { z } from 'zod';
 
 import {
@@ -41,7 +42,9 @@ type ConversationStoredMessage = (AgentDbMessage | StoredAgentMessage) & {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractTextFromContent(content: unknown): string {
+/** Concatenated text blocks of a stored message's content. Exported for the
+ *  conversation-history service, which reads the same persisted rows. */
+export function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) return extractTextFromParts(content);
 	return '';

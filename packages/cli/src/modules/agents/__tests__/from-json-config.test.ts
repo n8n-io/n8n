@@ -235,7 +235,11 @@ describe('buildFromJson()', () => {
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search', hasToMessage: true });
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
 		const rawOutput = { matches: ['first', 'second'] };
 		const toolExecutor: ToolExecutor = {
@@ -261,6 +265,7 @@ describe('buildFromJson()', () => {
 			}
 		).tools.find(({ name }) => name === 'my_search');
 		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
 		const output = await tool.handler({ query: 'n8n' }, {} as never);
 
@@ -567,6 +572,23 @@ describe('buildFromJson()', () => {
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
 		expect(tool!.approval).toBeUndefined();
+	});
+
+	it('drops a workflow tool when resolveTool returns null', async () => {
+		const config = makeConfig({ tools: [{ type: 'workflow', workflow: 'Deleted Workflow' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				resolveTool: vi.fn().mockResolvedValue(null),
+			},
+		);
+
+		expect(agent.snapshot.tools.some((t) => t.name === 'Deleted Workflow')).toBe(false);
 	});
 
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
@@ -1852,6 +1874,22 @@ describe('AgentJsonConfigSchema', () => {
 				transport: 'streamableHttp',
 				authentication: 'none',
 			});
+		});
+
+		it('accepts a native OAuth2 credential type', () => {
+			const parsed = AgentJsonConfigSchema.parse({
+				...base,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://api.githubcopilot.com/mcp/',
+						authentication: 'githubOAuth2Api',
+						credential: 'github-credential',
+					},
+				],
+			});
+
+			expect(parsed.mcpServers?.[0].authentication).toBe('githubOAuth2Api');
 		});
 
 		it('rejects duplicate MCP server names', () => {

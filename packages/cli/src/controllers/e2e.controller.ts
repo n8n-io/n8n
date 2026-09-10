@@ -144,6 +144,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DATA_REDACTION]: false,
 		[LICENSE_FEATURES.WORKFLOW_REVIEWS]: false,
 		[LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES]: false,
+		[LICENSE_FEATURES.WORKER_POOLS]: false,
 	};
 
 	private static readonly numericFeaturesDefaults: Record<NumericLicenseFeature, number> = {

@@ -9,6 +9,7 @@ export { AgentEvalDatasetRepository } from './agent-eval-dataset.repository.ee';
 export { AgentEvalRunRepository } from './agent-eval-run.repository.ee';
 export { AgentEvalResultRepository } from './agent-eval-result.repository.ee';
 export { AgentEvalRatingRepository } from './agent-eval-rating.repository.ee';
+export { AiPreferenceRepository } from './ai-preference.repository';
 export { AnnotationTagMappingRepository } from './annotation-tag-mapping.repository.ee';
 export { AnnotationTagRepository } from './annotation-tag.repository.ee';
 export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-workflow.repository';
@@ -35,6 +36,7 @@ export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CrashedExecution,
 	type ExecutionDeletionCriteria,
 	type UpdateExecutionConditions,
 } from './execution.repository';
@@ -44,6 +46,7 @@ export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
+export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
@@ -79,7 +82,7 @@ export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
-export { WorkflowRepository } from './workflow.repository';
+export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export {
 	WorkflowPublicationTriggerStatusRepository,

@@ -147,34 +147,29 @@ beforeEach(() => {
 });
 
 describe('InstanceAiAdapterService node usage', () => {
-	describe('isNodeUsageEnabled()', () => {
-		const gateFor = async (flags: Record<string, unknown> | Error) => {
+	describe('resolveExperimentGates().nodeUsageEnabled', () => {
+		// `PostHogClient.getFeatureFlags` already swallows PostHog errors and returns `{}`
+		// plus env overrides, so the adapter only has to read the resolved flag.
+		const gateFor = async (flags: Record<string, unknown>) => {
 			const postHogClient = mock<PostHogClient>();
-			if (flags instanceof Error) {
-				postHogClient.getFeatureFlags.mockRejectedValue(flags);
-			} else {
-				postHogClient.getFeatureFlags.mockResolvedValue(flags as never);
-			}
+			postHogClient.getFeatureFlags.mockResolvedValue(flags as never);
 			vi.spyOn(Container, 'get').mockImplementation(((token: unknown) =>
 				token === PostHogClient ? postHogClient : mock<ExecutionPersistence>()) as never);
-			return await buildAdapter({}).isNodeUsageEnabled(user);
+			const gates = await buildAdapter({}).resolveExperimentGates(user);
+			return gates.nodeUsageEnabled;
 		};
 
 		it('is on for a user in the rollout', async () => {
 			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: true })).toBe(true);
 		});
 
+		// A flag-plane outage resolves to `{}`, so this case also covers fail-closed.
 		it('is off when the flag is absent', async () => {
 			expect(await gateFor({})).toBe(false);
 		});
 
 		it('is off when the flag is explicitly false', async () => {
 			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: false })).toBe(false);
-		});
-
-		// A flag-plane outage must not switch a context surface on by accident.
-		it('fails closed when PostHog is unreachable', async () => {
-			expect(await gateFor(new Error('PostHog unreachable'))).toBe(false);
 		});
 	});
 

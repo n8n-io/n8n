@@ -38,8 +38,9 @@ export interface SystemTask {
 	readonly durable: boolean;
 
 	/**
-	 * Runs one occurrence as soon as this instance becomes the leader, on top
-	 * of the scheduled occurrences. In-memory timers only: ignored for a
+	 * Runs one occurrence as soon as this instance becomes the leader,
+	 * including at startup for an instance that is already the leader, on
+	 * top of the scheduled occurrences. In-memory timers only: ignored for a
 	 * durable run.
 	 */
 	readonly runOnTakeover?: boolean;
@@ -135,6 +136,23 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
 
 	return options;
+}
+
+/**
+ * Resolves the schedule a task is planned with. An interval is rounded to the
+ * whole second the scheduler requires, so a cadence derived from a fractional
+ * config value keeps running as it did on the legacy timers.
+ */
+export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
+	const { schedule } = task;
+	if (schedule.kind !== 'interval') return schedule;
+
+	return { ...schedule, intervalSeconds: wholeSeconds(schedule.intervalSeconds) };
+}
+
+/** Rounds to the whole second the scheduler requires, never below one. */
+function wholeSeconds(seconds: number): number {
+	return Math.max(1, Math.round(seconds));
 }
 
 /** Ceiling of an `int` column, which is what both fields are stored in. */

@@ -10,6 +10,7 @@ import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
+import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -36,6 +37,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectPoolSettings } from './project-pool-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -119,6 +121,7 @@ export {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -190,6 +193,7 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
@@ -207,6 +211,7 @@ export const entities = {
 	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -254,6 +259,7 @@ export const entities = {
 	Role,
 	ScheduledJob,
 	ScheduledTask,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

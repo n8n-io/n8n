@@ -2,13 +2,28 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import type { ICredentialDataDecryptedObject } from './interfaces';
 
-/** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
-export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
+const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
+
+/** Covers MCP-specific and existing native OAuth2 credential type names. */
+export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
 interface McpRegistryConnectionBase {
 	nodeTypeName: string;
-	credentialType: McpOAuth2CredentialType;
 	transport: 'httpStreamable' | 'sse';
+	credentialBindings: readonly McpRegistryCredentialBinding[];
+	/** Extra headers configured on the registry row (e.g. a partner User-Agent), sent as-is on every request. */
+	headers?: Record<string, string>;
+}
+
+export interface McpRegistryCredentialBinding {
+	credentialType: McpOAuth2CredentialType;
+	selector: string;
+}
+
+export interface ResolvedMcpRegistryConnection {
+	connection: McpRegistryConnection;
+	binding: McpRegistryCredentialBinding;
 }
 
 /** A row whose endpoint is a literal URL, known before any credential is read. */
@@ -43,6 +58,7 @@ export function getConfiguredEndpointUrl(connection: McpRegistryConnection): str
 
 export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
+	credentialType: McpOAuth2CredentialType;
 	credentialData: ICredentialDataDecryptedObject;
 	headers?: Record<string, string>;
 }
@@ -64,24 +80,53 @@ export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: false;
 			error: {
-				code: 'missing_access_token' | 'not_registered' | 'unresolved_server_url';
+				code:
+					| 'missing_access_token'
+					| 'unsupported_credential'
+					| 'not_registered'
+					| 'unresolved_server_url';
 				message: string;
 			};
 	  };
 
 export interface McpRegistryRuntime {
-	resolveConnection(nodeTypeName: string): McpRegistryConnection | undefined;
+	resolveConnection(
+		nodeTypeName: string,
+		selector?: string,
+	): ResolvedMcpRegistryConnection | undefined;
 	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
 }
 
 /**
- * Returns `true` for `mcpOAuth2Api` and any credential type ending in
- * `McpOAuth2Api` (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
+ * Returns `true` for MCP-specific and native OAuth2 credential naming conventions.
  */
 export function isMcpOAuth2Authentication(
 	authentication: string,
 ): authentication is McpOAuth2CredentialType {
-	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
+	return (
+		authentication === 'oAuth2Api' ||
+		authentication.endsWith('OAuth2Api') ||
+		authentication.endsWith('OAuth2')
+	);
+}
+
+/** Return true when an MCP OAuth2 token is close enough to expiry to refresh it. */
+export function shouldRefreshMcpOAuth2Token(tokenData: unknown, grantType?: unknown): boolean {
+	if (!isRecord(tokenData)) return false;
+	if (grantType !== 'clientCredentials' && !(tokenData.refresh_token ?? tokenData.refreshToken)) {
+		return false;
+	}
+
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	if (!Number.isFinite(expiresAt)) return false;
+
+	const expiresInMs = Number(tokenData.expires_in) * 1000;
+	const refreshBufferMs =
+		Number.isFinite(expiresInMs) && expiresInMs > 0
+			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
+			: OAUTH2_REFRESH_BUFFER_MS;
+
+	return Date.now() + refreshBufferMs >= expiresAt;
 }
 
 export function getMcpAuthHeaders(

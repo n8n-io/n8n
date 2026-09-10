@@ -4,7 +4,7 @@
  */
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
-import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	IConnections,
@@ -17,7 +17,12 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	UnexpectedError,
+	Workflow,
+	WorkflowExecuteModeList,
+} from 'n8n-workflow';
 
 import {
 	MAIN_CONNECTION_TYPE,
@@ -27,7 +32,12 @@ import {
 } from './constants';
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
-import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import type {
+	AdditionalDataContext,
+	CreateExecuteContextParams,
+	V1Execution,
+	V1NodeStepConfig,
+} from './types';
 import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
 
 export function toV1Execution(
@@ -185,8 +195,38 @@ function toV1BatchNode(graphNode: GraphNode): INode {
 	};
 }
 
-export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+/**
+ * The v1 mode the host stored at start. This layer only runs v1 nodes, so a
+ * missing or unknown mode is a caller bug and the step fails.
+ */
+export function toV1ExecuteMode(context: StepExecutionContext): WorkflowExecuteMode {
+	const { hostMode } = context.callerContext;
+	if (hostMode === undefined) {
+		throw new UnexpectedError('The caller context has no v1 execution mode');
+	}
+	if (!isWorkflowExecuteMode(hostMode)) {
+		throw new UnexpectedError('The caller context has an unknown v1 execution mode', {
+			extra: { hostMode },
+		});
+	}
+	return hostMode;
+}
+
+const isWorkflowExecuteMode = (mode: string): mode is WorkflowExecuteMode =>
+	(WorkflowExecuteModeList as readonly string[]).includes(mode);
+
+export function toAdditionalDataContext(context: StepExecutionContext): AdditionalDataContext {
 	return {
+		executionId: context.executionId,
+		workflowId: context.workflowId,
+		mode: toV1ExecuteMode(context),
+		userId: context.callerContext.userId,
+		projectId: context.callerContext.projectId,
+	};
+}
+
+export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+	const node: INode = {
 		id: graphNode.id,
 		name: graphNode.name,
 		type: config.nodeType,
@@ -195,6 +235,8 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
 	};
+	if (config.credentials !== undefined) node.credentials = config.credentials;
+	return node;
 }
 
 /**
