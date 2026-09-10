@@ -4,6 +4,7 @@ import type {
 	EvaluationConfigDto,
 	InstanceAiEvalSeedAgent,
 } from '@n8n/api-types';
+import { InstanceAiSendMessageRequest } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 import {
@@ -13,6 +14,32 @@ import {
 } from '../n8n-client';
 
 const BASE_URL = 'http://localhost:5678';
+
+describe('N8nClient.sendMessage', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('preserves the Execute target through the REST request schema', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		const client = new N8nClient(BASE_URL);
+		const context = { source: 'setup-panel-execute', workflowId: 'wf-remapped' } as const;
+		const attachments = [{ type: 'workflow', id: context.workflowId, name: 'Greeting' }] as const;
+
+		await expect(
+			client.sendMessage('thread-1', 'Run a test.', [...attachments], context),
+		).resolves.toEqual({ runId: 'run-1' });
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe(`${BASE_URL}/rest/instance-ai/chat/thread-1`);
+		if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+		const body = jsonParse<Record<string, unknown>>(init.body);
+		expect(InstanceAiSendMessageRequest.parse(body)).toMatchObject({
+			message: 'Run a test.',
+			attachments,
+			context,
+		});
+		expect(body).not.toHaveProperty('handoffContext');
+	});
+});
 
 /** Builds a minimal `Response`-shaped object for the client's private `fetch()` to consume. */
 function jsonResponse(body: unknown): Response {
@@ -46,9 +73,9 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 	});
 
 	describe('getAgentConfig', () => {
-		it('requests the agent config route and unwraps the { data } envelope', async () => {
+		it('requests the agent config route and returns the config from the response', async () => {
 			const config = { instructions: 'Be a helpful assistant.' } as AgentJsonConfig;
-			const fetchMock = stubFetch({ data: config });
+			const fetchMock = stubFetch({ data: { config, configHash: 'config-hash' } });
 			const client = new N8nClient(BASE_URL);
 
 			const result = await client.getAgentConfig('proj-1', 'agent-1');

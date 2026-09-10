@@ -7,6 +7,7 @@ import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
+import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
@@ -17,6 +18,7 @@ export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 export { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
+export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
@@ -42,6 +44,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'error',
 		options: {},
+	},
+	'single-instance-lockfile': {
+		enabled: true,
+		severity: 'error',
+		options: { lockFile: 'pnpm-lock.yaml' },
 	},
 	'encryption-boundary': {
 		enabled: true,
@@ -127,6 +134,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
 	runner.registerRule(new MigrationTimestampRule());
 	runner.registerRule(new SingleInstanceLibsRule());
+	runner.registerRule(new SingleInstanceLockfileRule());
 	runner.registerRule(new EncryptionBoundaryRule());
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());

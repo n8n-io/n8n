@@ -146,8 +146,7 @@ setup steps or node semantics from memory when those sources can answer.
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
    node docs that the knowledge base does not cover, load `n8n-docs-assistant`
-   then load `n8n-docs` via `load_tool` (search "n8n docs" if it is not
-   visible) and call `n8n-docs`. Prefer docs over web search for n8n-specific
+   and call `n8n-docs`. Prefer docs over web search for n8n-specific
    questions.
 
 For workflows with multiple external systems, multiple requested effects,
@@ -921,6 +920,13 @@ isImportant.onFalse(sendHolding);
 For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
 or inline — using zero-based `.onCase(index, target)` for each rule output.
 
+Error routes work the same way on any node: `.to(fetchNode).onError(notify)`
+routes the error output and leaves the cursor on `fetchNode`, so a following
+`.to(next)` continues the main branch and a second `.onError()` adds another
+handler. The inline form `.to(fetchNode.onError(notify))` is equivalent. Both
+forms set `onError: 'continueErrorOutput'` on the node for you. Call
+`.onError()` once for each handler — it takes one handler, not an array.
+
 For Split in Batches, use it for per-item side effects and loop back with
 `nextBatch`. Do not add a separate IF gate just to check whether items exist.
 
@@ -938,8 +944,9 @@ For AI Agent workflows:
 - `placeholder('hint')`: marks a parameter value for user input (use directly as
   the parameter value; `workflow-sdk validate` flags wrapping it in `expr()`).
 - `.output(n)`: selects a zero-based output index.
-- `.onError(handler)`: connects a node's error output to a handler. Requires
-  `onError: 'continueErrorOutput'` in the node config.
+- `.onError(handler)`: connects a node's error output to a handler, on the node
+  or on the workflow builder. It sets `onError: 'continueErrorOutput'` on the
+  node, so you do not declare that in the config.
 - `nodeJson(node, 'field.path')`: creates an explicit expression reference to a
   specific node's JSON output.
 - Subnode factories follow the same pattern as `languageModel()` and `tool()`:

@@ -103,23 +103,6 @@ export { SourceControlStatusPublicDto } from './source-control/source-control-st
 export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
 export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
 export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
-export {
-	CloneGitConnectionDto,
-	CreateGitConnectionDto,
-	GitConnectionListPublicDto,
-	GitConnectionProjectListPublicDto,
-	GitConnectionProjectPublicDto,
-	GitConnectionPublicDto,
-	GitConnectionPullResultDto,
-	GitConnectionPushResultDto,
-	ListGitConnectionsQueryDto,
-	PushGitConnectionDto,
-	UpdateGitConnectionDto,
-	gitConnectionTypeSchema,
-	gitKeyGeneratorTypeSchema,
-	type GitConnectionType,
-	type GitKeyGeneratorType,
-} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
@@ -461,3 +444,79 @@ export {
 	type PromotableResourceType,
 	type PromoteRequest,
 } from './promotions/promotable-resource.dto';
+
+export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
+export {
+	CreatePromotionProviderDto,
+	ListPromotionProvidersQueryDto,
+	PromotionProviderCreatedPublicDto,
+	PromotionProviderListPublicDto,
+	PromotionProviderPublicDto,
+	UpdatePromotionProviderDto,
+	promotionGitConfigSchemas,
+	promotionGitSshKeyAuthInputSchema,
+	promotionGitSshKeyAuthUpdateSchema,
+	promotionGitSshKeyConfigSchema,
+	promotionGitTokenAuthInputSchema,
+	promotionGitTokenConfigSchema,
+	promotionProviderAuthInputSchema,
+	promotionProviderAuthTypeSchema,
+	promotionProviderAuthUpdateSchema,
+	promotionProviderConfigSchema,
+	promotionProviderPublicSchema,
+	promotionProviderSummarySchema,
+	promotionProviderTypeSchema,
+	promotionSshKeyTypeSchema,
+	type PromotionProviderAuthInput,
+	type PromotionProviderAuthType,
+	type PromotionProviderAuthUpdate,
+	type PromotionProviderConfig,
+	type PromotionProviderType,
+	type PromotionSshKeyType,
+} from './promotions/promotion-provider.dto';
+export {
+	PromotionApplyConfigPublicDto,
+	PromotionPromoteConfigPublicDto,
+	UpsertPromotionApplyConfigDto,
+	UpsertPromotionPromoteConfigDto,
+	promotionApplyConfigPublicSchema,
+	promotionConfigSettingsSchema,
+	promotionConnectionConfigsPublicSchema,
+	promotionDirectionSchema,
+	promotionGitApplySettingsSchema,
+	promotionGitPromoteSettingsSchema,
+	promotionGitSettingsSchemas,
+	promotionPromoteConfigPublicSchema,
+	type PromotionConfigSettings,
+	type PromotionConnectionConfigsPublic,
+	type PromotionDirection,
+} from './promotions/promotion-config.dto';
+export {
+	PromotionCheckoutPublicDto,
+	promotionCheckoutPublicSchema,
+} from './promotions/promotion-checkout.dto';
+export {
+	CreatePromotionConnectionDto,
+	ListPromotionConnectionsQueryDto,
+	PromotionConnectionListPublicDto,
+	PromotionConnectionProjectListPublicDto,
+	PromotionConnectionProjectPublicDto,
+	PromotionConnectionPublicDto,
+	UpdatePromotionConnectionDto,
+	promotionConnectionProjectPublicSchema,
+	promotionConnectionPublicSchema,
+	promotionConnectionScopeSchema,
+	promotionConnectionTargetSchema,
+	type PromotionConnectionScope,
+	type PromotionConnectionTarget,
+} from './promotions/promotion-connection.dto';
+export {
+	ApplyPackageResultDto,
+	PromotePackageDto,
+	PromotePackageResultDto,
+	applyPackageCountsSchema,
+	applyPackageResultSchema,
+	promotePackageCountsSchema,
+	promotePackageResultSchema,
+	promotionGitResultSchema,
+} from './promotions/promotion-operations.dto';

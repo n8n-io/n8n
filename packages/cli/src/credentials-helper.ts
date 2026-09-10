@@ -17,14 +17,10 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
-	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IWorkflowDataProxyAdditionalKeys,
 	WorkflowExecuteMode,
 	IHttpRequestHelper,
-	INodeTypeData,
-	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
 	IDataObject,
@@ -49,8 +45,8 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { createMockNodeTypes } from './credentials/mock-node-types';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
@@ -62,31 +58,7 @@ const mockNode = {
 	parameters: {} as INodeParameters,
 } as INode;
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
@@ -517,6 +489,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
+		// from their parent. Prefer expressionResolveValues.node when present: it is always
+		// the node making this call to resolve credentials.
+		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
 			return await this.aiGatewayService.getSyntheticCredential({
@@ -525,7 +502,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
-				node: executeData?.node,
+				node: consumerNode,
 			});
 		}
 
@@ -535,7 +512,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.policyEnforcementService.enforceCredentialDecrypt({
 			credentialType: type,
 			credentialId: credentialsEntity.id,
-			consumer: executeData ? { nodeType: executeData.node.type } : null,
+			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
 			projectId: additionalData.projectId ?? null,
 		});
 

@@ -1,4 +1,5 @@
 import {
+	buildWorkflowTestRequestBlock,
 	cleanStoredUserMessage,
 	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
@@ -66,6 +67,12 @@ function agentPreviewContextMarker(
 }
 
 describe('cleanStoredUserMessage', () => {
+	it('hides the Execute block while preserving the user message', () => {
+		const block = buildWorkflowTestRequestBlock('wf-1');
+		expect(block).toContain(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(cleanStoredUserMessage(`${block}\n\nRun a test.`)).toBe('Run a test.');
+	});
+
 	it('returns plain text unchanged', () => {
 		expect(cleanStoredUserMessage('Hello world')).toBe('Hello world');
 	});
@@ -91,6 +98,12 @@ describe('cleanStoredUserMessage', () => {
 	it('strips <workflow-verification-follow-up> block', () => {
 		const stored =
 			'<workflow-verification-follow-up>\n{"workItemId":"wi-1"}\n</workflow-verification-follow-up>\n\nUser reply';
+		expect(cleanStoredUserMessage(stored)).toBe('User reply');
+	});
+
+	it('strips <workflow-setup-state> block', () => {
+		const stored =
+			'<workflow-setup-state>\nSetup state.\n{"workflows":[]}\n</workflow-setup-state>\n\nUser reply';
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
