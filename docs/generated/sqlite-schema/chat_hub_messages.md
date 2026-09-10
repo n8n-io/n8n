@@ -113,6 +113,7 @@ erDiagram
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
+  varchar_36_ startedByUserId
   varchar status
   datetime stoppedAt
   varchar_2_ storedAt

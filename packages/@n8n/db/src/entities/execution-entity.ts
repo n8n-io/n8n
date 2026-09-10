@@ -135,6 +135,14 @@ export class ExecutionEntity {
 	@Column({ default: false })
 	usedPrivateCredentials: boolean;
 
+	/**
+	 * n8n user whose identity started the execution, copied from
+	 * `runtimeData.startedByUserId`. `null` for triggers without a user. Kept
+	 * without a foreign key so the audit value survives user deletion.
+	 */
+	@Column({ type: 'uuid', nullable: true })
+	startedByUserId: string | null;
+
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 

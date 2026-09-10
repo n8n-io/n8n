@@ -15,6 +15,7 @@
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
+| startedByUserId | uuid |  | true |  |  | n8n user whose identity started the execution. NULL for schedule, poll and third-party triggers. No foreign key: the audit value must outlive the user. |
 | status | varchar |  | false |  |  |  |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
@@ -78,6 +79,7 @@ erDiagram
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt
+  uuid startedByUserId
   varchar status
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
