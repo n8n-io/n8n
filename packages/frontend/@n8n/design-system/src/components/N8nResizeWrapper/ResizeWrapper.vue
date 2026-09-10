@@ -10,6 +10,8 @@ import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 const TOOLTIP_DELAY = 750;
 const { t } = useI18n();
 
+type DirectionLimit = 'min' | 'max' | undefined;
+
 interface ResizeProps {
 	/** Use an existing resize controller instead of creating one. */
 	resizer?: ResizablePanel;
@@ -39,6 +41,10 @@ interface ResizeProps {
 	supportedDirections?: Direction[];
 	/** Window that receives the drag events. */
 	window?: Window;
+	/** Allow the panel to collapse to a small size. */
+	allowCollapse?: boolean;
+	/** Allow the panel to expand to full width. */
+	allowFullWidth?: boolean;
 }
 
 const props = withDefaults(defineProps<ResizeProps>(), {
@@ -52,6 +58,8 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	scale: 1,
 	gridSize: 20,
 	window: undefined,
+	allowCollapse: false,
+	allowFullWidth: false,
 	supportedDirections: function getSupportedDirections() {
 		return [];
 	},
@@ -91,6 +99,8 @@ const resizer =
 	useResizablePanel({
 		width: {
 			size: toRef(props, 'width'),
+			allowCollapse: props.allowCollapse,
+			allowFullWidth: props.allowFullWidth,
 			minSize: function getMinWidth() {
 				return props.minWidth;
 			},
@@ -100,6 +110,8 @@ const resizer =
 		},
 		height: {
 			size: toRef(props, 'height'),
+			allowCollapse: props.allowCollapse,
+			allowFullWidth: props.allowFullWidth,
 			minSize: function getMinHeight() {
 				return props.minHeight;
 			},
@@ -155,6 +167,24 @@ function resetSize(event: MouseEvent, direction: Direction): void {
 		direction,
 	});
 }
+
+function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
+	if (resizer.isCollapsed.value) return 'min';
+	if (resizer.isFullSize.value) return 'max';
+
+	const resizesWidth = direction !== 'top' && direction !== 'bottom';
+	const resizesHeight = direction !== 'left' && direction !== 'right';
+	const isAtMin =
+		(resizesWidth && resizer.width.value <= props.minWidth) ||
+		(resizesHeight && resizer.height.value <= props.minHeight);
+	const isAtMax =
+		(resizesWidth && resizer.width.value >= props.maxWidth) ||
+		(resizesHeight && resizer.height.value >= props.maxHeight);
+
+	if (isAtMin) return 'min';
+	if (isAtMax) return 'max';
+	return undefined;
+}
 </script>
 
 <template>
@@ -168,8 +198,8 @@ function resetSize(event: MouseEvent, direction: Direction): void {
 		>
 			<template #content>
 				<div :class="$style.tooltipContent">
-					<div :class="$style.tooltipLabel">{{ t('resizeWrapper.resize') }}</div>
-					<div :class="$style.dragShortcut">{{ t('resizeWrapper.drag') }}</div>
+					<span :class="$style.tooltipLabel">{{ t('resizeWrapper.resize') }}</span>
+					<span :class="$style.dragShortcut">{{ t('resizeWrapper.drag') }}</span>
 				</div>
 			</template>
 			<div
@@ -178,6 +208,8 @@ function resetSize(event: MouseEvent, direction: Direction): void {
 					[$style.resizer]: true,
 					[$style[direction]]: true,
 					[$style.active]: activeDirection === direction,
+					[$style.atMinLimit]: getIsAtDirectionLimit(direction) === 'min',
+					[$style.atMaxLimit]: getIsAtDirectionLimit(direction) === 'max',
 				}"
 				data-test-id="resize-handle"
 				@mousedown="startResize"
@@ -338,6 +370,46 @@ function resetSize(event: MouseEvent, direction: Direction): void {
 	top: 50%;
 	transform: translateY(-50%);
 	height: var(--resizer--indicator--thickness);
+}
+
+.right.atMinLimit,
+.left.atMaxLimit {
+	cursor: e-resize;
+}
+
+.left.atMinLimit,
+.right.atMaxLimit {
+	cursor: w-resize;
+}
+
+.top.atMinLimit,
+.bottom.atMaxLimit {
+	cursor: n-resize;
+}
+
+.bottom.atMinLimit,
+.top.atMaxLimit {
+	cursor: s-resize;
+}
+
+.topLeft.atMinLimit,
+.bottomRight.atMaxLimit {
+	cursor: nw-resize;
+}
+
+.topRight.atMinLimit,
+.bottomLeft.atMaxLimit {
+	cursor: ne-resize;
+}
+
+.bottomLeft.atMinLimit,
+.topRight.atMaxLimit {
+	cursor: sw-resize;
+}
+
+.bottomRight.atMinLimit,
+.topLeft.atMaxLimit {
+	cursor: se-resize;
 }
 </style>
 
