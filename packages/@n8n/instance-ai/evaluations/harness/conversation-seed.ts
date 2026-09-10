@@ -351,7 +351,7 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
 				? { ...block, text: fn(block.text) }
 				: block,
 		),
-	} as SeedMessage;
+	};
 }
 
 /**

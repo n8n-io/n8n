@@ -52,7 +52,6 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -403,7 +402,7 @@ export class AgentRuntime {
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
-			resumeData = parseResult.data as JSONValue;
+			resumeData = parseResult.data;
 		}
 
 		try {

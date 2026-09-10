@@ -182,7 +182,7 @@ export class WorkflowLoopStorage {
 			update: ({ metadata = {} }) => {
 				const all = this.parse(metadata[METADATA_KEY]);
 				const record = all[workItemId];
-				if (!record || record.state.setupRoutingClaimId !== claimId) return null;
+				if (record?.state.setupRoutingClaimId !== claimId) return null;
 
 				all[workItemId] = {
 					state: clearSetupRoutingClaim(record.state),

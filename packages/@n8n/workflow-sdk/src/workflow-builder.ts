@@ -490,7 +490,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		this._currentNode = sourceKey;
 		this._currentOutput = outputIndex;
-		this.to(target as NodeInstance<string, string, unknown>);
+		this.to(target);
 		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
 		this._currentNode = sourceKey;
 		this._currentOutput = 0;

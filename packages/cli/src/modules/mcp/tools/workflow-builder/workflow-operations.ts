@@ -773,9 +773,7 @@ const handleUpdateNodeParameters: OpHandler<'updateNodeParameters'> = (op, ctx) 
 		return `node '${op.nodeName}' not found`;
 	}
 	const sanitized = sanitizeUnsafeKeys(op.parameters) as Record<string, unknown>;
-	const merged = op.replace
-		? sanitized
-		: deepMerge((node.parameters ?? {}) as Record<string, unknown>, sanitized);
+	const merged = op.replace ? sanitized : deepMerge(node.parameters ?? {}, sanitized);
 	node.parameters = merged as INodeParameters;
 	return null;
 };

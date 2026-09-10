@@ -328,7 +328,7 @@ export function lintWorkflowSdkAst(
 					}
 					if (arg.type === 'ArrayExpression') {
 						for (const el of arg.elements) {
-							if (el && el.type === 'CallExpression' && isPlaceholderCall(el)) {
+							if (el?.type === 'CallExpression' && isPlaceholderCall(el)) {
 								issues.push(
 									lintIssue({
 										code: 'SDK_PLACEHOLDER_WRAPPED',
