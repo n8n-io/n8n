@@ -1,14 +1,19 @@
 import type { PromotableResource } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import { jsonParse } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
+	WORKFLOW_METADATA_FILE_NAME,
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
@@ -42,7 +47,11 @@ export class PromotionChangeService {
 		private readonly promotionsService: PromotionsService,
 		private readonly packagesService: N8nPackagesService,
 		private readonly workflowRepository: WorkflowRepository,
-	) {}
+		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
+	) {
+		this.logger = this.logger.scoped('promotions');
+	}
 
 	async getChanges(user: User, projectId: string): Promise<PromotableResource[]> {
 		if (
@@ -54,6 +63,11 @@ export class PromotionChangeService {
 			);
 		}
 		const base = await this.promotionsService.listBaseBranchFiles(projectId);
+		const previewId = randomUUID();
+		const logContent =
+			this.globalConfig.logging.level === 'debug' &&
+			this.globalConfig.logging.scopes.includes('promotions');
+		const workflowContents = new Map<string, unknown>();
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
@@ -74,6 +88,17 @@ export class PromotionChangeService {
 						const workflow = jsonParse<SerializedWorkflow>(String(content));
 						archiveState.set(path, workflow.isArchived);
 					}
+					if (
+						logContent &&
+						(path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`) ||
+							path.endsWith(`/${WORKFLOW_METADATA_FILE_NAME}`))
+					) {
+						const relativePath = path.startsWith('./') ? path.slice(2) : path;
+						workflowContents.set(
+							`${PACKAGE_SUBFOLDER}/${relativePath}`,
+							jsonParse(String(content)),
+						);
+					}
 				},
 			},
 		);
@@ -86,12 +111,54 @@ export class PromotionChangeService {
 		);
 		const changes = diffPackageFiles(base, desired);
 		const changedIds = new Set<string>();
+		const renamedIds = new Set<string>();
+		const modifiedIds = new Set<string>();
 		const changedPaths = new Set<string>();
 		for (const fileChange of changes) {
 			if (fileChange.change !== 'added') changedPaths.add(fileChange.base.path);
 			if (fileChange.change !== 'deleted') changedPaths.add(fileChange.desired.path);
 			const file = fileChange.change === 'deleted' ? fileChange.base : fileChange.desired;
-			if (file.type === 'workflow') changedIds.add(file.entityId);
+			if (file.type === 'workflow') {
+				changedIds.add(file.entityId);
+				if (fileChange.change === 'renamed' || fileChange.change === 'renamed-and-modified') {
+					renamedIds.add(file.entityId);
+				}
+				if (fileChange.change !== 'renamed') modifiedIds.add(file.entityId);
+			}
+			this.logger.debug('Promotion file change', { previewId, projectId, ...fileChange });
+			if (logContent && file.type === 'workflow') {
+				const baseContent =
+					fileChange.change === 'added'
+						? null
+						: jsonParse(
+								await this.promotionsService.readBaseBranchBlob(projectId, fileChange.base.blobSha),
+							);
+				const desiredContent =
+					fileChange.change === 'deleted' ? null : workflowContents.get(fileChange.desired.path);
+				const [redactedBase, redactedDesired] = [baseContent, desiredContent].map(
+					(content) =>
+						redactDeep(content, {
+							redactSensitiveKeys: true,
+							detect: [
+								'email',
+								'phone',
+								'credit-card',
+								'ssn-us',
+								'iban',
+								'crypto-wallet',
+								'ip',
+								'mac',
+								'url',
+							],
+						}).value,
+				);
+				const { diffString } = await import('json-diff');
+				const contentDiff = diffString(redactedBase, redactedDesired, { color: false });
+				this.logger.debug(
+					`Promotion workflow content diff\n${contentDiff || 'No JSON differences after redaction. Check paths and file formatting.'}`,
+					{ previewId, projectId, workflowId: file.entityId, fileName: file.fileName },
+				);
+			}
 		}
 		const baseDependencies = new Map<string, PackageFile[]>();
 		for (const file of base) {
@@ -133,11 +200,22 @@ export class PromotionChangeService {
 						(currentPath !== undefined && changedPaths.has(currentPath)));
 				for (const workflowId of requirement.usedByWorkflows) {
 					dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
-					if (dependencyChanged) changedIds.add(workflowId);
+					if (dependencyChanged) {
+						changedIds.add(workflowId);
+						modifiedIds.add(workflowId);
+					}
 				}
 			}
 		}
 		const desiredWorkflows = new Map(manifest.workflows?.map((entry) => [entry.id, entry]));
+		this.logger.debug('Promotion change preview', {
+			previewId,
+			projectId,
+			baseFileCount: base.length,
+			desiredFileCount: desired.length,
+			fileChangeCount: changes.length,
+			workflowIds: [...changedIds],
+		});
 		const metadata = await this.workflowRepository.findByIds([...changedIds], {
 			fields: ['updatedAt', 'versionCounter'],
 		});
@@ -155,6 +233,9 @@ export class PromotionChangeService {
 			if (!entry) status = 'deleted';
 			else if (!baseIds.has(id)) status = 'new';
 			else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
+			else if (renamedIds.has(id)) {
+				status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
+			}
 			return {
 				id,
 				name: entry?.name ?? id,

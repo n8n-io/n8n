@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -6,7 +7,13 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { SharedWorkflowRepository, VariablesRepository, WorkflowRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import {
+	FolderRepository,
+	SharedWorkflowRepository,
+	VariablesRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -14,6 +21,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit } from 'simple-git';
+import { onTestFinished } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -25,6 +33,7 @@ import {
 	buildWorkflowReferencingVariables,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -55,6 +64,7 @@ beforeEach(async () => {
 	await testDb.truncate([
 		'WorkflowEntity',
 		'SharedWorkflow',
+		'Folder',
 		'ProjectRelation',
 		'Project',
 		'Variables',
@@ -145,7 +155,7 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	expect(response.body.data).toHaveLength(4);
 	expect(response.body.data).toEqual(
 		expect.arrayContaining([
-			expect.objectContaining({ id: modified.id, name: 'Renamed', status: 'modified' }),
+			expect.objectContaining({ id: modified.id, name: 'Renamed', status: 'renamed-and-modified' }),
 			expect.objectContaining({ id: archived.id, status: 'archived' }),
 			expect.objectContaining({
 				id: removed.id,
@@ -176,6 +186,130 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	);
 	const movedOut = await agent.get(endpoint).expect(400);
 	expect(movedOut.body.message).toContain('moved out of this project');
+}, 30_000);
+
+it('preserves workflow moves and changes across workflow files', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Moves', owner);
+	const folder = await createFolder(project, { name: 'Original' });
+	const workflow = await createWorkflowWithHistory(
+		{ name: 'Move', nodes: [], connections: {}, parentFolder: folder },
+		project,
+	);
+	const connection = await createConnection();
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const endpoint = `/promotions/${project.id}/changes`;
+	const agent = server.authAgentFor(owner);
+	const workflows = Container.get(WorkflowRepository);
+	const folders = Container.get(FolderRepository);
+
+	await folders.update(folder.id, { name: 'Renamed' });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
+	]);
+
+	await workflows.update(workflow.id, { activeVersionId: workflow.versionId });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'renamed-and-modified' }),
+	]);
+
+	await workflows.update(workflow.id, { activeVersionId: null, parentFolder: null });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'renamed-and-modified' }),
+	]);
+
+	await workflows.update(workflow.id, { parentFolder: folder });
+	await folders.update(folder.id, { name: folder.name });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
+}, 30_000);
+
+it('logs hashes and redacted workflow differences when promotion diagnostics are enabled', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Diagnostics', owner);
+	const workflow = await createWorkflow(
+		{ name: 'Diagnostic', nodes: [], connections: {} },
+		project,
+	);
+	const connection = await createConnection();
+	const service = Container.get(PromotionsService);
+	await service.promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const base = (await service.listBaseBranchFiles(project.id)).find(
+		(file) => file.entityId === workflow.id && file.fileName === 'workflow.json',
+	);
+	const workflows = Container.get(WorkflowRepository);
+	await workflows.update(workflow.id, {
+		versionId: 'changed-version',
+		nodes: [
+			{
+				id: 'diagnostic-node',
+				name: 'Diagnostic',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { password: 'fixture-password', note: 'Contact fixture@example.test' },
+			},
+		],
+	});
+	const variable = await createVariable('DIAGNOSTIC', 'fixture-variable-value');
+	await Container.get(VariablesService).updateCache();
+	const endpoint = `/promotions/${project.id}/changes`;
+	const agent = server.authAgentFor(owner);
+	const debug = vi.mocked(Container.get(Logger).scoped('promotions').debug);
+	const logging = Container.get(GlobalConfig).logging;
+	const { level, scopes } = logging;
+	onTestFinished(() => {
+		Object.assign(logging, { level, scopes });
+	});
+
+	logging.level = 'debug';
+	logging.scopes = [];
+	debug.mockClear();
+	const withoutDiagnostics = await agent.get(endpoint).expect(200);
+	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
+
+	logging.scopes = ['promotions'];
+	debug.mockClear();
+	const response = await agent.get(endpoint).expect(200);
+	expect(response.body.data).toEqual(withoutDiagnostics.body.data);
+	expect(debug).toHaveBeenCalledWith(
+		'Promotion file change',
+		expect.objectContaining({
+			projectId: project.id,
+			change: 'modified',
+			base: expect.objectContaining({ blobSha: base?.blobSha }),
+			desired: expect.objectContaining({ entityId: workflow.id, blobSha: expect.any(String) }),
+		}),
+	);
+	const output = JSON.stringify(debug.mock.calls);
+	expect(output).toContain('changed-version');
+	expect(output).toContain(workflow.versionId);
+	expect(output).toContain('[REDACTED]');
+	expect(output).not.toContain('fixture-password');
+	expect(output).not.toContain('fixture@example.test');
+	expect(output).not.toContain('fixture-variable-value');
+
+	await workflows.update(workflow.id, { nodes: workflow.nodes });
+	await Container.get(VariablesRepository).delete(variable.id);
+	await Container.get(VariablesService).updateCache();
+	debug.mockClear();
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: workflow.id, status: 'modified' }),
+	]);
+	expect(debug.mock.calls.map(([message]) => message).join('\n')).toContain('versionId');
+
+	await workflows.update(workflow.id, { versionId: workflow.versionId });
+	debug.mockClear();
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
+	expect(debug).toHaveBeenCalledWith(
+		'Promotion change preview',
+		expect.objectContaining({ projectId: project.id, fileChangeCount: 0, workflowIds: [] }),
+	);
 }, 30_000);
 
 it('detects variable and data table changes without reporting shadowed or unrelated dependencies', async () => {

@@ -9,7 +9,14 @@ export class PromotionChangesQueryDto extends Z.class({
 	order: z.enum(['asc', 'desc']).default('asc'),
 }) {}
 
-export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived', 'deleted']);
+export const promotableResourceStatusSchema = z.enum([
+	'new',
+	'modified',
+	'renamed',
+	'renamed-and-modified',
+	'archived',
+	'deleted',
+]);
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
 

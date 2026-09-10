@@ -66,6 +66,12 @@ describe('PromotionSelectModal', () => {
 	afterEach(() => server.shutdown());
 
 	it('should render change list after loading', async () => {
+		server.get('/rest/promotions/project-1/changes', () => ({
+			data: [
+				{ ...mockChanges[0], status: 'renamed' },
+				{ ...mockChanges[1], status: 'renamed-and-modified' },
+			],
+		}));
 		const { getByText } = renderComponent({
 			pinia,
 			props: {
@@ -77,6 +83,8 @@ describe('PromotionSelectModal', () => {
 		await waitFor(() => {
 			expect(getByText('Email summary')).toBeInTheDocument();
 			expect(getByText('Payment Handler')).toBeInTheDocument();
+			expect(getByText('Moved / renamed')).toBeInTheDocument();
+			expect(getByText('Moved / renamed and modified')).toBeInTheDocument();
 		});
 	});
 
