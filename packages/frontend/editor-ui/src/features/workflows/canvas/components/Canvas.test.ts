@@ -312,6 +312,64 @@ describe('Canvas', () => {
 		expect(second!.y - first!.y).toBe(0);
 	});
 
+	it('keeps tidy-up scoped to a group context menu with one member', async () => {
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);
+		workflowDocumentStore.setNodes([
+			createTestNode({ id: 'group-member', name: 'Group member' }),
+			createTestNode({ id: 'loose-node', name: 'Loose node' }),
+		]);
+		workflowDocumentStore.setNodeGroups([
+			{
+				id: 'single-group',
+				name: 'Single group',
+				nodeIds: ['group-member'],
+			},
+		]);
+		const groupMember = {
+			...createCanvasNodeElement({
+				id: 'group-member',
+				label: 'Group member',
+				position: { x: -272, y: 144 },
+				data: { name: 'Group member' },
+			}),
+			hidden: true,
+		};
+		const groupNode = createCanvasGroupNode({
+			id: 'single-group',
+			nodeIds: ['group-member'],
+			isCollapsed: true,
+			nodesRect: { x: -272, y: 144, width: 96, height: 96 },
+			position: { x: -336, y: 48 },
+		});
+		const looseNode = createCanvasNodeElement({
+			id: 'loose-node',
+			label: 'Loose node',
+			position: { x: 600, y: 0 },
+		});
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				nodes: [groupMember, groupNode, looseNode],
+				renderData: createEmptyCanvasRenderData(),
+			},
+			global: {
+				provide: { [NodeGroupViewKey as symbol]: createNodeGroupViewMock(true) },
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('canvas-node-group')).toBeInTheDocument());
+		await fireEvent.contextMenu(getByTestId('canvas-node-group'));
+		await waitFor(() => expect(getByTestId('context-menu-item-tidy_up')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('context-menu-item-tidy_up'));
+
+		await waitFor(() => expect(emitted()['tidy-up']).toHaveLength(1));
+		const tidyUpEvent = (emitted()['tidy-up'] as Array<[CanvasLayoutEvent]>)[0][0];
+		expect(tidyUpEvent.target).toBe('selection');
+		expect(tidyUpEvent.targetNodeCount).toBe(1);
+		expect(tidyUpEvent.result.nodes).toHaveLength(1);
+		expect(tidyUpEvent.result.nodes[0]?.id).toBe('group-member');
+	});
+
 	it('tidies the whole workflow from a single node menu even with a current selection', async () => {
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.spyOn(useUIStore(), 'isReadOnlyView', 'get').mockReturnValue(false);

@@ -1586,8 +1586,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
 			return await onTidyUp(
-				nodeIds.length > 1
-					? { source: 'context-menu', nodeIdsFilter: nodeIds }
+				groupId !== undefined || nodeIds.length > 1
+					? { source: 'context-menu', target: 'selection', nodeIdsFilter: nodeIds }
 					: { source: 'context-menu', target: 'all' },
 			);
 		case 'extract_sub_workflow':
