@@ -15,6 +15,7 @@ import type {
 import { sleep } from '@n8n/utils/sleep';
 import {
 	createEmptyRunExecutionData,
+	createRunExecutionData,
 	ManualExecutionCancelledError,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
@@ -182,6 +183,28 @@ describe('ActiveExecutions', () => {
 			expect.objectContaining({
 				deduplicationKey: 'wf-1:node-1:1700000000000',
 			}),
+		);
+	});
+
+	test('Should copy startedByUserId from the established context into the row', async () => {
+		const executionDataWithContext: IWorkflowExecutionDataProcess = {
+			...executionData,
+			executionData: createRunExecutionData({
+				executionData: {
+					runtimeData: {
+						version: 1,
+						establishedAt: 1,
+						source: 'manual',
+						startedByUserId: 'editor-user',
+					},
+				},
+			}),
+		};
+
+		await activeExecutions.add(executionDataWithContext);
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.objectContaining({ startedByUserId: 'editor-user' }),
 		);
 	});
 

@@ -63,6 +63,14 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		workflowId: pristineWorkflowData.id,
 	};
 
+	// A worker that established context itself (manual run offloaded with
+	// `executionData: null`) is the first to know the starting user; copy it on
+	// save. Leave the key out otherwise so the insert-time value is not nulled.
+	const startedByUserId = runData.data.executionData?.runtimeData?.startedByUserId;
+	if (startedByUserId) {
+		fullExecutionData.startedByUserId = startedByUserId;
+	}
+
 	if (retryOf !== undefined) {
 		fullExecutionData.retryOf = retryOf.toString();
 	}

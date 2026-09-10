@@ -1,11 +1,15 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { determineFinalExecutionStatus, updateExistingExecution } from '../shared-hook-functions';
+import {
+	determineFinalExecutionStatus,
+	prepareExecutionDataForDbUpdate,
+	updateExistingExecution,
+} from '../shared-hook-functions';
 
 describe('determineFinalExecutionStatus', () => {
 	describe('When waitTill is not set', () => {
@@ -87,5 +91,43 @@ describe('updateExistingExecution', () => {
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith('original-2', {
 			retrySuccessId: 'exec-2',
 		});
+	});
+});
+
+describe('prepareExecutionDataForDbUpdate', () => {
+	const workflowData = mock<IWorkflowBase>({ id: 'wf-1' });
+
+	it('should copy startedByUserId when the run carries a started-by context', () => {
+		const runData = mock<IRun>({
+			data: {
+				executionData: {
+					runtimeData: { startedByUserId: 'editor-user' },
+				},
+			},
+		});
+
+		const fullExecutionData = prepareExecutionDataForDbUpdate({
+			runData,
+			workflowData,
+			workflowStatusFinal: 'success',
+		});
+
+		expect(fullExecutionData.startedByUserId).toBe('editor-user');
+	});
+
+	it('should not set startedByUserId when the run has no started-by context', () => {
+		const runData = mock<IRun>({
+			data: {
+				executionData: undefined,
+			},
+		});
+
+		const fullExecutionData = prepareExecutionDataForDbUpdate({
+			runData,
+			workflowData,
+			workflowStatusFinal: 'success',
+		});
+
+		expect(fullExecutionData).not.toHaveProperty('startedByUserId');
 	});
 });

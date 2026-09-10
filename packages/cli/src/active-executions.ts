@@ -102,6 +102,9 @@ export class ActiveExecutions {
 					retryOf: executionData.retryOf ?? undefined,
 					tracingContext: executionData.tracingContext ?? null,
 					deduplicationKey: executionData.deduplicationKey,
+					// Context is established before this insert (WorkflowRunner.establishContextForPersistence).
+					startedByUserId:
+						executionData.executionData?.executionData?.runtimeData?.startedByUserId ?? null,
 				};
 
 				const workflowId = executionData.workflowData.id;
