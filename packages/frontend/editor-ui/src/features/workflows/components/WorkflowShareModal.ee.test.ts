@@ -182,8 +182,8 @@ describe('WorkflowShareModal.ee.vue', () => {
 		});
 	});
 
-	// Fails on purpose: reproduces the quarantined e2e journey
-	// "Workflow Sharing > should share workflow with another user via UI" (IAM-1372).
+	// Covers the quarantined e2e journey
+	// "Workflow Sharing > should share workflow with another user via UI".
 	it('should offer a peer personal project when team projects fill the first page of sharing candidates', async () => {
 		const homeProject: ProjectSharingData = {
 			id: 'personal-project-id',

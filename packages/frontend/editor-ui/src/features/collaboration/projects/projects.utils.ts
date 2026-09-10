@@ -16,7 +16,7 @@ export type ProjectSearchFn = (query: string) => Promise<ProjectSearchResult>;
  * Pass `type` when the caller accepts only one kind of project. The endpoint
  * returns one page and sorts team projects first, so a caller that drops the
  * other kind on the client gets an empty dropdown once team projects fill that
- * page (see IAM-1372).
+ * page.
  */
 export function useRemoteProjectSearch(
 	options: { type?: 'personal' | 'team' } = {},
