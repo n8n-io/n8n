@@ -6858,14 +6858,11 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			const getNewWorkflowData = vi.mocked(workflowsApi.getNewWorkflowData);
 			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
 
 			const { importTemplate } = useCanvasOperations();
 
-			const templateName = 'template name';
 			await importTemplate({
-				name: templateName,
 				workflow,
 			});
 
@@ -6882,11 +6879,6 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(getNewWorkflowData).toHaveBeenCalledWith(
-				expect.anything(),
-				templateName,
-				projectsStore.currentProjectId,
-			);
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -7785,6 +7777,7 @@ describe('useCanvasOperations', () => {
 				expect.anything(),
 				'Template Name',
 				'test-project-id',
+				undefined,
 			);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User inserted workflow template', {
@@ -7850,6 +7843,7 @@ describe('useCanvasOperations', () => {
 				expect.anything(),
 				'Template Name',
 				'test-project-id',
+				undefined,
 			);
 
 			expect(router.replace).toHaveBeenCalledWith({
