@@ -1,3 +1,4 @@
+import { LockNamespace, type Logger, type LockService } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -11,9 +12,33 @@ import type {
 	WebhookOptions,
 } from 'chat';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { setTimeout as sleep } from 'timers/promises';
+
+import type { CacheService } from '@/services/cache/cache.service';
 
 const TWILIO_API_BASE = 'https://api.twilio.com/2010-04-01';
 const XML_CONTENT_TYPE = { 'content-type': 'text/xml; charset=utf-8' };
+
+/**
+ * How long one TwiML request waits for speech before it answers with a holding
+ * document. Twilio abandons a webhook that takes longer than 15 seconds.
+ */
+const HOP_WAIT_MS = 5_000;
+
+/**
+ * Consecutive silent hops tolerated before the agent is declared too slow.
+ * The count resets whenever a sentence is spoken, so this limits a quiet gap
+ * (about a minute) and not the length of the answer.
+ */
+const MAX_SILENT_HOPS = 12;
+
+/** Safety net so a call that drops mid-answer cannot leak its queue. */
+const TURN_TTL_MS = 5 * 60_000;
+
+/** How often a waiting hop re-reads the shared queue. */
+const DRAIN_POLL_MS = 250;
+
+const TURN_KEY_PREFIX = 'agents:twilio-voice-turn';
 
 interface TwilioVoiceWebhook {
 	AccountSid: string;
@@ -29,13 +54,20 @@ interface TwilioIncomingPhoneNumber {
 	voice_url: string | null;
 }
 
+interface VoiceTurnState {
+	pending: string[];
+	finished: boolean;
+	endsCall: boolean;
+}
+
 interface TwilioVoiceAdapterOptions {
 	accountSid: string;
 	authToken: string;
 	phoneNumber: string;
 	allowedCallers: string[];
 	webhookUrl: string;
-	httpClient: HttpRequestClient;
+	turns: VoiceTurnStore;
+	logger: Logger;
 	chatSdk: Pick<
 		typeof import('chat'),
 		'Message' | 'markdownToPlainText' | 'parseMarkdown' | 'stringifyMarkdown'
@@ -62,22 +94,193 @@ function twiml(content: string): Response {
 	});
 }
 
-function gatherTwiml(webhookUrl: string, prompt: string, emptyAttempt = 0): string {
+function sayTwiml(text: string): string {
+	return `<Say>${escapeXml(text)}</Say>`;
+}
+
+function gatherTwiml(webhookUrl: string, prompt?: string, emptyAttempt = 0): string {
 	const action = new URL(webhookUrl);
 	action.searchParams.set('turn', randomUUID());
 	if (emptyAttempt > 0) action.searchParams.set('empty', String(emptyAttempt));
-	return `<Say>${escapeXml(prompt)}</Say><Gather input="speech" action="${escapeXml(action.toString())}" method="POST" speechTimeout="auto" actionOnEmptyResult="true"/>`;
+	return `${prompt ? sayTwiml(prompt) : ''}<Gather input="speech" action="${escapeXml(action.toString())}" method="POST" speechTimeout="auto" actionOnEmptyResult="true"/>`;
 }
 
-function waitingTwiml(webhookUrl: string, attempt = 1): Response {
-	if (attempt > 3) {
-		return twiml('<Say>This is taking too long. Try again later.</Say><Hangup/>');
+function streamRedirectTwiml(webhookUrl: string, silentHops: number): string {
+	const next = new URL(webhookUrl);
+	next.searchParams.set('stream', '1');
+	if (silentHops > 0) next.searchParams.set('silent', String(silentHops));
+	return `<Redirect method="POST">${escapeXml(next.toString())}</Redirect>`;
+}
+
+function hasSpeech(text: string): boolean {
+	return /[\p{L}\p{N}]/u.test(text);
+}
+
+/**
+ * Split accumulated text into sentences that are safe to speak, plus the
+ * trailing fragment that is not finished yet. A terminator only ends a
+ * sentence when whitespace follows it, so a stream that stops mid-number
+ * ("3.") never speaks half of "3.5".
+ */
+export function splitSentences(text: string): { complete: string[]; rest: string } {
+	const complete: string[] = [];
+	let start = 0;
+	let index = 0;
+
+	const take = (end: number) => {
+		const sentence = text.slice(start, end).trim();
+		if (sentence) complete.push(sentence);
+		start = end;
+	};
+
+	while (index < text.length) {
+		const character = text[index];
+		if (character === '\n') {
+			take(index);
+			start = index + 1;
+			index++;
+			continue;
+		}
+		if (character === '.' || character === '!' || character === '?') {
+			let end = index;
+			while (end + 1 < text.length && '.!?'.includes(text[end + 1])) end++;
+			const next = text[end + 1];
+			if (next !== undefined && /\s/.test(next)) take(end + 1);
+			index = end + 1;
+			continue;
+		}
+		index++;
 	}
-	const waitUrl = new URL(webhookUrl);
-	waitUrl.searchParams.set('waiting', String(attempt + 1));
-	return twiml(
-		`<Say>Please wait while I work on that.</Say><Pause length="45"/><Redirect method="POST">${escapeXml(waitUrl.toString())}</Redirect>`,
-	);
+
+	return { complete, rest: text.slice(start).trim() };
+}
+
+/**
+ * Producer side of one answer: turns the growing text the Chat SDK streams into
+ * whole sentences. This lives on the main running the agent, which is the only
+ * main that produces text for a turn.
+ */
+export class SentenceAccumulator {
+	private splitCount = 0;
+
+	private latestText = '';
+
+	/** Sentences that the latest version of the current message has completed. */
+	push(text: string): string[] {
+		this.latestText = text;
+		const { complete } = splitSentences(text);
+		const fresh = complete.slice(this.splitCount).filter(hasSpeech);
+		this.splitCount = complete.length;
+		return fresh;
+	}
+
+	/**
+	 * Start a separate message, such as an approval card posted alongside the
+	 * streamed answer. The tail of the previous message is spoken first.
+	 */
+	beginMessage(text: string): string[] {
+		const tail = this.end();
+		this.splitCount = 0;
+		return [...tail, ...this.push(text)];
+	}
+
+	/** The trailing fragment that no terminator closed. Safe to call twice. */
+	end(): string[] {
+		const { rest } = splitSentences(this.latestText);
+		this.latestText = '';
+		return hasSpeech(rest) ? [rest] : [];
+	}
+}
+
+/**
+ * The sentences of one answer, waiting to be spoken.
+ *
+ * The Chat SDK pushes text at us as it streams, but TwiML can only pull: every
+ * document we return ends with a redirect asking for the next one. Twilio
+ * spreads those hops across mains, so the queue lives in the shared cache under
+ * the same lock discipline as {@link CallbackStore}.
+ */
+export class VoiceTurnStore {
+	constructor(
+		private readonly cache: CacheService,
+		private readonly lockService: LockService,
+		private readonly scope: string,
+		private readonly ttlMs = TURN_TTL_MS,
+	) {}
+
+	/** Open a queue for a call. False when one is already open, so a Twilio
+	 * retry joins the run in flight instead of asking the agent twice. */
+	async create(callSid: string): Promise<boolean> {
+		return await this.withTurnLock(callSid, async () => {
+			if (await this.cache.get<VoiceTurnState>(this.key(callSid))) return false;
+			await this.write(callSid, { pending: [], finished: false, endsCall: false });
+			return true;
+		});
+	}
+
+	async append(callSid: string, sentences: string[], endCall: boolean): Promise<void> {
+		await this.mutate(callSid, (state) => ({
+			...state,
+			pending: [...state.pending, ...sentences],
+			endsCall: state.endsCall || endCall,
+		}));
+	}
+
+	/** Queue the last fragment and mark the answer complete. */
+	async finish(callSid: string, tail: string[]): Promise<void> {
+		await this.mutate(callSid, (state) => ({
+			...state,
+			pending: [...state.pending, ...tail],
+			finished: true,
+		}));
+	}
+
+	async delete(callSid: string): Promise<void> {
+		await this.cache.delete(this.key(callSid));
+	}
+
+	/**
+	 * Take whatever the agent has said, waiting up to `timeoutMs` for the first
+	 * of it. Undefined means the call has no open turn.
+	 */
+	async drainWhenReady(callSid: string, timeoutMs: number): Promise<VoiceTurnState | undefined> {
+		const deadline = Date.now() + timeoutMs;
+		for (;;) {
+			const state = await this.mutate(callSid, (current) => ({ ...current, pending: [] }));
+			if (!state || state.finished || state.pending.length > 0) return state;
+			if (Date.now() >= deadline) return state;
+			await sleep(DRAIN_POLL_MS);
+		}
+	}
+
+	/** Apply `update` under the call's lock and return the state as it was read. */
+	private async mutate(
+		callSid: string,
+		update: (state: VoiceTurnState) => VoiceTurnState,
+	): Promise<VoiceTurnState | undefined> {
+		return await this.withTurnLock(callSid, async () => {
+			const state = await this.cache.get<VoiceTurnState>(this.key(callSid));
+			if (!state) return undefined;
+			await this.write(callSid, update(state));
+			return state;
+		});
+	}
+
+	private async withTurnLock<T>(callSid: string, fn: () => Promise<T>): Promise<T> {
+		return await this.lockService.withLease(
+			LockNamespace.KNOWN_LOCKS,
+			`${this.scope}:twilio-voice-turn:${callSid}`,
+			fn,
+		);
+	}
+
+	private async write(callSid: string, state: VoiceTurnState): Promise<void> {
+		await this.cache.set(this.key(callSid), state, this.ttlMs);
+	}
+
+	private key(callSid: string): string {
+		return `${TURN_KEY_PREFIX}:${this.scope}:${callSid}`;
+	}
 }
 
 function formEntries(form: FormData): Array<[string, string]> {
@@ -191,23 +394,6 @@ export class TwilioVoiceClient {
 		}
 	}
 
-	async updateCall(callSid: string, content: string): Promise<void> {
-		const response = await this.httpClient.request({
-			method: 'POST',
-			url: `${TWILIO_API_BASE}/Accounts/${this.accountSid}/Calls/${callSid}.json`,
-			headers: {
-				authorization: this.authorizationHeader(),
-				'content-type': 'application/x-www-form-urlencoded',
-			},
-			body: { Twiml: `<?xml version="1.0" encoding="UTF-8"?><Response>${content}</Response>` },
-			returnFullResponse: true,
-			ignoreHttpStatusErrors: true,
-		});
-		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new Error('Twilio could not update the active call.');
-		}
-	}
-
 	private authorizationHeader(): string {
 		return `Basic ${Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64')}`;
 	}
@@ -222,11 +408,10 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 
 	private chat?: ChatInstance;
 
-	private readonly client: TwilioVoiceClient;
+	/** Sentence accumulators for turns this main is producing. */
+	private readonly accumulators = new Map<string, SentenceAccumulator>();
 
-	constructor(private readonly options: TwilioVoiceAdapterOptions) {
-		this.client = new TwilioVoiceClient(options.accountSid, options.authToken, options.httpClient);
-	}
+	constructor(private readonly options: TwilioVoiceAdapterOptions) {}
 
 	async initialize(chat: ChatInstance): Promise<void> {
 		this.chat = chat;
@@ -257,9 +442,11 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		}
 
 		const url = new URL(request.url);
-		const waitingAttempt = Number(url.searchParams.get('waiting'));
-		if (Number.isInteger(waitingAttempt) && waitingAttempt > 0) {
-			return waitingTwiml(this.options.webhookUrl, waitingAttempt);
+		if (url.searchParams.has('stream')) {
+			return await this.speakNext(
+				payload.CallSid,
+				Number(url.searchParams.get('silent') ?? '0') || 0,
+			);
 		}
 
 		const speech = payload.SpeechResult?.trim();
@@ -281,14 +468,62 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 
 		const turnId = url.searchParams.get('turn');
 		if (!turnId || !this.chat) return new Response('Invalid Twilio request', { status: 400 });
-		const isNewTurn = await this.chat
-			.getState()
-			.setIfNotExists(`twilioVoice:turn:${turnId}`, true, 5 * 60 * 1000);
-		if (!isNewTurn) return waitingTwiml(this.options.webhookUrl);
 
-		const threadId = this.encodeThreadId({ callSid: payload.CallSid });
-		await this.chat.processMessage(this, threadId, this.parseMessage(payload, turnId), options);
-		return waitingTwiml(this.options.webhookUrl);
+		await this.startTurn(payload.CallSid, this.parseMessage(payload, turnId), options);
+		return await this.speakNext(payload.CallSid, 0);
+	}
+
+	private async startTurn(
+		callSid: string,
+		message: Message<TwilioVoiceWebhook>,
+		options?: WebhookOptions,
+	): Promise<void> {
+		// An open queue means Twilio retried the same turn, so the run already in
+		// flight answers it rather than asking the agent the question twice.
+		if (!(await this.options.turns.create(callSid))) return;
+
+		const accumulator = new SentenceAccumulator();
+		this.accumulators.set(callSid, accumulator);
+
+		// Deliberately not awaited: the caller needs a TwiML document now, and
+		// the answer arrives sentence by sentence through `postMessage`.
+		void (async () => {
+			try {
+				await this.chat?.processMessage(this, this.encodeThreadId({ callSid }), message, options);
+			} finally {
+				this.accumulators.delete(callSid);
+				await this.options.turns.finish(callSid, accumulator.end());
+			}
+		})().catch((error: unknown) => {
+			// The hop waiting on this queue falls through to its silent-hop limit.
+			this.options.logger.error('[TwilioVoice] Turn failed to complete', { error, callSid });
+		});
+	}
+
+	/**
+	 * Answer one hop of the redirect chain with whatever the agent has said so
+	 * far, then either ask Twilio to come back for more or hand the turn back
+	 * to the caller.
+	 */
+	private async speakNext(callSid: string, silentHops: number): Promise<Response> {
+		const turn = await this.options.turns.drainWhenReady(callSid, HOP_WAIT_MS);
+		if (!turn) return twiml(gatherTwiml(this.options.webhookUrl));
+
+		const spoken = turn.pending.map(sayTwiml).join('');
+
+		if (turn.finished) {
+			await this.options.turns.delete(callSid);
+			return twiml(spoken + (turn.endsCall ? '<Hangup/>' : gatherTwiml(this.options.webhookUrl)));
+		}
+		if (spoken) return twiml(spoken + streamRedirectTwiml(this.options.webhookUrl, 0));
+		if (silentHops >= MAX_SILENT_HOPS) {
+			await this.options.turns.delete(callSid);
+			return twiml('<Say>Sorry, that is taking too long. Please try again.</Say><Hangup/>');
+		}
+
+		// Say something once, then wait quietly rather than talk over the agent.
+		const holding = silentHops === 0 ? sayTwiml('One moment.') : '<Pause length="1"/>';
+		return twiml(holding + streamRedirectTwiml(this.options.webhookUrl, silentHops + 1));
 	}
 
 	parseMessage(
@@ -319,13 +554,38 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		threadId: string,
 		message: AdapterPostableMessage,
 	): Promise<RawMessage<TwilioVoiceWebhook>> {
+		return await this.queueSpeech(threadId, message, true);
+	}
+
+	async editMessage(
+		threadId: string,
+		_messageId: string,
+		message: AdapterPostableMessage,
+	): Promise<RawMessage<TwilioVoiceWebhook>> {
+		return await this.queueSpeech(threadId, message, false);
+	}
+
+	/**
+	 * Hand a message to the call's speech queue. Streaming sends one post and
+	 * then edits it with the full answer so far, so an edit continues the
+	 * current message while a post starts a new one. A message with no live
+	 * turn (a tool resuming after the call ended) has nobody to speak to.
+	 */
+	private async queueSpeech(
+		threadId: string,
+		message: AdapterPostableMessage,
+		isNewMessage: boolean,
+	): Promise<RawMessage<TwilioVoiceWebhook>> {
 		const { callSid } = this.decodeThreadId(threadId);
 		const { text, endCall } = postableText(message);
-		const spokenText = this.options.chatSdk.markdownToPlainText(text).trim();
-		const content = endCall
-			? `<Say>${escapeXml(spokenText)}</Say><Hangup/>`
-			: `${gatherTwiml(this.options.webhookUrl, spokenText)}<Say>Goodbye.</Say><Hangup/>`;
-		await this.client.updateCall(callSid, content);
+		const spoken = this.options.chatSdk.markdownToPlainText(text);
+		const accumulator = this.accumulators.get(callSid);
+		if (accumulator) {
+			const sentences = isNewMessage ? accumulator.beginMessage(spoken) : accumulator.push(spoken);
+			if (sentences.length > 0 || endCall) {
+				await this.options.turns.append(callSid, sentences, endCall);
+			}
+		}
 		return {
 			id: `${callSid}:${randomUUID()}`,
 			threadId,
@@ -336,14 +596,6 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 				To: '',
 			},
 		};
-	}
-
-	async editMessage(
-		threadId: string,
-		_messageId: string,
-		message: AdapterPostableMessage,
-	): Promise<RawMessage<TwilioVoiceWebhook>> {
-		return await this.postMessage(threadId, message);
 	}
 
 	async fetchMessages(): Promise<{ messages: Message<TwilioVoiceWebhook>[] }> {
