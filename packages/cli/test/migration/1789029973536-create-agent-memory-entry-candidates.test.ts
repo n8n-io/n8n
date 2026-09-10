@@ -50,6 +50,7 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 			candidate: randomUUID(),
 			candidateEntry: randomUUID(),
 			candidateSource: randomUUID(),
+			mixedSource: randomUUID(),
 		};
 		const now = new Date('2026-05-12T10:00:00.000Z');
 
@@ -230,6 +231,8 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 			await expect(
 				insertSource(ids.candidateSource, null, ids.candidate, ids.candidateEntry),
 			).resolves.not.toThrow();
+			// Mixed provenance: the legacy entry now also has a candidate source.
+			await insertSource(ids.mixedSource, null, ids.candidate);
 			await expect(insertSource(randomUUID(), ids.observation, ids.candidate)).rejects.toThrow();
 			await expect(insertSource(randomUUID(), null, null)).rejects.toThrow();
 		});
@@ -247,12 +250,16 @@ describe('CreateAgentMemoryEntryCandidates migration', () => {
 			expect(
 				await context.queryRunner.hasTable(`${context.tablePrefix}agents_memory_entry_cursors`),
 			).toBe(true);
-			await expect(
-				context.runQuery<Array<{ status: string }>>(
-					`SELECT "status" FROM ${context.escape.tableName('agents_memory_entries')} WHERE "id" = :id`,
-					{ id: ids.candidateEntry },
-				),
-			).resolves.toEqual([{ status: 'dropped' }]);
+			// Only the candidate-only entry loses its provenance; the mixed one keeps its observation source.
+			const statuses = await context.runQuery<Array<{ id: string; status: string }>>(
+				`SELECT "id", "status" FROM ${context.escape.tableName('agents_memory_entries')}`,
+			);
+			expect(new Map(statuses.map((row) => [row.id, row.status]))).toEqual(
+				new Map([
+					[ids.entry, 'active'],
+					[ids.candidateEntry, 'dropped'],
+				]),
+			);
 		});
 	});
 });
