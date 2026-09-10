@@ -6,7 +6,6 @@ import { configs as designSystemConfigs } from '@n8n/eslint-plugin-design-system
 import globals from 'globals';
 import { baseConfig } from './base.js';
 
-const isCI = process.env.CI === 'true';
 const extraFileExtensions = ['.vue'];
 const allGlobals = { NodeJS: true, ...globals.node, ...globals.browser };
 
@@ -18,9 +17,6 @@ export const frontendConfig = tseslint.config(
 	{
 		rules: {
 			'no-console': 'warn',
-			'no-debugger': isCI ? 'error' : 'off',
-			semi: [2, 'always'],
-			'comma-dangle': ['error', 'always-multiline'],
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
 			'n8n-local-rules/no-reka-ui-pagination': 'error',

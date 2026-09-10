@@ -7,7 +7,6 @@ export default defineConfig(
 	{
 		rules: {
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-			'n8n-local-rules/no-plain-errors': 'off',
 			complexity: 'error',
 			'@typescript-eslint/naming-convention': 'warn',
 			'no-empty': 'warn',

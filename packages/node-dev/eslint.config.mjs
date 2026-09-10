@@ -9,8 +9,6 @@ export default defineConfig(
 	encryptionBoundaryConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 			// TODO: Remove this
 			'unicorn/filename-case': 'warn',
 			'@typescript-eslint/naming-convention': 'warn',

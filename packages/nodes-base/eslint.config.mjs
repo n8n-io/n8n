@@ -47,7 +47,6 @@ export default defineConfig(
 			'import-x/no-default-export': 'warn',
 			'import-x/export': 'warn',
 			'import-x/order': 'warn',
-			'import-x/no-default-export': 'warn',
 			'import-x/no-extraneous-dependencies': 'warn',
 
 			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
@@ -124,7 +123,6 @@ export default defineConfig(
 			'n8n-nodes-base/node-param-default-missing': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-boolean': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-collection': 'error',
-			'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-fixed-collection': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-multi-options': 'error',
 			'n8n-nodes-base/node-param-default-wrong-for-number': 'error',

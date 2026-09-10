@@ -86,13 +86,6 @@ export const baseConfig = tseslint.config(
 			'no-void': ['error', { allowAsStatement: true }],
 
 			/**
-			 * https://eslint.org/docs/latest/rules/indent
-			 *
-			 * Delegated to Prettier.
-			 */
-			indent: 'off',
-
-			/**
 			 * https://eslint.org/docs/latest/rules/no-constant-binary-expression
 			 */
 			'no-constant-binary-expression': 'error',
@@ -186,9 +179,6 @@ export const baseConfig = tseslint.config(
 					},
 				},
 			],
-
-			// Not needed because we use Biome formatting
-			'@stylistic/ident': 'off',
 
 			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
@@ -424,7 +414,7 @@ export const baseConfig = tseslint.config(
 			/**
 			 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
 			 */
-			'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'unused-imports/no-unused-imports': 'error',
 
 			/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
 			'unicorn/no-unnecessary-await': 'error',
@@ -440,12 +430,11 @@ export const baseConfig = tseslint.config(
 		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
-			'n8n-local-rules/no-plain-errors': 'off',
 			'@typescript-eslint/unbound-method': 'off',
 			// Test code casts mocks into position; the rule's assignability check reads
 			// those casts as redundant and removing them breaks the build.
 			'@typescript-eslint/no-unnecessary-type-assertion': 'off',
-			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+			'n8n-local-rules/no-skipped-tests': 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
