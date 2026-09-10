@@ -4196,7 +4196,9 @@ export class InstanceAiService {
 						plannedBuild,
 						runHandoff: runControl.state,
 					});
-					void this.suspendedThreads.persistPendingConfirmation({
+					// Awaited: the card event is published below, and a client that reconnects
+					// settles any card whose row is missing (run-sync frame + history read).
+					await this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId,
 						userId: user.id,
@@ -5438,7 +5440,9 @@ export class InstanceAiService {
 						plannedBuild: opts.plannedBuild,
 						runHandoff: runControl.state,
 					});
-					void this.suspendedThreads.persistPendingConfirmation({
+					// Awaited: the card event is published below, and a client that reconnects
+					// settles any card whose row is missing (run-sync frame + history read).
+					await this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId: opts.threadId,
 						userId: opts.user.id,

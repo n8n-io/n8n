@@ -3355,6 +3355,76 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		);
 	});
 
+	it('writes the pending row before it publishes the confirmation card', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const abortController = new AbortController();
+		const tracing = {
+			actorRun: { id: 'segment-a-actor' },
+			withActiveSpan: vi.fn(
+				async (_run: unknown, callback: () => Promise<unknown>) => await callback(),
+			),
+		} as unknown as InstanceAiTraceContext;
+		let releaseRow: () => void = () => {};
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseRow = resolve;
+				}),
+		);
+		const confirmationEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'orchestrator:run-1',
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'ask-user',
+				args: {},
+				severity: 'info',
+				message: 'Set up the slack channel',
+			},
+		} as unknown as Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+		mockClaimedResumeResult({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tool-call-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
+			},
+			confirmationEvent,
+		});
+
+		const resumed = service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				tracing,
+			},
+		);
+		await vi.waitFor(() =>
+			expect(service.suspendedThreads.persistPendingConfirmation).toHaveBeenCalled(),
+		);
+		// The row write is still in flight: a client that reconnects now must not
+		// be able to read the card from the log, or it settles the card as expired.
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', confirmationEvent);
+
+		releaseRow();
+		await resumed;
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', confirmationEvent);
+	});
+
 	it('keeps a suspending segment from finalizing or scheduling over a fast next segment', async () => {
 		const service = createTerminalGuardOrderService();
 		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
