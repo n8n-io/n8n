@@ -146,15 +146,16 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	 */
 	private acquireBridgeSync(): RuntimeBridge {
 		let bridge: RuntimeBridge;
+
 		try {
 			bridge = this.pool.acquire();
 		} catch (error) {
 			if (error instanceof PoolDisposedError) throw error;
 			if (!(error instanceof PoolExhaustedError)) throw error;
+
 			bridge = this.config.createBridge();
-			// A failed cold start must not leak the bridge: it is not yet
-			// recorded anywhere, so dispose it here before rethrowing.
-			const coldStartStart = performance.now();
+			const coldStartedAt = performance.now();
+
 			try {
 				if (typeof bridge.initializeSync !== 'function') {
 					throw new IsolateError(
@@ -163,16 +164,20 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 				}
 				bridge.initializeSync();
 			} catch (initError) {
+				// Failed cold start must not leak the bridge - dispose it here before rethrowing.
 				void bridge.dispose();
 				throw initError;
 			}
+
 			this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolColdStartSync.name, 1);
 			this.config.observability?.metrics.histogram(
 				EXPRESSION_METRICS.poolColdStartSyncDuration.name,
-				(performance.now() - coldStartStart) / 1000,
+				(performance.now() - coldStartedAt) / 1000,
 			);
 		}
+
 		this.config.observability?.metrics.counter(EXPRESSION_METRICS.poolAcquired.name, 1);
+
 		return bridge;
 	}
 
@@ -219,8 +224,8 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	private getBridge(caller: object): RuntimeBridge {
 		let bridge = this.bridgesByCaller.get(caller);
+
 		if (!bridge && this.lazyScopes.has(caller)) {
-			// Lazy acquisition: first engine-needing evaluation in this scope.
 			bridge = this.acquireBridgeSync();
 			this.bridgesByCaller.set(caller, bridge);
 		}

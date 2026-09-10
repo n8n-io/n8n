@@ -19,6 +19,8 @@ let _quickjs: QuickJSModule | null = null;
  * (pool warmup does this) initializeSync() can build a bridge on demand.
  */
 let _quickjsWasm: QuickJSWasm | null = null;
+/** Runtime bundle source, read once per process by readRuntimeBundle(). */
+let _runtimeBundle: string | null = null;
 
 async function getQuickJSModule(): Promise<QuickJSModule> {
 	if (!_quickjs) {
@@ -248,8 +250,6 @@ function serializeError(err: unknown): ErrorSentinel {
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
  */
-let _runtimeBundle: string | null = null;
-
 async function readRuntimeBundle(): Promise<string> {
 	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;

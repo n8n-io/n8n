@@ -12,6 +12,8 @@ import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
 // only loaded when IsolatedVmBridge is actually constructed.
 type IsolatedVm = typeof import('isolated-vm');
 let _ivm: IsolatedVm | null = null;
+/** Runtime bundle source, read once per process by readRuntimeBundle(). */
+let _runtimeBundle: string | null = null;
 
 function getIvm(): IsolatedVm {
 	if (!_ivm) {
@@ -100,8 +102,6 @@ function serializeError(err: unknown): ErrorSentinel {
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
  */
-let _runtimeBundle: string | null = null;
-
 async function readRuntimeBundle(): Promise<string> {
 	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
