@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
+import type { RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryStore,
 	BuiltMemory,
@@ -88,6 +89,23 @@ export class InMemoryMemory
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
+	private skillsByThread = new Map<string, Map<string, string[]>>();
+
+	readonly skillState: RuntimeSkillStateStore = {
+		load: async ({ threadId, resourceId, agentName }) =>
+			await Promise.resolve(
+				this.skillsByThread
+					.get(threadId)
+					?.get(JSON.stringify([resourceId, agentName]))
+					?.slice(),
+			),
+		save: async ({ threadId, resourceId, agentName }, ids) => {
+			const states = this.skillsByThread.get(threadId) ?? new Map<string, string[]>();
+			states.set(JSON.stringify([resourceId, agentName]), [...ids]);
+			this.skillsByThread.set(threadId, states);
+			await Promise.resolve();
+		},
+	};
 
 	private observationLogByScope = new Map<string, ObservationLogEntry[]>();
 
@@ -143,6 +161,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
+		this.skillsByThread.delete(threadId);
 		this.messagesByThread.delete(threadId);
 		this.observationLogByScope.delete(threadId);
 		this.cursorsByScope.delete(threadId);
