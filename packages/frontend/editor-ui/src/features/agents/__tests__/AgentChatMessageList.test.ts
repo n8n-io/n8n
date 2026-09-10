@@ -28,9 +28,8 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
-		template:
-			'<button :data-test-id="$attrs[\'data-test-id\']" @click="$emit(\'click\')">{{ icon }}</button>',
-		props: ['icon'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
+		props: ['icon', 'variant', 'size'],
 		emits: ['click'],
 	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
@@ -124,6 +123,10 @@ describe('AgentChatMessageList', () => {
 	});
 
 	describe('agent change requests', () => {
+		beforeEach(() => {
+			sessionStorage.clear();
+		});
+
 		const changeRequest = {
 			id: 'user-1',
 			role: 'user',
@@ -147,6 +150,33 @@ describe('AgentChatMessageList', () => {
 			expect(wrapper.emitted('sendToAssistant')?.[0]).toEqual([
 				{ changeRequest: changeRequest.content },
 			]);
+		});
+
+		it('stays dismissed for the rest of the session, across a remount', async () => {
+			const props = {
+				messages: [changeRequest],
+				messagingState: 'idle' as const,
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			};
+			const wrapper = mount(AgentChatMessageList, { props });
+
+			await wrapper.find('[data-testid="agent-preview-change-request-dismiss"]').trigger('click');
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+
+			// A fresh mount with a new matching message must stay quiet.
+			const remounted = mount(AgentChatMessageList, {
+				props: {
+					...props,
+					messages: [{ ...changeRequest, id: 'user-2', content: 'add a slack channel' }],
+				},
+			});
+			expect(remounted.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
 		});
 
 		it('stays hidden outside the preview and for ordinary messages', () => {

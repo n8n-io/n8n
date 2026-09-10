@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
 	type DisplayGroup,
@@ -145,12 +146,18 @@ const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
 /**
+ * Dismissing the note silences it for the rest of the browser session, so a
+ * user who does not want the hand-off is not asked again on every request.
+ */
+const changeNoteDismissed = useSessionStorage('N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED', false);
+
+/**
  * Newest user message that reads as a request to change the agent itself. Only
  * the newest one carries the hand-off note, so a chat full of such asks doesn't
  * repeat the same banner.
  */
 const changeRequestGroupId = computed(() =>
-	canSendToAssistant.value
+	canSendToAssistant.value && !changeNoteDismissed.value
 		? displayGroups.value.findLast(
 				(group) =>
 					group.kind === 'message' &&
@@ -557,15 +564,26 @@ watch(
 					>
 						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
 						<template #trailingContent>
-							<N8nButton
-								size="small"
-								variant="subtle"
-								data-testid="agent-preview-change-request-link"
-								@click="onEditWithAssistant(group.message.content)"
-							>
-								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
-								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
-							</N8nButton>
+							<div :class="$style.changeRequestActions">
+								<N8nButton
+									size="small"
+									variant="subtle"
+									data-testid="agent-preview-change-request-link"
+									@click="onEditWithAssistant(group.message.content)"
+								>
+									<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+									{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+								</N8nButton>
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:aria-label="i18n.baseText('generic.dismiss')"
+									:title="i18n.baseText('generic.dismiss')"
+									data-testid="agent-preview-change-request-dismiss"
+									@click="changeNoteDismissed = true"
+								/>
+							</div>
 						</template>
 					</N8nCallout>
 					<AiThinkingBlock
@@ -700,6 +718,12 @@ watch(
 	margin-top: var(--spacing--2xs);
 	flex-direction: column;
 	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestActions {
+	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
