@@ -482,6 +482,11 @@ describe('ExecutionContextService', () => {
 			const encrypted = await service.buildManualExecutionCredentials('cookie-jwt');
 			await expect(service.readSealedSubject(encrypted)).resolves.toBeUndefined();
 		});
+
+		it('returns undefined when the cipher fails to decrypt, instead of throwing', async () => {
+			mockCipher.decryptV2.mockRejectedValue(new Error('decrypt failed'));
+			await expect(service.readSealedSubject('corrupt-blob')).resolves.toBeUndefined();
+		});
 	});
 
 	describe('maybeBindExecutionId()', () => {

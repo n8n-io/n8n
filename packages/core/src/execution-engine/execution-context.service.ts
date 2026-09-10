@@ -169,9 +169,15 @@ export class ExecutionContextService {
 	 * carriers hold a session token and yield `undefined`.
 	 */
 	async readSealedSubject(encryptedCredentials: string): Promise<string | undefined> {
-		const context = await this.decryptCredentialContext(encryptedCredentials);
-		const metadata = N8NOAuthMetadataSchema.safeParse(context.metadata);
-		return metadata.success ? metadata.data.subject : undefined;
+		try {
+			const context = await this.decryptCredentialContext(encryptedCredentials);
+			const metadata = N8NOAuthMetadataSchema.safeParse(context.metadata);
+			return metadata.success ? metadata.data.subject : undefined;
+		} catch (error) {
+			// This field is audit-only. A decrypt failure must not abort the run.
+			this.logger.warn(`Failed to read the sealed subject for startedByUserId: ${error}`);
+			return undefined;
+		}
 	}
 
 	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {
