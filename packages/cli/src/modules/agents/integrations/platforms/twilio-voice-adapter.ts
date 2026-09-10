@@ -295,7 +295,18 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		if (!isNewTurn) return waitingTwiml(this.options.webhookUrl);
 
 		const threadId = this.encodeThreadId({ callSid: payload.CallSid });
-		await this.chat.processMessage(this, threadId, this.parseMessage(payload, turnId), options);
+		const message = this.parseMessage(payload, turnId);
+		if (options?.waitUntil) {
+			// Let Express send the TwiML response before processing can update the active call.
+			const processing = new Promise<void>((resolve, reject) => {
+				setImmediate(() => {
+					void this.chat?.processMessage(this, threadId, message).then(resolve, reject);
+				});
+			});
+			options.waitUntil(processing);
+		} else {
+			await this.chat.processMessage(this, threadId, message);
+		}
 		return waitingTwiml(this.options.webhookUrl);
 	}
 
