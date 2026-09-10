@@ -761,9 +761,11 @@ watch(
 						>
 							{{
 								i18n.baseText(
-									binding.permissions.includes('write')
-										? 'apps.connections.access.readWrite'
-										: 'apps.connections.access.read',
+									binding.permissions.includes('read')
+										? binding.permissions.includes('write')
+											? 'apps.connections.access.readWrite'
+											: 'apps.connections.access.read'
+										: 'apps.connections.access.write',
 								)
 							}}
 						</N8nText>

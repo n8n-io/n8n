@@ -89,6 +89,16 @@ describe('AppBindingApproval', () => {
 		);
 	});
 
+	it('shows the write-only access line for a data table binding without read', () => {
+		const { getByTestId } = renderComponent({
+			props: { appBinding: { ...DATA_TABLE_BINDING, permissions: ['write'] } },
+		});
+
+		expect(getByTestId('instance-ai-app-binding-access')).toHaveTextContent(
+			'Anyone who can open the app can add and change rows in this table, but not read them.',
+		);
+	});
+
 	it('emits the selected option key for a data table binding', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: { appBinding: DATA_TABLE_BINDING },

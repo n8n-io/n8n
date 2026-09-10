@@ -759,6 +759,16 @@ describe('AppDetailsView', () => {
 			expect(queryByTestId('app-connection-warning')).toBeNull();
 		});
 
+		it('shows write-only access for a data table the app cannot read', async () => {
+			appsStore.bindings = [{ ...tasksBinding, permissions: ['write'] }];
+			const { getByRole, getByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			expect(getByTestId('app-connection-access')).toHaveTextContent('Write');
+			expect(getByTestId('app-connection-access')).not.toHaveTextContent('Read');
+		});
+
 		it('lists a missing connection without a link and disconnects it with its kind copy', async () => {
 			appsStore.bindings = [
 				{ key: 'tasks', kind: 'dataTable', name: 'tasks', missing: true },

@@ -64,9 +64,11 @@ const i18n = useI18n();
 			>
 				{{
 					i18n.baseText(
-						appBinding.permissions.includes('write')
-							? 'instanceAi.appBinding.dataTable.access.readWrite'
-							: 'instanceAi.appBinding.dataTable.access.read',
+						appBinding.permissions.includes('read')
+							? appBinding.permissions.includes('write')
+								? 'instanceAi.appBinding.dataTable.access.readWrite'
+								: 'instanceAi.appBinding.dataTable.access.read'
+							: 'instanceAi.appBinding.dataTable.access.write',
 					)
 				}}
 			</N8nText>
