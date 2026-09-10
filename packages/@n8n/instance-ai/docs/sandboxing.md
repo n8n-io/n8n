@@ -110,11 +110,13 @@ entry that they already resolved.
 
 Initialization is lazy and idempotent. A marker file prevents repeated base
 setup. Knowledge-base content is refreshed when an existing sandbox is
-reattached. The setup creates or materializes:
+reattached. Setup also installs pinned diagnostic dependencies in older sandboxes.
+A failed dependency upgrade does not block workspace use. The setup creates or
+materializes:
 
 | Path | Purpose |
 |------|---------|
-| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, and Node type dependencies in normal mode |
+| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, `typescript`, and Node type dependencies in normal mode |
 | `tsconfig.json` | Strict TypeScript configuration |
 | `build.mjs` | Workflow SDK execution and JSON conversion |
 | `node-types/index.txt` | Searchable node-type catalog |
@@ -150,6 +152,36 @@ node --import tsx build.mjs <source-file>
 `toJSON({ tidyUp: true })`, and returns declared pin-data fixtures when present.
 The tool then performs server-side workflow validation, resolves credentials,
 and saves the workflow through the backend service.
+
+If source construction or workflow validation fails, the tool runs supplemental
+TypeScript diagnostics after automatic import recovery. This pass checks the
+requested file and its imports. It uses the sandbox compiler options and the
+installed SDK declarations. It uses the pinned TypeScript 7.0.2 experimental
+async API. Verify the API contract before upgrading. It does not check unrelated
+workflow files or execute the source.
+
+The package build compiles `src/workspace/workflow-diagnostics-worker.ts`.
+Setup copies the output into new and reused sandboxes as `workflow-diagnostics.cjs`.
+Snapshot builds include this file. The tool executes it with Node.
+Run the package build after worker changes before testing from source.
+
+The original errors appear first. Compiler findings include the file, line,
+column, and TypeScript error code. Exact duplicates are removed. The compiler
+runs in a sandbox Node process and starts a native compiler. The JavaScript heap
+limit is 512 MB; this does not limit native compiler memory. The sandbox provider
+enforces a five-second command timeout. A six-second host guard stops waiting if
+the provider does not respond. Compiler failures and timeouts preserve the
+original build errors. User cancellation still stops the build.
+
+The async API collects the native process exit status after normal completion.
+In n8n sandbox image 1.3.0, forced termination can leave exited native processes
+unreaped under PID 1. The provider stops execution, but its init process must
+also collect these exit records.
+
+Successful builds do not run this pass. A source construction error prevents
+graph validation, so this pass cannot report graph checks that did not run.
+Node schema errors include all available findings from the selected variant.
+Discriminator errors retain the guidance for valid variants.
 
 For WorkflowJSON source, the tool parses the JSON directly and then applies the
 same server-side save controls. There is no host-side TypeScript build fallback
