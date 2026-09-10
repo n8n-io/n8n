@@ -63,17 +63,20 @@ describe('app-binding.schema', () => {
 				workflowId: 'wf-1',
 				name: 'Echo',
 				published: true,
-				input: 'passthrough',
-				output: [{ name: 'reply', type: 'string', nullable: false, optional: false }],
+				input: { type: 'object', additionalProperties: true },
+				output: {
+					type: 'array',
+					items: { type: 'object', properties: { reply: { type: 'string' } } },
+				},
 				outputSource: { kind: 'execution', executionId: '7', at: '2026-09-09T00:00:00.000Z' },
 			};
 			const untyped: DescribedBinding = {
 				...typed,
-				output: 'unknown',
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
 				outputSource: { kind: 'unknown' },
 			};
 			expect(typed.outputSource.kind).toBe('execution');
-			expect(untyped.output).toBe('unknown');
+			expect(untyped.outputSource.kind).toBe('unknown');
 		});
 	});
 });
