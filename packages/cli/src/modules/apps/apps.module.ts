@@ -7,6 +7,7 @@ export class AppsModule implements ModuleInterface {
 	async init() {
 		await import('./apps.controller.js');
 		await import('./serving/app-serving.controller.js');
+		await import('./serving/app-inspector-script.controller.js');
 
 		// s3/az reuse the clients base-command already initialized; see agents.module.ts.
 		const { AppVersionBlobStore } = await import('./app-version-blob-store.js');

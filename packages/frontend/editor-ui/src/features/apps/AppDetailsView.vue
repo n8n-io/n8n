@@ -19,9 +19,11 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
+import type { InspectedElement } from '@/features/apps/components/AppPreviewFrame.vue';
 import AppThemeEditor from '@/features/apps/components/AppThemeEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
+import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
@@ -44,8 +46,10 @@ const props = withDefaults(
 		artifactMode?: boolean;
 		/** Latest build the thread produced; overrides the stored active version while embedded. */
 		artifactVersionId?: string;
+		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
+		artifactPagePath?: string;
 	}>(),
-	{ artifactMode: false, artifactVersionId: undefined },
+	{ artifactMode: false, artifactVersionId: undefined, artifactPagePath: undefined },
 );
 
 const emit = defineEmits<{ 'assistant-handoff': [prompt: string] }>();
@@ -56,6 +60,7 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp } = useAppDeletion();
 const { requestPageChange } = useAppPageAssistant();
+const { selectElement } = useAppElementSelection();
 const instanceAiAvailable = useInstanceAiAvailable();
 const { openAppArtifactThread } = useInstanceAiHandoff();
 
@@ -66,6 +71,7 @@ const loading = ref(false);
 const mode = ref<BuilderMode>('build');
 const device = ref<PreviewDevice>('desktop');
 const buildTab = ref<BuildTab>('pages');
+const inspecting = ref(false);
 const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previewFrame');
 
 const rootPages = computed(() => appsStore.pages.filter((page) => page.parentPageId === null));
@@ -188,6 +194,22 @@ const onDeviceChange = (value: unknown) => {
 	if (value === 'desktop' || value === 'mobile') device.value = value;
 };
 
+const onToggleInspect = () => {
+	inspecting.value = !inspecting.value;
+	if (inspecting.value) previewFrame.value?.enableInspect();
+	else previewFrame.value?.disableInspect();
+};
+
+// One pick and inspect mode ends (the iframe's own script already turned
+// itself off; this keeps the toggle button and AppPreviewFrame's own flag —
+// which a later refresh() would otherwise re-arm — in sync with it).
+const onElementSelected = async (element: InspectedElement) => {
+	inspecting.value = false;
+	previewFrame.value?.disableInspect();
+	if (!app.value) return;
+	await selectElement(app.value, element, props.artifactMode);
+};
+
 const onThemeApplied = (updated: App) => {
 	app.value = updated;
 	mode.value = 'preview';
@@ -307,24 +329,39 @@ watch(versionId, (next, previous) => {
 							/>
 						</template>
 					</N8nToggleGroup>
-					<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
-						<N8nIconButton
-							icon="refresh-cw"
-							variant="ghost"
-							size="small"
-							:disabled="!versionId"
-							:aria-label="i18n.baseText('apps.builder.refresh')"
-							data-test-id="app-preview-refresh"
-							@click="previewFrame?.refresh()"
-						/>
-					</N8nTooltip>
+					<div :class="$style.previewBarEnd">
+						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+							<N8nIconButton
+								icon="mouse-pointer"
+								:variant="inspecting ? 'subtle' : 'ghost'"
+								size="small"
+								:disabled="!versionId"
+								:aria-label="i18n.baseText('apps.builder.inspect')"
+								data-test-id="app-preview-inspect"
+								@click="onToggleInspect"
+							/>
+						</N8nTooltip>
+						<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
+							<N8nIconButton
+								icon="refresh-cw"
+								variant="ghost"
+								size="small"
+								:disabled="!versionId"
+								:aria-label="i18n.baseText('apps.builder.refresh')"
+								data-test-id="app-preview-refresh"
+								@click="previewFrame?.refresh()"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 				<AppPreviewFrame
 					v-if="app && versionId"
 					ref="previewFrame"
 					:namespace="app.namespace"
 					:version-id="versionId"
+					:path="props.artifactPagePath"
 					:width="PREVIEW_WIDTHS[device]"
+					@element-selected="onElementSelected"
 				/>
 				<div v-else-if="!loading" :class="$style.emptyState" data-test-id="app-preview-empty">
 					<N8nText tag="h2" size="medium" bold>{{
@@ -449,6 +486,12 @@ watch(versionId, (next, previous) => {
 	justify-content: space-between;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-bottom: var(--border);
+}
+
+.previewBarEnd {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .emptyState {

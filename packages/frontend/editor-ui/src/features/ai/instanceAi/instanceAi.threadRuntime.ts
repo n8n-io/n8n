@@ -138,6 +138,10 @@ export function getAppBuilderTargetFromThreadMetadata(
 		appId: target.appId,
 		projectId: target.projectId,
 		...(typeof target.name === 'string' ? { name: target.name } : {}),
+		// The page the artifact preview should open to — seeded once when the
+		// thread is opened from a specific page's inspector; not kept in sync
+		// with in-app navigation afterwards.
+		...(typeof target.pagePath === 'string' ? { pagePath: target.pagePath } : {}),
 	};
 }
 

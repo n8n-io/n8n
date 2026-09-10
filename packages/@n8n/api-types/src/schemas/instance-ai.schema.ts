@@ -1331,12 +1331,31 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+/**
+ * A reference to one element picked in an App preview via the inspect toggle.
+ * Carries a description of the DOM node (not a source-code location) — the
+ * agent locates the matching source by searching the app's files itself.
+ */
+export const instanceAiElementAttachmentSchema = z.object({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+	/** Pathname of the app page the element was picked from. */
+	route: z.string().max(500).optional(),
+	tagName: z.string().min(1).max(50),
+	/** Trimmed visible text of the element, if any. */
+	text: z.string().max(200).optional(),
+	/** A short structural hint (id/class/data-testid), if the element has one. */
+	selector: z.string().max(500).optional(),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAppAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 

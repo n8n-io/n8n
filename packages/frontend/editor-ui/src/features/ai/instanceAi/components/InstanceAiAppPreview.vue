@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -47,6 +47,13 @@ async function syncAppTarget() {
 }
 
 watch(() => props.appId, syncAppTarget, { immediate: true });
+
+// Seeded once (see openAppArtifactThread) when this thread was opened from a
+// specific page's inspector — not kept in sync with in-app navigation.
+const pagePath = computed(
+	() =>
+		getAppBuilderTargetFromThreadMetadata(instanceAiStore.getThreadMetadata(thread.id))?.pagePath,
+);
 </script>
 
 <template>
@@ -69,6 +76,7 @@ watch(() => props.appId, syncAppTarget, { immediate: true });
 			:project-id="props.projectId"
 			:app-id="props.appId"
 			:artifact-version-id="props.versionId"
+			:artifact-page-path="pagePath"
 			@assistant-handoff="$emit('assistant-handoff', $event)"
 		/>
 	</div>

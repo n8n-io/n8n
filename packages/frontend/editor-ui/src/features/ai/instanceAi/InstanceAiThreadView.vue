@@ -56,6 +56,7 @@ import {
 	clearPendingAgentAttachment,
 	clearPendingAppAttachment,
 	consumePendingDraftAttachment,
+	consumePendingElementAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
@@ -877,6 +878,8 @@ function reconnectThreadAfterHydration(): void {
 	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+	const elementAttachment = consumePendingElementAttachment(props.threadId);
+	if (elementAttachment) store.stageElementSelection(elementAttachment);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
