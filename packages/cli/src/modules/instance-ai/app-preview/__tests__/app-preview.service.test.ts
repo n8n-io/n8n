@@ -119,10 +119,8 @@ const healthz = (capabilities: string[]) =>
 /** `/healthz` advertises the port route; every other request answers `status`. */
 const serviceWith =
 	(capabilities: string[], status = 200) =>
-	(url: string | URL | Request) =>
-		Promise.resolve(
-			String(url).endsWith('/healthz') ? healthz(capabilities) : httpResponse(status),
-		);
+	async (url: string | URL | Request) =>
+		String(url).endsWith('/healthz') ? healthz(capabilities) : httpResponse(status);
 
 describe('AppPreviewService', () => {
 	const jwtService = mock<JwtService>();
