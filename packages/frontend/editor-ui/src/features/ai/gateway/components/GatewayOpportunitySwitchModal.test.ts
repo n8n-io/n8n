@@ -193,6 +193,26 @@ describe('GatewayOpportunitySwitchModal', () => {
 	});
 
 	describe('caveated opportunities', () => {
+		it('lists clean rows before caveated ones, whatever order the scan returned', () => {
+			const opportunities = [
+				makeOpportunity({ nodeName: 'Caveated1', caveat: 'unsupportedModel' }),
+				makeOpportunity({ nodeName: 'Clean1' }),
+				makeOpportunity({ nodeName: 'Caveated2', caveat: 'unsupportedAction' }),
+				makeOpportunity({ nodeName: 'Clean2' }),
+			];
+			const { getByTestId } = renderModal(opportunities);
+
+			const names = [0, 1, 2, 3].map((index) =>
+				getByTestId(`gateway-opportunity-switch-row-${index}`).textContent?.trim(),
+			);
+
+			// Clean first, and each group keeps the order the scan gave it.
+			expect(names[0]).toContain('Clean1');
+			expect(names[1]).toContain('Clean2');
+			expect(names[2]).toContain('Caveated1');
+			expect(names[3]).toContain('Caveated2');
+		});
+
 		it('starts a caveated row unchecked while a clean row stays checked', () => {
 			const opportunities = [
 				makeOpportunity({ nodeName: 'Node1' }),
@@ -215,9 +235,9 @@ describe('GatewayOpportunitySwitchModal', () => {
 		});
 
 		it.each([
-			['unsupportedModel', "The selected model isn't supported via Gateway credits."],
-			['unsupportedAction', "The selected operation isn't supported via Gateway credits."],
-			['hiddenPropertySet', "This node uses a setting that Gateway credits doesn't support."],
+			['unsupportedModel', 'Gateway credits supports this node but not the selected model.'],
+			['unsupportedAction', 'Gateway credits supports this node but not the selected operation.'],
+			['hiddenPropertySet', 'Gateway credits supports this node but not one of its settings.'],
 		] as const)('renders its own message for the %s caveat', (caveat, expectedMessage) => {
 			const { getByTestId } = renderModal([makeOpportunity({ caveat })]);
 

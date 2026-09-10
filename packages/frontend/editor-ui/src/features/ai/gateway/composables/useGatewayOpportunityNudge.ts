@@ -8,6 +8,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useApplyGatewayCredential } from './useApplyGatewayCredential';
 import { useWorkflowGatewayScan } from './useWorkflowGatewayScan';
 import { useGatewayOpportunityNudgeStore } from '../stores/gatewayOpportunityNudge.store';
@@ -49,40 +51,51 @@ export async function maybeShowGatewayOpportunityNudge(
 
 	const { canApply } = useApplyGatewayCredential();
 	const uiStore = useUIStore();
+	// The NDV store is scoped to the document, not the workflow id.
+	const ndvStore = useNDVStore(injectWorkflowDocumentStore().value.documentId);
 	const i18n = useI18n();
 	const toast = useToast();
 
-	// eslint-disable-next-line prefer-const -- self-reference so the message can close its own toast
-	let handle: NotificationHandle;
-	handle = toast.showMessage({
-		title: i18n.baseText('aiGateway.opportunityNudge.title'),
-		message: h(GatewayOpportunityToastMessage, {
-			opportunityCount,
-			canApply: canApply.value,
-			onDismiss: () => {
-				handle?.close();
-				void nudgeStore.dismiss(workflowId);
-			},
-			onNeverShowAgain: () => {
-				handle?.close();
-				void nudgeStore.neverShowAgain(workflowId);
-			},
-			onReviewAndSwitch: () => {
-				handle?.close();
-				nudgeStore.actionReviewAndSwitch(workflowId, opportunityCount);
-				uiStore.openModalWithData({
-					name: GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
-					data: { opportunities: result.opportunities, workflowId },
-				});
-			},
-		}),
-		type: 'info',
-		duration: 0,
-		// Keep `content-toast`, which positions the toast: customClass replaces the
-		// default rather than merging. The second class widens this toast so the
-		// three actions fit on one line.
-		customClass: 'content-toast gateway-nudge-notification',
-	});
+	function showNudge(): void {
+		// eslint-disable-next-line prefer-const -- self-reference so the message can close its own toast
+		let handle: NotificationHandle;
+		handle = toast.showMessage({
+			title: i18n.baseText('aiGateway.opportunityNudge.title'),
+			message: h(GatewayOpportunityToastMessage, {
+				opportunityCount,
+				canApply: canApply.value,
+				onDismiss: () => {
+					handle?.close();
+					void nudgeStore.dismiss(workflowId);
+				},
+				onNeverShowAgain: () => {
+					handle?.close();
+					void nudgeStore.neverShowAgain(workflowId);
+				},
+				onReviewAndSwitch: () => {
+					handle?.close();
+					nudgeStore.actionReviewAndSwitch(workflowId, opportunityCount);
+					uiStore.openModalWithData({
+						name: GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
+						data: { opportunities: result.opportunities, workflowId },
+					});
+				},
+			}),
+			type: 'info',
+			duration: 0,
+			// Keep `content-toast`, which positions the toast: customClass replaces the
+			// default rather than merging. The second class widens this toast so the
+			// three actions fit on one line.
+			customClass: 'content-toast gateway-nudge-notification',
+		});
 
-	nudgeStore.markShown(opportunityCount, workflowId);
+		nudgeStore.markShown(opportunityCount, workflowId);
+	}
+
+	// The toast layers above the node details view, so it reads as an
+	// interruption while the user configures a node. Show it on the canvas only;
+	// nothing is marked as shown, so the caller retries when the view closes.
+	if (ndvStore.isNDVOpen) return;
+
+	showNudge();
 }

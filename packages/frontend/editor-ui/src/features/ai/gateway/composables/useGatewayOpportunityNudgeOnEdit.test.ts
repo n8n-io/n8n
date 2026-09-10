@@ -6,6 +6,7 @@ import { mount, enableAutoUnmount } from '@vue/test-utils';
 // factory, which runs later. The holder only carries the setter.
 const state = vi.hoisted(() => ({
 	setDirty: (_value: boolean) => {},
+	setNdvOpen: (_value: boolean) => {},
 }));
 
 const mockWorkflowDocumentStore = vi.hoisted(() => ({
@@ -34,6 +35,20 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: () => ({ fetchConfig }),
 }));
 
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const isNDVOpen = ref(false);
+	state.setNdvOpen = (value: boolean) => {
+		isNDVOpen.value = value;
+	};
+	return {
+		useNDVStore: () => ({
+			get isNDVOpen() {
+				return isNDVOpen.value;
+			},
+		}),
+	};
+});
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentStore),
 }));
@@ -59,6 +74,7 @@ describe('useGatewayOpportunityNudgeOnEdit', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		state.setDirty(false);
+		state.setNdvOpen(false);
 		fetchConfig.mockResolvedValue(undefined);
 		maybeShow.mockResolvedValue(undefined);
 	});
@@ -102,5 +118,27 @@ describe('useGatewayOpportunityNudgeOnEdit', () => {
 
 		expect(consoleError).toHaveBeenCalled();
 		consoleError.mockRestore();
+	});
+
+	it('holds the nudge back while the node details view is open', async () => {
+		state.setNdvOpen(true);
+		mount(Host);
+
+		state.setDirty(true);
+		await nextTick();
+
+		expect(maybeShow).not.toHaveBeenCalled();
+	});
+
+	it('retries when the user closes the node details view, so an edit made inside it still counts', async () => {
+		state.setNdvOpen(true);
+		mount(Host);
+		state.setDirty(true);
+		await nextTick();
+
+		state.setNdvOpen(false);
+		await nextTick();
+
+		expect(maybeShow).toHaveBeenCalledWith([{ name: 'Node1' }], 'wf1');
 	});
 });

@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ref } from 'vue';
 import { setActivePinia } from 'pinia';
 import type { INode } from 'n8n-workflow';
 
@@ -30,6 +31,27 @@ vi.mock('./useApplyGatewayCredential', () => ({
 	useApplyGatewayCredential: () => ({ canApply }),
 }));
 
+// `vi.hoisted` runs before the imports, so the reactive flag is made inside the
+// mock factory. The holder only carries the setter.
+const ndv = vi.hoisted(() => ({ setOpen: (_value: boolean) => {} }));
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: () => ref({ documentId: 'wf1@v1' }),
+}));
+
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const isNDVOpen = ref(false);
+	ndv.setOpen = (value: boolean) => {
+		isNDVOpen.value = value;
+	};
+	return {
+		useNDVStore: () => ({
+			get isNDVOpen() {
+				return isNDVOpen.value;
+			},
+		}),
+	};
+});
+
 describe('maybeShowGatewayOpportunityNudge', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let nudgeStore: ReturnType<typeof mockedStore<typeof useGatewayOpportunityNudgeStore>>;
@@ -41,6 +63,7 @@ describe('maybeShowGatewayOpportunityNudge', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		canApply.value = true;
+		ndv.setOpen(false);
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		settingsStore = mockedStore(useSettingsStore);
 		nudgeStore = mockedStore(useGatewayOpportunityNudgeStore);
@@ -193,6 +216,33 @@ describe('maybeShowGatewayOpportunityNudge', () => {
 			expect(nudgeStore.shouldShow).toHaveBeenCalledWith(0, 'wf1');
 			expect(showMessage).not.toHaveBeenCalled();
 			expect(nudgeStore.markShown).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('node details view', () => {
+		it('shows no toast while the node details view is open', async () => {
+			ndv.setOpen(true);
+
+			await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('does not mark the nudge shown, so the caller can retry on the canvas', async () => {
+			ndv.setOpen(true);
+
+			await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+			expect(nudgeStore.markShown).not.toHaveBeenCalled();
+		});
+
+		it('shows the toast on the canvas', async () => {
+			ndv.setOpen(false);
+
+			await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+			expect(showMessage).toHaveBeenCalledTimes(1);
+			expect(nudgeStore.markShown).toHaveBeenCalledWith(2, 'wf1');
 		});
 	});
 });

@@ -40,6 +40,14 @@ const selected = reactive<Record<string, boolean>>(
 	),
 );
 
+// Clean rows first: they are the ones the user can switch without thought.
+// `sort` is stable, so each group keeps its workflow order.
+const orderedOpportunities = computed(() =>
+	[...props.data.opportunities].sort(
+		(a, b) => Number(Boolean(a.caveat)) - Number(Boolean(b.caveat)),
+	),
+);
+
 const selectedOpportunities = computed(() =>
 	props.data.opportunities.filter((opportunity) => selected[opportunity.nodeName]),
 );
@@ -131,7 +139,7 @@ function confirm(): void {
 			</N8nText>
 			<ul :class="$style.list">
 				<li
-					v-for="(opportunity, index) in props.data.opportunities"
+					v-for="(opportunity, index) in orderedOpportunities"
 					:key="opportunity.nodeName"
 					:class="$style.row"
 					:data-test-id="`gateway-opportunity-switch-row-${index}`"
