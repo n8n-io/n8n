@@ -7,6 +7,8 @@ export type AppRuntimeErrorCode =
 	| 'workflow_not_published'
 	| 'workflow_incompatible'
 	| 'workflow_not_callable'
+	| 'table_not_found'
+	| 'permission_denied'
 	| 'invalid_input'
 	| 'forbidden_origin'
 	| 'payload_too_large'
