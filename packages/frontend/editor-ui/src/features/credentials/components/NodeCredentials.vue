@@ -1015,7 +1015,11 @@ function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	// from another tab stays stale until remount. Refetch when the user opens the list.
 	// Cost: one GET per open. A cross-tab push channel would remove it.
 	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
-	if (scope) void credentialsStore.fetchUsableCredentials(scope);
+	if (scope) {
+		credentialsStore.fetchUsableCredentials(scope).catch(() => {
+			// A failed refetch keeps whatever the store already holds.
+		});
+	}
 }
 
 function matches(needle: string, haystack: string) {

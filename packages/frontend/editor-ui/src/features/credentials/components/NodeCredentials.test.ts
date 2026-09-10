@@ -391,6 +391,29 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('Scout')).not.toBeInTheDocument();
 	});
 
+	it('should keep the current list when the refetch on open fails', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential({ name: 'Scout' }),
+		};
+
+		renderComponent();
+
+		// A plain function, not vi.fn(): the spy attaches its own handlers to the returned
+		// promise and would hide a missing catch. Vitest fails the run on an unhandled rejection.
+		let requestedScope: unknown;
+		credentialsStore.fetchUsableCredentials = async (scope) => {
+			requestedScope = scope;
+			throw new Error('offline');
+		};
+
+		const select = screen.getByTestId('node-credentials-select');
+		await userEvent.click(select.querySelector('input') as HTMLElement);
+
+		expect(requestedScope).toEqual({ workflowId: '1' });
+		expect(screen.getByText('Scout')).toBeInTheDocument();
+	});
+
 	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
 		// Hosts with a synthetic workflow document (e.g. the tool config modal)
 		// own the credential fetch themselves; the component's own fetch would
