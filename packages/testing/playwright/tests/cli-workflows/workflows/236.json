@@ -107,37 +107,16 @@
 		},
 		{
 			"parameters": {
-				"code": {
-					"execute": {
-						"code": "const { loadEvaluator } = require(\"langchain/evaluation\");\n\nconst llm = await this.getInputConnectionData('ai_languageModel', 0);\nconst inputData = this.getInputData();\nconst inputSummary = inputData[0].json.response.text;\nconst baselineSummary = $('Set Baseline').item.json.baseline_summary\n\n\nconst evaluator = await loadEvaluator(\"labeled_criteria\", { criteria: 'helpfulness', llm });\n\nconst result = await evaluator.evaluateStrings({\n  input: \"Summarize Wikipedia article about the dancing plague of 1518\",\n  prediction: inputSummary,\n  reference: baselineSummary,\n});\n\n\nreturn [ {json: { ...result } } ];"
-					}
-				},
-				"inputs": {
-					"input": [
-						{
-							"type": "main",
-							"maxConnections": 1,
-							"required": true
-						},
-						{
-							"type": "ai_languageModel",
-							"maxConnections": 1,
-							"required": true
-						}
-					]
-				},
-				"outputs": {
-					"output": [
-						{
-							"type": "main"
-						}
-					]
-				}
+				"operation": "setMetrics",
+				"metric": "correctness",
+				"expectedAnswer": "={{ $('Set Baseline').item.json.baseline_summary }}",
+				"actualAnswer": "={{ $json.response.text }}",
+				"options": {}
 			},
 			"id": "f7e12c5f-6445-4924-8fc7-c426d21549ed",
 			"name": "Evaluate to Baseline",
-			"type": "@n8n/n8n-nodes-langchain.code",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.evaluation",
+			"typeVersion": 4.8,
 			"position": [1480, 880]
 		}
 	],
