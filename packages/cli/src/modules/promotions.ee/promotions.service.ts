@@ -8,10 +8,11 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	DataTableMissingMode,
@@ -41,6 +42,7 @@ import { PromotionWorkingDirectoryService } from './promotion-working-directory.
 import { PromotionsGitService } from './promotions-git.service';
 import { checkoutBranchName, repositoryUrl } from './promotions-git.utils';
 import type { PromotionCacheDescriptor, PromotionOperationInput } from './promotions.types';
+import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
@@ -74,6 +76,7 @@ export class PromotionsService {
 		private readonly resolver: PromotionConfigResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
@@ -194,6 +197,108 @@ export class PromotionsService {
 		}
 	}
 
+	/**
+	 * Promotes selected workflows of one project and their dependencies. Unselected
+	 * workflows stay as-is, and so do the projects and folders the branch already
+	 * holds: a selection creates a container, never renames one, so nothing moves
+	 * that the user did not select.
+	 */
+	async promoteSelection(
+		connectionId: string,
+		actor: User,
+		request: PromotePackageDto & { canExportVariableValues: boolean },
+		selection: SelectivePushOptions,
+	): Promise<PromotePackageResultDto> {
+		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
+		this.assertInstanceScope(input, 'Promote');
+		this.workingCopy.validateSelection(selection);
+		await this.assertTeamProject(selection.projectId);
+		await this.assertCheckoutReady(input, 'promoting');
+
+		const branchName = checkoutBranchName(input.config);
+		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
+
+		if (!(await isDirectory(packageFolder))) {
+			await mkdir(packageFolder, { recursive: true });
+		}
+
+		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
+		const prePushBackup = `${packageFolder}.pre-selection`;
+		let backedUp = false;
+		let keepPrePushBackup = false;
+
+		try {
+			await rm(prePushBackup, { recursive: true, force: true });
+			await cp(packageFolder, prePushBackup, { recursive: true, verbatimSymlinks: true });
+			backedUp = true;
+
+			// The exporter does the selecting: it writes the selected workflows and
+			// what they need, so nothing has to be filtered out afterwards.
+			const { manifest: staging, counts } = await this.n8nPackagesService.exportPackageToDirectory(
+				{
+					user: actor,
+					projectIds: [selection.projectId],
+					projectWorkflowIds: selection.workflowIds,
+					includeVariableValues: true,
+					canExportVariableValues: request.canExportVariableValues,
+					includeTags: true,
+					includeArchivedWorkflows: true,
+					// A sub-workflow nobody selected stays a reference. Failing here would
+					// block a promote whose sub-workflow the branch already holds.
+					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
+					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				},
+				{ targetDir: stagingFolder },
+			);
+
+			await this.workingCopy.applySelection(packageFolder, stagingFolder, staging, selection);
+
+			const { commitSha } = await this.gitService.commitAndPush({
+				remoteUrl: repositoryUrl(input),
+				credentials: await this.credentialsFor(input),
+				paths: this.workingDirectory.paths(input.configId),
+				branchName,
+				configId: input.configId,
+				author: this.commitAuthor(actor),
+				commitMessage: request.commitMessage,
+				force: request.force ?? false,
+				stagePathspec: PACKAGE_SUBFOLDER,
+			});
+
+			return {
+				connectionId: input.connectionId,
+				configId: input.configId,
+				counts,
+				git: { commitSha, branchName },
+			};
+		} catch (error) {
+			if (backedUp) {
+				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
+					this.logger.warn('Failed to remove the incomplete selection after a failed promote', {
+						packageFolder,
+						error: restoreError,
+					});
+				});
+				try {
+					await rename(prePushBackup, packageFolder);
+				} catch (restoreError: unknown) {
+					keepPrePushBackup = true;
+					this.logger.warn(
+						'Failed to restore the package from the pre-selection copy. The copy is at the backup path.',
+						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
+					);
+				}
+			}
+			throw error;
+		} finally {
+			if (!keepPrePushBackup) {
+				await rm(prePushBackup, { recursive: true, force: true });
+			}
+			await rm(stagingFolder, { recursive: true, force: true });
+		}
+	}
+
 	/** Imports the package from the configured branch and replaces instance content. */
 	async apply(connectionId: string, actor: User): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
@@ -245,6 +350,14 @@ export class PromotionsService {
 			throw new BadRequestError(
 				`${operation} is only available on the instance connection. Project connections are not supported yet.`,
 			);
+		}
+	}
+
+	private async assertTeamProject(projectId: string) {
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (!project) throw new NotFoundError('Project not found');
+		if (project.type !== 'team') {
+			throw new BadRequestError('Only team projects can use a promotion connection');
 		}
 	}
 

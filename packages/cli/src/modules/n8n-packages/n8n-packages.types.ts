@@ -418,7 +418,7 @@ export interface ExportPackageSummary {
 /**
  * Result of an export where the package itself is returned to the caller as an
  * archive stream, on top of the summary. Contrast with a directory export, which
- * writes to disk in place and only returns the {@link ExportPackageSummary}.
+ * writes to disk in place and returns {@link ExportPackageDirectoryResult}.
  */
 export interface ExportPackageResult extends ExportPackageSummary {
 	stream: Readable;
