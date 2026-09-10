@@ -186,9 +186,9 @@ describe('WorkflowExporter', () => {
 		expect(entries.map(({ id }) => id)).toEqual([a.id, b.id]);
 		expect(writer.files.map(({ path }) => path)).toEqual([
 			'workflows/alpha-wf_a/workflow.json',
-			'workflows/alpha-wf_a/workflow-lifecycle.json',
+			'workflows/alpha-wf_a/workflow-metadata.json',
 			'workflows/beta-wf_b/workflow.json',
-			'workflows/beta-wf_b/workflow-lifecycle.json',
+			'workflows/beta-wf_b/workflow-metadata.json',
 		]);
 	});
 

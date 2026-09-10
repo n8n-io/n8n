@@ -106,7 +106,7 @@ export class AutoIncludedWorkflowExporter {
 				await this.resolveWorkflowBaseDir(included, shells),
 				included.workflow,
 				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
-				this.workflowSerializer.serializeLifecycle(included.workflow),
+				this.workflowSerializer.serializeMetadata(included.workflow),
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);
