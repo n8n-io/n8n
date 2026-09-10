@@ -1,0 +1,23 @@
+packages/@n8n/typescript-config/tsconfig.frontend.json
+  s_351714e0dac6c6::t_a27a71a00429cc 8-13
+packages/frontend/@n8n/design-system/tsconfig.build.json
+  s_351714e0dac6c6::t_0af36eb22d3cb6 5-6
+packages/frontend/@n8n/chat/tsconfig.build.json
+  s_351714e0dac6c6::t_87c466ddb13dea 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d8110fe63a9e4838edff4e74569ded62e2b15df1",
+  "prompts": {},
+  "sessions": {
+    "s_351714e0dac6c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72910793-cc16-489f-ae3d-8d80ad3a69bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
