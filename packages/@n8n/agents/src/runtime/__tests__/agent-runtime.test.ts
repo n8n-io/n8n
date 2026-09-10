@@ -6888,6 +6888,42 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
+	it('persists full skill content when the memory adapter has no skill state store', async () => {
+		const instructions = 'Wait for a real execution before extending the workflow.';
+		const source = createRuntimeSkillSource([
+			{ id: 'builder', name: 'builder', description: 'Build workflows.', instructions },
+		]);
+		const memory = new InMemoryMemory();
+		Object.defineProperty(memory, 'skillState', { value: undefined });
+		const runtime = buildMidRunRuntime(memory, {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const messages = await memory.getMessages(PERSISTENCE.threadId);
+		const loads = messages
+			.flatMap((message) => (isLlmMessage(message) ? message.content : []))
+			.filter((part) => part.type === 'tool-call' && part.toolName === 'load_skill');
+		expect(loads).toEqual([
+			expect.objectContaining({
+				output: {
+					type: 'content',
+					value: [{ type: 'text', text: expect.stringContaining(instructions) }],
+				},
+			}),
+		]);
+		expect(await memory.getCursor(PERSISTENCE.threadId)).not.toBeNull();
+		expect(flattenInstructions(capturedCall(1).instructions)).not.toContain('<active_skills>');
+	});
+
 	it('retains loaded skills through compaction and a new user turn', async () => {
 		const source = createRuntimeSkillSource([
 			{

@@ -21,6 +21,94 @@ const source = createRuntimeSkillSource([
 ]);
 
 describe('active skills', () => {
+	it('does not rewrite unchanged stored skills on later turns', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['builder', 'planning']);
+		const save = vi.spyOn(memory.skillState, 'save');
+
+		for (let turn = 0; turn < 2; turn++) {
+			const active = new ActiveSkills(source, 'assistant', memory.skillState);
+			await active.restore(new AgentMessageList(), scope);
+			expect(active.instructions()).toContain('Build one workflow.');
+			expect(active.instructions()).toContain('Create a task plan.');
+		}
+
+		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('does not rewrite an explicitly empty stored state', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, []);
+		const save = vi.spyOn(memory.skillState, 'save');
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+		const list = new AgentMessageList();
+
+		await active.restore(list, scope);
+
+		expect(list.activeSkillIds).toEqual([]);
+		expect(active.instructions()).toBeUndefined();
+		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('clears stored state when all restored skills are disabled', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
+		const active = new ActiveSkills(
+			filterRuntimeSkillSource(source, ['planning']),
+			'assistant',
+			memory.skillState,
+		);
+
+		await active.restore(new AgentMessageList(), scope);
+
+		expect(active.instructions()).toBeUndefined();
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([]);
+	});
+
+	it('initializes stored state from historical skill loads', async () => {
+		const memory = new InMemoryMemory();
+		const list = new AgentMessageList();
+		list.addHistory([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'load_skill',
+						toolCallId: 'old-load',
+						input: { skillId: 'builder' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Build one workflow.' }] },
+					},
+				],
+			},
+		]);
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toContain('Build one workflow.');
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
+			'builder',
+		]);
+	});
+
+	it('persists checkpoint skills when they differ from stored state', async () => {
+		const memory = new InMemoryMemory();
+		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning']);
+		const list = new AgentMessageList();
+		list.activeSkillIds = ['builder'];
+		const active = new ActiveSkills(source, 'assistant', memory.skillState);
+
+		await active.restore(list, scope);
+
+		expect(active.instructions()).toContain('Build one workflow.');
+		expect(active.instructions()).not.toContain('Create a task plan.');
+		await expect(memory.skillState.load({ ...scope, agentName: 'assistant' })).resolves.toEqual([
+			'builder',
+		]);
+	});
+
 	it('removes disabled skills from restored state and from historical tool output', async () => {
 		const memory = new InMemoryMemory();
 		await memory.skillState.save({ ...scope, agentName: 'assistant' }, ['planning', 'builder']);

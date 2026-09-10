@@ -46,7 +46,11 @@ export class ActiveSkills {
 			if (skill) this.loaded.set(id, skill);
 		}
 		list.activeSkillIds = [...this.loaded.keys()];
-		if (ids.length > 0 || stored !== undefined) await this.persist();
+		const storeIsCurrent =
+			stored !== undefined &&
+			new Set(stored).size === this.loaded.size &&
+			stored.every((id) => this.loaded.has(id));
+		if (!storeIsCurrent && (ids.length > 0 || stored !== undefined)) await this.persist();
 	}
 
 	async load(skillId: string): Promise<RuntimeSkillContent | null> {

@@ -218,7 +218,8 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
-		if (config.skillSource) {
+		// Keep full tool results when the memory backend cannot persist active skill IDs.
+		if (config.skillSource && (!config.memory || config.memory.skillState)) {
 			this.activeSkills = new ActiveSkills(
 				config.skillSource,
 				config.name,
