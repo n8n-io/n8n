@@ -4,7 +4,7 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { IWorkflowDb, Project, User } from '@n8n/db';
+import { ExecutionRepository, type IWorkflowDb, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { gzipSync } from 'node:zlib';
@@ -14,6 +14,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppRuntimeService } from '@/modules/apps/runtime/app-runtime.service';
+import { UrlService } from '@/services/url.service';
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -193,7 +194,7 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 			principal: null,
 		});
 		expect(typeof response.body.executionId).toBe('string');
-		expect(response.headers['access-control-allow-origin']).toBe('*');
+		expect(response.headers['access-control-allow-origin']).toBe('null');
 		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
 
 		const execution = await Container.get(ExecutionPersistence).findSingleExecution(
@@ -298,27 +299,90 @@ describe('POST /apps/:namespace/api/workflows/:key', () => {
 			new Error('db down'),
 		);
 
-		const response = await visitor.post('/apps/runner/api/workflows/submit').send({}).expect(500);
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Origin', 'null')
+			.send({})
+			.expect(500);
 
 		expect(response.body).toEqual({
 			code: 'execution_failed',
 			message: 'The workflow could not be run.',
 		});
-		expect(response.headers['access-control-allow-origin']).toBe('*');
+		expect(response.headers['access-control-allow-origin']).toBe('null');
+	});
+
+	test('answers a request without Origin, with no CORS origin header', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.send({ message: 'hi', count: 3 })
+			.expect(200);
+
+		expect(response.headers['access-control-allow-origin']).toBeUndefined();
+		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+	});
+
+	test('echoes the instance origin', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+		const instanceOrigin = new URL(Container.get(UrlService).getInstanceBaseUrl()).origin;
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Origin', instanceOrigin)
+			.send({ message: 'hi', count: 3 })
+			.expect(200);
+
+		expect(response.headers['access-control-allow-origin']).toBe(instanceOrigin);
+		expect(response.headers.vary).toContain('Origin');
+		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+	});
+
+	test('answers 403 forbidden_origin to another site without running the workflow', async () => {
+		const workflow = await createEchoWorkflow({ published: true });
+		await createBoundApp(workflow.id);
+
+		const response = await visitor
+			.post('/apps/runner/api/workflows/submit')
+			.set('Origin', 'https://evil.example')
+			.send({ message: 'hi', count: 3 })
+			.expect(403);
+
+		expect(response.body).toMatchObject({ code: 'forbidden_origin' });
+		expect(response.headers['access-control-allow-origin']).toBeUndefined();
+		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+		expect(await Container.get(ExecutionRepository).count()).toBe(0);
 	});
 });
 
 describe('OPTIONS /apps/:namespace/api/*', () => {
-	test('answers the preflight of the opaque-origin page with a wildcard origin', async () => {
+	test('answers the preflight of the opaque-origin page with the null origin', async () => {
 		const response = await visitor
 			.options('/apps/runner/api/workflows/submit')
 			.set('Origin', 'null')
 			.set('Access-Control-Request-Method', 'POST')
 			.expect(204);
 
-		expect(response.headers['access-control-allow-origin']).toBe('*');
+		expect(response.headers['access-control-allow-origin']).toBe('null');
+		expect(response.headers.vary).toContain('Origin');
 		expect(response.headers['access-control-allow-methods']).toBe('POST, OPTIONS');
 		expect(response.headers['access-control-allow-headers']).toBe('Content-Type');
+		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
+	});
+
+	test('answers 403 forbidden_origin without CORS headers to another site', async () => {
+		const response = await visitor
+			.options('/apps/runner/api/workflows/submit')
+			.set('Origin', 'https://evil.example')
+			.set('Access-Control-Request-Method', 'POST')
+			.expect(403);
+
+		expect(response.body).toMatchObject({ code: 'forbidden_origin' });
+		expect(response.headers['access-control-allow-origin']).toBeUndefined();
+		expect(response.headers['access-control-allow-methods']).toBeUndefined();
 		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
 	});
 });

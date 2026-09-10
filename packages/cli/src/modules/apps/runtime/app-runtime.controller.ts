@@ -5,6 +5,8 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
+import { UrlService } from '@/services/url.service';
+
 import { AppRuntimeError } from './app-runtime.error';
 import { AppRuntimeService } from './app-runtime.service';
 
@@ -16,19 +18,6 @@ const rateLimit = createIpRateLimit(
 );
 
 /**
- * The served page runs on an opaque origin (`sandbox` CSP), so every call is
- * cross-origin with `Origin: null`. `*` is safe because no cookie is ever accepted.
- */
-function setCorsHeaders(res: Response) {
-	res.setHeader('Access-Control-Allow-Origin', '*');
-	res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-	res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-	// The dev-only global cors middleware sets this before the controller runs. This
-	// public route never allows credentials, so drop it rather than send `*` with it.
-	res.removeHeader('Access-Control-Allow-Credentials');
-}
-
-/**
  * Runtime API of a served app: `/apps/<namespace>/api/*`. Registered before the
  * serving controller so these paths never fall through to its SPA fallback.
  */
@@ -37,20 +26,49 @@ export class AppRuntimeController {
 	constructor(
 		private readonly appRuntimeService: AppRuntimeService,
 		private readonly errorReporter: ErrorReporter,
+		private readonly urlService: UrlService,
 	) {}
+
+	/**
+	 * The served page runs on an opaque origin (`sandbox` CSP), so `null` is the only
+	 * `Origin` the app itself can send. The instance origin is allowed too, and a request
+	 * without `Origin` (same-origin, curl) has nothing to check. Every other origin is
+	 * another site: it gets a 403 and no CORS headers, so a browser never reads the answer.
+	 */
+	private applyCors(req: Request, res: Response): boolean {
+		// The dev-only global cors middleware sets this before the controller runs. This
+		// public route never allows credentials, so drop it.
+		res.removeHeader('Access-Control-Allow-Credentials');
+
+		const origin = req.headers.origin;
+		const instanceOrigin = new URL(this.urlService.getInstanceBaseUrl()).origin;
+		if (origin !== undefined && origin !== 'null' && origin !== instanceOrigin) {
+			res.status(403).json({
+				code: 'forbidden_origin',
+				message: 'The app runtime API answers only its own page.',
+			});
+			return false;
+		}
+
+		if (origin !== undefined) res.setHeader('Access-Control-Allow-Origin', origin);
+		res.vary('Origin');
+		res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+		res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+		return true;
+	}
 
 	// No rate limit: the browser preflights every call, so a limit here would halve the
 	// budget of the POST route.
 	@Options('/:namespace/api{/*path}', { skipAuth: true })
-	preflight(_req: Request, res: Response) {
-		setCorsHeaders(res);
+	preflight(req: Request, res: Response) {
+		if (!this.applyCors(req, res)) return;
 		res.status(204).end();
 	}
 
 	/** `skipAuth`: the caller is the served page, which has no session; every app is public. */
 	@Post('/:namespace/api/workflows/:key', { skipAuth: true, ipRateLimit: rateLimit })
 	async runWorkflow(req: Request<{ namespace: string; key: string }>, res: Response) {
-		setCorsHeaders(res);
+		if (!this.applyCors(req, res)) return;
 
 		// `rawBody` is unset when the body parser skipped the request (multipart).
 		if ((req.rawBody?.length ?? 0) > MAX_BODY_BYTES) {

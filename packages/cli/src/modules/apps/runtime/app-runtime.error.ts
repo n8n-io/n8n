@@ -8,6 +8,7 @@ export type AppRuntimeErrorCode =
 	| 'workflow_incompatible'
 	| 'workflow_not_callable'
 	| 'invalid_input'
+	| 'forbidden_origin'
 	| 'payload_too_large'
 	| 'too_many_requests';
 

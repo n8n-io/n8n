@@ -192,8 +192,9 @@ Rules:
 
 All apps are public: anyone with the URL opens the app and can run its bound
 workflows; `result.principal` is `null`. The runtime API is callable from the
-app's own page only (CORS). Like a public webhook, anyone who can reach the
-instance can call a bound workflow, so bind only workflows that may be public.
+app's own page only (CORS; another site's page gets `403 forbidden_origin`).
+Like a public webhook, anyone who can reach the instance can call a bound
+workflow, so bind only workflows that may be public.
 
 ## Template
 

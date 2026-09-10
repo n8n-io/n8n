@@ -134,6 +134,7 @@ class N8nAppError extends Error {
 | `workflow_incompatible`  | 409  | The workflow lost its "When Executed by Another Workflow" trigger or gained a Form node.     |
 | `workflow_not_callable`  | 403  | The workflow's "This workflow can be called by" setting excludes the app's project.         |
 | `invalid_input`          | 400  | The body does not match the trigger fields; `issues` lists each rejected field's `path` and zod `code` (for example `invalid_type`). Fix the call. |
+| `forbidden_origin`       | 403  | The request came from another site's page. The API answers only the app's own page (`Origin: null`) or the instance origin. |
 | `payload_too_large`      | 413  | The body is over 1 MiB.                                                                     |
 | `too_many_requests`      | 429  | The instance already holds its maximum of concurrent app runs (default 10). Retry after a moment. |
 | `execution_failed`       | 500  | n8n could not start the run. Retry later; the message is safe to show.                      |
@@ -145,9 +146,11 @@ Show `error.message` to the user; it is written for people.
 ## Who calls
 
 All apps are public: anyone with the URL opens the app. The runtime API is
-callable from the app's own page only (CORS). Like a public webhook, anyone
-who can reach the instance can call a bound workflow, so bind only workflows
-that may be public. `principal` is `null`.
+callable from the app's own page only (CORS: the served page has the opaque
+origin `null`; the instance origin is allowed too; any other origin gets
+`403 forbidden_origin` and no CORS headers). Like a public webhook, anyone who
+can reach the instance can call a bound workflow, so bind only workflows that
+may be public. `principal` is `null`.
 
 ## Runtime facts
 
