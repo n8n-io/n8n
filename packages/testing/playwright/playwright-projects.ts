@@ -35,7 +35,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'queue', config: { workers: 1 } },
 	{
 		name: 'multi-main',
-		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+		config: { mains: 2, workers: 1 },
 	},
 ];
 

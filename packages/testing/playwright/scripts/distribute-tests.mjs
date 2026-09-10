@@ -58,7 +58,7 @@ const CAPABILITY_IMAGES = {
 	email: ['mailpit'],
 	'external-secrets': ['localstack'],
 	kafka: ['kafka'],
-	observability: ['victoriaLogs', 'victoriaMetrics', 'vector', 'jaeger', 'n8nTracer'],
+	observability: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	oidc: ['keycloak'],
 	proxy: ['mockserver'],
 	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
