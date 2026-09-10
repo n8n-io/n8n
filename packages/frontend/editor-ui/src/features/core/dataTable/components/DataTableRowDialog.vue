@@ -15,10 +15,12 @@ import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useDataTableStore } from '../dataTable.store';
+import AutomationStatusLink from './AutomationStatusLink.vue';
 import type {
 	DataTable,
 	DataTableColumn,
 	DataTableRow,
+	DataTableRowAutomation,
 	DataTableValue,
 } from '../dataTable.types';
 
@@ -72,6 +74,11 @@ const additionalDetails = computed(() => {
 		{ label: i18n.baseText('dataTable.kanban.createdAt'), value: props.row.createdAt },
 		{ label: i18n.baseText('dataTable.kanban.updatedAt'), value: props.row.updatedAt },
 	];
+});
+// Execution status per trigger node, shown with the other read-only details
+const automations = computed<DataTableRowAutomation[]>(() => {
+	const list: unknown = props.row?.automations;
+	return Array.isArray(list) ? (list as DataTableRowAutomation[]) : [];
 });
 
 function setValue(columnId: string, value: string) {
@@ -257,6 +264,19 @@ async function deleteRow() {
 							<N8nText tag="dd" size="xsmall" color="text-light">
 								{{ detail.value }}
 							</N8nText>
+						</div>
+						<div
+							v-for="automation in automations"
+							:key="automation.nodeId"
+							:class="$style.additionalDetail"
+							data-test-id="data-table-row-automation"
+						>
+							<N8nText tag="dt" size="xsmall" color="text-light" bold>
+								{{
+									automation.workflowName ?? i18n.baseText('dataTable.automation.unknownWorkflow')
+								}}
+							</N8nText>
+							<dd><AutomationStatusLink :automation="automation" /></dd>
 						</div>
 					</dl>
 				</N8nCollapsiblePanel>
