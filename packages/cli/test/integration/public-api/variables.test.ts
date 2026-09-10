@@ -385,7 +385,10 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
+			// The registry sends an empty body for a success status that declares no DTO. The legacy
+			// handler sent no content type with it, the registry sends the JSON one.
 			expect(response.text).toBe('');
+			expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
 			const created = await getVariableByKey('key');
 			expect(created).toEqual(expect.objectContaining(variablePayload));
 		});
