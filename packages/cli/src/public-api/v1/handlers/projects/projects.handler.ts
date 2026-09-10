@@ -1,9 +1,4 @@
-import {
-	AddUsersToProjectDto,
-	ChangeUserRoleInProject,
-	DeleteProjectDto,
-	UpdateProjectWithRelationsDto,
-} from '@n8n/api-types';
+import { AddUsersToProjectDto, ChangeUserRoleInProject } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
@@ -26,8 +21,6 @@ import { ProjectService } from '@/services/project.service.ee';
 type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & PaginatedRequest;
 
 type ProjectHandlers = {
-	updateProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	deleteProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	getProjectUsers: PublicAPIEndpoint<GetProjectUsersRequest>;
 	addUsersToProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	changeUserRoleInProject: PublicAPIEndpoint<
@@ -48,39 +41,6 @@ async function assertProjectRolesNotManaged() {
 }
 
 const projectHandlers: ProjectHandlers = {
-	updateProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
-			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
-			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
-			}
-
-			const { projectId } = req.params;
-			await Container.get(ProjectService).updateProject(req.user, projectId, payload.data);
-
-			return res.status(204).send();
-		},
-	],
-	deleteProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:delete' }),
-		async (req, res) => {
-			const query = DeleteProjectDto.safeParse(req.query);
-			if (query.error) {
-				throw new BadRequestError(query.error.errors[0].message);
-			}
-
-			const { projectId } = req.params;
-			const { transferId } = query.data;
-			await Container.get(ProjectService).deleteProject(req.user, projectId, {
-				migrateToProject: transferId,
-			});
-
-			return res.status(204).send();
-		},
-	],
 	getProjectUsers: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
