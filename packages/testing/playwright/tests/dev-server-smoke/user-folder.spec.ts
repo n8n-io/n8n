@@ -9,9 +9,8 @@ import { expect, test } from '../../fixtures/base';
  * USER_FOLDER in playwright.config.ts), not in the default ~/.n8n. Guards the
  * smoke suite against silently polluting the developer's own install.
  *
- * Playwright polls the backend's readiness endpoint and global-setup resets its
- * database before any test runs, so the file exists by now without visiting the
- * app.
+ * Playwright waits for backend readiness and global-setup resets its database
+ * before any test runs, so the file exists by now without visiting the app.
  */
 test.describe(
 	'Dev-server user folder',

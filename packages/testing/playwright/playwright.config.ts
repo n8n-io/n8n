@@ -8,7 +8,7 @@ import path from 'path';
 
 import currentsConfig from './currents.config';
 import { getProjects } from './playwright-projects';
-import { getBackendUrl, getFrontendUrl, getPortFromUrl } from './utils/url-helper';
+import { getBackendUrl, getFrontendUrl, getPortFromUrl, getReadinessUrl } from './utils/url-helper';
 
 const IS_CI = !!process.env.CI;
 const IS_DEV = !!process.env.N8N_EDITOR_URL;
@@ -68,16 +68,18 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 		process.env.N8N_TEST_USER_FOLDER =
 			typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
 	}
-	// Probe `/healthz/readiness`, not a static asset. The startup middleware
-	// answers 200 while the migrations still run, so an asset probe lets global
-	// setup POST `/rest/e2e/reset` before n8n registers the E2E controller.
-	// Readiness answers 503 until the database is migrated and the server is
-	// fully initialized.
+	// Probe readiness, not a static asset: the startup middleware answers assets
+	// with 200 while the migrations still run, so global setup could reset the
+	// database before n8n registered the E2E controller.
+	const envHealthEndpoint: unknown =
+		getTestEnv().N8N_ENDPOINT_HEALTH ?? process.env.N8N_ENDPOINT_HEALTH;
 	webServer.push({
 		command: 'pnpm --dir ../../.. start',
-		url: `${BACKEND_URL}/healthz/readiness`,
-		// Readiness comes later than a bound port: allow for the migrations on a
-		// fresh user folder on top of module startup.
+		url: getReadinessUrl(
+			BACKEND_URL,
+			typeof envHealthEndpoint === 'string' ? envHealthEndpoint : undefined,
+		),
+		// Readiness lands later than a bound port: allow for the migrations too.
 		timeout: 120000,
 		reuseExistingServer: IS_DEV ? false : true,
 		env: {
