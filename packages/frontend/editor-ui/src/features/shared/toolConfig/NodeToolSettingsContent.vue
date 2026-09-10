@@ -35,6 +35,7 @@ import {
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import {
 	ChatHubToolContextKey,
+	CUSTOM_API_CALL_KEY,
 	ExpressionLocalResolveContextSymbol,
 	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
@@ -91,10 +92,13 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description || !props.hiddenOperations?.length) {
+	if (!description) {
 		return description;
 	}
-	return omitOperationOptions(description, props.hiddenOperations);
+	return omitOperationOptions(description, [
+		CUSTOM_API_CALL_KEY,
+		...(props.hiddenOperations ?? []),
+	]);
 });
 
 type ToolSettingsTab = 'params' | 'settings';

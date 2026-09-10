@@ -125,7 +125,8 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
 			ParameterInputList: {
-				template: '<div data-test-id="parameter-input-list"><slot /></div>',
+				template:
+					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
@@ -184,23 +185,7 @@ describe('NodeToolSettingsContent', () => {
 		};
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
 
-		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
-			global: {
-				stubs: {
-					ParameterInputList: {
-						template:
-							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
-						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
-					},
-					NodeCredentials: {
-						template: '<div data-test-id="node-credentials" />',
-						props: ['node', 'readonly', 'showAll', 'hideIssues'],
-					},
-				},
-			},
-		});
-
-		const { getAllByTestId } = renderWithParameterCapture({
+		const { getAllByTestId } = renderComponent({
 			props: {
 				initialNode: createMockNode({ parameters: {} }),
 				hiddenOperations: ['sendAndWait'],
@@ -212,6 +197,38 @@ describe('NodeToolSettingsContent', () => {
 			.join('');
 		expect(renderedParameters).toContain('create');
 		expect(renderedParameters).not.toContain('sendAndWait');
+	});
+
+	it('should hide Custom API Call from resource options', () => {
+		const nodeTypeWithCustomApiCallResource: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Row', value: 'row' },
+						{ name: 'Custom API Call', value: '__CUSTOM_API_CALL__' },
+					],
+					default: 'row',
+					noDataExpression: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithCustomApiCallResource);
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				initialNode: createMockNode({ parameters: {} }),
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).toContain('row');
+		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('should hide settings tab when there are no settings', () => {
