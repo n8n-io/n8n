@@ -21,17 +21,29 @@ export const useContextStore = defineStore('context', () => {
 	 */
 	const changeVersion = ref(0);
 
+	/**
+	 * Reads land in completion order, not the order they were asked for, so a slow
+	 * earlier read could overwrite a newer one — a reload after a write racing the
+	 * page load it interrupted, for instance. Only the newest read commits. Both
+	 * readers share the counter because both write `count`.
+	 */
+	let latestRead = 0;
+
 	const isEmpty = computed(() => count.value === 0);
 
 	async function fetchPreferences(query: PreferenceListQuery = {}) {
+		const read = ++latestRead;
 		loading.value = true;
 		try {
 			const response = await api.getPreferences(rootStore.restApiContext, query);
-			preferences.value = response.data;
-			count.value = response.count;
+			if (read === latestRead) {
+				preferences.value = response.data;
+				count.value = response.count;
+			}
 			return response;
 		} finally {
-			loading.value = false;
+			// A superseded read must not clear the flag out from under the newer one.
+			if (read === latestRead) loading.value = false;
 		}
 	}
 
@@ -40,8 +52,9 @@ export const useContextStore = defineStore('context', () => {
 	 * only the count, so it asks for a single row.
 	 */
 	async function fetchPreferenceCount() {
+		const read = ++latestRead;
 		const response = await api.getPreferences(rootStore.restApiContext, { skip: 0, take: 1 });
-		count.value = response.count;
+		if (read === latestRead) count.value = response.count;
 		return response.count;
 	}
 
@@ -63,10 +76,17 @@ export const useContextStore = defineStore('context', () => {
 	}
 
 	async function deletePreferences(ids: string[]) {
-		for (const id of ids) {
-			await api.deletePreference(rootStore.restApiContext, id);
+		let deleted = 0;
+		try {
+			for (const id of ids) {
+				await api.deletePreference(rootStore.restApiContext, id);
+				deleted += 1;
+			}
+		} finally {
+			// A run that fails part way still changed the collection, and the rows it
+			// removed are still on screen. Signal once either way, never per row.
+			if (deleted > 0) changeVersion.value += 1;
 		}
-		changeVersion.value += 1;
 	}
 
 	return {

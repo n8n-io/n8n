@@ -16,6 +16,14 @@ vi.mock('./context.api', () => ({
 	deletePreference: async (...args: unknown[]) => await remove(...args),
 }));
 
+function deferred<T>() {
+	let settle: (value: T) => void = () => {};
+	const promise = new Promise<T>((resolve) => {
+		settle = resolve;
+	});
+	return { promise, settle };
+}
+
 function row(overrides: Partial<Preference> = {}): Preference {
 	return {
 		id: 'p1',
@@ -57,6 +65,45 @@ describe('context.store', () => {
 		expect(list).toHaveBeenCalledWith(expect.anything(), { skip: 0, take: 1 });
 	});
 
+	// Reads land in completion order, so the newest must win regardless.
+	it('ignores a read that lands after a newer one', async () => {
+		const slowFirst = deferred<{ count: number; data: Preference[] }>();
+		const fastSecond = deferred<{ count: number; data: Preference[] }>();
+		list.mockReturnValueOnce(slowFirst.promise).mockReturnValueOnce(fastSecond.promise);
+		const store = useContextStore();
+
+		const first = store.fetchPreferences({ skip: 0, take: 50 });
+		const second = store.fetchPreferences({ skip: 50, take: 50 });
+
+		fastSecond.settle({ count: 2, data: [row({ id: 'newer' })] });
+		await second;
+		slowFirst.settle({ count: 99, data: [row({ id: 'older' })] });
+		await first;
+
+		expect(store.preferences.map((p) => p.id)).toEqual(['newer']);
+		expect(store.count).toBe(2);
+		expect(store.loading).toBe(false);
+	});
+
+	it('keeps loading true until the newest read settles', async () => {
+		const slowFirst = deferred<{ count: number; data: Preference[] }>();
+		const fastSecond = deferred<{ count: number; data: Preference[] }>();
+		list.mockReturnValueOnce(slowFirst.promise).mockReturnValueOnce(fastSecond.promise);
+		const store = useContextStore();
+
+		const first = store.fetchPreferences({ skip: 0, take: 50 });
+		const second = store.fetchPreferences({ skip: 50, take: 50 });
+
+		// The superseded read finishing first must not clear the flag.
+		slowFirst.settle({ count: 99, data: [row({ id: 'older' })] });
+		await first;
+		expect(store.loading).toBe(true);
+
+		fastSecond.settle({ count: 2, data: [row({ id: 'newer' })] });
+		await second;
+		expect(store.loading).toBe(false);
+	});
+
 	// The list watches this, because the modal cannot reach it to say it saved.
 	it.each([
 		[
@@ -92,6 +139,27 @@ describe('context.store', () => {
 		const before = store.changeVersion;
 
 		await expect(store.createPreference({ content: 'x', scope: 'user' })).rejects.toThrow();
+
+		expect(store.changeVersion).toBe(before);
+	});
+
+	it('still signals a change when a bulk delete fails part way', async () => {
+		remove.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('gone'));
+		const store = useContextStore();
+		const before = store.changeVersion;
+
+		// Two rows were asked for, one went. The survivor is still on screen.
+		await expect(store.deletePreferences(['a', 'b'])).rejects.toThrow('gone');
+
+		expect(store.changeVersion).toBe(before + 1);
+	});
+
+	it('does not signal a change when the first delete of a bulk run fails', async () => {
+		remove.mockRejectedValueOnce(new Error('gone'));
+		const store = useContextStore();
+		const before = store.changeVersion;
+
+		await expect(store.deletePreferences(['a', 'b'])).rejects.toThrow('gone');
 
 		expect(store.changeVersion).toBe(before);
 	});
