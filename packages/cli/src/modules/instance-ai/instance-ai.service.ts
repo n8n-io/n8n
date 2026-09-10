@@ -4255,6 +4255,10 @@ export class InstanceAiService {
 					return;
 				}
 
+				// The awaits above yield to cancelRun. It already published run-finish
+				// and dropped the pending row, so a card published now cannot be answered.
+				if (signal.aborted) return;
+
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
@@ -5496,6 +5500,10 @@ export class InstanceAiService {
 					});
 					return;
 				}
+
+				// The awaits above yield to cancelRun. It already published run-finish
+				// and dropped the pending row, so a card published now cannot be answered.
+				if (opts.signal.aborted) return;
 
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
