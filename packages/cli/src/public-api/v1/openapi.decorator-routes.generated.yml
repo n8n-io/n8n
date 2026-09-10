@@ -31,6 +31,11 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /projects:
+    get:
+      $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/createProject.generated.yml
   /promotions/providers:
     post:
       $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml

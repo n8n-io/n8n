@@ -163,7 +163,6 @@ export default defineConfig(
 		files: [
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
