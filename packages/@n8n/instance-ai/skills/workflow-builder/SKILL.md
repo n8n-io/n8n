@@ -146,8 +146,7 @@ setup steps or node semantics from memory when those sources can answer.
    instead of improvising.
 3. **Official n8n docs** — for credential setup, product features, hosting, or
    node docs that the knowledge base does not cover, load `n8n-docs-assistant`
-   then load `n8n-docs` via `load_tool` (search "n8n docs" if it is not
-   visible) and call `n8n-docs`. Prefer docs over web search for n8n-specific
+   and call `n8n-docs`. Prefer docs over web search for n8n-specific
    questions.
 
 For workflows with multiple external systems, multiple requested effects,
