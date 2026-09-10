@@ -232,9 +232,21 @@ describe('AppPreviewController', () => {
 			namespace: 'greeter',
 			userId: 'user-1',
 			sandbox,
+			hasActiveRun: expect.any(Function),
 			getWorkspace: expect.any(Function),
 			getSourceTarball: expect.any(Function),
 		});
+	});
+
+	it('tells the preview service whether the thread has a live run', async () => {
+		instanceAiService.hasActiveRun.mockReturnValue(true);
+		await controller.ensure(req, res, 'app-1', { threadId: 'thread-1' });
+		const input = appPreviewService.ensure.mock.calls[0][0];
+
+		expect(input.hasActiveRun()).toBe(true);
+		expect(instanceAiService.hasActiveRun).toHaveBeenCalledWith('thread-1');
+		instanceAiService.hasActiveRun.mockReturnValue(false);
+		expect(input.hasActiveRun()).toBe(false);
 	});
 
 	it('hands the preview service the thread workspace and the newest source of the app', async () => {

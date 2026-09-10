@@ -60,13 +60,17 @@ export type AppPreviewDevEntry = AppPreviewEntryBase & {
 	port: number;
 };
 
-/** A `vite build` output served from the sandbox filesystem; rebuilt after every completed turn. */
+/**
+ * A `vite build` output served from the sandbox filesystem; rebuilt after every
+ * completed turn. Started during a run, the entry stays without `dist` until
+ * the turn's rebuild, so the frame never shows the untouched template.
+ */
 export type AppPreviewBuiltEntry = AppPreviewEntryBase & {
 	kind: 'built';
 	/** Bumped on every rebuild; the preview URL carries it so the frame reloads. */
 	buildSeq: number;
 	builtAt: Date;
-	/** Absent until the first build succeeded; a resolved token always has one. */
+	/** Absent until the first build succeeded; `ensure` answers `starting` without one. */
 	dist?: AppPreviewBuiltDist;
 	rebuilding?: Promise<void>;
 };
@@ -82,6 +86,8 @@ export type EnsureAppPreviewInput = {
 	userId: string;
 	/** The n8n sandbox service the thread's sandbox runs in; undefined for other providers, which only get a built preview. */
 	sandbox?: AppPreviewSandbox;
+	/** Whether the thread's agent is mid-turn; a built preview then waits for the turn's rebuild instead of building. */
+	hasActiveRun: () => boolean;
 	/** Creates the thread's sandbox when it has none yet; undefined when the sandbox is disabled. */
 	getWorkspace: () => Promise<Workspace | undefined>;
 	/** The app's newest stored source; null when the app was never scaffolded. */
@@ -200,6 +206,12 @@ export class AppPreviewService {
 			// The rebuild settled into the map: a failure to report, or a new build sequence.
 			return await this.ensure(input);
 		}
+		if (existing?.kind === 'built' && !existing.dist) {
+			// The first build waits for the turn to end; a run that did not complete leaves it to this ensure.
+			if (input.hasActiveRun()) return { status: 'starting' };
+			this.entries.delete(key);
+			return await this.start(input, key);
+		}
 		if (existing) {
 			const probe = await this.probe(existing);
 			if (probe === 'ready') return this.ready(existing);
@@ -238,10 +250,11 @@ export class AppPreviewService {
 	}
 
 	/**
-	 * Rebuilds every built preview of the thread from the sandbox's current
-	 * sources, so the frame shows the turn's edits. Marks the entries
-	 * synchronously: an ensure that arrives meanwhile waits for the rebuild. A
-	 * rebuild already in flight is followed by one more. Never rejects.
+	 * Builds every built preview of the thread from the sandbox's current
+	 * sources, so the frame shows the turn's edits; a preview started during the
+	 * run gets its first build here. Marks the entries synchronously: an ensure
+	 * that arrives meanwhile waits for the rebuild. A rebuild already in flight is
+	 * followed by one more. Never rejects.
 	 */
 	async rebuildIfBuilt(threadId: string, workspace: Workspace): Promise<void> {
 		const entries = [...this.entries.values()].filter(
@@ -332,11 +345,12 @@ export class AppPreviewService {
 				? { ...base, kind: 'dev', sandbox: input.sandbox, port: APP_PREVIEW_PORT }
 				: this.builtEntry(base);
 		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
-		// only the entry still in the map may settle itself.
+		// only the entry still in the map may settle itself. `starting` is a built preview
+		// whose first build waits for the turn to end.
 		const settle = (outcome: StartOutcome) => {
 			if (this.entries.get(key) !== entry) return outcome.status;
 			const settled: AppPreviewEntry =
-				outcome.status.status === 'ready'
+				outcome.status.status === 'ready' || outcome.status.status === 'starting'
 					? { ...outcome.entry, starting: undefined }
 					: { ...entry, starting: undefined, failed: outcome.status };
 			this.entries.set(key, settled);
@@ -406,6 +420,8 @@ export class AppPreviewService {
 	/**
 	 * Builds the app in the thread's workspace, whichever provider backs it,
 	 * restoring the stored source first when the app directory is missing.
+	 * During a run only the restore happens: the turn's edits are still coming,
+	 * and `rebuildIfBuilt` builds the entry once the run completes.
 	 */
 	private async runBuild(
 		entry: AppPreviewBuiltEntry,
@@ -423,6 +439,7 @@ export class AppPreviewService {
 		}
 
 		await this.stopSiblings(entry);
+		if (input.hasActiveRun()) return { status: { status: 'starting' }, entry };
 		const result = await runner.exec(
 			buildPreviewBuildScript({ namespace: entry.namespace, token: entry.token }),
 			{ timeoutMs: START_TIMEOUT_MS },

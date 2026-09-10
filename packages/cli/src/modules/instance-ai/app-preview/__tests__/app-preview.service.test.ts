@@ -61,6 +61,7 @@ const execOk: ExecResult = {
 
 const getWorkspace = vi.fn<EnsureAppPreviewInput['getWorkspace']>();
 const getSourceTarball = vi.fn<EnsureAppPreviewInput['getSourceTarball']>();
+const hasActiveRun = vi.fn<EnsureAppPreviewInput['hasActiveRun']>();
 const tarball = { data: Buffer.from('gzip') };
 
 /** The thread workspace as any provider exposes it: shell via `executeCommand`, files via `filesystem`. */
@@ -94,6 +95,7 @@ const input: EnsureAppPreviewInput = {
 	namespace: 'greeter',
 	userId: 'user-1',
 	sandbox: { url: 'http://sandbox.test', apiKey: 'sandbox-key' },
+	hasActiveRun,
 	getWorkspace,
 	getSourceTarball,
 };
@@ -127,6 +129,7 @@ describe('AppPreviewService', () => {
 		sandboxClient.writeFile.mockResolvedValue(undefined);
 		getWorkspace.mockResolvedValue(workspace);
 		getSourceTarball.mockResolvedValue(tarball);
+		hasActiveRun.mockReturnValue(false);
 		fetchMock.mockResolvedValue(httpResponse(200));
 		workspaceExec.mockResolvedValue(commandOk);
 		workspaceFs.exists.mockResolvedValue(true);
@@ -547,6 +550,13 @@ describe('AppPreviewService', () => {
 				reason: 'sandbox',
 			});
 		});
+
+		it('starts the dev server during a run', async () => {
+			hasActiveRun.mockReturnValue(true);
+
+			await expect(service.ensure(input)).resolves.toMatchObject({ status: 'ready' });
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('built preview', () => {
@@ -770,6 +780,73 @@ describe('AppPreviewService', () => {
 				await rebuild();
 
 				expect(workspaceExec).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('first build during a run', () => {
+			beforeEach(() => {
+				hasActiveRun.mockReturnValue(true);
+			});
+
+			it('restores and installs but does not build while the run is active', async () => {
+				workspaceFs.exists.mockResolvedValueOnce(false);
+				workspaceExec.mockImplementation(async (command) =>
+					command === buildOccupiedCheckScript(APP_DIR) ? { ...commandOk, exitCode: 1 } : commandOk,
+				);
+
+				await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'starting' });
+				await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'starting' });
+
+				expect(workspaceCommands()).toEqual([
+					buildOccupiedCheckScript(APP_DIR),
+					`mkdir -p ${ROOT}/.app-builds ${APP_DIR}`,
+					expect.stringContaining('npm install'),
+				]);
+				expect(workspaceCommands()).not.toContainEqual(expect.stringContaining('vite build'));
+				expect(getSourceTarball).toHaveBeenCalledTimes(1);
+			});
+
+			it('builds the pending preview when the run completes and answers the ensure that waited for it', async () => {
+				await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'starting' });
+				expect(workspaceExec).not.toHaveBeenCalled();
+				let finishBuild: (result: CommandResult) => void = () => {};
+				workspaceExec.mockImplementationOnce(
+					async () => await new Promise<CommandResult>((resolve) => (finishBuild = resolve)),
+				);
+
+				const rebuilding = rebuild();
+				hasActiveRun.mockReturnValue(false);
+				const ensured = service.ensure(builtInput);
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				expect(workspaceExec).toHaveBeenCalledTimes(1);
+
+				finishBuild(commandOk);
+				await rebuilding;
+				const result = await ensured;
+
+				expect(result).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+				const token = tokenOf(result);
+				expect(workspaceCommands()).toEqual([
+					buildPreviewBuildScript({ namespace: 'greeter', token }),
+				]);
+				expect(service.resolveToken(token)).toMatchObject({
+					buildSeq: 1,
+					dist: { dir: 'apps/greeter/.n8n-preview-dist' },
+				});
+				await expect(service.ensure(builtInput)).resolves.toEqual(result);
+			});
+
+			it('builds on the next ensure when the run ended without completing', async () => {
+				await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'starting' });
+				hasActiveRun.mockReturnValue(false);
+
+				const result = await service.ensure(builtInput);
+
+				expect(result).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+				expect(workspaceCommands()).toEqual([
+					buildPreviewBuildScript({ namespace: 'greeter', token: tokenOf(result) }),
+				]);
+				expect(getSourceTarball).not.toHaveBeenCalled();
 			});
 		});
 	});

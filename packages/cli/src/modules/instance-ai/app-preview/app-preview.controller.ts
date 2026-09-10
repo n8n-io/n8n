@@ -81,6 +81,7 @@ export class AppPreviewController {
 			namespace: app.namespace,
 			userId: req.user.id,
 			sandbox: access.n8nSandbox,
+			hasActiveRun: () => this.instanceAiService.hasActiveRun(dto.threadId),
 			getWorkspace: async () =>
 				await this.instanceAiService.getOrCreateWorkspace(dto.threadId, req.user),
 			getSourceTarball: async () => await this.appsService.getSourceTarball(app.id),
