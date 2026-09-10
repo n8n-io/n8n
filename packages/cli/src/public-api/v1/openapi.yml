@@ -121,10 +121,6 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /users/{id}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /variables:
-    $ref: './handlers/variables/spec/paths/variables.yml'
-  /variables/{id}:
-    $ref: './handlers/variables/spec/paths/variables.id.yml'
   /data-tables:
     $ref: './handlers/data-tables/spec/paths/data-tables.yml'
   /data-tables/{dataTableId}:

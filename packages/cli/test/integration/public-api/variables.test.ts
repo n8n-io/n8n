@@ -9,6 +9,7 @@ import {
 	createProjectVariable,
 	createVariable,
 	getVariableByIdOrFail,
+	getVariableByKey,
 } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -365,7 +366,7 @@ describe('Variables in Public API', () => {
 	});
 
 	describe('POST /variables', () => {
-		it('should create a new variable', async () => {
+		it('should create a new variable and answer with an empty body', async () => {
 			/**
 			 * Arrange
 			 */
@@ -384,9 +385,116 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
-			await expect(getVariableByIdOrFail(response.body.id)).resolves.toEqual(
-				expect.objectContaining(variablePayload),
+			expect(response.text).toBe('');
+			const created = await getVariableByKey('key');
+			expect(created).toEqual(expect.objectContaining(variablePayload));
+		});
+
+		it('should reject a body that is missing a required field', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).post('/variables').send({});
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				"request/body must have required property 'key'",
 			);
+		});
+
+		it('should reject a read-only field', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/variables')
+				.send({ id: 'someId', key: 'key', value: 'value' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'request/body/id is read-only');
+			await expect(getVariableByKey('key')).resolves.toBeNull();
+		});
+
+		it('should reject an unknown field', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/variables')
+				.send({ key: 'key', value: 'value', unknown: 'field' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			await expect(getVariableByKey('key')).resolves.toBeNull();
+		});
+
+		it('should reject a null projectId', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/variables')
+				.send({ key: 'key', value: 'value', projectId: null });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(400);
+			await expect(getVariableByKey('key')).resolves.toBeNull();
+		});
+
+		it('should reject an API key without the "variable:create" scope', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+			const ownerWithoutScope = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(ownerWithoutScope)
+				.post('/variables')
+				.send({ key: 'key', value: 'value' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 
 		it('should create a variable linked to a project', async () => {
@@ -459,6 +567,60 @@ describe('Variables in Public API', () => {
 			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
 		});
 
+		it('should move a variable to the global scope for a null projectId', async () => {
+			testServer.license.enable('feat:variables');
+			const projectVariable = await createProjectVariable('projectKey', 'projectValue', project);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/variables/${projectVariable.id}`)
+				.send({ ...variablePayload, projectId: null });
+
+			expect(response.status).toBe(204);
+			const updatedVariable = await getVariableByIdOrFail(projectVariable.id);
+			expect(updatedVariable).toEqual(
+				expect.objectContaining({ ...variablePayload, project: null }),
+			);
+		});
+
+		it('should reject a body that is missing a required field', async () => {
+			testServer.license.enable('feat:variables');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/variables/${variable.id}`)
+				.send({ key: 'updatedKey' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				"request/body must have required property 'value'",
+			);
+		});
+
+		it('should reject a read-only field', async () => {
+			testServer.license.enable('feat:variables');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/variables/${variable.id}`)
+				.send({ ...variablePayload, type: 'string' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'request/body/type is read-only');
+		});
+
+		it('should answer 404 for an unknown variable', async () => {
+			testServer.license.enable('feat:variables');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/variables/unknownId')
+				.send(variablePayload);
+
+			expect(response.status).toBe(404);
+		});
+
 		it('should update a variable to link it to a project', async () => {
 			testServer.license.enable('feat:variables');
 
@@ -512,6 +674,23 @@ describe('Variables in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getVariableByIdOrFail(variable.id)).rejects.toThrow();
+		});
+
+		it('should answer 204 for an unknown variable', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.enable('feat:variables');
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).delete('/variables/unknownId');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(204);
 		});
 
 		it('if not licensed, should reject', async () => {

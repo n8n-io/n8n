@@ -137,6 +137,7 @@ export {
 	promotionProviderIdParamSchema,
 	roleMappingRuleIdParamSchema,
 	roleSlugParamSchema,
+	variableIdParamSchema,
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from './schemas/public-api-path-params.schema';

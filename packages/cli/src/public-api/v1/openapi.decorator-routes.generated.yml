@@ -124,6 +124,13 @@ paths:
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
+    post:
+      $ref: ./handlers/variables/spec/paths/createVariable.generated.yml
+  /variables/{id}:
+    put:
+      $ref: ./handlers/variables/spec/paths/updateVariable.generated.yml
+    delete:
+      $ref: ./handlers/variables/spec/paths/deleteVariable.generated.yml
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
