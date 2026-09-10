@@ -14,6 +14,7 @@ import {
 	joinedTeamsEndpoint,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
+	rewriteForbiddenUnderSp,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../transport';
 
@@ -133,34 +134,31 @@ export async function getUsers(
 	// ConsistencyLevel is sent on every call: directory paging drops custom headers on
 	// nextLink requests, so the token branch needs it too or Graph rejects the $search.
 	const headers: IDataObject = { ConsistencyLevel: 'eventual' };
+	const qs: IDataObject = paginationToken ? {} : { $select: 'id,displayName,userPrincipalName' };
+	if (!paginationToken && filter) {
+		// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
+		// first, then `"`, and the OR operator is uppercase and outside the quotes.
+		const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+		qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
+	}
 	let response: IDataObject;
-	if (paginationToken) {
+	try {
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			paginationToken ? '' : '/v1.0/users',
 			{},
-			{},
+			qs,
 			paginationToken,
 			headers,
 		)) as IDataObject;
-	} else {
-		const qs: IDataObject = { $select: 'id,displayName,userPrincipalName' };
-		if (filter) {
-			// `$search` escaping is NOT `$filter`'s quote-doubling: backslash-escape `\`
-			// first, then `"`, and the OR operator is uppercase and outside the quotes.
-			const escaped = filter.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-			qs.$search = `"displayName:${escaped}" OR "userPrincipalName:${escaped}"`;
-		}
-		response = (await microsoftApiRequest.call(
+	} catch (error) {
+		throw rewriteForbiddenUnderSp.call(
 			this,
-			'GET',
-			'/v1.0/users',
-			{},
-			qs,
-			undefined,
-			headers,
-		)) as IDataObject;
+			error,
+			"The user list needs the User.Read.All application permission. Grant it with admin consent, or switch the field to By ID and enter the user's object ID.",
+			'A user principal name also needs User.Read.All, because the node looks it up.',
+		);
 	}
 
 	const returnData: INodeListSearchItems[] = (response.value as IDataObject[]).map((user) => ({
