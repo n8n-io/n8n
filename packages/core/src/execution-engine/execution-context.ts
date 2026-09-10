@@ -30,6 +30,8 @@ import { ExecutionContextService } from './execution-context.service';
  * If `executionData.runtimeData` already exists, the function returns immediately without
  * modification. This preserves context when workflows resume from database (e.g., after
  * waiting for a webhook or manual continuation).
+ * `startedByUserId` is preserved as-is, except on a retry: a retry attributes the run to the
+ * retrying user, overriding the original starter.
  *
  * ### 2. Inherit from Parent Execution (Sub-workflows)
  * If `runExecutionData.parentExecution` exists, creates a new context by inheriting all
@@ -50,6 +52,8 @@ import { ExecutionContextService } from './execution-context.service';
  * - `version`: 1
  * - `establishedAt`: Current timestamp
  * - `source`: Current execution mode
+ * - `startedByUserId`: The n8n user who started the run, when known (from
+ *   `additionalData.userId` or a sealed trigger identity)
  *
  * ## Mutation Behavior
  * This function mutates `runExecutionData.executionData.runtimeData` with the execution context.
@@ -128,6 +132,13 @@ export const establishExecutionContext = async (
 			additionalData?.executionId,
 			{ allowInherit: mode === 'retry' },
 		);
+
+		// A retry carries the original run's context, but the retrying user is
+		// the one who acted. Attribute the retry to them, not the original starter.
+		if (mode === 'retry' && additionalData?.userId) {
+			executionData.runtimeData.startedByUserId = additionalData.userId;
+		}
+
 		return;
 	}
 

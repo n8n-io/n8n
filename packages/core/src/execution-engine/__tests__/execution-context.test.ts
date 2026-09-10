@@ -236,6 +236,40 @@ describe('establishExecutionContext', () => {
 			);
 			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('parent-user');
 		});
+
+		it('attributes a retry to the retrying user, overriding the original starter', async () => {
+			const runExecutionData = freshRunData();
+			runExecutionData.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: 1,
+				source: 'manual',
+				startedByUserId: 'original',
+			};
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				{ ...mockAdditionalData, userId: 'retrier' },
+				'retry',
+			);
+			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('retrier');
+		});
+
+		it('leaves the stored starter untouched on a non-retry resume', async () => {
+			const runExecutionData = freshRunData();
+			runExecutionData.executionData!.runtimeData = {
+				version: 1,
+				establishedAt: 1,
+				source: 'webhook',
+				startedByUserId: 'original',
+			};
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				{ ...mockAdditionalData, userId: 'retrier' },
+				'webhook',
+			);
+			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('original');
+		});
 	});
 
 	describe('Chat Trigger workflow support', () => {
