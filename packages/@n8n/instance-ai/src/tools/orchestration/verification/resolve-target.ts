@@ -82,7 +82,7 @@ export async function resolveVerificationTarget(
 	);
 	const setupVerificationState =
 		context.setupPanelEnabled === true && stateBefore
-			? stateForPendingSetupVerification(stateBefore, buildOutcome)
+			? stateForPendingSetupVerification(stateBefore, buildOutcome, context.runId)
 			: undefined;
 	const terminalRemediation = setupVerificationState
 		? terminalRemediationFromState(setupVerificationState)

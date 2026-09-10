@@ -1,4 +1,4 @@
-import { terminalRemediationFromState } from './remediation';
+import { MAX_VERIFY_ATTEMPTS, terminalRemediationFromState } from './remediation';
 import type {
 	RemediationMetadata,
 	WorkflowBuildOutcome,
@@ -29,13 +29,25 @@ export function canVerifyPendingSetup(outcome: WorkflowBuildOutcome): boolean {
 	);
 }
 
-/** Remove only a setup blocker that the first simulated verification can supersede. */
+/** A current run ID also permits a later turn to retry an earlier setup failure. */
 export function stateForPendingSetupVerification(
 	state: WorkflowLoopState,
 	outcome: WorkflowBuildOutcome,
+	runId?: string,
 ): WorkflowLoopState | undefined {
+	const canRetrySetup =
+		runId !== undefined &&
+		state.runId !== runId &&
+		isNeedsSetupRemediation(state.lastRemediation) &&
+		outcome.submitted &&
+		!!outcome.workflowId &&
+		outcome.triggerType === 'manual_or_testable' &&
+		outcome.executionIntent !== 'one-off' &&
+		outcome.verificationReadiness?.status !== 'not_verifiable' &&
+		outcome.nodeSimulationPlan !== undefined &&
+		(outcome.verifyAttempts ?? 0) < MAX_VERIFY_ATTEMPTS;
 	if (
-		!canVerifyPendingSetup(outcome) ||
+		(!canVerifyPendingSetup(outcome) && !canRetrySetup) ||
 		!(
 			isNeedsSetupRemediation(state.lastRemediation) ||
 			(state.lastRemediation === undefined && outcome.needsUserInput)

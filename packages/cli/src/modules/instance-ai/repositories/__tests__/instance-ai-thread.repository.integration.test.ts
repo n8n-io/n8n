@@ -93,35 +93,64 @@ describe('Instance AI thread verification transitions', () => {
 		await testDb.terminate();
 	});
 
-	it('allows one host to take verification ownership and preserves other state', async () => {
-		const before = (await storage.getWorkItem(threadId, 'wi-1'))!;
-		const siblingBefore = await storage.getWorkItem(threadId, 'wi-other');
-		const other = new WorkflowTaskCoordinator(threadId, new WorkflowLoopStorage(createMemory()));
-		const claims = await Promise.all([
-			coordinator.beginVerification(before.lastBuildOutcome!, before.state, 'turn-a'),
-			other.beginVerification(before.lastBuildOutcome!, before.state, 'turn-b'),
-		]);
+	it.each([false, true])(
+		'allows one host to claim the same snapshot with prior setup failure=%s',
+		async (priorSetupFailure) => {
+			if (priorSetupFailure) {
+				const initial = (await storage.getWorkItem(threadId, 'wi-1'))!;
+				await coordinator.beginVerification(initial.lastBuildOutcome!, initial.state, 'build-run');
+				await coordinator.updateBuildOutcome('wi-1', {
+					verifyAttempts: 1,
+					verification: {
+						attempted: true,
+						success: false,
+						executionId: 'setup-failure',
+						status: 'error',
+					},
+				});
+				await coordinator.reportVerificationVerdict({
+					workItemId: 'wi-1',
+					workflowId: 'wf-1',
+					runId: 'build-run',
+					verdict: 'needs_user_input',
+					remediation: {
+						category: 'needs_setup',
+						shouldEdit: false,
+						guidance: 'Connect the account.',
+					},
+					summary: 'The verification requires setup.',
+				});
+			}
 
-		expect(claims.filter(Boolean)).toHaveLength(1);
-		const after = (await storage.getWorkItem(threadId, 'wi-1'))!;
-		expect(after.state).toEqual({
-			...before.state,
-			runId: claims[0] ? 'turn-a' : 'turn-b',
-			phase: 'verifying',
-			status: 'active',
-			lastRemediation: undefined,
-		});
-		expect(after.attempts).toEqual(before.attempts);
-		expect(after.lastBuildOutcome).toEqual({
-			...before.lastBuildOutcome,
-			verificationReadiness: { status: 'ready' },
-			remediation: undefined,
-		});
-		expect(await storage.getWorkItem(threadId, 'wi-other')).toEqual(siblingBefore);
-		expect((await repository.findOneByOrFail({ id: threadId })).metadata?.unrelated).toEqual({
-			keep: true,
-		});
-	});
+			const before = (await storage.getWorkItem(threadId, 'wi-1'))!;
+			const siblingBefore = await storage.getWorkItem(threadId, 'wi-other');
+			const other = new WorkflowTaskCoordinator(threadId, new WorkflowLoopStorage(createMemory()));
+			const claims = await Promise.all([
+				coordinator.beginVerification(before.lastBuildOutcome!, before.state, 'turn-a'),
+				other.beginVerification(before.lastBuildOutcome!, before.state, 'turn-b'),
+			]);
+
+			expect(claims.filter(Boolean)).toHaveLength(1);
+			const after = (await storage.getWorkItem(threadId, 'wi-1'))!;
+			expect(after.state).toEqual({
+				...before.state,
+				runId: claims[0] ? 'turn-a' : 'turn-b',
+				phase: 'verifying',
+				status: 'active',
+				lastRemediation: undefined,
+			});
+			expect(after.attempts).toEqual(before.attempts);
+			expect(after.lastBuildOutcome).toEqual({
+				...before.lastBuildOutcome,
+				verificationReadiness: { status: 'ready' },
+				remediation: undefined,
+			});
+			expect(await storage.getWorkItem(threadId, 'wi-other')).toEqual(siblingBefore);
+			expect((await repository.findOneByOrFail({ id: threadId })).metadata?.unrelated).toEqual({
+				keep: true,
+			});
+		},
+	);
 
 	it('rejects a delayed claim after a newer build replaces its outcome', async () => {
 		const before = (await storage.getWorkItem(threadId, 'wi-1'))!;

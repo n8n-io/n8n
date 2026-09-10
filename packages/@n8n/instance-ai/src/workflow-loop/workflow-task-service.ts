@@ -88,7 +88,7 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 				return null;
 			}
 
-			const setupState = stateForPendingSetupVerification(item.state, outcome);
+			const setupState = stateForPendingSetupVerification(item.state, outcome, runId);
 			if (outcome.verificationReadiness?.status === 'needs_setup' && !setupState) return null;
 			const state = setupState ?? item.state;
 			if (

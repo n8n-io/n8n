@@ -5,7 +5,8 @@ import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
 import { createReportVerificationVerdictTool } from '../../tools/orchestration/report-verification-verdict.tool';
 import { createVerifyBuiltWorkflowTool } from '../../tools/orchestration/verify-built-workflow.tool';
 import type { OrchestrationContext, InstanceAiContext } from '../../types';
-import { MAX_POST_SUBMIT_REMEDIATION_SUBMITS } from '../remediation';
+import { MAX_POST_SUBMIT_REMEDIATION_SUBMITS, MAX_VERIFY_ATTEMPTS } from '../remediation';
+import { deriveWorkflowVerificationObligation } from '../verification-obligation';
 import type { WorkflowBuildOutcome } from '../workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../workflow-task-service';
 
@@ -103,6 +104,155 @@ describe('WorkflowTaskCoordinator', () => {
 			}),
 		};
 	}
+
+	async function failedSetupVerification() {
+		const { storage } = createStorage();
+		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
+		await coordinator.reportBuildOutcome(
+			setupBlockedOutcome({
+				mockedCredentialTypes: ['gmailOAuth2'],
+				mockedNodeNames: ['Send email'],
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Read inbox',
+						verdict: 'simulate',
+						reason: 'Use example messages.',
+						confidence: 'high',
+						source: 'deterministic',
+					},
+				],
+				simulationFixtures: { 'Read inbox': [{ subject: 'Example' }] },
+			}),
+		);
+		const { context, run } = verificationContext(coordinator);
+		run.mockResolvedValue({
+			executionId: 'exec-1',
+			status: 'success',
+			executedNodeNames: ['Read inbox', 'Send email'],
+		});
+		run.mockResolvedValueOnce({
+			executionId: 'setup-failure',
+			status: 'error',
+			error: 'Gmail credentials are mocked',
+			executedNodeNames: ['Read inbox', 'Send email'],
+			nodeErrors: [{ nodeName: 'Send email', message: 'Gmail credentials are mocked' }],
+		});
+		const result = await executeTool(createVerifyBuiltWorkflowTool(context), {
+			workItemId: 'wi_1',
+			workflowId: 'wf-1',
+		});
+		expect(result.remediation).toMatchObject({ category: 'needs_setup', shouldEdit: false });
+		const failed = (await storage.getWorkItem('thread-1', 'wi_1'))!;
+		expect(failed.state).toMatchObject({
+			status: 'blocked',
+			lastRemediation: { category: 'needs_setup' },
+		});
+		expect(failed.lastBuildOutcome).toMatchObject({
+			verifyAttempts: 1,
+			verification: { attempted: true, success: false },
+		});
+		return { storage, coordinator, context, run, failed };
+	}
+
+	it.each([false, true])(
+		'retries a prior setup failure on a later turn with editable failure=%s',
+		async (editableFailure) => {
+			const { storage, coordinator, context, run, failed } = await failedSetupVerification();
+			expect(
+				deriveWorkflowVerificationObligation('thread-1', failed, { setupPanelEnabled: true })
+					.status,
+			).toBe('needs_setup');
+			context.runId = 'run-next';
+			const readWorkflow = vi.mocked(context.domainContext!.workflowService.getAsWorkflowJSON);
+			readWorkflow.mockClear();
+			if (editableFailure)
+				run.mockResolvedValueOnce({
+					executionId: 'retry-failure',
+					status: 'error',
+					error: 'Invalid expression',
+					nodeErrors: [{ nodeName: 'Transform', message: 'Invalid expression' }],
+				});
+			const result = await executeTool(createVerifyBuiltWorkflowTool(context), {
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+			});
+			expect(run).toHaveBeenCalledTimes(2);
+			expect(readWorkflow).toHaveBeenCalledOnce();
+			expect(result.success).toBe(!editableFailure);
+			const retried = (await storage.getWorkItem('thread-1', 'wi_1'))!;
+			expect(retried.state).toEqual({
+				...failed.state,
+				runId: 'run-next',
+				phase: 'verifying',
+				status: 'active',
+				lastRemediation: undefined,
+			});
+			expect(retried.attempts).toEqual(failed.attempts);
+			expect(retried.lastBuildOutcome?.verifyAttempts).toBe(2);
+			const report = await executeTool(createReportVerificationVerdictTool(context), {
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+				executionId: editableFailure ? 'retry-failure' : 'exec-1',
+				verdict: editableFailure ? 'needs_patch' : 'verified',
+				workflowInspection: 'Read the saved workflow.',
+				...(editableFailure
+					? { failedNodeName: 'Transform', diagnosis: 'Invalid expression' }
+					: {}),
+				summary: editableFailure ? 'Fix the expression.' : 'The workflow ran successfully.',
+			});
+			expect(report.guidance).not.toContain('STALE REPORT');
+			expect((await coordinator.getWorkflowLoopState('wi_1'))?.phase).toBe(
+				editableFailure ? 'repairing' : 'done',
+			);
+		},
+	);
+
+	it.each([
+		'same run',
+		'terminal blocker',
+		'repair budget',
+		'verification budget',
+		'changed snapshot',
+	])('preserves the %s guard after a setup failure', async (guard) => {
+		const { storage, coordinator, context, run, failed } = await failedSetupVerification();
+		const snapshot = structuredClone(failed);
+		context.runId = guard === 'same run' ? 'run-1' : 'run-next';
+		if (guard === 'terminal blocker')
+			failed.state.lastRemediation = { category: 'blocked', shouldEdit: false, guidance: 'Stop.' };
+		if (guard === 'repair budget')
+			failed.state.postSubmitRemediationSubmitsUsed = MAX_POST_SUBMIT_REMEDIATION_SUBMITS;
+		if (guard === 'verification budget')
+			failed.lastBuildOutcome!.verifyAttempts = MAX_VERIFY_ATTEMPTS;
+		if (guard === 'changed snapshot') failed.state.runId = 'run-other';
+		await storage.saveWorkItem('thread-1', failed.state, failed.attempts, failed.lastBuildOutcome);
+		if (guard !== 'changed snapshot') {
+			const result = await executeTool(createVerifyBuiltWorkflowTool(context), {
+				workItemId: 'wi_1',
+				workflowId: 'wf-1',
+			});
+			expect(result.success).toBe(false);
+			expect(run).toHaveBeenCalledOnce();
+		}
+		const expected = guard === 'changed snapshot' ? snapshot : failed;
+		await expect(
+			coordinator.beginVerification(expected.lastBuildOutcome!, expected.state, context.runId),
+		).resolves.toBe(false);
+		expect(await storage.getWorkItem('thread-1', 'wi_1')).toEqual(failed);
+	});
+
+	it('keeps legacy retry handling when the panel is disabled', async () => {
+		const { coordinator, context, run } = await failedSetupVerification();
+		context.setupPanelEnabled = false;
+		context.runId = 'run-next';
+		const begin = vi.spyOn(coordinator, 'beginVerification');
+		const result = await executeTool(createVerifyBuiltWorkflowTool(context), {
+			workItemId: 'wi_1',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(begin).not.toHaveBeenCalled();
+	});
 
 	it.each(['before the claim', 'after the claim'])(
 		'reports a changed state when the second request reads state %s',
