@@ -93,7 +93,7 @@ describe('UserRepository', () => {
 
 		test('returns startedByUserId in execution summaries', async () => {
 			const workflow = await createWorkflow({}, owner);
-			await createExecution({ status: 'success', startedByUserId: 'editor-user' }, workflow);
+			await createExecution({ status: 'success', startedByUserId: owner.id }, workflow);
 
 			const summaries = await executionRepository.findManyByRangeQuery({
 				kind: 'range',
@@ -102,7 +102,7 @@ describe('UserRepository', () => {
 				user: owner,
 			});
 
-			expect(summaries[0].startedByUserId).toBe('editor-user');
+			expect(summaries[0].startedByUserId).toBe(owner.id);
 		});
 	});
 
