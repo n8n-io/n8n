@@ -235,13 +235,13 @@
 		"POST /promotions/providers": {
 			"status": "gap"
 		},
-		"GET /promotions/providers/{id}": {
+		"GET /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/providers/{id}": {
+		"PUT /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/providers/{id}": {
+		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
 		"GET /promotions/connections": {

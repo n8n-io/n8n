@@ -46,7 +46,7 @@ paths:
       $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionProviders.generated.yml
-  /promotions/providers/{id}:
+  /promotions/providers/{promotionProviderId}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionProvider.generated.yml
     put:

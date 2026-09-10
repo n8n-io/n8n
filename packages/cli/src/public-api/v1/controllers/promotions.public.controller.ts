@@ -115,7 +115,7 @@ export class PromotionsPublicController {
 		};
 	}
 
-	@Get('/providers/:id')
+	@Get('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -128,12 +128,13 @@ export class PromotionsPublicController {
 	async getPromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).findOne(id);
+		return await (await this.providersService()).findOne(promotionProviderId);
 	}
 
-	@Put('/providers/:id')
+	@Put('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -148,13 +149,14 @@ export class PromotionsPublicController {
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).update(id, input);
+		return await (await this.providersService()).update(promotionProviderId, input);
 	}
 
-	@Delete('/providers/:id')
+	@Delete('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
@@ -168,9 +170,10 @@ export class PromotionsPublicController {
 	async deletePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 	): Promise<void> {
-		await (await this.providersService()).delete(id);
+		await (await this.providersService()).delete(promotionProviderId);
 	}
 
 	// -- Connections ---------------------------------------------------------
