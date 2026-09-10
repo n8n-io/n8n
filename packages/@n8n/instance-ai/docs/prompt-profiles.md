@@ -63,6 +63,19 @@ Traces include `prompt_configuration` and the rendered `system_prompt_hash`.
 Thread status includes `promptConfiguration` with the selected version and skill
 hash. Both include fallback information when available.
 
+## Evaluate profiles
+
+Set `promptVersion` in a local eval case, or set `N8N_EVAL_PROMPT_VERSION` for a
+suite. Case version pins take precedence. An explicit case mode also overrides
+suite settings. The runner sends the selected pin with every user message and
+rejects unknown versions before provisioning resources.
+
+Eval rows carry the backend's selected version and skill hash in
+`run.outputs.buildTrace.promptConfiguration` when the status lookup succeeds.
+Keep pinned case files local while the LangTracer case-write contract does not
+carry their version field. Existing suites can use the runner's environment
+override without changing their stored cases.
+
 ## Active skills and compaction
 
 The agents SDK retains loaded skill IDs outside the conversation text. It renders

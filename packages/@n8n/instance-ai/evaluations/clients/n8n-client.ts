@@ -307,6 +307,7 @@ export class N8nClient {
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		mode: InstanceAiBuildMode = 'default',
+		promptVersion?: string,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
@@ -314,9 +315,10 @@ export class N8nClient {
 				message,
 				...(attachments && attachments.length > 0 ? { attachments } : {}),
 				mode,
+				...(promptVersion ? { promptVersion } : {}),
 			},
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -345,9 +347,12 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
-			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
 	}
 

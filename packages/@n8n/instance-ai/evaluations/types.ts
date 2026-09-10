@@ -7,6 +7,7 @@ import type {
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
+	InstanceAiPromptConfiguration,
 } from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
@@ -161,6 +162,7 @@ export interface EventOutcome {
 }
 
 export interface BuildTrace {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	finalText: string;
 	toolCalls: CapturedToolCall[];
 	agentActivities: AgentActivity[];
@@ -251,6 +253,7 @@ export interface WorkflowTestCase {
 	messageBudget?: number;
 	/** Optional case override. Unset cases use the suite mode or control. */
 	buildMode?: 'progressive' | 'default';
+	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,

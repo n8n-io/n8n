@@ -185,6 +185,7 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// single-shot `claude` build has no mode to set, so a case that pins it
 	// explicitly must run through the orchestrator.
 	buildMode: 'orchestrator-only',
+	promptVersion: 'orchestrator-only',
 	allowUserExecution: 'orchestrator-only',
 	// Judged by the harness after the build (processExpectations are skipped for
 	// transcript-less MCP builds there); declaring them needs no build-side setup.

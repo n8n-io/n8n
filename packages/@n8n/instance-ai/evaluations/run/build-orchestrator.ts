@@ -107,6 +107,7 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'buildMode'
+	| 'promptVersion'
 	| 'allowUserExecution'
 	| 'credentials'
 	| 'seed'
@@ -647,6 +648,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						buildMode: entry.buildMode,
+						promptVersion: entry.promptVersion,
 						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,

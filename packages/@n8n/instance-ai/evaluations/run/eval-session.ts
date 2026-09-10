@@ -146,6 +146,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							conversation: buildArgs.conversation,
 							messageBudget: buildArgs.messageBudget,
 							buildMode: buildArgs.buildMode,
+							promptVersion: buildArgs.promptVersion,
 							allowUserExecution: buildArgs.allowUserExecution,
 							credentials: buildArgs.credentials,
 							seed: buildArgs.seed,

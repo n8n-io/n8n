@@ -16,7 +16,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { resolveEvalBuildMode } from './build-mode';
+import { resolveEvalPromptSettings } from './build-mode';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -114,6 +114,7 @@ interface MultiTurnDriverConfig {
 	messageBudget?: number;
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
 	allowUserExecution?: boolean;
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
@@ -205,6 +206,7 @@ async function driveMultiTurnConversation(
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
 		config.buildMode,
+		config.promptVersion,
 	);
 
 	await runMultiTurnConversation({
@@ -219,6 +221,7 @@ async function driveMultiTurnConversation(
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
 		buildMode: config.buildMode,
+		promptVersion: config.promptVersion,
 		allowUserExecution: config.allowUserExecution,
 		beforeUserExecution: config.beforeUserExecution,
 	});
@@ -449,6 +452,7 @@ export interface BuildWorkflowConfig {
 	messageBudget?: number;
 	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
 	buildMode?: WorkflowTestCase['buildMode'];
+	promptVersion?: string;
 	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
@@ -512,7 +516,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
-	const buildMode = resolveEvalBuildMode(config.buildMode);
+	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -970,6 +974,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversation,
 				messageBudget: config.messageBudget,
 				buildMode,
+				promptVersion,
 				allowUserExecution: config.allowUserExecution,
 				beforeUserExecution: async (deadline) => {
 					const scenario = config.executionScenarios?.[0];
@@ -1021,6 +1026,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
 				buildMode,
+				promptVersion,
 			);
 			await waitForAllActivity({
 				client,
@@ -1089,6 +1095,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			toolCalls: eventOutcome.toolCalls,
 			agentActivities: eventOutcome.agentActivities,
 		};
+		const metadataBudget = Math.min(5_000, startTime + timeoutMs - Date.now());
+		if (metadataBudget > 0) {
+			try {
+				buildTrace.promptConfiguration = (
+					await client.getThreadStatus(threadId, metadataBudget)
+				).promptConfiguration;
+			} catch {
+				logger.verbose('Prompt configuration was not available for this build.');
+			}
+		}
 		const outcome = await buildAgentOutcome(
 			client,
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },

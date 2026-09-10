@@ -107,6 +107,11 @@ describe('diskCaseToLangTracerCreate', () => {
 });
 
 describe('unsupportedPushReason', () => {
+	it('refuses a case whose prompt version would be lost', () => {
+		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
+			'promptVersion',
+		);
+	});
 	it.each(['default', 'progressive'] as const)(
 		'refuses a case whose %s mode would be lost',
 		(buildMode) => {

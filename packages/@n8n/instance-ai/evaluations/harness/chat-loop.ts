@@ -301,6 +301,7 @@ export interface MultiTurnConfig extends WaitConfig {
 	allowUserExecution?: boolean;
 	/** Repeat the eval override on each message to bypass the backend assignment. */
 	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -346,6 +347,7 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 				decision.message,
 				undefined,
 				config.buildMode,
+				config.promptVersion,
 			);
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);

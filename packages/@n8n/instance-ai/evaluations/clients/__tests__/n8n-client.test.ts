@@ -43,13 +43,36 @@ function stubFetch(body: unknown) {
 describe('N8nClient chat build mode', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('sends an explicit prompt version with the chat message', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		await new N8nClient(BASE_URL).sendMessage(
+			'thread-1',
+			'Build it',
+			undefined,
+			'default',
+			'progressive@1',
+		);
+		expect(fetchMock).toHaveBeenCalledWith(
+			`${BASE_URL}/rest/instance-ai/chat/thread-1`,
+			expect.objectContaining({
+				body: JSON.stringify({
+					message: 'Build it',
+					mode: 'default',
+					promptVersion: 'progressive@1',
+				}),
+			}),
+		);
+	});
+
 	it.each([undefined, 'default', 'progressive'] as const)(
 		'sends an explicit eval mode when the override is %s',
 		async (mode) => {
 			const fetchMock = stubFetch({ data: { runId: 'run-1' } });
 			const client = new N8nClient(BASE_URL);
 
-			await client.sendMessage('thread-1', 'Build a workflow', undefined, mode);
+			await expect(
+				client.sendMessage('thread-1', 'Build a workflow', undefined, mode),
+			).resolves.toEqual({ runId: 'run-1' });
 
 			expect(fetchMock).toHaveBeenCalledWith(
 				`${BASE_URL}/rest/instance-ai/chat/thread-1`,
