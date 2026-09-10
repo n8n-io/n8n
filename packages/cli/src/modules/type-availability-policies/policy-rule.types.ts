@@ -1,35 +1,24 @@
 /**
  * Domain types for node type availability policies.
  *
+ * The rule/selector/action shapes live in `@n8n/api-types` so the public and internal request
+ * DTOs share them; they are re-exported here so the module keeps one import path. The types
+ * below are backend-only.
+ *
  * Deliberately independent of the `policy`/`policy_scope`/`policy_attachment` TypeORM
- * entities (not yet built) — the repository layer will map DB rows into these shapes so
- * the evaluator never depends on the persistence layer.
+ * entities — the repository layer maps DB rows into these shapes so the evaluator never
+ * depends on the persistence layer.
  */
 
-/** Matches a node type by its exact full name, or by its package segment. */
-export type PolicySelector =
-	| { readonly kind: 'name'; readonly value: string }
-	| { readonly kind: 'package'; readonly value: string };
+import type { PolicyAction, PolicyRule } from '@n8n/api-types';
 
-export type PolicyAction = 'allow' | 'deny' | 'delegate';
-
-/** One first-match rule within a policy document, in document order. */
-export type PolicyRule = {
-	readonly id: string;
-	readonly action: PolicyAction;
-	readonly selector: PolicySelector;
-};
-
-/**
- * The actions a project scope accepts. `delegate` defers to a narrower scope, and none exists
- * below project, so project-scope writes never accept it.
- */
-export type NonDelegatingPolicyAction = Exclude<PolicyAction, 'delegate'>;
-
-/** A `PolicyRule` as a project scope accepts it. */
-export type NonDelegatingPolicyRule = Omit<PolicyRule, 'action'> & {
-	readonly action: NonDelegatingPolicyAction;
-};
+export type {
+	NonDelegatingPolicyAction,
+	NonDelegatingPolicyRule,
+	PolicyAction,
+	PolicyRule,
+	PolicySelector,
+} from '@n8n/api-types';
 
 /** One policy document as attached to a scope, with its evaluation-order metadata. */
 export type PolicyAttachment = {

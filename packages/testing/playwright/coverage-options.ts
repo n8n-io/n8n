@@ -178,12 +178,12 @@ export async function addV8CoverageInBatches(
 		batch.push(entry);
 		bytes += (entry as { source?: string }).source?.length ?? 0;
 		if (bytes >= maxBytes) {
-			await report.add(batch as never);
+			await report.add(batch);
 			batch = [];
 			bytes = 0;
 		}
 	}
-	if (batch.length) await report.add(batch as never);
+	if (batch.length) await report.add(batch);
 }
 
 interface V8Range {

@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IUser,
 	IWebhookData,
 	IWebhookFunctions,
@@ -62,8 +61,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 					json: {
 						body: (req.body ?? {}) as IDataObject,
 						headers: req.headers,
-						params: req.params as IDataObject,
-						query: req.query as IDataObject,
+						params: req.params,
+						query: req.query,
 					},
 				},
 			];
@@ -275,7 +274,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,

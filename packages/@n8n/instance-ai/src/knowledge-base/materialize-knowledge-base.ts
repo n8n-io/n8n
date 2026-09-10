@@ -20,6 +20,7 @@ import {
 } from './build-templates-index';
 export { KNOWLEDGE_BASE_TEMPLATES_DIR };
 import { extractBuilderTemplatesArchive } from './extract-builder-templates-archive';
+import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import { computeWorkspaceContentHash } from '../workspace/compute-workspace-content-hash';
 import {
 	loadPrebakedWorkspaceBundle,
@@ -330,20 +331,30 @@ export async function loadPrebakedKnowledgeBaseBundle(
 export async function materializeKnowledgeBaseIntoWorkspace(
 	options: MaterializeKnowledgeBaseOptions,
 ): Promise<KnowledgeBaseWorkspaceBundle> {
-	return await materializeWorkspaceBundle({
-		workspace: options.workspace,
-		resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
-		logger: options.logger,
-		loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
-		buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
-		materializedLogMessage: 'Materialized knowledge base into workspace',
-		materializedLogContext: (bundle) => ({
-			root: options.root,
-			knowledgeBaseRoot: bundle.rootDir,
-			contentHash: bundle.contentHash,
-			fileCount: bundle.files.size,
-		}),
-	});
+	return await traceSandboxOperation(
+		'sync-knowledge-base',
+		{
+			processResult: (bundle) => ({
+				outputs: { contentHash: bundle.contentHash, fileCount: bundle.files.size },
+			}),
+		},
+		async () => {
+			return await materializeWorkspaceBundle({
+				workspace: options.workspace,
+				resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
+				logger: options.logger,
+				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
+				buildBundle: async () => await buildKnowledgeBaseWorkspaceBundle(options),
+				materializedLogMessage: 'Materialized knowledge base into workspace',
+				materializedLogContext: (bundle) => ({
+					root: options.root,
+					knowledgeBaseRoot: bundle.rootDir,
+					contentHash: bundle.contentHash,
+					fileCount: bundle.files.size,
+				}),
+			});
+		},
+	);
 }
 
 export type {

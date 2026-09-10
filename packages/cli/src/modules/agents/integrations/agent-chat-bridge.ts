@@ -42,6 +42,7 @@ import {
 import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
+import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
 import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
@@ -598,7 +599,10 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
-		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
+		const text = this.prepareInboundText(
+			await this.getInboundText(message),
+			platformAgentContext,
+		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
@@ -961,6 +965,22 @@ export class AgentChatBridge {
 
 	private getPlatformAgentContext(): PlatformAgentContext {
 		return this.integrationImpl?.getPlatformAgentContext?.(this.chat) ?? {};
+	}
+
+	/** Keep labelled-link URLs because the Chat SDK plain-text projection removes them. */
+	private async getInboundText(message: Message): Promise<string> {
+		if (!message.formatted) return message.text;
+		const { isLinkNode, text, toPlainText, walkAst } = await loadChatSdk();
+		// Keep raw platform markdown when the adapter does not use the SDK projection.
+		if (toPlainText(message.formatted) !== message.text) return message.text;
+		const formatted = walkAst(structuredClone(message.formatted), (node) => {
+			if (!isLinkNode(node)) return node;
+			const label = toPlainText({ type: 'root', children: [node] });
+			// Keep GFM autolinks because their labels already contain the URL.
+			if ([label, `http://${label}`, `mailto:${label}`].includes(node.url)) return node;
+			return text(`[${label}](${node.url})`);
+		});
+		return toPlainText(formatted);
 	}
 
 	private prepareInboundText(text: string | undefined, context: PlatformAgentContext): string {

@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import AgentChannelsSection from '../components/AgentChannelsSection.vue';
+import AgentTriggersSection from '../components/AgentTriggersSection.vue';
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
@@ -17,12 +17,20 @@ vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	}),
 }));
 
-vi.mock('../composables/useAgentIntegrationStatus', () => ({
-	useAgentIntegrationStatus: () => ({
-		connectedCredentials: { value: {} },
-		fetchStatus: vi.fn().mockResolvedValue(undefined),
-	}),
-}));
+const { fetchStatusSpy } = vi.hoisted(function createStatusSpy() {
+	return { fetchStatusSpy: vi.fn().mockResolvedValue(undefined) };
+});
+
+vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStatus() {
+	return {
+		useAgentIntegrationStatus: function useAgentIntegrationStatus() {
+			return {
+				connectedCredentials: { value: {} },
+				fetchStatus: fetchStatusSpy,
+			};
+		},
+	};
+});
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -37,25 +45,65 @@ vi.mock('../components/AgentChannelModal.vue', () => ({
 	},
 }));
 
-function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
-	return mount(AgentChannelsSection, {
+function mountSection(
+	simpleChannelSetup?: boolean,
+	isPublished = false,
+	extraProps: Record<string, unknown> = {},
+) {
+	return mount(AgentTriggersSection, {
 		props: {
 			connectedTriggers: [],
 			projectId: 'project-id',
 			agentId: 'agent-id',
 			simpleChannelSetup,
 			isPublished,
+			...extraProps,
 		},
 		global: {
 			stubs: {
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
+				AgentSchedulesRow: {
+					name: 'AgentSchedulesRow',
+					props: ['ensureAgentPersisted'],
+					template: '<div />',
+				},
 			},
 		},
 	});
 }
 
-describe('AgentChannelsSection', () => {
+describe('AgentTriggersSection', () => {
+	beforeEach(function resetMocks() {
+		vi.clearAllMocks();
+	});
+
+	it('forwards persistence to the schedules row', async function forwardPersistenceToSchedules() {
+		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+		const wrapper = mountSection(undefined, false, {
+			agentUnsaved: true,
+			ensureAgentPersisted,
+		});
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentSchedulesRow' }).props('ensureAgentPersisted')).toBe(
+			ensureAgentPersisted,
+		);
+		expect(ensureAgentPersisted).not.toHaveBeenCalled();
+	});
+
+	it('loads channel status after same-ID persistence', async function loadPersistedStatus() {
+		const wrapper = mountSection(undefined, false, { agentUnsaved: true });
+		await flushPromises();
+
+		expect(fetchStatusSpy).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ agentUnsaved: false });
+		await flushPromises();
+
+		expect(fetchStatusSpy).toHaveBeenCalledExactlyOnceWith([]);
+	});
+
 	describe('simpleChannelSetup', () => {
 		it('does not force simple setup on the channel modal by default', async () => {
 			const wrapper = mountSection();

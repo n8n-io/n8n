@@ -15,6 +15,7 @@ import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
+import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -412,30 +413,54 @@ export async function compileWorkflowSource(
 	source: string,
 	abortSignal?: AbortSignal,
 ): Promise<WorkflowSourceCompileResult> {
-	let result: WorkflowSourceCompileResult;
-	if (isWorkflowJsonSourceFile(filePath)) {
-		result = parseWorkflowJsonSource(source);
-	} else if (isTypeScriptWorkflowSource(filePath)) {
-		result = await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
-	} else {
-		result = {
-			success: false,
-			reason: 'workflow_source_unsupported_extension',
-			editable: true,
-			errors: [
-				'Workflow source file must be a TypeScript SDK file (.ts or .tsx) or WorkflowJSON file (.json).',
-			],
-			summary: 'Workflow source file extension is unsupported.',
-		};
-	}
+	return await traceSandboxOperation(
+		'compile-workflow',
+		{
+			inputs: { path: filePath, bytes: sandboxFileBytes(source) },
+			processResult: (result) =>
+				result.success
+					? {
+							outputs: {
+								success: true,
+								compiler: result.compiler,
+								warningCount: result.warnings.length,
+							},
+						}
+					: {
+							outputs: { success: false, reason: result.reason, errors: result.errors },
+							error: result.summary,
+						},
+		},
+		async () => {
+			let result: WorkflowSourceCompileResult;
+			if (isWorkflowJsonSourceFile(filePath)) {
+				result = parseWorkflowJsonSource(source);
+			} else if (isTypeScriptWorkflowSource(filePath)) {
+				result = await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
+			} else {
+				result = {
+					success: false,
+					reason: 'workflow_source_unsupported_extension',
+					editable: true,
+					errors: [
+						'Workflow source file must be a TypeScript SDK file (.ts or .tsx) or WorkflowJSON file (.json).',
+					],
+					summary: 'Workflow source file extension is unsupported.',
+				};
+			}
 
-	if (!result.success) return result;
+			if (!result.success) return result;
 
-	const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
-	const credentialWarnings = await collectCredentialResolutionWarnings(result.workflow, context);
+			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
+			const credentialWarnings = await collectCredentialResolutionWarnings(
+				result.workflow,
+				context,
+			);
 
-	return {
-		...result,
-		warnings: [...warnings, ...credentialWarnings],
-	};
+			return {
+				...result,
+				warnings: [...warnings, ...credentialWarnings],
+			};
+		},
+	);
 }
