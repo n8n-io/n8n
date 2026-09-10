@@ -209,6 +209,9 @@ export type RelayEventMap = {
 	'workflow-post-execute': {
 		executionId: string;
 		userId?: string;
+		// The n8n user who started the execution. Audit events use this field.
+		// Keep it separate from `userId` so product telemetry stays unchanged.
+		startedByUserId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
 		projectId?: string;

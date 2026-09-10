@@ -370,12 +370,15 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, projectId, projectName, ...rest } =
+		const { runData, workflow, executionId, projectId, projectName, startedByUserId, ...rest } =
 			withoutExecutionMetadata(event);
 
 		const payload = {
 			...rest,
 			executionId,
+			// Fall back to the starting user when no explicit userId is set, so the
+			// audit log names the person who ran the workflow.
+			userId: rest.userId ?? startedByUserId,
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			mode: runData?.mode,

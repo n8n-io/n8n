@@ -723,6 +723,30 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should fall back to startedByUserId for userId when userId is absent', () => {
+			const payload = mock<RelayEventMap['workflow-post-execute']>({
+				executionId: 'some-id',
+				userId: undefined,
+				startedByUserId: 'starter-id',
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
+				runData: mock<IRun>({
+					finished: true,
+					status: 'success',
+					mode: 'manual',
+					data: { resultData: {} },
+				} as never),
+				projectId: 'proj-456',
+				projectName: 'My Project',
+			});
+
+			eventService.emit('workflow-post-execute', payload);
+
+			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.workflow.success',
+				payload: expect.objectContaining({ userId: 'starter-id' }),
+			});
+		});
+
 		it('should log job completion on `workflow-post-execute` for successful job', () => {
 			const runData = mock<IRun>({
 				finished: true,

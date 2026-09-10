@@ -274,14 +274,20 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowEventTests = (expectedUserId?: string) => {
 		describe('workflowExecuteBefore', () => {
 			it('should emit workflow-pre-execute events', async () => {
-				runExecutionData.executionData!.runtimeData = {
-					version: 1,
-					establishedAt: 1,
-					source: 'manual',
-					startedByUserId: 'ctx-user',
-				};
+				// Use a local run-data object instead of mutating the module-level
+				// `runExecutionData` mock, which other tests also rely on.
+				const localRunExecutionData = createRunExecutionData({
+					executionData: {
+						runtimeData: {
+							version: 1,
+							establishedAt: 1,
+							source: 'manual',
+							startedByUserId: 'ctx-user',
+						},
+					},
+				});
 
-				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, localRunExecutionData]);
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-pre-execute', {
 					executionId,
@@ -304,7 +310,7 @@ describe('Execution Lifecycle Hooks', () => {
 				});
 			});
 
-			it('should fall back to the context user when built without an explicit user', async () => {
+			it('should keep userId as-is and add startedByUserId from the context', async () => {
 				successfulRun.data.executionData!.runtimeData = {
 					version: 1,
 					establishedAt: 1,
@@ -318,7 +324,8 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					runData: successfulRun,
 					workflow: workflowData,
-					userId: expectedUserId ?? 'ctx-user',
+					userId: expectedUserId,
+					startedByUserId: 'ctx-user',
 				});
 			});
 
