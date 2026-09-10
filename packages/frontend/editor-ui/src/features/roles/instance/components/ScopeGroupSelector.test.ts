@@ -181,7 +181,7 @@ describe('ScopeGroupSelector', () => {
 	});
 
 	describe('settings "Manage all settings" select-all behaviour', () => {
-		it('checks MCP and AI Assistant use/manage when "Manage all settings" is toggled on', async () => {
+		it('checks MCP and n8n Assistant use/manage when "Manage all settings" is toggled on', async () => {
 			const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [] },
 			});
@@ -203,7 +203,7 @@ describe('ScopeGroupSelector', () => {
 			);
 		});
 
-		it('keeps all four MCP/AI Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
+		it('keeps all four MCP/n8n Assistant checkboxes enabled (not implied) when "Manage all settings" is checked', () => {
 			const { getByTestId } = renderComponent(ScopeGroupSelector, {
 				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.settings.Manage] },
 			});

@@ -244,6 +244,22 @@ describe('PublicApiControllerRegistry', () => {
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 		}
 
+		function registerRequiredOptionalBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ required: true }) body: OptionalWidgetBodyDto,
+				) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
 		it('accepts application/json', async () => {
 			registerBodyRoute();
 
@@ -323,6 +339,27 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await postWithContentType(header).expect(415);
 
 			expect(response.body.message).toBe('unsupported media type undefined');
+		});
+
+		it.each(namesNoMediaType)(
+			'rejects %s when @Body({ required: true }) overrides an otherwise-optional DTO',
+			async (_label, header) => {
+				registerRequiredOptionalBodyRoute();
+
+				const response = await postWithContentType(header).expect(415);
+
+				expect(response.body.message).toBe('unsupported media type undefined');
+			},
+		);
+
+		it('accepts application/json with an empty object when @Body({ required: true }) is set', async () => {
+			registerRequiredOptionalBodyRoute();
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Content-Type', 'application/json')
+				.send({})
+				.expect(200);
 		});
 
 		it('accepts application/json carrying an unrelated parameter', async () => {

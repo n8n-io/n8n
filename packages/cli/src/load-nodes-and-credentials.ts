@@ -664,6 +664,16 @@ export class LoadNodesAndCredentials {
 		return loadedNode;
 	}
 
+	/**
+	 * Absolute path of a node's source file. A loader keeps the path relative to
+	 * its own package directory, so it must be resolved before any file access.
+	 */
+	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+		const [packageName] = fullNodeType.split('.');
+		const loader = this.loaders[packageName];
+		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
+	}
+
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
 

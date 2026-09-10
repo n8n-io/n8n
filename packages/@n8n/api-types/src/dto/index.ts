@@ -72,6 +72,8 @@ export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
+export { projectPublicSchema } from './project/project-public.dto';
+export type { ProjectPublic } from './project/project-public.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
@@ -103,6 +105,7 @@ export { SourceControlStatusPublicDto } from './source-control/source-control-st
 export { SourceControlPushRequestPublicDto } from './source-control/source-control-push-request-public.dto';
 export { SourceControlPushResponsePublicDto } from './source-control/source-control-push-response-public.dto';
 export { SourceControlPushConflictErrorPublicDto } from './source-control/source-control-push-conflict-error-public.dto';
+export { SourceControlPullResponsePublicDto } from './source-control/source-control-pull-response-public.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export {
@@ -118,6 +121,12 @@ export {
 } from './variables/create-variable-request.dto';
 export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
+export {
+	GLOBAL_PROJECT_ID_FILTER,
+	ListVariablesQueryDto,
+} from './variables/list-variables-query.dto';
+export { VariableListPublicDto, variablePublicSchema } from './variables/variable-public.dto';
+export type { VariablePublic } from './variables/variable-public.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';

@@ -904,7 +904,7 @@ responses:
                           - team
                       icon:
                         type: object
-                        nullable: true
+                        description: Icon of the project, or null when the project has none
                         properties:
                           type:
                             type: string
@@ -913,9 +913,12 @@ responses:
                               - icon
                           value:
                             type: string
+                          color:
+                            type: string
                         required:
                           - type
                           - value
+                        nullable: true
                       description:
                         type: string
                         nullable: true
