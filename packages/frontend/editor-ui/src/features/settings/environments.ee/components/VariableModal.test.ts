@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import VariableModal from './VariableModal.vue';
@@ -21,16 +22,29 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const ModalStub = {
+// The close-on-* defaults mirror Modal.vue, so a value other than `true` in the
+// rendered attributes means VariableModal overrides the shared modal behaviour.
+const ModalStub = defineComponent({
+	props: {
+		name: { type: String, default: '' },
+		title: { type: String, default: '' },
+		eventBus: { type: Object, default: null },
+		closeOnClickModal: { type: Boolean, default: true },
+		closeOnPressEscape: { type: Boolean, default: true },
+	},
 	template: `
-		<div>
+		<div
+			:data-test-id="name"
+			:data-close-on-click-modal="String(closeOnClickModal)"
+			:data-close-on-press-escape="String(closeOnPressEscape)"
+		>
 			<slot name="header" />
 			<slot name="title" />
 			<slot name="content" />
 			<slot name="footer" />
 		</div>
 	`,
-};
+});
 
 const mockVariables: EnvironmentVariable[] = [
 	{
@@ -424,6 +438,27 @@ describe('VariableModal', () => {
 
 			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
 		});
+	});
+
+	describe('close behaviour', () => {
+		it.each(['new', 'edit'] as const)(
+			'keeps the shared close-on-backdrop-click and close-on-escape defaults in %s mode',
+			(mode) => {
+				const { getByTestId } = renderModal({
+					props: {
+						mode,
+						variable: { id: '1', key: 'EXISTING_VAR', value: 'existing value' },
+					},
+					global,
+					pinia,
+				});
+
+				const modal = getByTestId(VARIABLE_MODAL_KEY);
+
+				expect(modal).toHaveAttribute('data-close-on-click-modal', 'true');
+				expect(modal).toHaveAttribute('data-close-on-press-escape', 'true');
+			},
+		);
 	});
 
 	describe('mode: edit', () => {

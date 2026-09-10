@@ -540,7 +540,7 @@ catalogs:
       specifier: 0.6.3
       version: 0.6.3
     isolated-vm:
-      specifier: ^7.0.0
+      specifier: ^7.0.1
       version: 7.0.1
     js-base64:
       specifier: 3.7.8
@@ -1354,6 +1354,9 @@ importers:
       axios:
         specifier: 1.18.0
         version: 1.18.0(patch_hash=149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -4186,6 +4189,9 @@ importers:
       '@testing-library/user-event':
         specifier: catalog:frontend
         version: 14.6.1(@testing-library/dom@10.4.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 3.23.2
       tsdown:
         specifier: catalog:typescript
         version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))

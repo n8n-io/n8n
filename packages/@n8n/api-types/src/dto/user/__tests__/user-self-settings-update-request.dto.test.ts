@@ -37,6 +37,17 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 			const data = {
 				easyAIWorkflowOnboarded: false,
 				dismissedCallouts: { 'test-callout': true },
+				mcpJsonNudge: { impressions: 1 },
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(true);
+		});
+
+		it('should pass validation with mcpJsonNudge', () => {
+			const data = {
+				mcpJsonNudge: { impressions: 2 },
 			};
 
 			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
@@ -80,6 +91,42 @@ describe('UserSelfSettingsUpdateRequestDto', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(['dismissedCallouts', 'some-callout']);
+		});
+
+		it('should fail validation with invalid mcpJsonNudge type', () => {
+			const data = {
+				mcpJsonNudge: 'invalid',
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path[0]).toBe('mcpJsonNudge');
+		});
+
+		it('should fail validation with invalid mcpJsonNudge.impressions type', () => {
+			const data = {
+				mcpJsonNudge: { impressions: 'invalid' },
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path).toEqual(['mcpJsonNudge', 'impressions']);
+		});
+
+		it.each([
+			['a negative count', -1],
+			['a fractional count', 1.5],
+		])('should fail validation with %s for mcpJsonNudge.impressions', (_label, impressions) => {
+			const data = {
+				mcpJsonNudge: { impressions },
+			};
+
+			const result = UserSelfSettingsUpdateRequestDto.safeParse(data);
+
+			expect(result.success).toBe(false);
+			expect(result.error?.issues[0].path).toEqual(['mcpJsonNudge', 'impressions']);
 		});
 	});
 
