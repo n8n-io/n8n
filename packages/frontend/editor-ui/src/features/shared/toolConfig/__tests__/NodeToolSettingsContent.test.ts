@@ -166,41 +166,8 @@ describe('NodeToolSettingsContent', () => {
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
-	it('should hide operations listed in hiddenOperations from the parameters form', () => {
-		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
-			...MOCK_NODE_TYPE,
-			properties: [
-				{
-					displayName: 'Operation',
-					name: 'operation',
-					type: 'options',
-					options: [
-						{ name: 'Create', value: 'create' },
-						{ name: 'Send and Wait', value: 'sendAndWait' },
-					],
-					default: 'sendAndWait',
-					noDataExpression: true,
-				},
-			],
-		};
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
-
-		const { getAllByTestId } = renderComponent({
-			props: {
-				initialNode: createMockNode({ parameters: {} }),
-				hiddenOperations: ['sendAndWait'],
-			},
-		});
-
-		const renderedParameters = getAllByTestId('parameter-input-list')
-			.map((element) => element.textContent ?? '')
-			.join('');
-		expect(renderedParameters).toContain('create');
-		expect(renderedParameters).not.toContain('sendAndWait');
-	});
-
-	it('should hide Custom API Call from resource options', () => {
-		const nodeTypeWithCustomApiCallResource: INodeTypeDescription = {
+	it('should hide resource and operation options listed in hiddenOperations', () => {
+		const nodeTypeWithHiddenOptions: INodeTypeDescription = {
 			...MOCK_NODE_TYPE,
 			properties: [
 				{
@@ -214,20 +181,34 @@ describe('NodeToolSettingsContent', () => {
 					default: 'row',
 					noDataExpression: true,
 				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Send and Wait', value: 'sendAndWait' },
+					],
+					default: 'sendAndWait',
+					noDataExpression: true,
+				},
 			],
 		};
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithCustomApiCallResource);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithHiddenOptions);
 
 		const { getAllByTestId } = renderComponent({
 			props: {
 				initialNode: createMockNode({ parameters: {} }),
+				hiddenOperations: ['sendAndWait', '__CUSTOM_API_CALL__'],
 			},
 		});
 
 		const renderedParameters = getAllByTestId('parameter-input-list')
 			.map((element) => element.textContent ?? '')
 			.join('');
-		expect(renderedParameters).toContain('row');
+		expect(renderedParameters).toContain('"value":"row"');
+		expect(renderedParameters).toContain('create');
+		expect(renderedParameters).not.toContain('sendAndWait');
 		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 

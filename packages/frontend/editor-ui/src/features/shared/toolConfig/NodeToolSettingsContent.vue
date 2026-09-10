@@ -35,7 +35,6 @@ import {
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import {
 	ChatHubToolContextKey,
-	CUSTOM_API_CALL_KEY,
 	ExpressionLocalResolveContextSymbol,
 	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
@@ -55,7 +54,7 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
-	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
+	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
@@ -92,13 +91,10 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description) {
+	if (!description || !props.hiddenOperations?.length) {
 		return description;
 	}
-	return omitOperationOptions(description, [
-		CUSTOM_API_CALL_KEY,
-		...(props.hiddenOperations ?? []),
-	]);
+	return omitOperationOptions(description, props.hiddenOperations);
 });
 
 type ToolSettingsTab = 'params' | 'settings';
