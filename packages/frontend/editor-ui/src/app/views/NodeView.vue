@@ -51,6 +51,7 @@ import type {
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
+	parseCanvasGroupNodeId,
 } from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -143,6 +144,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { mutateEmptyGroupVisualLink } from '@/features/workflows/canvas/nodeGroups.utils';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
@@ -902,6 +904,18 @@ async function loadCredentials() {
  */
 
 function onCreateConnection(connection: Connection) {
+	const mutation = mutateEmptyGroupVisualLink(
+		workflowDocumentStore.value.allGroups,
+		connection,
+		'add',
+	);
+	if (mutation.handled) {
+		if (mutation.nextNodeGroups) {
+			workflowDocumentStore.value.applyNodeGroupConnectionState(mutation.nextNodeGroups);
+		}
+		return;
+	}
+
 	createConnection(connection, { trackHistory: true });
 }
 
@@ -914,6 +928,8 @@ function onCreateConnectionCancelled(
 	position: VueFlowXYPosition,
 	mouseEvent?: MouseEvent,
 ) {
+	if (event.nodeId && parseCanvasGroupNodeId(event.nodeId) !== undefined) return;
+
 	const preventDefault = (mouseEvent?.target as HTMLElement).classList?.contains('clickable');
 	if (preventDefault) {
 		return;
@@ -938,6 +954,18 @@ function onCreateConnectionCancelled(
 }
 
 function onDeleteConnection(connection: Connection) {
+	const mutation = mutateEmptyGroupVisualLink(
+		workflowDocumentStore.value.allGroups,
+		connection,
+		'remove',
+	);
+	if (mutation.handled) {
+		if (mutation.nextNodeGroups) {
+			workflowDocumentStore.value.applyNodeGroupConnectionState(mutation.nextNodeGroups);
+		}
+		return;
+	}
+
 	deleteConnection(connection, { trackHistory: true });
 }
 

@@ -418,7 +418,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			height: 160,
 			draggable: true,
 			selectable: true,
-			connectable: false,
+			connectable: true,
 			data: {
 				isEmpty: true,
 				isCollapsed: false,

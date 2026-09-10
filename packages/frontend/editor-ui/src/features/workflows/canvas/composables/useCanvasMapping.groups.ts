@@ -1,8 +1,16 @@
-import { isValidWorkflowGroupFrame, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
+import {
+	isValidWorkflowGroupFrame,
+	NodeConnectionTypes,
+	type ExecutionStatus,
+	type IWorkflowGroup,
+	type IWorkflowGroupVisualLink,
+	type IWorkflowGroupVisualLinkNodeEndpoint,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
 	CanvasConnection,
+	CanvasConnectionPort,
 	CanvasGroupNode,
 	CanvasGroupNodeData,
 	GroupExecutionStatus,
@@ -12,6 +20,8 @@ import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
 	CANVAS_NODE_GROUP_TYPE,
+	CANVAS_EMPTY_GROUP_INPUT_HANDLE,
+	CANVAS_EMPTY_GROUP_OUTPUT_HANDLE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
@@ -23,7 +33,11 @@ import {
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
+import {
+	applyOffset,
+	createCanvasConnectionHandleString,
+	createCanvasConnectionId,
+} from '../canvas.utils';
 import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
@@ -238,7 +252,7 @@ export function mapGroupsToVueFlowNodes({
 				height,
 				draggable: !readOnly,
 				selectable: true,
-				connectable: false,
+				connectable: !readOnly,
 				zIndex: GROUP_NODE_Z_INDEX_EXPANDED,
 				data: {
 					group,
@@ -296,6 +310,127 @@ export function mapGroupsToVueFlowNodes({
 		});
 	}
 	return out;
+}
+
+function isOwnedNodeToGroupLink(
+	groupId: string,
+	link: IWorkflowGroupVisualLink,
+): link is IWorkflowGroupVisualLink & {
+	source: IWorkflowGroupVisualLinkNodeEndpoint;
+} {
+	return link.source.kind === 'node' && link.target.kind === 'group' && link.target.id === groupId;
+}
+
+function isOwnedGroupToNodeLink(
+	groupId: string,
+	link: IWorkflowGroupVisualLink,
+): link is IWorkflowGroupVisualLink & {
+	target: IWorkflowGroupVisualLinkNodeEndpoint;
+} {
+	return link.source.kind === 'group' && link.source.id === groupId && link.target.kind === 'node';
+}
+
+function createNodeHandle(
+	mode: 'inputs' | 'outputs',
+	endpoint: IWorkflowGroupVisualLinkNodeEndpoint,
+): string {
+	return createCanvasConnectionHandleString({
+		mode,
+		type: endpoint.port.type,
+		index: endpoint.port.index,
+	});
+}
+
+function createVisualConnectionPort(id: string, index: number): CanvasConnectionPort {
+	return { node: id, type: NodeConnectionTypes.Main, index };
+}
+
+function mapVisualLinkToCanvasConnection(
+	group: IWorkflowGroup,
+	link: IWorkflowGroupVisualLink,
+): CanvasConnection | undefined {
+	let connection: Omit<CanvasConnection, 'id'>;
+	if (isOwnedNodeToGroupLink(group.id, link)) {
+		connection = {
+			source: link.source.id,
+			sourceHandle: createNodeHandle('outputs', link.source),
+			target: createCanvasGroupNodeId(group.id),
+			targetHandle: CANVAS_EMPTY_GROUP_INPUT_HANDLE,
+			data: {
+				source: createVisualConnectionPort(link.source.id, link.source.port.index),
+				target: createVisualConnectionPort(group.id, 0),
+			},
+		};
+	} else if (isOwnedGroupToNodeLink(group.id, link)) {
+		connection = {
+			source: createCanvasGroupNodeId(group.id),
+			sourceHandle: CANVAS_EMPTY_GROUP_OUTPUT_HANDLE,
+			target: link.target.id,
+			targetHandle: createNodeHandle('inputs', link.target),
+			data: {
+				source: createVisualConnectionPort(group.id, 0),
+				target: createVisualConnectionPort(link.target.id, link.target.port.index),
+			},
+		};
+	} else {
+		return undefined;
+	}
+
+	return { ...connection, id: createCanvasConnectionId(connection) };
+}
+
+function canonicalConnectionKey({
+	source,
+	sourceHandle,
+	target,
+	targetHandle,
+}: Pick<CanvasConnection, 'source' | 'sourceHandle' | 'target' | 'targetHandle'>): string {
+	return JSON.stringify([source, sourceHandle, target, targetHandle]);
+}
+
+/**
+ * Replace the executable node-to-node projections owned by true-empty groups
+ * with their persisted visual links. One-sided groups have no projection to hide.
+ */
+export function mapEmptyGroupVisualConnections(
+	canonicalConnections: CanvasConnection[],
+	allGroups: IWorkflowGroup[],
+): CanvasConnection[] {
+	const visualConnections: CanvasConnection[] = [];
+	const ownedCanonicalKeys = new Set<string>();
+
+	for (const group of allGroups) {
+		if (group.nodeIds.length > 0 || !isValidWorkflowGroupFrame(group.frame)) continue;
+
+		const incoming: IWorkflowGroupVisualLinkNodeEndpoint[] = [];
+		const outgoing: IWorkflowGroupVisualLinkNodeEndpoint[] = [];
+		for (const link of group.visualLinks ?? []) {
+			const visualConnection = mapVisualLinkToCanvasConnection(group, link);
+			if (visualConnection) visualConnections.push(visualConnection);
+			if (isOwnedNodeToGroupLink(group.id, link)) incoming.push(link.source);
+			if (isOwnedGroupToNodeLink(group.id, link)) outgoing.push(link.target);
+		}
+
+		for (const source of incoming) {
+			for (const target of outgoing) {
+				ownedCanonicalKeys.add(
+					canonicalConnectionKey({
+						source: source.id,
+						sourceHandle: createNodeHandle('outputs', source),
+						target: target.id,
+						targetHandle: createNodeHandle('inputs', target),
+					}),
+				);
+			}
+		}
+	}
+
+	return [
+		...canonicalConnections.filter(
+			(connection) => !ownedCanonicalKeys.has(canonicalConnectionKey(connection)),
+		),
+		...visualConnections,
+	];
 }
 
 /**

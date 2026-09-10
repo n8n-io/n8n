@@ -438,6 +438,30 @@ describe('useCanvasMapping — mapped connections', () => {
 		return { allNodes, connections };
 	}
 
+	function emptyGroup(visualLinks: IWorkflowGroup['visualLinks']): IWorkflowGroup {
+		return {
+			id: 'empty',
+			name: 'Empty',
+			nodeIds: [],
+			frame: { position: [200, 100], size: [240, 160] },
+			visualLinks,
+		};
+	}
+
+	const groupEndpoint = {
+		kind: 'group' as const,
+		id: 'empty',
+		port: { type: NodeConnectionTypes.Main, index: 0 as const },
+	};
+
+	function nodeEndpoint(id: string, index = 0) {
+		return {
+			kind: 'node' as const,
+			id,
+			port: { type: NodeConnectionTypes.Main, index },
+		};
+	}
+
 	it('produces a canvas-edge connection with closed-arrow marker', () => {
 		const { allNodes, connections } = makeWorkflow({
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
@@ -452,6 +476,110 @@ describe('useCanvasMapping — mapped connections', () => {
 		expect(mapped.value).toHaveLength(1);
 		expect(mapped.value[0].type).toBe('canvas-edge');
 		expect(mapped.value[0].markerEnd).toBe(MarkerType.ArrowClosed);
+	});
+
+	it('displays a one-sided node-to-empty-group visual link without a canonical edge', () => {
+		const { allNodes } = makeWorkflow({});
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref({}),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+			allGroups: ref([emptyGroup([{ source: nodeEndpoint('a', 1), target: groupEndpoint }])]),
+		});
+
+		expect(mapped.value).toHaveLength(1);
+		expect(mapped.value[0]).toMatchObject({
+			source: 'a',
+			sourceHandle: 'outputs/main/1',
+			target: 'group:empty',
+			targetHandle: 'inputs/main/0',
+		});
+	});
+
+	it('shows a 1-by-1 route through the empty group and hides its node projection', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+			allGroups: ref([
+				emptyGroup([
+					{ source: nodeEndpoint('a'), target: groupEndpoint },
+					{ source: groupEndpoint, target: nodeEndpoint('b') },
+				]),
+			]),
+		});
+
+		expect(mapped.value).toHaveLength(2);
+		expect(mapped.value.map(({ source, target }) => `${source}->${target}`).sort()).toEqual([
+			'a->group:empty',
+			'group:empty->b',
+		]);
+	});
+
+	it('hides every 2-by-2 canonical projection while showing the four visual links', () => {
+		const alpha = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const beta = createTestNode({ id: 'b', name: 'Beta' }) as INodeUi;
+		const charlie = createTestNode({ id: 'c', name: 'Charlie' }) as INodeUi;
+		const delta = createTestNode({ id: 'd', name: 'Delta' }) as INodeUi;
+		const connections: IConnections = {
+			Alpha: {
+				main: [
+					[
+						{ node: 'Beta', type: 'main', index: 0 },
+						{ node: 'Delta', type: 'main', index: 0 },
+					],
+				],
+			},
+			Charlie: {
+				main: [
+					[
+						{ node: 'Beta', type: 'main', index: 0 },
+						{ node: 'Delta', type: 'main', index: 0 },
+					],
+				],
+			},
+		};
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref([alpha, beta, charlie, delta]),
+			connections: ref(connections),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+			allGroups: ref([
+				emptyGroup([
+					{ source: nodeEndpoint('a'), target: groupEndpoint },
+					{ source: nodeEndpoint('c'), target: groupEndpoint },
+					{ source: groupEndpoint, target: nodeEndpoint('b') },
+					{ source: groupEndpoint, target: nodeEndpoint('d') },
+				]),
+			]),
+		});
+
+		expect(mapped.value).toHaveLength(4);
+		expect(mapped.value.map(({ source, target }) => `${source}->${target}`).sort()).toEqual([
+			'a->group:empty',
+			'c->group:empty',
+			'group:empty->b',
+			'group:empty->d',
+		]);
+	});
+
+	it('keeps an ordinary node connection that is not owned by an empty-group route', () => {
+		const { allNodes, connections } = makeWorkflow({
+			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
+		});
+		const { connections: mapped } = useCanvasMapping({
+			nodes: ref(allNodes),
+			connections: ref(connections),
+			renderData: shallowRef(createEmptyCanvasRenderData()),
+			allGroups: ref([emptyGroup([{ source: nodeEndpoint('a', 1), target: groupEndpoint }])]),
+		});
+
+		expect(mapped.value.map(({ source, target }) => `${source}->${target}`).sort()).toEqual([
+			'a->b',
+			'a->group:empty',
+		]);
 	});
 
 	it('marks the connection as "error" when the source node has issues', () => {

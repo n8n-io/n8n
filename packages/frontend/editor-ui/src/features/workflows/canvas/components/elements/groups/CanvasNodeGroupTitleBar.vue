@@ -25,6 +25,8 @@ import {
 import { computeGroupFrameRects } from '../../../composables/useCanvasMapping.groups';
 import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
 import {
+	CANVAS_EMPTY_GROUP_INPUT_HANDLE,
+	CANVAS_EMPTY_GROUP_OUTPUT_HANDLE,
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
 	createCanvasGroupNodeId,
@@ -420,22 +422,22 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@mouseenter="onGroupMouseEnter"
 		@mouseleave="onGroupMouseLeave"
 	>
-		<div :class="$style.titleBar" :style="{ height: `${HEADER_HEIGHT}px` }">
-			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
-				type="target"
-				:position="Position.Left"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
-			<Handle
-				:id="CANVAS_NODE_GROUP_HANDLE_RIGHT"
-				type="source"
-				:position="Position.Right"
-				:class="$style.handle"
-				:is-connectable="false"
-			/>
+		<Handle
+			:id="isEmpty ? CANVAS_EMPTY_GROUP_INPUT_HANDLE : CANVAS_NODE_GROUP_HANDLE_LEFT"
+			type="target"
+			:position="Position.Left"
+			:class="[$style.handle, { [$style.emptyHandle]: isEmpty }]"
+			:is-connectable="isEmpty && !readOnly"
+		/>
+		<Handle
+			:id="isEmpty ? CANVAS_EMPTY_GROUP_OUTPUT_HANDLE : CANVAS_NODE_GROUP_HANDLE_RIGHT"
+			type="source"
+			:position="Position.Right"
+			:class="[$style.handle, { [$style.emptyHandle]: isEmpty }]"
+			:is-connectable="isEmpty && !readOnly"
+		/>
 
+		<div :class="$style.titleBar" :style="{ height: `${HEADER_HEIGHT}px` }">
 			<div
 				v-if="!readOnly && !isEmpty"
 				:class="['nodrag', $style.toolbar]"
@@ -951,6 +953,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 .handle {
 	opacity: 0;
 	pointer-events: none;
+}
+
+.emptyHandle {
+	opacity: 1;
+	pointer-events: auto;
+	z-index: 2;
 }
 
 // Floating description shown below a collapsed group on hover or when pinned.

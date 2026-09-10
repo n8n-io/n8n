@@ -20,6 +20,7 @@ vi.mock('@vue-flow/core', () => ({
 			return h('div', {
 				class: 'vue-flow__handle',
 				'data-handle-id': (this as unknown as { id: string }).id,
+				'data-connectable': String((this as unknown as { isConnectable: boolean }).isConnectable),
 			});
 		},
 	},
@@ -130,6 +131,25 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.getByTestId('canvas-node-group-selection-ring')).toHaveStyle({
 				height: '160px',
 			});
+		});
+
+		it('exposes connectable main/0 input and output handles only while editable', () => {
+			const editable = render({ data: makeEmptyData() });
+			const editableHandles = editable.container.querySelectorAll('.vue-flow__handle');
+			expect([...editableHandles].map((handle) => handle.getAttribute('data-handle-id'))).toEqual([
+				'inputs/main/0',
+				'outputs/main/0',
+			]);
+			expect(
+				[...editableHandles].every((handle) => handle.getAttribute('data-connectable') === 'true'),
+			).toBe(true);
+
+			const readOnly = render({ data: makeEmptyData(), readOnly: true });
+			expect(
+				[...readOnly.container.querySelectorAll('.vue-flow__handle')].every(
+					(handle) => handle.getAttribute('data-connectable') === 'false',
+				),
+			).toBe(true);
 		});
 	});
 

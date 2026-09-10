@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	mapEmptyGroupVisualConnections,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -199,7 +200,8 @@ export function useCanvasMapping({
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
-		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeId.value);
+		const withEmptyGroups = mapEmptyGroupVisualConnections(raw, allGroups.value);
+		const remapped = remapCollapsedGroupConnections(withEmptyGroups, collapsedGroupByNodeId.value);
 		return remapped.map((connection) => ({
 			...connection,
 			data: getConnectionData(connection),
