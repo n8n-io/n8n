@@ -12,6 +12,9 @@ import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
 import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import {
+	DATA_TABLE_ACCESSORS,
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	describeDataTablePath,
 	Expression,
 	ExpressionExtensions,
 	NativeMethods,
@@ -68,6 +71,10 @@ import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -97,6 +104,8 @@ export async function datatypeCompletions(
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (base.startsWith('$datatable')) {
+		options = await dataTableOptions(base, workflowDocumentId);
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
@@ -1249,6 +1258,63 @@ export const workflowOptions = () => {
 			description: i18n.baseText('codeNodeEditor.completer.$workflow.active'),
 		},
 	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+/**
+ * Completions for `$datatable`. Rows are fetched when the workflow runs, so the
+ * names come from table metadata rather than from resolving the expression.
+ */
+export const dataTableOptions = async (
+	base: string,
+	workflowDocumentId: WorkflowDocumentId,
+): Promise<AliasCompletion[]> => {
+	const path = describeDataTablePath(base);
+	if (!path) return [];
+
+	const projectsStore = useProjectsStore();
+	const projectId =
+		useWorkflowDocumentStore(workflowDocumentId).homeProject?.id ??
+		projectsStore.personalProject?.id;
+	if (!projectId) return [];
+
+	let tables: DataTable[];
+	try {
+		tables = await useDataTableStore().fetchDataTablesForProject(projectId);
+	} catch {
+		return [];
+	}
+
+	const toOption = (name: string, returnType: string, description: string) => {
+		const option = createCompletionOption({ name, doc: { name, returnType, description } });
+		if (!isValidJavascriptIdentifier(name)) option.apply = applyBracketAccessCompletion;
+		return option;
+	};
+
+	if (path.at === 'table') {
+		return tables.map((table) =>
+			toOption(table.name, 'Object', i18n.baseText('codeNodeEditor.completer.$datatable.table')),
+		);
+	}
+
+	const table = tables.find((candidate) => candidate.name === path.table);
+	if (!table) return [];
+
+	if (path.at === 'accessor') {
+		return DATA_TABLE_ACCESSORS.map((accessor) =>
+			toOption(
+				accessor,
+				'Object',
+				i18n.baseText(`codeNodeEditor.completer.$datatable.${accessor}`),
+			),
+		);
+	}
+
+	const description = i18n.baseText('codeNodeEditor.completer.$datatable.column');
+
+	return [
+		...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP),
+		...table.columns.map((column): [string, string] => [column.name, column.type]),
+	].map(([name, type]) => toOption(name, type, description));
 };
 
 export const secretOptions = (base: string) => {

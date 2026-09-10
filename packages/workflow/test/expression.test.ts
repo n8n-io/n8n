@@ -11,7 +11,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import { createRunExecutionData } from '../src';
-import type { INodeExecutionData } from '../src/interfaces';
+import type { INodeExecutionData, IWorkflowDataProxyAdditionalKeys } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -1006,6 +1006,55 @@ describe('Expression', () => {
 				);
 
 				expect(result).toBe(42);
+			});
+
+			describe('$datatable', () => {
+				// Rows are prefetched into `additionalKeys` before the node runs, so
+				// every accessor is plain property access on that data.
+				const $datatable = {
+					users: {
+						first: { id: 1, email: 'first@test.com', plan: 'free' },
+						last: { id: 9, email: 'last@test.com', plan: 'pro' },
+						row: { '4': { id: 4, email: 'four@test.com', plan: 'team' } },
+						find: (criteria: Record<string, unknown>) => {
+							const [column, value] = Object.entries(criteria ?? {})[0] ?? [];
+							const matched: Record<string, Record<string, unknown>> = {
+								email: { 'four@test.com': { id: 4, plan: 'team' } },
+							};
+							return column === undefined ? undefined : matched[column]?.[String(value)];
+						},
+					},
+				} as unknown as IWorkflowDataProxyAdditionalKeys['$datatable'];
+
+				const resolve = (value: string) =>
+					expression.getSimpleParameterValue(
+						node,
+						value,
+						'internal',
+						{ $datatable },
+						undefined,
+						'',
+					);
+
+				it.each([
+					['={{ $datatable.users.first.email }}', 'first@test.com'],
+					['={{ $datatable.users.last.email }}', 'last@test.com'],
+					['={{ $datatable.users.row[4].plan }}', 'team'],
+					["={{ $datatable.users.find({ email: 'four@test.com' }).plan }}", 'team'],
+					["={{ $datatable['users'].first.plan }}", 'free'],
+				])('resolves %s', (value, expected) => {
+					expect(resolve(value)).toBe(expected);
+				});
+
+				it('resolves a missing row to undefined', () => {
+					expect(resolve('={{ $datatable.users.row[99] }}')).toBeUndefined();
+					expect(resolve('={{ $datatable.users.row[99]?.plan }}')).toBeUndefined();
+					expect(resolve("={{ $datatable.users.row[99]?.plan ?? 'free' }}")).toBe('free');
+				});
+
+				it('resolves a missing table to undefined', () => {
+					expect(resolve('={{ $datatable.missing?.first }}')).toBeUndefined();
+				});
 			});
 		});
 	});

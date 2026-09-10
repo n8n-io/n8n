@@ -134,7 +134,9 @@ export class RoutingNode {
 				};
 			}
 
-			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData, {
+				nodeName: node.name,
+			});
 
 			if (nodeType.description.requestDefaults) {
 				for (const key of Object.keys(nodeType.description.requestDefaults)) {

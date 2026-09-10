@@ -24,6 +24,9 @@ import type {
 } from './constants';
 
 import type {
+	DataTableExpressionAccessors,
+	DataTableExpressionProxy,
+	DataTableExpressionRows,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
@@ -1176,6 +1179,11 @@ export type DataTableProxyProvider = {
 		dataTableId: string,
 		projectId?: string,
 	): Promise<IDataTableProjectService>;
+	/** Not tied to a node, because `$datatable` expressions resolve in any node. */
+	getDataTableExpressionProxy(
+		workflow: Workflow,
+		projectId?: string,
+	): Promise<DataTableExpressionProxy>;
 };
 
 export type DataTableProxyFunctions = {
@@ -3218,6 +3226,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
+	$datatable?: Record<string, DataTableExpressionAccessors>;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */
@@ -3840,6 +3849,12 @@ export interface IWorkflowExecuteAdditionalData {
 	workflowId?: string;
 	projectId?: string;
 	variables: IDataObject;
+	/**
+	 * Rows prefetched for `$datatable` expressions, by node name. Filled just
+	 * before a node runs, because expressions cannot read the database while
+	 * they resolve.
+	 */
+	dataTableExpressionRows?: Record<string, DataTableExpressionRows>;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;

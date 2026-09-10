@@ -69,6 +69,7 @@ import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
 import { assertExecutionDataExists } from '@/utils/assertions';
 
+import { prefetchDataTableRows } from './data-table-expressions';
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import {
@@ -1404,6 +1405,19 @@ export class WorkflowExecute {
 		this.rethrowLastNodeError(runExecutionData, node);
 
 		inputData = this.handleExecuteOnce(node, inputData);
+
+		// `$datatable` expressions read rows fetched here, because expression
+		// evaluation is synchronous and cannot query the database itself.
+		await prefetchDataTableRows({
+			workflow,
+			node,
+			additionalData,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			mode,
+			executeData: executionData,
+		});
 
 		const tracingFromTags = this.buildCustomTelemetryTracing(
 			workflow,

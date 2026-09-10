@@ -261,3 +261,27 @@ export interface IDataTableProjectService {
 		handler: (payload: DataTableTriggerOutput) => void,
 	): () => void;
 }
+
+/** Rows prefetched for one table. */
+export type DataTableExpressionTable = {
+	first?: DataTableRowReturn;
+	last?: DataTableRowReturn;
+	/** By row id. */
+	row: Record<string, DataTableRowReturn>;
+	/** By column, then by stringified column value, for `find()`. */
+	matched: Record<string, Record<string, DataTableRowReturn>>;
+};
+
+/** Rows prefetched for `$datatable` expressions, by table name. */
+export type DataTableExpressionRows = Record<string, DataTableExpressionTable>;
+
+/** One table as an expression reads it: `matched` is replaced by the `find` call. */
+export type DataTableExpressionAccessors = Omit<DataTableExpressionTable, 'matched'> & {
+	find(criteria: Record<string, unknown>): DataTableRowReturn | undefined;
+};
+
+/** The read-only slice of the project services that `$datatable` expressions need. */
+export type DataTableExpressionProxy = {
+	tables: Pick<IDataTableProjectAggregateService, 'getManyAndCount'>;
+	rows(dataTableId: string): Pick<IDataTableProjectService, 'getManyRowsAndCount'>;
+};

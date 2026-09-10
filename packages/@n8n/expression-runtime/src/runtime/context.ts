@@ -336,6 +336,44 @@ export function buildContext(
 		return result;
 	};
 
+	// $datatable — rows the engine prefetched for this node. `first`, `last` and
+	// `row` are plain data, read through a lazy proxy. `find` is a call, so it
+	// routes through a typed RPC the same way `$('Node').first()` does; a
+	// function on host data is not reachable through `getValueAtPath`.
+	target.$datatable = new Proxy({} as Record<string, unknown>, {
+		get(_emptyTarget, table) {
+			if (typeof table !== 'string') return undefined;
+
+			const lazyProxy = createDeepLazyProxy(['$datatable', table], undefined, callbacks);
+
+			return new Proxy({} as Record<string, unknown>, {
+				get(_emptyTableTarget, prop) {
+					if (prop !== 'find') return lazyProxy[prop];
+
+					return (criteria: Record<string, unknown>) => {
+						const [column, value] = Object.entries(criteria ?? {})[0] ?? [];
+						if (column === undefined) return undefined;
+
+						const result = callbacks.callHost({
+							type: 'findDataTableRow',
+							table,
+							column,
+							value,
+						});
+						throwIfErrorSentinel(result);
+						return result;
+					};
+				},
+				has(_emptyTableTarget, prop) {
+					return prop === 'find' || prop in lazyProxy;
+				},
+			});
+		},
+		has(_emptyTarget, table) {
+			return typeof table === 'string';
+		},
+	});
+
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
 	// for keys not already on the target. The resolved value is cached on target

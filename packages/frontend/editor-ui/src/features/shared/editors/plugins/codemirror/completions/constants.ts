@@ -223,6 +223,15 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		}),
 	},
 	{
+		label: '$datatable',
+		section: METADATA_SECTION,
+		info: createInfoBoxRenderer({
+			name: '$datatable',
+			returnType: 'Object',
+			description: i18n.baseText('codeNodeEditor.completer.$datatable'),
+		}),
+	},
+	{
 		label: '$workflow',
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({

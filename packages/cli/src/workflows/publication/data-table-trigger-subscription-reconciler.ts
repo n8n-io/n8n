@@ -18,6 +18,9 @@ import { OwnershipService } from '@/services/ownership.service';
 
 const supportedEvents = new Set(['rowInserted', 'rowDeleted', 'columnUpdated']);
 
+/** Mirrors the node's `event` default, which saved workflows omit when unchanged. */
+const defaultEvent: DataTableTriggerEvent = 'rowInserted';
+
 function isSupportedEvent(value: unknown): value is DataTableTriggerEvent {
 	return typeof value === 'string' && supportedEvents.has(value);
 }
@@ -61,7 +64,7 @@ export class DataTableTriggerSubscriptionReconciler {
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const subscriptions: NewDataTableTriggerSubscription[] = [];
 		for (const node of triggerNodes) {
-			const event = node.parameters.event;
+			const event = node.parameters.event ?? defaultEvent;
 			if (!isSupportedEvent(event)) {
 				throw new UserError(`Data Table Trigger "${node.name}" has an invalid event`);
 			}

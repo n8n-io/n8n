@@ -20,6 +20,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
+	buildDataTableAccessors,
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
@@ -29,6 +30,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
+
+import { fetchDataTableExpressionRows } from '@/app/composables/useDataTableExpressions';
 
 import type { INodeTypesMaxCount, IWorkflowDb, TargetItem, XYPosition } from '@/Interface';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -72,6 +75,8 @@ export type ResolveParameterOptions = {
 	isForCredential?: boolean;
 	contextNodeName?: string;
 	connections?: IConnections;
+	/** Set while resolving a `$datatable` lookup key, to stop it recursing. */
+	skipDataTableRows?: boolean;
 };
 
 export async function resolveParameter<T = IDataObject>(
@@ -125,6 +130,21 @@ export async function resolveParameter<T = IDataObject>(
 
 		...opts.additionalKeys,
 	};
+
+	// `$datatable` rows are fetched here for the same reason the engine prefetches
+	// them: expression evaluation itself is synchronous.
+	if (!opts.skipDataTableRows && !opts.isForCredential) {
+		const rows = await fetchDataTableExpressionRows(
+			parameter,
+			workflowDocumentStore.homeProject?.id ?? useProjectsStore().personalProject?.id,
+			async (expression) =>
+				await resolveParameter(`={{ ${expression} }}`, workflowDocumentId, {
+					...opts,
+					skipDataTableRows: true,
+				}),
+		);
+		if (rows) additionalKeys.$datatable = buildDataTableAccessors(rows);
+	}
 
 	if (opts.isForCredential) {
 		// node-less expression resolution

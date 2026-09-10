@@ -426,6 +426,12 @@ function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
 			return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
 		case 'fromAi':
 			return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
+		case 'findDataTableRow': {
+			const tables = data.$datatable;
+			if (tables === null || typeof tables !== 'object') return undefined;
+			const table = (tables as Record<string, { find?: (criteria: object) => unknown }>)[msg.table];
+			return table?.find?.({ [msg.column]: msg.value });
+		}
 		case 'getNodePairedItem':
 			return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
 		case 'getNodeItemMatching':

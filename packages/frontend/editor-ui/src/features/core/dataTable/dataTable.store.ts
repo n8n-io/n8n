@@ -40,6 +40,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { DataTableListSortBy, DataTableMetadata } from '@n8n/api-types';
 
+const EXPRESSION_TABLE_LIMIT = 200;
+
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
@@ -102,6 +104,21 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		);
 		dataTables.value = response.data;
 		totalCount.value = response.count;
+	};
+
+	/** Cached for `$datatable` completions. Kept apart from `dataTables`, which backs the list view. */
+	const dataTablesByProject = ref<Record<string, DataTable[]>>({});
+
+	const fetchDataTablesForProject = async (projectId: string) => {
+		if (dataTablesByProject.value[projectId]) return dataTablesByProject.value[projectId];
+
+		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
+			skip: 0,
+			take: EXPRESSION_TABLE_LIMIT,
+		});
+		dataTablesByProject.value[projectId] = response.data;
+
+		return response.data;
 	};
 
 	const createDataTable = async (
@@ -262,7 +279,11 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return response.data[0] ?? null;
 	};
 
-	const fetchOrFindDataTable = async (dataTableId: string, projectId: string, forceRefresh = false) => {
+	const fetchOrFindDataTable = async (
+		dataTableId: string,
+		projectId: string,
+		forceRefresh = false,
+	) => {
 		const existingTable = dataTables.value.find((table) => table.id === dataTableId);
 		if (existingTable && !forceRefresh) {
 			return existingTable;
@@ -402,12 +423,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			search?: string;
 		},
 	) =>
-		await getDataTableKanbanLanePageApi(
-			rootStore.restApiContext,
-			dataTableId,
-			projectId,
-			options,
-		);
+		await getDataTableKanbanLanePageApi(rootStore.restApiContext, dataTableId, projectId, options);
 
 	const moveDataTableKanbanRow = async (
 		dataTableId: string,
@@ -415,13 +431,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		rowId: number,
 		move: DataTableKanbanMove,
 	) =>
-		await moveDataTableKanbanRowApi(
-			rootStore.restApiContext,
-			dataTableId,
-			projectId,
-			rowId,
-			move,
-		);
+		await moveDataTableKanbanRowApi(rootStore.restApiContext, dataTableId, projectId, rowId, move);
 
 	const insertEmptyRow = async (dataTableId: string, projectId: string) => {
 		const inserted = await insertDataTableRowApi(
@@ -526,6 +536,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTables,
 		totalCount,
 		fetchDataTables,
+		fetchDataTablesForProject,
 		fetchDataTableSize,
 		dataTableSize: computed(() => dataTableSize.value),
 		dataTableSizeLimitState: computed(() => dataTableSizeLimitState.value),

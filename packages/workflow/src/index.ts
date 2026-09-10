@@ -8,6 +8,7 @@ export * from './constants';
 export * from './nodes-api-version';
 export * from './common';
 export * from './cron';
+export * from './data-table-expression-refs';
 export * from './data-table.types';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';

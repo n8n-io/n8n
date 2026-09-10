@@ -472,7 +472,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	@Memoized
 	protected get additionalKeys() {
-		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
+		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData, {
+			nodeName: this.node.name,
+		});
 	}
 
 	/** Returns the requested resolved (all expressions replaced) node parameters. */

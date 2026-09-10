@@ -11,6 +11,7 @@ import {
 	DataTableProxyProvider,
 	DataTableRows,
 	DeleteDataTableRowsOptions,
+	DataTableExpressionProxy,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 	DataTableInsertRowsReturnType,
@@ -92,6 +93,19 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeAggregateOperations(projectId);
+	}
+
+	/** Not gated on the node type, because `$datatable` expressions resolve in any node. */
+	async getDataTableExpressionProxy(
+		workflow: Workflow,
+		projectId?: string,
+	): Promise<DataTableExpressionProxy> {
+		const resolved = projectId ?? (await this.getProjectId(workflow));
+
+		return {
+			tables: this.makeAggregateOperations(resolved),
+			rows: (dataTableId: string) => this.makeDataTableOperations(resolved, dataTableId),
+		};
 	}
 
 	async getDataTableProxy(

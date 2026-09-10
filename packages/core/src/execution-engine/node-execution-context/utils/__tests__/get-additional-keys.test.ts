@@ -170,6 +170,54 @@ describe('getAdditionalKeys', () => {
 		expect(result.$evaluation).toBeUndefined();
 	});
 
+	describe('$datatable', () => {
+		const rowsForNode = {
+			Node: {
+				users: {
+					row: { '4': { id: 4 } },
+					matched: { email: { 'a@b.c': { id: 7 } } },
+					first: { id: 1 },
+				},
+			},
+		} as unknown as IWorkflowExecuteAdditionalData['dataTableExpressionRows'];
+
+		const accessors = () => {
+			const result = getAdditionalKeys(
+				{ ...additionalData, dataTableExpressionRows: rowsForNode },
+				'manual',
+				null,
+				{ nodeName: 'Node' },
+			);
+			return result.$datatable!.users;
+		};
+
+		it('is undefined without a node name', () => {
+			const result = getAdditionalKeys(
+				{ ...additionalData, dataTableExpressionRows: rowsForNode },
+				'manual',
+				null,
+			);
+
+			expect(result.$datatable).toBeUndefined();
+		});
+
+		it('exposes the prefetched data paths and replaces matched with find()', () => {
+			const table = accessors();
+
+			expect(table).toMatchObject({ first: { id: 1 }, row: { '4': { id: 4 } } });
+			expect(table).not.toHaveProperty('matched');
+			expect(table.find({ email: 'a@b.c' })).toEqual({ id: 7 });
+		});
+
+		it('returns undefined for a value or column it did not prefetch', () => {
+			const table = accessors();
+
+			expect(table.find({ email: 'nope@b.c' })).toBeUndefined();
+			expect(table.find({ nickname: 'a@b.c' })).toBeUndefined();
+			expect(table.find({})).toBeUndefined();
+		});
+	});
+
 	it('should respect metadata KV limit', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', runExecutionData);
 		const customData = result.$execution?.customData;
