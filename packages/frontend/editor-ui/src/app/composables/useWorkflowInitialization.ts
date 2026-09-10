@@ -175,18 +175,28 @@ export function useWorkflowInitialization() {
 		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
-			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
-			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
+			const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowDocumentStore.value = workflowDocumentStore;
+			documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 			// The header derives every permission from the document store scopes.
 			// Without them, the first save turns the whole header read-only
 			// (Publish and Save hidden, actions menu disabled).
-			await projectsStore.refreshCurrentProject();
-			const { currentProject, personalProject } = projectsStore;
-			currentWorkflowDocumentStore.value.setHomeProject(currentProject ?? personalProject ?? null);
-			currentWorkflowDocumentStore.value.setScopes(
-				currentProject?.scopes ?? personalProject?.scopes ?? [],
-			);
+			try {
+				await projectsStore.refreshCurrentProject();
+			} catch (error) {
+				// A stale project is recoverable; a rejection here would leave the
+				// route handler's caller with isLoading stuck on the loading view.
+				console.error('Failed to refresh current project during template import', { error });
+			}
+
+			// Navigation during the refresh can dispose or replace the store.
+			// Only stamp the store this import created.
+			if (currentWorkflowDocumentStore.value === workflowDocumentStore) {
+				const { currentProject, personalProject } = projectsStore;
+				workflowDocumentStore.setHomeProject(currentProject ?? personalProject ?? null);
+				workflowDocumentStore.setScopes(currentProject?.scopes ?? personalProject?.scopes ?? []);
+			}
 		}
 
 		return true;

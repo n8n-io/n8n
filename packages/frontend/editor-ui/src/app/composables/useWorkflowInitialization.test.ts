@@ -143,6 +143,9 @@ vi.mock('vue-router', async (importOriginal) => {
 
 function renderWithComposable(
 	callback: (init: ReturnType<typeof useWorkflowInitialization>) => void,
+	workflowDocumentStoreRef = shallowRef<typeof mockWorkflowDocumentStore | null>(
+		mockWorkflowDocumentStore,
+	),
 ) {
 	const TestComponent = defineComponent({
 		setup() {
@@ -155,7 +158,7 @@ function renderWithComposable(
 	return render(TestComponent, {
 		global: {
 			provide: {
-				[WorkflowDocumentStoreKey as symbol]: shallowRef(mockWorkflowDocumentStore),
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 			},
 		},
 	});
@@ -312,6 +315,47 @@ describe('useWorkflowInitialization', () => {
 				expect.objectContaining({ id: 'team-project-id' }),
 			);
 			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith(['workflow:update']);
+		});
+
+		it('falls back to the loaded projects when the project refresh fails', async () => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update'],
+			} as Project;
+			projectsStore.currentProject = null;
+			projectsStore.refreshCurrentProject.mockRejectedValue(new Error('network error'));
+
+			const handled = await importTemplate();
+
+			expect(handled).toBe(true);
+			expect(mockWorkflowDocumentStore.setScopes).toHaveBeenCalledWith(['workflow:update']);
+		});
+
+		it('does not stamp a store that was replaced during the project refresh', async () => {
+			mockRoute.name = VIEWS.TEMPLATE_IMPORT;
+			mockRoute.params = { id: '11204' };
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project-id',
+				scopes: ['workflow:update'],
+			} as Project;
+			const storeRef = shallowRef<typeof mockWorkflowDocumentStore | null>(
+				mockWorkflowDocumentStore,
+			);
+			projectsStore.refreshCurrentProject.mockImplementation(async () => {
+				storeRef.value = null;
+			});
+
+			let handleTemplateImportRoute!: () => Promise<boolean>;
+			renderWithComposable((init) => {
+				handleTemplateImportRoute = init.handleTemplateImportRoute;
+			}, storeRef);
+			await handleTemplateImportRoute();
+
+			expect(mockWorkflowDocumentStore.setHomeProject).not.toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.setScopes).not.toHaveBeenCalled();
 		});
 	});
 
