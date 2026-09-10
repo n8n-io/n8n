@@ -33,6 +33,8 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
+	browserUseFeatureEnabled,
+	ensureBrowserConnectedMock,
 	templateExamplesStoreMock,
 	templateExamplesEnabled,
 	telemetryTrack,
@@ -105,6 +107,8 @@ const {
 	replaceMock: vi.fn(),
 	showErrorMock: vi.fn(),
 	telemetryTrack: vi.fn(),
+	browserUseFeatureEnabled: { value: false },
+	ensureBrowserConnectedMock: vi.fn(),
 }));
 
 vi.mock('@/experiments/instanceAiProactiveAgent', () => ({
@@ -286,6 +290,14 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'test-push-ref' }),
 }));
 
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: () => ({ isFeatureEnabled: browserUseFeatureEnabled }),
+}));
+
+vi.mock('../composables/useBrowserUseConnection', () => ({
+	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnectedMock }),
+}));
+
 vi.mock('uuid', () => ({
 	v4: () => 'thread-placeholder',
 }));
@@ -398,6 +410,26 @@ const InstanceAiFreeNudgeStub = defineComponent({
 	},
 });
 
+const InstanceAiRecordPromoPillStub = defineComponent({
+	name: 'InstanceAiRecordPromoPillStub',
+	props: {
+		eligible: { type: Boolean, required: true },
+	},
+	emits: ['click', 'dismiss'],
+	setup(props, { emit }) {
+		return () =>
+			h(
+				'button',
+				{
+					'data-test-id': 'instance-ai-record-promo-stub',
+					'data-eligible': String(props.eligible),
+					onClick: () => emit('click'),
+				},
+				'record',
+			);
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	global: {
 		provide: {
@@ -406,6 +438,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiFreeNudge: InstanceAiFreeNudgeStub,
+			InstanceAiRecordPromoPill: InstanceAiRecordPromoPillStub,
 		},
 	},
 });
@@ -454,6 +487,9 @@ describe('InstanceAiEmptyView', () => {
 			amendContext: null,
 			contextualSuggestion: null,
 			sendMessage: vi.fn().mockResolvedValue(true),
+			pendingConfirmations: ref([]),
+			resolveConfirmation: vi.fn(),
+			confirmAction: vi.fn().mockResolvedValue(true),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.deleteThread.mockResolvedValue(true);
@@ -474,6 +510,8 @@ describe('InstanceAiEmptyView', () => {
 		appSettingsStoreMock.isCloudDeployment = false;
 		templateExamplesStoreMock.hasLoadFailed = false;
 		templateExamplesEnabled.value = false;
+		browserUseFeatureEnabled.value = false;
+		ensureBrowserConnectedMock.mockReset();
 	});
 
 	afterEach(() => {
@@ -1070,5 +1108,62 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
 			'Build me an invoice automation',
 		);
+	});
+
+	describe('record promo pill', () => {
+		it('is eligible only when the browser-use experiment is enabled', () => {
+			browserUseFeatureEnabled.value = false;
+			expect(renderView().getByTestId('instance-ai-record-promo-stub')).toHaveAttribute(
+				'data-eligible',
+				'false',
+			);
+		});
+
+		it('creates no thread when the extension connect flow is declined', async () => {
+			browserUseFeatureEnabled.value = true;
+			ensureBrowserConnectedMock.mockResolvedValue(false);
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-record-promo-stub')).toHaveAttribute('data-eligible', 'true');
+
+			await fireEvent.click(getByTestId('instance-ai-record-promo-stub'));
+			await flushPromises();
+
+			expect(ensureBrowserConnectedMock).toHaveBeenCalledWith('empty_state_promo');
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('starts a thread with the canned prompt once connected, and arms auto-approve', async () => {
+			browserUseFeatureEnabled.value = true;
+			ensureBrowserConnectedMock.mockResolvedValue(true);
+			store.syncThread.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-record-promo-stub'));
+			await flushPromises();
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				"I'm not sure how to describe what I need. Can you record me doing it in my browser instead?",
+				undefined,
+				'test-push-ref',
+			);
+
+			(thread.pendingConfirmations as unknown as { value: unknown[] }).value = [
+				{
+					toolCall: {
+						toolName: 'start-browser-recording',
+						confirmation: { requestId: 'req-1', inputType: 'continue' },
+					},
+				},
+			];
+			await flushPromises();
+
+			expect(thread.resolveConfirmation).toHaveBeenCalledWith('req-1', 'approved');
+			expect(thread.confirmAction).toHaveBeenCalledWith('req-1', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
 	});
 });

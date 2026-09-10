@@ -159,7 +159,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user opened the Browser Use connection interface.',
 		properties: z.object({
 			browser_supported: z.boolean(),
-			source: z.enum(['input_menu', 'credential_setup', 'tools_modal']),
+			source: z.enum(['input_menu', 'credential_setup', 'tools_modal', 'empty_state_promo']),
 		}),
 	},
 	BROWSER_USE_INSTALL_EXTENSION_CLICKED: {

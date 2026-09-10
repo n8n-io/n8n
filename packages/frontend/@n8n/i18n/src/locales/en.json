@@ -6961,6 +6961,8 @@
 	"instanceAi.browserUse.connectLinkError.message": "Could not create a connection link. Please try again.",
 	"instanceAi.browserUse.disconnectError.title": "Browser Use disconnect failed",
 	"instanceAi.browserUse.disconnectError.message": "Failed to disconnect Browser Use",
+	"instanceAi.recordPromo.label": "Not sure how to explain it? Record the steps instead",
+	"instanceAi.recordPromo.startPrompt": "I'm not sure how to describe what I need. Can you record me doing it in my browser instead?",
 	"instanceAi.error.sendFailed": "Failed to send message",
 	"instanceAi.view.reconnecting": "Reconnecting...",
 	"instanceAi.agentTree.subAgent": "Sub-agent",
