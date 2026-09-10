@@ -17,6 +17,7 @@ import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
 import { SidebarStateKey } from './instanceAiLayout';
 import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
+import { useBrowserRecordingHandoff } from './composables/useBrowserRecordingHandoff';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -30,6 +31,7 @@ const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const { importRecording } = useBrowserRecordingHandoff();
 const setupCompletionState = computed(
 	() => appSettingsStore.moduleSettings['instance-ai']?.setupCompleted,
 );
@@ -125,6 +127,7 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
 // These run once when the user enters the InstanceAi feature. Route changes
 // (empty ↔ thread) don't remount the layout, so the listeners persist.
 onMounted(() => {
+	void importRecording();
 	if (showOnboarding.value && route.name !== INSTANCE_AI_VIEW) {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 	}

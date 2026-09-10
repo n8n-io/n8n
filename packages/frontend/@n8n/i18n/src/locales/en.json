@@ -7167,6 +7167,8 @@
 	"instanceAi.recordingPreview.stopError.message": "Try again.",
 	"instanceAi.recordingPreview.discardError.title": "Could not discard the recording",
 	"instanceAi.recordingPreview.discardError.message": "Try again.",
+	"instanceAi.browserRecordingImport.error.title": "Recording couldn't be sent",
+	"instanceAi.browserRecordingImport.error.message": "Return to the extension and try again.",
 	"instanceAi.dataTableCard.title": "Managing data table",
 	"instanceAi.dataTableCard.phase.checking": "Checking tables",
 	"instanceAi.dataTableCard.phase.schema": "Modifying schema",

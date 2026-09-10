@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 
-import type { BackgroundPushMessage, BrowserRecording } from '../../types';
+import type { BackgroundPushMessage, BrowserRecording, RecordingDestination } from '../../types';
 
 interface ActionResponse {
 	success: boolean;
@@ -17,6 +17,7 @@ function isActionResponse(value: unknown): value is ActionResponse {
 
 export function useRecording() {
 	const recording = ref<BrowserRecording | null>(null);
+	const destinations = ref<RecordingDestination[]>([]);
 	const errorMessage = ref('');
 
 	async function send(message: Record<string, unknown>): Promise<boolean> {
@@ -42,8 +43,21 @@ export function useRecording() {
 		await send({ type: 'stopRecording' });
 	}
 
-	async function submit(): Promise<void> {
-		await send({ type: 'submitRecording' });
+	async function loadDestinations(): Promise<void> {
+		errorMessage.value = '';
+		try {
+			const response: unknown = await chrome.runtime.sendMessage({
+				type: 'getRecordingDestinations',
+			});
+			destinations.value = Array.isArray(response) ? (response as RecordingDestination[]) : [];
+		} catch {
+			destinations.value = [];
+			errorMessage.value = 'n8n instances could not be loaded. Try again.';
+		}
+	}
+
+	async function submit(destinationOrigin?: string, destinationTabId?: number): Promise<void> {
+		await send({ type: 'submitRecording', destinationOrigin, destinationTabId });
 	}
 
 	async function discard(): Promise<void> {
@@ -87,10 +101,12 @@ export function useRecording() {
 
 	return {
 		recording,
+		destinations,
 		errorMessage,
 		start,
 		stop,
 		submit,
+		loadDestinations,
 		discard,
 		recordAgain,
 		removeAction,

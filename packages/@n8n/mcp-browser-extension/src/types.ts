@@ -75,6 +75,17 @@ export interface GetRecordingMessage {
 
 export interface SubmitRecordingMessage {
 	type: 'submitRecording';
+	destinationOrigin?: string;
+	destinationTabId?: number;
+}
+
+export interface GetRecordingDestinationsMessage {
+	type: 'getRecordingDestinations';
+}
+
+export interface RecordingDestination {
+	tabId?: number;
+	origin: string;
 }
 
 export interface DiscardRecordingMessage {
@@ -112,6 +123,10 @@ export interface RecordingActionMessage {
 	};
 }
 
+export interface RecordingHeartbeatMessage {
+	type: 'recordingHeartbeat';
+}
+
 export type ExtensionMessage =
 	| GetTabsMessage
 	| ConnectMessage
@@ -122,12 +137,14 @@ export type ExtensionMessage =
 	| StartRecordingMessage
 	| StopRecordingMessage
 	| GetRecordingMessage
+	| GetRecordingDestinationsMessage
 	| SubmitRecordingMessage
 	| DiscardRecordingMessage
 	| RemoveRecordingActionMessage
 	| MaskRecordingActionMessage
 	| RemoveRecordingScreenshotMessage
 	| RemoveRecordingNetworkRequestMessage
+	| RecordingHeartbeatMessage
 	| RecordingActionMessage;
 
 // ---------------------------------------------------------------------------
@@ -144,7 +161,22 @@ export interface ExternalConnectResultMessage {
 	relayUrl: string;
 }
 
-export type ExternalMessage = ExternalConnectMessage | ExternalConnectResultMessage;
+export interface ExternalGetRecordingMessage {
+	type: 'getRecording';
+	handoffId: string;
+}
+
+export interface ExternalAcknowledgeRecordingMessage {
+	type: 'acknowledgeRecording';
+	handoffId: string;
+	accepted: boolean;
+}
+
+export type ExternalMessage =
+	| ExternalConnectMessage
+	| ExternalConnectResultMessage
+	| ExternalGetRecordingMessage
+	| ExternalAcknowledgeRecordingMessage;
 
 export interface ExternalConnectResponse {
 	accepted: boolean;
@@ -194,8 +226,17 @@ export type BackgroundPushMessage =
 export function isExternalMessage(raw: unknown): raw is ExternalMessage {
 	if (raw === null || typeof raw !== 'object') return false;
 	const obj = raw as Record<string, unknown>;
+	if (
+		(obj.type === 'connect' || obj.type === 'connectResult') &&
+		typeof obj.relayUrl === 'string'
+	) {
+		return true;
+	}
+	if (obj.type === 'getRecording') return typeof obj.handoffId === 'string';
 	return (
-		(obj.type === 'connect' || obj.type === 'connectResult') && typeof obj.relayUrl === 'string'
+		obj.type === 'acknowledgeRecording' &&
+		typeof obj.handoffId === 'string' &&
+		typeof obj.accepted === 'boolean'
 	);
 }
 

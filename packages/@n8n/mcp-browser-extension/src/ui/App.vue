@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nCheckbox, N8nIcon, N8nIconButton, N8nLogo } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nLogo,
+} from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
 import { useRecording } from './composables/useRecording';
 import InfoRow from './components/InfoRow.vue';
@@ -32,10 +39,12 @@ const {
 
 const {
 	recording,
+	destinations,
 	errorMessage: recordingError,
 	start: startRecording,
 	stop: stopRecording,
 	submit: submitRecording,
+	loadDestinations,
 	discard: discardRecording,
 	recordAgain,
 	removeAction,
@@ -47,6 +56,8 @@ const {
 const showTabSelection = ref(false);
 const showRecordingSettings = ref(false);
 const showSettings = ref(false);
+const showDestinations = ref(false);
+const instanceUrl = ref('');
 
 const isConnected = computed(() => status.value === 'connected');
 const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.value);
@@ -71,6 +82,31 @@ const recordingTitle = computed(() => {
 async function disconnectFromInstance() {
 	await disconnect();
 	showSettings.value = false;
+}
+
+async function prepareSubmission() {
+	if (isConnected.value) {
+		await submitRecording();
+		return;
+	}
+	await loadDestinations();
+	if (destinations.value.length === 1) {
+		const destination = destinations.value[0];
+		await submitRecording(destination.origin, destination.tabId);
+	} else {
+		showDestinations.value = true;
+	}
+}
+
+async function submitTo(origin: string, tabId?: number) {
+	showDestinations.value = false;
+	await submitRecording(origin, tabId);
+}
+
+async function submitToInstanceUrl() {
+	const origin = instanceUrl.value.trim();
+	if (!origin) return;
+	await submitTo(origin);
 }
 </script>
 
@@ -131,9 +167,32 @@ async function disconnectFromInstance() {
 				<RememberedHosts show-empty :hosts="approvedHosts" @forget="forgetHost" />
 			</template>
 
-			<template v-else-if="isConnected && recording?.status === 'review'">
-				<h1 class="title">Review recording</h1>
+			<template v-else-if="recording?.status === 'review'">
+				<h1 class="title">{{ showDestinations ? 'Send to AI Assistant' : 'Review recording' }}</h1>
+				<div v-if="showDestinations && destinations.length" class="panel">
+					<InfoRow
+						v-for="destination in destinations"
+						:key="destination.origin"
+						icon="sparkles"
+						:title="destination.origin"
+					>
+						<div class="destination-action">
+							<N8nButton size="small" @click="submitTo(destination.origin, destination.tabId)">
+								Send here
+							</N8nButton>
+						</div>
+					</InfoRow>
+				</div>
+				<div v-else-if="showDestinations" class="panel">
+					<InfoRow
+						icon="link"
+						title="Enter your n8n instance URL"
+						description="Open AI Assistant at this address"
+					/>
+					<N8nInput v-model="instanceUrl" placeholder="https://example.app.n8n.cloud" />
+				</div>
 				<RecordingReview
+					v-else
 					:actions="recording.actions"
 					:screenshots="recording.screenshots ?? []"
 					:network-requests="recording.networkRequests ?? []"
@@ -144,7 +203,7 @@ async function disconnectFromInstance() {
 				/>
 			</template>
 
-			<template v-else-if="isConnected">
+			<template v-else-if="(isConnected || !hasRelayUrl) && !showSettings">
 				<h1 v-if="recording" class="title">
 					<span class="status-dot" />
 					{{ recordingTitle }}
@@ -152,8 +211,8 @@ async function disconnectFromInstance() {
 				<template v-if="!recording">
 					<h1 class="title">Record a browser task</h1>
 					<p class="subtitle">
-						Show AI Assistant how you complete a task. Browser Use records your clicks, typing, and
-						navigation so AI Assistant can build a workflow.
+						Show AI Assistant how you complete a task. The extension records your clicks, typing,
+						and navigation so AI Assistant can build a workflow.
 					</p>
 				</template>
 				<div v-if="!recording" class="panel">
@@ -176,7 +235,7 @@ async function disconnectFromInstance() {
 					AI Assistant is processing your recording in a new conversation.
 				</p>
 				<p v-else-if="recording.status === 'submitting'" class="subtitle">
-					Keep this extension open while n8n starts the conversation.
+					n8n is starting a new conversation from your recording.
 				</p>
 			</template>
 
@@ -313,15 +372,34 @@ async function disconnectFromInstance() {
 				Disconnect
 			</N8nButton>
 		</div>
-		<div v-else-if="isConnected" class="footer">
+		<div v-else-if="(isConnected || !hasRelayUrl) && !showSettings" class="footer">
 			<template v-if="recording?.status === 'recording'">
 				<N8nButton variant="outline" size="large" @click="discardRecording">Cancel</N8nButton>
 				<N8nButton size="large" @click="stopRecording">Stop recording</N8nButton>
 			</template>
 			<template v-else-if="recording?.status === 'review'">
-				<N8nButton variant="outline" size="large" @click="recordAgain">Record again</N8nButton>
-				<N8nButton size="large" :disabled="recording.actions.length === 0" @click="submitRecording">
-					Send to n8n
+				<N8nButton
+					variant="outline"
+					size="large"
+					@click="showDestinations ? (showDestinations = false) : recordAgain()"
+				>
+					{{ showDestinations ? 'Back' : 'Record again' }}
+				</N8nButton>
+				<N8nButton
+					v-if="!showDestinations"
+					size="large"
+					:disabled="recording.actions.length === 0"
+					@click="prepareSubmission"
+				>
+					Send to AI Assistant
+				</N8nButton>
+				<N8nButton
+					v-else-if="destinations.length === 0"
+					size="large"
+					:disabled="instanceUrl.trim().length === 0"
+					@click="submitToInstanceUrl"
+				>
+					Continue
 				</N8nButton>
 			</template>
 			<template v-else-if="recording?.status === 'submitted'">
@@ -451,6 +529,10 @@ async function disconnectFromInstance() {
 
 .remember {
 	--checkbox--label--font-size: var(--font-size--xs);
+	margin-top: var(--spacing--sm);
+}
+
+.destination-action {
 	margin-top: var(--spacing--sm);
 }
 

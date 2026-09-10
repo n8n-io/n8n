@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { Z } from '../zod-class';
+
 export const browserRecordingTargetSchema = z
 	.object({
 		tag: z.string().min(1).max(30),
@@ -124,6 +126,14 @@ export const browserRecordingSchema = z
 			});
 		}
 	});
+
+export class InstanceAiBrowserRecordingRequest extends Z.class({
+	recording: browserRecordingSchema,
+}) {}
+
+export interface InstanceAiBrowserRecordingResponse {
+	threadId: string;
+}
 
 export type BrowserRecordingTarget = z.infer<typeof browserRecordingTargetSchema>;
 export type BrowserRecordingAction = z.infer<typeof browserRecordingActionSchema>;

@@ -806,7 +806,7 @@ async function syncRouteToStore() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
-	if (!store.threads.length) {
+	if (!store.threads.some((thread) => thread.id === requestedThreadId)) {
 		await store.loadThreads();
 	}
 	// User may have navigated elsewhere while we awaited

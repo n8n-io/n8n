@@ -1477,6 +1477,14 @@ export class InstanceAiService {
 		return runId;
 	}
 
+	async launchManualBrowserRecording(input: {
+		userId: string;
+		projectId: string;
+		recording: BrowserRecording;
+	}): Promise<{ threadId: string }> {
+		return await this.launchBrowserRecording(input);
+	}
+
 	private async launchBrowserRecording(input: {
 		userId: string;
 		projectId: string;
