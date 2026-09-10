@@ -3,9 +3,9 @@ import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import {
-	serializedWorkflowLifecycleSchema,
-	type SerializedWorkflowLifecycle,
-} from '../../spec/serialized/workflow-lifecycle.schema';
+	serializedWorkflowMetadataSchema,
+	type SerializedWorkflowMetadata,
+} from '../../spec/serialized/workflow-metadata.schema';
 import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
@@ -20,7 +20,7 @@ type WorkflowPackageKeyHandling = {
 	name: 'copy';
 	description: 'exclude';
 	active: 'exclude';
-	isArchived: 'transform';
+	isArchived: 'copy';
 	nodes: 'copy';
 	connections: 'copy';
 	settings: 'copy';
@@ -43,7 +43,7 @@ type WorkflowPackageKeyHandling = {
 
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -52,19 +52,18 @@ const serializePayload = definePackageSerializationPayload<
 	WorkflowPackageKeyHandling
 >();
 
-/** The same decisions from the lifecycle file's side. */
-type WorkflowLifecycleKeyHandling = Record<
-	Exclude<keyof WorkflowPackageKeyHandling, 'isArchived' | 'activeVersionId'>,
+/** The same decisions from the metadata file's side. */
+type WorkflowMetadataKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'activeVersionId'>,
 	'exclude'
 > & {
-	isArchived: 'copy';
 	activeVersionId: 'transform';
 };
 
-const serializeLifecyclePayload = definePackageSerializationPayload<
+const serializeMetadataPayload = definePackageSerializationPayload<
 	WorkflowEntity,
-	SerializedWorkflowLifecycle,
-	WorkflowLifecycleKeyHandling
+	SerializedWorkflowMetadata,
+	WorkflowMetadataKeyHandling
 >();
 
 @Service()
@@ -85,18 +84,16 @@ export class WorkflowSerializer {
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
 				versionId: workflow.versionId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
+				isArchived: workflow.isArchived,
 				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 			}),
 		);
 	}
 
-	serializeLifecycle(workflow: WorkflowEntity): SerializedWorkflowLifecycle {
-		return serializedWorkflowLifecycleSchema.parse(
-			serializeLifecyclePayload({
-				publishedVersionId: workflow.activeVersionId,
-				isArchived: workflow.isArchived,
-			}),
+	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
+		return serializedWorkflowMetadataSchema.parse(
+			serializeMetadataPayload({ publishedVersionId: workflow.activeVersionId }),
 		);
 	}
 
@@ -113,6 +110,7 @@ export class WorkflowSerializer {
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],
+			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};
 	}

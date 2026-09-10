@@ -10,6 +10,7 @@ import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.
 import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
+import type { PrometheusEncryptionMetricsService } from '../prometheus/encryption-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
@@ -51,6 +52,7 @@ describe('PrometheusMetricsService', () => {
 	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
 	let ssrf: Mocked<PrometheusSsrfMetricsService>;
 	let dnsCache: Mocked<PrometheusDnsCacheMetricsService>;
+	let encryption: Mocked<PrometheusEncryptionMetricsService>;
 	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
@@ -88,6 +90,7 @@ describe('PrometheusMetricsService', () => {
 			workflowPublication,
 			scheduler,
 			pollTrigger,
+			encryption,
 		);
 
 	beforeEach(() => {
@@ -124,6 +127,7 @@ describe('PrometheusMetricsService', () => {
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
+		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -159,6 +163,7 @@ describe('PrometheusMetricsService', () => {
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 			expect(scheduler.init).toHaveBeenCalledWith(app);
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
+			expect(encryption.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

@@ -1007,7 +1007,19 @@ function setFilter(newFilter = '') {
 
 function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	openCredentialSelectType.value = isVisible ? credentialType : null;
-	if (!isVisible) setFilter();
+	if (!isVisible) {
+		setFilter();
+		return;
+	}
+	// The store only learns about credential changes made in this tab, so a rename
+	// from another tab stays stale until remount. Refetch when the user opens the list.
+	// Cost: one GET per open. A cross-tab push channel would remove it.
+	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
+	if (scope) {
+		credentialsStore.fetchUsableCredentials(scope).catch(() => {
+			// A failed refetch keeps whatever the store already holds.
+		});
+	}
 }
 
 function matches(needle: string, haystack: string) {

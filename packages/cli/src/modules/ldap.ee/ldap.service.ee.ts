@@ -529,7 +529,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			if (email && (emailCounts.get(email) ?? 0) > 1) {
 				this.logger.warn('LDAP sync skipped entry: multiple LDAP accounts share the same email', {
 					email,
-					ldapId: adUser[this.config.ldapIdAttribute] as string,
+					ldapId: adUser[this.config.ldapIdAttribute],
 				});
 				return false;
 			}
