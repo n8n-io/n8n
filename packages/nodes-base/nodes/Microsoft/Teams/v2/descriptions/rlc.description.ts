@@ -352,3 +352,56 @@ export const userRLC: INodeProperties = {
 		},
 	],
 };
+
+/**
+ * Team tag picker, scoped to the node's `teamId` and backed by `getTags`. Like `userRLC`, no mode
+ * declares an `extractValue`: the row read that consumes it cannot pass `{ extractValue: true }`,
+ * because a row-level `displayOptions` makes that read throw.
+ */
+export const teamworkTagRLC: INodeProperties = {
+	displayName: 'Team Tag',
+	name: 'tagId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'Select a tag from the team, or enter its ID',
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'e.g. Engineering',
+			typeOptions: {
+				searchListMethod: 'getTags',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			hint: 'The base64 tag ID from the Microsoft Graph tags endpoint',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						// A tag ID is base64 of `{groupId}##{tagGuid}##{token}`. base64 emits `+` or
+						// `/` only for a plaintext byte of `>`, `~`, `?`, DEL or non-ASCII, and hex,
+						// `-`, `#` and alphanumerics contain none of those, so only `[A-Za-z0-9]`
+						// and `=` padding can occur. No length check: a GUID-shaped token gives 152
+						// characters (pinned in `v2/test/methods/getUsers.test.ts`), but nothing
+						// documents the token as a GUID, so both that length and the alphabet above
+						// rest on the assumed token shape. If Microsoft widens it, a From List pick
+						// bypasses this regex and dies at `buildTeamsPath` with "remove any slashes"
+						// for a tag the user chose from a dropdown.
+						regex: '^[A-Za-z0-9=]+[ \t]*$',
+						errorMessage: 'Not a valid Microsoft Teams tag ID',
+					},
+				},
+			],
+		},
+	],
+};

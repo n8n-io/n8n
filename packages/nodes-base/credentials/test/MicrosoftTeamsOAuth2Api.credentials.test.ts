@@ -13,6 +13,7 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 		'Chat.ReadWrite',
 		'ChannelMessage.Read.All',
 		'OnlineMeetings.ReadWrite',
+		'TeamworkTag.Read',
 	];
 
 	// Shared OAuth2 configuration
@@ -71,7 +72,16 @@ describe('MicrosoftTeamsOAuth2Api Credential', () => {
 			(p) => p.name === 'enabledScopes',
 		);
 		expect(enabledScopesProperty?.default).toBe(
-			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite',
+			'openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite TeamworkTag.Read',
+		);
+	});
+
+	it('asks for the default scopes unless the user turned on custom scopes', () => {
+		const scopeProperty = microsoftTeamsOAuth2Api.properties.find((p) => p.name === 'scope');
+
+		// This expression, not `enabledScopes`, is what the authorize URL is built from.
+		expect(scopeProperty?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access User.Read.All Group.ReadWrite.All Chat.ReadWrite ChannelMessage.Read.All OnlineMeetings.ReadWrite TeamworkTag.Read"}}',
 		);
 	});
 

@@ -72,7 +72,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			'mentions.mention': [
 				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
 			],
-			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -159,7 +158,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			'mentions.mention': [
 				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
 			],
-			'mentions.mention[0].userId': '714c1202-cbac-40ff-9160-53ab5c4df9b8',
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
@@ -178,6 +176,10 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			contentType: 'text',
 			message: 'hi',
 			options: {},
+			// a mention row, so moving the guard below resolveMentions fires a GET /v1.0/users/...
+			'mentions.mention': [
+				{ userId: { __rl: true, mode: 'id', value: '714c1202-cbac-40ff-9160-53ab5c4df9b8' } },
+			],
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
