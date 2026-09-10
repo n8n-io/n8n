@@ -13,8 +13,24 @@ import type {
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
+import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
+
+/** `versionId` every workflow fixture carries, so a test can name it as published. */
+export const WIRE_VERSION_ID = 'wire-version-id';
+
+export type PackageWorkflow = SerializedWorkflow & Partial<SerializedWorkflowMetadata>;
+
+function workflowFiles(workflow: PackageWorkflow): {
+	content: SerializedWorkflow;
+	metadata: SerializedWorkflowMetadata;
+} {
+	const { publishedVersionId, ...content } = workflow;
+
+	return { content, metadata: { publishedVersionId: publishedVersionId ?? null } };
+}
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */
 export const PACKAGE_GITHUB_CREDENTIAL_TYPE = 'githubApi';
@@ -28,9 +44,7 @@ export function githubCredentialPayload(
 	};
 }
 
-export function serializedWorkflow(
-	overrides: Partial<SerializedWorkflow> = {},
-): SerializedWorkflow {
+export function serializedWorkflow(overrides: Partial<PackageWorkflow> = {}): PackageWorkflow {
 	return {
 		id: 'wf-id',
 		name: 'Workflow',
@@ -45,9 +59,9 @@ export function serializedWorkflow(
 			},
 		],
 		connections: {},
-		versionId: 'wire-version-id',
+		versionId: WIRE_VERSION_ID,
 		parentFolderId: null,
-		isPublished: false,
+		publishedVersionId: null,
 		isArchived: false,
 		...overrides,
 	};
@@ -59,7 +73,7 @@ export function serializedWorkflowWithCredential(options: {
 	credentialId: string;
 	credentialName: string;
 	credentialType?: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	const credentialType = options.credentialType ?? PACKAGE_GITHUB_CREDENTIAL_TYPE;
 
 	return serializedWorkflow({
@@ -92,7 +106,7 @@ export function serializedWorkflowWithSubWorkflow(options: {
 	mode?: 'id' | 'list';
 	callerIds?: string;
 	callerPolicy?: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	const settings =
 		options.callerIds !== undefined || options.callerPolicy !== undefined
 			? {
@@ -209,10 +223,12 @@ export function credentialRequirementsFromWorkflows(
 }
 
 export async function buildImportPackageBuffer(
-	workflows: SerializedWorkflow[],
+	workflows: PackageWorkflow[],
 	options: {
 		manifestExtras?: Partial<PackageManifest>;
 		sourceId?: string;
+		/** Replaces every metadata file, or leaves it out, so tests can drive the rejections. */
+		workflowMetadata?: 'omit' | Record<string, unknown>;
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -244,8 +260,15 @@ export async function buildImportPackageBuffer(
 
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	workflows.forEach((wf, idx) => {
+		const { content, metadata } = workflowFiles(wf);
 		writer.writeDirectory(`workflows/wf-${idx}`);
-		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(wf));
+		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
+		if (options.workflowMetadata !== 'omit') {
+			writer.writeFile(
+				`workflows/wf-${idx}/workflow-metadata.json`,
+				JSON.stringify(options.workflowMetadata ?? metadata),
+			);
+		}
 	});
 
 	return await streamToBuffer(writer.finalize());
@@ -270,7 +293,7 @@ export function serializedWorkflowWithDataTable(options: {
 	id: string;
 	name: string;
 	dataTableId: string;
-}): SerializedWorkflow {
+}): PackageWorkflow {
 	return serializedWorkflow({
 		id: options.id,
 		name: options.name,
@@ -317,12 +340,18 @@ export interface PackageProjectEntry {
 
 export interface PackageWorkflowEntry {
 	target: string;
-	workflow: SerializedWorkflow;
+	workflow: PackageWorkflow;
 }
 
 export interface PackageDataTableEntry {
 	target: string;
 	dataTable: SerializedDataTable;
+}
+
+export interface PackageVariableEntry {
+	id: string;
+	target: string;
+	variable: SerializedVariable;
 }
 
 /**
@@ -335,6 +364,7 @@ export async function buildEntityPackageBuffer(options: {
 	folders?: PackageFolderEntry[];
 	projects?: PackageProjectEntry[];
 	dataTables?: PackageDataTableEntry[];
+	variables?: PackageVariableEntry[];
 	manifestExtras?: Partial<PackageManifest>;
 	sourceId?: string;
 }): Promise<Buffer> {
@@ -343,6 +373,7 @@ export async function buildEntityPackageBuffer(options: {
 	const folders = options.folders ?? [];
 	const projects = options.projects ?? [];
 	const dataTables = options.dataTables ?? [];
+	const variables = options.variables ?? [];
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
@@ -385,14 +416,25 @@ export async function buildEntityPackageBuffer(options: {
 					})),
 				}
 			: {}),
+		...(variables.length > 0
+			? {
+					variables: variables.map(({ id, target, variable }) => ({
+						id,
+						name: variable.name,
+						target,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
 	// Manifest first: the reader/parser resolves it before reading any referenced file.
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	for (const { target, workflow } of workflows) {
+		const { content, metadata } = workflowFiles(workflow);
 		writer.writeDirectory(target);
-		writer.writeFile(`${target}/workflow.json`, JSON.stringify(workflow));
+		writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
+		writer.writeFile(`${target}/workflow-metadata.json`, JSON.stringify(metadata));
 	}
 	for (const { target, folder } of folders) {
 		writer.writeDirectory(target);
@@ -405,6 +447,10 @@ export async function buildEntityPackageBuffer(options: {
 	for (const { target, dataTable } of dataTables) {
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/data-table.json`, JSON.stringify(dataTable));
+	}
+	for (const { target, variable } of variables) {
+		writer.writeDirectory(target);
+		writer.writeFile(`${target}/variable.json`, JSON.stringify(variable));
 	}
 
 	return await streamToBuffer(writer.finalize());

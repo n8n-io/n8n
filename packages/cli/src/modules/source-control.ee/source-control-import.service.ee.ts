@@ -2,7 +2,6 @@ import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/a
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
-	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -20,24 +19,31 @@ import {
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
-import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { AutoPublishMode } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	shouldAutoPublishWorkflow,
+	jsonParse,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
@@ -50,11 +56,15 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -95,6 +105,7 @@ import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
 import { ExportableVariable } from './types/exportable-variable';
+import type { WorkflowImportResult } from './types/import-result';
 import type {
 	RemoteResourceOwner,
 	StatusResourceOwner,
@@ -110,6 +121,13 @@ const toStatusOwner = (project: Project | undefined): StatusResourceOwner | unde
 	}
 	return undefined;
 };
+
+/**
+ * How long a pull waits for one workflow's unpublish to settle before it gives
+ * up on deleting it. The outbox consumer normally drains within a second.
+ */
+const UNPUBLISH_SETTLE_TIMEOUT_MS = 30_000;
+const UNPUBLISH_SETTLE_POLL_INTERVAL_MS = 250;
 
 @Service()
 export class SourceControlImportService {
@@ -149,10 +167,13 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -196,6 +217,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
 					name: remote.name,
+					description: remote.description,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -217,6 +239,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -240,12 +263,13 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getLocalVersionIdsFromDb(
@@ -262,6 +286,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -298,6 +323,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -512,22 +538,17 @@ export class SourceControlImportService {
 	): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
-				relations: [
-					'columns',
-					'project',
-					'project.projectRelations',
-					'project.projectRelations.role',
-				],
+				relations: ['columns', 'project'],
 				where:
 					this.sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter(context),
 			});
+			const ownerEmails = await this.projectRelationRepository.findPersonalOwnerEmails(
+				dataTables.flatMap((table) => (table.project?.type === 'personal' ? table.project.id : [])),
+			);
 			return dataTables.map((table) => {
 				let ownedBy: StatusResourceOwner | null = null;
 				if (table.project?.type === 'personal') {
-					const ownerRelation = table.project.projectRelations?.find(
-						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
-					);
-					if (ownerRelation) {
+					if (ownerEmails.has(table.project.id)) {
 						ownedBy = {
 							type: 'personal',
 							projectId: table.project.id,
@@ -795,7 +816,7 @@ export class SourceControlImportService {
 		existingFolderIds: string[],
 		allSharedWorkflows: Array<{ workflowId: string; role: string; projectId: string }>,
 		personalProject: Project,
-	) {
+	): Promise<WorkflowImportResult | undefined> {
 		this.logger.debug(`Importing workflow file ${candidate.file}`);
 
 		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
@@ -833,6 +854,34 @@ export class SourceControlImportService {
 			importedWorkflow.settings?.redactionPolicy,
 		);
 
+		// Resolved before the write so the clearance binds to the project the workflow lands in,
+		// and reused by the ownership sync below rather than resolved twice.
+		const targetOwnerProject = await this.resolveTargetOwnerProject(owner, personalProject);
+
+		// Admitted before `preparePublishStateForImport`, which unpublishes the local workflow: a
+		// skip after that point would leave it stopped with nothing imported in its place.
+		let cleared: PolicyCleared<'contentImport'>;
+		try {
+			cleared = await this.policyEnforcementService.enforceContentImport({
+				workflow: { id, name: importedWorkflow.name, nodes },
+				projectId: targetOwnerProject.id,
+				transport: 'source-control',
+			});
+		} catch (error) {
+			// A blocked workflow is skipped, not fatal — the rest of the pull still lands. A check
+			// that broke is not scoped to one workflow, so it fails the pull rather than silently
+			// skipping every workflow in turn.
+			if (!(error instanceof PolicyViolationError)) throw error;
+
+			this.logger.warn(`Skipping workflow ${id}: blocked by the content-import policy`);
+
+			return {
+				id,
+				name: candidate.file,
+				contentImportPolicy: { violations: error.violations, checkErrors: [] },
+			};
+		}
+
 		const { shouldPublishAfterImport, publishingError, publishingErrorDetails } =
 			await this.preparePublishStateForImport(
 				existingWorkflow,
@@ -848,17 +897,27 @@ export class SourceControlImportService {
 
 		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
-		const upsertResult = await this.workflowRepository.upsert(
+		// The upsert below writes `isArchived` directly instead of going through
+		// `WorkflowService.archive()`, so detect the transition to run its
+		// side effects (e.g. closing open review requests) ourselves.
+		const archivedByPull =
+			!!existingWorkflow && !existingWorkflow.isArchived && !!importedWorkflow.isArchived;
+
+		const localOwner = allSharedWorkflows.find(
+			(w) => w.workflowId === id && w.role === 'workflow:owner',
+		);
+
+		await this.workflowRepository.upsertImportedContent(
 			{
 				...importedWorkflow,
 				parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
 			},
-			['id'],
+			{ policyCleared: cleared },
 		);
-		if (upsertResult?.identifiers?.length !== 1) {
-			throw new UnexpectedError('Failed to upsert workflow', {
-				extra: { workflowId: id ?? 'new' },
-			});
+
+		if (archivedByPull) {
+			// A pull is a system mutation: no acting user to attribute the archive to.
+			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
 		try {
@@ -874,16 +933,13 @@ export class SourceControlImportService {
 			return;
 		}
 
-		const localOwner = allSharedWorkflows.find(
-			(w) => w.workflowId === id && w.role === 'workflow:owner',
-		);
-
 		await this.syncResourceOwnership({
 			resourceId: id,
 			remoteOwner: owner,
 			localOwner,
 			fallbackProject: personalProject,
 			repository: this.sharedWorkflowRepository,
+			targetOwnerProject,
 		});
 
 		// Now publish the workflow if needed (after history is saved)
@@ -1077,7 +1133,7 @@ export class SourceControlImportService {
 					);
 
 					this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-					await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+					await this.credentialsRepository.runInTransaction({}, async (transactionManager) => {
 						await transactionManager.upsert(
 							CredentialsEntity,
 							{
@@ -1153,7 +1209,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
+				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1240,7 +1296,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
+				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1735,6 +1791,7 @@ export class SourceControlImportService {
 	async deleteWorkflowsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
 			try {
+				await this.unpublishBeforeDelete(candidate.id, user);
 				await this.workflowService.delete(user, candidate.id, true);
 			} catch (error) {
 				throw this.deletionError('workflow', [candidate], error);
@@ -1789,13 +1846,15 @@ export class SourceControlImportService {
 				select: ['id'],
 				where: { parentFolder: { id: In(folderIds) } },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				workflows.map((workflow) => workflow.id),
 			);
 
 			await this.folderRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('folder', candidates, error);
 		}
@@ -1816,52 +1875,121 @@ export class SourceControlImportService {
 				select: ['workflowId'],
 				where: { projectId: In(candidateIds), role: 'workflow:owner' },
 			});
-			await this.deactivateWorkflowsAndHardDeleteExecutions(
+			const cascadedWorkflowIds = await this.deactivateWorkflowsAndHardDeleteExecutions(
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
 			await this.projectRepository.delete({
 				id: In(candidateIds),
 			});
+
+			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
 		} catch (error) {
 			throw this.deletionError('project', candidates, error);
 		}
 	}
 
 	/**
-	 * Deactivate the given workflows and hard-delete all their executions.
+	 * Unpublish the given workflows and hard-delete all their executions.
 	 * To be called right before the workflows are removed via FK cascade
 	 * (project/folder deletion): without it, the cascade can hit a DB statement
-	 * timeout on large execution histories, and active workflows would keep
-	 * their triggers registered in memory.
+	 * timeout on large execution histories, published workflows would keep
+	 * their triggers registered, and the RESTRICT FK from the published-version
+	 * mapping would reject the cascade outright.
 	 *
 	 * Not using `WorkflowService.delete` here: it only deletes workflows the
 	 * pulling user holds `workflow:delete` on, and the pull already ran it for
 	 * those (see `deleteWorkflowsNotInWorkfolder`). Any workflow still standing
 	 * was skipped by that permission check, yet the FK cascade below deletes it
-	 * regardless — so we do the physical cleanup directly beforehand. Deletion
-	 * hooks (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
-	 * event don't fire for these workflows — a pre-existing gap for any
-	 * cascade-deleted workflow.
+	 * regardless — so we do the physical cleanup directly beforehand. The
+	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
+	 * pre-delete side effects (e.g. closing open review requests), and the
+	 * caller fires `afterWorkflowsDeleted` once the cascade has run (see
+	 * {@link sweepAfterWorkflowCascade}) — but external hooks
+	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
+	 * event still don't fire, a pre-existing gap for any cascade-deleted
+	 * workflow.
 	 *
 	 * REVIEW(question): should we instead extract the permission-free part of
 	 * `WorkflowService.delete` (deactivate + drain + delete row + hooks/events)
-	 * into an internal method and call it here? That would restore hook/event
-	 * parity, at the cost of refactoring a hot service for this edge path.
+	 * into an internal method and call it here? That would restore full
+	 * hook/event parity, at the cost of refactoring a hot service for this
+	 * edge path.
 	 */
 	private async deactivateWorkflowsAndHardDeleteExecutions(workflowIds: string[]) {
+		const workflows: WorkflowEntity[] = [];
 		for (const workflowId of workflowIds) {
 			const workflow = await this.workflowRepository.findOne({
-				select: ['id', 'active'],
+				select: ['id', 'activeVersionId'],
 				where: { id: workflowId },
 			});
-			if (!workflow) continue;
+			if (workflow) workflows.push(workflow);
+		}
 
-			if (workflow.active) {
-				await this.activeWorkflowManager.remove(workflow.id);
+		// Capture-only, before any destructive teardown, while the rows the deletes
+		// will cascade away still exist. A pull is a system mutation: no acting user.
+		for (const workflow of workflows) {
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id, null);
+		}
+
+		for (const workflow of workflows) {
+			if (workflow.activeVersionId !== null) {
+				await this.workflowService.deactivateWorkflowAsSystem(workflow.id);
 			}
+			await this.waitForUnpublishToSettle(workflow.id);
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
 		}
+
+		return workflows.map((workflow) => workflow.id);
+	}
+
+	/**
+	 * Unpublish a workflow on behalf of the pulling user and wait until the
+	 * teardown has settled, so the following `WorkflowService.delete` is not
+	 * refused for a workflow that is published or still unpublishing.
+	 */
+	private async unpublishBeforeDelete(workflowId: string, user: User) {
+		// Same check as `WorkflowService.delete`: a workflow the user cannot delete is
+		// skipped there, so it must keep its publication state here too.
+		const deletable = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+		if (!deletable) return;
+
+		await this.workflowService.deactivateWorkflow(user, workflowId);
+		await this.waitForUnpublishToSettle(workflowId);
+	}
+
+	/**
+	 * With the publication service, unpublishing clears `activeVersionId` at once
+	 * but tears the triggers down through the outbox, which removes the
+	 * published-version mapping only once that succeeded. The mapping's FK to the
+	 * workflow row is RESTRICT, so the row cannot go before the mapping does.
+	 * On the legacy path the mapping never exists and this returns immediately.
+	 */
+	private async waitForUnpublishToSettle(workflowId: string) {
+		const deadline = Date.now() + UNPUBLISH_SETTLE_TIMEOUT_MS;
+		while (
+			(await this.workflowPublishedVersionRepository.getPublishedVersionId(workflowId)) !== null
+		) {
+			if (Date.now() >= deadline) {
+				throw new OperationalError(
+					`Timed out waiting for workflow "${workflowId}" to unpublish before deletion`,
+				);
+			}
+			await sleep(UNPUBLISH_SETTLE_POLL_INTERVAL_MS);
+		}
+	}
+
+	/**
+	 * Fire `afterWorkflowsDeleted` once the folder/project row delete has
+	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
+	 * the sweep behind the hook closes review requests opened after the
+	 * pre-delete hooks ran and now left without a workflow.
+	 */
+	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
+		if (cascadedWorkflowIds.length === 0) return;
+		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */
@@ -1904,7 +2032,7 @@ export class SourceControlImportService {
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 		transactionManager?: EntityManager;
 		targetOwnerProject?: Project;
-	}): Promise<void> {
+	}): Promise<Project> {
 		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
 		const trx = transactionManager ?? this.workflowRepository.manager;
@@ -1917,6 +2045,8 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+
+		return targetOwnerProject;
 	}
 
 	private async resolveTargetOwnerProject(

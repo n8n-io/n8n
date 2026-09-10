@@ -255,7 +255,7 @@ test('should report security settings', async () => {
 			communityPackagesEnabled: true,
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
-			publicApiEnabled: false,
+			publicApiEnabled: true,
 		},
 		nodes: {
 			nodesExclude: 'n8n-nodes-base.executeCommand, n8n-nodes-base.localFileTrigger',

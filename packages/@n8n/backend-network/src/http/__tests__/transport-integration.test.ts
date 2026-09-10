@@ -4,7 +4,7 @@ import dns from 'node:dns';
 import http from 'node:http';
 import type { LookupFunction } from 'node:net';
 
-import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { makeSsrfBridge, useCleanProxyEnv } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
 import { type LocalServer, startServer } from '../local-server';
 import { buildNodeAgents } from '../node-agents';
@@ -31,9 +31,10 @@ async function httpGetWithAgent(url: string, agent: http.Agent): Promise<string>
 }
 
 describe('outbound transport integration', () => {
+	useCleanProxyEnv();
+
 	let target: LocalServer;
 	let proxy: LocalServer;
-	const ORIGINAL_ENV = { ...process.env };
 
 	beforeAll(async () => {
 		target = await startServer((req, res) => {
@@ -58,16 +59,8 @@ describe('outbound transport integration', () => {
 	});
 
 	beforeEach(() => {
-		delete process.env.HTTP_PROXY;
-		delete process.env.HTTPS_PROXY;
-		delete process.env.NO_PROXY;
-		delete process.env.ALL_PROXY;
 		target.clear();
 		proxy.clear();
-	});
-
-	afterEach(() => {
-		process.env = { ...ORIGINAL_ENV };
 	});
 
 	describe('setAxiosAgents routing', () => {
@@ -120,7 +113,7 @@ describe('outbound transport integration', () => {
 		});
 	});
 
-	describe('SSRF secure lookup is applied to direct connections only', () => {
+	describe('SSRF secure lookup placement', () => {
 		it('invokes the secure lookup for a direct (hostname) connection', async () => {
 			const lookupSpy = vi.fn((hostname: string, options: dns.LookupOptions, onResult: unknown) =>
 				dns.lookup(hostname, options, onResult as never),
@@ -142,8 +135,17 @@ describe('outbound transport integration', () => {
 			expect(lookupSpy).toHaveBeenCalledWith('localhost', expect.anything(), expect.anything());
 		});
 
-		it('does NOT invoke the secure lookup when routed through a proxy', async () => {
-			process.env.HTTP_PROXY = proxy.url;
+		// An explicit proxy URL can come from a request, so its host is resolved
+		// through the policy; the environment's is part of the deployment and is not.
+		it.each([
+			['leaves the env proxy host to the platform resolver', true],
+			['invokes the secure lookup for an explicit proxy host', false],
+		])('%s', async (_case, fromEnv) => {
+			const { port } = new URL(proxy.url);
+			const proxyUrl = `http://localhost:${port}`;
+			if (fromEnv) {
+				process.env.HTTP_PROXY = proxyUrl;
+			}
 			const lookupSpy = vi.fn((hostname: string, options: dns.LookupOptions, onResult: unknown) =>
 				dns.lookup(hostname, options, onResult as never),
 			);
@@ -156,14 +158,21 @@ describe('outbound transport integration', () => {
 				method: 'GET',
 				proxy: false,
 			};
-			setAxiosAgents(config, undefined, undefined, bridge);
+			setAxiosAgents(config, undefined, fromEnv ? undefined : proxyUrl, bridge);
 
 			const res = await axios<{ message: string }>(config);
 
 			expect(res.data.message).toBe('proxied');
-			// The proxy host is an IP (no lookup) and the proxy resolves the final
-			// target, so the secure lookup is never consulted on our side.
-			expect(lookupSpy).not.toHaveBeenCalled();
+			if (fromEnv) {
+				expect(lookupSpy).not.toHaveBeenCalled();
+			} else {
+				expect(lookupSpy).toHaveBeenCalledWith('localhost', expect.anything(), expect.anything());
+			}
+			expect(lookupSpy).not.toHaveBeenCalledWith(
+				'proxied-target.invalid',
+				expect.anything(),
+				expect.anything(),
+			);
 		});
 	});
 

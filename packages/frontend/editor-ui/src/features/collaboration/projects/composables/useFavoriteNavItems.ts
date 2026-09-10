@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { IMenuItem } from '@n8n/design-system/types';
+import type { IMenuItem } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useProjectsStore } from '../projects.store';

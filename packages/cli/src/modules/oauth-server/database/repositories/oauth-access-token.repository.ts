@@ -1,4 +1,4 @@
-import { BaseRepository, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -12,8 +12,8 @@ type NewAccessToken = {
 
 @Service()
 export class AccessTokenRepository extends BaseRepository<AccessToken> {
-	constructor(dataSource: DataSource) {
-		super(AccessToken, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AccessToken, dataSource.manager, transactionRunner);
 	}
 
 	async insertToken(token: NewAccessToken, ctx: OperationContext): Promise<void> {

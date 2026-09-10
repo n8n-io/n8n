@@ -14,14 +14,22 @@ export default defineConfig({
 			{
 				test: {
 					...sharedTestConfig,
-					name: 'legacy-engine',
+					name: 'vm-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'vm' },
 				},
 			},
 			{
 				test: {
 					...sharedTestConfig,
-					name: 'vm-engine',
-					env: { N8N_EXPRESSION_ENGINE: 'vm' },
+					name: 'legacy-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'legacy' },
+				},
+			},
+			{
+				test: {
+					...sharedTestConfig,
+					name: 'quickjs-engine',
+					env: { N8N_EXPRESSION_ENGINE: 'quickjs' },
 				},
 			},
 		],

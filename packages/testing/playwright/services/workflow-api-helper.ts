@@ -338,6 +338,7 @@ export class WorkflowApiHelper {
 			webhookPrefix?: string;
 			idLength?: number;
 			makeUnique?: boolean;
+			projectId?: string;
 			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
 		},
 	): Promise<WorkflowImportResult> {
@@ -355,7 +356,12 @@ export class WorkflowApiHelper {
 
 	async importWorkflowFromDefinition(
 		workflowDefinition: Partial<IWorkflowBase>,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			projectId?: string;
+		},
 	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
@@ -483,7 +489,7 @@ export class WorkflowApiHelper {
 			const executions = await this.getExecutions(workflowId);
 			const execution = executions.find((e) => e.workflowId === workflowId);
 
-			if (execution && execution.status === expectedStatus) {
+			if (execution?.status === expectedStatus) {
 				return execution;
 			}
 

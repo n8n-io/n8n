@@ -92,6 +92,33 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.get('my workflow')?.id).toBe('wf-1');
 		});
 
+		test('keeps the known name when a follow-up call reports a blank name', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: 'Lead routing' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'build-workflow',
+								result: { workflowId: 'wf-1', workflowName: '' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Lead routing');
+			expect(linkableResourceNameIndex.get('lead routing')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.has('')).toBe(false);
+		});
+
 		test('falls back to args.name when result has no workflowName', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
@@ -139,7 +166,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers successful workflow updates from workflowId in args', async () => {
+		test('replays historical raw workflow update results', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -166,7 +193,7 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
-		test('registers workflow document returned by workflows get-json', async () => {
+		test('replays historical workflows get-json results', async () => {
 			const { messages, producedArtifacts, resourceNameIndex } = setup();
 
 			messages.value = [
@@ -229,8 +256,8 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — message attachments', () => {
-		test('registers agent attachment from a user message', async () => {
-			const { messages, producedArtifacts } = setup();
+		test('keeps a pending new-agent attachment produced but not linkable', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -241,6 +268,7 @@ describe('useResourceRegistry', () => {
 							id: 'agent-1',
 							name: 'Support Agent',
 							projectId: 'proj-1',
+							pending: true,
 						},
 					],
 				}),
@@ -252,7 +280,9 @@ describe('useResourceRegistry', () => {
 				id: 'agent-1',
 				name: 'Support Agent',
 				projectId: 'proj-1',
+				pending: true,
 			});
+			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
 		});
 	});
 
@@ -928,11 +958,25 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('drops the pending flag once the agent is bound to the thread', async () => {
-			const { producedArtifacts } = setup(
+			const { messages, producedArtifacts } = setup(
 				undefined,
 				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' }),
 				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'New agent' }),
 			);
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'aBcDeFgHiJkLmNoP',
+							name: 'New agent',
+							projectId: 'project-1',
+							pending: true,
+						},
+					],
+				}),
+			];
 			await nextTick();
 
 			const entry = producedArtifacts.get('aBcDeFgHiJkLmNoP');

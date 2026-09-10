@@ -92,6 +92,25 @@ describe('workspace tool', () => {
 			expect(context.workspaceService!.listProjects).toHaveBeenCalled();
 			expect(result).toEqual({ projects });
 		});
+
+		it('flags the project the conversation is scoped to', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1', type: 'team' as const },
+				{ id: 'p2', name: 'Project 2', type: 'team' as const },
+			];
+			const context = createMockContext({ projectId: 'p2' });
+			(context.workspaceService!.listProjects as Mock).mockResolvedValue(projects);
+
+			const tool = createWorkspaceTool(context);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
+
+			expect(result).toEqual({
+				projects: [
+					{ id: 'p1', name: 'Project 1', type: 'team' },
+					{ id: 'p2', name: 'Project 2', type: 'team', isCurrentProject: true },
+				],
+			});
+		});
 	});
 
 	describe('list-tags', () => {
@@ -213,6 +232,86 @@ describe('workspace tool', () => {
 			);
 
 			expect(result).toEqual({ folders });
+		});
+	});
+
+	describe('create-folder', () => {
+		function contextWithFolderActions(
+			overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
+				permissions?: Partial<InstanceAiPermissions>;
+			} = {},
+		) {
+			const context = createMockContext(overrides);
+			context.workspaceService!.listFolders = vi.fn();
+			context.workspaceService!.createFolder = vi.fn();
+			context.workspaceService!.deleteFolder = vi.fn();
+			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			return context;
+		}
+
+		it('rejects a folder name containing a slash, before asking for confirmation', async () => {
+			const context = contextWithFolderActions();
+			const tool = createWorkspaceTool(context);
+
+			// An unvalidated slash would make `path` ambiguous with real nesting —
+			// resolveRequestedFolder's stage 2 assumes folder names never contain "/".
+			// The provider-facing schema can't express this (sanitizeInputSchema
+			// strips custom refinements), so the handler must check it itself.
+			const result = await executeTool<{ error?: string }>(
+				tool,
+				{ action: 'create-folder', name: 'Finance/Reports', projectId: 'p1' },
+				{ resumeData: undefined } as never,
+			);
+
+			expect(result.error).toContain('invalid characters');
+			expect(context.workspaceService!.createFolder).not.toHaveBeenCalled();
+		});
+
+		it('creates a folder with a plain name', async () => {
+			const context = contextWithFolderActions({
+				permissions: { createFolder: 'always_allow' },
+			});
+			(context.workspaceService!.createFolder as Mock).mockResolvedValue({
+				id: 'f1',
+				name: 'Reports',
+				parentFolderId: null,
+			});
+			const tool = createWorkspaceTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'create-folder', name: 'Reports', projectId: 'p1' },
+				{ resumeData: undefined } as never,
+			);
+
+			expect(context.workspaceService!.createFolder).toHaveBeenCalledWith(
+				'Reports',
+				'p1',
+				undefined,
+			);
+			expect(result).toEqual({ id: 'f1', name: 'Reports', parentFolderId: null });
+		});
+
+		it('creates the folder with the trimmed name, not the raw input', async () => {
+			const context = contextWithFolderActions({
+				permissions: { createFolder: 'always_allow' },
+			});
+			(context.workspaceService!.createFolder as Mock).mockResolvedValue({
+				id: 'f1',
+				name: 'Reports',
+				parentFolderId: null,
+			});
+			const tool = createWorkspaceTool(context);
+
+			await executeTool(tool, { action: 'create-folder', name: '  Reports  ', projectId: 'p1' }, {
+				resumeData: undefined,
+			} as never);
+
+			expect(context.workspaceService!.createFolder).toHaveBeenCalledWith(
+				'Reports',
+				'p1',
+				undefined,
+			);
 		});
 	});
 

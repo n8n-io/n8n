@@ -1,4 +1,5 @@
 name: 'Test: Workflows Nightly'
+run-name: 'Test: Workflows Nightly (${{ inputs.git_ref_to_test }})'
 
 # Nightly schedule disabled (DEVP-544): the "Run Workflow Tests with Snapshots"
 # job fails the majority of its runs due to host-level port contention on shared

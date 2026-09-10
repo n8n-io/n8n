@@ -30,6 +30,8 @@ const flagsSchema = z.object({
 export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
 
 	async init() {

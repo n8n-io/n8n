@@ -13,11 +13,34 @@ pnpm test:local           											# Starts a local server and runs the E2E te
 N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the running instance
 ```
 
+## Test Layout
+
+Product Playwright tests live under `tests/`. Most product tests are grouped
+under `tests/e2e/`, with infrastructure, performance, evaluation, and other
+test suites beside it.
+
+Framework and harness tests live under `tests/framework/`. These tests verify
+the test framework, fixtures, startup lifecycle, diagnostics, and harness
+contracts. They are not product E2E tests and must not be added under
+`tests/e2e/`.
+
+Run the framework unit tests with the package Vitest configuration:
+
+```bash
+pnpm exec vitest run tests/framework/telemetry.test.ts
+```
+
+Run the browser-backed harness contract tests with the dedicated configuration:
+
+```bash
+pnpm test:harness
+```
+
 ## Develop against running containers (avoid docker rebuilds)
 
 Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
-need `pnpm build:docker` each time. Boot only the services your local `pnpm dev`
-needs, and let dev mode pick them up.
+need `pnpm build:docker` each time. Boot only the services your local dev
+servers need, and let dev mode pick them up.
 
 **Two-terminal workflow:**
 
@@ -27,14 +50,15 @@ needs, and let dev mode pick them up.
 pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy
 
 # Terminal 2 — run n8n locally as usual. It picks up the .env automatically.
-pnpm dev
+# Add `pnpm dev:fe:editor` in a third terminal for frontend hot reload.
+pnpm dev:be
 ```
 
 Scope the `--services` list to what you actually need — booting fewer
 containers makes startup faster.
 
-| Service | What `pnpm dev` gets | Use when… |
-|---------|----------------------|-----------|
+| Service | What dev mode gets | Use when… |
+|---------|--------------------|-----------|
 | `postgres` | `DB_*` vars → PostgreSQL backend | testing migrations or PG-specific queries |
 | `redis` | `QUEUE_*`/`N8N_CACHE_*` → queue mode + cache | testing queue mode or distributed cache |
 | `mailpit` | `N8N_SMTP_*` → captured SMTP at `http://localhost:<mapped-port>` | testing email flows |
@@ -107,14 +131,15 @@ situations where `test:local`'s defaults aren't enough:
   Pin a port with `N8N_BASE_URL=http://localhost:5680 …` when you need a
   stable URL for browser inspection.
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
-  Its `database.sqlite` is fully isolated from your local `~/.n8n` install.
+  n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
+  from your local `~/.n8n` install.
 - **Container-only tests included.** `@capability:*` / `@licensed` /
   `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
   are responsible for detecting the missing container and skipping or falling
   back.
-- **Self-managed n8n.** Boots n8n with a real readiness check against
-  `/rest/e2e/reset` (Playwright's default `webServer` favicon check is racy
-  with slower module startups) and skips Playwright's own webServer.
+- **Self-managed n8n.** Boots n8n with a readiness check against
+  `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
+  Playwright's own webServer.
 
 Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
 

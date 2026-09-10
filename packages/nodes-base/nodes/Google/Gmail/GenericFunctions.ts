@@ -240,6 +240,9 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
+	mailOptions.disableFileAccess = true;
+	mailOptions.disableUrlAccess = true;
+
 	const mail = new MailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.

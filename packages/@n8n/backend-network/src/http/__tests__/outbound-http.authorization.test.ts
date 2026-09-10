@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { Dispatcher } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
@@ -121,8 +122,13 @@ async function startRedirectServer(): Promise<LocalServer> {
 	return server;
 }
 
-function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
+function makeTransport(options?: Parameters<OutboundHttp['transport']>[0], bridge?: SsrfBridge) {
+	const service = bridge ? mock<SsrfProtectionService>(bridge) : mock<SsrfProtectionService>();
+	return new OutboundHttp(
+		service,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<Logger>(),
+	).transport(options);
 }
 
 // Walk the `cause` chain to the deepest error message: undici wraps a
@@ -156,7 +162,11 @@ describe('authorization end-to-end', () => {
 
 	it('authorizes the initial request and every redirect hop before fetching it', async () => {
 		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);
-		const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false, authorize }).asCustomFetch();
+		const fetchFn = makeTransport({
+			useDefaultSsrfPolicy: 'unsafe',
+			proxy: false,
+			authorize,
+		}).asCustomFetch();
 
 		const res = await fetchFn(`${server.url}/start`);
 
@@ -173,7 +183,11 @@ describe('authorization end-to-end', () => {
 			await Promise.resolve();
 			if (url.href.includes('/internal')) throw error;
 		});
-		const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false, authorize }).asCustomFetch();
+		const fetchFn = makeTransport({
+			useDefaultSsrfPolicy: 'unsafe',
+			proxy: false,
+			authorize,
+		}).asCustomFetch();
 
 		const rejection = await fetchFn(`${server.url}/start`).catch((e: unknown) => e);
 
@@ -196,7 +210,7 @@ describe('authorization end-to-end', () => {
 			}),
 		});
 		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);
-		const fetchFn = makeTransport({ ssrf: bridge, proxy: false, authorize }).asCustomFetch();
+		const fetchFn = makeTransport({ proxy: false, authorize }, bridge).asCustomFetch();
 
 		await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
 

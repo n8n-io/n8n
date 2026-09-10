@@ -6,7 +6,6 @@ import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { InputProps } from './Input.types';
 import Input from './Input.vue';
-import './Input.stories.css';
 
 const meta = {
 	title: 'Core/Input',
@@ -75,7 +74,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Text = {
+export const Default = {
 	render: (args: InputProps) => ({
 		components: { Input },
 		setup() {
@@ -83,15 +82,16 @@ export const Text = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" />
-			<p class="input-story-value">Value: {{ value }}</p>
-		</div>
 		`,
 	}),
 	args: {
 		placeholder: 'Enter text...',
 		modelValue: '',
+		size: 'medium',
+		disabled: false,
+		readonly: false,
+		clearable: false,
 	},
 } satisfies Story;
 
@@ -103,9 +103,7 @@ export const TextareaFixedRows = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" />
-		</div>
 		`,
 	}),
 	args: {
@@ -124,9 +122,7 @@ export const TextareaAutosize = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" />
-		</div>
 		`,
 	}),
 	args: {
@@ -145,9 +141,7 @@ export const TextareaAutosizeMinMax = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" />
-		</div>
 		`,
 	}),
 	args: {
@@ -166,9 +160,7 @@ export const Password = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" />
-		</div>
 		`,
 	}),
 	args: {
@@ -186,13 +178,11 @@ export const WithPrefixSlot = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value">
 				<template #prefix>
 					<N8nIcon icon="search" size="small" />
 				</template>
 			</Input>
-		</div>
 		`,
 	}),
 	args: {
@@ -209,13 +199,11 @@ export const WithSuffixSlot = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value">
 				<template #suffix>
 					<N8nIcon icon="check" size="small" />
 				</template>
 			</Input>
-		</div>
 		`,
 	}),
 	args: {
@@ -232,7 +220,6 @@ export const WithPrefixAndSuffixSlots = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value">
 				<template #prefix>
 					<N8nIcon icon="envelope" size="small" />
@@ -241,7 +228,6 @@ export const WithPrefixAndSuffixSlots = {
 					<N8nIcon icon="check" size="small" />
 				</template>
 			</Input>
-		</div>
 		`,
 	}),
 	args: {
@@ -258,10 +244,7 @@ export const Clearable = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
 			<Input v-bind="args" v-model="value" clearable />
-			<p class="input-story-value">Value: {{ value }}</p>
-		</div>
 		`,
 	}),
 	args: {
@@ -278,11 +261,15 @@ export const Disabled = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
-			<h3>Disabled with value</h3>
-			<Input v-bind="args" v-model="value" disabled />
-			<h3 class="input-story-section">Disabled with placeholder</h3>
-			<Input placeholder="Disabled input" disabled />
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<div>
+				<h3>Disabled with value</h3>
+				<Input v-bind="args" v-model="value" disabled />
+			</div>
+			<div>
+				<h3>Disabled with placeholder</h3>
+				<Input placeholder="Disabled input" disabled />
+			</div>
 		</div>
 		`,
 	}),
@@ -299,38 +286,36 @@ export const Sizes = {
 			return { args, value };
 		},
 		template: `
-		<div class="input-story-container">
-			<div style="display: flex; gap: var(--spacing--md); align-items: flex-start;">
-				<div style="display: grid; gap: var(--spacing--3xs);">
-					<Input v-bind="args" v-model="value" size="xlarge" />
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						xlarge (40px)
-					</span>
-				</div>
-				<div style="display: grid; gap: var(--spacing--3xs);">
-					<Input v-bind="args" v-model="value" size="large" />
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						large (36px)
-					</span>
-				</div>
-				<div style="display: grid; gap: var(--spacing--3xs);">
-					<Input v-bind="args" v-model="value" size="medium" />
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						medium (32px)
-					</span>
-				</div>
-				<div style="display: grid; gap: var(--spacing--3xs);">
-					<Input v-bind="args" v-model="value" size="small" />
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						small (28px)
-					</span>
-				</div>
-				<div style="display: grid; gap: var(--spacing--3xs);">
-					<Input v-bind="args" v-model="value" size="mini" />
-					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						mini (24px)
-					</span>
-				</div>
+		<div style="display: flex; gap: var(--spacing--md); align-items: flex-start;">
+			<div style="display: grid; gap: var(--spacing--3xs);">
+				<Input v-bind="args" v-model="value" size="xlarge" />
+				<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					xlarge (40px)
+				</span>
+			</div>
+			<div style="display: grid; gap: var(--spacing--3xs);">
+				<Input v-bind="args" v-model="value" size="large" />
+				<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					large (36px)
+				</span>
+			</div>
+			<div style="display: grid; gap: var(--spacing--3xs);">
+				<Input v-bind="args" v-model="value" size="medium" />
+				<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					medium (32px)
+				</span>
+			</div>
+			<div style="display: grid; gap: var(--spacing--3xs);">
+				<Input v-bind="args" v-model="value" size="small" />
+				<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					small (28px)
+				</span>
+			</div>
+			<div style="display: grid; gap: var(--spacing--3xs);">
+				<Input v-bind="args" v-model="value" size="mini" />
+				<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					mini (24px)
+				</span>
 			</div>
 		</div>
 		`,
@@ -350,14 +335,12 @@ export const InlineWithButton = {
 			return { args, primaryValue, secondaryValue };
 		},
 		template: `
-		<div class="input-story-container">
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
 			<div style="display: flex; gap: var(--spacing--2xs); align-items: center; width: 100%;">
 				<Input v-bind="args" v-model="primaryValue" placeholder="Search workflows" />
 				<N8nButton variant="solid" size="large">Search</N8nButton>
 			</div>
-			<div
-				style="display: flex; gap: var(--spacing--2xs); align-items: center; width: 100%; margin-top: var(--spacing--sm);"
-			>
+			<div style="display: flex; gap: var(--spacing--2xs); align-items: center; width: 100%;">
 				<Input v-bind="args" v-model="secondaryValue" size="medium" placeholder="Invite by email" />
 				<N8nButton variant="subtle" size="medium">Invite</N8nButton>
 			</div>

@@ -1,5 +1,6 @@
 import type {
 	AgentBuilder,
+	AgentMessage,
 	BuiltMemory,
 	BuiltProviderTool,
 	BuiltTool,
@@ -14,6 +15,7 @@ import type {
 	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import {
 	getNativeWebSearchProviderTools,
@@ -62,13 +64,14 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
 
 export interface ToolExecutor {
 	executeTool(toolName: string, input: unknown, ctx: unknown): Promise<unknown>;
-	executeToMessageSync?(toolName: string, output: unknown): unknown;
+	executeToMessage(toolName: string, output: unknown): Promise<AgentMessage | undefined>;
 }
 
 /** Factory function that reconstructs a BuiltMemory backend from serialized params. */
@@ -109,6 +112,8 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/** Policy-aware `fetch` for fallback web-search calls (see `createWebSearchFetch`). */
+	webSearchFetch?: FetchFn;
 	/**
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool is attached without requiring a search provider
@@ -204,6 +209,7 @@ export async function buildFromJson(
 	const fallbackWebSearchTool = buildFallbackWebSearchTool(
 		config,
 		options.credentialProvider,
+		options.webSearchFetch,
 		options.fallbackWebSearch,
 	);
 	if (fallbackWebSearchTool) {
@@ -240,24 +246,6 @@ export async function buildFromJson(
 	return agent;
 }
 
-function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
-}
-
 function getProviderToolPrefix(toolName: string): string | undefined {
 	const dotIndex = toolName.indexOf('.');
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
@@ -276,7 +264,7 @@ export function buildProviderToolsForModel(
 	config: AgentJsonConfig,
 	modelConfig: ModelConfig,
 ): BuiltProviderTool[] {
-	const modelId = modelConfigToModelId(modelConfig);
+	const modelId = modelConfigToId(modelConfig);
 	if (!modelId) return [];
 
 	const providerPrefix = getProviderPrefix(modelId);
@@ -298,6 +286,7 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
@@ -345,11 +334,16 @@ function buildFallbackWebSearchTool(
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(credential.apiUrl, args.query, {
-				maxResults: args.maxResults,
-				includeDomains: args.includeDomains,
-				excludeDomains: args.excludeDomains,
-			});
+			return await searxngSearch(
+				credential.apiUrl,
+				args.query,
+				{
+					maxResults: args.maxResults,
+					includeDomains: args.includeDomains,
+					excludeDomains: args.excludeDomains,
+				},
+				webSearchFetch,
+			);
 		},
 	};
 }
@@ -430,18 +424,24 @@ async function resolveToolRef(
 			if (!descriptor) {
 				throw new Error(`Custom tool "${ref.id}" not found in tool descriptors`);
 			}
-
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
 						parentTelemetry: ctx.parentTelemetry,
 					});
 				},
+				...(descriptor.hasToMessage
+					? {
+							toMessage: async (output: unknown) =>
+								await options.toolExecutor.executeToMessage(descriptor.name, output),
+						}
+					: {}),
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
@@ -462,7 +462,9 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -476,7 +478,9 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -607,6 +611,7 @@ async function resolveModelConfig(
 		config.model,
 		config.credential,
 		credentialProvider,
+		config.modelDeploymentName,
 	);
 }
 

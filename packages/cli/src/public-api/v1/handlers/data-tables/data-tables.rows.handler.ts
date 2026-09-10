@@ -9,6 +9,7 @@ import { Container } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
@@ -21,6 +22,7 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { stringifyQuery } from './data-tables.utils';
 
 const handleError = (error: unknown) => {
 	if (error instanceof DataTableNotFoundError) {
@@ -31,20 +33,6 @@ const handleError = (error: unknown) => {
 	}
 
 	throw error;
-};
-
-/**
- * Convert all query parameter values to strings for DTO validation.
- * Express/Supertest may parse some values as numbers/booleans.
- */
-const stringifyQuery = (query: Record<string, unknown>): Record<string, string | undefined> => {
-	const result: Record<string, string | undefined> = {};
-	for (const [key, value] of Object.entries(query)) {
-		if (value !== undefined && value !== null) {
-			result[key] = String(value);
-		}
-	}
-	return result;
 };
 
 type DataTableRowsHandlers = {
@@ -148,11 +136,9 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				const result = dryRun
-					? await service.updateRows(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.updateRows(dataTableId, projectId, params, true, false)
-						: await service.updateRows(dataTableId, projectId, params, false, false);
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+				const result = await service.updateRows(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {
@@ -179,11 +165,9 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, data, returnData = false, dryRun = false } = payload.data;
 				const params = { filter, data };
 
-				const result = dryRun
-					? await service.upsertRow(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.upsertRow(dataTableId, projectId, params, true, false)
-						: await service.upsertRow(dataTableId, projectId, params, false, false);
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+				const result = await service.upsertRow(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {
@@ -229,11 +213,9 @@ const dataTableRowsHandlers: DataTableRowsHandlers = {
 				const { filter, returnData = false, dryRun = false } = payload.data;
 				const params = { filter };
 
-				const result = dryRun
-					? await service.deleteRows(dataTableId, projectId, params, returnData, true)
-					: returnData
-						? await service.deleteRows(dataTableId, projectId, params, true, false)
-						: await service.deleteRows(dataTableId, projectId, params, false, false);
+				await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+
+				const result = await service.deleteRows(dataTableId, projectId, params, returnData, dryRun);
 
 				return res.json(result);
 			} catch (error) {

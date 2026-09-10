@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { UserAction, FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
@@ -371,6 +371,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -428,7 +430,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	width: 200px;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 

@@ -2,16 +2,10 @@
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
+import type { RecycleScrollerProps } from './RecycleScroller.types';
 import type { ItemWithKey } from '../../types';
 
-interface RecycleScrollerProps {
-	itemSize: number;
-	items: Item[];
-	itemKey: Key;
-	offset?: number;
-}
-
-const props = withDefaults(defineProps<RecycleScrollerProps>(), {
+const props = withDefaults(defineProps<RecycleScrollerProps<Key, Item>>(), {
 	offset: 2,
 });
 
@@ -133,13 +127,15 @@ onMounted(() => {
 
 /** Event handlers */
 
+/** Build the cache once to avoid O(n²) work from copying it for each item. */
 function initializeItemSizeCache() {
-	props.items.forEach((item) => {
-		itemSizeCache.value = {
-			...itemSizeCache.value,
-			[item[props.itemKey]]: props.itemSize,
-		};
-	});
+	const cache = {} as Record<Item[Key], number>;
+
+	for (const item of props.items) {
+		cache[item[props.itemKey]] = props.itemSize;
+	}
+
+	itemSizeCache.value = cache;
 }
 
 function updateItemSizeCache(items: Array<Record<string, string>>) {
@@ -159,10 +155,7 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
 		const difference = size - previousSize;
 
-		itemSizeCache.value = {
-			...itemSizeCache.value,
-			[item[props.itemKey]]: size,
-		};
+		itemSizeCache.value[itemId] = size;
 
 		if (wrapperRef.value && scrollTop.value) {
 			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;

@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -11,8 +13,22 @@ import type {
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
+import {
+	buildChatModelFailureGuidance,
+	classifyChatModelFailure,
+	type ChatModelRecoveryContext,
+} from '../../workflows/chat-model-validation';
+
+export type ChatModelRecoveryOptions = Pick<
+	ChatModelRecoveryContext,
+	'suggestionsByNodeName' | 'creditsCoveredNodeNames'
+>;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
+/** Disclosure for a node whose output came from pin data saved on the workflow. */
+export const WORKFLOW_PIN_SIMULATION_REASON =
+	'Output came from pinned data saved on the workflow — unpin it for a live test';
 
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
@@ -133,10 +149,72 @@ function messageMatchesAny(normalized: string, keywords: readonly string[]): boo
 	return keywords.some((keyword) => normalized.includes(keyword));
 }
 
+function isChatModelScopedFailure(
+	nodeErrors: ExecutionNodeError[],
+	errorMessage: string | undefined,
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+): boolean {
+	if (!chatModelRelatedNodeNames || chatModelRelatedNodeNames.size === 0) return false;
+	if (nodeErrors.some((nodeError) => chatModelRelatedNodeNames.has(nodeError.nodeName))) {
+		return true;
+	}
+	if (lastNodeExecuted && chatModelRelatedNodeNames.has(lastNodeExecuted)) return true;
+	if (!errorMessage) return false;
+	for (const nodeName of chatModelRelatedNodeNames) {
+		if (errorMessage.includes(nodeName)) return true;
+	}
+	return false;
+}
+
+/** Failing node names in match-priority order: erroring nodes first, then the last executed node. */
+function failingNodeCandidates(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+): string[] {
+	const candidates = nodeErrors.map((nodeError) => nodeError.nodeName);
+	if (lastNodeExecuted) candidates.push(lastNodeExecuted);
+	return candidates;
+}
+
+/**
+ * Suggestions scoped to the identified failing node only. When the failing
+ * node cannot be identified, return none rather than another provider's model
+ * IDs — the guidance then falls back to verified-resource discovery.
+ */
+function replacementSuggestionsForFailure(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	suggestionsByNodeName: ChatModelRecoveryOptions['suggestionsByNodeName'] | undefined,
+): string[] {
+	if (!suggestionsByNodeName) return [];
+	for (const name of failingNodeCandidates(nodeErrors, lastNodeExecuted)) {
+		const suggestions = suggestionsByNodeName.get(name);
+		if (suggestions && suggestions.length > 0) return suggestions;
+	}
+	return [];
+}
+
+/** Whether n8n credits cover the identified failing node's credential type. */
+function creditsCoverFailingNode(
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	creditsCoveredNodeNames: ChatModelRecoveryOptions['creditsCoveredNodeNames'] | undefined,
+): boolean {
+	if (!creditsCoveredNodeNames || creditsCoveredNodeNames.size === 0) return false;
+	return failingNodeCandidates(nodeErrors, lastNodeExecuted).some((name) =>
+		creditsCoveredNodeNames.has(name),
+	);
+}
+
 function classifyVerificationFailure(
 	error: string | undefined,
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
+	nodeErrors: ExecutionNodeError[],
+	lastNodeExecuted: string | undefined,
+	chatModelRelatedNodeNames: ReadonlySet<string> | undefined,
+	chatModelRecovery: ChatModelRecoveryOptions | undefined,
 ): RemediationMetadata {
 	if (status === 'waiting') {
 		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
@@ -168,6 +246,17 @@ function classifyVerificationFailure(
 	}
 
 	if (messageMatchesAny(normalized, CREDENTIAL_FAILURE_KEYWORDS)) {
+		const quotaGuidance =
+			normalized.includes('quota') &&
+			isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+				? creditsCoverFailingNode(
+						nodeErrors,
+						lastNodeExecuted,
+						chatModelRecovery?.creditsCoveredNodeNames,
+					)
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
+					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
+				: '';
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
@@ -176,7 +265,7 @@ function classifyVerificationFailure(
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
 				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
-				: 'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").${quotaGuidance}`,
 		});
 	}
 
@@ -187,6 +276,33 @@ function classifyVerificationFailure(
 			reason: 'external_service_or_timeout',
 			guidance:
 				'Workflow submitted successfully, but verification is blocked by an external service or timeout. Stop code edits and explain the blocker to the user.',
+		});
+	}
+
+	const modelFailureKind = classifyChatModelFailure(error);
+	if (
+		modelFailureKind !== undefined &&
+		error &&
+		isChatModelScopedFailure(nodeErrors, error, lastNodeExecuted, chatModelRelatedNodeNames)
+	) {
+		return createRemediation({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'chat_model_failure',
+			guidance: buildChatModelFailureGuidance(
+				modelFailureKind,
+				error,
+				replacementSuggestionsForFailure(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.suggestionsByNodeName,
+				),
+				creditsCoverFailingNode(
+					nodeErrors,
+					lastNodeExecuted,
+					chatModelRecovery?.creditsCoveredNodeNames,
+				),
+			),
 		});
 	}
 
@@ -225,8 +341,20 @@ function buildCoverageNote(
 	result: ExecutionRunResult,
 	success: boolean,
 	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -236,7 +364,18 @@ function buildCoverageNote(
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
 			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
 			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
-			'treating it as verified.'
+			'treating it as verified.' +
+			triggerScopeNote
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			" Any unreached node that IS on this trigger's branch did not receive input items " +
+			'(usually an empty lookup or query) — seed matching test data and re-run before treating ' +
+			'it as verified.'
 		);
 	}
 	const ending = result.lastNodeExecuted
@@ -280,6 +419,7 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;
 	nodesExecuted?: string[];
@@ -287,6 +427,16 @@ export interface VerificationAnalysis {
 	coverageNote?: string;
 	errorMessage?: string;
 	nodeErrors: ExecutionNodeError[];
+}
+
+export function getTriggerMainFlowScope(
+	connections: WorkflowJSON['connections'],
+	triggerNodeName: string,
+): Set<string> {
+	return new Set([
+		triggerNodeName,
+		...getChildNodes(toEngineConnections(connections), triggerNodeName, NodeConnectionTypes.Main),
+	]);
 }
 
 export function analyzeVerificationResult(args: {
@@ -297,15 +447,49 @@ export function analyzeVerificationResult(args: {
 	haltedGateNames?: string[];
 	stateBefore: WorkflowLoopState | undefined;
 	runId: string;
+	/**
+	 * Chat-model nodes plus parents they feed via `ai_languageModel`. Model
+	 * failure keywords are only applied when the failure is scoped to these
+	 * nodes — never globally.
+	 */
+	chatModelRelatedNodeNames?: ReadonlySet<string>;
+	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
+	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
+	/** Main-flow nodes that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
-	const { result, buildOutcome, simulatedNodes, haltedGateNames, stateBefore, runId } = args;
+	const {
+		result,
+		buildOutcome,
+		simulatedNodes,
+		haltedGateNames,
+		stateBefore,
+		runId,
+		chatModelRelatedNodeNames,
+		chatModelRecovery,
+		triggerNodeName,
+		verificationScope,
+	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
-	const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
+	// Nodes fed by pinned data saved on the workflow did not really execute
+	// either — count them as simulated so a pin-fed run never passes as a live
+	// test (INS-1216: stale AI fixtures adopted as pins looked fully verified).
+	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
+		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
+		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
+	const reachedSimulatedNodes = [
+		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
+		...workflowPinnedNodes,
+	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
@@ -321,6 +505,10 @@ export function analyzeVerificationResult(args: {
 				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
 				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
 				buildOutcome,
+				nodeErrors,
+				result.lastNodeExecuted,
+				chatModelRelatedNodeNames,
+				chatModelRecovery,
 			);
 	const budgetRemediation =
 		failureRemediation?.shouldEdit === true
@@ -332,6 +520,7 @@ export function analyzeVerificationResult(args: {
 		success,
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames: workflowPinnedNodes.map((n) => n.nodeName),
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
@@ -341,6 +530,7 @@ export function analyzeVerificationResult(args: {
 			result,
 			success,
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
 		),
 		errorMessage,
 		nodeErrors,

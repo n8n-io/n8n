@@ -37,8 +37,12 @@ export type LangTracerCaseRef = z.infer<typeof caseRefSchema>;
  *  by name on PATCH (upsert + delete missing); a server predating lang-tracer #48
  *  strips the key silently, leaving the old scenarios in place. */
 export type LangTracerUpdateCaseBody = Partial<
-	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic'>
->;
+	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic' | 'seed'>
+> & {
+	/** Explicit `null` CLEARS a stored seed. An omitted key is a server-side no-op,
+	 *  so a disk case that drops its seed needs the null to take effect. */
+	seed?: LangTracerCreateCaseBody['seed'] | null;
+};
 
 export class LangTracerClient {
 	constructor(private readonly config: LangTracerConfig) {}

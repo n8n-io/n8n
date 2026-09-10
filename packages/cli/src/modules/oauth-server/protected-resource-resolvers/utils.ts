@@ -1,3 +1,8 @@
+import type { ConsentUiHints } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { INode } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
  * the gate enforces no scopes and tokens carry none, and an empty list makes
@@ -8,8 +13,43 @@ export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 /** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
 export const FORM_TRIGGER_SCOPES: string[] = [];
 
+/** Consent-screen presentation hints for per-workflow Form trigger resources. */
+export const FORM_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'square-pen',
+	consentType: 'form',
+};
+
 /** Scopes advertised for per-workflow Webhook trigger resources. */
 export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
+
+/** Scopes advertised for per-workflow Chat trigger resources. Empty, like the other triggers. */
+export const CHAT_TRIGGER_SCOPES: string[] = [];
+
+/** Consent-screen presentation hints for per-workflow Chat trigger resources. */
+export const CHAT_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'node:chat-trigger',
+	consentType: 'chat',
+};
+
+/**
+ * A chat trigger is an OAuth protected resource only in the shape the hosted page can actually
+ * serve: enabled, published publicly, on the n8n-hosted page rather than the embedded widget, and
+ * on `n8nUserAuth`. `mode` defaults to `hostedChat` and is stripped from a saved node when left at
+ * its default, so an absent value counts as hosted. Shared by both chat resolvers so the
+ * production and test gates can't drift.
+ */
+export function isOAuthProtectedChatTrigger(node: INode, disablePublicChat: boolean): boolean {
+	const mode = node.parameters.mode ?? 'hostedChat';
+
+	return (
+		node.type === CHAT_TRIGGER_NODE_TYPE &&
+		!node.disabled &&
+		!disablePublicChat &&
+		node.parameters.public === true &&
+		mode === 'hostedChat' &&
+		node.parameters.authentication === 'n8nUserAuth'
+	);
+}
 
 export function trimTrailingSlash(path: string): string {
 	if (path.endsWith('/')) {
@@ -63,6 +103,19 @@ export function resourceUrlToWebhookPath(
 	}
 
 	return url.pathname.slice(basePath.length);
+}
+
+/** `resourceUrlToWebhookPath`, plus the debug log every resolver writes on a miss. */
+export function webhookPathFromResourceUrl(
+	resourceUrl: string,
+	webhookBaseUrl: string,
+	logger: Logger,
+): string | undefined {
+	const pathname = resourceUrlToWebhookPath(resourceUrl, webhookBaseUrl);
+	if (pathname === undefined) {
+		logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
+	}
+	return pathname;
 }
 
 /**

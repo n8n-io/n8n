@@ -109,7 +109,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 				url: 'https://example.com/webhook',
 			});
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(sentOptions).toMatchObject({
 				url: 'https://example.com/webhook',
 				method: 'POST',

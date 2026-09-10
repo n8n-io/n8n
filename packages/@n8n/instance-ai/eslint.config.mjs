@@ -6,8 +6,6 @@ const LAZY_RUNTIME_IMPORT_MESSAGE =
 
 const restrictedLazyRuntimeImports = [
 	'@daytona/sdk',
-	'@joplin/turndown-plugin-gfm',
-	'@mozilla/readability',
 	'csv-parse/sync',
 	'linkedom',
 	'pdf-parse',
@@ -28,6 +26,8 @@ export default defineConfig(
 			// Local eval scratch output — never linted, never committed.
 			'.data/**',
 			'evaluations/.data/**',
+			'evaluations/.output/**',
+			'.output/**',
 			// Deep-imports ai-workflow-builder.ee's evaluations source, so it sits outside
 			// evaluations/tsconfig.json (see its exclude) and the eslint project service.
 			'evaluations/cli/pairwise.ts',
@@ -66,6 +66,19 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/no-unsafe-member-access': 'off',
 			'@typescript-eslint/no-unsafe-argument': 'off',
+		},
+	},
+	{
+		// The eval harness is dev-only tooling: tsconfig.build.json compiles
+		// `src/**` only and `files` ships `dist/**`, so nothing under evaluations/
+		// reaches an installed n8n. Its dev-only imports (playwright-core for the
+		// credential-setup browser lane) therefore belong in devDependencies, and
+		// the default rule — which treats every non-test file as production —
+		// would otherwise force them into `dependencies` and ship them to every
+		// install. Same arrangement as @n8n/ai-workflow-builder.ee's evaluations.
+		files: ['evaluations/**/*.ts'],
+		rules: {
+			'import-x/no-extraneous-dependencies': ['error', { devDependencies: true }],
 		},
 	},
 	{

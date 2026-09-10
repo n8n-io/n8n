@@ -35,21 +35,10 @@ describe('SecuritySettingsController', () => {
 		},
 	} as unknown as AuthenticatedRequest;
 
-	const originalWorkflowReviewsFlag = process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
-		delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
-	});
-
-	afterAll(() => {
-		if (originalWorkflowReviewsFlag === undefined) {
-			delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
-		} else {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = originalWorkflowReviewsFlag;
-		}
 	});
 
 	describe('getSecuritySettings', () => {
@@ -92,8 +81,7 @@ describe('SecuritySettingsController', () => {
 			expect(result.managedByEnv).toBe(true);
 		});
 
-		it('includes workflowReviews when licensed and dev flag is on', async () => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+		it('includes workflowReviews when licensed', async () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			securitySettingsService.getSecuritySettings.mockResolvedValue({
 				personalSpacePublishing: true,
@@ -151,7 +139,6 @@ describe('SecuritySettingsController', () => {
 		});
 
 		it('updates workflowReviews and emits its policy event when available', async () => {
-			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });

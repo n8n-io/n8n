@@ -2,7 +2,7 @@
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
@@ -35,6 +35,19 @@ let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 const showEmptyState = computed(() => {
 	return !isLoading.value && hasFetched.value && workflowOptions.value.length === 0;
 });
+
+const $style = useCssModule();
+
+// `popper-class` is a string prop, so the classes are joined here rather than
+// passed as an object binding.
+const popperClass = computed(() =>
+	[
+		isLoading.value ? $style['mcp-workflows-select-loading'] : '',
+		showEmptyState.value ? $style['mcp-workflows-select-empty'] : '',
+	]
+		.filter(Boolean)
+		.join(' '),
+);
 
 async function searchWorkflows(query?: string) {
 	if (loadingTimeoutId) {
@@ -106,10 +119,7 @@ defineExpose({
 			:remote="true"
 			:remote-method="searchWorkflows"
 			size="medium"
-			:popper-class="{
-				[$style['mcp-workflows-select-loading']]: isLoading,
-				[$style['mcp-workflows-select-empty']]: showEmptyState,
-			}"
+			:popper-class="popperClass"
 			@visible-change="onVisibleChange"
 		>
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">

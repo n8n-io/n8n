@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 import {

@@ -1,4 +1,8 @@
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
+import type {
+	CredentialFetchScope,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { sleep } from '@n8n/utils/sleep';
@@ -73,9 +77,9 @@ export async function getAllCredentials(
 	});
 }
 
-export async function getAllCredentialsForWorkflow(
+export async function getUsableCredentials(
 	context: IRestApiContext,
-	options: { workflowId: string } | { projectId: string },
+	options: CredentialFetchScope,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials/for-workflow', {
 		...options,

@@ -1,0 +1,278 @@
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
+import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Thread } from 'chat';
+
+import { AgentRepository } from '../../../repositories/agent.repository';
+import {
+	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
+	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+	type PlatformAgentContext,
+	type PlatformContextQueryParams,
+	type UnauthenticatedWebhookResponse,
+} from '../../agent-chat-integration';
+import type { ChatInstance } from '../../chat-integration.service';
+import { assertCredentialNotClaimed } from '../../credential-claim';
+import { loadSlackAdapter } from '../../esm-loader';
+import { connectionUnavailable } from '../../integration-helpers';
+import {
+	resolveIntegrationActionDefinitions,
+	resolveIntegrationContextQueryDefinitions,
+} from '../../integration-tool-definitions';
+import type { ReplyExpectation } from '../../integration-tools';
+import {
+	createSlackBridgeExecutionContext,
+	createSlackResumeExecutionContext,
+	getSlackPlatformAgentContext,
+	getSlackReplyExpectation,
+	prepareSlackInboundText,
+} from './slack-bridge-behavior';
+import { SlackManagedSetupService } from './slack-managed-setup.service';
+import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
+
+/**
+ * Slack platform integration.
+ *
+ * Slack callback_data has no small limit, so callback shortening is not required.
+ */
+@Service()
+export class SlackIntegration extends AgentChatIntegration {
+	constructor(private readonly agentRepository: AgentRepository) {
+		super();
+	}
+
+	readonly type = 'slack';
+
+	readonly credentialTypes = ['slackApi'];
+
+	readonly displayLabel = 'Slack';
+
+	readonly displayIcon = 'slack';
+
+	readonly builderGuidance = {
+		capabilities: [
+			'Receive Slack mentions and messages as agent triggers.',
+			'Respond in the latest Slack thread, DM, or channel conversation context.',
+			'Send DMs and channel messages, search users/channels, and add emoji reactions.',
+			'Render rich cards and feedback requests in Slack messages.',
+		],
+		useIntegrationWhen: [
+			'The agent should be chatted with from Slack, invoked with @mentions, or keep conversing in Slack threads.',
+			'The agent needs Slack message context, user/channel lookup, DMs, channel messages, emoji reactions, or rich UI in Slack.',
+			'The agent should communicate as the connected Slack bot rather than merely call Slack as a backend API.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Slack bot.',
+		],
+		useNodeToolWhen: [
+			'Slack is only a backend API step in a broader task and the agent does not need Slack conversation context.',
+			'The Slack operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
+		],
+	};
+
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'select',
+		'radio_select',
+		'divider',
+		'image',
+		'fields',
+	];
+
+	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
+		'get_current_message_context',
+		'get_current_subject',
+		'get_current_user',
+		'get_current_channel_info',
+		'get_user',
+		'get_channel_info',
+		'search_users',
+		'search_channels',
+	]);
+
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'send_dm',
+		'send_channel_message',
+		'add_reaction',
+		'do_not_respond',
+	]);
+
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
+	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		await this.assertStartupPreconditions(ctx);
+	}
+
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
+		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
+	}
+
+	async prepareSentThread(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		if (this.usesAgentMessagingExperience(integration) && this.isConversationScopedDm(thread.id)) {
+			return;
+		}
+		await subscribeSlackThread(thread);
+	}
+
+	messageThreadId(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined {
+		// 1:1 DMs and group DMs (MPIMs) are conversation-scoped. Re-anchoring
+		// each inbound top-level message at its own ts would split that into a
+		// new session per message. Private-channel G ids still re-anchor below.
+		// Outbound still re-anchors so threaded replies bind at the sent
+		// message ts. Threaded inbound already has thread_ts and is not
+		// rewritten below.
+		if (context?.inbound && this.isConversationScopedInbound(message)) return undefined;
+		// Only Slack thread ids are `slack:{channel}:{threadTs}`. A top-level
+		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
+		// anchor it at the message's own id so replies correlate. Already-threaded
+		// messages keep their id.
+		const match = /^slack:([CDG][^:]*):(.*)$/.exec(message.threadId);
+		if (!match) return undefined;
+		const [, channel, threadTs] = match;
+		if (threadTs) return undefined;
+		return `slack:${channel}:${message.id}`;
+	}
+
+	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
+		return getSlackPlatformAgentContext(chat);
+	}
+
+	prepareInboundText(text: string, context: PlatformAgentContext): string {
+		return prepareSlackInboundText(text, context);
+	}
+
+	getReplyExpectation(params: {
+		message: BridgeMessageContextParams['message'];
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): ReplyExpectation {
+		return getSlackReplyExpectation(params);
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return await createSlackBridgeExecutionContext(params);
+	}
+
+	async createResumeExecutionContext(params: {
+		chat: ChatInstance;
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return await createSlackResumeExecutionContext(params);
+	}
+
+	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
+		if (!params.chat) return connectionUnavailable();
+		return await executeSlackContextQuery({
+			chat: params.chat,
+			query: params.query,
+			input: params.input,
+		});
+	}
+
+	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
+		const botToken = this.extractBotToken(ctx.credential);
+		const signingSecret = this.extractSigningSecret(ctx.credential);
+		const { createSlackAdapter } = await loadSlackAdapter();
+		return createSlackAdapter({
+			botToken,
+			signingSecret,
+			agentView: this.usesAgentMessagingExperience(ctx.integration),
+		});
+	}
+
+	/**
+	 * Echo Slack's `url_verification` challenge so the webhook URL can be
+	 * verified during manifest install — before the user has configured the
+	 * bot token + signing secret in n8n. Slack's docs:
+	 * https://api.slack.com/events/url_verification
+	 */
+	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+		if (!body || typeof body !== 'object') return undefined;
+		const evt = body as { type?: unknown; challenge?: unknown };
+		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {
+			return { status: 200, body: { challenge: evt.challenge } };
+		}
+		return undefined;
+	}
+
+	/**
+	 * Extract the bot token from a decrypted Slack bot-token credential.
+	 */
+	private extractBotToken(credential: Record<string, unknown>): string {
+		const token =
+			typeof credential.accessToken === 'string' && credential.accessToken
+				? credential.accessToken
+				: undefined;
+
+		if (!token) {
+			throw new Error(
+				'Could not extract a bot token from the Slack credential. ' +
+					'Please ensure the credential has a valid access token.',
+			);
+		}
+
+		if (!token.startsWith('xoxb-')) {
+			const prefix = token.split('-')[0] ?? 'unknown';
+			throw new Error(
+				`The Slack credential contains a "${prefix}-" token, but agent integrations require a Bot User OAuth Token ("xoxb-"). ` +
+					'You can find this in your Slack app under OAuth & Permissions → Bot User OAuth Token.',
+			);
+		}
+
+		return token;
+	}
+
+	private extractSigningSecret(credential: Record<string, unknown>): string {
+		const secret = credential.signatureSecret;
+		if (typeof secret === 'string' && secret) {
+			return secret;
+		}
+
+		throw new Error(
+			'The Slack credential is missing a signing secret, which is required for agent integrations. ' +
+				'Edit the credential and add your Slack app\'s "Signing Secret" (found under Basic Information in the Slack API dashboard).',
+		);
+	}
+
+	private usesAgentMessagingExperience(integration: AgentIntegrationConfig): boolean {
+		return integration.type === 'slack' && integration.settings?.messagingExperience === 'agent';
+	}
+
+	private isConversationScopedDm(threadId: string): boolean {
+		return /^slack:D[^:]+:$/.test(threadId);
+	}
+
+	private isConversationScopedInbound(message: { threadId: string; raw?: unknown }): boolean {
+		if (this.isConversationScopedDm(message.threadId)) return true;
+		// G is shared by MPIMs and legacy private channels; only MPIMs are
+		// one conversation. Missing channel_type is treated as a channel.
+		return (
+			/^slack:G[^:]+:$/.test(message.threadId) &&
+			isRecord(message.raw) &&
+			message.raw.channel_type === 'mpim'
+		);
+	}
+}

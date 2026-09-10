@@ -1,0 +1,13 @@
+{
+	"id": "mcp-no-registry-match",
+	"userMessage": "Pull up my latest deals from HubSpot and give me a short summary.",
+	"instanceState": {
+		"mcp": { "registry": ["notion", "linear"], "connected": [] }
+	},
+	"expectedToolInvocations": {
+		"allOfToolCalls": [{ "toolName": "mcp-servers", "args": { "action": "search" } }],
+		"noneOfToolCalls": [{ "toolName": "mcp-servers", "args": { "action": "connect" } }]
+	},
+	"rationale": "HubSpot is not in the registry: the agent must search before declaring it unavailable, and must not offer an invented slug or a near-miss server.",
+	"maxSteps": 12
+}

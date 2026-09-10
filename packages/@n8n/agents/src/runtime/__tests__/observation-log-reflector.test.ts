@@ -376,6 +376,10 @@ describe('runObservationLogReflector', () => {
 			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
+			tokenCounter: async (text) => {
+				expect(text).toBe('User compared old plan A and old plan B.');
+				return await Promise.resolve(6);
+			},
 			reflect: async (input) => {
 				expect(input.renderedObservationLog).toContain(`[${stale.id}] INFO`);
 				return await Promise.resolve(
@@ -404,6 +408,7 @@ describe('runObservationLogReflector', () => {
 						marker: 'important',
 						text: 'User compared old plan A and old plan B.',
 						createdAt: new Date('2026-05-12T15:00:00.000Z'),
+						tokenCount: 6,
 					}),
 				],
 			},
@@ -420,6 +425,9 @@ describe('runObservationLogReflector', () => {
 				expect.objectContaining({ id: oldB.id, status: 'superseded' }),
 			]),
 		);
+		await expect(
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'active' }),
+		).resolves.toMatchObject([{ tokenCount: 6 }]);
 	});
 
 	it('warns but still applies reflection output that remains over budget', async () => {

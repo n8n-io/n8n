@@ -4,18 +4,16 @@ Secure, isolated expression evaluation runtime for n8n workflows.
 
 ## Status
 
-**In progress — landing as a series of incremental PRs.**
+**Shipped — the `vm` engine is n8n's default expression engine.**
 
-Implemented so far:
-- ✅ TypeScript interfaces and architecture design (PR 1)
-- ✅ Core architecture documentation (PR 1)
-- ✅ Runtime bundle: extension functions, deep lazy proxy system (PR 2)
-- ✅ `IsolatedVmBridge`: V8 isolate management via `isolated-vm` (PR 3)
-- ✅ `ExpressionEvaluator`: tournament integration, expression code caching (PR 4)
-- ✅ Integration tests (PR 4)
+- ✅ TypeScript interfaces and architecture design
+- ✅ Runtime bundle: extension functions, deep lazy proxy system
+- ✅ `IsolatedVmBridge`: V8 isolate management via `isolated-vm`
+- ✅ `ExpressionEvaluator`: tournament integration, expression code caching, isolate pooling
+- ✅ Workflow integration — default engine; `N8N_EXPRESSION_ENGINE=legacy` opts out
+- ✅ Observability (metrics, traces, logs) wired up in `packages/cli`
 
-Coming in later PRs:
-- 🚧 Workflow integration behind `N8N_EXPRESSION_ENGINE=vm` flag (PR 5)
+Coming later:
 - 🚧 Web Worker support (Phase 2+)
 - 🚧 Performance optimizations (Phase 3)
 
@@ -34,7 +32,7 @@ Future support (Phase 2+):
 
 - 🔒 **Secure**: Expressions run in isolated V8 contexts with memory limits (128MB) and timeouts (5s)
 - 🚀 **Performant**: Lazy data loading via proxies, script compilation caching, and expression code caching
-- 📊 **Observable**: Built-in metrics, traces, and logs support (interfaces defined; providers coming later)
+- 📊 **Observable**: Built-in metrics, traces, and logs support via `ObservabilityProvider`
 - 🌐 **Universal**: Works in Node.js backend (browsers and task runners in Phase 2+)
 - 🛡️ **AST Security**: Tournament AST hooks (`ThisSanitizer`, `PrototypeSanitizer`, `DollarSignValidator`) validate expressions before execution
 
@@ -61,31 +59,32 @@ pnpm add @n8n/expression-runtime
 ```typescript
 import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
 
-// Create bridge
-const bridge = new IsolatedVmBridge({
-  memoryLimit: 128,
-  timeout: 5000,
-});
-
-// Create evaluator
+// Create evaluator with a bridge factory (bridges are pooled)
 const evaluator = new ExpressionEvaluator({
-  bridge,
+  createBridge: () => new IsolatedVmBridge({ memoryLimit: 128, timeout: 5000 }),
+  maxCodeCacheSize: 1024,
 });
 
 // Initialize
 await evaluator.initialize();
 
-// Evaluate expression using {{ }} template syntax
+// Acquire an isolate for a caller, evaluate, release
+const caller = {};
+await evaluator.acquire(caller);
+
 const result = evaluator.evaluate(
   '{{ $json.user.email }}',
   {
     $json: {
       user: { email: 'test@example.com' }
     }
-  }
+  },
+  caller,
 );
 
 console.log(result); // "test@example.com"
+
+await evaluator.release(caller);
 
 // Clean up
 await evaluator.dispose();
@@ -103,9 +102,9 @@ import {
   DollarSignValidator,
 } from 'n8n-workflow/expression-sandboxing';
 
-const bridge = new IsolatedVmBridge({ timeout: 5000 });
 const evaluator = new ExpressionEvaluator({
-  bridge,
+  createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+  maxCodeCacheSize: 1024,
   hooks: {
     before: [ThisSanitizer],
     after: [PrototypeSanitizer, DollarSignValidator],
@@ -117,22 +116,19 @@ await evaluator.initialize();
 
 When `hooks` is omitted the evaluator still runs tournament transformation (template parsing, `this` binding) but without AST security validation — suitable for development and testing.
 
-### With Observability (Not Yet Implemented)
+### With Observability
+
+Pass an `ObservabilityProvider` implementation to emit metrics, traces, and logs for evaluations:
 
 ```typescript
-import { OpenTelemetryProvider } from '@n8n/expression-runtime/observability';
-
-const observability = new OpenTelemetryProvider({
-  serviceName: 'n8n-expressions',
-});
-
 const evaluator = new ExpressionEvaluator({
-  bridge,
+  createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+  maxCodeCacheSize: 1024,
   observability,
 });
 ```
 
-**Note**: Observability providers are not yet implemented. The `ObservabilityProvider` interface exists but no implementations are available yet.
+This package defines the `ObservabilityProvider` interface; the production implementation lives in `packages/cli/src/expression-observability/expression-observability.provider.ts` and is wired up during backend startup. It is controlled via the `N8N_EXPRESSION_ENGINE_OBSERVABILITY_*` and `N8N_EXPRESSION_ENGINE_TRACES_*` environment variables (see below).
 
 ## API
 
@@ -144,7 +140,9 @@ Main class for expression evaluation.
 class ExpressionEvaluator {
   constructor(config: EvaluatorConfig);
   initialize(): Promise<void>;
-  evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
+  acquire(owner: object): Promise<boolean>;
+  evaluate(expression: string, data: WorkflowData, caller: object, options?: EvaluateOptions): unknown;
+  release(owner: object): Promise<void>;
   dispose(): Promise<void>;
   isDisposed(): boolean;
 }
@@ -179,38 +177,41 @@ interface RuntimeBridge {
 
 ```typescript
 interface EvaluatorConfig {
-  bridge: RuntimeBridge;                   // required
-  observability?: ObservabilityProvider;   // optional - interfaces defined, providers not yet implemented
+  createBridge: () => RuntimeBridge;       // required - factory, bridges are pooled
+  maxCodeCacheSize: number;                // required - LRU size for tournament-transformed code
+  observability?: ObservabilityProvider;   // optional - metrics/traces/logs provider
   hooks?: TournamentHooks;                 // optional - AST security hooks for tournament
-}
-
-interface BridgeConfig {
-  memoryLimit?: number;        // Default: 128 MB
-  timeout?: number;            // Default: 5000 ms
-  debug?: boolean;             // Default: false
+  poolSize?: number;                       // optional - pre-warmed bridges, default 1
+  idleTimeoutMs?: number;                  // optional - scale pool to 0 after idle period
+  logger?: Logger;                         // optional - falls back to no-op
 }
 ```
 
-## Environment Variables (Not Yet Implemented)
+## Environment Variables
+
+In n8n, the evaluator is configured via `ExpressionEngineConfig` (`@n8n/config`):
 
 ```bash
-# Bridge configuration (not yet implemented)
-N8N_EXPRESSION_MEMORY_LIMIT_MB=128
-N8N_EXPRESSION_TIMEOUT_MS=5000
-N8N_EXPRESSION_DEBUG=false
+# Engine selection ('vm' is the default; 'legacy' opts out of isolation)
+N8N_EXPRESSION_ENGINE=vm
 
-# Code cache (not yet implemented - caches transformed code, not results)
-N8N_EXPRESSION_CODE_CACHE_ENABLED=true
-N8N_EXPRESSION_CODE_CACHE_MAX_SIZE=1000
+# Isolate pool and code cache
+N8N_EXPRESSION_ENGINE_POOL_SIZE=1
+N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE=1024
+N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT=       # seconds; unset = pool never scales to 0
 
-# Observability (not yet implemented)
-N8N_EXPRESSION_OBSERVABILITY_ENABLED=true
-N8N_EXPRESSION_METRICS_ENABLED=true
-N8N_EXPRESSION_TRACES_ENABLED=true
-N8N_EXPRESSION_TRACE_SAMPLE_RATE=0.01
+# Bridge limits
+N8N_EXPRESSION_ENGINE_TIMEOUT=5000        # ms; positive integer
+N8N_EXPRESSION_ENGINE_MEMORY_LIMIT=128    # MB; minimum 8
+
+# Observability
+N8N_EXPRESSION_ENGINE_OBSERVABILITY_ENABLED=true
+N8N_EXPRESSION_ENGINE_TRACES_ENABLED=true
+N8N_EXPRESSION_ENGINE_SLOW_EVAL_THRESHOLD_MS=50
+N8N_EXPRESSION_ENGINE_TRACES_SAMPLE_RATE=0.0
 ```
 
-**Note**: Currently, configuration is passed via constructor options. Environment variable support will be added in future phases.
+See `packages/@n8n/config/src/configs/expression-engine.config.ts` for the authoritative list and defaults.
 
 ## Development
 
@@ -243,13 +244,18 @@ import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
 
 describe('ExpressionEvaluator', () => {
   it('evaluates simple expression', async () => {
-    const bridge = new IsolatedVmBridge({ timeout: 5000 });
-    const evaluator = new ExpressionEvaluator({ bridge });
+    const evaluator = new ExpressionEvaluator({
+      createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+      maxCodeCacheSize: 1024,
+    });
 
     await evaluator.initialize();
 
-    const result = evaluator.evaluate('{{ $json.value }}', { $json: { value: 42 } });
+    const caller = {};
+    await evaluator.acquire(caller);
+    const result = evaluator.evaluate('{{ $json.value }}', { $json: { value: 42 } }, caller);
     expect(result).toBe(42);
+    await evaluator.release(caller);
 
     await evaluator.dispose();
   });

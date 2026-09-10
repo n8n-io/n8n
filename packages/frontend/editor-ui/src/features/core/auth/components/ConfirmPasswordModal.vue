@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { CONFIRM_PASSWORD_MODAL_KEY } from '@/app/constants';
+import { CONFIRM_PASSWORD_MODAL_KEY } from '../auth.constants';
 import Modal from '@/app/components/Modal.vue';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { createFormEventBus } from '@n8n/design-system';
 import type { IFormInputs, IFormInput, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { confirmPasswordEventBus } from '../auth.eventBus';
 
 import { N8nButton, N8nFormInputs, N8nText } from '@n8n/design-system';
+
+// DynamicModalLoader's modal-state props must not reach the dialog root.
+defineOptions({ inheritAttrs: false });
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const loading = ref(false);

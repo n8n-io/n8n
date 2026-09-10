@@ -1,4 +1,5 @@
 name: 'Release: Attach SBOM'
+run-name: 'Release: Attach SBOM for n8n@${{ inputs.n8n_version }}'
 
 on:
   workflow_call:
@@ -26,15 +27,16 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
+permissions: {}
 
 jobs:
   generate-sbom:
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     name: Generate and Attach SBOM to Release
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 15
     # No continue-on-error: SBOM is now the source of truth for
     # THIRD_PARTY_LICENSES.md (served by the /third-party-licenses endpoint

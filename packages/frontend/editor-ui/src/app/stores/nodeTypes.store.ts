@@ -34,7 +34,7 @@ import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTrans
 import { computed, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import type { WorkflowObjectAccessors } from '../types';
 

@@ -9,7 +9,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
+import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
 
@@ -35,7 +35,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
-	const workflowSharingService = mockInstance(WorkflowSharingService);
+	mockInstance(WorkflowSharingService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -161,7 +161,7 @@ describe('InsightsController', () => {
 		describe('with query filters', () => {
 			const mockRepositoryResponse: Array<{
 				period: 'previous' | 'current';
-				type: 0 | 1 | 2 | 3;
+				type: TypeUnitNumber;
 				total_value: string | number;
 			}> = [
 				{ period: 'previous', type: TypeToNumber.success, total_value: 16 },
@@ -207,6 +207,25 @@ describe('InsightsController', () => {
 				});
 
 				expect(response).toEqual(expectedResponse);
+			});
+
+			it('should forward the timeZone query filter down to the repository', async () => {
+				const startDate = DateTime.now().minus({ days: 12, hours: 12 }).toJSDate();
+				const endDate = DateTime.now().minus({ days: 4, hours: 5 }).toJSDate();
+
+				insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+					mockRepositoryResponse,
+				);
+
+				await controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+					startDate,
+					endDate,
+					timeZone: 'Europe/Berlin',
+				});
+
+				expect(
+					insightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+				).toHaveBeenCalledWith(expect.objectContaining({ timeZone: 'Europe/Berlin' }));
 			});
 
 			it('should default the endDate to today when not provided', async () => {
@@ -345,13 +364,6 @@ describe('InsightsController', () => {
 				timeSaved: 0,
 			},
 		];
-
-		beforeEach(() => {
-			// getSharedWorkflowIds returns all workflow IDs for the owner-like user
-			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(
-				mockRows.map((row) => row.workflowId),
-			);
-		});
 
 		it('should return empty insights by workflow if no data', async () => {
 			// ARRANGE

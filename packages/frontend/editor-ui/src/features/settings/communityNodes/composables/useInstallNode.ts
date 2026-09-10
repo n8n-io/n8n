@@ -9,7 +9,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';

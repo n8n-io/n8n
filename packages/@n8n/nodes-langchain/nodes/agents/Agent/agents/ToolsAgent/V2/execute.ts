@@ -21,7 +21,10 @@ import assert from 'node:assert';
 
 import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
-import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import {
+	getFailureType,
+	wrapLangChainParserError,
+} from '@utils/output_parsers/langchainParserError';
 import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
@@ -414,7 +417,9 @@ export async function toolsAgentExecute(
 			batchResults.forEach((result, index) => {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
-					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex);
+					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex, {
+						enrichNonParserErrors: true,
+					});
 					failedItems++;
 					if (this.continueOnFail()) {
 						returnData.push({
@@ -459,9 +464,12 @@ export async function toolsAgentExecute(
 
 		return [returnData];
 	} catch (error) {
-		failureType =
-			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
-		throw error;
+		failureType = getFailureType(error);
+		// Failures raised outside the per-item batch handling (model/memory setup,
+		// parameter assertions) are still raw here, so enrich them the same way.
+		throw wrapLangChainParserError(error, this.getNode(), undefined, {
+			enrichNonParserErrors: true,
+		});
 	} finally {
 		applyAgentTracingMetadata(this, {
 			toolCalls,

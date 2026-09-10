@@ -2,12 +2,15 @@ import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { SEED_NAME_RE } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
+	evictLeftoverSeedTables,
 	reseedScenarioTables,
 	scenariosRequireSerialSeeding,
+	uniquifyScenarioTableNames,
 } from '../harness/seed-tables';
 import type { ExecutionScenario } from '../types';
 
@@ -145,6 +148,49 @@ function makeClient(seedDataTableRows: Mock): N8nClient {
 }
 
 describe('reseedScenarioTables', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('reduces the next request budget by the time spent seeding earlier tables', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now += 600;
+			await Promise.resolve();
+		});
+
+		await reseedScenarioTables(
+			makeClient(seedDataTableRows),
+			scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+			'thread-1',
+			{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+			silentLogger,
+			2_000,
+		);
+
+		expect(seedDataTableRows.mock.calls.map((call) => call[3])).toEqual([1_000, 400]);
+	});
+
+	it('does not seed the next table when the previous request consumes the deadline', async () => {
+		let now = 1_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+		const seedDataTableRows = vi.fn<N8nClient['seedDataTableRows']>(async () => {
+			now = 2_000;
+			await Promise.resolve();
+		});
+
+		await expect(
+			reseedScenarioTables(
+				makeClient(seedDataTableRows),
+				scenario({ seedDataTables: [jobApplications, { ...jobApplications, name: 'Second' }] }),
+				'thread-1',
+				{ 'Job Applications': 'dt-real-1', Second: 'dt-real-2' },
+				silentLogger,
+				2_000,
+			),
+		).rejects.toThrow('Case timed out');
+		expect(seedDataTableRows).toHaveBeenCalledTimes(1);
+	});
+
 	it('clears + seeds each declared table by its bound real id', async () => {
 		const seedDataTableRows = vi.fn().mockResolvedValue(undefined);
 		const client = makeClient(seedDataTableRows);
@@ -157,7 +203,12 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', jobApplications.rows);
+		expect(seedDataTableRows).toHaveBeenCalledWith(
+			'thread-1',
+			'dt-real-1',
+			jobApplications.rows,
+			undefined,
+		);
 	});
 
 	it('seeds an empty row set when a table declares no rows', async () => {
@@ -173,7 +224,7 @@ describe('reseedScenarioTables', () => {
 			silentLogger,
 		);
 
-		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', []);
+		expect(seedDataTableRows).toHaveBeenCalledWith('thread-1', 'dt-real-1', [], undefined);
 	});
 
 	it('does nothing when the scenario declares no seed tables', async () => {
@@ -199,5 +250,120 @@ describe('reseedScenarioTables', () => {
 			),
 		).rejects.toThrow(/Job Applications/);
 		expect(seedDataTableRows).not.toHaveBeenCalled();
+	});
+});
+
+describe('uniquifyScenarioTableNames', () => {
+	it('suffixes each table so two runs of one case do not contend for the name', () => {
+		const [first] = uniquifyScenarioTableNames([jobApplications]);
+		const [second] = uniquifyScenarioTableNames([jobApplications]);
+
+		expect(first.name).toMatch(/^Job Applications \[seed [0-9a-f]{8}\]$/);
+		expect(second.name).not.toBe(first.name);
+		expect(SEED_NAME_RE.exec(first.name)?.[1]).toBe('Job Applications');
+	});
+
+	it('shares one suffix across a case, and keeps columns and rows intact', () => {
+		const other = { ...jobApplications, id: 'other-1234', name: 'Other' };
+		const [a, b] = uniquifyScenarioTableNames([jobApplications, other]);
+
+		expect(a.name.replace('Job Applications', '')).toBe(b.name.replace('Other', ''));
+		expect(a.columns).toEqual(jobApplications.columns);
+		expect(a.rows).toEqual(jobApplications.rows);
+	});
+
+	it('keeps the suffixed name inside the 128-char column bound', () => {
+		const [long] = uniquifyScenarioTableNames([{ ...jobApplications, name: 'x'.repeat(200) }]);
+		expect(long.name.length).toBe(128);
+	});
+});
+
+describe('evictLeftoverSeedTables', () => {
+	const leftover = { id: 'left-1', name: 'Job Applications [seed 1a2b3c4d]' };
+
+	function evictClient(
+		tables: Array<{ id: string; name: string }>,
+		deleteDataTable: Mock = vi.fn(),
+	): N8nClient {
+		return {
+			getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
+			listDataTables: vi.fn().mockResolvedValue(tables),
+			deleteDataTable,
+		} as unknown as N8nClient;
+	}
+
+	it('deletes a leftover seed table for a declared name', async () => {
+		const deleteDataTable = vi.fn();
+		await evictLeftoverSeedTables(
+			evictClient([leftover], deleteDataTable),
+			[jobApplications],
+			new Set(['left-1']),
+			silentLogger,
+		);
+		expect(deleteDataTable).toHaveBeenCalledWith('project-1', 'left-1');
+	});
+
+	// The snapshot is taken before any build on the lane, so a table created DURING
+	// the run belongs to an in-flight iteration — deleting it would break that run.
+	it('leaves a table absent from the pre-run snapshot alone', async () => {
+		const deleteDataTable = vi.fn();
+		await evictLeftoverSeedTables(
+			evictClient([leftover], deleteDataTable),
+			[jobApplications],
+			new Set(['someone-else']),
+			silentLogger,
+		);
+		expect(deleteDataTable).not.toHaveBeenCalled();
+	});
+
+	// A name past the column bound loses its tail before the suffix goes on, so the
+	// stored base is the truncated one — matching on the declared name found nothing
+	// and the leftover accumulated run after run.
+	it('matches a leftover whose base was truncated to fit the column bound', async () => {
+		const deleteDataTable = vi.fn();
+		const longName = 'x'.repeat(200);
+		const [stored] = uniquifyScenarioTableNames([{ ...jobApplications, name: longName }]);
+		await evictLeftoverSeedTables(
+			evictClient([{ id: 'left-long', name: stored.name }], deleteDataTable),
+			[{ ...jobApplications, name: longName }],
+			new Set(['left-long']),
+			silentLogger,
+		);
+		expect(deleteDataTable).toHaveBeenCalledWith('project-1', 'left-long');
+	});
+
+	it('never touches a table without the seed suffix, or one of another case', async () => {
+		const deleteDataTable = vi.fn();
+		await evictLeftoverSeedTables(
+			evictClient(
+				[
+					{ id: 'real', name: 'Job Applications' },
+					{ id: 'other', name: 'Invoices [seed 1a2b3c4d]' },
+				],
+				deleteDataTable,
+			),
+			[jobApplications],
+			new Set(['real', 'other']),
+			silentLogger,
+		);
+		expect(deleteDataTable).not.toHaveBeenCalled();
+	});
+
+	it('does nothing without a snapshot, and never fails the build on an API error', async () => {
+		const deleteDataTable = vi.fn();
+		await evictLeftoverSeedTables(
+			evictClient([leftover], deleteDataTable),
+			[jobApplications],
+			undefined,
+			silentLogger,
+		);
+		expect(deleteDataTable).not.toHaveBeenCalled();
+
+		const broken = {
+			getPersonalProjectId: vi.fn().mockRejectedValue(new Error('boom')),
+		} as unknown as N8nClient;
+		await expect(
+			evictLeftoverSeedTables(broken, [jobApplications], new Set(['left-1']), silentLogger),
+		).resolves.toBeUndefined();
 	});
 });

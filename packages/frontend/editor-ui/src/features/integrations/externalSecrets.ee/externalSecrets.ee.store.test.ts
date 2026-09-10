@@ -74,7 +74,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 // Mock settings store
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			[EnterpriseEditionFeature.ExternalSecrets]: true,

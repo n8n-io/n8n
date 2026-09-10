@@ -1,4 +1,9 @@
-import { PaginationDto, MAX_ITEMS_PER_PAGE, createTakeValidator } from '../pagination.dto';
+import {
+	PaginationDto,
+	MAX_ITEMS_PER_PAGE,
+	createTakeValidator,
+	publicApiPaginationSchema,
+} from '../pagination.dto';
 
 describe('PaginationDto', () => {
 	describe('valid inputs', () => {
@@ -145,5 +150,37 @@ describe('PaginationDto', () => {
 				expect(result.data).toBe(customMaxItems);
 			}
 		});
+
+		test('should fall back to 10 when no default is given', () => {
+			expect(createTakeValidator(MAX_ITEMS_PER_PAGE).parse(undefined)).toBe(10);
+		});
+
+		test('should apply a custom default when take is omitted', () => {
+			expect(createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50).parse(undefined)).toBe(50);
+		});
+
+		// The default is a fallback, not a floor or ceiling.
+		test('should let an explicit take override a custom default', () => {
+			const validator = createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50);
+
+			expect(validator.parse('5')).toBe(5);
+			expect(validator.parse('9999')).toBe(MAX_ITEMS_PER_PAGE);
+		});
+	});
+});
+
+describe('publicApiPaginationSchema', () => {
+	const limit = publicApiPaginationSchema.limit;
+
+	test('defaults limit to 100', () => {
+		expect(limit.parse(undefined)).toBe(100);
+	});
+
+	test('caps limit at MAX_ITEMS_PER_PAGE', () => {
+		expect(limit.parse('300')).toBe(MAX_ITEMS_PER_PAGE);
+	});
+
+	test('rejects a non-numeric limit', () => {
+		expect(limit.safeParse('abc').success).toBe(false);
 	});
 });

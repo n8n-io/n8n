@@ -1,8 +1,12 @@
+import { Container } from '@n8n/di';
 import { type Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import {
 	type FormFieldsParameter,
+	type IUser,
 	type IWebhookFunctions,
 	type NodeTypeAndVersion,
 	NodeOperationError,
@@ -11,11 +15,18 @@ import {
 
 import { renderFormNode, getFormTriggerNode } from '../utils/formNodeUtils';
 
+Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
+
 describe('formNodeUtils', () => {
 	let webhookFunctions: MockProxy<IWebhookFunctions>;
 
 	beforeEach(() => {
 		webhookFunctions = mock<IWebhookFunctions>();
+		webhookFunctions.getRequestObject.mockReturnValue({
+			method: 'GET',
+			headers: { host: 'localhost:5678' },
+			protocol: 'http',
+		} as never);
 	});
 
 	afterEach(() => {
@@ -261,6 +272,102 @@ describe('formNodeUtils', () => {
 				buttonLabel: '={{ 1 + 1 }}',
 			}),
 		);
+	});
+
+	// The next page is reached by navigating to it, which can present no header, so
+	// the page render also hands it the token as a cookie.
+	describe('form page auth cookie', () => {
+		const authedUser: IUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+
+		const renderAuthedPage = async () => {
+			webhookFunctions.getNode.mockReturnValue({
+				id: 'page-node',
+				webhookId: 'page-webhook',
+				typeVersion: 2.5,
+			} as never);
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+				formTitle: 'Test Title',
+				formDescription: '',
+				buttonLabel: 'Submit',
+			});
+			webhookFunctions.getWorkflow.mockReturnValue({
+				id: 'workflow-1',
+				name: 'wf',
+				active: true,
+			});
+			webhookFunctions.getExecutionId.mockReturnValue('execution-1');
+			webhookFunctions.evaluateExpression.mockReturnValue(
+				'http://localhost:5678/form-waiting/execution-1' as never,
+			);
+			const cookie = vi.fn();
+			const render = vi.fn();
+			const res = mock<Response>({ render, cookie } as never);
+			webhookFunctions.getResponseObject.mockReturnValue(res);
+
+			await renderFormNode(
+				webhookFunctions,
+				res,
+				mock<NodeTypeAndVersion>({ name: 'triggerName' } as never),
+				[],
+				'production',
+				authedUser,
+			);
+
+			return { cookie, render };
+		};
+
+		it('is set for an authenticated submitter, scoped to the form-waiting path', async () => {
+			const { cookie } = await renderAuthedPage();
+
+			expect(cookie).toHaveBeenCalledWith(
+				// Named for the run, so concurrent forms don't overwrite each other.
+				'n8n-form-auth-ex-execution-1',
+				expect.any(String),
+				expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/form-waiting' }),
+			);
+		});
+
+		it('carries the workflow and the execution the page belongs to', async () => {
+			const { cookie } = await renderAuthedPage();
+
+			const [, token] = cookie.mock.calls[0] as [string, string];
+			expect(jwt.decode(token)).toMatchObject({
+				sub: authedUser.id,
+				wfid: 'workflow-1',
+				eid: 'execution-1',
+			});
+		});
+
+		it('ships the client-side credential-gate handling for an authenticated submitter', async () => {
+			const { render } = await renderAuthedPage();
+
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ hasAuthenticatedSubmitter: true }),
+			);
+		});
+
+		it('is not set when the page has no authenticated submitter', async () => {
+			webhookFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as never);
+			webhookFunctions.getNodeParameter.calledWith('options').mockReturnValue({});
+			const cookie = vi.fn();
+			const res = mock<Response>({ render: vi.fn(), cookie } as never);
+
+			await renderFormNode(
+				webhookFunctions,
+				res,
+				mock<NodeTypeAndVersion>({ name: 'triggerName' } as never),
+				[],
+				'production',
+			);
+
+			expect(cookie).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getFormTriggerNode', () => {

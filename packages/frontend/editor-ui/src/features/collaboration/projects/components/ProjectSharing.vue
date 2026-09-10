@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import type { SelectSize } from '@n8n/design-system/types';
+import { isIconOrEmoji, type IconOrEmoji, type SelectSize } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';

@@ -1,3 +1,4 @@
+import { INSTANCE_AI_DISABLED } from './ai-assistant-fixtures';
 import type { TestRequirements } from '../Types';
 
 /**
@@ -11,6 +12,7 @@ export const workflowBuilderEnabledRequirements: TestRequirements = {
 			aiAssistant: { enabled: true, setup: true },
 			aiBuilder: { enabled: true, setup: true },
 		},
+		moduleSettings: INSTANCE_AI_DISABLED,
 		features: {
 			aiAssistant: true,
 			aiBuilder: true,

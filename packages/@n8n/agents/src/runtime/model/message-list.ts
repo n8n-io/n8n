@@ -4,12 +4,26 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
-import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import type {
+	AgentDbMessage,
+	AgentMessage,
+	ContentToolCall,
+	ToolCallSuspensionInfo,
+} from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
+import { compareKeyset } from '../memory/memory-store';
 import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
 
 export type { SerializedMessageList };
+
+/**
+ * Synthetic user message prepended to the LLM window when observation masking
+ * leaves it empty or starting with a non-user message. Built per `forLlm` call —
+ * never added to the list, persisted, or serialized.
+ */
+export const OBSERVATION_CONTINUATION_REMINDER =
+	'<system-reminder>Earlier conversation was compacted into the observation log in your system prompt. Continue the task naturally from where the log leaves off. Do not repeat work the log records as completed, and do not mention this compaction or your memory to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -23,7 +37,8 @@ export type LlmContext = {
  * are both kept out of it and folded into a second, uncached system message
  * instead — either would otherwise change the bytes under the instruction
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
- * call, for no future read.
+ * call, for no future read. Providers that do not support multiple system
+ * messages receive one merged message instead.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -31,6 +46,7 @@ export function buildSystemMessages(
 	instructionProviderOptions?: ProviderOptions,
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
+	splitSystemMessages = true,
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
@@ -41,10 +57,10 @@ export function buildSystemMessages(
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0) {
+	if (volatileSections.length === 0 || !splitSystemMessages) {
 		return {
 			role: 'system',
-			content: baseInstructions,
+			content: [baseInstructions, ...volatileSections].join('\n\n'),
 			...cacheOptions,
 		};
 	}
@@ -80,6 +96,8 @@ type MessageSource = 'history' | 'input' | 'response';
  * the full three-way source distinction survives a round-trip.
  */
 export class AgentMessageList {
+	activeSkillIds?: string[];
+
 	private all: AgentDbMessage[] = [];
 
 	private historySet = new Set<AgentDbMessage>();
@@ -89,6 +107,14 @@ export class AgentMessageList {
 	private responseSet = new Set<AgentDbMessage>();
 
 	private lastCreatedAt: number = 0;
+
+	/**
+	 * Observation-cursor keyset boundary. When set, messages at or before it are
+	 * hidden from the LLM window (`forLlm`) but remain in `all` for turnDelta /
+	 * responseDelta / serialize. Runtime-only — not serialized; resume paths
+	 * re-derive it from the persisted cursor.
+	 */
+	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -255,6 +281,20 @@ export class AgentMessageList {
 		return host;
 	}
 
+	/**
+	 * Record on a pending tool-call block what confirmation the user was shown
+	 * (HITL suspension). No-op when the toolCallId is unknown or the block is
+	 * already settled. Lets a later history load of an abandoned suspension
+	 * explain the unanswered confirmation instead of silently dropping it.
+	 */
+	markToolCallSuspended(toolCallId: string, suspension: ToolCallSuspensionInfo): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (block?.state !== 'pending') return;
+		block.suspension = suspension;
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -281,14 +321,23 @@ export class AgentMessageList {
 	 * Full LLM context for a generateText / streamText call.
 	 * Returns the system prompt separately (observation-log memory and any
 	 * volatile tool-instruction fragments in their own uncached system
-	 * message when present) and conversation messages stripped via
-	 * filterLlmMessages.
+	 * message when the provider supports split system messages) and
+	 * conversation messages stripped via filterLlmMessages.
 	 */
 	forLlm(
 		baseInstructions: string,
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
+		splitSystemMessages = true,
 	): LlmContext {
+		const messages = toAiMessages(
+			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
+		);
+		// A masked window may be empty or start mid-exchange; anchor it with a
+		// synthetic user message so the model call stays valid.
+		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
+			messages.unshift({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
+		}
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
@@ -296,9 +345,43 @@ export class AgentMessageList {
 				instructionProviderOptions,
 				volatileInstructions,
 				this.mcpConnectionNote,
+				splitSystemMessages,
 			),
-			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
+			messages,
 		};
+	}
+
+	/**
+	 * Hide messages at or before the observation cursor from the LLM window.
+	 * Later calls overwrite the boundary (cursors only move forward).
+	 */
+	maskObservedMessages(cursor: { lastObservedAt: Date; lastObservedMessageId: string }): void {
+		// Store adapters are an open interface: a JSON-backed one can hand back
+		// lastObservedAt as an ISO string. An unusable date would compare as NaN
+		// and mask every message, so fail open and leave the window unmasked.
+		const lastObservedAt =
+			cursor.lastObservedAt instanceof Date
+				? cursor.lastObservedAt
+				: new Date(cursor.lastObservedAt);
+		if (isNaN(lastObservedAt.getTime())) return;
+		this.observationMaskBoundary = {
+			createdAt: lastObservedAt,
+			id: cursor.lastObservedMessageId,
+		};
+	}
+
+	/** Messages visible to the LLM: everything after the observation mask boundary. */
+	llmVisibleMessages(): AgentDbMessage[] {
+		const boundary = this.observationMaskBoundary;
+		if (!boundary) return this.all;
+		return this.all.filter((m) => {
+			// createdAt can be an ISO string after a checkpoint JSON round-trip. An
+			// unparseable date cannot be compared — keep the message visible rather
+			// than silently dropping it from the window.
+			const createdAt = getCreatedAt(m);
+			if (!createdAt) return true;
+			return compareKeyset({ createdAt, id: m.id }, boundary) > 0;
+		});
 	}
 
 	/**
@@ -337,19 +420,25 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
+			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
+		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);
 		for (const m of data.messages) {
-			list.all.push(m);
-			if (historyIdSet.has(m.id)) list.historySet.add(m);
-			if (inputIdSet.has(m.id)) list.inputSet.add(m);
-			if (responseIdSet.has(m.id)) list.responseSet.add(m);
+			// createdAt is an ISO string after the checkpoint JSON round-trip —
+			// rehydrate so downstream consumers can rely on the declared Date type.
+			const createdAt = getCreatedAt(m) ?? m.createdAt;
+			const msg = createdAt === m.createdAt ? m : { ...m, createdAt };
+			list.all.push(msg);
+			if (historyIdSet.has(msg.id)) list.historySet.add(msg);
+			if (inputIdSet.has(msg.id)) list.inputSet.add(msg);
+			if (responseIdSet.has(msg.id)) list.responseSet.add(msg);
 		}
 		list.sortAllByCreatedAt();
 		return list;

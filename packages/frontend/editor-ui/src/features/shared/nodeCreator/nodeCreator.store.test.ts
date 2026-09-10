@@ -19,7 +19,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -148,21 +148,25 @@ describe('useNodeCreatorStore', () => {
 			settingsStore.isAiGatewayEnabled = true;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).toHaveBeenCalled();
 		});
 
-		it('does not fetch the gateway config when AI Gateway is disabled', () => {
+		it('does not fetch the gateway config or wallet when AI Gateway is disabled', () => {
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isAiGatewayEnabled = false;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).not.toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
 		});
 	});
 

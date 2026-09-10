@@ -16,8 +16,12 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
-import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import {
+	buildInstanceAiArtifactCredentialQuestion,
+	buildInstanceAiCredentialHandoffContext,
+} from '../composables/useInstanceAiHandoff';
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
@@ -32,15 +36,18 @@ export interface WorkflowFailuresReport {
 const props = withDefaults(
 	defineProps<{
 		workflowId: string;
+		/** Node whose NDV opens after the workflow loads. */
+		initialNodeId?: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
 		/** Latest completed execution produced by the agent for this workflow. */
 		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0, executionResult: undefined },
+	{ initialNodeId: undefined, refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
+	'initial-node-id-consumed': [];
 	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
@@ -108,6 +115,23 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	reportWorkflowFailures,
 });
 
+let pendingInitialNodeId = props.initialNodeId;
+
+function handleWorkflowLoaded(workflowId: string) {
+	restoreExecutionResult();
+
+	const nodeId = pendingInitialNodeId;
+	pendingInitialNodeId = undefined;
+	if (!nodeId) return;
+	emit('initial-node-id-consumed');
+
+	const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const node = documentStore.getNodeById(nodeId);
+	if (!node) return;
+
+	useNDVStore(documentStore.documentId).setActiveNodeName(node.name, 'other');
+}
+
 // === Editing lock ===
 // Lock the artifact's editor while the agent is working, so the user can't
 // drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
@@ -160,10 +184,14 @@ const rootStore = useRootStore();
 // already the thread's subject, which hides the editor hand-off button here.
 const instanceAiCapability: InstanceAiEditorCapability = {
 	openCredential: async (credential) => {
+		// The handoff context carries the recipe's verified key page and the
+		// paste-only steering; without it the agent re-researches or suggests
+		// editing the pre-filled form.
 		void thread.sendMessage(
 			buildInstanceAiArtifactCredentialQuestion(credential),
 			undefined,
 			rootStore.pushRef,
+			buildInstanceAiCredentialHandoffContext(credential),
 		);
 		// Appends to the current thread → close the modal so the conversation shows.
 		return true;
@@ -180,7 +208,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
-			@workflow-loaded="restoreExecutionResult"
+			@workflow-loaded="handleWorkflowLoaded"
 		/>
 	</div>
 </template>

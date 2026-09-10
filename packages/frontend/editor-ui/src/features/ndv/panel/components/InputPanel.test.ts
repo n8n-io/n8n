@@ -138,8 +138,8 @@ describe('InputPanel', () => {
 	it("opens mapping tab by default if the node hasn't run yet", async () => {
 		const { findByTestId } = render({ activeNodeName: 'Tool' });
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).not.toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).not.toBeChecked();
 	});
 
 	it('opens debugging tab by default if the node has already run', async () => {
@@ -155,7 +155,7 @@ describe('InputPanel', () => {
 			],
 		});
 
-		expect((await findByTestId('radio-button-mapping')).parentNode).not.toBeChecked();
-		expect((await findByTestId('radio-button-debugging')).parentNode).toBeChecked();
+		expect(await findByTestId('radio-button-mapping')).not.toBeChecked();
+		expect(await findByTestId('radio-button-debugging')).toBeChecked();
 	});
 });

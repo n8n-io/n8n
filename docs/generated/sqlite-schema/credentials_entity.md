@@ -17,7 +17,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
-| id | varchar(36) |  | false | [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -50,6 +50,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 ```mermaid
 erDiagram
 
+"agent_credential_dependency" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "chat_hub_agents" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "chat_hub_sessions" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "credential_dependency" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -73,6 +74,11 @@ erDiagram
   varchar_32_ type
   datetime_3_ updatedAt
   VARCHAR_16_ usageScope
+}
+"agent_credential_dependency" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  varchar_36_ credentialId PK
 }
 "chat_hub_agents" {
   datetime_3_ createdAt

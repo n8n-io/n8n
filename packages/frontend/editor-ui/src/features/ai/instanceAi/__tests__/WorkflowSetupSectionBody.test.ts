@@ -44,6 +44,16 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		getCredentialTypeByName: () => ({ displayName: 'HTTP Basic Auth' }),
 		getCredentialById: () => undefined,
+		// Non-empty so the inline-form gate resolves to the (stubbed) NodeCredentials selector.
+		getUsableCredentialByType: () => [{ id: 'cred-1', name: 'Existing' }],
+	}),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
 	}),
 }));
 

@@ -1,5 +1,5 @@
-import { toJsonValue } from '@n8n/utils/json/to-json-value';
-import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import type { JSONSchema7 } from 'json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
@@ -7,9 +7,21 @@ import {
 } from './delegate-sub-agent-tool';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	guardToolErrorForModel,
+	guardToolMessageForModel,
+	guardToolResultForModel,
+	type ToolResultGuardStorage,
+} from './tool-result-guard';
+import {
+	protectUntrustedToolError,
+	protectUntrustedToolMessage,
+	protectUntrustedToolResult,
+} from './untrusted-tool-output';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
@@ -23,9 +35,12 @@ import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/mes
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
+import type { WorkspaceFilesystem } from '../../workspace/types';
 import { incrementToolCallCount } from '../loop/execution-counter';
+import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
+import type { TokenCounter } from '../model/model-token-counter';
 import type { AgentEventBus } from '../state/event-bus';
 import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
@@ -53,7 +68,7 @@ type ToolCallOutcome =
 	| {
 			outcome: 'suspended';
 			payload: unknown;
-			resumeSchema: JsonSchema7Type;
+			resumeSchema: JSONSchema7;
 			continuation?: JSONValue;
 	  }
 	| {
@@ -84,7 +99,7 @@ export interface ToolCallSuspension {
 	input: JSONValue;
 	payload: unknown;
 	/** JSON Schema describing the shape of resume data, derived from the tool's resumeSchema. */
-	resumeSchema: JsonSchema7Type;
+	resumeSchema: JSONSchema7;
 }
 
 /** Info about a tool call that failed — carries enough data for stream chunks. */
@@ -163,19 +178,22 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
-): JsonSchema7Type | undefined {
+): JSONSchema7 | undefined {
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
-	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
+	return isZodSchema(resolvedSchema) ? zodSchemaToJsonSchema(resolvedSchema) : resolvedSchema;
 }
 
 export interface ToolCallExecutorDeps {
+	loadSkill?: RuntimeSkillLoader;
 	telemetry: RuntimeTelemetry;
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */
 	concurrency: number;
 	/** Invoked when a run is aborted mid-batch so the runtime can set cancelled state. */
 	onCancelled: () => void;
+	tokenCounter: TokenCounter;
+	workspaceFilesystem?: WorkspaceFilesystem;
 }
 
 /**
@@ -186,7 +204,14 @@ export interface ToolCallExecutorDeps {
  * emission are owned by the caller.
  */
 export class ToolCallExecutor {
+	private offloadedToolResults = false;
+
 	constructor(private readonly deps: ToolCallExecutorDeps) {}
+
+	/** Whether any tool result was offloaded to the workspace filesystem during this runtime's lifetime. */
+	get hasOffloadedToolResults(): boolean {
+		return this.offloadedToolResults;
+	}
 
 	private get telemetry(): RuntimeTelemetry {
 		return this.deps.telemetry;
@@ -658,7 +683,7 @@ export class ToolCallExecutor {
 		const builtTool = toolMap.get(toolName);
 
 		if (!builtTool) {
-			return this.toolError(params, new Error(`Tool ${toolName} not found`));
+			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
 		}
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
@@ -738,14 +763,15 @@ export class ToolCallExecutor {
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
-			return this.toolError(params, error as Error);
+
+			return await this.toolError(params, error, builtTool);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
 
-		return this.buildSuccessOutcome(params, builtTool, input, toolResult);
+		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
 	private async runCancellationCleanup(
@@ -841,8 +867,18 @@ export class ToolCallExecutor {
 		});
 	}
 
-	/** Emit a failed ToolExecutionEnd, record the error on the list, return an error outcome. */
-	private toolError(params: ProcessToolCallParams, error: unknown): ToolCallOutcome {
+	/**
+	 * Emit a failed ToolExecutionEnd, record the error on the list, return an
+	 * error outcome. Pass `builtTool` only for errors authored by the tool
+	 * itself (handler or transform failures) so runtime-authored errors such as
+	 * input validation stay plain; tool-authored text from untrusted tools is
+	 * wrapped before the size guard so any offloaded copy stays protected.
+	 */
+	private async toolError(
+		params: ProcessToolCallParams,
+		error: unknown,
+		builtTool?: BuiltTool,
+	): Promise<ToolCallOutcome> {
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId: params.toolCallId,
@@ -850,7 +886,15 @@ export class ToolCallExecutor {
 			result: error,
 			isError: true,
 		});
-		params.list.setToolCallError(params.toolCallId, error);
+		const errorText = stringifyError(error);
+		const guardedError = await guardToolErrorForModel(
+			builtTool?.outputTrust === 'untrusted'
+				? protectUntrustedToolError(errorText, builtTool)
+				: errorText,
+			this.deps.tokenCounter,
+			this.getResultStorage(params),
+		);
+		params.list.setToolCallError(params.toolCallId, guardedError);
 		return { outcome: 'error', error };
 	}
 
@@ -917,10 +961,10 @@ export class ToolCallExecutor {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
-			return {
-				ok: false,
-				outcome: this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
-			};
+			const reason = result.schemaInvalid
+				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
+				: `Invalid tool input: ${result.error}`;
+			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
 	}
@@ -956,6 +1000,7 @@ export class ToolCallExecutor {
 						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
+							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
@@ -978,13 +1023,19 @@ export class ToolCallExecutor {
 		if (builtTool.suspendSchema) {
 			const parseResult = await parseWithSchema(builtTool.suspendSchema, toolResult.payload);
 			if (!parseResult.success) {
-				return this.toolError(params, new Error(`Invalid suspend payload: ${parseResult.error}`));
+				return await this.toolError(
+					params,
+					new Error(`Invalid suspend payload: ${parseResult.error}`),
+				);
 			}
-			toolResult.payload = parseResult.data as JSONValue;
+			toolResult.payload = parseResult.data;
 		}
 		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
 		if (!resumeSchema) {
-			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+			return await this.toolError(
+				params,
+				new Error(`Tool ${params.toolName} has no resume schema`),
+			);
 		}
 		return {
 			outcome: 'suspended',
@@ -995,23 +1046,35 @@ export class ToolCallExecutor {
 	}
 
 	/** Apply toModelOutput, emit ToolExecutionEnd, build the success outcome. */
-	private buildSuccessOutcome(
+	private async buildSuccessOutcome(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
 		toolResult: unknown,
-	): ToolCallOutcome {
+	): Promise<ToolCallOutcome> {
 		const { toolCallId, toolName, list } = params;
 
 		// Apply toModelOutput transform before emitting the success event.
 		// If the transform throws, treat it as a tool error so processToolCall
 		// never re-throws (preserving the "never re-throws" contract).
+		// Untrusted results are wrapped before the size guard so any offloaded
+		// or truncated copy stays protected while the guard's own envelope
+		// remains plain runtime text.
 		let modelResult: unknown;
 		try {
 			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+			if (builtTool.outputTrust === 'untrusted') {
+				modelResult = protectUntrustedToolResult(modelResult, builtTool);
+			}
 		} catch (error) {
-			return this.toolError(params, error);
+			return await this.toolError(params, error, builtTool);
 		}
+		const storage = this.getResultStorage(params);
+		const guardedResult = await guardToolResultForModel(
+			modelResult,
+			this.deps.tokenCounter,
+			storage,
+		);
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1021,11 +1084,25 @@ export class ToolCallExecutor {
 			isError: false,
 		});
 
-		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
+		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
 
-		const customMessage = builtTool.toMessage?.(toolResult);
-		if (customMessage) {
-			list.addResponse([customMessage]);
+		let customMessage = await builtTool.toMessage?.(toolResult);
+		if (customMessage && builtTool.outputTrust === 'untrusted') {
+			customMessage = protectUntrustedToolMessage(customMessage, builtTool);
+		}
+		let guardedCustomMessage = customMessage
+			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
+			: undefined;
+		// Stamp tool provenance so derived transcripts (e.g. the observation
+		// log observer) can keep this content inside untrusted-data boundaries.
+		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
+			guardedCustomMessage = {
+				...guardedCustomMessage,
+				origin: { kind: 'tool', toolName },
+			};
+		}
+		if (guardedCustomMessage) {
+			list.addResponse([guardedCustomMessage]);
 		}
 
 		return {
@@ -1036,8 +1113,23 @@ export class ToolCallExecutor {
 				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},
-			modelOutput: modelResult,
-			customMessage,
+			modelOutput: guardedResult.wireOutput,
+			customMessage: guardedCustomMessage,
+		};
+	}
+
+	private getResultStorage(params: ProcessToolCallParams): ToolResultGuardStorage | undefined {
+		const filesystem = this.deps.workspaceFilesystem;
+		if (!filesystem) return undefined;
+
+		return {
+			filesystem,
+			runId: params.runId,
+			toolCallId: params.toolCallId,
+			onOffloaded: () => {
+				this.offloadedToolResults = true;
+			},
+			...(params.abortSignal ? { abortSignal: params.abortSignal } : {}),
 		};
 	}
 }

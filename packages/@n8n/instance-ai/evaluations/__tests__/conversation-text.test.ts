@@ -1,6 +1,8 @@
+import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
 	agentTurnsAsText,
+	caseDisplayPrompt,
 	conversationUserTurnsAsText,
 	lastAgentText,
 	perTurnToolCallCounts,
@@ -88,6 +90,75 @@ describe('conversationUserTurnsAsText', () => {
 		const conversation: ConversationTurn[] = [{ role: 'assistant', text: 'hello' }];
 		expect(conversationUserTurnsAsText(conversation)).toBe('');
 	});
+
+	// The editor hands the agent a resource reference, not text, so the faithful
+	// hand-off is `text: '' + attach`. Filtered as empty, it would hand the
+	// prompt-aware checks (fulfills-user-request) an EMPTY prompt.
+	it('names an attached workflow so a text-less hand-off is not dropped', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe('[attached workflow: Batch loop]');
+	});
+
+	it('keeps both the attachment and the text when the user typed something', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: 'why is this failing?', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe(
+			'[attached workflow: Batch loop] why is this failing?',
+		);
+	});
+
+	// `attach.workflow` is an id; the id means nothing to a prompt-aware check, so
+	// the note carries the name the seed declares for it (what the live path shows).
+	it('names the attachment by the seed workflow name, not its id', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } },
+		];
+		expect(conversationUserTurnsAsText(conversation, seedDeclaring('Batch loop'))).toBe(
+			'[attached workflow: Batch loop]',
+		);
+	});
+});
+
+/** An inline seed declaring one workflow under the id the tests attach. */
+function seedDeclaring(name: string): CaseSeed {
+	return {
+		mode: 'inline',
+		messages: [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'user',
+				createdAt: '2020-01-01T00:00:00.000Z',
+				content: [{ type: 'text', text: 'earlier' }],
+			},
+		],
+		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
+		dataTables: [],
+		agents: [],
+		projects: [],
+	};
+}
+
+describe('caseDisplayPrompt', () => {
+	it('uses the first authored turn', () => {
+		expect(caseDisplayPrompt({ conversation: [{ role: 'user', text: 'build a webhook' }] })).toBe(
+			'build a webhook',
+		);
+	});
+
+	// Without this the report labels, the comparison table and `Running case: ""`
+	// all come out empty for the faithful hand-off shape.
+	it('names the attachment when the opening turn carries no text', () => {
+		expect(
+			caseDisplayPrompt({
+				conversation: [{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } }],
+				seed: seedDeclaring('Batch loop'),
+			}),
+		).toBe('[attached workflow: Batch loop]');
+	});
 });
 
 describe('transcriptAsText', () => {
@@ -166,6 +237,30 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
 	});
+
+	it('surfaces ask-user question types for process expectations', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				steps: [
+					{
+						kind: 'ask-user',
+						questions: [
+							{
+								id: 'service',
+								question: 'Which service?',
+								type: 'single',
+								options: ['RocketChat', 'Zulip'],
+							},
+						],
+					},
+				],
+			},
+		];
+
+		expect(transcriptAsText(transcript)).toContain(
+			'Q (single): Which service? [RocketChat / Zulip]',
+		);
+	});
 });
 
 describe('perTurnToolCallCounts', () => {
@@ -203,5 +298,33 @@ describe('lastAgentText', () => {
 			{ userMessage: 'and now?', steps: [] },
 		];
 		expect(lastAgentText(transcript)).toBe('latest');
+	});
+
+	// An analysis case lost a legitimate green here: the agent's closing
+	// "which should I build?" sat past a 2000-char cut while the stored
+	// transcript held it in full, so the judge graded an answer that had no
+	// ask in it. Narration is what process expectations read; tool payloads
+	// are what cost tokens.
+	it('keeps a long assistant answer whole while still capping tool payloads', () => {
+		const answer = `${'a'.repeat(2400)} SO WHICH ONE SHOULD I BUILD?`;
+		const transcript: TranscriptTurn[] = [
+			{
+				userMessage: 'analyse this',
+				steps: [
+					{ kind: 'agent-text', text: answer },
+					{
+						kind: 'tool-call',
+						toolName: 'workflow-connections',
+						args: {},
+						result: { blob: 'z'.repeat(9000) },
+					},
+				],
+			},
+		];
+		const text = transcriptAsText(transcript);
+
+		expect(text).toContain('SO WHICH ONE SHOULD I BUILD?');
+		expect(text).toContain('more chars');
+		expect(text.length).toBeLessThan(answer.length + 6000);
 	});
 });

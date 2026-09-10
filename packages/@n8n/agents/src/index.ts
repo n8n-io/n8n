@@ -25,7 +25,9 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
@@ -98,16 +100,20 @@ export type {
 	ObservationLogStatus,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	TokenCounter,
+	FinishReason,
 } from './types';
+export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
 export type { AgentEventData, AgentEventHandler } from './types';
 export {
-	estimateObservationTokens,
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
 } from './types';
+export {
+	estimateObservationTokens,
+	type TokenCounter,
+} from './runtime/model/model-token-counter';
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
@@ -117,7 +123,24 @@ export {
 	raceWithAbort,
 	throwIfAborted,
 } from './sdk/abort';
-export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
+export {
+	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+	ModelStreamStallError,
+} from './runtime/streaming/stream-stall';
+export {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	wrapToolForApproval,
+	sanitizeToolName,
+} from './sdk/tool';
+export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
+export {
+	stripInvisibleUnicode,
+	UNTRUSTED_OUTPUT_DOCTRINE,
+	wrapUntrustedData,
+} from './sdk/untrusted-content';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -154,6 +177,10 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type {
+	VolatileInstructionsContext,
+	VolatileInstructionsProvider,
+} from './runtime/loop/agent-runtime';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
@@ -195,6 +222,8 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -205,6 +234,12 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
+export {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './runtime/mcp/mcp-content';
+export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -239,6 +274,7 @@ export type {
 	ModelInfo,
 	ModelCost,
 	ModelLimits,
+	ModelModalities,
 } from './sdk/catalog';
 export { BaseMemory } from './storage/base-memory';
 export { BaseVectorStore } from './storage/base-vector-store';
@@ -346,6 +382,7 @@ export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,
@@ -403,7 +440,12 @@ export type {
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
-export { createWorkspaceTools } from './workspace';
+export {
+	CORE_WORKSPACE_TOOL_NAMES,
+	createScopedWorkspace,
+	createWorkspaceTools,
+	reconcileToolResultRuns,
+} from './workspace';
 export { SandboxProcessManager, ProcessHandle } from './workspace';
 
 export type {
@@ -440,4 +482,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
+export { modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

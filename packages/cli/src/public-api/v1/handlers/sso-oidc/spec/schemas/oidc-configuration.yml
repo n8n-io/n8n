@@ -8,6 +8,7 @@ required:
   - prompt
   - authenticationContextClassReference
   - additionalScopes
+  - emailVerifiedRequired
   - rpInitiatedLogoutEnabled
 properties:
   clientId:
@@ -48,6 +49,12 @@ properties:
       Additional scopes to request, space separated. n8n always requests `openid`, `profile`
       and `email`.
     example: groups roles
+  emailVerifiedRequired:
+    type: boolean
+    description: >
+      Whether the identity provider must assert that the user's email address is verified before
+      the login is accepted. When disabled, only an explicit negative assertion is rejected.
+    example: false
   rpInitiatedLogoutEnabled:
     type: boolean
     description: >

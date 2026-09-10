@@ -6,13 +6,11 @@ import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-// Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
-const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
 
@@ -113,23 +111,27 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		const hashedToken = sha256(context.identity);
 
-		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${hashedToken}`;
+		// Fold the options that decide the subject into the key, so a reconfigured
+		// resolver cannot keep serving subjects cached under its previous settings.
+		const optionsFingerprint = sha256(`${options.subjectClaim}:${options.expectedAudience ?? ''}`);
+		const identifierCacheKey = `${CACHE_PREFIX}:subject:${metadata.issuer}:${optionsFingerprint}:${hashedToken}`;
 		const cached = await this.cache.get<string>(identifierCacheKey);
 		if (cached) {
 			return cached;
 		}
 
-		let ttl = DEFAULT_CACHE_TIMEOUT;
 		const { subject, ttl: ttlOverwrite } = await this.resolveBasedOnTokenIntrospection(
 			metadata,
 			options,
 			context,
 		);
-		if (ttlOverwrite) {
-			ttl = ttlOverwrite;
-		}
 
-		await this.cache.set(identifierCacheKey, subject, ttl);
+		// `??`, not truthiness: a zero TTL means the token is spent, and caching the
+		// subject under the default would keep resolving it after it expired.
+		const ttl = ttlOverwrite ?? DEFAULT_CACHE_TIMEOUT;
+		if (ttl > 0) {
+			await this.cache.set(identifierCacheKey, subject, ttl);
+		}
 		return subject;
 	}
 
@@ -250,6 +252,18 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			throw new IdentifierValidationError('Token is not active');
 		}
 
+		// Client authentication proves the IdP will answer us; `active` proves the token
+		// is live. Neither says it was addressed to us, so bind it before trusting a
+		// subject. Opt-in: with no audience configured there is nothing to compare against.
+		if (options.expectedAudience) {
+			assertAudience(introspectionData, options.expectedAudience);
+		} else {
+			this.logger.warn(
+				'OAuth2 resolver has no expected audience configured, so access tokens are not bound to this instance. Set an expected audience on the resolver.',
+				{ issuer: metadata.issuer },
+			);
+		}
+
 		const subject = introspectionData[options.subjectClaim];
 		if (!subject) {
 			this.logger.error(
@@ -264,15 +278,12 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 
 		this.logger.debug('Token introspected successfully', { subject: subjectStr });
 
-		let ttl: number | undefined = undefined;
-		if (introspectionData.exp) {
-			const expiresIn = introspectionData.exp * 1000 - Date.now();
-			if (expiresIn > 0) {
-				ttl = Math.max(MIN_TOKEN_CACHE_TIMEOUT, Math.min(expiresIn, MAX_TOKEN_CACHE_TIMEOUT));
-			} else {
-				ttl = MIN_TOKEN_CACHE_TIMEOUT;
-			}
-		}
+		// `resolve` serves a cached subject without re-introspecting, so the entry must
+		// never outlive the token itself.
+		const ttl =
+			introspectionData.exp === undefined
+				? undefined
+				: Math.min(Math.max(introspectionData.exp * 1000 - Date.now(), 0), MAX_TOKEN_CACHE_TIMEOUT);
 
 		return { subject: subjectStr, ttl };
 	}

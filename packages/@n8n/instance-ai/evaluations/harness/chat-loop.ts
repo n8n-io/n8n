@@ -11,13 +11,15 @@
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
+import { lastSavedWorkflowIdFromEvents, savedWorkflowsFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
@@ -275,10 +277,31 @@ function formatMemoryTasksForLog(
 // Multi-turn conversation loop
 // ---------------------------------------------------------------------------
 
-export type NextMessageDecision = { kind: 'followUp'; message: string } | { kind: 'done' };
+export type NextMessageDecision =
+	| {
+			kind: 'followUp';
+			message: string;
+			/**
+			 * The user-proxy asked for the last saved workflow to be renamed from
+			 * outside the conversation, driven by a stage direction. Lets a case
+			 * exercise the optimistic-concurrency path ("modified outside this
+			 * conversation"), which the agent otherwise only reaches by accident when
+			 * its own setup or credential work happens to advance the checksum.
+			 */
+			renameWorkflowTo?: string;
+			/** A normal user run, performed before delivering the next message. */
+			runWorkflowId?: string;
+	  }
+	| { kind: 'done' };
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
+	/** Restore the case's declared input rows before a normal user execution. */
+	beforeUserExecution?: (deadline: number) => Promise<void>;
+	allowUserExecution?: boolean;
+	/** Repeat the eval override on each message to bypass the backend assignment. */
+	buildMode?: InstanceAiBuildMode;
+	promptVersion?: string;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -298,17 +321,145 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 			return;
 		}
 
+		// After the decision, so an edit never lands on the boundary that ends the
+		// conversation: there the agent would get no turn to react, and the renamed
+		// workflow would still be what the judge and workflow checks read.
+		if (decision.renameWorkflowTo !== undefined) {
+			await applyExternalRename(config, decision.renameWorkflowTo);
+		}
+
+		// Before the follow-up is delivered, so a "I just ran it" message is true
+		// by the time the agent reads it and inspects the executions list.
+		if (decision.runWorkflowId !== undefined) {
+			if (!config.allowUserExecution) throw new Error('User executions are disabled for this case');
+			await applyUserExecution(config, decision.runWorkflowId);
+		}
+
+		if (Date.now() - config.startTime >= config.timeoutMs) return;
+
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
 		recordUserTurn(config.events, decision.message);
 		try {
-			await config.client.sendMessage(config.threadId, decision.message);
+			await config.client.sendMessage(
+				config.threadId,
+				decision.message,
+				undefined,
+				config.buildMode,
+				config.promptVersion,
+			);
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);
 			return;
 		}
+	}
+}
+
+/**
+ * Renames the workflow this run last saved, from outside the conversation — the
+ * side effect behind a `renameWorkflowTo` stage direction.
+ *
+ * The proxy only ever sees the transcript, so it decides a workflow exists from
+ * what the agent *claimed*. Both guards below re-derive that from ground truth
+ * before writing anything.
+ *
+ * Logging is deliberately loud on every path. Skips and failures are `warn`, and
+ * the success is `info` rather than `verbose` — the failure that matters most is
+ * a direction that stops driving `renameWorkflowTo` at all, and that one never
+ * reaches this function, so it cannot log anything itself. Printing the rename
+ * in a normal run is what makes its ABSENCE meaningful: without it, a case whose
+ * direction silently stopped working reds on its name assertion and reads as an
+ * agent regression, with nothing in the log to say the conflict never happened.
+ *
+ * A failure is logged and swallowed rather than thrown — the case grades the
+ * agent's recovery, and killing the run here would report that as a build
+ * failure instead.
+ */
+async function applyExternalRename(config: MultiTurnConfig, rename: string): Promise<void> {
+	// Only builds that actually SAVED. Failed builds are excluded deliberately:
+	// they still report a workflowId, and acting on one would rename a workflow
+	// this run never created (an attached or pre-existing one). Last rather than
+	// first — the proxy fires at a turn boundary, so "the workflow under
+	// discussion" is the most recent one to reach the instance.
+	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
+	if (workflowId === undefined) {
+		config.logger.warn(
+			`[external-edit] Skipped rename to "${rename}": this run has saved no workflow yet, so there is nothing to conflict`,
+		);
+		return;
+	}
+
+	try {
+		const current = await config.client.getWorkflow(workflowId);
+		if (current.name === rename) {
+			// Re-issuing the same rename advances the checksum a second time and
+			// re-conflicts a save the agent may already have recovered from, which
+			// would grade a successful recovery as a failure.
+			config.logger.warn(
+				`[external-edit] Skipped rename of ${workflowId}: it is already named "${rename}"`,
+			);
+			return;
+		}
+
+		await config.client.updateWorkflow(workflowId, { name: rename });
+		config.logger.info(
+			`[external-edit] Renamed ${workflowId} from "${current.name}" to "${rename}" outside the conversation`,
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger.warn(
+			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
+		);
+	}
+}
+
+/** Use the normal execution route so the agent can inspect user-run evidence. */
+async function applyUserExecution(config: MultiTurnConfig, workflowId: string): Promise<void> {
+	if (!savedWorkflowsFromEvents(config.events).some((workflow) => workflow.id === workflowId)) {
+		throw new Error(`User-run workflow ${workflowId} was not saved in this conversation`);
+	}
+	const remainingMs = () => {
+		const remaining = config.timeoutMs - (Date.now() - config.startTime);
+		if (remaining <= 0) throw new Error('Case timed out before the user execution completed');
+		return remaining;
+	};
+	remainingMs();
+	await config.beforeUserExecution?.(config.startTime + config.timeoutMs);
+	const workflow = await config.client.getWorkflow(workflowId, remainingMs());
+	if (Object.keys(workflow.pinData ?? {}).length > 0) {
+		throw new Error('User-run evals require a workflow without pinned data');
+	}
+	if (workflow.nodes.some((node) => Object.keys(node.credentials ?? {}).length > 0)) {
+		throw new Error('User-run evals require a workflow without credentials');
+	}
+	const trigger = workflow.nodes.find((node) =>
+		['n8n-nodes-base.manualTrigger', 'n8n-nodes-base.scheduleTrigger'].includes(node.type),
+	);
+	if (!trigger) throw new Error('User-run evals require a manual or schedule trigger');
+
+	const { executionId } = await config.client.executeWorkflow(
+		workflowId,
+		trigger.name,
+		remainingMs(),
+	);
+	try {
+		while (true) {
+			const execution = await config.client.getExecution(executionId, remainingMs());
+			if (isTerminalExecutionStatus(execution.status)) {
+				config.logger.info(
+					`[user-run] Executed ${workflowId}: status=${execution.status} executionId=${executionId}`,
+				);
+				return;
+			}
+			await delay(Math.min(POLL_INTERVAL_MS, remainingMs()));
+		}
+	} catch (error) {
+		await config.client.stopExecution(executionId).catch(() => {
+			config.logger.warn(`[user-run] Could not stop execution ${executionId}`);
+		});
+		throw error;
 	}
 }
 

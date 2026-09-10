@@ -122,6 +122,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -157,9 +158,6 @@ const LazyNodeCreation = defineAsyncComponent(
 const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
 );
-const LazyNodeDetailsViewV2 = defineAsyncComponent(
-	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
-);
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 	async () =>
@@ -178,6 +176,9 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({
 	router,
+	// This is the canvas, so this instance drives autosave — and a preview host
+	// wrapping it can scope it read-only, which no other consumer can see.
+	ownsAutoSave: true,
 	onSaved: (isFirstSave) => {
 		canvasEventBus.emit('saved:workflow', { isFirstSave });
 	},
@@ -209,6 +210,7 @@ const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
+const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -298,8 +300,6 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() => true);
-
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
 const {
@@ -329,6 +329,8 @@ const groupExpansionMode = computed<GroupExpansionMode | undefined>(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
+	// A protected instance blocks every manual run, even a demo canvas that requests ?canExecute=true.
+	if (isReadOnlyEnvironment.value) return false;
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
@@ -593,10 +595,27 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-async function onCopyNodes(ids: string[]) {
-	await copyNodes(ids);
+// The MCP nudge modal lives at the app root and outlives this view. If the user navigates
+// away while it is open, a deferred copy, paste, or import must not run against whatever
+// workflow is shown by then.
+let isUnmounted = false;
+function isStillOnWorkflow(originWorkflowId: string) {
+	return !isUnmounted && workflowId.value === originWorkflowId;
+}
 
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+async function onCopyNodes(ids: string[]) {
+	const originWorkflowId = workflowId.value;
+	const copy = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
+
+		await copyNodes(ids);
+
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	};
+
+	await mcpJsonNudgeTrigger.gate('copy', copy);
 }
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
@@ -643,13 +662,22 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	const result = await importWorkflowData(workflowData, 'paste', {
-		importTags: false,
-		viewport: viewportBoundaries.value,
-	});
-	const ids = result.nodes?.map((node) => node.id) ?? [];
+	const originWorkflowId = workflowId.value;
+	const paste = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
 
-	canvasRef.value?.ensureNodesAreVisible(ids);
+		const result = await importWorkflowData(workflowData, 'paste', {
+			importTags: false,
+			viewport: viewportBoundaries.value,
+		});
+		const ids = result.nodes?.map((node) => node.id) ?? [];
+
+		canvasRef.value?.ensureNodesAreVisible(ids);
+	};
+
+	await mcpJsonNudgeTrigger.gate('paste', paste);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -677,7 +705,7 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 		return;
 	}
 
-	toggleNodesPinned(ids, source);
+	void toggleNodesPinned(ids, source);
 }
 
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -762,7 +790,7 @@ async function onOpenRenameNodeModal(id: string) {
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
 		}
-	} catch (e) {}
+	} catch {}
 }
 
 async function onRevertRenameNode({
@@ -832,7 +860,7 @@ async function loadCredentials() {
 		options = { projectId };
 	}
 
-	await credentialsStore.fetchAllCredentialsForWorkflow(options);
+	await credentialsStore.fetchUsableCredentials(options);
 }
 
 /**
@@ -924,11 +952,20 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
-	await importWorkflowData(workflowData, 'url', {
-		viewport: viewportBoundaries.value,
-	});
+	const originWorkflowId = workflowId.value;
+	const importUrl = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
 
-	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+		await importWorkflowData(workflowData, 'url', {
+			viewport: viewportBoundaries.value,
+		});
+
+		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+	};
+
+	await mcpJsonNudgeTrigger.gate('import_url', importUrl);
 }
 
 function addImportEventBindings() {
@@ -1972,6 +2009,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	isUnmounted = true;
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	toast.clearAllStickyNotifications();
 	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
@@ -2147,19 +2185,6 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
-					v-if="!isNDVV2"
-					:read-only="isCanvasReadOnly"
-					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
-					:renaming="false"
-					@value-changed="onRenameNode($event.value as string)"
-					@stop-execution="onStopExecution"
-					@switch-selected-node="onSwitchActiveNode"
-					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-				/>
-			</Suspense>
-			<Suspense>
-				<LazyNodeDetailsViewV2
-					v-if="isNDVV2"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"
@@ -2180,6 +2205,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
 @use '@n8n/design-system/css/common/var';
 
 .wrapper {
@@ -2198,7 +2224,7 @@ onBeforeUnmount(() => {
 	bottom: var(--spacing--sm);
 	width: auto;
 
-	@include mixins.breakpoint('sm-only') {
+	@include breakpoints.breakpoint('sm-only') {
 		left: auto;
 		right: var(--spacing--sm);
 		transform: none;

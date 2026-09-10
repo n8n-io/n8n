@@ -4,7 +4,7 @@ import AskAssistantChat from './AskAssistantChat.vue';
 import type { ChatUI, WorkflowSuggestion } from '../../types/assistant';
 
 export default {
-	title: 'Assistant/AskAssistantChat',
+	title: 'Areas/Assistant/AskAssistantChat',
 	component: AskAssistantChat,
 	argTypes: {},
 };
@@ -28,8 +28,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	methods,
 });
 
-export const DefaultPlaceholderChat = Template.bind({});
-DefaultPlaceholderChat.args = {
+export const Default = Template.bind({});
+Default.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',

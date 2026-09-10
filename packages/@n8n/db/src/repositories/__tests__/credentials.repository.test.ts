@@ -29,6 +29,24 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	it('filters ids down to global project credentials', async () => {
+		entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'global-id' })]);
+
+		const ids = await credentialsRepository.findGlobalProjectCredentialIds(['global-id', 'other']);
+
+		expect(ids).toEqual(['global-id']);
+		expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+			where: { id: In(['global-id', 'other']), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+	});
+
+	it('does not query for an empty id list', async () => {
+		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
+
+		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
 	it('finds only dangling project credentials', async () => {
 		const queryBuilder = mock<SelectQueryBuilder<CredentialsEntity>>();
 		queryBuilder.leftJoinAndSelect.mockReturnValue(queryBuilder);
@@ -146,6 +164,19 @@ describe('CredentialsRepository', () => {
 			expect(callArg!.order).toBeUndefined();
 		});
 
+		it('should honor a caller-provided relations array', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				relations: ['shared', 'shared.project'],
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.relations).toEqual(['shared', 'shared.project']);
+		});
+
 		it('should apply credentialIds filter when provided', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
@@ -155,6 +186,37 @@ describe('CredentialsRepository', () => {
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
 			expect(callArg).toBeDefined();
 			expect(callArg!.where).toEqual(expect.objectContaining({ id: In(['id1', 'id2']) }));
+		});
+
+		it('should apply sortBy as TypeORM order', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				sortBy: 'createdAt:desc',
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toEqual({ createdAt: 'DESC' });
+		});
+
+		it('should default sort direction to ASC when omitted', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({ sortBy: 'name' });
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toEqual({ name: 'ASC' });
+		});
+
+		it('should ignore unknown sortBy columns', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({ sortBy: 'data:desc' });
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.order).toBeUndefined();
 		});
 	});
 

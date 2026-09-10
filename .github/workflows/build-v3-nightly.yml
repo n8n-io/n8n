@@ -5,6 +5,9 @@
 # before release. Reuses the shared docker-build-push.yml pipeline, pointing it
 # at the 3.x branch via the `ref` input.
 #
+# On Mondays the same manifests are additionally retagged v3-rc / v3-rc-<date>, so
+# there is a weekly, self-consistent set to run a stack against.
+#
 # Lives on master so the schedule fires (scheduled runs only trigger on the
 # default branch), but builds the 3.x branch's code.
 
@@ -15,6 +18,12 @@ on:
     # 08:00 UTC — after the master→3.x sync (06:00) so the image reflects the latest sync
     - cron: '0 8 * * *'
   workflow_dispatch:
+    inputs:
+      force_rc:
+        description: 'Also tag this build as a release candidate (normally Mondays only)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   prepare:
@@ -24,10 +33,14 @@ jobs:
     permissions: {}
     outputs:
       date_tag: ${{ steps.date.outputs.date }}
+      day_of_week: ${{ steps.date.outputs.day_of_week }}
     steps:
       - name: Compute date tag
         id: date
-        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+        # Both values read the same UTC clock, so they can't disagree across a day boundary.
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "day_of_week=$(date -u +%u)" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build and push v3-nightly images
@@ -44,3 +57,142 @@ jobs:
       date_tag: ${{ needs.prepare.outputs.date_tag }}
       push_enabled: true
     secrets: inherit
+
+  # On Mondays (or on demand via force_rc), promote the whole set (n8n + both runners
+  # images) to v3-rc so a stack pulling `v3-rc` gets images that were built from the same
+  # 3.x commit. Pure retag of manifests the build already pushed — nothing is rebuilt.
+  #
+  # RCs can be published several times a day: each publish claims the next free rolling
+  # number for today (v3-rc-<date>.1, .2, …) as its immutable reference, and also moves
+  # the floating v3-rc and v3-rc-<date> tags onto it.
+  tag_release_candidate:
+    name: Tag release candidate
+    needs: [prepare, build]
+    if: ${{ needs.prepare.outputs.day_of_week == '1' || inputs.force_rc }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    # Serialize promotion only (not the build) so two runs can't claim the same number.
+    concurrency:
+      group: v3-rc-tagging
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+          login-dockerhub: true
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Claim rolling RC number for today
+        id: rc
+        env:
+          RC_VERSION: v3-rc
+          DATE_TAG: ${{ needs.prepare.outputs.date_tag }}
+          N8N_IMAGE: ${{ needs.build.outputs.n8n_image }}
+          MAX_PER_DAY: '50'
+        run: |
+          set -euo pipefail
+
+          # The n8n GHCR repo is the single source of truth for the counter; all images
+          # then share the number, so one RC is always one consistent set.
+          tag_exists() {
+            local ref=$1 out
+            if out=$(docker buildx imagetools inspect "$ref" --raw 2>&1); then
+              return 0
+            fi
+            # Only a genuine absence frees the number. Auth/network/rate-limit failures
+            # must not be read as "free" — that would overwrite an immutable tag.
+            if grep -qiE 'not found|manifest unknown|no such manifest|MANIFEST_UNKNOWN|404' <<<"$out"; then
+              return 1
+            fi
+            echo "::error::Cannot determine whether ${ref} exists: ${out}"
+            exit 1
+          }
+
+          RC_NUMBER=''
+          for n in $(seq 1 "$MAX_PER_DAY"); do
+            if ! tag_exists "${N8N_IMAGE}:${RC_VERSION}-${DATE_TAG}.${n}"; then
+              RC_NUMBER=$n
+              break
+            fi
+            echo "${RC_VERSION}-${DATE_TAG}.${n} already published"
+          done
+
+          if [[ -z "$RC_NUMBER" ]]; then
+            echo "::error::Already published ${MAX_PER_DAY} release candidates for ${DATE_TAG}"
+            exit 1
+          fi
+
+          echo "Claiming ${RC_VERSION}-${DATE_TAG}.${RC_NUMBER}"
+          echo "number=${RC_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Promote nightly manifests to release candidate
+        env:
+          NIGHTLY_VERSION: v3-nightly
+          RC_VERSION: v3-rc
+          DATE_TAG: ${{ needs.prepare.outputs.date_tag }}
+          RC_NUMBER: ${{ steps.rc.outputs.number }}
+          DOCKER_BASE: ${{ secrets.DOCKER_USERNAME }}
+          N8N_IMAGE: ${{ needs.build.outputs.n8n_image }}
+          N8N_DIGEST: ${{ needs.build.outputs.n8n_digest }}
+          RUNNERS_IMAGE: ${{ needs.build.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ needs.build.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ needs.build.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ needs.build.outputs.runners_distroless_digest }}
+        run: |
+          set -euo pipefail
+
+          # Each image gets three tags: the numbered one is the immutable reference for this
+          # publish; v3-rc and v3-rc-<date> float onto the newest RC overall / of the day.
+          RC_ROLLING="${RC_VERSION}-${DATE_TAG}.${RC_NUMBER}"
+
+          # Retag one image as RC on both registries. GHCR is sourced by digest (immutable,
+          # can't drift); Docker Hub is sourced by its dated tag because `imagetools create`
+          # only retags within a repository — it can't pull GHCR blobs into Docker Hub.
+          promote() {
+            local ghcr_repo=$1 digest=$2 docker_repo=$3 suffix=$4
+
+            if [[ -z "$ghcr_repo" || -z "$digest" ]]; then
+              echo "::error::Missing image/digest for ${docker_repo}${suffix} - nightly manifest not published"
+              return 1
+            fi
+
+            echo "Promoting ${ghcr_repo}@${digest} -> ${RC_ROLLING}${suffix}"
+            docker buildx imagetools create \
+              --tag "${ghcr_repo}:${RC_ROLLING}${suffix}" \
+              --tag "${ghcr_repo}:${RC_VERSION}${suffix}" \
+              --tag "${ghcr_repo}:${RC_VERSION}-${DATE_TAG}${suffix}" \
+              "${ghcr_repo}@${digest}"
+
+            docker buildx imagetools create \
+              --tag "${docker_repo}:${RC_ROLLING}${suffix}" \
+              --tag "${docker_repo}:${RC_VERSION}${suffix}" \
+              --tag "${docker_repo}:${RC_VERSION}-${DATE_TAG}${suffix}" \
+              "${docker_repo}:${NIGHTLY_VERSION}-${DATE_TAG}${suffix}"
+
+            {
+              echo "- \`${ghcr_repo}:${RC_ROLLING}${suffix}\`"
+              echo "- \`${docker_repo}:${RC_ROLLING}${suffix}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          {
+            echo "## v3 release candidate \`${RC_ROLLING}\`"
+            echo ""
+            echo "Immutable references (\`${RC_VERSION}\` and \`${RC_VERSION}-${DATE_TAG}\` now point here too):"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          promote "$N8N_IMAGE" "$N8N_DIGEST" "${DOCKER_BASE}/n8n" ""
+          promote "$RUNNERS_IMAGE" "$RUNNERS_DIGEST" "${DOCKER_BASE}/runners" ""
+          promote "$DISTROLESS_IMAGE" "$DISTROLESS_DIGEST" "${DOCKER_BASE}/runners" "-distroless"

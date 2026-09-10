@@ -12,12 +12,14 @@ import type {
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { EVAL_ATTRIBUTIONS, type EvalAttribution } from '../harness/attribution';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
 	BuildTrace,
@@ -44,6 +46,9 @@ export const expectationResultsSchema = z.array(
 		pass: z.boolean(),
 		reason: z.string().default(''),
 		incomplete: z.boolean().optional(),
+		/** Stamped in case-pipeline's `stampExpectations` — zod strips unknown
+		 *  keys, so an omission here silently drops it from `eval-results.json`. */
+		attribution: z.enum(EVAL_ATTRIBUTIONS).optional(),
 	}),
 );
 
@@ -57,6 +62,10 @@ const targetOutputSchema = z.object({
 	/** Set when the scenario ran against a built first-class Agent instead of a workflow. */
 	agentId: z.string().optional(),
 	failureCategory: z.string().optional(),
+	/** The harness's own verdict on who owns the failure — what lang-tracer
+	 *  stores. `failureCategory` stays alongside it for readers on the legacy
+	 *  contract (TRUST-375). */
+	attribution: z.enum(EVAL_ATTRIBUTIONS).optional(),
 	rootCause: z.string().optional(),
 	/** Verifier returned no verdict — run is excluded from scoring but stays visible. */
 	incomplete: z.boolean().optional(),
@@ -95,12 +104,8 @@ export type TargetOutput = Omit<
 	buildTrace?: BuildTrace;
 };
 
-export function isPlainObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.nodeResults === 'object' &&
 		v.nodeResults !== null &&
@@ -111,29 +116,29 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 }
 
 function isAgentEvalResult(v: unknown): v is InstanceAiEvalAgentExecutionResult {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.runId === 'string' &&
 		Array.isArray(v.toolCalls) &&
 		Array.isArray(v.modelTurns) &&
-		isPlainObject(v.seed)
+		isRecord(v.seed)
 	);
 }
 
 function isWorkflowResponse(v: unknown): v is WorkflowResponse {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.id === 'string' &&
 		typeof v.name === 'string' &&
 		typeof v.active === 'boolean' &&
 		typeof v.versionId === 'string' &&
 		Array.isArray(v.nodes) &&
-		isPlainObject(v.connections)
+		isRecord(v.connections)
 	);
 }
 
 function isBuildTrace(v: unknown): v is BuildTrace {
-	if (!isPlainObject(v)) return false;
+	if (!isRecord(v)) return false;
 	return (
 		typeof v.finalText === 'string' &&
 		Array.isArray(v.toolCalls) &&
@@ -148,7 +153,7 @@ function isBuildTrace(v: unknown): v is BuildTrace {
  *  shape (passed:false, score:0) — masking infra errors as builder regressions.
  */
 export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
-	if (!isPlainObject(raw) || Object.keys(raw).length === 0) return undefined;
+	if (!isRecord(raw) || Object.keys(raw).length === 0) return undefined;
 	const parsed = targetOutputSchema.safeParse(raw);
 	if (!parsed.success) return undefined;
 	return {
@@ -178,6 +183,9 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 	/** Only on non-passing outcomes — without a category the feedback extractor
 	 *  files the row under 'unknown' in the LangSmith failure_category column. */
 	failureCategory?: 'expectations_failed' | 'verification_failure';
+	/** The bucket lang-tracer stores. A missed expectation is a builder miss —
+	 *  same stance the verifier prompt takes; no verdicts at all is unmeasured. */
+	attribution?: EvalAttribution;
 } {
 	const evaluated = (verdicts ?? []).filter((v) => !v.incomplete);
 	if (evaluated.length === 0) {
@@ -187,6 +195,7 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 			reasoning: 'Build-only case — no expectation verdicts (judge incomplete)',
 			incomplete: true,
 			failureCategory: 'verification_failure',
+			attribution: 'verification_gap',
 		};
 	}
 	const failed = evaluated.filter((v) => !v.pass);
@@ -197,7 +206,9 @@ export function sentinelOutcomeFromVerdicts(verdicts: BuildExpectationResult[] |
 		reasoning: passed
 			? `Build-only case — all ${String(evaluated.length)} expectations passed`
 			: `Build-only case — failed expectations: ${failed.map((v) => v.expectation).join('; ')}`,
-		...(passed ? {} : { failureCategory: 'expectations_failed' as const }),
+		...(passed
+			? {}
+			: { failureCategory: 'expectations_failed' as const, attribution: 'builder_issue' as const }),
 	};
 }
 
@@ -270,6 +281,14 @@ export function reshapeLangSmithRuns(
 						success: false,
 						score: 0,
 						reasoning: run ? 'Malformed run output — skipped' : 'No run result for this scenario',
+						// The row never produced a verdict, so nobody owns it. Without this
+						// it reaches lang-tracer category-less and defaults to a product
+						// failure.
+						attribution: 'verification_gap',
+						// …and unowned has to mean unscored too, or the row is visible as a
+						// gap while still counting against the builder. Same pairing as
+						// `sentinelOutcomeFromVerdicts` and `attributionFor`.
+						incomplete: true,
 					});
 					continue;
 				}
@@ -296,6 +315,7 @@ export function reshapeLangSmithRuns(
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,
+					attribution: output.attribution,
 					rootCause: output.rootCause,
 					...(output.incomplete ? { incomplete: true } : {}),
 				});

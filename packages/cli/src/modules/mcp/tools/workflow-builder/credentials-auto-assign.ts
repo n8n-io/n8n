@@ -9,17 +9,18 @@ import {
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
+import {
+	checkAiGatewayEligibility,
+	HTTP_NODE_TYPES,
+	type AiGatewayEligibilityReason,
+} from '@/services/ai-gateway-eligibility';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 
-import {
-	checkAiGatewayEligibility,
-	type AiGatewayEligibilityReason,
-} from './ai-gateway-eligibility';
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
 /** Display name written into AI Gateway-managed credential sentinels. User-facing brand. */
-const AI_GATEWAY_CREDENTIAL_NAME = 'n8n credits';
+const AI_GATEWAY_CREDENTIAL_NAME = 'Gateway credits';
 
 /**
  * Attach the managed (n8n-credits) sentinel to `credentialType` and, unless it's
@@ -124,12 +125,6 @@ export type McpCredentialsAutoassignEventPayload = {
 	ai_gateway_available: boolean;
 	reason_not_ai_gateway?: ReasonNotAiGateway;
 };
-
-const HTTP_NODE_TYPES = new Set([
-	'n8n-nodes-base.httpRequest',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.httpRequestTool',
-]);
 
 /**
  * Normalizes n8n Connect (`__aiGatewayManaged`) markers on the given nodes.

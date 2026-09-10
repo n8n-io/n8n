@@ -15,9 +15,11 @@ import * as fs from 'node:fs';
 import {
 	changedRuntimeDepsFromManifests,
 	classifyManifestChange,
+	configForcesBroad,
 	dropDevDepOnlyDeps,
 	filterImpactfulChanges,
 	forcesBroad,
+	isBackendConfig,
 	isTsconfig,
 	stripDependencyFiles,
 	tsconfigForcesBroad,
@@ -34,6 +36,10 @@ import { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 import { selectImpactedTests } from './select/pipeline.js';
 import type { SelectionStrategy } from './select/strategy.js';
 
+/** before/after content of changed files, keyed by path — the caller reads these
+ *  from git. A file absent here can't be classified, so it stays broad. */
+export type FileDiffs = Record<string, { before: string; after: string }>;
+
 export interface SelectTestsInput {
 	/** Changed files (file paths). */
 	changedFiles: string[];
@@ -41,19 +47,23 @@ export interface SelectTestsInput {
 	mapFile?: string;
 	/** Path to a newline/comma separated list of every known spec. */
 	allSpecsFile?: string;
-	/** before/after content of each changed package.json (caller reads from git),
-	 *  keyed by path. When supplied, a devDependencies-only manifest change drops
-	 *  the lockfile + manifests from selection — a devDep can't reach the runtime
-	 *  bundle the E2E suite exercises. */
-	manifests?: Record<string, { before: string; after: string }>;
-	/** before/after content of each changed tsconfig (caller reads from git).
-	 *  Fed to {@link tsconfigForcesBroad}; omitted (local dev) → conservative broad. */
-	tsconfigs?: Record<string, { before: string; after: string }>;
+	/** Changed package.json diffs. When supplied, a devDependencies-only manifest
+	 *  change drops the lockfile + manifests from selection — a devDep can't reach
+	 *  the runtime bundle the E2E suite exercises. */
+	manifests?: FileDiffs;
+	/** Changed tsconfig diffs, fed to {@link tsconfigForcesBroad}. */
+	tsconfigs?: FileDiffs;
+	/** Changed `@n8n/config` diffs, fed to {@link configForcesBroad}. */
+	configs?: FileDiffs;
 	/** Workspace package dir → runtime dependency names it declares (parsed from
 	 *  pnpm-lock.yaml's `importers`). With `manifests`, a changed runtime dep is
 	 *  walked to its declaring packages and scoped via the map instead
 	 *  of forcing broad. */
 	lockfileImporters?: WorkspaceImporters;
+	/** Package names reachable from the deployed packages' runtime deps (see
+	 *  `runtimeClosure` in dep-graph). Classifies `pnpm.overrides` changes;
+	 *  omitted → an override change stays broad. */
+	runtimeClosure?: ReadonlySet<string>;
 }
 
 export interface SelectTestsResult extends ResolveResult {
@@ -115,20 +125,35 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	const forcing = impactful.filter(forcesBroad);
 	if (forcing.length > 0) return broad(forcing);
 
-	// A resolution-changing tsconfig edit forces broad; a resolution-neutral one
-	// is dropped (see tsconfigForcesBroad). No diff metadata → conservative broad.
-	const tsconfigChanges = impactful.filter(isTsconfig);
-	if (tsconfigChanges.length > 0) {
-		const forcingTsconfig = tsconfigChanges.filter((f) => {
-			const diff = input.tsconfigs?.[f];
-			return !diff || tsconfigForcesBroad(diff.before, diff.after);
+	// Content-aware classifiers: a change of this kind forces broad only when the
+	// diff proves it can move behaviour. An unsupplied diff (local dev, no base
+	// ref) can't prove anything, so it forces broad.
+	const forcingByContent = (
+		matches: (f: string) => boolean,
+		diffs: FileDiffs | undefined,
+		classify: (before: string, after: string) => boolean,
+	): string[] =>
+		impactful.filter((f) => {
+			if (!matches(f)) return false;
+			const diff = diffs?.[f];
+			return !diff || classify(diff.before, diff.after);
 		});
-		if (forcingTsconfig.length > 0) return broad(forcingTsconfig);
-		impactful = impactful.filter((f) => !isTsconfig(f));
-	}
 
-	// devDependency-only change can't reach the runtime bundle → dropped.
-	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
+	const forcingTsconfig = forcingByContent(isTsconfig, input.tsconfigs, tsconfigForcesBroad);
+	if (forcingTsconfig.length > 0) return broad(forcingTsconfig);
+	// A resolution-neutral tsconfig resolves to the same modules → drop it.
+	impactful = impactful.filter((f) => !isTsconfig(f));
+
+	// A changed config default moves behaviour in specs that never execute the
+	// file; an additive one can't, and falls through to the map.
+	const forcingConfig = forcingByContent(isBackendConfig, input.configs, configForcesBroad);
+	if (forcingConfig.length > 0) return broad(forcingConfig);
+
+	// devDependency-only change can't reach the runtime bundle → dropped. Same for
+	// a `pnpm.overrides` pin whose target is outside the runtime closure.
+	if (input.manifests) {
+		impactful = dropDevDepOnlyDeps(impactful, input.manifests, input.runtimeClosure);
+	}
 
 	// Runtime-dep change: walk it to the packages that declare it and drop
 	// the dep files from the coverage path.
@@ -160,7 +185,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 		if (!/(^|\/)package\.json$/.test(f)) return false;
 		const manifest = input.manifests?.[f];
 		if (!manifest) return true;
-		return classifyManifestChange(manifest.before, manifest.after) === 'runtime';
+		// An `override` still present here failed the closure check → unproven,
+		// treat like runtime.
+		const kind = classifyManifestChange(manifest.before, manifest.after);
+		return kind === 'runtime' || kind === 'override';
 	});
 	if (lockfileRemains || unscopedRuntimeManifest) return broad(impactful);
 

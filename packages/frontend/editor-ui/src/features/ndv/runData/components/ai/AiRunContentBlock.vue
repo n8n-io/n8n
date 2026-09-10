@@ -6,7 +6,7 @@ import type { NodeConnectionType, NodeError } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import RunDataAi from '../RunDataParsedAiContent.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
-import { N8nButton, N8nIcon, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSegmentControl } from '@n8n/design-system';
 import NodeErrorView from '../error/NodeErrorView.vue';
 import { saveAs } from 'file-saver';
 import { MAX_DISPLAY_DATA_SIZE_LOGS_VIEW } from '@/app/constants';
@@ -99,7 +99,7 @@ watch(
 				<N8nIcon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" size="large" />
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<N8nRadioButtons
+			<N8nSegmentControl
 				v-if="contentParsed && !error && isExpanded"
 				size="small"
 				:model-value="renderType"

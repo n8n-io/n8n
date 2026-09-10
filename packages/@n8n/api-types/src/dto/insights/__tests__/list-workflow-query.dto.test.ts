@@ -119,12 +119,27 @@ describe('ListInsightsWorkflowQueryDto', () => {
 					endDate: new Date('2025-01-31'),
 				},
 			},
+			{
+				name: 'valid IANA timeZone',
+				request: {
+					timeZone: 'America/Los_Angeles',
+				},
+				parsedResult: {
+					timeZone: 'America/Los_Angeles',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = ListInsightsWorkflowQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
 			if (parsedResult) {
 				expect(result.data).toMatchObject(parsedResult);
 			}
+		});
+
+		test('should silently drop an invalid timeZone to undefined', () => {
+			const result = ListInsightsWorkflowQueryDto.safeParse({ timeZone: 'Not/AZone' });
+			expect(result.success).toBe(true);
+			expect(result.data?.timeZone).toBeUndefined();
 		});
 	});
 

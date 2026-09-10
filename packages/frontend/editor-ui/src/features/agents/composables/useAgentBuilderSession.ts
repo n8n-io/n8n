@@ -1,11 +1,11 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryRaw } from 'vue-router';
 
 import { useAgentSessionsStore } from '../agentSessions.store';
-import { CONTINUE_SESSION_ID_PARAM } from '../constants';
+import { CONTINUE_SESSION_ID_PARAM, NEW_SESSION_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
 import { useRelativeTimestamp } from '../utils/relative-time';
 
@@ -30,18 +30,22 @@ interface SessionMenuItem {
 	when?: string;
 }
 
+interface AgentBuilderSessionOptions {
+	routeBacked: Readonly<Ref<boolean>>;
+}
+
 /**
  * Owns the preview chat-session state:
  *
  * - `continueSessionId` — set via the URL query string for shareable deep-links
- *   into a specific session. Takes precedence when present.
- * - `activeChatSessionId` — the in-tab ephemeral session. Set when the user
- *   starts a new chat from the home input; cleared on the back button.
+ *   into a specific session. Takes precedence when route backing is enabled.
+ * - `activeChatSessionId` — the in-tab session selection. Used exclusively
+ *   when route backing is disabled and as a fallback otherwise.
  *
  * Plus the session-picker dropdown menu and titles, all driven off the
  * `agentSessionsStore` thread list.
  */
-export function useAgentBuilderSession() {
+export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptions) {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -50,6 +54,8 @@ export function useAgentBuilderSession() {
 	const relativeTimeOf = useRelativeTimestamp();
 
 	const activeChatSessionId = ref<string | null>(null);
+	const pendingRouteSessionId = ref<string | null>(null);
+	const ephemeralSessionId = ref<string | null>(null);
 	const continueSessionId = computed(() => {
 		// Vue Router types this as `LocationQuery[key]: string | string[] | null`.
 		// Picking the first string defends against duplicate query params
@@ -59,7 +65,49 @@ export function useAgentBuilderSession() {
 		return typeof value === 'string' && value.length > 0 ? value : undefined;
 	});
 	const effectiveSessionId = computed<string | undefined>(
-		() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
+		() =>
+			(routeBacked.value ? (pendingRouteSessionId.value ?? continueSessionId.value) : undefined) ??
+			activeChatSessionId.value ??
+			undefined,
+	);
+
+	watch(
+		[routeBacked, continueSessionId],
+		([isRouteBacked, routeSessionId]) => {
+			if (!isRouteBacked) {
+				pendingRouteSessionId.value = null;
+				return;
+			}
+			if (routeSessionId && routeSessionId !== ephemeralSessionId.value) {
+				ephemeralSessionId.value = null;
+			}
+			if (pendingRouteSessionId.value !== null) {
+				// Setting the pending id does not trigger this watcher. Any later
+				// route change is authoritative, whether it confirms the replace or
+				// comes from back/forward navigation.
+				pendingRouteSessionId.value = null;
+			}
+			if (routeSessionId) activeChatSessionId.value = routeSessionId;
+		},
+		{ immediate: true },
+	);
+
+	watch(activeChatSessionId, (sessionId) => {
+		if (sessionId === null) {
+			pendingRouteSessionId.value = null;
+			ephemeralSessionId.value = null;
+		} else {
+			if (ephemeralSessionId.value !== null && sessionId !== ephemeralSessionId.value) {
+				ephemeralSessionId.value = null;
+			}
+			if (routeBacked.value && sessionId !== continueSessionId.value) {
+				pendingRouteSessionId.value = sessionId;
+			}
+		}
+	});
+	const currentSessionIsEphemeral = computed(
+		() =>
+			ephemeralSessionId.value !== null && ephemeralSessionId.value === effectiveSessionId.value,
 	);
 
 	/**
@@ -100,25 +148,33 @@ export function useAgentBuilderSession() {
 		}));
 	});
 
-	function setSessionInUrl(id: string) {
+	function selectSession(id: string, ephemeral = false) {
 		activeChatSessionId.value = id;
-		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
+		ephemeralSessionId.value = ephemeral ? id : null;
+		if (!routeBacked.value) return;
+		pendingRouteSessionId.value = id;
+		const query: LocationQueryRaw = { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id };
+		if (ephemeral) delete query[NEW_SESSION_PARAM];
+		void router.replace({ query });
+	}
+
+	function setSessionInUrl(id: string) {
+		selectSession(id);
 	}
 
 	function clearContinueSessionParam() {
+		if (!routeBacked.value) return;
 		const { [CONTINUE_SESSION_ID_PARAM]: _dropped, ...rest } = route.query as LocationQueryRaw;
 		void router.replace({ query: rest });
 	}
 
 	function onSessionPick(id: string) {
 		if (id === '__empty__') return;
-		activeChatSessionId.value = null;
-		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
+		selectSession(id);
 	}
 
 	function onNewChat() {
-		activeChatSessionId.value = null;
-		setSessionInUrl(crypto.randomUUID());
+		selectSession(crypto.randomUUID(), true);
 	}
 
 	return {
@@ -127,6 +183,7 @@ export function useAgentBuilderSession() {
 		effectiveSessionId,
 		currentSessionHasMessages,
 		currentSessionTitle,
+		currentSessionIsEphemeral,
 		sessionMenu,
 		setSessionInUrl,
 		clearContinueSessionParam,

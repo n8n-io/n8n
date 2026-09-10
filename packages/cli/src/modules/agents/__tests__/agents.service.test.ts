@@ -135,6 +135,66 @@ describe('AgentsService', () => {
 		});
 	});
 
+	it('creates an agent with a resolved default model and credential', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			defaultModel: {
+				model: 'openai/gpt-5-mini',
+				credential: 'managed',
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.schema).toMatchObject({
+			name: 'Support Agent',
+			model: 'openai/gpt-5-mini',
+			credential: 'managed',
+		});
+	});
+
+	it('splits a seeded config so integrations land on their own column', async () => {
+		// `composeJsonConfig` reads integrations from the entity column, so leaving
+		// them inside `schema` loses every trigger on the next read — an eval seed
+		// would restore an agent whose integrations silently vanished.
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				integrations,
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.integrations).toEqual(integrations);
+		expect(entity.schema).not.toHaveProperty('integrations');
+		expect(entity.schema).toMatchObject({ name: 'Support Agent', instructions: 'Triage tickets.' });
+	});
+
+	it('omits the integrations column when the seeded config declares none', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			schema: { name: 'Support Agent', model: '', instructions: '' },
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity).not.toHaveProperty('integrations');
+	});
+
 	describe('create with a client-minted id', () => {
 		const mintedId = 'aBcDeFgHiJkLmNoP';
 		const uniqueViolation = () =>
@@ -157,7 +217,7 @@ describe('AgentsService', () => {
 			);
 		});
 
-		it('adopts a same-project unconfigured agent when the builder race flag is set', async () => {
+		it('adopts a same-project agent when the adoption flag is set', async () => {
 			const { service, agentRepository } = makeService();
 			const raced = makeAgent({
 				id: mintedId,
@@ -171,7 +231,7 @@ describe('AgentsService', () => {
 			await expect(
 				service.create(projectId, 'Support Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
 			).resolves.toBe(raced);
 		});
@@ -192,23 +252,32 @@ describe('AgentsService', () => {
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
-		it('rejects when the same-project row is already configured, even with the adoption flag', async () => {
+		// The whole point of the adoption path: the winner of the insert usually
+		// gets to configure the row before the loser collides on it.
+		it('adopts an already configured same-project row, unchanged', async () => {
 			const { service, agentRepository } = makeService();
 			const configured = makeAgent({
 				id: mintedId,
-				schema: { name: 'Support Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				name: 'Support Triage',
+				schema: {
+					name: 'Support Triage',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Hi',
+				},
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(configured);
+			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
 			agentRepository.save.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(configured);
 
 			await expect(
-				service.create(projectId, 'Support Agent', {
+				service.create(projectId, 'New Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
-			).rejects.toThrow(ConflictError);
+			).resolves.toBe(configured);
+			// The draft name/config this call carried must not overwrite the winner's.
+			expect(agentRepository.save).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects without disclosing when the id collides outside this project', async () => {
@@ -220,7 +289,7 @@ describe('AgentsService', () => {
 			await expect(
 				service.create(projectId, 'Support Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
 			).rejects.toThrow(ConflictError);
 		});
@@ -281,7 +350,7 @@ describe('AgentsService', () => {
 		);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
@@ -315,7 +384,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
+		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

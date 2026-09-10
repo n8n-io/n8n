@@ -1,8 +1,11 @@
+import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
-import type { Tracer } from '@opentelemetry/api';
+import { context, type Tracer } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 
 import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-provider';
+import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
+import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 
 import { AgentRunTracingService } from '../agent-run-tracing.service';
 
@@ -45,6 +48,71 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 				thread_id: 'thread-1',
 				source: 'slack',
 			});
+		} finally {
+			await otel.shutdown();
+		}
+	});
+
+	it('nests a workflow-sourced agent run under the calling node span instead of starting a disconnected trace', async () => {
+		const otel = OtelTestProvider.create({ withContextManager: true });
+		try {
+			const executionLevelTracer = new ExecutionLevelTracer(
+				mock<OtelSettingsService>({ getSettings: () => ({ injectOutbound: false }) as never }),
+				mock<Logger>(),
+			);
+			const executionId = 'exec-1';
+			const node = { id: 'node-1', name: 'Message an Agent', type: 'test', typeVersion: 1 };
+
+			executionLevelTracer.startWorkflow({
+				executionId,
+				workflow: { id: 'wf-1', name: 'Test workflow', versionId: 'v1', nodeCount: 1 },
+			});
+			executionLevelTracer.startNode({ executionId, node });
+
+			const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+			const agentRunTracingService = new AgentRunTracingService(agentsConfig);
+
+			const parentCtx = executionLevelTracer.getActiveContext(executionId, node.name);
+			expect(parentCtx).toBeDefined();
+
+			// Mirrors `RuntimeTelemetry.withRootSpan`'s root-anchoring logic in
+			// `@n8n/agents`: `root: true` unless `rootAnchored === false`.
+			await context.with(parentCtx!, async () => {
+				const built = await agentRunTracingService.build({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					threadId: 'thread-1',
+					source: 'workflow',
+					executionId,
+					workflowId: 'wf-1',
+					nodeId: node.id,
+					hasParentContext: true,
+				});
+				expect(built?.rootAnchored).toBe(false);
+
+				(built?.tracer as Tracer).startActiveSpan(
+					'agent.stream',
+					{ ...(built?.rootAnchored === false ? {} : { root: true }) },
+					(span) => {
+						span.end();
+					},
+				);
+			});
+
+			executionLevelTracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+			executionLevelTracer.endWorkflow({
+				executionId,
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel.getFinishedSpans();
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			const agentSpan = spans.find((s) => s.name === 'agent.stream')!;
+			expect(nodeSpan).toBeDefined();
+			expect(agentSpan).toBeDefined();
+			expect(agentSpan.parentSpanContext?.spanId).toBe(nodeSpan.spanContext().spanId);
 		} finally {
 			await otel.shutdown();
 		}

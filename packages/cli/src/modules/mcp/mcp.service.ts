@@ -1,27 +1,22 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
-	registerMcpAppTool,
+	mcpAppToolMeta,
 	registerWorkflowPreviewApp,
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -39,6 +34,13 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import {
+	AiPreferenceService,
+	renderAiPreferencesBlock,
+	type ApplicableAiPreferences,
+} from '@/services/ai-preference.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -55,12 +57,22 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
-import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
+import type {
+	McpAppsTelemetryVariant,
+	McpAuthContext,
+	McpClientInfo,
+	RegisterResourceFn,
+	RegisterToolFn,
+	ToolDefinition,
+} from './mcp.types';
+import { shapeToStandardSchema } from './tool-schema.util';
+import { createCreateFolderTool } from './tools/create-folder.tool';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
 	createCreateDataTableTool,
 	createDeleteDataTableColumnTool,
+	createGetDataTableRowsTool,
 	createRenameDataTableColumnTool,
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
@@ -70,9 +82,11 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
+import { createGetWorkflowVersionsDiffTool } from './tools/get-workflow-versions-diff.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
-import { createListN8nConnectServicesTool } from './tools/list-n8n-connect-services.tool';
+import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
+import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
@@ -81,6 +95,7 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
+import { createUpdateFolderTool } from './tools/update-folder.tool';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL } from './tools/workflow-builder/constants';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -115,6 +130,13 @@ export type McpFeatureFlags = {
 	mcpApps: McpAppsResolution;
 	/** Canvas node-group support in the workflow-builder tools. */
 	canvasGroupsEnabled: boolean;
+	/** Saved AI preferences in the server instructions. */
+	aiPreferencesEnabled: boolean;
+};
+
+export type McpServerBuildOptions = {
+	/** True for `initialize` and `server/discover`, the requests that read the instructions. */
+	isConnectionHandshake?: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -138,7 +160,12 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
 } {
 	if (!result) return { status: 'success' };
 
-	const structured = result.structuredContent;
+	// v2 types structuredContent as an arbitrary JSON value; narrow to an
+	// object before reading the failure markers off it.
+	const structured =
+		typeof result.structuredContent === 'object' && result.structuredContent !== null
+			? (result.structuredContent as Record<string, unknown>)
+			: undefined;
 	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
 	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
 		return { status: 'success' };
@@ -161,7 +188,7 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
  */
 function getWorkflowId(source: unknown): string | undefined {
 	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
-	const workflowId = (source as { workflowId: unknown }).workflowId;
+	const workflowId = source.workflowId;
 	return typeof workflowId === 'string' ? workflowId : undefined;
 }
 
@@ -191,7 +218,7 @@ export class McpService {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
-		private readonly folderRepository: FolderRepository,
+		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
@@ -208,12 +235,14 @@ export class McpService {
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
+		private readonly folderService: FolderService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {}
 
 	/**
 	 * Resolves every PostHog-gated MCP feature for a user with a single flags
 	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog; the lookup is skipped entirely when every feature is overridden.
+	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled, mcpCanvasGroupsEnabled } = this.globalConfig.endpoints;
@@ -221,21 +250,34 @@ export class McpService {
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
 		// surfacing as `unassigned`).
-		const flags =
-			mcpAppsEnabled && mcpCanvasGroupsEnabled
-				? undefined
-				: await this.postHogClient.getFeatureFlags(user);
+		const flags = await this.postHogClient.getFeatureFlags(user);
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === true,
 		};
 	}
 
-	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+	/** Best-effort: a failed read costs the preferences, not the MCP request. */
+	private async readAiPreferencesBlock(user: User): Promise<string | undefined> {
+		let preferences: ApplicableAiPreferences;
+		try {
+			preferences = await this.aiPreferenceService.getApplicableAcrossProjects(user);
+		} catch (error) {
+			this.logger.warn('Failed to read the AI preferences for the MCP server instructions', {
+				userId: user.id,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
+		return renderAiPreferencesBlock(preferences);
+	}
+
+	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
 		if (envOverride) return { enabled: true, variant: 'env_override' };
 
-		const raw = flags?.[MCP_APPS_FLAG];
+		const raw = flags[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
 		return { enabled: false, variant: 'unassigned' };
@@ -286,17 +328,24 @@ export class McpService {
 	}
 
 	/**
-	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
-	 * event (forwarded to log streaming). Applied once, before any tool is
-	 * registered, so it covers every tool including builder and data-table tools.
+	 * Builds the single registration chokepoint for MCP tools. It bridges the
+	 * classic-zod raw shapes in each ToolDefinition to the Standard Schema
+	 * interface the v2 SDK expects (see tool-schema.util.ts), and wraps every
+	 * handler so each invocation emits an `mcp-tool-called` event (forwarded to
+	 * log streaming). All registration paths, including builder, data-table and
+	 * agent tools, go through the function this returns. Returns the SDK's
+	 * RegisteredTool so callers (and tests) can reach the stored handler.
 	 */
-	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
-		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
-
-		server.registerTool = (name, config, handler) => {
-			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+	createToolRegistrar(
+		server: McpServer,
+		user: User,
+		clientInfo?: McpClientInfo,
+		auth?: McpAuthContext,
+	) {
+		return (tool: ToolDefinition) => {
+			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
+			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const workflowId = getWorkflowId(handlerArgs[0]);
@@ -306,55 +355,90 @@ export class McpService {
 					const { status, errorMessage } = getToolCallOutcome(result);
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
+						...auth?.caller,
 						clientName: clientInfo?.name,
 					});
 					return result;
 				} catch (error) {
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
+						...auth?.caller,
 						clientName: clientInfo?.name,
 					});
 					throw error;
 				}
 			};
 
-			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+			const { inputSchema, outputSchema, ...config } = tool.config;
+			return server.registerTool(
+				tool.name,
+				{
+					...config,
+					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
+					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
+				},
+				instrumentedHandler,
+			);
 		};
 	}
 
 	/**
+	 * Resource counterpart to createToolRegistrar: the single chokepoint every
+	 * static resource registers through, so callers (builder and agent tools)
+	 * never reach for the raw McpServer. Resources carry no input schema to
+	 * bridge and aren't instrumented like tool calls, so this only forwards to
+	 * the SDK today; keeping the seam means resource-wide concerns have one home.
+	 */
+	createResourceRegistrar(server: McpServer): RegisterResourceFn {
+		return (resource) =>
+			server.registerResource(resource.name, resource.uri, resource.config, resource.read);
+	}
+
+	/**
 	 * Builds a per-request MCP server exposing only the tools covered by the
-	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
+	 * token's granted scopes. `auth.grantedScopes: undefined` (API keys, legacy
 	 * tokens) exposes all tools. Filtering registration is sufficient
 	 * enforcement: the server is rebuilt per request, so an unregistered tool
 	 * is neither listed nor callable.
 	 *
 	 * `featureFlags` is the caller's per-request resolution (see
 	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
+	 *
+	 * The rest of `auth` labels tool-call events: how the request authenticated
+	 * and, for OAuth, which registered client it authenticated as, so usage can
+	 * be attributed per client.
 	 */
 	async getServer(
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
-		grantedScopes?: string[],
+		auth?: McpAuthContext,
+		options: McpServerBuildOptions = {},
 	) {
-		const { McpServer } = await lazyImport<
-			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
-		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+		// Only the handshake response carries the instructions, so the per-user
+		// block is read only there and not on every tool call. The read starts
+		// first so it overlaps the other lookups below; it never rejects.
+		const aiPreferences =
+			featureFlags.aiPreferencesEnabled && options.isConnectionHandshake
+				? this.readAiPreferencesBlock(user)
+				: undefined;
+		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+			async () => await import('@modelcontextprotocol/server'),
+		);
 
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
 			: false;
-		const allowedToolNames = getAllowedToolNames(grantedScopes);
+		const allowedToolNames = getAllowedToolNames(auth?.grantedScopes);
 		// The builder walkthrough is only useful when the grant can actually
 		// create workflows; a read-only grant gets the plain intro instead of
 		// steps referencing tools it cannot call.
@@ -377,23 +461,24 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
+					aiPreferences: await aiPreferences,
 				}),
 			},
 		);
 
-		// Instrument every registered tool so MCP usage flows to log streaming:
-		// which tool was called, against which workflow, and whether it succeeded.
-		this.instrumentToolUsage(server, user, clientInfo);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
+		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			server.registerTool(tool.name, tool.config, tool.handler);
+			registerTool(tool);
 		};
 
 		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(
 			user,
 			this.workflowService,
+			this.folderFinderService,
 			this.telemetry,
 		);
 		registerIfAllowed(workflowSearchTool);
@@ -458,6 +543,14 @@ export class McpService {
 		);
 		registerIfAllowed(workflowVersionTool);
 
+		const workflowVersionsDiffTool = createGetWorkflowVersionsDiffTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		registerIfAllowed(workflowVersionsDiffTool);
+
 		const publishWorkflowTool = createPublishWorkflowTool(
 			user,
 			this.workflowFinderService,
@@ -504,13 +597,13 @@ export class McpService {
 			this.aiGatewayService,
 		);
 
-		const listN8nConnectServicesTool = createListN8nConnectServicesTool(
+		const listN8nGatewayServicesTool = createListN8nGatewayServicesTool(
 			user,
 			this.aiGatewayService,
 			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
-		registerIfAllowed(listN8nConnectServicesTool);
+		registerIfAllowed(listN8nGatewayServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
 			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
@@ -549,6 +642,9 @@ export class McpService {
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		registerIfAllowed(addDataTableRowsTool);
 
+		const getDataTableRowsTool = createGetDataTableRowsTool(user, dataTableOps, this.telemetry);
+		registerIfAllowed(getDataTableRowsTool);
+
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
 			await this.registerBuilderTools(
@@ -557,6 +653,7 @@ export class McpService {
 				dataTableOps,
 				featureFlags,
 				registerIfAllowed,
+				registerResource,
 				allowedToolNames,
 				clientInfo,
 			);
@@ -564,18 +661,24 @@ export class McpService {
 
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(server, user, allowedToolNames);
+			Container.get(McpAgentToolsService).registerTools(
+				registerIfAllowed,
+				registerResource,
+				user,
+				allowedToolNames,
+			);
 		}
 
 		return server;
 	}
 
 	private async registerBuilderTools(
-		server: InstanceType<typeof McpServer>,
+		server: McpServer,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
+		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
 	) {
@@ -632,7 +735,9 @@ export class McpService {
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
-		// together by the granted scopes.
+		// together by the granted scopes. The app tool goes through the same
+		// registrar as every other tool (schema bridging + instrumentation);
+		// only its _meta marks it as backed by the preview app resource.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
 		if (featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
@@ -647,19 +752,13 @@ export class McpService {
 					});
 				},
 			});
-			registerMcpAppTool(
-				server,
-				createTool.name,
-				{
+			registerIfAllowed({
+				...createTool,
+				config: {
 					...createTool.config,
-					_meta: {
-						ui: {
-							resourceUri: WORKFLOW_PREVIEW_APP_URI,
-						},
-					},
+					_meta: mcpAppToolMeta(WORKFLOW_PREVIEW_APP_URI),
 				},
-				createTool.handler,
-			);
+			});
 		} else {
 			registerIfAllowed(createTool);
 		}
@@ -672,13 +771,43 @@ export class McpService {
 		);
 		registerIfAllowed(searchProjectsTool);
 
-		const searchFoldersTool = createSearchFoldersTool(
-			user,
-			this.folderRepository,
-			this.projectService,
-			this.telemetry,
-		);
-		registerIfAllowed(searchFoldersTool);
+		// Folder tools require the folders feature; unlicensed instances never
+		// see them (the consent screen filters them the same way), matching the
+		// license gate on the REST and public API folder endpoints.
+		if (this.licenseState.isFoldersLicensed()) {
+			const searchFoldersTool = createSearchFoldersTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(searchFoldersTool);
+
+			const createFolderTool = createCreateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(createFolderTool);
+
+			const updateFolderTool = createUpdateFolderTool(
+				user,
+				this.folderService,
+				this.projectService,
+				this.telemetry,
+			);
+			registerIfAllowed(updateFolderTool);
+
+			const moveWorkflowsToFolderTool = createMoveWorkflowsToFolderTool(
+				user,
+				this.workflowFinderService,
+				this.workflowService,
+				this.folderFinderService,
+				this.telemetry,
+			);
+			registerIfAllowed(moveWorkflowsToFolderTool);
+		}
 
 		const archiveTool = createArchiveWorkflowTool(
 			user,
@@ -720,14 +849,14 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.registerResource(
-			'workflow-sdk-reference',
-			'n8n://workflow-sdk/reference',
-			{
+		registerResource({
+			name: 'workflow-sdk-reference',
+			uri: 'n8n://workflow-sdk/reference',
+			config: {
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
-			() => ({
+			read: () => ({
 				contents: [
 					{
 						uri: 'n8n://workflow-sdk/reference',
@@ -738,7 +867,7 @@ export class McpService {
 					},
 				],
 			}),
-		);
+		});
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.

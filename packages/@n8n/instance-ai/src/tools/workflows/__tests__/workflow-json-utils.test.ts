@@ -2,7 +2,10 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import {
+	ensureUniqueNodeIds,
 	ensureWebhookIds,
+	preserveExistingNodeIds,
+	hasLostAllSavedNodeIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
 	isWaitGateNode,
@@ -63,6 +66,444 @@ describe('ensureWebhookIds', () => {
 			'Failed to load existing workflow wf-1 to preserve webhook IDs: Workflow not found',
 		);
 		expect(workflow.nodes[0]?.webhookId).toBeUndefined();
+	});
+});
+
+describe('ensureUniqueNodeIds', () => {
+	const node = (id: string, name: string): WorkflowJSON['nodes'][number] => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	it('leaves a workflow with unique ids untouched', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Unique',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodes.map((n) => n.id)).toEqual(['a', 'b']);
+	});
+
+	it('reassigns later nodes that repeat an id and keeps the first', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Duplicated',
+			nodes: [node('dup', 'A'), node('dup', 'B')],
+			connections: {},
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodes[0].id).toBe('dup');
+		expect(workflow.nodes[1].id).not.toBe('dup');
+		expect(workflow.nodes[1].id).toBeTruthy();
+	});
+
+	it('assigns an id to a node that has none', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Missing',
+			nodes: [{ ...node('', 'A') }],
+			connections: {},
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodes[0].id).toBeTruthy();
+	});
+
+	/**
+	 * Group membership is remapped by position rather than through a shared old-id map,
+	 * so two nodes that arrived with one id do not both end up pointing at the same
+	 * replacement.
+	 */
+	it('remaps node-group membership for the reassigned node only', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Duplicated in group',
+			nodes: [node('dup', 'A'), node('dup', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['dup', 'dup'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		const [first, second] = workflow.nodes;
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual([first.id, second.id]);
+		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 2);
+	});
+
+	it('remaps group membership in order when three nodes share an id', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Triplicated in group',
+			nodes: [node('dup', 'A'), node('dup', 'B'), node('dup', 'C')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['dup', 'dup', 'dup'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		// Membership must line up with the nodes positionally, not in reverse.
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(workflow.nodes.map((n) => n.id));
+		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 3);
+	});
+
+	/**
+	 * A blank id is reassigned like a duplicate, but nothing retains the original — so the
+	 * group's `''` entry has to be rewritten too, or the membership dangles.
+	 */
+	it('remaps group membership for a node whose id was blank', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Blank in group',
+			nodes: [node('', 'A'), node('b', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['', 'b'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual([workflow.nodes[0].id, 'b']);
+		expect(workflow.nodeGroups?.[0]?.nodeIds).not.toContain('');
+	});
+
+	it('remaps group membership for several nodes whose ids were blank', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Blanks in group',
+			nodes: [node('', 'A'), node('', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['', ''] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(workflow.nodes.map((n) => n.id));
+		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 2);
+	});
+
+	it('leaves group membership alone when nothing was reassigned', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Unique in group',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['a', 'b'] }],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.nodeIds).toEqual(['a', 'b']);
+	});
+});
+
+describe('preserveExistingNodeIds', () => {
+	const node = (id: string, name: string): WorkflowJSON['nodes'][number] => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	const contextWithExisting = (existing: WorkflowJSON) =>
+		({
+			workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(existing) },
+		}) as unknown as InstanceAiContext;
+
+	/**
+	 * The case Oleg found: a node the agent added in an earlier build has no `id` in the
+	 * source file (nothing writes it back), so every rebuild from that file mints a fresh
+	 * one. Recovering it by name keeps the identity the save already assigned.
+	 */
+	it('recovers the saved id of a node whose source declares none', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('saved-trigger', 'Trigger'), node('assigned-on-first-build', 'Added')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('saved-trigger', 'Trigger'), node('fresh-uuid', 'Added')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Added')?.id).toBe('assigned-on-first-build');
+		expect(rebuilt.nodes.find((n) => n.name === 'Trigger')?.id).toBe('saved-trigger');
+	});
+
+	it('leaves a node that already carries a saved id untouched', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.map((n) => n.id)).toEqual(['a', 'b']);
+	});
+
+	/** A declared id is authoritative: a rename must follow the id, not be undone by name. */
+	it('keeps a declared id when the node was renamed', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = { name: 'Rebuilt', nodes: [node('a', 'New')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('a');
+		expect(rebuilt.nodes[0].name).toBe('New');
+	});
+
+	/** A new node must not inherit the id of a node that merely gave up its name. */
+	it('does not hand a saved id to a new node that reused a renamed node name', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'New'), node('fresh', 'Old')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'New')?.id).toBe('a');
+		expect(rebuilt.nodes.find((n) => n.name === 'Old')?.id).toBe('fresh');
+	});
+
+	/**
+	 * Durable state is type-specific — a poll cursor belongs to a poll trigger — so identity must
+	 * never cross node types, even when the name matches.
+	 */
+	it('does not recover a saved id across a different node type', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [
+				{
+					id: 'saved-poller',
+					name: 'Watcher',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh', 'Watcher')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('fresh');
+	});
+
+	/**
+	 * The limit of name recovery, kept as an explicit expectation rather than left implied.
+	 *
+	 * If a rename drops the node's id, the renamed node and a new node reusing the old name both
+	 * arrive with ids the saved workflow has never seen, and nothing distinguishes them — the same
+	 * shape as "the agent added a node", which recovery exists to serve. So the saved id follows
+	 * the name. Carrying the id in the source (the documented contract, and what `get-as-code`
+	 * emits) is what makes this case correct instead.
+	 */
+	it('follows the name when a rename dropped the id, which can move identity', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'Old')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('minted-1', 'New'), node('minted-2', 'Old')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Old')?.id).toBe('a');
+		expect(rebuilt.nodes.find((n) => n.name === 'New')?.id).toBe('minted-1');
+	});
+
+	it('leaves a genuinely new node with its fresh id', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('a', 'A')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('a', 'A'), node('fresh', 'Brand New')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes.find((n) => n.name === 'Brand New')?.id).toBe('fresh');
+	});
+
+	it('self-heals an id the agent mangled', async () => {
+		const saved: WorkflowJSON = { name: 'Saved', nodes: [node('saved-a', 'Get')], connections: {} };
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('saved-aX', 'Get')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodes[0].id).toBe('saved-a');
+	});
+
+	it('remaps node-group membership onto a recovered id', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('saved-added', 'Added')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh', 'Added')],
+			connections: {},
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['fresh'] }],
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodeGroups?.[0]?.nodeIds).toEqual(['saved-added']);
+	});
+
+	it('keeps every id unique after recovery', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('a', 'A'), node('b', 'B')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh-1', 'A'), node('fresh-2', 'B')],
+			connections: {},
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		const ids = rebuilt.nodes.map((n) => n.id);
+		expect(ids).toEqual(['a', 'b']);
+		expect(new Set(ids).size).toBe(2);
+	});
+
+	it('does not fetch or change anything for a new workflow', async () => {
+		const context = contextWithExisting({ name: 'Saved', nodes: [], connections: {} });
+		const rebuilt: WorkflowJSON = { name: 'New', nodes: [node('x', 'A')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, undefined, context);
+
+		expect(context.workflowService.getAsWorkflowJSON).not.toHaveBeenCalled();
+		expect(rebuilt.nodes[0].id).toBe('x');
+	});
+
+	it('leaves ids alone when the saved workflow has none to recover', async () => {
+		const context = contextWithExisting({ name: 'Saved', nodes: [], connections: {} });
+		const rebuilt: WorkflowJSON = { name: 'R', nodes: [node('fresh', 'A')], connections: {} };
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', context);
+
+		expect(rebuilt.nodes[0].id).toBe('fresh');
+	});
+});
+
+/**
+ * The structural fix only holds while the agent carries `id` lines through its edits.
+ * A full rewrite that drops them all re-identifies the graph, so surface it rather than
+ * guessing identities back by name.
+ */
+describe('hasLostAllSavedNodeIds', () => {
+	const node = (id: string, name: string): WorkflowJSON['nodes'][number] => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {},
+	});
+
+	const contextWithExisting = (existing: WorkflowJSON) =>
+		({
+			workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(existing) },
+		}) as unknown as InstanceAiContext;
+
+	const saved: WorkflowJSON = {
+		name: 'Saved',
+		nodes: [node('saved-a', 'A'), node('saved-b', 'B')],
+		connections: {},
+	};
+
+	it('reports loss when no rebuilt node carries a saved id', async () => {
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh-1', 'A'), node('fresh-2', 'B')],
+			connections: {},
+		};
+
+		await expect(hasLostAllSavedNodeIds(rebuilt, 'wf-1', contextWithExisting(saved))).resolves.toBe(
+			true,
+		);
+	});
+
+	it('reports no loss when at least one saved id survives', async () => {
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('saved-a', 'A'), node('fresh-2', 'B')],
+			connections: {},
+		};
+
+		await expect(hasLostAllSavedNodeIds(rebuilt, 'wf-1', contextWithExisting(saved))).resolves.toBe(
+			false,
+		);
+	});
+
+	it('reports no loss for a new workflow', async () => {
+		const context = contextWithExisting(saved);
+
+		await expect(
+			hasLostAllSavedNodeIds(
+				{ name: 'New', nodes: [node('x', 'A')], connections: {} },
+				undefined,
+				context,
+			),
+		).resolves.toBe(false);
+		expect(context.workflowService.getAsWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('reports no loss when the saved workflow had no node ids to keep', async () => {
+		const context = contextWithExisting({ name: 'Saved', nodes: [], connections: {} });
+
+		await expect(
+			hasLostAllSavedNodeIds(
+				{ name: 'R', nodes: [node('x', 'A')], connections: {} },
+				'wf-1',
+				context,
+			),
+		).resolves.toBe(false);
+	});
+
+	it('stays silent when the saved workflow cannot be loaded', async () => {
+		const context = {
+			workflowService: {
+				getAsWorkflowJSON: vi.fn().mockRejectedValue(new Error('Workflow not found')),
+			},
+		} as unknown as InstanceAiContext;
+
+		await expect(
+			hasLostAllSavedNodeIds(
+				{ name: 'R', nodes: [node('x', 'A')], connections: {} },
+				'wf-1',
+				context,
+			),
+		).resolves.toBe(false);
 	});
 });
 

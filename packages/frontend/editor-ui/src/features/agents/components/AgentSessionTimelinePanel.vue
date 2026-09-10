@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import type { PushMessage } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
 	AgentExecution,
@@ -13,19 +15,24 @@ import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
 	sessionBounds,
-	itemFilterKey,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
+	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
-import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
+import type {
+	EventKind,
+	FilterOption,
+	TimelineItem,
+	TimelineStatusFilterKey,
+} from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
-import { useActiveElement, useEventListener } from '@vueuse/core';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
 const props = defineProps<{
 	projectId: string;
@@ -43,7 +50,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
+const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
+const panel = useTemplateRef<HTMLElement>('panel');
+const documentVisibility = useDocumentVisibility();
 
 const projectId = computed(() => props.projectId);
 
@@ -53,7 +63,10 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
-let loadThreadDetailRequestId = 0;
+let threadDetailRequestId = 0;
+let refreshPending = false;
+let removePushListener: (() => void) | undefined;
+let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
 const baseItems = computed<TimelineItem[]>(() =>
 	flattenExecutionsToTimelineItems(executions.value),
@@ -88,31 +101,78 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspension');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'user-feedback':
-			return i18n.baseText('agentSessions.timeline.userFeedback');
+			return i18n.baseText('agentSessions.timeline.hitlRequest');
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
+		case 'approval-requested':
+			return i18n.baseText('agentSessions.timeline.approvalRequested');
+		case 'hitl-requested':
+			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
+		case 'approved':
+			return i18n.baseText('agentSessions.timeline.approved');
+		case 'responded':
+			return i18n.baseText('agentSessions.timeline.responseReceived');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}
 }
 
+const STATUS_FILTER_OPTIONS = [
+	{ key: 'approved', badgeTheme: 'success' },
+	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'error', badgeTheme: 'danger' },
+] satisfies Array<{
+	key: TimelineStatusFilterKey;
+	badgeTheme: 'default' | 'success' | 'danger';
+}>;
+
 const filterOptions = computed<FilterOption[]>(() => {
-	const counts = new Map<string, number>();
-	const colorByKey = new Map<string, string>();
+	const kindCounts = new Map<EventKind, number>();
+	const statusCounts = new Map<TimelineStatusFilterKey, number>();
 	for (const item of items.value) {
-		const key = itemFilterKey(item);
-		counts.set(key, (counts.get(key) ?? 0) + 1);
-		if (!colorByKey.has(key)) colorByKey.set(key, chartBlockColor(item.kind));
+		if (item.kind !== 'execution-error') {
+			kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		}
+		const statusKey = itemStatusFilterKey(item);
+		if (statusKey) {
+			statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
+		}
 	}
-	return Array.from(counts.entries()).map(([key, count]) => ({
-		key,
-		label: labelForKey(key),
-		color: colorByKey.get(key) ?? 'var(--border-color)',
-		count,
-	}));
+	return [
+		...Array.from(kindCounts.entries()).map(
+			([key, count]): FilterOption => ({
+				key,
+				label: labelForKey(key),
+				presentation: 'swatch',
+				color: chartBlockColor(key),
+				count,
+			}),
+		),
+		...STATUS_FILTER_OPTIONS.flatMap(({ key, badgeTheme }): FilterOption[] => {
+			const count = statusCounts.get(key);
+			if (!count) return [];
+			return [
+				{
+					key,
+					label: labelForKey(key),
+					presentation: 'badge',
+					badgeTheme,
+					count,
+				},
+			];
+		}),
+	];
 });
 
 const selectedItem = computed<TimelineItem | null>(() =>
@@ -149,8 +209,19 @@ function selectTimelineItem(index: number | null) {
 	highlightedIndex.value = index;
 }
 
+function shouldHandleShortcut() {
+	const element = activeElement.value;
+	if (!(element instanceof Element)) return false;
+
+	return panel.value?.contains(element) === true && !shouldIgnoreCanvasShortcut(element);
+}
+
+function timelineItemKey(item: TimelineItem): string {
+	return `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
+}
+
 function onKeyDown(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+	if (!shouldHandleShortcut()) return;
 
 	if (event.key === 'Escape') {
 		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
@@ -180,7 +251,7 @@ function onKeyDown(event: KeyboardEvent) {
 useEventListener(document, 'keydown', onKeyDown);
 
 function onKeyUp(event: KeyboardEvent) {
-	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+	if (!shouldHandleShortcut()) return;
 	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
 	if (highlightedIndex.value === selectedIndex.value) return;
 	event.preventDefault();
@@ -189,18 +260,27 @@ function onKeyUp(event: KeyboardEvent) {
 
 useEventListener(document, 'keyup', onKeyUp);
 
-async function loadThreadDetail() {
-	const currentProjectId = props.projectId;
-	const currentAgentId = props.agentId;
-	const currentThreadId = props.threadId;
-	const requestId = ++loadThreadDetailRequestId;
-
+function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);
+	refreshPending = false;
+	startThreadDetailRequest(true);
+}
+
+function threadIdentity(): string {
+	return `${props.projectId}:${props.agentId}:${props.threadId}`;
+}
+
+async function fetchThreadDetail(initial: boolean) {
+	const currentProjectId = props.projectId;
+	const currentAgentId = props.agentId;
+	const currentThreadId = props.threadId;
+	const identity = threadIdentity();
+	const requestId = ++threadDetailRequestId;
 
 	try {
 		const result = await sessionsStore.getThreadDetail(
@@ -208,18 +288,79 @@ async function loadThreadDetail() {
 			currentAgentId,
 			currentThreadId,
 		);
-		if (requestId !== loadThreadDetailRequestId) return;
+		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
+			return;
+		}
+		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
+		if (selectedKey) {
+			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
+			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
+		}
 		emit('loaded', result);
 	} catch (error) {
-		if (requestId !== loadThreadDetailRequestId) return;
-		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+		if (requestId !== threadDetailRequestId) return;
+		if (initial) toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	} finally {
-		if (requestId === loadThreadDetailRequestId) {
-			loading.value = false;
-		}
+		if (initial && requestId === threadDetailRequestId) loading.value = false;
 	}
 }
+
+function startThreadDetailRequest(initial: boolean) {
+	const identity = threadIdentity();
+	const request = { identity, promise: fetchThreadDetail(initial) };
+	activeRequest = request;
+	void request.promise.finally(() => {
+		if (activeRequest !== request) return;
+		activeRequest = undefined;
+		if (refreshPending && identity === threadIdentity()) {
+			refreshPending = false;
+			refreshThreadDetail();
+		}
+	});
+}
+
+function refreshThreadDetail() {
+	if (activeRequest?.identity === threadIdentity()) {
+		refreshPending = true;
+		return;
+	}
+	startThreadDetailRequest(false);
+}
+
+function onPushMessage(event: PushMessage) {
+	if (
+		event.type === 'agentExecutionUpdated' &&
+		event.data.projectId === props.projectId &&
+		event.data.agentId === props.agentId &&
+		event.data.threadId === props.threadId
+	) {
+		refreshThreadDetail();
+	}
+}
+
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible') refreshThreadDetail();
+});
+
+watch(
+	() => pushStore.isConnected,
+	(isConnected, wasConnected) => {
+		if (isConnected && !wasConnected) refreshThreadDetail();
+	},
+);
+
+onMounted(() => {
+	pushStore.pushConnect();
+	removePushListener = pushStore.addEventListener(onPushMessage);
+});
+
+onBeforeUnmount(() => {
+	threadDetailRequestId++;
+	refreshPending = false;
+	removePushListener?.();
+	pushStore.pushDisconnect();
+});
 
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {
 	immediate: true,
@@ -227,7 +368,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 </script>
 
 <template>
-	<div :class="$style.panel">
+	<div ref="panel" :class="$style.panel">
 		<div v-if="!loading" :class="$style.subHeader">
 			<div :class="$style.search">
 				<N8nInput

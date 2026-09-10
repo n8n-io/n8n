@@ -1,3 +1,4 @@
+import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
@@ -208,6 +209,49 @@ describe('resolveNodeTool → tool name sanitization', () => {
 				inputData: [{ json: { input: 'thinking about this problem' } }],
 			}),
 		);
+	});
+});
+
+describe('toExecutorCredentials (credential mapping at execution)', () => {
+	type NodeCredentials = Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'];
+
+	async function credentialDetailsFor(credentials: NodeCredentials) {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, node: { ...baseToolSchema.node, credentials } },
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		await tool.handler!({}, {} as never);
+		return (executeInline.mock.calls[0][0] as { credentialDetails?: unknown }).credentialDetails;
+	}
+
+	it('carries an n8n Connect managed credential through with a null id and the flag', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+	});
+
+	it('carries a real and a managed credential together in a mixed map', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+	});
+
+	it('drops an unpersisted slot that is neither a real credential nor managed', async () => {
+		const details = await credentialDetailsFor({ slackApi: { id: '', name: '' } });
+		expect(details).toBeUndefined();
+	});
+
+	it('passes undefined when the node has no credentials', async () => {
+		expect(await credentialDetailsFor(undefined)).toBeUndefined();
 	});
 });
 

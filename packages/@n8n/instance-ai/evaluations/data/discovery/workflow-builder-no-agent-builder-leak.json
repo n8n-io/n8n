@@ -14,5 +14,6 @@
 			}
 		]
 	},
-	"rationale": "Regression gate for the agent-builder path into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never invoke the build-agent orchestration tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where build-agent is registered (it is always-loaded, not deferred) yet must still not be selected."
+	"rationale": "Regression gate for the agent-builder path into Instance AI. A plain workflow-building prompt must route through the workflow-builder skill and must never invoke the build-agent orchestration tool. Meaningful in both module modes; the strongest signal is a run with N8N_ENABLED_MODULES including 'agents', where build-agent is registered (it is always-loaded, not deferred) yet must still not be selected.",
+	"timeoutMs": 120000
 }

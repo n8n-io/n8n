@@ -14,6 +14,7 @@ export const APP_Z_INDEXES = {
 	APP_SIDEBAR: 999,
 	CANVAS_SELECT_BOX: 100,
 	TOP_BANNERS: 999,
+	WORKFLOW_DIFF_FULLSCREEN: 1000, // above app chrome, below dropdowns/modals/toasts
 	NODE_CREATOR: 1700,
 	ASK_ASSISTANT_CHAT: 1750,
 	NDV: 1800,
@@ -28,5 +29,6 @@ export const APP_Z_INDEXES = {
 	DRAGGABLE: 9999999,
 	ACTIVE_STICKY: 9999999,
 	WORKFLOW_PREVIEW_NDV: 9999999,
+	E2E_TEST_MODE_MARKER: 9999999, // never takes pointer events, so it can safely sit on top of everything
 	NPS_SURVEY_MODAL: 3001,
 } as const;

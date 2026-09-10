@@ -6,6 +6,8 @@
  * recognition, and a guardrail check_fn for runtime enforcement.
  */
 
+import { safeRegex } from 'n8n-workflow';
+
 import type { CreateCheckFn, GuardrailResult } from '../types';
 
 export type SecretKeysConfig = {
@@ -175,6 +177,7 @@ function containsAllowedPattern(text: string): boolean {
 	}
 
 	// Regex for allowed file extensions - must end with the extension
+	// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 	const extPattern = new RegExp(
 		`^[^\\s]*(${ALLOWED_EXTENSIONS.map((ext) => ext.replace('.', '\\.')).join('|')})$`,
 		'i',
@@ -194,8 +197,7 @@ function isSecretCandidate(
 	if (customRegex) {
 		for (const pattern of customRegex) {
 			try {
-				const regex = new RegExp(pattern);
-				if (regex.test(s)) {
+				if (safeRegex.test(pattern, s)) {
 					return true;
 				}
 			} catch {

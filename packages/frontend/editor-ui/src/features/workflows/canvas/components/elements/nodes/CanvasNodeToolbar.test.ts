@@ -13,7 +13,7 @@ import { CanvasNodeRenderType } from '../../../canvas.types';
 import { createPinia, setActivePinia, type Pinia } from 'pinia';
 import { EditorEnabledFeaturesKey } from '@/app/constants/injectionKeys';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();

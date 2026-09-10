@@ -31,8 +31,6 @@ const FIELD_TYPE_BY_COLUMN_TYPE: Record<string, FieldType> = {
 	text: 'string',
 	number: 'number',
 	currency: 'number',
-	// Rating columns report unknownFutureValue
-	unknownFutureValue: 'number',
 	boolean: 'boolean',
 	dateTime: 'dateTime',
 	thumbnail: 'object',
@@ -95,6 +93,8 @@ function toMapperFields(column: SharePointListColumn): ResourceMapperField[] {
 		id: column.name,
 		displayName: column.displayName,
 		canBeUsedToMatch: Boolean(column.enforceUniqueValues && column.required),
+		// unknownFutureValue spans text columns too (a Documents library's Name), so
+		// unclassified types get a string input — it accepts numbers, a number input rejects text
 		type: FIELD_TYPE_BY_COLUMN_TYPE[columnType] ?? 'string',
 	};
 	if (field.type === 'options') {

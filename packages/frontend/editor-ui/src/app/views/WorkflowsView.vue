@@ -51,8 +51,7 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
@@ -69,7 +68,7 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -88,7 +87,7 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -538,6 +537,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				parentFolder: resource.parentFolder,
 				settings: resource.settings,
 				hasResolvableCredentials: resource.hasResolvableCredentials,
+				publicationStatus: resource.publicationStatus,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -1255,6 +1255,9 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	if (!workflow) return;
 	workflow.active = data.active;
 	workflow.activeVersionId = data.active ? workflow.versionId : null;
+	// The server-derived status outranks activeVersionId on the card and is now
+	// stale either way; clearing it falls back to the legacy indicator until a refetch.
+	workflow.publicationStatus = undefined;
 
 	// Fetch the updated workflow to get the latest settings
 	try {
@@ -1275,6 +1278,8 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 
 	// Update the workflow to reflect unpublished state
 	workflow.activeVersionId = null;
+	// A stale server-derived status would keep the card indicator lit; clear it too.
+	workflow.publicationStatus = undefined;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2570,6 +2575,8 @@ const onNameSubmit = async (name: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);

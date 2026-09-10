@@ -27,12 +27,15 @@ import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
+import {
+	listPlaceholderTitles,
+	parseHttpUrl,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '@/features/credentials/templatedAuth.utils';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -54,6 +57,7 @@ import QuickConnectButton from '../../quickConnect/components/QuickConnectButton
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import type { ProjectType } from '@/features/collaboration/projects/projects.types';
 
 type Props = {
 	mode: string;
@@ -74,7 +78,11 @@ type Props = {
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	/** Provider account of the caller's own connection, for end-user credentials. */
+	connectedAccountIdentifier?: string;
 	isNewCredential?: boolean;
+	/** Type of the project a new credential will be created in. */
+	newCredentialProjectType?: ProjectType;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
@@ -92,6 +100,7 @@ const props = withDefaults(defineProps<Props>(), {
 	authError: '',
 	showValidationWarning: false,
 	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+	connectedAccountIdentifier: undefined,
 	instanceAiCredentialHelp: undefined,
 });
 const emit = defineEmits<{
@@ -110,7 +119,6 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -229,13 +237,14 @@ const isConnectedOAuth = computed(
 // expired). In this state we promote Switch account over the plain Retry button.
 const isStale = computed(() => isConnectedOAuth.value && !!props.authError);
 
-// The connected account label: for end-user creds it's the current user's own
-// connection; for fixed creds it's the identifier derived from the stored token
-// (may be absent for providers that don't return one — then fall back to a
-// generic "Account connected" message).
+// The connected account label — always the provider account the token belongs to,
+// never the n8n account. For end-user creds it comes from the caller's own per-user
+// connection, for fixed creds from the token stored on the credential. Many
+// providers return no identity at all (Gmail asks for no identity scope), so an
+// absent value is normal and falls back to a generic "Account connected" message.
 const connectedAccountName = computed<string | undefined>(() => {
 	if (props.isResolvable) {
-		return usersStore.currentUser?.email ?? undefined;
+		return props.connectedAccountIdentifier;
 	}
 	const identifier = props.credentialData?.accountIdentifier;
 	return typeof identifier === 'string' && identifier ? identifier : undefined;
@@ -284,6 +293,14 @@ const canWrite = computed(() => {
 const canSelectEndUserType = computed(
 	() => canWrite.value && !!props.credentialPermissions.createEndUser,
 );
+
+// Only in team projects; an existing end-user credential keeps the selector
+// so it can be switched back to fixed.
+const isEndUserTypeAvailable = computed(() => {
+	if (props.isResolvable) return true;
+	if (props.isNewCredential) return props.newCredentialProjectType === ProjectTypes.Team;
+	return isHomeTeamProject.value;
+});
 
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
@@ -361,12 +378,24 @@ function onAuthTypeChange(value: CredentialModeOption): void {
 // list) keeps them open so the user can finish the form; an in-thread append
 // (artifact) closes them so the conversation comes into view.
 async function onInstanceAiCredentialHelpClick() {
+	// A recipe-created credential arrives pre-filled: the guided-form labels
+	// steer the help thread to where-to-find guidance instead of setup steps,
+	// and the recipe's key page lets it link the exact URL the recipe research
+	// already verified.
+	const placeholderTitles = isTemplatedAuthType.value
+		? listPlaceholderTitles(props.credentialData)
+		: [];
+	const recipeDocsUrl = isTemplatedAuthType.value
+		? parseHttpUrl(props.credentialData.docsUrl)
+		: undefined;
 	const shouldCloseModal = await props.instanceAiCredentialHelp?.({
 		credentialType: props.credentialType.name,
 		displayName: props.credentialType.displayName,
 		nodeName: activeNode.value?.name,
 		nodeType: activeNode.value?.type,
 		id: props.credentialId || undefined,
+		...(placeholderTitles.length ? { placeholderTitles } : {}),
+		...(recipeDocsUrl ? { docsUrl: recipeDocsUrl } : {}),
 		documentationUrl: documentationUrl.value || undefined,
 		oauthRedirectUrl: props.isOAuthType ? oAuthCallbackUrl.value : undefined,
 	});
@@ -566,7 +595,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						isOAuthType &&
 						// Only users who can manage end-user credentials see the selector at all;
 						// it's disabled for them when they lack edit access to the credential.
-						!!credentialPermissions.createEndUser
+						!!credentialPermissions.createEndUser &&
+						// End-user credentials are not available in personal projects.
+						isEndUserTypeAvailable
 					"
 					:model-value="Boolean(isResolvable)"
 					:disabled="!canSelectEndUserType"

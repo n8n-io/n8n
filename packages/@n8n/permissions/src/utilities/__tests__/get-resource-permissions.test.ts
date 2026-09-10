@@ -22,6 +22,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			oidc: {},
 			orchestration: {},
 			project: {},
@@ -30,6 +31,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -116,6 +118,7 @@ describe('permissions', () => {
 			ldap: {},
 			license: {},
 			logStreaming: {},
+			nodeTypePolicy: {},
 			orchestration: {},
 			project: {
 				list: true,
@@ -129,6 +132,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
+			gitConnection: {},
 			tag: {
 				create: true,
 				list: true,

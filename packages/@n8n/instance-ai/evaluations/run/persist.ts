@@ -460,6 +460,9 @@ export function writeEvalResults(
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
+					// Who owns the failure, decided here rather than re-derived
+					// downstream from the category string (TRUST-375).
+					attribution: sr.attribution,
 					rootCause: sr.rootCause,
 					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,

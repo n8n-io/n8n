@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { SpanStatusCode } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
@@ -826,6 +826,57 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('getActiveContext', () => {
+		it('returns a context carrying the node span when one is active', () => {
+			tracer.startWorkflow({ executionId: 'exec-ctx-node', workflow: defaultWorkflow });
+			const node = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			tracer.startNode({ executionId: 'exec-ctx-node', node });
+
+			const activeContext = tracer.getActiveContext('exec-ctx-node', 'HTTP');
+			expect(activeContext).toBeDefined();
+			const nodeSpanId = trace.getSpan(activeContext!)?.spanContext().spanId;
+
+			tracer.endNode({ executionId: 'exec-ctx-node', node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({
+				executionId: 'exec-ctx-node',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const finishedNodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			expect(nodeSpanId).toBe(finishedNodeSpan.spanContext().spanId);
+		});
+
+		it('falls back to the workflow span when no node name is given, or when the given node name is not found', () => {
+			tracer.startWorkflow({ executionId: 'exec-ctx-wf', workflow: defaultWorkflow });
+
+			const activeContext = tracer.getActiveContext('exec-ctx-wf');
+			expect(activeContext).toBeDefined();
+			const spanId = trace.getSpan(activeContext!)?.spanContext().spanId;
+
+			const fallbackContext = tracer.getActiveContext('exec-ctx-wf', 'UnknownNode');
+			expect(trace.getSpan(fallbackContext!)?.spanContext().spanId).toBe(spanId);
+
+			tracer.endWorkflow({
+				executionId: 'exec-ctx-wf',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const finishedWorkflowSpan = otel
+				.getFinishedSpans()
+				.find((s) => s.name === 'workflow.execute')!;
+			expect(spanId).toBe(finishedWorkflowSpan.spanContext().spanId);
+		});
+
+		it('returns undefined when no spans are tracked for the execution', () => {
+			expect(tracer.getActiveContext('non-existent')).toBeUndefined();
+			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
 		});
 	});
 });

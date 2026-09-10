@@ -364,6 +364,25 @@ describe('useExpressionEditor', () => {
 			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
 		});
 
+		test('should keep the cursor position set by a click', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			const view = toValue(editor);
+			if (!view) throw new Error('editor not created');
+			await fireEvent.mouseDown(view.contentDOM);
+			view.dispatch({ selection: EditorSelection.cursor(2) });
+			view.focus();
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+
+			expect(view.state.selection).toEqual(EditorSelection.single(2));
+		});
+
 		test('should default to position 0 when no option is provided', async () => {
 			const editorValue = 'Hello {{  }}';
 			const {
@@ -475,6 +494,75 @@ describe('useExpressionEditor', () => {
 				secretsData,
 			);
 			expect(resolveExpressionMock).not.toHaveBeenCalled();
+		});
+
+		test('should defer previewing transformed external secrets until execution', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[evaluated during execution]',
+						state: 'pending',
+					}),
+				]);
+			});
+		});
+
+		test('should keep unknown external secret references invalid', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['name-with-typo']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[secret not found]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
+
+		test('should leave secret previews to the credential modal', async () => {
+			mockResolveExpression();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[undefined]',
+						state: 'invalid',
+					}),
+				]);
+			});
 		});
 	});
 });

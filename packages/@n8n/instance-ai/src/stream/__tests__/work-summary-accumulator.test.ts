@@ -11,12 +11,12 @@ function toolCallEvent(toolCallId: string, toolName: string): InstanceAiEvent {
 	};
 }
 
-function toolResultEvent(toolCallId: string): InstanceAiEvent {
+function toolResultEvent(toolCallId: string, result: unknown = 'ok'): InstanceAiEvent {
 	return {
 		type: 'tool-result',
 		runId: 'run-1',
 		agentId: 'agent-1',
-		payload: { toolCallId, result: 'ok' },
+		payload: { toolCallId, result },
 	};
 }
 
@@ -48,6 +48,21 @@ describe('WorkSummaryAccumulator', () => {
 		expect(summary.totalToolErrors).toBe(0);
 		expect(summary.toolCalls).toEqual([
 			{ toolCallId: 'tc-1', toolName: 'list-workflows', succeeded: true },
+		]);
+	});
+
+	it('retains a semantic config mutation marker from the tool result', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallEvent('tc-1', 'update_skill'));
+		accumulator.observe(toolResultEvent('tc-1', { ok: true, configMutated: true }));
+
+		expect(accumulator.toSummary().toolCalls).toEqual([
+			{
+				toolCallId: 'tc-1',
+				toolName: 'update_skill',
+				succeeded: true,
+				configMutated: true,
+			},
 		]);
 	});
 

@@ -73,10 +73,13 @@ export interface ExtensionEvents {
 			url: string;
 		};
 	};
-	/** A tab was closed. */
+	/** A tab was closed, or left our control. */
 	tabClosed: {
 		params: {
 			id: string;
+			/** Absent on extension builds older than this field. */
+			reason?: 'blocked_by_extension';
+			blockingExtensionIds?: string[];
 		};
 	};
 }

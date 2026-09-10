@@ -5,7 +5,6 @@ import mapValues from 'lodash/mapValues';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './interfaces';
-
 class LazyRegExp {
 	private regExp?: RegExp;
 
@@ -15,6 +14,7 @@ class LazyRegExp {
 	) {}
 
 	get(): RegExp {
+		// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node names are escaped before pattern construction
 		if (!this.regExp) this.regExp = new RegExp(this.pattern(), this.flags);
 
 		return this.regExp;
@@ -89,8 +89,11 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 		replacePattern: (s) => String.raw`(\$node\.)${s}(\.?)`,
 		customCallback: (expression: string, newName: string, escapedNewName: string) => {
 			if (hasDotNotationBannedChar(newName)) {
-				const regex = new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g');
-				return expression.replace(regex, `["${escapedNewName}"]$1`);
+				return expression.replace(
+					// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- newName is escaped before pattern construction
+					new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g'),
+					`["${escapedNewName}"]$1`,
+				);
 			}
 			return expression;
 		},
@@ -140,6 +143,7 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 	for (const pattern of ACCESS_PATTERNS) {
 		if (expression.includes(pattern.checkPattern)) {
 			expression = expression.replace(
+				// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 				new RegExp(pattern.replacePattern(preparedOldName), 'g'),
 				`$1${preparedNewName}$2`,
 			);

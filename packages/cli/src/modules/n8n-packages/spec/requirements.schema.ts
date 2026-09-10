@@ -41,10 +41,10 @@ export const packageNodeTypeRequirementSchema = z.object({
 // Variables are keyed by name, not id: a `$vars.<name>` reference resolves
 // project-scope-first then global at runtime, so one requirement may be
 // satisfied by different rows on different instances — no single portable id
-// can travel with it.
+// can travel with it. The requirement states only that the name must exist;
+// any value the package carries travels in the bundled variable file.
 export const packageVariableRequirementSchema = z.object({
 	name: z.string().min(1),
-	value: z.string().optional(),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 

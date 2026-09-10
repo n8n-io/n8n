@@ -38,6 +38,9 @@ export interface IntegrationMessageContext {
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
+	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
+	replyTarget?: IntegrationMessageTarget;
+	replyMessageId?: string;
 	updatedAt: string;
 }
 
@@ -128,6 +131,15 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
+	bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void>;
+	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
+	unbindSession(derivedThreadId: string): Promise<void>;
+	clearSessionBindings(originThreadId: string): Promise<void>;
+}
+
+export interface SessionBinding {
+	threadId: string;
+	resourceId: string;
 }
 
 export interface IntegrationContextQueryExecutor {

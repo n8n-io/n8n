@@ -2,14 +2,20 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
-import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
+import {
+	AI_CONNECTION_TYPES,
+	NodeSearchEngine,
+	categoryList,
+	suggestedNodesData,
+	type CategorySuggestedNode,
+	type SearchableNodeType,
+} from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
-import { NodeSearchEngine } from './nodes/node-search-engine';
-import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
+import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -30,11 +36,11 @@ const listAction = z.object({
 		.string()
 		.optional()
 		.describe('Search query to filter by name or description (e.g. "slack", "http")'),
-	n8nConnectOnly: z
+	gatewayCreditsOnly: z
 		.boolean()
 		.optional()
 		.describe(
-			'When true, return only nodes supported by n8n credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support n8n credits?".',
+			'When true, return only nodes supported by Gateway credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support Gateway credits?".',
 		),
 });
 
@@ -141,6 +147,21 @@ interface SearchEngineCache {
 	engine?: NodeSearchEngine;
 }
 
+async function enrichWithSetupPreference<T extends { name: string }>(
+	context: InstanceAiContext,
+	node: T,
+	version?: number,
+): Promise<NodeWithSetupPreference<T>> {
+	try {
+		const description = await context.nodeService.getDescription(node.name, version);
+		if (description.properties.some(({ type }) => type === 'credentialsSelect')) return node;
+
+		return addSetupPreference(node, description.credentials?.map(({ name }) => name) ?? []);
+	} catch {
+		return node;
+	}
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -149,7 +170,7 @@ async function handleList(
 ) {
 	const nodes = await context.nodeService.listAvailable({
 		query: input.query,
-		n8nConnectOnly: input.n8nConnectOnly,
+		gatewayCreditsOnly: input.gatewayCreditsOnly,
 	});
 	return { nodes };
 }
@@ -177,13 +198,15 @@ async function handleSearch(
 		return { results: [], totalResults: 0 };
 	}
 
-	// Enrich results with discriminator info (resources/operations) when available
+	// Enrich results with discriminator and credential setup metadata when available.
 	const enriched = await Promise.all(
 		results.map(async (r) => {
-			if (!context.nodeService.listDiscriminators) return r;
-			const disc = await context.nodeService.listDiscriminators(r.name);
-			if (!disc) return r;
-			return { ...r, discriminators: disc };
+			const [node, discriminators] = await Promise.all([
+				enrichWithSetupPreference(context, r, r.version),
+				context.nodeService.listDiscriminators?.(r.name) ?? Promise.resolve(null),
+			]);
+
+			return discriminators ? { ...node, discriminators } : node;
 		}),
 	);
 
@@ -289,6 +312,7 @@ async function resolveNodeTypeDefinitions(
 				version: result.version,
 				content: result.content,
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
+				...(result.deprecated ? { deprecated: true } : {}),
 			};
 		}),
 	);
@@ -318,24 +342,29 @@ async function handleTypeDefinition(
 	return await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
-async function handleSuggested(input: Extract<FullInput, { action: 'suggested' }>) {
+async function handleSuggested(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'suggested' }>,
+) {
 	const results: Array<{
 		category: string;
 		description: string;
 		patternHint: string;
-		suggestedNodes: Array<{ name: string; note?: string }>;
+		suggestedNodes: Array<NodeWithSetupPreference<CategorySuggestedNode>>;
 	}> = [];
 	const unknownCategories: string[] = [];
 
 	for (const cat of input.categories) {
 		const data = suggestedNodesData[cat];
 		if (data) {
+			const suggestedNodes = await Promise.all(
+				data.nodes.map(async (node) => await enrichWithSetupPreference(context, node)),
+			);
 			results.push({
 				category: cat,
 				description: data.description,
 				patternHint: data.patternHint,
-				suggestedNodes: data.nodes,
+				suggestedNodes,
 			});
 		} else {
 			unknownCategories.push(cat);
@@ -442,7 +471,7 @@ export function createNodesTool(
 				case 'type-definition':
 					return await handleTypeDefinition(context, input);
 				case 'suggested':
-					return await handleSuggested(input);
+					return await handleSuggested(context, input);
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 			}

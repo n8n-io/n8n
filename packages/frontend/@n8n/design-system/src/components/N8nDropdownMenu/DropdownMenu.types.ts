@@ -74,6 +74,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	subMenuOpen?: boolean;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
+	/** Whether this item should be rendered as a destructive action (e.g. delete) */
+	destructive?: boolean;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {

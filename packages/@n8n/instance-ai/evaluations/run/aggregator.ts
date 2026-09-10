@@ -148,7 +148,20 @@ export function aggregateResults(
 		}
 
 		// Aggregate each build expectation as a measured unit alongside scenarios.
-		const buildExpectations: BuildExpectationAggregation[] = collectExpectations(testCase).map(
+		// Declared expectations first, then any the harness INJECTED (the
+		// deterministic credential-setup checks). Driving this off the case alone
+		// silently dropped injected verdicts from the pass rate, the summary and
+		// the case status — they were computed and then thrown away.
+		const declared = collectExpectations(testCase);
+		const injected = [
+			...new Set(
+				runs
+					.flatMap((r) => r.buildExpectationResults ?? [])
+					.map((e) => e.expectation)
+					.filter((text) => !declared.includes(text)),
+			),
+		];
+		const buildExpectations: BuildExpectationAggregation[] = [...declared, ...injected].map(
 			(expectation) => ({
 				expectation,
 				...aggregateUnit<BuildExpectationResult>(

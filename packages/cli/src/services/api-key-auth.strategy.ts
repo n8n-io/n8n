@@ -5,6 +5,8 @@ import { ApiKeyRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TokenExpiredError } from 'jsonwebtoken';
 
+import { isApiKeyAuthEnabled } from '@/public-api';
+
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 import { JwtService } from './jwt.service';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
@@ -82,6 +84,10 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+		// Abstain when API-key auth is disabled so other strategies (e.g. session
+		// cookie) can still authenticate the request.
+		if (!isApiKeyAuthEnabled()) return null;
+
 		const providedApiKey = req.headers[API_KEY_HEADER];
 
 		if (typeof providedApiKey !== 'string' || !providedApiKey) return null;

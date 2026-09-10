@@ -12,7 +12,7 @@ import type {
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableOptions } from '@n8n/design-system';
 
 const DEFAULT_PAGE_SIZE = 10;
 const initialTableOptions = (): TableOptions => ({

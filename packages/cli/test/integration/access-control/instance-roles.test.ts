@@ -1,5 +1,6 @@
 import {
 	createTeamProject,
+	linkUserToProject,
 	mockInstance,
 	randomCredentialPayload,
 	testDb,
@@ -228,14 +229,15 @@ describe('Instance (global) custom role authorization', () => {
 			await agent.delete(`/roles/${globalRole.slug}`).expect(403);
 		});
 
-		test('role:manageProject can read assignments and project members for a project role', async () => {
-			const { agent } = await createGlobalRoleUser(
+		test('role:manageProject can read assignments and the members of its own projects', async () => {
+			const { user, agent } = await createGlobalRoleUser(
 				testServer,
 				MANAGE_PROJECT,
 				'Project Role Manager',
 			);
 			const owner = await createOwner();
 			const project = await createTeamProject('Project Role Members', owner);
+			await linkUserToProject(user, project, 'project:admin');
 			const projectRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
 				roleType: 'project',
 				displayName: 'Assignable Project Role',
@@ -243,6 +245,22 @@ describe('Instance (global) custom role authorization', () => {
 
 			await agent.get(`/roles/${projectRole.slug}/assignments`).expect(200);
 			await agent.get(`/roles/${projectRole.slug}/assignments/${project.id}/members`).expect(200);
+		});
+
+		test('role:manageProject cannot read the members of a project it has no access to', async () => {
+			const { agent } = await createGlobalRoleUser(
+				testServer,
+				MANAGE_PROJECT,
+				'Project Role Manager',
+			);
+			const owner = await createOwner();
+			const project = await createTeamProject('Someone Else’s Project', owner);
+			const projectRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+				roleType: 'project',
+				displayName: 'Assignable Project Role',
+			});
+
+			await agent.get(`/roles/${projectRole.slug}/assignments/${project.id}/members`).expect(404);
 		});
 
 		test('role:manageProject cannot read assignments or project members for a global role', async () => {

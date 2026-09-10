@@ -1,4 +1,4 @@
-const INPUT_TYPES = ['text', 'textarea', 'number', 'password', 'email'] as const;
+const INPUT_TYPES = ['text', 'textarea', 'number', 'password', 'email', 'url'] as const;
 const INPUT_SIZES = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
 
 export type InputType = (typeof INPUT_TYPES)[number];

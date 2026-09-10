@@ -1,4 +1,5 @@
 import * as n8nWorkflow from 'n8n-workflow';
+import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -14,6 +15,103 @@ describe('ScheduleTrigger', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(mockDate);
+	});
+
+	describe('description', () => {
+		const node = new ScheduleTrigger();
+		const { properties } = node.description;
+
+		it('includes 1.4 in the version array', () => {
+			expect(node.description.version).toContain(1.4);
+		});
+
+		it('defines misfirePolicy as a node setting offering exactly three values, defaulting to skip', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy).toMatchObject({
+				type: 'options',
+				default: 'skip',
+				isNodeSetting: true,
+				noDataExpression: true,
+				options: [
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+			});
+		});
+
+		it('points the misfirePolicy hint at the grace period field', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy?.hint).toMatch(/grace period set below/i);
+		});
+
+		it.each<[number, boolean]>([
+			[1.3, false],
+			[1.4, true],
+		])('shows misfirePolicy at typeVersion %s: %s', (typeVersion, shown) => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+			expect(misfirePolicy).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{},
+					misfirePolicy as INodeProperties,
+					{ typeVersion },
+					node.description,
+				),
+			).toBe(shown);
+		});
+
+		it('defines misfireGraceSeconds as a numeric node setting defaulting to 0 and refusing negatives', () => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+
+			expect(misfireGraceSeconds).toMatchObject({
+				type: 'number',
+				default: 0,
+				isNodeSetting: true,
+				noDataExpression: true,
+				typeOptions: { minValue: 0 },
+			});
+		});
+
+		it.each<[number, boolean]>([
+			[1.3, false],
+			[1.4, true],
+		])('shows misfireGraceSeconds at typeVersion %s: %s', (typeVersion, shown) => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+			expect(misfireGraceSeconds).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{},
+					misfireGraceSeconds as INodeProperties,
+					{ typeVersion },
+					node.description,
+				),
+			).toBe(shown);
+		});
+
+		it('shows misfireGraceSeconds while the misfire policy is left at its skip default', () => {
+			const misfireGraceSeconds = properties.find(
+				(property) => property.name === 'misfireGraceSeconds',
+			);
+			expect(misfireGraceSeconds).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{ misfirePolicy: 'skip' },
+					misfireGraceSeconds as INodeProperties,
+					{ typeVersion: 1.4 },
+					node.description,
+				),
+			).toBe(true);
+		});
 	});
 
 	describe('trigger', () => {
@@ -148,6 +246,32 @@ describe('ScheduleTrigger', () => {
 			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(2);
 		});
+
+		const DAY = 24 * HOUR;
+		it.each<[string, n8nWorkflow.INodeParameters, number, number]>([
+			[
+				'omits daysInterval',
+				{ rule: { interval: [{ field: 'days', triggerAtHour: 7 }] } },
+				3 * DAY,
+				3,
+			],
+			['omits the field', { rule: { interval: [{ triggerAtHour: 7 }] } }, 3 * DAY, 3],
+			['omits minutesInterval', { rule: { interval: [{ field: 'minutes' }] } }, HOUR, 12],
+			['omits the weekdays', { rule: { interval: [{ field: 'weeks' }] } }, 2 * 7 * DAY, 2],
+			['is missing entirely', {}, 3 * DAY, 3],
+		])(
+			'should emit on the declared default schedule when the stored rule %s',
+			async (_, parameters, elapsed, expected) => {
+				const { emit } = await testTriggerNode(ScheduleTrigger, {
+					timezone,
+					node: { parameters },
+					workflowStaticData: {},
+				});
+
+				vi.advanceTimersByTime(elapsed);
+				expect(emit).toHaveBeenCalledTimes(expected);
+			},
+		);
 
 		it('should emit on schedule defined as a cron expression', async () => {
 			const { emit } = await testTriggerNode(ScheduleTrigger, {

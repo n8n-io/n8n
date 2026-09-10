@@ -17,14 +17,10 @@ import type {
 	INodeCredentialsDetails,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
-	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IWorkflowDataProxyAdditionalKeys,
 	WorkflowExecuteMode,
 	IHttpRequestHelper,
-	INodeTypeData,
-	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	IExecuteData,
 	IDataObject,
@@ -41,11 +37,16 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import {
+	DCR_MANAGED_CREDENTIAL_FIELDS,
+	MANAGED_OAUTH_PINNED_FIELDS,
+} from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { createMockNodeTypes } from './credentials/mock-node-types';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
@@ -54,34 +55,10 @@ const mockNode = {
 	typeVersion: 1,
 	type: 'mock',
 	position: [0, 0],
-	parameters: {} as INodeParameters,
+	parameters: {},
 } as INode;
 
-const mockNodesData: INodeTypeData = {
-	mock: {
-		sourcePath: '',
-		type: {
-			description: { properties: [] as INodeProperties[] },
-		} as INodeType,
-	},
-};
-
-const mockNodeTypes: INodeTypes = {
-	getKnownTypes(): IDataObject {
-		return {};
-	},
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return mockNodesData[nodeType]?.type;
-	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (!mockNodesData[nodeType]) {
-			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.NO_NODE, {
-				tags: { nodeType },
-			});
-		}
-		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
-	},
-};
+const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
 
@@ -96,6 +73,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {
 		super();
 	}
@@ -511,6 +489,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
+		// from their parent. Prefer expressionResolveValues.node when present: it is always
+		// the node making this call to resolve credentials.
+		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
 		if (nodeCredentials.__aiGatewayManaged) {
 			const { userId, workflowId, projectId, executionId } = additionalData;
 			return await this.aiGatewayService.getSyntheticCredential({
@@ -519,10 +502,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 				workflowId,
 				projectId,
 				executionId,
+				node: consumerNode,
 			});
 		}
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
+
+		// Validate against the executing project's policy before any decryption happens.
+		await this.policyEnforcementService.enforceCredentialDecrypt({
+			credentialType: type,
+			credentialId: credentialsEntity.id,
+			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
+			projectId: additionalData.projectId ?? null,
+		});
+
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
 			credentialsEntity.type,
@@ -561,6 +554,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedDataOriginal,
 				additionalData.executionContext,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {
@@ -649,13 +643,22 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// When using dynamic client registration, OAuth fields negotiated at runtime
 		// are not shown in the UI, so we need to copy them from the original data.
 		if (decryptedData.useDynamicClientRegistration) {
-			decryptedData.clientId = decryptedDataOriginal.clientId;
-			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
-			decryptedData.authUrl = decryptedDataOriginal.authUrl;
-			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
-			decryptedData.grantType = decryptedDataOriginal.grantType;
-			decryptedData.authentication = decryptedDataOriginal.authentication;
-			decryptedData.usePkce = decryptedDataOriginal.usePkce;
+			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+				decryptedData[field] = decryptedDataOriginal[field];
+			}
+		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
+			// For managed credentials the instance owns the OAuth endpoints. Honor an
+			// admin-configured overwrite for the field, otherwise pin the credential
+			// type default. The user's stored value is never used.
+			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
+			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
+				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
+				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
+				if (typeof property?.default !== 'string') continue;
+				const overwritten = overwrites[field];
+				decryptedData[field] =
+					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
+			}
 		}
 
 		const parsedJsonLeafExpressionFields = this.parseJsonLeafExpressionFields(
@@ -774,6 +777,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.executionContext,
 				staticData,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			return;
 		}

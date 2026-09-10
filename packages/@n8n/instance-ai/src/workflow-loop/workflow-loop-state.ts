@@ -82,6 +82,7 @@ export const workflowLoopStateSchema = z.object({
 	lastTaskId: z.string().optional(),
 	lastExecutionId: z.string().optional(),
 	lastFailureSignature: z.string().optional(),
+	lastFailedNodeName: z.string().optional(),
 	lastWorkflowInspection: z.string().optional(),
 	rebuildAttempts: z.number().int().min(0),
 	/** Credential types that were mocked during build (persisted across phases). */
@@ -92,6 +93,12 @@ export const workflowLoopStateSchema = z.object({
 	preSaveSubmitFailures: z.number().int().min(0).optional(),
 	postSubmitRemediationSubmitsUsed: z.number().int().min(0).optional(),
 	lastRemediation: remediationMetadataSchema.optional(),
+	/**
+	 * Set when the only setup this build needs is for credentials the user already skipped in
+	 * this thread. Recomputed per build (never sticky) so a newly added credential still
+	 * routes setup normally.
+	 */
+	setupSkippedByUser: z.boolean().optional(),
 	/**
 	 * Set once the service has routed this work item to post-verification setup.
 	 * Guards the deterministic setup follow-up so it fires at most once per build.
@@ -148,6 +155,44 @@ export const executionNodeErrorSchema = z.object({
 });
 
 /**
+ * Strength of the claim a verification run supports. `verified` means every
+ * planned node ran for real; anything less must not be reported as verified.
+ * See `tools/orchestration/verification/claim.ts` for the derivation.
+ */
+export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unproven', 'failed']);
+
+export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
+
+/**
+ * The deterministic verdict from verification evidence. Backend-only: it shapes
+ * the tool result the model reads and gates the publish offer. It is
+ * deliberately not sent to the client — see INS-1308.
+ */
+export const verificationClaimSchema = z.object({
+	level: verificationClaimLevelSchema,
+	/** Nodes the verification plan covers. Excludes triggers the classifier skips. */
+	plannedNodeCount: z.number().int().min(0),
+	/** Planned nodes the run reached. Same set as `plannedNodeCount`. */
+	reachedNodeCount: z.number().int().min(0),
+	nodesNotReached: z.array(z.string()),
+	/** Reached nodes whose output was mocked, so the run proves nothing about them. */
+	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })),
+	/** Pin-fed subset of `simulatedNodes` — these need the pin removed for a live test. */
+	pinnedNodes: z.array(z.string()),
+	/**
+	 * Fix targets still unreached or simulated — the reason this run cannot
+	 * claim `verified` even when it ended without an error.
+	 */
+	unprovenTargets: z.array(z.string()),
+	/** Triggers with missing or incomplete scoped verification evidence. */
+	pendingTriggers: z.array(z.string()).optional(),
+	publishReady: z.boolean(),
+	liveTestRecommended: z.boolean(),
+});
+
+export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
+
+/**
  * Structured verification evidence the builder captures when it runs
  * `verify-built-workflow`. Downstream checkpoint runs read this and skip
  * running verify again when `success === true`.
@@ -158,9 +203,12 @@ export const workflowVerificationEvidenceSchema = z.object({
 	executionId: z.string().optional(),
 	status: z.enum(['success', 'error', 'waiting', 'running', 'unknown']).optional(),
 	failureSignature: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/** Trigger whose main-flow scope was used for this evidence. */
+			triggerNodeName: z.string().optional(),
 			/**
 			 * Plan nodes the execution never reached (e.g. a lookup returned zero
 			 * items and stopped the chain). Non-empty means partial coverage —
@@ -177,6 +225,15 @@ export const workflowVerificationEvidenceSchema = z.object({
 });
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
+export const workflowVerificationProgressSchema = z.record(
+	z.string(),
+	z.array(workflowVerificationEvidenceSchema.required({ claim: true })),
+);
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowVerificationProgressSchema
+>[string];
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -207,7 +264,13 @@ export const workflowVerificationReadinessSchema = z.discriminatedUnion('status'
 export type WorkflowVerificationReadiness = z.infer<typeof workflowVerificationReadinessSchema>;
 
 export const workflowSetupRequirementSchema = z.discriminatedUnion('status', [
-	z.object({ status: z.literal('not_required') }),
+	z.object({
+		status: z.literal('not_required'),
+		// Only set when setup *would* have been routed but the user already skipped the
+		// credentials involved — kept so traces show why the follow-up went quiet.
+		reason: z.literal('skipped-by-user').optional(),
+		guidance: z.string().optional(),
+	}),
 	z.object({
 		status: z.literal('required'),
 		reason: z.enum(['mocked-credentials', 'unresolved-placeholders', 'workflow-needs-setup']),
@@ -284,7 +347,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
 	/**
-	 * Trigger nodes in the submitted workflow. Populated on successful submits;
+	 * Enabled trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
 	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
 	 */
@@ -332,6 +395,26 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
+	 * Nodes this build added or modified relative to the previously saved
+	 * workflow. Setup routing and `workflows(action="setup")` requests are
+	 * scoped to these nodes so editing one node never routes pre-existing,
+	 * unrelated nodes into setup. Absent when the build created the workflow
+	 * or the prior state was unreadable — every node is then in scope.
+	 */
+	changedNodeNames: z.array(z.string()).optional(),
+	/**
+	 * How the user intends to use this workflow. `one-off`: a concrete effect
+	 * wanted once — verification becomes optional and completion is a live run
+	 * with read-back. Absent means `reusable` (the default flow).
+	 *
+	 * Deliberately a NEW OPTIONAL FIELD rather than a new
+	 * `verificationReadiness` status: previously deployed readers strip unknown
+	 * object keys but hard-fail on unknown union variants — and the loop storage
+	 * parses the whole per-thread map as one unit, so a single unparseable
+	 * outcome would wipe every work-item record on rollback.
+	 */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
+	/**
 	 * Deterministic post-build routing verdict. The orchestrator should use this
 	 * instead of reasoning over pin-data internals or trigger allow-lists.
 	 */
@@ -341,6 +424,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
+	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
+	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may
@@ -387,6 +472,9 @@ export const workflowVerificationObligationSchema = z.object({
 	readiness: workflowVerificationReadinessSchema.optional(),
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	evidence: workflowVerificationEvidenceSchema.optional(),
+	/** Mirrors the outcome's intent so consumers (e.g. the checklist projector)
+	 *  can tell a by-design one-off settlement from a could-not-verify one. */
+	executionIntent: z.enum(['one-off', 'reusable']).optional(),
 	blockingReason: z.string().optional(),
 	updatedAt: z.string(),
 });
@@ -419,6 +507,7 @@ export const verificationResultSchema = z.object({
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
+	claim: verificationClaimSchema.optional(),
 	workflowInspection: z.string().optional(),
 	failureSignature: z.string().optional(),
 	failedNodeName: z.string().optional(),
@@ -450,7 +539,9 @@ export type WorkflowLoopAction =
 			type: 'done';
 			workflowId?: string;
 			summary: string;
+			claim?: VerificationClaim;
 			mockedCredentialTypes?: string[];
 			hasUnresolvedPlaceholders?: boolean;
+			setupSkippedByUser?: boolean;
 	  }
 	| { type: 'blocked'; reason: string };

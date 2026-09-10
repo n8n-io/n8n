@@ -2,7 +2,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { JSONSchema7 } from 'json-schema';
 import { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -18,7 +18,11 @@ import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
+import {
+	convertJsonSchemaToZod,
+	generateSchemaFromExample,
+	parseJsonSchemaParameter,
+} from '@utils/schemaParsing';
 import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 
@@ -259,14 +263,14 @@ export class InformationExtractor implements INodeType {
 			let jsonSchema: JSONSchema7;
 
 			if (schemaType === 'fromJson') {
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as string;
+				const jsonExample = this.getNodeParameter('jsonSchemaExample', 0, '') as unknown;
 				// Enforce all fields to be required in the generated schema if the node version is 1.2 or higher
 				const jsonExampleAllFieldsRequired = this.getNode().typeVersion >= 1.2;
 
 				jsonSchema = generateSchemaFromExample(jsonExample, jsonExampleAllFieldsRequired);
 			} else {
-				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as string;
-				jsonSchema = jsonParse<JSONSchema7>(inputSchema);
+				const inputSchema = this.getNodeParameter('inputSchema', 0, '') as unknown;
+				jsonSchema = parseJsonSchemaParameter(inputSchema);
 			}
 
 			const zodSchema = convertJsonSchemaToZod<z.ZodSchema<object>>(jsonSchema);

@@ -146,6 +146,9 @@ export function useNodeCredentialOptions(
 		// Gateway-managed credentials have no real DB record but are properly configured
 		if (credential?.__aiGatewayManaged) return true;
 		if (!credential?.id) return false;
+		// Until the scoped fetch lands there is nothing to match against, and reporting
+		// a configured credential as missing raises a credential issue that isn't one.
+		if (!credentialsStore.hasFetchedUsableCredentials) return true;
 		const options = getCredentialOptions([credentialType.name]);
 		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
 	}

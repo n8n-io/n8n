@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from './npsSurvey.store';
 import { THREE_DAYS_IN_MILLIS, TIME, NPS_SURVEY_MODAL_KEY } from '@/app/constants';
-import { useSettingsStore } from './settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const { openModal, updateNpsSurveyState } = vi.hoisted(() => {
 	return {
@@ -291,6 +291,19 @@ describe('useNpsSurvey', () => {
 
 	it('if telemetry is disabled, does not show nps survey', async () => {
 		useSettingsStore().settings.telemetry = { enabled: false };
+		npsSurveyStore.setupNpsSurveyOnLogin('1', {
+			userActivated: true,
+			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,
+		});
+
+		await npsSurveyStore.showNpsSurveyIfPossible();
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(updateNpsSurveyState).not.toHaveBeenCalled();
+	});
+
+	it('if canvas only mode is enabled, does not show nps survey', async () => {
+		useSettingsStore().settings.canvasOnly = true;
 		npsSurveyStore.setupNpsSurveyOnLogin('1', {
 			userActivated: true,
 			userActivatedAt: NOW - THREE_DAYS_IN_MILLIS - 10000,

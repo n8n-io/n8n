@@ -15,6 +15,9 @@ export class NodeOperationError extends NodeError {
 		options: NodeOperationErrorOptions = {},
 	) {
 		if (error instanceof NodeOperationError) {
+			if (options.failure) {
+				error.failure = options.failure;
+			}
 			return error;
 		}
 
@@ -35,6 +38,7 @@ export class NodeOperationError extends NodeError {
 		this.level = options.level ?? 'warning';
 		if (options.functionality) this.functionality = options.functionality;
 		if (options.type) this.type = options.type;
+		if (options.failure) this.failure = options.failure;
 
 		if (options.description) this.description = options.description;
 		else if ('description' in error && typeof error.description === 'string')

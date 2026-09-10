@@ -1,7 +1,7 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.18.0",
-  "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
+  "version": "0.22.0",
+  "description": "Local AI gateway for n8n Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
       "n8n-computer-use": "dist/cli.js"
@@ -38,7 +38,7 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@anthropic-ai/sandbox-runtime": "^0.0.61",
+    "@anthropic-ai/sandbox-runtime": "^0.0.66",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "catalog:",

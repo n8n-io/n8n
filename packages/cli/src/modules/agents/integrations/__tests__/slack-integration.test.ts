@@ -1,12 +1,50 @@
-import { SlackIntegration } from '../platforms/slack-integration';
+/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Thread } from 'chat';
+import { mock } from 'vitest-mock-extended';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import type { AgentRepository } from '../../repositories/agent.repository';
+import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
+import { loadSlackAdapter } from '../esm-loader';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
+
+vi.mock('../esm-loader', () => ({
+	loadSlackAdapter: vi.fn(),
+}));
+
+const mockedLoadSlackAdapter = vi.mocked(loadSlackAdapter);
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
+	const createSlackAdapter = vi.fn();
 
 	beforeEach(() => {
-		integration = new SlackIntegration();
+		integration = new SlackIntegration(mock<AgentRepository>());
+		createSlackAdapter.mockReset();
+		createSlackAdapter.mockReturnValue({ marker: 'adapter' });
+		mockedLoadSlackAdapter.mockReset();
+		mockedLoadSlackAdapter.mockResolvedValue({
+			createSlackAdapter,
+		} as unknown as Awaited<ReturnType<typeof loadSlackAdapter>>);
 	});
+
+	function connectionContext(config: AgentIntegrationConfig): AgentChatIntegrationContext {
+		return {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			integration: config,
+			credentialId: config.credentialId,
+			credential: {
+				accessToken: 'xoxb-token',
+				signatureSecret: 'signing-secret',
+			},
+			ingressEnabled: true,
+			webhookUrlFor: () => 'https://example.test/webhook',
+		};
+	}
 
 	it('advertises Slack messaging and reaction actions', () => {
 		expect(integration.actions).toEqual([
@@ -20,6 +58,79 @@ describe('SlackIntegration', () => {
 
 	it('only advertises Slack bot token credentials for agent integrations', () => {
 		expect(integration.credentialTypes).toEqual(['slackApi']);
+	});
+
+	it('keeps existing Slack integrations on the Assistant messaging experience', async () => {
+		await integration.createAdapter(
+			connectionContext({ type: 'slack', credentialId: 'credential-1' }),
+		);
+
+		expect(createSlackAdapter).toHaveBeenCalledWith({
+			botToken: 'xoxb-token',
+			signingSecret: 'signing-secret',
+			agentView: false,
+		});
+	});
+
+	it('enables Agent view for new Slack integrations', async () => {
+		await integration.createAdapter(
+			connectionContext({
+				type: 'slack',
+				credentialId: 'credential-1',
+				settings: { messagingExperience: 'agent' },
+			}),
+		);
+
+		expect(createSlackAdapter).toHaveBeenCalledWith({
+			botToken: 'xoxb-token',
+			signingSecret: 'signing-secret',
+			agentView: true,
+		});
+	});
+
+	it('does not subscribe a conversation-scoped DM in Agent view', async () => {
+		const subscribe = vi.fn();
+		const thread = { id: 'slack:D123:', subscribe } as unknown as Thread<unknown, unknown>;
+
+		await integration.prepareSentThread(thread, {
+			type: 'slack',
+			credentialId: 'credential-1',
+			settings: { messagingExperience: 'agent' },
+		});
+
+		expect(subscribe).not.toHaveBeenCalled();
+	});
+
+	it('keeps subscribing outbound threads for existing Slack integrations', async () => {
+		const subscribe = vi.fn();
+		const thread = { id: 'slack:D123:', subscribe } as unknown as Thread<unknown, unknown>;
+
+		await integration.prepareSentThread(thread, {
+			type: 'slack',
+			credentialId: 'credential-1',
+		});
+
+		expect(subscribe).toHaveBeenCalledOnce();
+	});
+
+	it('rejects a credential already connected to another agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
+			{ id: 'other-agent', name: 'Other Agent' },
+		] as never);
+		integration = new SlackIntegration(agentRepository);
+
+		await expect(
+			integration.onBeforeConnect({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				integration: { type: 'slack', credentialId: 'credential-1' },
+				credentialId: 'credential-1',
+				credential: {},
+				ingressEnabled: true,
+				webhookUrlFor: vi.fn(),
+			}),
+		).rejects.toThrow(ConflictError);
 	});
 
 	it('extracts the Slack bot user ID for bridge message context', () => {
@@ -36,6 +147,68 @@ describe('SlackIntegration', () => {
 			'hello',
 		);
 		expect(integration.prepareInboundText('@U_BOT hello', { agentUserId: 'U_BOT' })).toBe('hello');
+	});
+
+	describe('messageThreadId', () => {
+		it('anchors a top-level post at the sent message ts', () => {
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' })).toBe(
+				'slack:C123:123.456',
+			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' })).toBe(
+				'slack:D123:123.456',
+			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' })).toBe(
+				'slack:G123:123.456',
+			);
+		});
+
+		it('returns undefined when the message is already in an anchored thread', () => {
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:C123:123.456' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:D123:123.456' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:G123:123.456' }),
+			).toBeUndefined();
+		});
+
+		it('returns undefined for non-Slack thread ids', () => {
+			expect(
+				integration.messageThreadId({ id: 'msg-1', threadId: 'telegram:12345' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: 'msg-1', threadId: 'linear:issue-1' }),
+			).toBeUndefined();
+		});
+
+		it('does not re-anchor conversation-scoped DMs on inbound', () => {
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' }, { inbound: true }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' }, { inbound: true }),
+			).toBe('slack:C123:123.456');
+		});
+
+		it('does not re-anchor inbound group DMs, but re-anchors private channels', () => {
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'mpim' } },
+					{ inbound: true },
+				),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'group' } },
+					{ inbound: true },
+				),
+			).toBe('slack:G123:123.456');
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' }, { inbound: true }),
+			).toBe('slack:G123:123.456');
+		});
 	});
 
 	it('sets a thinking status and buffers resume responses for Slack actions', async () => {

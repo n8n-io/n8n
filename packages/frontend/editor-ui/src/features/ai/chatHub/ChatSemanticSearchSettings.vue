@@ -16,7 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 import { useChatStore } from './chat.store';
 import { storeToRefs } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';

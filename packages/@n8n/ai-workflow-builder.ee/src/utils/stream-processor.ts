@@ -2,10 +2,11 @@
 // IMPORTS
 // ============================================================================
 
-import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, type ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 
 import type {
 	HITLInterruptValue,
@@ -180,10 +181,6 @@ export function cleanContextTags(text: string): string {
 // ============================================================================
 // HITL INTERRUPTS
 // ============================================================================
-
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
-}
 
 function isQuestionsInterruptValue(value: unknown): value is QuestionsInterruptValue {
 	if (!isRecord(value)) return false;
@@ -710,7 +707,7 @@ export function formatMessages(
 				// No tool calls - this is a final response, include the content
 				formattedMessages.push(...processAIMessageContent(msg));
 			}
-		} else if (msg instanceof ToolMessage) {
+		} else if (msg.type === 'tool') {
 			processToolMessage(msg, formattedMessages);
 		}
 	}

@@ -36,8 +36,15 @@ const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchModelCatalog = vi.fn();
+const mockVerifyModel = vi.fn();
+const mockVerifySandbox = vi.fn();
+const mockVerifySearch = vi.fn();
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
+const mockCreateBrowserLink = vi.fn();
+const mockDisconnectBrowserSession = vi.fn();
+const mockGetBrowserStatus = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -46,6 +53,10 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
+	fetchModelCatalog: (...args: unknown[]) => mockFetchModelCatalog(...args),
+	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
+	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
+	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -53,10 +64,13 @@ vi.mock('../instanceAi.api', () => ({
 	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
 	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
 	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
+	createBrowserLink: (...args: unknown[]) => mockCreateBrowserLink(...args),
+	disconnectBrowserSession: (...args: unknown[]) => mockDisconnectBrowserSession(...args),
+	getBrowserStatus: (...args: unknown[]) => mockGetBrowserStatus(...args),
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
@@ -375,6 +389,91 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('onboarding verification', () => {
+		it('delegates model, sandbox, and search checks to the settings API', async () => {
+			mockVerifyModel.mockResolvedValue({ ok: true, latencyMs: 10 });
+			mockVerifySandbox.mockResolvedValue({ ok: true, startupMs: 20 });
+			mockVerifySearch.mockResolvedValue({ ok: true, resultCount: 10 });
+			const modelPayload = { modelName: 'gpt-5.6-sol' };
+			const sandboxPayload = { provider: 'n8n-sandbox' as const };
+			const searchPayload = {
+				connection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+			};
+
+			await expect(store.verifyModel(modelPayload)).resolves.toEqual({ ok: true, latencyMs: 10 });
+			await expect(store.verifySandbox(sandboxPayload)).resolves.toEqual({
+				ok: true,
+				startupMs: 20,
+			});
+			await expect(store.verifySearch(searchPayload)).resolves.toEqual({
+				ok: true,
+				resultCount: 10,
+			});
+
+			expect(mockVerifyModel).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				modelPayload,
+			);
+			expect(mockVerifySandbox).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				sandboxPayload,
+			);
+			expect(mockVerifySearch).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				searchPayload,
+			);
+		});
+	});
+
+	describe('model catalog', () => {
+		const response = {
+			models: {
+				anthropic: [{ id: 'claude-opus-5', name: 'Claude Opus 5' }],
+				openai: [],
+				openrouter: [],
+			},
+		};
+
+		it('de-duplicates in-flight requests and keeps the successful catalog', async () => {
+			let resolveFetch: (value: typeof response) => void = () => {};
+			mockFetchModelCatalog.mockImplementation(
+				async () =>
+					await new Promise<typeof response>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+
+			const first = store.loadModelCatalog();
+			const second = store.loadModelCatalog();
+			expect(store.isModelCatalogLoading).toBe(true);
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+
+			resolveFetch(response);
+			await Promise.all([first, second]);
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(store.isModelCatalogLoading).toBe(false);
+
+			await store.loadModelCatalog();
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+		});
+
+		it('allows a retry after a failed or empty response', async () => {
+			mockFetchModelCatalog
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce({ models: { anthropic: [], openai: [], openrouter: [] } })
+				.mockResolvedValueOnce(response);
+
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(mockFetchModelCatalog).toHaveBeenCalledTimes(3);
+		});
+	});
+
 	describe('provider credentials', () => {
 		it('refreshes n8n Sandbox credentials when the assistant proxy is enabled', async () => {
 			setModuleSettings(settingsStore, { proxyEnabled: true, cloudManaged: false });
@@ -398,6 +497,7 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
+				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -427,92 +527,53 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
+			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 
-	describe('connections', () => {
-		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
+	describe('unexpected disconnects', () => {
+		it('distinguishes an unavailable gateway from a user-disconnected gateway', async () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
 			setUserPreference(store, { localGatewayDisabled: false });
+			mockGetGatewayStatus
+				.mockResolvedValueOnce({
+					connected: true,
+					directory: '/tmp',
+					hostIdentifier: 'host-1',
+					toolCategories: [],
+				})
+				.mockResolvedValueOnce({
+					connected: false,
+					directory: null,
+					hostIdentifier: null,
+					toolCategories: [],
+				});
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'disconnected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'browser', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('connected');
+			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('disconnected');
+			expect(store.gatewayHostIdentifier).toBe('host-1');
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				name: '/Users/test/project',
-				status: 'connected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'connected',
-			});
+			mockDisconnectGatewaySession.mockResolvedValue(undefined);
+			await store.disconnectComputerUse();
+			expect(store.computerUseConnectionStatus).toBe('none');
+			expect(store.gatewayHostIdentifier).toBeNull();
 		});
 
-		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'filesystem', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
+		it('tracks Browser Use disconnects observed in the current session', async () => {
+			mockGetBrowserStatus
+				.mockResolvedValueOnce({ connected: true, connectedAt: '2026-01-01', toolCategories: [] })
+				.mockResolvedValueOnce({ connected: false, connectedAt: null, toolCategories: [] });
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
-			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('connected');
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('disconnected');
+
+			mockDisconnectBrowserSession.mockResolvedValue(undefined);
+			await store.disconnectBrowserUse();
+			expect(store.browserUseConnectionStatus).toBe('none');
 		});
 	});
 

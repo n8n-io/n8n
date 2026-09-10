@@ -2,6 +2,7 @@ import type { RouterMiddleware } from '@/app/types/router';
 import { VIEWS } from '@/app/constants';
 import type { AuthenticatedPermissionOptions } from '@/app/types/rbac';
 import { isAuthenticated, shouldEnableMfa } from '@/app/utils/rbac/checks';
+import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
 
 export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOptions> = async (
 	to,
@@ -9,11 +10,7 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	next,
 	options,
 ) => {
-	// ensure that we are removing the already existing redirect query parameter
-	// to avoid infinite redirect loops
-	const url = new URL(window.location.href);
-	url.searchParams.delete('redirect');
-	const redirect = to.query.redirect ?? encodeURIComponent(`${url.pathname}${url.search}`);
+	const redirect = to.query.redirect ?? encodeURIComponent(getSanitizedCurrentPath(to));
 
 	const valid = isAuthenticated(options);
 	if (!valid) {

@@ -1,4 +1,3 @@
-import { refDebounced } from '@vueuse/core';
 import { computed, type Ref } from 'vue';
 
 import type { EmojiSection, EmojiEntry } from './emojiData';
@@ -28,10 +27,7 @@ export function useIconPickerSearch(
 	query: Ref<string>,
 	selectedCategory: Ref<string | null>,
 	selectedSkinTone: Ref<number>,
-	delay = 150,
 ) {
-	const debouncedQuery = refDebounced(query, delay);
-
 	/** Flat filtered icon list — used when search is active */
 	const filteredIcons = computed<Array<[string, LucideIconMeta]>>(() => {
 		if (!lucideData.value) return [];
@@ -45,7 +41,7 @@ export function useIconPickerSearch(
 
 		// Filter by search query. Tokenize so multi-word queries ("alarm clock")
 		// match when every token is found in the name or any keyword.
-		const q = debouncedQuery.value.toLowerCase().trim();
+		const q = query.value.toLowerCase().trim();
 		if (q) {
 			const tokens = q.split(/\s+/);
 			entries = entries.filter(([name, icon]) =>
@@ -103,7 +99,7 @@ export function useIconPickerSearch(
 	});
 
 	const filteredEmojiSections = computed<DisplayEmojiSection[]>(() => {
-		const q = debouncedQuery.value.toLowerCase().trim();
+		const q = query.value.toLowerCase().trim();
 		const tokens = q ? q.split(/\s+/) : [];
 		const tone = selectedSkinTone.value;
 
@@ -127,5 +123,5 @@ export function useIconPickerSearch(
 			.filter((section) => section.emojis.length > 0);
 	});
 
-	return { filteredIcons, filteredIconSections, filteredEmojiSections, debouncedQuery };
+	return { filteredIcons, filteredIconSections, filteredEmojiSections };
 }

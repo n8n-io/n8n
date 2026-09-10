@@ -1,4 +1,7 @@
+import type { Logger } from '@n8n/backend-common';
 import type { Request } from 'express';
+import { ExecutionContextService } from 'n8n-core';
+import type { Cipher, ExecutionContextHookRegistry } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +23,16 @@ describe('DynamicCredentialWebService', () => {
 			getEndpoint: vi.fn(),
 		});
 
-		service = new DynamicCredentialWebService(mockAuthService);
+		// The real context builder, so these tests keep asserting the shape the resolver
+		// validates. Its collaborators are unused by the plaintext builder.
+		service = new DynamicCredentialWebService(
+			mockAuthService,
+			new ExecutionContextService(
+				mock<Logger>(),
+				mock<ExecutionContextHookRegistry>(),
+				mock<Cipher>(),
+			),
+		);
 	});
 
 	describe('getCredentialContextFromRequest', () => {

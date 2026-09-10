@@ -29,7 +29,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	],
 	requestDefaults: {
-		baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/',
+		baseURL: '=https://{{ ($credentials.subdomain || "").trim() }}.sharepoint.com/_api/v2.0/',
 	},
 	properties: [
 		{

@@ -65,6 +65,7 @@ describe('CredentialsController', () => {
 		mock(), // instanceCredentialAssignmentRepository
 		mock(), // instanceCredentialUseRegistry
 		mock(), // dbLockService
+		mock(), // eventService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -77,6 +78,7 @@ describe('CredentialsController', () => {
 	let updateSpy: MockInstance;
 	let createUnmanagedCredentialSpy: MockInstance;
 	let ensureCanManageEndUserCredentialSpy: MockInstance;
+	let ensureEndUserCredentialAllowedInProjectSpy: MockInstance;
 	let findCredentialOwningProjectSpy: MockInstance;
 	let emitSpy: MockInstance;
 
@@ -114,6 +116,10 @@ describe('CredentialsController', () => {
 		ensureCanManageEndUserCredentialSpy = vi
 			.spyOn(credentialsService, 'ensureCanManageEndUserCredential')
 			.mockResolvedValue(undefined);
+		// stubbed by default: the project-type check needs real project data that unit tests don't wire up
+		ensureEndUserCredentialAllowedInProjectSpy = vi
+			.spyOn(credentialsService, 'ensureEndUserCredentialAllowedInProject')
+			.mockReturnValue(undefined);
 		// stubbed by default: backed by connectionStatusProxy, which unit tests don't wire up
 		vi.spyOn(credentialsService, 'populateConnectedByMe').mockResolvedValue(undefined);
 		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
@@ -356,6 +362,7 @@ describe('CredentialsController', () => {
 				user: ownerReq.user,
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
+				credentialName: 'Updated Credential',
 				isDynamic: false,
 				usesExternalSecrets: false,
 				jweEnabled: false,
@@ -711,6 +718,8 @@ describe('CredentialsController', () => {
 
 			// ASSERT
 			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			// switching to end-user must also clear the personal-project gate
+			expect(ensureEndUserCredentialAllowedInProjectSpy).toHaveBeenCalledTimes(1);
 			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
@@ -719,6 +728,42 @@ describe('CredentialsController', () => {
 				expect.any(Object),
 				expect.any(Object),
 			);
+		});
+
+		it('should not apply the personal-project gate when switching back to fixed', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isResolvable: false,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			const existingCredentialWithResolvable = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				existingCredentialWithResolvable,
+			);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({
+				...existingCredentialWithResolvable,
+				name: 'Updated Credential',
+				isResolvable: false,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(ensureCanManageEndUserCredentialSpy).toHaveBeenCalledTimes(1);
+			expect(ensureEndUserCredentialAllowedInProjectSpy).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing isResolvable value when not provided', async () => {
@@ -991,14 +1036,14 @@ describe('CredentialsController', () => {
 	describe('deleteCredentials', () => {
 		const credentialId = 'cred-del-1';
 
-		it('should emit "private-credential-deleted" when deleting a resolvable credential', async () => {
+		it('should delete an accessible credential via CredentialsService', async () => {
 			const privateCredential = mock<CredentialsEntity>({
 				id: credentialId,
 				type: 'gmailOAuth2',
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
 
 			const deleteReq = {
 				user: { id: 'u1' },
@@ -1007,31 +1052,9 @@ describe('CredentialsController', () => {
 
 			await credentialsController.deleteCredentials(deleteReq);
 
-			expect(emitSpy).toHaveBeenCalledWith('private-credential-deleted', {
-				user: deleteReq.user,
-				credentialType: privateCredential.type,
-				credentialId: privateCredential.id,
+			expect(deleteSpy).toHaveBeenCalledWith(deleteReq.user, credentialId, {
+				includeInstanceCredentials: true,
 			});
-		});
-
-		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
-			const staticCredential = mock<CredentialsEntity>({
-				id: credentialId,
-				type: 'gmailOAuth2',
-				isResolvable: false,
-			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
-			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
-
-			const deleteReq = {
-				user: { id: 'u1' },
-				params: { credentialId },
-			} as unknown as CredentialRequest.Delete;
-
-			await credentialsController.deleteCredentials(deleteReq);
-
-			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
-			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
 	});
 

@@ -1,12 +1,11 @@
-/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
-
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
+import { defineComponent, h, nextTick, ref } from 'vue';
 
 import N8nChatInput from './ChatInput.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nChatInput);
 
@@ -176,6 +175,254 @@ describe('N8nChatInput', () => {
 
 			await vi.waitFor(() => expect(textarea.scrollTop).toBe(0));
 			wrapper.unmount();
+		});
+	});
+
+	describe('adaptive layout', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('does not reserve the multiline minimum height', () => {
+			const { container } = renderComponent({
+				props: {
+					layout: 'adaptive',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('');
+			expect(chatContainer.classList.toString()).toContain('adaptiveContainer');
+		});
+
+		it('keeps the multiline minimum height for the default layout', () => {
+			const { container } = renderComponent({
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('80px');
+		});
+
+		it('falls back to multiline for a custom send button label', () => {
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			const { container } = renderComponent({
+				props: {
+					layout: 'adaptive',
+					buttonLabel: 'Send message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('80px');
+			expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to `multiline`'));
+		});
+
+		it.each(['left-actions', 'actions', 'extra-actions', 'right-actions'])(
+			'falls back to multiline for the %s slot',
+			(slotName) => {
+				const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+				const { container } = renderComponent({
+					props: {
+						layout: 'adaptive',
+					},
+					slots: {
+						[slotName]: '<button>Custom action</button>',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				const chatContainer = container.querySelector('.container') as HTMLElement;
+				expect(chatContainer.style.minHeight).toBe('80px');
+				expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
+				expect(container).toHaveTextContent('Custom action');
+				expect(warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to `multiline`'));
+			},
+		);
+
+		it('falls back to multiline when an action slot appears after mount', async () => {
+			const showAction = ref(false);
+			const Host = defineComponent({
+				setup() {
+					return () =>
+						h(
+							N8nChatInput,
+							{ layout: 'adaptive' },
+							showAction.value ? { 'right-actions': () => h('button', 'Custom action') } : {},
+						);
+				},
+			});
+
+			const wrapper = mount(Host, {
+				attachTo: document.body,
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+			});
+			const chatContainer = wrapper.find('.container');
+			expect(chatContainer.classes().join(' ')).toContain('adaptiveContainer');
+
+			showAction.value = true;
+			await nextTick();
+
+			expect(wrapper.find('.container').classes().join(' ')).not.toContain('adaptiveContainer');
+			expect(wrapper.find('.container').attributes('style')).toContain('min-height: 80px');
+			wrapper.unmount();
+		});
+
+		it('remeasures the height when a slot flips the effective layout', async () => {
+			// Adaptive and multiline use different textarea padding, so identical content
+			// measures differently; stand in for that with a mutable measurement.
+			let measured = 32;
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get: () => measured,
+			});
+
+			try {
+				const showAction = ref(false);
+				const Host = defineComponent({
+					setup() {
+						return () =>
+							h(
+								N8nChatInput,
+								{ layout: 'adaptive', modelValue: 'hello' },
+								showAction.value ? { 'right-actions': () => h('button', 'Action') } : {},
+							);
+					},
+				});
+
+				const wrapper = mount(Host, {
+					attachTo: document.body,
+					global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+				});
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 32px'),
+				);
+
+				measured = 36;
+				showAction.value = true;
+				await nextTick();
+
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 36px'),
+				);
+				wrapper.unmount();
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
+		it('remeasures the height when the layout prop changes', async () => {
+			let measured = 32;
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get: () => measured,
+			});
+
+			try {
+				const wrapper = mount(N8nChatInput, {
+					attachTo: document.body,
+					props: { layout: 'adaptive', modelValue: 'hello' },
+					global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+				});
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 32px'),
+				);
+
+				measured = 36;
+				await wrapper.setProps({ layout: 'multiline' });
+
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 36px'),
+				);
+				wrapper.unmount();
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
+		it('autosizes the textarea like multiline', async () => {
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return this.value?.includes('\n') ? 72 : 24;
+				},
+			});
+
+			try {
+				const { container } = renderComponent({
+					props: {
+						layout: 'adaptive',
+						modelValue: '',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+				textarea.value = 'Line 1\nLine 2\nLine 3';
+				await fireEvent.input(textarea);
+
+				await vi.waitFor(() => expect(textarea.getAttribute('style')).toContain('height: 72px'));
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
+		it('submits on Enter and inserts a newline on Shift+Enter, like multiline', async () => {
+			const render = renderComponent({
+				props: {
+					layout: 'adaptive',
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+
+			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+			expect(render.emitted('submit')).toBeFalsy();
+			expect(render.emitted('update:modelValue')).toBeTruthy();
+
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			expect(render.emitted('submit')).toBeTruthy();
 		});
 	});
 

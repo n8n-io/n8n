@@ -40,12 +40,9 @@ describe('getMcpClientCatalog', () => {
 		});
 	});
 
-	it('should give web connector URLs as https and every CLI an install command', () => {
+	it('should give every web client a connector URL and every CLI an install command', () => {
 		const web = catalog.find((group) => group.id === 'web')!;
-		// A one-click connector URL is optional per web client, but when present it must be https.
-		for (const client of web.clients) {
-			if (client.addUrl) expect(client.addUrl).toMatch(/^https:\/\//);
-		}
+		for (const client of web.clients) expect(client.addUrl).toMatch(/^https:\/\//);
 
 		const cli = catalog.find((group) => group.id === 'cli')!;
 		for (const client of cli.clients) {

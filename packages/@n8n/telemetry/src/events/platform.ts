@@ -12,4 +12,15 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			variant: z.union([z.string(), z.boolean()]).describe('Variant assigned to the user'),
 		}),
 	},
+	TASK_RUNNER_DISCONNECTED: {
+		name: 'Task runner disconnected',
+		description:
+			'The broker tore down a task runner connection because the runner was unhealthy: it failed a heartbeat check, or was reported unresponsive after it stopped acknowledging or offering tasks. Normal shutdowns are not reported.',
+		properties: z.object({
+			reason: z
+				.enum(['failed-heartbeat-check', 'runner-unresponsive'])
+				.describe('Which detection reported the runner as unhealthy'),
+			mode: z.enum(['internal', 'external']).describe('Task runners deployment mode'),
+		}),
+	},
 });

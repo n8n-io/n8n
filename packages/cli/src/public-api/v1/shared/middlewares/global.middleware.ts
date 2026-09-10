@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { DeprecationInfo } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
@@ -86,11 +87,6 @@ export const validCursor = (
 	}
 
 	return next();
-};
-
-export type DeprecationInfo = {
-	/** When the endpoint became deprecated. Emitted as an RFC 9745 `Deprecation` header. */
-	since: Date;
 };
 
 /**

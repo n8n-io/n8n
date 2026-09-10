@@ -134,6 +134,7 @@ function toExportableWorkflow(
 	return {
 		id: wf.id,
 		name: wf.name,
+		description: wf.description ?? null,
 		connections: wf.connections,
 		isArchived: wf.isArchived,
 		nodes: wf.nodes,
@@ -356,7 +357,7 @@ describe('SourceControlService', () => {
 			movedIntoScopeCredential,
 			movedOutOfScopeWorkflow,
 			movedIntoScopeWorkflow,
-		] = await Promise.all([
+		] = [
 			await createCredentials(
 				{
 					name: 'OutOfScope',
@@ -385,7 +386,7 @@ describe('SourceControlService', () => {
 				},
 				projectA,
 			),
-		]);
+		];
 
 		const [projectACredentials, projectBCredentials] = await Promise.all(
 			[projectA, projectB].map(async (project) => [

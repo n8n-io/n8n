@@ -65,6 +65,30 @@ describe('callAiServiceWithRetry', () => {
 		expect(errorReporter.warn).toHaveBeenCalledTimes(1);
 	});
 
+	it('retries transient upstream statuses', async () => {
+		vi.useFakeTimers();
+		const unavailable = Object.assign(new Error('Service Unavailable'), { statusCode: 503 });
+		const call = vi.fn().mockRejectedValueOnce(unavailable).mockResolvedValue('ok');
+
+		const promise = callAiServiceWithRetry('Test call', call);
+		await vi.runAllTimersAsync();
+
+		await expect(promise).resolves.toBe('ok');
+		expect(call).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries failures that carry no upstream status', async () => {
+		vi.useFakeTimers();
+		const gatewayFailure = new Error('<html>Bad Gateway</html>');
+		const call = vi.fn().mockRejectedValueOnce(gatewayFailure).mockResolvedValue('ok');
+
+		const promise = callAiServiceWithRetry('Test call', call);
+		await vi.runAllTimersAsync();
+
+		await expect(promise).resolves.toBe('ok');
+		expect(call).toHaveBeenCalledTimes(2);
+	});
+
 	it('does not retry definite client errors', async () => {
 		const unauthorized = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
 		const call = vi.fn(async () => await Promise.reject(unauthorized));

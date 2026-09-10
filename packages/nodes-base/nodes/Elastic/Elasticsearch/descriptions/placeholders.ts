@@ -30,7 +30,7 @@ export const aliases = `{
 export const query = `{
   "query": {
     "term": {
-      "user.id": "john"
+      "user.id": "$1"
     }
   }
 }`;

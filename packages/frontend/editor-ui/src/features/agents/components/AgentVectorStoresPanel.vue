@@ -7,6 +7,7 @@ import {
 	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
+	N8nText,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -74,17 +75,18 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 
 <template>
 	<div :class="$style.panel" data-testid="agent-vector-stores-panel">
-		<div v-if="props.vectorStores.length > 0" :class="$style.toolbar">
-			<span :class="$style.title" data-testid="agent-vector-stores-title">
+		<div :class="$style.toolbar">
+			<N8nText bold :class="$style.title" data-testid="agent-vector-stores-title">
 				{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
 				<N8nTooltip
 					:content="i18n.baseText('agents.builder.vectorStores.panel.titleTooltip')"
 					placement="top"
 				>
-					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
+					<div :class="$style.titleIcon"><N8nIcon icon="circle-help" size="small" /></div>
 				</N8nTooltip>
-			</span>
+			</N8nText>
 			<N8nTooltip
+				v-if="props.vectorStores.length > 0"
 				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 				placement="top"
 			>
@@ -172,7 +174,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -187,14 +189,14 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 .title {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--sm);
+	min-width: 0;
 }
 
 .titleIcon {
+	width: var(--height--xs);
+	height: var(--height--xs);
+	display: grid;
+	place-items: center;
 	color: var(--text-color--subtler);
 }
 

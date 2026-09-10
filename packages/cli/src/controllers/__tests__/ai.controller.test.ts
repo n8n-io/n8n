@@ -3,13 +3,16 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { APIResponseError, NetworkError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -39,6 +42,7 @@ describe('AiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		aiGatewayService.assertEnabled.mockImplementation(() => {});
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -83,6 +87,14 @@ describe('AiController', () => {
 			aiService.chat.mockRejectedValue(new APIResponseError('Session not found', 404));
 
 			await expect(controller.chat(request, response, payload)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should map an unreachable AI assistant service to ServiceUnavailableError', async () => {
+			aiService.chat.mockRejectedValue(new NetworkError(new TypeError('fetch failed')));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(
+				ServiceUnavailableError,
+			);
 		});
 
 		it('should register a close handler on the response for abort', async () => {
@@ -505,6 +517,16 @@ describe('AiController', () => {
 			);
 			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
 		});
+
+		it('should map an unreachable AI assistant service to ServiceUnavailableError', async () => {
+			workflowBuilderService.getBuilderInstanceCredits.mockRejectedValue(
+				new NetworkError(new TypeError('fetch failed')),
+			);
+
+			await expect(controller.getBuilderCredits(request, response)).rejects.toThrow(
+				ServiceUnavailableError,
+			);
+		});
 	});
 
 	describe('clearSession', () => {
@@ -652,8 +674,25 @@ describe('AiController', () => {
 	});
 
 	describe('getGatewayWallet', () => {
+		it('should reject gateway requests when n8n Connect is disabled', async () => {
+			aiGatewayService.assertEnabled.mockImplementation(() => {
+				throw new BadRequestError('Gateway credits are not enabled on this instance');
+			});
+			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
+
+			await expect(controller.getGatewayConfig()).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayUsage(request, response, query)).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(aiGatewayService.getGatewayConfig).not.toHaveBeenCalled();
+			expect(aiGatewayService.getWallet).not.toHaveBeenCalled();
+			expect(aiGatewayService.getUsage).not.toHaveBeenCalled();
+		});
+
 		it('should return wallet from aiGatewayService', async () => {
-			const walletData = { budget: 10, balance: 7 };
+			const walletData = { budget: 10, balance: 7, hasEverToppedUp: false };
 			aiGatewayService.getWallet.mockResolvedValue(walletData);
 
 			const result = await controller.getGatewayWallet(request);

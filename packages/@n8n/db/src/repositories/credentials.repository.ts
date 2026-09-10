@@ -13,14 +13,36 @@ import { InstanceCredentialAssignmentRepository } from './instance-credential-as
 import { SharedCredentialsRepository } from './shared-credentials.repository';
 import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
+
+const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
+
+export type CredentialSharingRelation =
+	| 'shared'
+	| 'shared.project'
+	| 'shared.project.projectRelations';
+
+const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = [
+	'shared',
+	'shared.project',
+	'shared.project.projectRelations',
+];
+
+type CredentialsListQueryOptions = ListQuery.Options & {
+	includeData?: boolean;
+	user?: User;
+	relations?: CredentialSharingRelation[];
+};
 
 @Service()
 export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(CredentialsEntity, dataSource.manager);
+		super(CredentialsEntity, dataSource.manager, transactionRunner);
 	}
 
 	async findStartingWith(credentialName: string) {
@@ -35,6 +57,18 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			where: { id: In(ids), usageScope: Not('project') },
 			select: ['id'],
 		});
+	}
+
+	/** Filters `ids` down to the global credentials, which every project can use. */
+	async findGlobalProjectCredentialIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
 	}
 
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
@@ -114,31 +148,8 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		}
 	}
 
-	async findMany(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-		credentialIds?: string[],
-	) {
-		const findManyOptions = this.toFindManyOptions(listQueryOptions);
-
-		if (credentialIds) {
-			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
-		}
-
-		return await this.find(this.onlyProjectCredentials(findManyOptions));
-	}
-
 	async findManyAndCount(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			user?: User;
-			/** When provided, sets sort order for the query. */
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
+		listQueryOptions?: CredentialsListQueryOptions,
 		credentialIds?: string[],
 	): Promise<[CredentialsEntity[], number]> {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
@@ -157,17 +168,12 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private toFindManyOptions(
-		listQueryOptions?: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
-		},
-	) {
+	private toFindManyOptions(listQueryOptions?: CredentialsListQueryOptions) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
+		const relations = listQueryOptions?.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
 		const defaultSelect: Select = [
 			'id',
 			'name',
@@ -183,11 +189,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		if (!listQueryOptions) {
 			return {
 				select: defaultSelect,
-				relations: defaultRelations,
+				relations,
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
-		const { filter, select, take, skip, order } = listQueryOptions;
+		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
 			filter.name = Like(`%${filter.name}%`);
@@ -208,13 +214,21 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
 		}
 
-		if (!findManyOptions.select) {
-			findManyOptions.select = defaultSelect;
-			findManyOptions.relations = defaultRelations;
+		// the credential:connect scope check needs isResolvable whenever isGlobal is selected
+		if (select?.isGlobal && !select?.isResolvable) {
+			findManyOptions.select = { ...findManyOptions.select, isResolvable: true };
 		}
 
-		if (order !== undefined) {
-			findManyOptions.order = order;
+		if (!findManyOptions.select) {
+			findManyOptions.select = defaultSelect;
+			findManyOptions.relations = relations;
+		}
+
+		if (sortBy) {
+			const { column, direction } = parseListQuerySortBy(sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				findManyOptions.order = { [column]: direction };
+			}
 		}
 
 		if (listQueryOptions.includeData) {
@@ -228,9 +242,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return findManyOptions;
 	}
 
-	private handleSharedFilters(
-		listQueryOptions?: ListQuery.Options & { includeData?: boolean },
-	): void {
+	private handleSharedFilters(listQueryOptions?: CredentialsListQueryOptions): void {
 		if (!listQueryOptions?.filter) return;
 
 		const { filter } = listQueryOptions;
@@ -416,9 +428,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
@@ -456,9 +466,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options & {
-			includeData?: boolean;
-			order?: FindManyOptions<CredentialsEntity>['order'];
+		options: CredentialsListQueryOptions & {
 			filters?: {
 				dependency?: CredentialDependencyFilter;
 			};
@@ -493,7 +501,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		// Apply other filters
 		// projectId is always handled in the subquery, so skip it to avoid issues
 		const filtersToApply =
-			options.filter && typeof options.filter.projectId !== 'undefined'
+			typeof options.filter?.projectId !== 'undefined'
 				? { ...options.filter, projectId: undefined }
 				: options.filter;
 
@@ -541,17 +549,16 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		// Apply relations
 		if (!options.select) {
-			// Only add relations if using default select
 			qb.leftJoinAndSelect('credential.shared', 'shared')
 				.leftJoinAndSelect('shared.project', 'project')
 				.leftJoinAndSelect('project.projectRelations', 'projectRelations');
 		}
 
-		// Apply sorting
-		if (options.order) {
-			Object.entries(options.order).forEach(([key, direction]) => {
-				qb.addOrderBy(`credential.${key}`, direction as 'ASC' | 'DESC');
-			});
+		if (options.sortBy) {
+			const { column, direction } = parseListQuerySortBy(options.sortBy);
+			if (SORTABLE_COLUMNS.has(column)) {
+				qb.addOrderBy(`credential.${column}`, direction);
+			}
 		}
 
 		// Apply pagination

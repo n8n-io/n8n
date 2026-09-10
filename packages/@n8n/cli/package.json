@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.14.0",
+  "version": "0.19.0",
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
@@ -62,6 +62,12 @@
       },
       "config": {
         "description": "View and update CLI configuration"
+      },
+      "promotion-provider": {
+        "description": "Create and manage the providers that hold promotion credentials"
+      },
+      "promotion-connection": {
+        "description": "Create and manage promotion connections, and promote or apply packages"
       },
       "source-control": {
         "description": "Pull changes from the configured source control provider"

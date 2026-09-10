@@ -1,30 +1,28 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 
+import { forgetApprovedHost, listApprovedHosts, rememberHost } from '../../approvedHosts';
 import { createLogger } from '../../logger';
-import { getRelayHost, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
+import { getRelayHostKey, isAllowedRelayUrl, isLocalhostRelay } from '../../relayAllowlist';
 import { isEligibleTab } from '../../relayConnection';
 import type {
 	ConnectionStatus,
 	ControlledTabId,
-	TabManagementSettings,
 	BackgroundPushMessage,
+	StatusResponse,
 } from '../../types';
-import { isConnectResponse, isStatusResponse, isTabManagementSettings } from '../../types';
+import { isConnectResponse, isStatusResponse } from '../../types';
 
 const log = createLogger('ui');
-
-const DEFAULT_SETTINGS: TabManagementSettings = {
-	allowTabCreation: true,
-	allowTabClosing: false,
-};
 
 export function useConnection() {
 	// ── Core connection state ─────────────────────────────────────────────────
 	const status = ref<ConnectionStatus>('disconnected');
 	const controlledTabIds = ref<ControlledTabId[]>([]);
 	const errorMessage = ref('');
-	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
+	// Reported by the background, which owns the live session. Lets a view that never
+	// saw the connect request — the drawer — still name the instance it is bound to.
+	const connectedRelayUrl = ref<string | null>(null);
 
 	// Set when the page is opened with `?autoConnect=1` AND the relay URL
 	// points to localhost. Skips the manual click: every available tab is
@@ -36,6 +34,13 @@ export function useConnection() {
 	// user into opening a crafted chrome-extension URL pointing at an
 	// attacker-controlled WSS endpoint.
 	const isAutoConnect = ref<boolean>(false);
+
+	// ── Remembered-instance consent ──────────────────────────────────────────
+	// Opt-in: a remembered instance reconnects with no prompt at all, so nobody should end
+	// up in that state without ticking the box themselves.
+	const rememberInstance = ref(false);
+	// Every stored host, so the drawer can revoke them without being connected.
+	const approvedHosts = ref<string[]>([]);
 
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
@@ -58,18 +63,19 @@ export function useConnection() {
 
 	// ── Computeds ─────────────────────────────────────────────────────────────
 	const hasRelayUrl = computed(() => !!relayUrl.value);
-	const relayHost = computed(() => getRelayHost(relayUrl.value));
 	const isRelayAllowed = computed(() => isAllowedRelayUrl(relayUrl.value));
-
-	const allSelected = computed(
-		() =>
-			availableTabs.value.length > 0 &&
-			availableTabs.value.every((t) => t.id !== undefined && selectedTabIds.has(t.id)),
-	);
-
-	const someSelected = computed(() => selectedTabIds.size > 0);
+	// The one identity the user ever sees, and the one that gets stored, so what they agree
+	// to always matches what the revoke list shows back.
+	const relayHostKey = computed(() => getRelayHostKey(connectedRelayUrl.value ?? relayUrl.value));
 
 	// ── Private helpers ───────────────────────────────────────────────────────
+
+	function applyStatus(update: StatusResponse): void {
+		const connected = update.connected === true;
+		status.value = connected ? 'connected' : 'disconnected';
+		controlledTabIds.value = connected ? (update.tabIds ?? []) : [];
+		connectedRelayUrl.value = connected ? (update.relayUrl ?? null) : null;
+	}
 
 	async function initTabRegistry(): Promise<void> {
 		const result: unknown = await chrome.runtime.sendMessage({ type: 'getTabs' });
@@ -110,16 +116,6 @@ export function useConnection() {
 		}
 	}
 
-	function toggleAll(): void {
-		if (allSelected.value) {
-			selectedTabIds.clear();
-		} else {
-			for (const t of availableTabs.value) {
-				if (t.id !== undefined) selectedTabIds.add(t.id);
-			}
-		}
-	}
-
 	async function connect(): Promise<void> {
 		if (!relayUrl.value) {
 			errorMessage.value = 'No active session. Ask n8n AI to connect to your browser.';
@@ -128,29 +124,40 @@ export function useConnection() {
 		}
 
 		if (!isAllowedRelayUrl(relayUrl.value)) {
-			errorMessage.value = `Can't connect to ${relayHost.value ?? 'this address'} — not a recognized n8n instance.`;
+			errorMessage.value = `Can't connect to ${relayHostKey.value ?? 'this address'} — not a recognized n8n instance.`;
 			log.warn('connect: relay URL not allowed', relayUrl.value);
 			return;
 		}
 
-		log.debug('connect: relay URL =', relayUrl.value, 'selectedTabs:', selectedTabIds.size);
+		// Pinned before any await: a new request can replace `relayUrl` mid-handshake, and the
+		// approval must record the host the user was actually shown.
+		const approvedUrl = relayUrl.value;
+		log.debug('connect: relay URL =', approvedUrl, 'selectedTabs:', selectedTabIds.size);
 		status.value = 'connecting';
 		errorMessage.value = '';
 
 		const raw: unknown = await chrome.runtime.sendMessage({
 			type: 'connect',
-			relayUrl: relayUrl.value,
+			relayUrl: approvedUrl,
 			selectedTabIds: [...selectedTabIds],
 		});
 		log.debug('connect response:', raw);
 
 		if (isConnectResponse(raw) && raw.success) {
 			status.value = 'connected';
+			// The eval harness connects unattended — it must not write user-facing trust state.
+			if (rememberInstance.value && !isAutoConnect.value) {
+				approvedHosts.value = await rememberHost(approvedUrl);
+			}
 			await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
 			// Fetch controlled IDs — controlledTabDetails computed auto-resolves from registry
 			const statusResponse: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
 			if (isStatusResponse(statusResponse)) {
-				controlledTabIds.value = statusResponse.tabIds ?? [];
+				applyStatus(statusResponse);
+			}
+			const currentWindow = await chrome.windows.getCurrent();
+			if (currentWindow.type === 'popup') {
+				window.close();
 			}
 		} else {
 			status.value = 'disconnected';
@@ -164,46 +171,61 @@ export function useConnection() {
 	async function disconnect(): Promise<void> {
 		log.debug('disconnect');
 		await chrome.runtime.sendMessage({ type: 'disconnect' });
-		status.value = 'disconnected';
-		controlledTabIds.value = []; // controlledTabDetails auto-computes to []
+		applyStatus({ connected: false });
 		relayUrl.value = null;
 	}
 
-	async function updateSettings(partial: Partial<TabManagementSettings>): Promise<void> {
-		settings.value = { ...settings.value, ...partial };
-		await chrome.runtime.sendMessage({
-			type: 'updateSettings',
-			settings: settings.value,
-		});
+	/** Drops a stored approval. Never touches the live session. */
+	async function forgetHost(host: string): Promise<void> {
+		log.debug('forgetHost', host);
+		approvedHosts.value = await forgetApprovedHost(host);
+	}
+
+	async function decline(): Promise<void> {
+		log.debug('decline');
+		await chrome.runtime.sendMessage({ type: 'clearRelayUrl' });
+		relayUrl.value = null;
+		// In the action popover the page is not a tab — getCurrent returns undefined
+		const currentTab = await chrome.tabs.getCurrent();
+		if (currentTab?.id !== undefined) {
+			await chrome.tabs.remove(currentTab.id);
+		} else {
+			window.close();
+		}
 	}
 
 	// ── Background push message listener ─────────────────────────────────────
 
-	async function onBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
+	// Must be a sync listener: an async listener returns a Promise, which Chrome
+	// treats as "will respond" — with several extension views open (drawer +
+	// connect page) it then races the background's real sendMessage response
+	// with `undefined` and the caller sees a bogus error.
+	function onBackgroundMessage(message: BackgroundPushMessage): void {
+		void handleBackgroundMessage(message);
+	}
+
+	async function handleBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
+			// A different instance is asking now, so its approval has to be given afresh.
+			rememberInstance.value = false;
 			// Drop the now-stale connection params from the page URL. The live value lives in
 			// relayUrl + session storage, so a manual reload reads the fresh URL, not the old token.
 			window.history.replaceState(null, '', window.location.pathname);
 			if (status.value === 'connected') {
-				status.value = 'disconnected';
-				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
+				applyStatus({ connected: false });
 				await initTabRegistry();
 			}
 		}
 
 		if (message.type === 'statusChanged') {
 			log.debug('statusChanged received: connected=', message.connected);
+			applyStatus(message);
 			if (message.connected) {
-				status.value = 'connected';
-				const incoming = message.tabIds ?? [];
-				const missing = incoming.filter((e) => !tabRegistry.has(e.chromeTabId));
+				const missing = (message.tabIds ?? []).filter((e) => !tabRegistry.has(e.chromeTabId));
 				if (missing.length > 0) await initTabRegistry();
-				controlledTabIds.value = incoming; // controlledTabDetails auto-computes
 			} else {
-				status.value = 'disconnected';
-				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
 				relayUrl.value = null;
 			}
 		}
@@ -224,13 +246,6 @@ export function useConnection() {
 	// ── Initialization ────────────────────────────────────────────────────────
 
 	onMounted(async () => {
-		const savedSettings: unknown = await chrome.runtime.sendMessage({ type: 'getSettings' });
-		log.debug('saved settings:', savedSettings);
-		if (isTabManagementSettings(savedSettings)) {
-			const validated: TabManagementSettings = savedSettings;
-			settings.value = validated;
-		}
-
 		// Read relay URL directly from the page's own query string first.
 		// This is more reliable than session storage, which can race with the UI mount
 		// (the background script writes it asynchronously when the tab is created).
@@ -260,11 +275,11 @@ export function useConnection() {
 		const currentStatus: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
 		log.debug('initial status:', currentStatus);
 		if (isStatusResponse(currentStatus) && currentStatus.connected) {
-			status.value = 'connected';
-			controlledTabIds.value = currentStatus.tabIds ?? [];
+			applyStatus(currentStatus);
 		}
 
-		await initTabRegistry();
+		const [storedHosts] = await Promise.all([listApprovedHosts(), initTabRegistry()]);
+		approvedHosts.value = storedHosts;
 
 		if (!mounted) return;
 
@@ -291,19 +306,18 @@ export function useConnection() {
 		tabs: availableTabs,
 		selectedTabIds,
 		errorMessage,
-		settings,
 		relayUrl,
 		hasRelayUrl,
-		relayHost,
 		isRelayAllowed,
 		isAutoConnect,
+		relayHostKey,
+		rememberInstance,
+		approvedHosts,
 		controlledTabs: controlledTabDetails,
-		allSelected,
-		someSelected,
 		toggleTab,
-		toggleAll,
 		connect,
+		decline,
 		disconnect,
-		updateSettings,
+		forgetHost,
 	};
 }

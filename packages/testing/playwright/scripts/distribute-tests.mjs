@@ -112,7 +112,10 @@ function selectV8Specs(externalFiles, base) {
 		if (parsed.mode === 'broad') {
 			return {
 				broad: true,
-				reason: parsed.failOpen ?? `unmapped: ${(parsed.unmapped ?? []).join(', ')}`,
+				// Not "unmapped": every non-fail-open broad reason is a file the map
+				// can't be trusted for (runtime-defining, resolution-changing, or an
+				// unscoped dependency change), which may well have a map entry.
+				reason: parsed.failOpen ?? `forced broad by: ${(parsed.unmapped ?? []).join(', ')}`,
 			};
 		}
 		// Coverage-gap alarm: changes with no E2E that verifies them aren't run

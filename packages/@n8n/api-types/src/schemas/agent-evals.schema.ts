@@ -1,23 +1,14 @@
-import type { JsonValue } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { jsonValueSchema } from './json-value.schema';
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
+import {
+	MAX_ITEMS_PER_PAGE,
+	createTakeValidator,
+	paginationSchema,
+} from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
-
-// A JSON blob that flows from a request into persistence must infer to the
-// repository's `JsonObject`, not `Record<string, unknown>` — the latter permits
-// non-JSON leaves and isn't assignable to `JsonObject` without a cast. Recursive
-// so nested values are validated too.
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.record(z.string(), jsonValueSchema),
-		z.array(jsonValueSchema),
-	]),
-);
 
 // PostHog rollout flag id gating the agent-evals feature surface. Every new
 // agent-eval endpoint + frontend entry point consults this; the flag-off
@@ -107,6 +98,14 @@ export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
 export class CreateAgentEvalRunDto extends Z.class(createAgentEvalRunShape) {}
 
+// Wider default than the shared `PaginationDto`: opening a run reads its cases,
+// of which there are many, so 10 would page immediately for no reason.
+export const AGENT_EVAL_RESULTS_DEFAULT_TAKE = 50;
+export class AgentEvalRunDetailQueryDto extends Z.class({
+	...paginationSchema,
+	take: createTakeValidator(MAX_ITEMS_PER_PAGE, false, AGENT_EVAL_RESULTS_DEFAULT_TAKE),
+}) {}
+
 // A correction carries the edited answer under `finalText`, mirroring the key the
 // runner writes into a result's `output` so calibration can diff the two directly.
 // Required when a correction is sent: a correction without it persists a rating
@@ -117,6 +116,13 @@ export const agentEvalCorrectionSchema = z
 	.object({ finalText: z.string().trim().min(1) })
 	.catchall(jsonValueSchema);
 export type AgentEvalCorrection = z.infer<typeof agentEvalCorrectionSchema>;
+
+// Bounds on the free-text a rating carries. The schema can't enforce them —
+// `comment` has no `.max()` because the rating service checks it alongside the
+// whole-correction size limit, which zod can't express — so they live here to be
+// read by both that service and the editor, rather than restated in each.
+export const AGENT_EVAL_MAX_COMMENT_CHARS = 2_000;
+export const AGENT_EVAL_MAX_CORRECTION_TEXT_CHARS = 20_000;
 
 // A human's 👍/👎 on the path result, with an optional free-text comment and an
 // edited "should have been" output.
@@ -134,7 +140,16 @@ export class CreateAgentEvalRatingDto extends Z.class(createAgentEvalRatingShape
 // own output through validation. Dates are serialized as ISO strings; internal
 // coordination columns (`runningInstanceId`, `cancelRequested`) are omitted
 // from the contract.
+//
+// JSON blobs mirror the type their entity column stores, so consumers needn't
+// re-narrow `unknown` on every read.
 // ---------------------------------------------------------------------------
+
+/** One page of a list route. `count` is the total matching rows, not the page length. */
+export type AgentEvalPage<T> = {
+	count: number;
+	data: T[];
+};
 
 export type AgentEvalDatasetRecord = {
 	id: string;
@@ -154,9 +169,9 @@ export type AgentEvalRunRecord = {
 	status: AgentEvalRunStatus;
 	runAt: string | null;
 	completedAt: string | null;
-	metrics: Record<string, unknown> | null;
+	metrics: IDataObject | null;
 	errorCode: string | null;
-	errorDetails: Record<string, unknown> | null;
+	errorDetails: IDataObject | null;
 	createdById: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -168,14 +183,14 @@ export type AgentEvalResultRecord = {
 	sourceRowId: string | null;
 	runIndex: number | null;
 	status: AgentEvalResultStatus;
-	input: Record<string, unknown> | null;
-	output: Record<string, unknown> | null;
-	toolCalls: Record<string, unknown> | null;
-	metrics: Record<string, unknown> | null;
+	input: JsonObject | null;
+	output: JsonObject | null;
+	toolCalls: JsonObject | null;
+	metrics: IDataObject | null;
 	runAt: string | null;
 	completedAt: string | null;
 	errorCode: string | null;
-	errorDetails: Record<string, unknown> | null;
+	errorDetails: IDataObject | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -185,15 +200,20 @@ export type AgentEvalRatingRecord = {
 	resultId: string;
 	vote: AgentEvalVote;
 	comment: string | null;
-	correction: Record<string, unknown> | null;
+	correction: JsonObject | null;
 	ratedById: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
 
-// A run with its per-case results — the "open a run" view.
+// Runs of a dataset, newest first. Paginated because nothing caps how many a
+// dataset accumulates — every "Run all" adds one.
+export type AgentEvalRunList = AgentEvalPage<AgentEvalRunRecord>;
+
+// A run with a page of its per-case results — the "open a run" view. Paginated
+// because each row carries its full input/output JSON.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
-	results: AgentEvalResultRecord[];
+	results: AgentEvalPage<AgentEvalResultRecord>;
 };
 
 // The progress-polling shape: status plus tallies, no per-case rows, so polling

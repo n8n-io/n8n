@@ -16,10 +16,11 @@ export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,
 	TRUSTED_KEY_REFRESH = 1002,
 	WORKFLOW_STATISTICS_ROLLUP = 1003,
-	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
+	WORKFLOW_REVIEW_MUTATION = 1004,
 	MIGRATIONS = 1005,
 	EVAL_COLLECTION_RERUN = 1006,
 	INSTANCE_AI_SETTINGS = 1007,
+	DATA_ENCRYPTION_KEY_SEED = 1008,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
@@ -236,7 +237,7 @@ export class DbLockService {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
@@ -287,7 +288,7 @@ export class DbLockService {
 		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
-			const token: OwnerToken = {} as OwnerToken;
+			const token: OwnerToken = {};
 			lockState.held = token;
 			return this.createReleaseFn(lockState, token);
 		}
@@ -316,7 +317,7 @@ export class DbLockService {
 				// is never null while the lock is logically owned, preventing
 				// a concurrent tryAcquireLock from sneaking in during the
 				// microtask gap between resolve and the waiter's continuation.
-				const nextToken: OwnerToken = {} as OwnerToken;
+				const nextToken: OwnerToken = {};
 				lockState.held = nextToken;
 				next(nextToken);
 			} else {

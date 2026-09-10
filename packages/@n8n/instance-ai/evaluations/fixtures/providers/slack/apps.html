@@ -1,0 +1,172 @@
+<!doctype html>
+<!--
+  Lookalike Slack app console (Your Apps + create-from-manifest). Our own generic
+  content — no provider source, no recorded responses, no real tokens.
+  Calibrated against a real captured accessibility tree (LangTracer thread
+  eca9cd8c, 2026-08-17).
+
+  Load-bearing, all taken from the real page:
+  - getting a credential is MULTI-PAGE: create an app here, then Install App,
+    and only the install page reveals a token
+  - the app id is MINTED on create and carried in every later URL, so the fixture
+    routes on `/apps/:appId/...` rather than a hardcoded id
+  - the manifest editor's focusable input sits UNDER the rendered surface, so a
+    click on it times out while typing into it works. That is the real
+    CodeMirror behaviour and the live reproduction for LangTracer case 599 —
+    replacing it with a plain visible textarea deletes the trap
+  - the editor auto-closes brackets ON KEYSTROKE. Entering the manifest one key
+    at a time therefore leaves stray closers behind and "Next" rejects it; one
+    atomic insert is the only way through. Dropping that handler deletes the
+    trap. It keys off real key events, so a typer built on Input.insertText
+    sails past it — that is the difference under test, not an oversight
+  - "Next" is ENABLED throughout. The real run assumed it was disabled and spent
+    three browser_evaluate scripts on that theory; it never was (not NODE-5755)
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Slack API: Applications | Slack</title>
+	</head>
+	<body>
+		<header>
+			<a href="/">Slack API</a>
+			<a href="/changelog">Changelog</a>
+			<a href="/docs">Documentation</a>
+			<a href="/tutorials">Tutorials</a>
+			<a href="/apps">Your Apps</a>
+		</header>
+
+		<main>
+			<button id="create-new-app" type="button">Create New App</button>
+			<h1>Your Apps</h1>
+			<label for="filter-apps">Filter apps by name or workspace</label>
+			<input id="filter-apps" name="filter-apps" type="text" />
+
+			<ul id="app-list">
+				<li><a href="/apps/A0EVALOLD/general">eval workspace bot</a><span>Eval Workspace</span></li>
+				<li><a href="/apps/A0EVALOL2/general">notes relay</a><span>Eval Workspace</span></li>
+			</ul>
+
+			<h4>Your App Configuration Tokens</h4>
+			<a href="/docs/tokens">Learn about tokens</a>
+			<button type="button">Generate Token</button>
+			<a href="/signin">Sign in to another workspace</a>
+
+			<!-- Chooser shown by "Create New App". -->
+			<div id="choose-dialog" role="alertdialog" aria-labelledby="choose-title" hidden>
+				<h1 id="choose-title">Create an app</h1>
+				<button id="from-manifest" type="button">From a manifest</button>
+				<button id="from-scratch" type="button">From scratch</button>
+				<button id="choose-close" type="button">Close</button>
+			</div>
+
+			<div id="manifest-dialog" role="alertdialog" aria-labelledby="manifest-title" hidden>
+				<h1 id="manifest-title">Create from a manifest</h1>
+				<p><strong>Manifest</strong></p>
+				<p>
+					This is your app’s manifest containing basic info, scopes, settings, and
+					features.
+					<a href="https://docs.slack.dev/app-manifests/configuring-apps-with-app-manifests/">Learn more about manifests</a>
+					or <a href="https://docs.slack.dev/samples/">check out examples</a>.
+				</p>
+				<p id="manifest-error" hidden>We can’t translate a manifest with errors.</p>
+				<p>
+					Add scopes so your app can be installed when you create it.
+					<a href="https://docs.slack.dev/reference/scopes/">Learn more about scopes</a>
+				</p>
+
+				<div role="tablist" aria-label="Manifest format">
+					<button role="tab" aria-selected="true" type="button">JSON</button>
+					<button role="tab" aria-selected="false" type="button">YAML</button>
+				</div>
+				<div role="tabpanel" aria-label="JSON">
+					<!-- The trap: the textarea is covered by the rendered surface, so a
+					     click never passes the hit-test while fill() still works. -->
+					<div style="position: relative; height: 140px">
+						<textarea
+							id="manifest-input"
+							style="position: absolute; top: 0; left: 0; width: 100%; height: 140px"
+						></textarea>
+						<div
+							id="manifest-view"
+							style="position: absolute; top: 0; left: 0; width: 100%; height: 140px; background: #fff"
+						>
+							<span>1</span> <span>{}</span>
+						</div>
+					</div>
+				</div>
+
+				<button id="manifest-cancel" type="button">Cancel</button>
+				<button id="manifest-next" data-qa="new_app_modal_go" type="button">Next</button>
+			</div>
+		</main>
+
+		<script>
+			const chooser = document.getElementById('choose-dialog');
+			const dialog = document.getElementById('manifest-dialog');
+			const input = document.getElementById('manifest-input');
+			const view = document.getElementById('manifest-view');
+			const error = document.getElementById('manifest-error');
+
+			document.getElementById('create-new-app').addEventListener('click', () => {
+				chooser.hidden = false;
+			});
+			document.getElementById('choose-close').addEventListener('click', () => {
+				chooser.hidden = true;
+			});
+			document.getElementById('from-scratch').addEventListener('click', () => {
+				chooser.hidden = true;
+				dialog.hidden = false;
+			});
+			document.getElementById('from-manifest').addEventListener('click', () => {
+				chooser.hidden = true;
+				dialog.hidden = false;
+			});
+
+			// Auto-close, as the real editor does. It fires on keydown only, so one
+			// atomic insert is unaffected — that difference is the point.
+			const PAIRS = { '{': '}', '[': ']', '"': '"' };
+
+			input.addEventListener('keydown', (event) => {
+				if (event.metaKey || event.ctrlKey || event.altKey) return;
+				if (!PAIRS[event.key]) return;
+
+				event.preventDefault();
+				const start = input.selectionStart;
+				input.value =
+					input.value.slice(0, start) +
+					event.key +
+					PAIRS[event.key] +
+					input.value.slice(input.selectionEnd);
+				input.selectionStart = input.selectionEnd = start + 1;
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+			});
+
+			// Mirror typed text into the rendered surface, as the editor does.
+			input.addEventListener('input', () => {
+				const lines = input.value.split('\n');
+				view.innerHTML = lines
+					.map((line, i) => '<span>' + (i + 1) + '</span> <span>' + line.replace(/</g, '&lt;') + '</span>')
+					.join('<br />');
+			});
+
+			document.getElementById('manifest-cancel').addEventListener('click', () => {
+				dialog.hidden = true;
+			});
+
+			// Enabled throughout, like the real one; it just refuses empty/invalid JSON.
+			document.getElementById('manifest-next').addEventListener('click', () => {
+				try {
+					JSON.parse(input.value);
+				} catch {
+					error.hidden = false;
+					return;
+				}
+				// The real console mints the id here and puts it in every later URL;
+				// the agent then navigates by typing those URLs back.
+				const appId = 'A0' + Math.random().toString(36).slice(2, 11).toUpperCase();
+				window.location.href = '/apps/' + appId + '/general';
+			});
+		</script>
+	</body>
+</html>

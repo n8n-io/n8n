@@ -107,10 +107,10 @@ describe('Telegram Bot API integration scenarios', () => {
 					channelId: 'telegram:-1001234567890',
 				},
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
 				chat_id: '-1001234567890',
 				message_thread_id: 42,
-				text: 'Got it',
+				rich_message: { markdown: 'Got it' },
 			});
 		} finally {
 			await ctx.shutdown();

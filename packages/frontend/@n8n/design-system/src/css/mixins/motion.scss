@@ -1,3 +1,10 @@
+@mixin reduced-motion {
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+		transition: none;
+	}
+}
+
 // Shimmer - animated gradient for loading/skeleton states
 @mixin shimmer {
 	background: linear-gradient(
@@ -608,6 +615,17 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
 		var(--animation--height-transition--easing, var(--easing--ease-out));
 	will-change: height;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}
+
+@mixin max-height-transition {
+	transition: max-height var(--animation--height-transition--duration, var(--duration--snappy))
+		var(--animation--height-transition--easing, var(--easing--ease-out));
+	will-change: max-height;
 
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;

@@ -54,6 +54,11 @@ describe('FieldsTracker', () => {
 				{
 					message: "The field 'missingField' wasn't found in any input item",
 					location: 'outputPane',
+					group: {
+						key: 'fieldNotFound',
+						summary: "{count} fields weren't found in your input items",
+						label: 'missingField',
+					},
 				},
 			]);
 		});

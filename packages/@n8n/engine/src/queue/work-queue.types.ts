@@ -12,8 +12,19 @@ export interface ExecutionEnqueuedEvent {
 	executionId: string;
 }
 
+/**
+ * A step has reached a terminal state — completed, failed, or skipped.
+ * Carries ids only, like `step:ready` — the consumer reads the step row
+ * for the outcome.
+ */
+export interface StepSettledEvent {
+	type: 'step:settled';
+	executionId: string;
+	stepId: string;
+}
+
 /** Messages consumed by the orchestration worker. */
-export type OrchestrationMessage = ExecutionEnqueuedEvent;
+export type OrchestrationMessage = ExecutionEnqueuedEvent | StepSettledEvent;
 
 export interface StepReadyEvent {
 	type: 'step:ready';
@@ -21,7 +32,7 @@ export interface StepReadyEvent {
 	stepId: string;
 }
 
-/** Messages consumed by the step worker (CAT-2870). */
+/** Messages consumed by the step worker. */
 export type StepMessage = StepReadyEvent;
 
 export interface WorkQueue<TMessage> {

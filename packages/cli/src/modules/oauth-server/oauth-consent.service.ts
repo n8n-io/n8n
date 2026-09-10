@@ -1,3 +1,4 @@
+import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,12 +10,23 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import {
+	ProtectedResourceRegistry,
+	type ProtectedResource,
+} from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
 	| {
 			ok: true;
+			autoApproved: true;
+			redirectUrl: string;
+			/** Presentational hints for the header icon while the redirect happens. */
+			uiHints?: ConsentUiHints;
+	  }
+	| {
+			ok: true;
+			autoApproved: false;
 			clientName: string;
 			clientId: string;
 			resourceName?: string;
@@ -29,6 +41,10 @@ type ConsentDetailsResult =
 			previousScopes?: string[];
 			/** Tool names each scope unlocks, shown per scope group in the picker. */
 			scopeTools?: Record<string, string[]>;
+			/** Presentational hints for the consent screen, sourced from the target resource. */
+			uiHints?: ConsentUiHints;
+			/** Whether the requesting client is a trusted first-party client. */
+			isFirstParty: boolean;
 	  }
 	| { ok: false; reason: 'resource_unavailable' }
 	| { ok: false; reason: 'forbidden' };
@@ -74,6 +90,20 @@ export class OAuthConsentService {
 					return { ok: false, reason: 'resource_unavailable' };
 				}
 
+				// Resolved once above and threaded through, so a first-time consent (the
+				// common case here — a prior consent already short-circuits via
+				// tryAutoApproveConsent at /oauth/authorize) doesn't pay for the resource
+				// resolver's DB-backed lookup twice.
+				const reuse = await this.tryReuseConsent(user, sessionPayload, resource);
+				if (reuse) {
+					return {
+						ok: true,
+						autoApproved: true,
+						redirectUrl: reuse.redirectUrl,
+						uiHints: resource.uiHints,
+					};
+				}
+
 				if (!(await resource.authorize(user)))
 					return {
 						ok: false,
@@ -84,6 +114,7 @@ export class OAuthConsentService {
 
 				return {
 					ok: true,
+					autoApproved: false,
 					clientName: client.name,
 					clientId: client.id,
 					resourceName: resource.displayName,
@@ -91,10 +122,17 @@ export class OAuthConsentService {
 					scopes,
 					previousScopes: await this.previousScopes(user.id, client.id, scopes),
 					scopeTools: resource.getScopeTools?.(),
+					uiHints: resource.uiHints,
+					isFirstParty: client.isFirstParty,
 				};
 			}
 
 			const defaultResource = this.protectedResourceRegistry.getDefaultResource();
+
+			if (defaultResource && !(await defaultResource.authorize(user))) {
+				return { ok: false, reason: 'forbidden' };
+			}
+
 			const scopes = this.grantableScopes(
 				defaultResource?.scopes ?? [],
 				sessionPayload.requestedScopes,
@@ -102,12 +140,15 @@ export class OAuthConsentService {
 
 			return {
 				ok: true,
+				autoApproved: false,
 				clientName: client.name,
 				clientId: client.id,
 				redirectUri: sessionPayload.redirectUri,
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),
 				scopeTools: defaultResource?.getScopeTools?.(),
+				uiHints: defaultResource?.uiHints,
+				isFirstParty: client.isFirstParty,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -188,17 +229,44 @@ export class OAuthConsentService {
 				throw new UserError('Resource is not available for the requested authorization');
 			}
 
-			if (!(await resource.authorize(user))) {
-				this.logger.warn('User is not authorized for the requested resource', {
-					clientId: sessionPayload.clientId,
-					userId: user.id,
-					resourceUrl: sessionPayload.resource,
-				});
-				throw new ForbiddenError('User is not authorized for the requested resource');
+			await this.assertAuthorized(resource, user, sessionPayload.clientId);
+		} else {
+			// A pre-RFC-8707 client gets the default resource's audience, so the grant
+			// must clear that resource's gate too.
+			const defaultResource = this.protectedResourceRegistry.getDefaultResource();
+
+			if (defaultResource) {
+				await this.assertAuthorized(defaultResource, user, sessionPayload.clientId);
 			}
 		}
 
 		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
+
+		return await this.issueGrant(user, sessionPayload, grantedScopes);
+	}
+
+	private async assertAuthorized(
+		resource: ProtectedResource,
+		user: User,
+		clientId: string,
+	): Promise<void> {
+		if (await resource.authorize(user)) return;
+
+		this.logger.warn('User is not authorized for the requested resource', {
+			clientId,
+			userId: user.id,
+			resourceUrl: resource.getResourceUrl(),
+		});
+
+		throw new ForbiddenError('User is not authorized for the requested resource');
+	}
+
+	private async issueGrant(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+		grantedScopes: string[],
+	): Promise<{ redirectUrl: string }> {
+		const issuer = this.urlService.getInstanceBaseUrl();
 
 		await this.userConsentRepository.upsert(
 			{
@@ -266,5 +334,44 @@ export class OAuthConsentService {
 		}
 
 		return scopes;
+	}
+
+	/**
+	 * @param resolvedResource The caller's own resolution of `sessionPayload.resource`,
+	 * when it already has one — skips resolving it again here.
+	 */
+	async tryReuseConsent(
+		user: User,
+		sessionPayload: OAuthSessionPayload,
+		resolvedResource?: ProtectedResource,
+	): Promise<{ redirectUrl: string } | null> {
+		if (!sessionPayload.resource) return null;
+
+		const resource =
+			resolvedResource ??
+			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
+		if (!resource?.isFirstParty) return null;
+
+		const consent = await this.userConsentRepository.findOne({
+			where: { clientId: sessionPayload.clientId, userId: user.id },
+		});
+
+		if (!consent) {
+			return null;
+		}
+
+		const grantable = this.grantableScopes(resource.scopes ?? [], sessionPayload.requestedScopes);
+		if (!grantable.every((scope) => consent.scope.includes(scope))) return null;
+
+		if (!(await resource.authorize(user))) {
+			this.logger.debug('Consent reuse skipped: user no longer authorized for resource', {
+				clientId: sessionPayload.clientId,
+				userId: user.id,
+				resourceUrl: sessionPayload.resource,
+			});
+			return null;
+		}
+
+		return await this.issueGrant(user, sessionPayload, grantable);
 	}
 }

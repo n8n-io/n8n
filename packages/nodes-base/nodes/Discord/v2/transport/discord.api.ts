@@ -18,9 +18,9 @@ export async function discordApiRequest(
 	endpoint: string,
 	body?: IDataObject,
 	qs?: IDataObject,
+	headers: IDataObject = {},
 ) {
 	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
-	const headers: IDataObject = {};
 
 	const credentialType = getCredentialsType(authentication);
 

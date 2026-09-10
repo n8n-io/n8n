@@ -9,7 +9,7 @@ import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import {

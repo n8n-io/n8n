@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import N8nSettingsRowConfigure from './SettingsRowConfigure.vue';
 
 const meta = {
-	title: 'Instance Settings/Settings Row Configure',
+	title: 'Areas/Settings/SettingsRowConfigure',
 	component: N8nSettingsRowConfigure,
 	argTypes: {
 		value: { control: 'text' },

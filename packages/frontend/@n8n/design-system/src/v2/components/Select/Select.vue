@@ -24,10 +24,6 @@ import {
 } from 'reka-ui';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { get } from '@n8n/design-system/v2/utils';
-import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
-
 import type {
 	SelectEmits,
 	SelectItem,
@@ -39,6 +35,9 @@ import type {
 	SelectItemProps,
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
+import Icon from '../../../components/N8nIcon/Icon.vue';
+import { get } from '../../utils';
+import type { GetItemKeys, GetModelValue } from '../../utils/types';
 
 defineOptions({ inheritAttrs: false });
 

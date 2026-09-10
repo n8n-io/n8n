@@ -29,6 +29,9 @@ const defaultProviderData: Record<string, Partial<ExternalSecretsProviderData>> 
 	infisical: {
 		siteURL: 'https://app.infisical.com',
 	},
+	azureKeyVault: {
+		environment: 'public',
+	},
 };
 
 const externalSecretsStore = useExternalSecretsStore();

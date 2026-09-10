@@ -90,6 +90,16 @@ describe('DiffBadge', () => {
 		expect(modifiedBadge).toBeInTheDocument();
 	});
 
+	it.each([
+		[NodeDiffStatus.Added, 'diff-badge-added'],
+		[NodeDiffStatus.Deleted, 'diff-badge-deleted'],
+		[NodeDiffStatus.Modified, 'diff-badge-modified'],
+	])('should expose a status-specific test id for %s', (type, testId) => {
+		const { getByTestId } = renderComponent({ props: { type } });
+
+		expect(getByTestId(testId)).toBeInTheDocument();
+	});
+
 	it('should handle unknown status types gracefully', () => {
 		const { container } = renderComponent({
 			props: {

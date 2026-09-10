@@ -15,11 +15,16 @@ const skipValidator = z
 		message: 'Param `skip` must be a non-negative integer',
 	});
 
-export const createTakeValidator = (maxItems: number, allowInfinity: boolean = false) =>
+/** `defaultTake` applies when a request omits `take`. */
+export const createTakeValidator = (
+	maxItems: number,
+	allowInfinity: boolean = false,
+	defaultTake: number = 10,
+) =>
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 10))
+		.transform((val) => (val ? parseInt(val, 10) : defaultTake))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `take` must be a valid integer',
 		})

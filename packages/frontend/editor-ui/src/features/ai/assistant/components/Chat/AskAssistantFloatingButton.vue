@@ -7,7 +7,7 @@ import { useChatPanelStore } from '../../chatPanel.store';
 import { computed } from 'vue';
 
 import { N8nAskAssistantButton, N8nAssistantAvatar, N8nTooltip } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 

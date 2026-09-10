@@ -65,7 +65,7 @@ Escalate to a human when:
 When a workflow error is provided, identify the failing node, summarize the likely cause, and suggest the smallest next diagnostic step.`;
 
 const meta: Meta<typeof N8nMarkdownEditor> = {
-	title: 'Core/Markdown Editor',
+	title: 'Core/MarkdownEditor',
 	component: N8nMarkdownEditor,
 	argTypes: {
 		variant: {
@@ -74,10 +74,13 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 		},
 		showToolbar: {
 			control: 'select',
-			options: ['never', 'hover', 'always'],
+			options: ['never', 'hover', 'always', 'floating'],
 		},
 		maxHeight: {
 			control: 'text',
+		},
+		isCollapsible: {
+			control: 'boolean',
 		},
 		disabled: {
 			control: 'boolean',
@@ -146,9 +149,27 @@ export const Default: Story = {
 		placeholder: 'Write Markdown...',
 		showToolbar: 'always',
 		maxHeight: '480px',
+		isCollapsible: false,
 		disabled: false,
 		readonly: false,
 	},
+};
+
+export const Variants: Story = {
+	render: () => ({
+		components: { N8nMarkdownEditor },
+		setup() {
+			const contained = ref(defaultMarkdown);
+			const ghost = ref(defaultMarkdown);
+			return { contained, ghost };
+		},
+		template: `
+			<div style="display: flex; flex-direction: column; gap: 24px; max-width: 760px;">
+				<n8n-markdown-editor v-model="contained" variant="contained" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
+				<n8n-markdown-editor v-model="ghost" variant="ghost" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
+			</div>
+		`,
+	}),
 };
 
 export const Contained: Story = {
@@ -176,6 +197,20 @@ export const AlwaysVisibleToolbar: Story = {
 	args: {
 		...Default.args,
 		showToolbar: 'always',
+	},
+};
+
+export const FloatingToolbar: Story = {
+	args: {
+		...Default.args,
+		showToolbar: 'floating',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story: 'Select text in the editor to show the floating toolbar.',
+			},
+		},
 	},
 };
 
@@ -208,6 +243,15 @@ export const LongInstructions: Story = {
 		...Default.args,
 		modelValue: longInstructionsMarkdown,
 		variant: 'contained',
+	},
+};
+
+export const Collapsible: Story = {
+	args: {
+		...Default.args,
+		modelValue: longInstructionsMarkdown,
+		isCollapsible: true,
+		variant: 'ghost',
 	},
 };
 

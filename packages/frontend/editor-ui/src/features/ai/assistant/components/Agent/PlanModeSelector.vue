@@ -2,10 +2,7 @@
 import { computed } from 'vue';
 
 import { N8nSelect2 } from '@n8n/design-system';
-import type {
-	SelectItemProps,
-	SelectValue,
-} from '@n8n/design-system/v2/components/Select/Select.types';
+import type { SelectItemProps, SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 type BuilderMode = 'build' | 'plan';

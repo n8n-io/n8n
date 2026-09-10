@@ -1,41 +1,21 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
-vi.mock('@n8n/mcp-apps/server', () => ({
-	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
-	registerWorkflowPreviewApp: vi.fn(),
-	registerMcpAppTool: vi.fn(
-		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
-			server.registerTool(name, config, handler),
-	),
-}));
-
-import {
-	registerMcpAppTool,
-	registerWorkflowPreviewApp,
-	WORKFLOW_PREVIEW_APP_URI,
-} from '@n8n/mcp-apps/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -46,6 +26,9 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -60,7 +43,18 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { McpService, type McpFeatureFlags } from '../mcp.service';
+import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
+
+import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from '../mcp.service';
+import type { McpAuthContext, McpClientInfo } from '../mcp.types';
+
+// Keep the real mcpAppToolMeta and constants; only the preview-app
+// registration is spied on so its wiring options can be asserted.
+vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
+	registerWorkflowPreviewApp: vi.fn(),
+}));
 
 const mockAiGatewayService = () =>
 	mockInstance(AiGatewayService, {
@@ -70,11 +64,13 @@ const mockAiGatewayService = () =>
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	canvasGroupsEnabled: false,
+	aiPreferencesEnabled: false,
 	...overrides,
 });
 
 describe('McpService', () => {
 	let mcpService: McpService;
+	let aiPreferenceService: Mocked<AiPreferenceService>;
 	let activeExecutions: ActiveExecutions;
 	let executionsConfig: ExecutionsConfig;
 	let instanceSettings: InstanceSettings;
@@ -93,6 +89,7 @@ describe('McpService', () => {
 		});
 		logger = mockLogger();
 
+		aiPreferenceService = mockInstance(AiPreferenceService);
 		mcpService = new McpService(
 			logger,
 			executionsConfig,
@@ -113,7 +110,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
 			mockInstance(ProjectRepository),
-			mockInstance(FolderRepository),
+			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
@@ -130,6 +127,8 @@ describe('McpService', () => {
 			mockAiGatewayService(),
 			mockInstance(ModuleRegistry),
 			eventService,
+			mockInstance(FolderService),
+			aiPreferenceService,
 		);
 	});
 
@@ -164,7 +163,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -181,6 +180,8 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -370,7 +371,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -387,6 +388,8 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -402,6 +405,7 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'variant' },
 				canvasGroupsEnabled: true,
+				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -503,13 +507,15 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				canvasGroupsEnabled: true,
+				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('skips the PostHog lookup when every feature is env-overridden', async () => {
+		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
@@ -519,9 +525,20 @@ describe('McpService', () => {
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
 				mcpApps: { enabled: true, variant: 'env_override' },
 				canvasGroupsEnabled: true,
+				aiPreferencesEnabled: true,
 			});
 
-			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it('fails the AI preferences gate closed when the flag is absent', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({});
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+				aiPreferencesEnabled: false,
+			});
 		});
 	});
 
@@ -538,6 +555,259 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
+		describe('protocol serving through createMcpHandler', () => {
+			const sseData = (text: string): Array<Record<string, unknown>> =>
+				text
+					.split('\n')
+					.filter((line) => line.startsWith('data: '))
+					.map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
+
+			const buildHandler = async (
+				flags = mcpFeatureFlags(),
+				options: McpServerBuildOptions = {},
+			) => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				return createMcpHandler(
+					async () => await mcpService.getServer(user, flags, undefined, undefined, options),
+					{ legacy: 'stateless' },
+				);
+			};
+
+			it('serves tools/list to a 2026-07-28 client with bridged JSON schemas', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'tools/list',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'tools/list',
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				const body = (await res.json()) as {
+					result: {
+						resultType: string;
+						tools: Array<{ name: string; inputSchema?: Record<string, unknown> }>;
+					};
+				};
+				expect(body.result.resultType).toBe('complete');
+
+				const toolNames = body.result.tools.map((tool) => tool.name);
+				expect(toolNames).toContain('search_workflows');
+
+				const searchTool = body.result.tools.find((tool) => tool.name === 'search_workflows');
+				expect(searchTool?.inputSchema).toMatchObject({
+					type: 'object',
+					properties: expect.objectContaining({
+						query: expect.objectContaining({ type: 'string' }),
+					}),
+				});
+			});
+
+			const handshakeInstructions = async (res: Response) => {
+				expect(res.status).toBe(200);
+				const text = await res.text();
+				const message = res.headers.get('content-type')?.includes('text/event-stream')
+					? sseData(text)[0]
+					: (JSON.parse(text) as Record<string, unknown>);
+				return (message as { result: { instructions?: string } }).result.instructions ?? '';
+			};
+
+			const initialize = async (flags: McpFeatureFlags) => {
+				const handler = await buildHandler(flags, { isConnectionHandshake: true });
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'initialize',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'initialize',
+							params: {
+								protocolVersion: '2025-06-18',
+								capabilities: {},
+								clientInfo: { name: 'vitest', version: '1.0.0' },
+							},
+						}),
+					}),
+				);
+				return await handshakeInstructions(res);
+			};
+
+			// The 2026-07-28 revision drops `initialize`, so a modern client opens the
+			// connection with `server/discover`: the other branch of
+			// `isConnectionHandshake`, and the one that carries the instructions today.
+			const discover = async (flags: McpFeatureFlags) => {
+				const handler = await buildHandler(flags, { isConnectionHandshake: true });
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': MCP_DISCOVER_METHOD,
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: MCP_DISCOVER_METHOD,
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+				return await handshakeInstructions(res);
+			};
+
+			it('serves the AI preferences block in the initialize instructions when the flag is on', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
+					instance: ['Ask before you publish.'],
+					user: ['Keep replies short.'],
+					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+				});
+
+				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'user-1' }),
+				);
+				expect(instructions).toContain('official MCP server for n8n');
+				expect(instructions.endsWith('</ai-preferences>')).toBe(true);
+				expect(instructions).toContain('- Keep replies short.');
+
+				// The three sections keep the order the renderer sets: instance, then the
+				// projects, then the personal one. `toContain` alone passes on a reshuffle.
+				const instanceAt = instructions.indexOf(
+					'Instance preferences (set by an admin for everyone):',
+				);
+				const projectAt = instructions.indexOf('Preferences for project "Marketing":');
+				const personalAt = instructions.indexOf('Personal preferences:');
+				expect(instanceAt).toBeGreaterThan(-1);
+				expect(projectAt).toBeGreaterThan(instanceAt);
+				expect(personalAt).toBeGreaterThan(projectAt);
+			});
+
+			it('serves the AI preferences block in the server/discover instructions when the flag is on', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
+					instance: [],
+					user: ['Keep replies short.'],
+					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+				});
+
+				const instructions = await discover(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'user-1' }),
+				);
+				expect(instructions).toContain('official MCP server for n8n');
+				expect(instructions.endsWith('</ai-preferences>')).toBe(true);
+				expect(instructions).toContain('Preferences for project "Marketing":');
+				expect(instructions).toContain('- Keep replies short.');
+			});
+
+			it('serves the instructions unchanged when the AI preferences flag is off', async () => {
+				const instructions = await initialize(mcpFeatureFlags());
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
+				expect(instructions).toContain('official MCP server for n8n');
+				expect(instructions).not.toContain('<ai-preferences>');
+			});
+
+			it('serves the instructions unchanged when the caller has no preferences', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
+					instance: [],
+					user: [],
+					projects: [],
+				});
+
+				const withFlagOn = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+				const withFlagOff = await initialize(mcpFeatureFlags());
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(1);
+				expect(withFlagOn).not.toContain('<ai-preferences>');
+				// Byte-identical, so an empty set leaves no trailing separator either.
+				expect(withFlagOn).toBe(withFlagOff);
+			});
+
+			it('does not read the preferences for a request that is not the handshake', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+
+				await mcpService.getServer(user, mcpFeatureFlags({ aiPreferencesEnabled: true }));
+
+				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
+			});
+
+			it('serves the instructions without the block when the preference read fails', async () => {
+				aiPreferenceService.getApplicableAcrossProjects.mockRejectedValue(new Error('db down'));
+
+				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+
+				expect(instructions).toContain('official MCP server for n8n');
+				expect(instructions).not.toContain('<ai-preferences>');
+			});
+
+			it('serves a 2025-era client through the stateless legacy fallback', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'initialize',
+							params: {
+								protocolVersion: '2025-06-18',
+								capabilities: {},
+								clientInfo: { name: 'old-client', version: '1.0.0' },
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				// Framing change against the 1.x stateless transport: the v2 handler
+				// answers legacy requests with spec-standard SSE framing instead of a
+				// plain JSON body. Spec-conforming clients accept both (they send
+				// `Accept: application/json, text/event-stream`).
+				expect(res.headers.get('content-type')).toContain('text/event-stream');
+
+				const [message] = sseData(await res.text());
+				const result = (message as { result: Record<string, unknown> }).result;
+				expect(result.protocolVersion).toBe('2025-06-18');
+				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server' });
+			});
+		});
+
 		const mcpUser = () =>
 			Object.assign(new User(), {
 				id: 'user-1',
@@ -547,13 +817,22 @@ describe('McpService', () => {
 				role: { slug: 'global:member' },
 			});
 
+		// Registration goes through the service's registrar (the production
+		// chokepoint), which bridges schemas and wraps handlers with the
+		// mcp-tool-called instrumentation under test here.
 		const registerAndInvoke = async (
 			server: McpServer,
 			name: string,
 			impl: () => Promise<unknown>,
 			args: Record<string, unknown> = {},
+			{ clientInfo, auth }: { clientInfo?: McpClientInfo; auth?: McpAuthContext } = {},
 		) => {
-			const registered = server.registerTool(name, { description: 'test' }, impl as never);
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser(), clientInfo, auth);
+			const registered = registerTool({
+				name,
+				config: { description: 'test' },
+				handler: impl as never,
+			});
 			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
 			return await invokeTool(args, {});
 		};
@@ -725,6 +1004,105 @@ describe('McpService', () => {
 			);
 		});
 
+		it('should emit `mcp-tool-called` with the calling user and OAuth client', async () => {
+			// `clientId` is the client the OAuth token was issued to, so usage can be
+			// attributed per client. `clientName` is only what the client calls itself.
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{},
+				{
+					clientInfo: { name: 'Claude', version: '1.2.3' },
+					auth: {
+						grantedScopes: undefined,
+						caller: { authType: 'oauth', clientId: 'client-abc' },
+					},
+				},
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					user,
+					toolName: 'my_tool',
+					authType: 'oauth',
+					clientId: 'client-abc',
+					clientName: 'Claude',
+				}),
+			);
+		});
+
+		it('should emit `mcp-tool-called` with the OAuth client when a tool fails', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await expect(
+				registerAndInvoke(
+					server,
+					'err_tool',
+					async () => {
+						throw new Error('boom');
+					},
+					{},
+					{
+						auth: {
+							grantedScopes: undefined,
+							caller: { authType: 'oauth', clientId: 'client-abc' },
+						},
+					},
+				),
+			).rejects.toThrow('boom');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'err_tool',
+					status: 'error',
+					authType: 'oauth',
+					clientId: 'client-abc',
+				}),
+			);
+		});
+
+		it('should pass the resolved auth through to every tool the server registers', async () => {
+			const user = mcpUser();
+			const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
+			const auth = {
+				grantedScopes: undefined,
+				caller: { authType: 'oauth' as const, clientId: 'client-abc' },
+			};
+
+			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
+
+			expect(registrarSpy).toHaveBeenCalledWith(expect.anything(), user, { name: 'Cursor' }, auth);
+		});
+
+		it('should report an API-key call as such, with no OAuth client', async () => {
+			// One MCP API key exists per user, so there is no client to name and no
+			// per-key identifier worth reporting beyond the user itself.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{},
+				{ auth: { grantedScopes: undefined, caller: { authType: 'api_key' } } },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ authType: 'api_key' }),
+			);
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ clientId: expect.anything() }),
+			);
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
@@ -753,7 +1131,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -770,6 +1148,8 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -806,7 +1186,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -823,6 +1203,8 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
+				mockInstance(AiPreferenceService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -884,7 +1266,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowCreationService),
 					mockInstance(NodeTypes),
 					mockInstance(ProjectRepository),
-					mockInstance(FolderRepository),
+					mockInstance(FolderFinderService),
 					mockInstance(SharedWorkflowRepository),
 					mockInstance(ExecutionRepository),
 					mockInstance(ExecutionService),
@@ -901,37 +1283,35 @@ describe('McpService', () => {
 					mockAiGatewayService(),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
+					mockInstance(FolderService),
+					mockInstance(AiPreferenceService),
 				);
 			};
 
+			const registeredCreateTool = (server: unknown) =>
+				(
+					server as {
+						_registeredTools: Record<string, { _meta?: Record<string, unknown> } | undefined>;
+					}
+				)._registeredTools.create_workflow_from_code;
+
 			beforeEach(() => {
 				(registerWorkflowPreviewApp as Mock).mockClear();
-				(registerMcpAppTool as Mock).mockClear();
 			});
 
-			it('registers the workflow preview app and wires it to the create-workflow tool when MCP Apps is enabled', async () => {
+			it('registers the preview app and marks the create tool with the app resource when MCP Apps is enabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				const postHogClient = mockInstance(PostHogClient);
 
 				const service = buildService({ postHogClient });
-
-				await service.getServer(user, appsEnabled);
+				const server = await service.getServer(user, appsEnabled);
 
 				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
-
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
 					{
 						instanceOrigin: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-							instanceId: string;
-							versionCli: string;
-						};
+						telemetry: Record<string, unknown>;
 					},
 				];
 				expect(appOptions.instanceOrigin).toBe('https://n8n.test');
@@ -946,10 +1326,9 @@ describe('McpService', () => {
 					}),
 				);
 
-				const [, toolName, toolConfig] = (registerMcpAppTool as Mock).mock.calls[0];
-				expect(typeof toolName).toBe('string');
-				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
-				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
+				expect(registeredCreateTool(server)?._meta).toMatchObject({
+					ui: { resourceUri: WORKFLOW_PREVIEW_APP_URI },
+				});
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
@@ -963,15 +1342,7 @@ describe('McpService', () => {
 
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
-					{
-						instanceOrigin?: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-						};
-					},
+					{ instanceOrigin?: string; telemetry: Record<string, unknown> },
 				];
 				expect(appOptions.instanceOrigin).toBeUndefined();
 				expect(appOptions.telemetry).toEqual(
@@ -992,15 +1363,7 @@ describe('McpService', () => {
 
 				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
 					unknown,
-					{
-						instanceOrigin?: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-						};
-					},
+					{ instanceOrigin?: string; telemetry: Record<string, unknown> },
 				];
 				expect(appOptions.instanceOrigin).toBeUndefined();
 				expect(appOptions.telemetry).toEqual(
@@ -1033,30 +1396,21 @@ describe('McpService', () => {
 				});
 			});
 
-			it('does not register MCP apps when MCP Apps is disabled', async () => {
+			it('does not register the preview app when MCP Apps is disabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
 
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user, mcpFeatureFlags());
+				const server = await buildService().getServer(user, mcpFeatureFlags());
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+				expect(registeredCreateTool(server)?._meta).toBeUndefined();
 			});
 
-			it('does not register MCP apps when builder is disabled, even if MCP Apps is enabled', async () => {
+			it('does not register the preview app when builder is disabled, even if MCP Apps is enabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
 
-				const service = buildService({ builderEnabled: false, postHogClient });
-
-				await service.getServer(user, appsEnabled);
+				await buildService({ builderEnabled: false }).getServer(user, appsEnabled);
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 		});
 	});

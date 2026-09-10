@@ -1,4 +1,5 @@
 name: 'Util: Clean Stale Branches'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Util: Clean Stale Branches (dry-run={0}, days={1}, exclude={2})', inputs['dry-run'], inputs.days, inputs.exclude) || '' }}"
 
 on:
   schedule:
@@ -34,7 +35,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Clean stale branches

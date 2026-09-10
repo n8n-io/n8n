@@ -68,6 +68,12 @@ jobs:
         if: fromJSON(steps.paths-filter.outputs.results).db
         uses: ./.github/actions/setup-nodejs
 
+      - name: Resolve Postgres image
+        if: fromJSON(steps.paths-filter.outputs.results).db
+        run: |
+          IMAGE=$(node -p "require('./packages/testing/containers/postgres-versions.json').primary")
+          echo "TEST_IMAGE_POSTGRES=$IMAGE" >> "$GITHUB_ENV"
+
       - name: Start Postgres
         if: fromJSON(steps.paths-filter.outputs.results).db
         uses: isbang/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0

@@ -54,6 +54,26 @@ export type ExecutionRecovered = {
 	};
 };
 
+export type AgentNodeCapability =
+	| { kind: 'tool'; name: string }
+	| { kind: 'skill'; id: string; name?: string }
+	| { kind: 'skill'; id?: never; name: string };
+
+export type AgentNodeProgress = {
+	type: 'agentNodeProgress';
+	data: {
+		executionId: string;
+		nodeId: string;
+		nodeName: string;
+		runIndex: number;
+		itemIndex: number;
+		sequenceNumber: number;
+		toolCallId: string;
+		capability: AgentNodeCapability;
+		status: 'running' | 'succeeded' | 'failed';
+	};
+};
+
 export type NodeExecuteBefore = {
 	type: 'nodeExecuteBefore';
 	data: {
@@ -124,6 +144,7 @@ export type ExecutionPushMessage =
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
+	| AgentNodeProgress
 	| NodeExecuteBefore
 	| NodeExecuteAfter
 	| NodeExecuteAfterData;
