@@ -11,10 +11,9 @@ describe('AtlassianOAuth2Api Credential', () => {
 		expect(atlassianOAuth2Api.name).toBe('atlassianOAuth2Api');
 		expect(atlassianOAuth2Api.extends).toEqual(['oAuth2Api']);
 
-		const domainProperty = atlassianOAuth2Api.properties.find((p) => p.name === 'domain');
-		expect(domainProperty?.displayName).toBe('Site URL');
-		expect(domainProperty?.required).toBe(true);
-		expect(domainProperty?.placeholder).toBe('https://your-site.atlassian.net');
+		// No site field on the base: Confluence picks the site on the node, and
+		// Jira defines its own `domain` property.
+		expect(atlassianOAuth2Api.properties.find((p) => p.name === 'domain')).toBeUndefined();
 
 		const authUrlProperty = atlassianOAuth2Api.properties.find((p) => p.name === 'authUrl');
 		expect(authUrlProperty?.default).toBe('https://auth.atlassian.com/authorize');

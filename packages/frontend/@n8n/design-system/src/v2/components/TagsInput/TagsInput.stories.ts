@@ -23,7 +23,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const storyContainerStyle = 'padding: 40px; max-width: 400px';
+const storyContainerStyle = 'max-width: 400px';
 
 export const Default = {
 	render: (args) => ({
@@ -257,7 +257,7 @@ export const TruncatedTag = {
 			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 280px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="max-width: 280px; display: flex; flex-direction: column; gap: var(--spacing--md)">
 			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
 			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)" />
 			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)" />
@@ -572,7 +572,7 @@ export const OverflowingTag = {
 			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
 		},
 		template: `
-		<div style="padding: 40px; max-width: 280px; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="max-width: 280px; display: flex; flex-direction: column; gap: var(--spacing--md)">
 			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
 			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)" />
 			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)" />

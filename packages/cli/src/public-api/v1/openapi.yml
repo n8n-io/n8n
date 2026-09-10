@@ -35,12 +35,10 @@ tags:
     description: API capability discovery
   - name: Evaluation
     description: Operations about evaluation test runs
-  - name: Execution
+  - name: Executions
     description: Operations about executions
   - name: Folders
     description: Operations about folders
-  - name: GitConnections
-    description: Operations about Git connections
   - name: Insights
     description: Operations about insights
   - name: LogStreaming
@@ -49,6 +47,8 @@ tags:
     description: Beta — breaking changes may still occur without major version bump.
   - name: Projects
     description: Operations about projects
+  - name: Promotions
+    description: Operations about promotion providers, connections, and package operations
   - name: Role
     description: Operations about roles
   - name: RoleMappingRule
@@ -101,18 +101,6 @@ paths:
     $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
   /credentials/{id}/transfer:
     $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
-  /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
-  /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
-  /executions/{id}/retry:
-    $ref: './handlers/executions/spec/paths/executions.id.retry.yml'
-  /executions/{id}/stop:
-    $ref: './handlers/executions/spec/paths/executions.id.stop.yml'
-  /executions/stop:
-    $ref: './handlers/executions/spec/paths/executions.stop.yml'
-  /executions/{id}/tags:
-    $ref: './handlers/executions/spec/paths/executions.id.tags.yml'
   /tags:
     $ref: './handlers/tags/spec/paths/tags.yml'
   /tags/{id}:
@@ -133,8 +121,6 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /users/{id}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
-  /source-control/pull:
-    $ref: './handlers/source-control/spec/paths/sourceControl.yml'
   /variables:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:

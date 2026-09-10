@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../../tool-registry';
 import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
@@ -53,6 +52,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		reportVerificationVerdict: vi.fn(),
 		getBuildOutcome: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
+		beginVerification: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 	};
@@ -70,7 +70,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			warn: vi.fn(),
 			error: vi.fn(),
 		} as unknown as OrchestrationContext['logger'],
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {} as OrchestrationContext['taskStorage'],
 		workflowTaskService,
@@ -576,6 +575,7 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			beginVerification: vi.fn(),
 			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,

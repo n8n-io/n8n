@@ -51,6 +51,7 @@ export interface RecordMessageParams {
 	taskVersionId?: string;
 	/** Backend heartbeat telemetry context for this recorded run. */
 	telemetry?: {
+		userId?: string;
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
@@ -370,6 +371,7 @@ export class AgentExecutionService {
 			try {
 				this.telemetry.trackAgentTurnFinished({
 					agent_id: agentId,
+					user_id: params.telemetry.userId,
 					thread_id: threadId,
 					run_type: params.telemetry.runType,
 					turn_status: status === 'success' ? 'succeeded' : 'failed',

@@ -1,3 +1,4 @@
+import type { RecordedOccurrence } from '../core/materializer';
 import type { ClaimedTask } from '../core/types';
 
 /**
@@ -26,6 +27,11 @@ export const SCHEDULER_ATTRIBUTES = {
 	missed: 'n8n.scheduler.missed',
 	retentionDeleted: 'n8n.scheduler.retention_deleted',
 	retentionDrained: 'n8n.scheduler.retention_drained',
+	ownersChecked: 'n8n.scheduler.owners_checked',
+	quarantinedJobs: 'n8n.scheduler.quarantined_jobs',
+	deletedOrphanedJobs: 'n8n.scheduler.deleted_orphaned_jobs',
+	revivedJobs: 'n8n.scheduler.revived_jobs',
+	reconciliationDrained: 'n8n.scheduler.reconciliation_drained',
 	provisionInserted: 'n8n.scheduler.provision_inserted',
 	provisionRedefined: 'n8n.scheduler.provision_redefined',
 	provisionUnchanged: 'n8n.scheduler.provision_unchanged',
@@ -67,15 +73,25 @@ export const SCHEDULER_FIRE_OUTCOME = {
 	skippedNotOwned: 'skipped_not_owned',
 } as const;
 
-/**
- * Per-occurrence attributes shared by the fire/handoff spans. `ClaimedTask`
- * carries no workflow id, so the identity is `job_id` + `task_id` only.
- */
-export function pickSchedulerTaskAttributes(task: ClaimedTask): Record<string, string | number> {
+/** The `job_id` + `task_id` + `task_type` triple every scheduler task span carries. */
+export function pickSchedulerTaskIdentity(
+	task: RecordedOccurrence,
+): Record<string, string | number> {
 	return {
 		[SCHEDULER_ATTRIBUTES.taskId]: task.id,
 		[SCHEDULER_ATTRIBUTES.jobId]: task.jobId,
 		[SCHEDULER_ATTRIBUTES.taskType]: task.taskType,
+	};
+}
+
+/**
+ * The full per-occurrence attributes of a fire span: the identity plus this
+ * attempt's lease, attempt counts and instants. Spans that carry the identity
+ * alone use {@link pickSchedulerTaskIdentity}.
+ */
+export function pickSchedulerTaskAttributes(task: ClaimedTask): Record<string, string | number> {
+	return {
+		...pickSchedulerTaskIdentity(task),
 		[SCHEDULER_ATTRIBUTES.leaseEpoch]: task.leaseEpoch,
 		[SCHEDULER_ATTRIBUTES.attempts]: task.attempts,
 		[SCHEDULER_ATTRIBUTES.maxAttempts]: task.maxAttempts,

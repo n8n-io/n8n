@@ -354,6 +354,25 @@ describe('CredentialsTester', () => {
 			});
 		});
 
+		it('pins the probe request to the target host', async () => {
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			await credentialsTester.probeCredentialAuth(
+				'user-id',
+				'httpHeaderAuth',
+				credentials(),
+				targetUrl,
+				{ allowedDomains: 'fal.run' },
+			);
+
+			const nodeTypeArg = (RoutingNode as unknown as Mock).mock.calls[0][1] as INodeType;
+			expect(nodeTypeArg.description.properties[0].routing?.request).toEqual({
+				url: targetUrl,
+				method: 'GET',
+				allowedDomains: 'fal.run',
+			});
+		});
+
 		it('fails only on an explicit auth rejection', async () => {
 			mockRoutingNodeResult({ reject: httpError(401) });
 

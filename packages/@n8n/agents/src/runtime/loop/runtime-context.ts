@@ -1,7 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
+import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
@@ -21,7 +23,6 @@ import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prom
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
-	providerIdFromModelId,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
@@ -246,6 +247,17 @@ export class RuntimeContextBuilder {
 			);
 		}
 
+		// Define the untrusted-data boundary ahead of the first wrapped result.
+		// Goes in the cached block unless the only untrusted tools were loaded
+		// mid-conversation, mirroring the fragment split above.
+		const untrustedTools = tools.filter((tool) => tool.outputTrust === 'untrusted');
+		if (untrustedTools.length > 0) {
+			const target = untrustedTools.some((tool) => !loadedToolNames.has(tool.name))
+				? stableFragments
+				: volatileFragments;
+			target.unshift(UNTRUSTED_OUTPUT_DOCTRINE);
+		}
+
 		const userInstructions = this.config.instructions;
 		const stableBlock = wrapBuiltInRules(stableFragments);
 		const instructions = stableBlock
@@ -264,7 +276,7 @@ export class RuntimeContextBuilder {
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const quirks = getProviderQuirks(providerIdFromModelId(this.modelId));
+		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
 		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 

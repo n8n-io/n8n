@@ -38,7 +38,7 @@ const singleInstanceDedupe = ['zod'];
 
 const alias = editorUiAliases(__dirname, packagesDir);
 
-const { RELEASE: release } = process.env;
+const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
 
 /**
  * Shim node:fs/promises for browser builds.
@@ -129,6 +129,10 @@ const plugins: UserConfig['plugins'] = [
 		? [
 				legacy({
 					modernTargets: browsers,
+					// Every browser in `.browserslistrc` supports ESM and dynamic import, so the
+					// SystemJS/ES5 support is not needed. Enabling this would cause a >400% increase in build times
+					// for this package.
+					renderLegacyChunks: false,
 				}),
 			]
 		: []),
@@ -145,10 +149,6 @@ const plugins: UserConfig['plugins'] = [
 				: html;
 		},
 	},
-	// For sanitize-html
-	// nodePolyfills({
-	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
-	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -175,10 +175,19 @@ const plugins: UserConfig['plugins'] = [
 				sentryVitePlugin({
 					org: 'n8nio',
 					project: 'instance-frontend',
-					authToken: process.env.SENTRY_AUTH_TOKEN,
+					authToken: sentryAuthToken,
+					// Stop the deletion hook if the Sentry upload fails.
+					errorHandler: (error) => {
+						throw error;
+					},
 					telemetry: false,
 					release: {
 						name: `n8n@${release}`,
+					},
+					sourcemaps: {
+						// Sentry keeps these maps, so the image does not need them (156MB).
+						// Keep the maps if upload credentials are not available.
+						filesToDeleteAfterUpload: sentryAuthToken ? ['./dist/**/*.map'] : undefined,
 					},
 				}),
 			]
@@ -214,24 +223,15 @@ export default defineConfig({
 	resolve: { alias, dedupe: singleInstanceDedupe },
 	base: publicPath,
 	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-	css: {
-		preprocessorMaxWorkers: 2,
-		preprocessorOptions: {
-			scss: {
-				additionalData: [
-					'',
-					'@use "@/app/css/_variables.scss" as *;',
-					'@use "@n8n/design-system/css/mixins" as mixins;',
-				].join('\n'),
-			},
-		},
-	},
 	build: {
 		minify: !!release,
 		// Coverage builds emit INLINE maps so browser V8 coverage carries the
 		// map in the script source and monocart resolves offsets back to src.
-		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+		// 'hidden' writes the maps but omits the sourceMappingURL comment.
+		// Deleted maps then cause no 404 in devtools.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
 		target,
+		cssTarget: target,
 	},
 	optimizeDeps: {
 		exclude: ['wa-sqlite'],

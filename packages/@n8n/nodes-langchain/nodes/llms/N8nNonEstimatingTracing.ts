@@ -7,7 +7,7 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import { logAiEvent } from '@n8n/ai-utilities';
+import { logAiEvent, redactHeaderValues, stripNonXHeaders } from '@n8n/ai-utilities';
 import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
@@ -37,7 +37,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	 */
 	runsMap: Record<string, RunDetail> = {};
 
-	options = {
+	options: {
+		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+		redactedHeaders?: string[];
+	} = {
 		// Default(OpenAI format) parser
 		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
@@ -46,6 +49,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -110,7 +114,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders ?? [],
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[
@@ -138,16 +145,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		// Filter out non-x- headers to avoid leaking sensitive information in logs
-		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
-			const errorWithHeaders = error as { headers: Record<string, unknown> };
-
-			Object.keys(errorWithHeaders.headers).forEach((key) => {
-				if (!key.startsWith('x-')) {
-					delete errorWithHeaders.headers[key];
-				}
-			});
-		}
+		stripNonXHeaders(error);
 
 		if (error instanceof NodeError) {
 			if (this.options.errorDescriptionMapper) {

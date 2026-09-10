@@ -5,9 +5,7 @@
 	"description": "JSON schema for cubic.yaml (and the legacy .cubic.yaml) so editors can validate and autocomplete repository settings.",
 	"type": "object",
 	"additionalProperties": true,
-	"required": [
-		"version"
-	],
+	"required": ["version"],
 	"properties": {
 		"version": {
 			"const": 1,
@@ -24,11 +22,7 @@
 				},
 				"sensitivity": {
 					"type": "string",
-					"enum": [
-						"low",
-						"medium",
-						"high"
-					],
+					"enum": ["low", "medium", "high"],
 					"description": "Controls how strictly Cubic flags issues."
 				},
 				"incremental_commits": {
@@ -69,21 +63,12 @@
 				},
 				"auto_approve_behavior": {
 					"type": "string",
-					"enum": [
-						"disabled",
-						"shadow",
-						"live"
-					],
+					"enum": ["disabled", "shadow", "live"],
 					"description": "Controls whether auto-approval is disabled, simulated in shadow mode, or submitted live to GitHub."
 				},
 				"auto_approve": {
 					"type": "string",
-					"enum": [
-						"disabled",
-						"always",
-						"low_risk_only",
-						"custom"
-					],
+					"enum": ["disabled", "always", "low_risk_only", "custom"],
 					"description": "Auto-approve mode: disabled, always approve clean runs, use low-risk heuristics, or use a custom prompt."
 				},
 				"auto_approve_custom_prompt": {
@@ -95,20 +80,12 @@
 				},
 				"ultrareview": {
 					"type": "string",
-					"enum": [
-						"disabled",
-						"manual",
-						"automatic"
-					],
+					"enum": ["disabled", "manual", "automatic"],
 					"description": "Master switch for ultrareviews. disabled blocks all ultrareviews (manual and automatic), manual allows only manual triggers (the default), automatic also enables the automatic triggers."
 				},
 				"auto_ultrareview": {
 					"type": "string",
-					"enum": [
-						"disabled",
-						"high_risk_only",
-						"custom"
-					],
+					"enum": ["disabled", "high_risk_only", "custom"],
 					"description": "Auto-trigger ultrareview mode: disabled, let cubic decide per PR using built-in high-risk criteria, or use a custom prompt."
 				},
 				"auto_ultrareview_custom_prompt": {
@@ -182,10 +159,7 @@
 				},
 				"coding_agent_provider": {
 					"type": "string",
-					"enum": [
-						"cubic",
-						"cursor_cloud_agent"
-					],
+					"enum": ["cubic", "cursor_cloud_agent"],
 					"description": "Which coding agent applies automatic fixes. 'cubic' uses cubic's built-in agent; 'cursor_cloud_agent' dispatches a Cursor cloud agent (requires Cursor configuration)."
 				}
 			}
@@ -297,19 +271,13 @@
 			"type": "object",
 			"description": "Definition of a YAML-managed custom agent.",
 			"additionalProperties": false,
-			"required": [
-				"name"
-			],
+			"required": ["name"],
 			"anyOf": [
 				{
-					"required": [
-						"description"
-					]
+					"required": ["description"]
 				},
 				{
-					"required": [
-						"file_paths"
-					]
+					"required": ["file_paths"]
 				}
 			],
 			"properties": {

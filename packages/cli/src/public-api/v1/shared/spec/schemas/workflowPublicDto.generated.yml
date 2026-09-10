@@ -296,14 +296,19 @@ properties:
       properties:
         id:
           type: string
+          readOnly: true
+          example: 2tUt1wbLX592XDdX
         name:
           type: string
+          example: Production
         createdAt:
           type: string
           format: date-time
+          readOnly: true
         updatedAt:
           type: string
           format: date-time
+          readOnly: true
       required:
         - id
         - name
@@ -334,7 +339,7 @@ properties:
                 - team
             icon:
               type: object
-              nullable: true
+              description: Icon of the project, or null when the project has none
               properties:
                 type:
                   type: string
@@ -343,9 +348,12 @@ properties:
                     - icon
                 value:
                   type: string
+                color:
+                  type: string
               required:
                 - type
                 - value
+              nullable: true
             description:
               type: string
               nullable: true

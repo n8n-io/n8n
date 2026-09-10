@@ -290,6 +290,40 @@ Discovery reads the build's SSE tool-result stream (in `outcome/event-parser.ts`
 
 Not yet covered: an automatic "unexpected artifact" fail (a build producing an artifact the case never mentions). That's parked until the signals exist, to be added later as a binary check or per-dataset rather than as a case-schema field.
 
+### Setup panel Execute cases
+
+A seeded workflow attachment can send the panel's Execute request:
+
+```json
+{
+	"role": "user",
+	"text": "Run a test execution of this workflow and tell me how it went.",
+	"attach": {
+		"workflow": "seed-workflow-id",
+		"source": "setup-panel-execute"
+	}
+}
+```
+
+Use this attachment on the opening turn. The seed must declare the workflow ID.
+The harness remaps that ID and sends the normal chat request with the workflow
+attachment and structured handoff context. The transcript records the Execute
+action so process expectations can check the response.
+
+Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Set this variable on the n8n server process or in the lane's environment file.
+Setting it only on the eval client does not enable the server feature.
+Run the normal PR tier with the flag on and off. For panel cases, load the
+external suite with `--source langtracer --suite <suite-id>`, or stage a local
+case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+The repository does not include a `setup-panel-v2` tier.
+
+Remote Execute cases require LangTracer to preserve `attach.source` when it
+writes and reads a case. Deploy the companion schema and normalizer change
+before using those cases from a remote suite. Confirm that a write/read round
+trip retains `source: "setup-panel-execute"`. Until then, keep the Execute case
+on disk. Losing this field turns it into a normal attachment test.
+
 ## Environment variables
 
 | Variable | Required | Description |
@@ -782,6 +816,37 @@ The literals match lang-tracer's `metadata.seed` verbatim, so nothing translates
 between the two repos. They read asymmetrically — `inline` names where the seed
 lives, `replay` names what the harness does with it — which is a cost we took
 knowingly: renaming `replay` would break a lang-tracer API contract.
+
+#### `seed.priorRuns` — execution history the agent must look up
+
+An `inline` seed can also **run** its workflows before the graded turn. Each run creates a
+real execution record, so the case can ask about "the last run" and the honest answer
+requires the agent to read it.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "priorRuns": [
+    { "workflow": "dS8xQ2mV6bTn4Kp1", "hints": "the HTTP Request node returns 500" }
+  ]
+}
+```
+
+- **A failing run is the point.** `hints` steers the mock layer exactly as
+  `executionScenarios[].dataSetup` does, so a case can stage one specific failure and then
+  say only "it broke again". Grade the behaviour that follows: did the agent check the
+  record, or did it ask the user?
+- **A prior run that fails does not fail the build.** Outcomes go to the log, named by the
+  workflow the case declared.
+- **`workflow` is the seed workflow's `id`**, the same key `conversation[0].attach.workflow`
+  uses. The schema rejects an id the seed does not declare, so a typo fails at load rather
+  than mid-build.
+- **A run that never happens is not a staged failure.** If no execution record lands, the
+  case is reported as a framework issue rather than scored — it would otherwise be graded
+  against history the instance does not have.
+- Runs execute sequentially in declared order, before the live turn, on a 120s budget —
+  tighter than a scenario execution, which gets the case's build budget (900s by default).
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 

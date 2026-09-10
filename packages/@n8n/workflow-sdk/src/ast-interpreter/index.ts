@@ -28,6 +28,7 @@ export {
 	UnsupportedNodeError,
 	SecurityError,
 	UnknownIdentifierError,
+	ResourceLimitError,
 } from './errors';
 export { parseSDKCode } from './parser';
 export {

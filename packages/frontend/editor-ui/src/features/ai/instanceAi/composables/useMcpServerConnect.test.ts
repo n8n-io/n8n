@@ -196,6 +196,37 @@ describe('useMcpServerConnect', () => {
 			});
 		});
 
+		it('opens the authentication selector when the server supports multiple credential types', async () => {
+			mockCanQuickConnect.mockReturnValue(true);
+			const connecting = useMcpServerConnect().connectServer({
+				slug: 'git-hub',
+				credentialType: 'githubOAuth2Api',
+				credentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			await flushPromises();
+
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]).toMatchObject({
+				open: true,
+				activeId: 'githubOAuth2Api',
+				showAuthSelector: true,
+				contextNode: {
+					name: 'git-hub',
+					type: '@n8n/mcp-registry.gitHub',
+					typeVersion: 1.1,
+				},
+			});
+			expect(mockCreateAndAuthorize).not.toHaveBeenCalled();
+
+			emitCredentialCreated('cred-new', 'githubApi');
+			await closeCredentialModal();
+
+			expect(mcpStore.connect).toHaveBeenCalledWith({
+				serverSlug: 'git-hub',
+				credentialId: 'cred-new',
+			});
+			await expect(connecting).resolves.toBe('conn-new');
+		});
+
 		it('rejects and stops listening when the credential modal fails to open', async () => {
 			vi.spyOn(uiStore, 'openNewCredential').mockImplementation(() => {
 				throw new Error('modal unavailable');
@@ -213,6 +244,31 @@ describe('useMcpServerConnect', () => {
 	});
 
 	describe('credential edit modal reconciliation', () => {
+		it('refreshes connections using an edited credential when the modal closes', async () => {
+			mcpStore.connections = [
+				makeConnection({ id: 'conn-1', credentialId: 'cred-1' }),
+				makeConnection({ id: 'conn-2', credentialId: 'cred-2' }),
+			];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledOnce();
+			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledWith('conn-1');
+		});
+
+		it('does not refresh connections removed while the modal is open', async () => {
+			mcpStore.connections = [makeConnection()];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			mcpStore.connections = [];
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).not.toHaveBeenCalled();
+		});
+
 		it('connects the credential the user created', async () => {
 			const { connecting } = await startConnect();
 

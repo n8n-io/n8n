@@ -291,13 +291,7 @@ export async function searchWorkflows(
 		},
 	};
 
-	const { workflows, count } = await workflowService.getMany(
-		user,
-		options,
-		false, // includeScopes
-		false, // includeFolders
-		false, // onlySharedWithMe
-	);
+	const { workflows, count } = await workflowService.getMany(user, options);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
 		const {

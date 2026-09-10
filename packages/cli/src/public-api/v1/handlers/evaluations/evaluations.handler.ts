@@ -1,17 +1,8 @@
 import type { TestRunCancelDto, TestRunDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
-import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { toTestCaseExecutionDto, toTestRunSummaryDto } from './evaluations.mapper';
 import type { TestRunRequest } from '../../../types';
@@ -22,6 +13,13 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
+import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 type EvaluationsHandlers = {
 	getTestRuns: PublicAPIEndpoint<TestRunRequest.GetMany>;
@@ -38,27 +36,6 @@ function assertEvaluationsEnabled() {
 	}
 }
 
-/**
- * Quota: at most N distinct workflows may have test runs (`-1` = unlimited); a
- * workflow that already has runs re-runs freely. Assumes evaluations are enabled
- * (checked separately), so exhausting the quota is 402 (upgrade), not 403.
- */
-async function assertEvaluationQuotaAvailable(workflowId: string) {
-	const limit = Container.get(LicenseState).getMaxWorkflowsWithEvaluations();
-	if (limit === UNLIMITED_LICENSE_QUOTA) return;
-
-	// Re-running an already-counted workflow never consumes a new slot.
-	const alreadyCounts = (await Container.get(TestRunRepository).countByWorkflowId(workflowId)) > 0;
-	if (alreadyCounts) return;
-
-	const used = await Container.get(WorkflowRepository).getWorkflowsWithEvaluationCount();
-	if (used >= limit) {
-		throw new PaymentRequiredError(
-			`Evaluation quota exceeded: ${used}/${limit} workflows already have evaluations`,
-		);
-	}
-}
-
 const evaluationsHandlers: EvaluationsHandlers = {
 	getTestRuns: [
 		publicApiScope('testRun:list'),
@@ -68,11 +45,11 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			const { id: workflowId } = req.params;
 			const { offset = 0, limit = 100, status } = req.query;
 
-			const testRunRepository = Container.get(TestRunRepository);
-			const [testRuns, count] = await Promise.all([
-				testRunRepository.getMany(workflowId, { skip: offset, take: limit }, status),
-				testRunRepository.countByWorkflowId(workflowId, status),
-			]);
+			const { testRuns, count } = await Container.get(EvaluationTestRunService).findManyAndCount(
+				workflowId,
+				{ offset, limit },
+				status,
+			);
 
 			return res.json({
 				data: testRuns.map(toTestRunSummaryDto),
@@ -88,7 +65,7 @@ const evaluationsHandlers: EvaluationsHandlers = {
 
 			// Scoped lookup: a run from another workflow returns null (→ 404), so a
 			// caller can't reach another workflow's runs by guessing ids.
-			const summary = await Container.get(TestRunRepository).getTestRunSummaryByWorkflowId(
+			const summary = await Container.get(EvaluationTestRunService).findSummaryByWorkflowId(
 				runId,
 				workflowId,
 			);
@@ -111,17 +88,14 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			const { id: workflowId, runId } = req.params;
 			const { offset = 0, limit = 100 } = req.query;
 
-			// Relation-free existence check so we don't load the run's (possibly
-			// large) case set just to authorize before paginating.
-			if (!(await Container.get(TestRunRepository).existsInWorkflow(runId, workflowId))) {
-				throw new NotFoundError('Test run not found');
-			}
+			const result = await Container.get(EvaluationTestRunService).findTestCasesAndCount(
+				runId,
+				workflowId,
+				{ offset, limit },
+			);
+			if (!result) throw new NotFoundError('Test run not found');
 
-			const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
-			const [testCases, count] = await Promise.all([
-				testCaseExecutionRepository.getManyByTestRunId(runId, { skip: offset, take: limit }),
-				testCaseExecutionRepository.countByTestRunId(runId),
-			]);
+			const { testCases, count } = result;
 
 			return res.json({
 				data: testCases.map(toTestCaseExecutionDto),
@@ -154,7 +128,7 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			}
 
 			// Count query runs last, after the cheaper 403/404/409 checks.
-			await assertEvaluationQuotaAvailable(workflowId);
+			await Container.get(EvaluationTestRunService).assertEvaluationQuotaAvailable(workflowId);
 
 			// Case execution runs detached; guard `finished` so an unexpected
 			// rejection isn't left unhandled (the server has no global handler).
@@ -183,9 +157,10 @@ const evaluationsHandlers: EvaluationsHandlers = {
 			// Scoped lookup: a run from another workflow returns null (→ 404), so a
 			// caller can't reach another workflow's runs by guessing ids.
 			const testRunnerService = Container.get(TestRunnerService);
-			const testRun = await Container.get(TestRunRepository).findOne({
-				where: { id: runId, workflow: { id: workflowId } },
-			});
+			const testRun = await Container.get(EvaluationTestRunService).findOneByIdAndWorkflowId(
+				runId,
+				workflowId,
+			);
 			if (!testRun) throw new NotFoundError('Test run not found');
 
 			// `canBeCancelled` returns true when the run is in a terminal state.

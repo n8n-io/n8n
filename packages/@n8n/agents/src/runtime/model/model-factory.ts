@@ -10,6 +10,7 @@ import {
 	type ProviderCredentials,
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
+import { getModelIdString } from '../../utils/model';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -133,8 +134,30 @@ function buildOpenAiCompatible(
 
 type OpenAiCompatibleProviderId = 'nvidia';
 
-function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+/** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
+export function supportsSplitSystemMessages(model: ModelConfig): boolean {
+	switch (getModelIdString(model).split('/')[0]) {
+		case 'anthropic':
+		case 'google-vertex-anthropic':
+		case 'openrouter':
+			return true;
+		case 'openai': {
+			if (typeof model === 'string') return true;
+			const baseURL =
+				'baseURL' in model && typeof model.baseURL === 'string'
+					? model.baseURL
+					: 'url' in model && typeof model.url === 'string'
+						? model.url
+						: undefined;
+			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+		}
+		default:
+			return false;
+	}
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
@@ -301,8 +324,30 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+
+			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
+			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
+			// classic `*.openai.azure.com` shape (it appends `/openai` and injects
+			// `/deployments/{id}`), which mangles the Foundry URL into
+			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
+			// so the configured base is used verbatim.
+			if (endpointType === 'foundry') {
+				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+			}
+
+			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
+			// Use chat completions over deployment-based URLs so the credential's
+			// date-based `apiVersion` (e.g. `2025-03-01-preview`) matches the URL
+			// scheme Azure expects — mirroring the LangChain Azure node, which
+			// forces `useResponsesApi: false`. The SDK's default `provider(model)`
+			// selects the Responses API + the `/v1/` path, which Azure rejects with
+			// "API version not supported" for date-based versions.
+			//
+			// Azure deployments are user-named and surfaced in the deployment-based
+			// URL path. The catalog model id is not the deployment id, so prefer the
+			// user's `deploymentName` when provided and fall back to the model id.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
-			const { baseURL, resourceName, apiVersion, apiKey } = creds;
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
 			if (normalizedBaseURL) {
@@ -312,9 +357,14 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
-			return createAzure({ resourceName, apiKey, baseURL: normalizedBaseURL, apiVersion, fetch })(
-				model,
-			);
+			return createAzure({
+				resourceName,
+				apiKey,
+				baseURL: normalizedBaseURL,
+				apiVersion,
+				useDeploymentBasedUrls: true,
+				fetch,
+			}).chat(deploymentName ?? model);
 		},
 	},
 	'aws-bedrock': {

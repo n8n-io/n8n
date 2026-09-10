@@ -8,11 +8,12 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
+import type { z } from 'zod';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 import type { EvalAttribution } from './harness/attribution';
-import type { CaseSeed } from './harness/schema';
+import type { CaseSeed, ConversationTurnSchema } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -195,15 +196,7 @@ export interface ExecutionScenario {
 	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
-export interface ConversationTurn {
-	role: 'user' | 'assistant';
-	text: string;
-	/** Hand the agent a seeded workflow with this turn (opening turn only), the way
-	 *  the editor does when a user opens the assistant with a workflow in front of
-	 *  them. `workflow` is the id as the seed declares it; the harness swaps in the
-	 *  per-run remapped id. See `ConversationTurnSchema`. */
-	attach?: { workflow: string };
-}
+export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
 export interface TestCaseCredential {
 	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
@@ -309,6 +302,26 @@ export interface ExecutionScenarioResult {
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+}
+
+/**
+ * A seeded workflow to run BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance, so a case can ask about "the last
+ * run" and the honest answer requires the agent to go and read it. Without this,
+ * execution history is unreachable as a premise: the harness only ever executes a
+ * workflow *after* a build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by the `id` the seed declares — the same key
+	 *  `conversation[0].attach.workflow` uses. */
+	workflow: string;
+	/**
+	 * Steers the mock layer, exactly as `executionScenarios[].dataSetup` does. This is
+	 * how a prior run is made to fail in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to find out how.
+	 */
+	hints?: string;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the
@@ -428,6 +441,7 @@ export interface PlanTask {
 export interface AskUserQuestion {
 	id: string;
 	question: string;
+	type?: 'single' | 'multi' | 'text';
 	options?: string[];
 }
 

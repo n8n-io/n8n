@@ -31,6 +31,16 @@ vi.mock('@vue-flow/core', () => ({
 	}),
 }));
 
+// A real `ref` so template `v-if` auto-unwraps it like the production computed.
+const { isNodeContextEnabled } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { ref } = require('vue');
+	return { isNodeContextEnabled: ref(false) };
+});
+vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
+	useIsNodeContextEnabled: () => isNodeContextEnabled,
+}));
+
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
 import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
 import { useCanvasNodeGroupDescriptionVisibility } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
@@ -56,6 +66,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 	beforeEach(() => {
 		viewportRef.value = { x: 0, y: 0, zoom: 1 };
 		localStorage.clear();
+		isNodeContextEnabled.value = false;
 	});
 
 	function render(
@@ -107,6 +118,22 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render();
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(wrapper.emitted().toggle).toEqual([['g1']]);
+		});
+	});
+
+	describe('add to chat', () => {
+		it('hides the add-to-chat button when the node-context flag is off', () => {
+			isNodeContextEnabled.value = false;
+			const wrapper = render();
+			expect(wrapper.queryByTestId('canvas-node-group-add-to-chat')).toBeNull();
+		});
+
+		it('shows the button when the flag is on and emits add-nodes-to-chat with the group id', async () => {
+			isNodeContextEnabled.value = true;
+			const wrapper = render();
+			const btn = wrapper.getByTestId('canvas-node-group-add-to-chat');
+			await fireEvent.click(btn);
+			expect(wrapper.emitted()['add-nodes-to-chat']).toEqual([['g1']]);
 		});
 	});
 

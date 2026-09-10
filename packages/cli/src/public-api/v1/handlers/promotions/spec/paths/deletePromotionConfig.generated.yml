@@ -1,0 +1,33 @@
+operationId: deletePromotionConfig
+tags:
+  - Promotions
+summary: Remove one direction
+description: Deletes the configuration and its local checkout. Nothing in Git changes.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: id
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
+    name: direction
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

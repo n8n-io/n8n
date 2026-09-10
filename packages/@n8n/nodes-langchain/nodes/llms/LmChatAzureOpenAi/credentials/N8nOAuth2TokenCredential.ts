@@ -52,10 +52,19 @@ export class N8nOAuth2TokenCredential implements TokenCredential {
 	 * Gets the deployment details from the credential
 	 */
 	async getDeploymentDetails() {
+		if (this.credential.endpointType === 'foundry') {
+			return {
+				apiVersion: this.credential.apiVersion ?? '',
+				endpoint: this.credential.foundryEndpoint ?? '',
+				resourceName: this.credential.resourceName ?? '',
+				endpointType: 'foundry' as const,
+				foundryEndpoint: this.credential.foundryEndpoint,
+			};
+		}
 		return {
-			apiVersion: this.credential.apiVersion,
-			endpoint: this.credential.endpoint,
-			resourceName: this.credential.resourceName,
+			apiVersion: this.credential.apiVersion ?? '',
+			endpoint: this.credential.endpoint ?? '',
+			resourceName: this.credential.resourceName ?? '',
 		};
 	}
 }

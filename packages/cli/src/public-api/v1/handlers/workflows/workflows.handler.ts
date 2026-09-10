@@ -6,7 +6,13 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 
 import type { WorkflowRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { publicApiScope, projectScope } from '../../shared/middlewares/global.middleware';
+import {
+	publicApiScope,
+	projectScope,
+	deprecated,
+} from '../../shared/middlewares/global.middleware';
+
+const VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 type WorkflowHandlers = {
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
@@ -14,6 +20,7 @@ type WorkflowHandlers = {
 
 const workflowHandlers: WorkflowHandlers = {
 	getWorkflowVersion: [
+		deprecated({ since: VERSION_PATH_DEPRECATED_SINCE }),
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
 		async (req, res) => {

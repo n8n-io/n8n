@@ -931,4 +931,15 @@ describe('ProjectService', () => {
 			expect(result).toEqual(new Set(['proj-1']));
 		});
 	});
+
+	describe('findUserIdsByProjectId', () => {
+		it('delegates to the project relation repository', async () => {
+			projectRelationRepository.findUserIdsByProjectId.mockResolvedValueOnce(['user-1', 'user-2']);
+
+			const result = await projectService.findUserIdsByProjectId('project-1');
+
+			expect(projectRelationRepository.findUserIdsByProjectId).toHaveBeenCalledWith('project-1');
+			expect(result).toEqual(['user-1', 'user-2']);
+		});
+	});
 });

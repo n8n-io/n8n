@@ -43,4 +43,23 @@ describe('FrontendModuleDescription', () => {
 		expect(descriptor.commands?.[0]?.id).toBe('v2.open');
 		expect(descriptor.pushHandlers?.workflowActivated).toBeTypeOf('function');
 	});
+
+	it('accepts a parameter-input contribution with a lazy component', () => {
+		const descriptor: FrontendModuleDescription = {
+			id: 'inputs',
+			name: 'Inputs',
+			description: 'A descriptor contributing a parameter input',
+			icon: 'box',
+			parameterInputs: [
+				{
+					type: 'resourceLocator',
+					component: async () => await Promise.resolve({ name: 'ResourceLocator' }),
+					capabilities: { ownsExpressionRendering: true, disableDrop: true },
+				},
+			],
+		};
+
+		expect(descriptor.parameterInputs?.[0]?.type).toBe('resourceLocator');
+		expect(descriptor.parameterInputs?.[0]?.capabilities?.ownsFromAiOverride).toBeUndefined();
+	});
 });

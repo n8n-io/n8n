@@ -148,6 +148,8 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -200,7 +202,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 	background-color: var(--color--background--light-3);
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 	}

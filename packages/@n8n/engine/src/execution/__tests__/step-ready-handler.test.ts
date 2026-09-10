@@ -66,7 +66,9 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		status: 'running',
 		mode: 'production',
 		graph,
+		workflow: {},
 		triggerOutputs: null,
+		callerContext: {},
 		...overrides,
 	};
 	return {
@@ -151,6 +153,7 @@ describe('StepReadyHandler', () => {
 				workflowId: 'wf-1',
 				mode: 'production',
 				iteration: 0,
+				callerContext: {},
 			},
 		});
 		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
@@ -160,6 +163,23 @@ describe('StepReadyHandler', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('hands the caller context of the execution to the executor', async () => {
+		const executor = makeExecutor();
+		const callerContext = { userId: 'user-1', projectId: 'project-1', hostMode: 'webhook' };
+		const executionStore = makeExecutionStore({ callerContext });
+		const handler = makeHandler(executionStore, makeStepStore(), makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-a' });
+
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				context: expect.objectContaining({ executionId: 'exec-1', callerContext }) as unknown,
+			}),
+		);
 	});
 
 	it('reads inputs from the predecessor step outputs when the predecessor is not the trigger', async () => {

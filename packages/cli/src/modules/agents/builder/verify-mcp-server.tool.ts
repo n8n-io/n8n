@@ -1,13 +1,16 @@
 import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
+import { McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
 
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
+import {
+	type BuildMcpClientDeps,
+	buildMcpClientForServer,
+} from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	agentId?: string;
@@ -15,6 +18,7 @@ export interface VerifyMcpServerDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
 	/** When verification succeeds with a credential, writes it into the matching
 	 *  mcpServers entry so the builder can skip read_config → patch_config. */
 	applyCredentialToMcpServer?: (
@@ -86,7 +90,7 @@ const verifyMcpServerInputSchema = z.object({
 		.default('streamableHttp')
 		.describe('Transport type. Defaults to streamableHttp'),
 	authentication: z
-		.union([McpAuthenticationSchemaTypes, z.string().endsWith('McpOAuth2Api')])
+		.union([McpAuthenticationSchemaTypes, McpOAuth2CredentialTypeSchema])
 		.default('none')
 		.describe('Authentication scheme'),
 	credential: z
@@ -95,6 +99,7 @@ const verifyMcpServerInputSchema = z.object({
 		.describe(
 			'Credential id returned by ask_credential. Required when authentication is not "none"',
 		),
+	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
 	connectionTimeoutMs: z
 		.number()
 		.int()
@@ -133,6 +138,7 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 						transport: input.transport,
 						authentication: input.authentication,
 						credential: input.credential,
+						metadata: input.metadata,
 						connectionTimeoutMs: timeoutMs,
 					},
 					deps,

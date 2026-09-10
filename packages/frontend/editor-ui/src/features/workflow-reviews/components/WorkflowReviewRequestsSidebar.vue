@@ -322,13 +322,10 @@ function onListBackgroundClick() {
 
 <style lang="scss" module>
 .sidebar {
-	--review-sidebar--width: clamp(15rem, 25vw, 25rem);
-
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 var(--review-sidebar--width);
+	width: 100%;
 	min-width: 0;
-	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--border-color);
 }

@@ -95,14 +95,16 @@ erDiagram
   varchar_16_ misfirePolicy
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
-  varchar_36_ nodeId
+  timestamp_3__with_time_zone orphanedAt
+  varchar_255_ ownerId
+  varchar_36_ ownerMemberId
+  varchar_32_ ownerType
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
-  varchar_36_ workflowId FK
 }
 ```
 

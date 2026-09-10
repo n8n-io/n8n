@@ -41,6 +41,7 @@ vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
 		registerModuleSettingsPages: vi.fn(actual.registerModuleSettingsPages),
 		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
 		registerModuleCommands: vi.fn(actual.registerModuleCommands),
+		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
 	};
 });
 
@@ -51,6 +52,7 @@ const moduleRegistrations = [
 	moduleInitializer.registerModuleSettingsPages,
 	moduleInitializer.registerModulePushHandlers,
 	moduleInitializer.registerModuleCommands,
+	moduleInitializer.registerModuleParameterInputs,
 ];
 
 vi.mock('@n8n/composables/useToast', () => ({

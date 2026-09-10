@@ -86,14 +86,19 @@ export function buildInstanceAiRunPinDataPlan(args: {
 /**
  * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
  * SDK stores plain objects; runtime wraps each item in { json: item }.
+ *
+ * Built with `Object.fromEntries` so every node name keeps its own entry:
+ * node names are free-form, and a few of them do not survive being assigned
+ * as a plain object key, which would silently unpin that node for the run.
  */
 export function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IPinData {
-	const result: IPinData = {};
-	if (!pinData) return result;
-	for (const [nodeName, items] of Object.entries(pinData)) {
-		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
-	}
-	return result;
+	if (!pinData) return {};
+	return Object.fromEntries(
+		Object.entries(pinData).map(([nodeName, items]) => [
+			nodeName,
+			items.map((item) => ({ json: (item ?? {}) as IDataObject })),
+		]),
+	);
 }
 
 export async function pruneUnreachedVerificationPinData(args: {
@@ -147,12 +152,23 @@ export function getPrunedVerificationPinData(args: {
 	let nextPinData: IPinData | undefined;
 
 	for (const nodeName of Object.keys(args.verificationPinData)) {
-		if (reachedNodeNames.has(nodeName) || args.persistedPinData[nodeName] === undefined) continue;
+		// Every lookup here is guarded: a node name can match a property that
+		// plain objects already carry, and a bare read would return that value
+		// instead of missing.
+		if (reachedNodeNames.has(nodeName) || !Object.hasOwn(args.persistedPinData, nodeName)) continue;
 
 		nextPinData ??= { ...args.persistedPinData };
-		const preservedPinData = args.nonVerificationPinData[nodeName];
+		const preservedPinData = Object.hasOwn(args.nonVerificationPinData, nodeName)
+			? args.nonVerificationPinData[nodeName]
+			: undefined;
 		if (preservedPinData) {
-			nextPinData[nodeName] = preservedPinData;
+			// defineProperty, so the entry always lands under the node's own name
+			Object.defineProperty(nextPinData, nodeName, {
+				value: preservedPinData,
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
 		} else {
 			delete nextPinData[nodeName];
 		}

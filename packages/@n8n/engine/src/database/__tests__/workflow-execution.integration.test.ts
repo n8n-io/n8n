@@ -8,7 +8,11 @@ import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
 import { generateId } from '../generate-id';
+import { TypeOrmExecutionStore } from '../typeorm-execution-store';
 import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
+
+/** Opaque to the engine: stored and reported, never read into. */
+const sampleWorkflow = { id: 'wf-3', name: 'Sample', nodes: [{ name: 'A' }], connections: {} };
 
 describe('workflow_execution table (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -35,6 +39,7 @@ describe('workflow_execution table (integration)', () => {
 			status: 'running',
 			mode: 'production',
 			graph: { nodes: [], edges: [] },
+			workflow: {},
 			triggerOutputs: [{ foo: 'bar' }],
 			finishedAt: null,
 		});
@@ -64,6 +69,7 @@ describe('workflow_execution table (integration)', () => {
 			status: 'completed',
 			mode: 'manual',
 			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
 			triggerOutputs: [{ foo: 'bar' }],
 			finishedAt,
 		});
@@ -81,22 +87,54 @@ describe('workflow_execution table (integration)', () => {
 			status: 'completed',
 			mode: 'manual',
 			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
 		});
 	});
 
-	it('TypeOrmExecutionViewStore.loadExecutionView throws for an unknown id', async () => {
-		const viewStore = new TypeOrmExecutionViewStore(
-			dataSource.getRepository(WorkflowExecution),
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	it('TypeOrmExecutionStore.loadExecution leaves the workflow document behind', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const created = repo.create({
+			id: generateId(),
+			workflowId: 'wf-4',
+			status: 'running',
+			mode: 'production',
+			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: [{ foo: 'bar' }],
+			finishedAt: null,
+		});
+		await repo.save(created);
 
-		await expect(
-			viewStore.loadExecutionView('00000000-0000-0000-0000-000000000000'),
-		).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		const record = await new TypeOrmExecutionStore(repo).loadExecution(created.id);
+
+		// The execution path never reads the document, so the query never ships it.
+		expect(record).toEqual({
+			id: created.id,
+			workflowId: 'wf-4',
+			status: 'running',
+			mode: 'production',
+			graph: { nodes: [], edges: [] },
+			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: {},
+		});
 	});
+
+	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
+		'TypeOrmExecutionViewStore.%s throws for an unknown id',
+		async (method) => {
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
+
+			await expect(
+				viewStore[method]('00000000-0000-0000-0000-000000000000'),
+			).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		},
+	);
 
 	it('counts rows by workflowId and status (admittance support)', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
@@ -108,6 +146,7 @@ describe('workflow_execution table (integration)', () => {
 				status: 'running',
 				mode: 'production',
 				graph: { nodes: [], edges: [] },
+				workflow: {},
 				triggerOutputs: null,
 				finishedAt: null,
 			}),
@@ -119,6 +158,7 @@ describe('workflow_execution table (integration)', () => {
 				status: 'completed',
 				mode: 'production',
 				graph: { nodes: [], edges: [] },
+				workflow: {},
 				triggerOutputs: null,
 				finishedAt: new Date(),
 			}),

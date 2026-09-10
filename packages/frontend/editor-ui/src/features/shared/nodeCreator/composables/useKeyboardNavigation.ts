@@ -54,9 +54,15 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 			cleanupSelectableItems();
 			const timer = setTimeout(() => {
 				pendingRefreshes.delete(timer);
-				selectableItems.value = Array.from(
-					document.querySelectorAll('[data-keyboard-nav-type]'),
-				).map((el) => new WeakRef(el));
+				// detachKeydownEvent only cancels timers already pending at the time
+				// it runs — one scheduled after (e.g. from a transition-end callback
+				// firing post-teardown in unit tests) can still land here with no
+				// document to query.
+				if (typeof document !== 'undefined') {
+					selectableItems.value = Array.from(
+						document.querySelectorAll('[data-keyboard-nav-type]'),
+					).map((el) => new WeakRef(el));
+				}
 				resolve();
 			}, 0);
 			pendingRefreshes.add(timer);

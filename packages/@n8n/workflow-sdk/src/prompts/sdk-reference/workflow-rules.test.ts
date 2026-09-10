@@ -26,4 +26,12 @@ describe('WORKFLOW_RULES', () => {
 		expect(WORKFLOW_RULES).toContain('A Filter or IF only selects items');
 		expect(WORKFLOW_RULES).toContain('wire the corresponding action node on the matching path');
 	});
+
+	it('requires a mark-as-handled step when a polling trigger feeds a create/write action', () => {
+		expect(WORKFLOW_RULES).toContain('Polling triggers that feed create/write actions');
+		expect(WORKFLOW_RULES).toContain('mark each item handled once its record exists');
+		expect(WORKFLOW_RULES).toContain('Record handled item ids in a Data Table');
+		expect(WORKFLOW_RULES).toContain('An unread filter alone is NOT enough');
+		expect(WORKFLOW_RULES).toContain('must run AFTER the record is created');
+	});
 });
