@@ -1,4 +1,9 @@
-import type { AppPreviewStatus, DescribedBinding, InstanceAiThreadInfo } from '@n8n/api-types';
+import type {
+	AppBinding,
+	AppPreviewStatus,
+	DescribedBinding,
+	InstanceAiThreadInfo,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -149,6 +154,20 @@ export const fetchBindingsApi = async (
 		context,
 		'GET',
 		`/projects/${projectId}/apps/${appId}/bindings`,
+	);
+};
+
+export const addBindingApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	binding: AppBinding,
+) => {
+	return await makeRestApiRequest<DescribedBindings>(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/bindings`,
+		binding,
 	);
 };
 

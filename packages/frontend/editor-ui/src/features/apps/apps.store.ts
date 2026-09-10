@@ -1,9 +1,10 @@
-import type { DescribedBinding } from '@n8n/api-types';
+import type { AppBinding, DescribedBinding } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 import {
+	addBindingApi,
 	applyAppThemeApi,
 	createAppApi,
 	deleteAppApi,
@@ -99,6 +100,10 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		setBindings(await fetchBindingsApi(rootStore.restApiContext, projectId, appId));
 	};
 
+	const addBinding = async (projectId: string, appId: string, binding: AppBinding) => {
+		setBindings(await addBindingApi(rootStore.restApiContext, projectId, appId, binding));
+	};
+
 	const deleteBinding = async (projectId: string, appId: string, key: string) => {
 		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
 	};
@@ -159,6 +164,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		deleteApp,
 		fetchPages,
 		fetchBindings,
+		addBinding,
 		deleteBinding,
 		fetchAppVersionFiles,
 		fetchAppVersionFileContent,
