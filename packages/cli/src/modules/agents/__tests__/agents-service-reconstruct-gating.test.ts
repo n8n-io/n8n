@@ -46,6 +46,10 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import {
+	APP_CHAT_INTEGRATION_TYPE,
+	AppChatIntegration,
+} from '../integrations/platforms/app-chat-integration';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -739,6 +743,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
 		const registry = new ChatIntegrationRegistry();
 		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new AppChatIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
 
 		// Provide mocked integration services required when the integration block runs.
@@ -763,6 +768,22 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 			credentialProvider,
 			'production',
 			N8N_CHAT_INTEGRATION_TYPE,
+		);
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(toolNames).toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+
+	it('injects the same chat tools for a run an app started', async () => {
+		const { service, credentialProvider } = setup();
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			credentialProvider,
+			'production',
+			APP_CHAT_INTEGRATION_TYPE,
 		);
 
 		const toolNames = getInjectedToolNames();

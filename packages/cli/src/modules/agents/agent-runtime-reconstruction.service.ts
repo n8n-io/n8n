@@ -67,6 +67,7 @@ import {
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { APP_CHAT_INTEGRATION_TYPE } from './integrations/platforms/app-chat-integration';
 import {
 	buildFromJson,
 	buildProviderToolsForModel,
@@ -874,9 +875,14 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
+			// Internal channels (in-app chat, built apps) are credential-less and injected per run.
+			const internalChatType =
+				integrationType === N8N_CHAT_INTEGRATION_TYPE ||
+				integrationType === APP_CHAT_INTEGRATION_TYPE
+					? integrationType
+					: undefined;
 
-			if (credentialIntegrations.length > 0 || includeN8nChat) {
+			if (credentialIntegrations.length > 0 || internalChatType !== undefined) {
 				const integrationRegistry = Container.get(ChatIntegrationRegistry);
 				const { messageContextStore, actionExecutor, queryExecutor } =
 					await getChatIntegrationToolServices();
@@ -898,25 +904,21 @@ export class AgentRuntimeReconstructionService {
 						},
 					);
 
-				if (includeN8nChat) {
-					// Implicit in-app chat channel: credential-less, per-run, fixed
-					// tool names (exactly one n8n_chat per run — no suffixing).
-					const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
-					const n8nChatIntegration = {
-						type: N8N_CHAT_INTEGRATION_TYPE,
-					} as unknown as IntegrationToolConnectionDescriptor['integration'];
+				if (internalChatType !== undefined) {
+					// Fixed tool names: exactly one internal channel per run, so no suffixing.
+					const internalChat = integrationRegistry.require(internalChatType);
 					descriptors.push({
 						agentId,
-						integration: n8nChatIntegration,
-						integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+						integration: { type: internalChatType },
+						integrationConnectionId: internalChatType,
 						contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
 						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
-						contextQueries: [...n8nChat.contextQueries],
-						actions: [...n8nChat.actions],
-						contextToolDefinitions: [...n8nChat.contextToolDefinitions],
-						actionToolDefinitions: [...n8nChat.actionToolDefinitions],
-						contextToolGuidance: n8nChat.contextToolGuidance,
-						actionToolGuidance: n8nChat.actionToolGuidance,
+						contextQueries: [...internalChat.contextQueries],
+						actions: [...internalChat.actions],
+						contextToolDefinitions: [...internalChat.contextToolDefinitions],
+						actionToolDefinitions: [...internalChat.actionToolDefinitions],
+						contextToolGuidance: internalChat.contextToolGuidance,
+						actionToolGuidance: internalChat.actionToolGuidance,
 					});
 				}
 
