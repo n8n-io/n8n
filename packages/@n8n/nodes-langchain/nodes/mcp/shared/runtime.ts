@@ -32,7 +32,6 @@ import {
 } from './utils';
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import {
-	appendAttribution,
 	buildMcpToolName,
 	createCallTool,
 	getErrorDescriptionFromToolCall,
@@ -178,7 +177,6 @@ export async function buildMcpToolkit(
 							});
 						},
 						() => ctx.getExecutionCancelSignal(),
-						attribution,
 					),
 					attribution,
 				),
@@ -232,11 +230,10 @@ async function runToolCall(opts: {
 	mcpTools: McpTool[];
 	client: Client;
 	timeout: number;
-	attribution?: string;
 	itemIndex: number;
 	returnData: INodeExecutionData[];
 }): Promise<void> {
-	const { ctx, node, item, mcpTools, client, timeout, attribution, itemIndex, returnData } = opts;
+	const { ctx, node, item, mcpTools, client, timeout, itemIndex, returnData } = opts;
 
 	if (!item.json.tool || typeof item.json.tool !== 'string') {
 		throw new NodeOperationError(node, 'Tool name not found in item.json.tool or item.tool', {
@@ -273,9 +270,7 @@ async function runToolCall(opts: {
 
 		returnData.push({
 			json: {
-				response: (attribution
-					? appendAttribution(result.content, attribution)
-					: result.content) as IDataObject,
+				response: result.content as IDataObject,
 				...(isStructuredContent(result.structuredContent) && {
 					structuredContent: result.structuredContent,
 				}),
@@ -347,7 +342,6 @@ export async function executeMcpTool(
 				mcpTools,
 				client,
 				timeout: config.timeout,
-				attribution: config.registryCredential?.connection.attribution,
 				itemIndex,
 				returnData,
 			});
@@ -373,7 +367,6 @@ export async function executeMcpTool(
 				mcpTools,
 				client,
 				timeout: config.timeout,
-				attribution: config.registryCredential?.connection.attribution,
 				itemIndex,
 				returnData,
 			});
