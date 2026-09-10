@@ -64,6 +64,14 @@ export interface IRunExecutionDataV1 {
 	 */
 	resumeToken?: string;
 	waitTill?: Date;
+	/**
+	 * How to treat the head of `nodeExecutionStack` when resuming a waiting
+	 * execution. Absent (legacy): the head already executed and was pushed back
+	 * (Wait node), so resume disables it to pass input through and pops its
+	 * duplicate runData entry. 'run-stack-head': the engine was suspended at a
+	 * node boundary, so the head has not executed yet and must run normally.
+	 */
+	resumeInstruction?: 'run-stack-head';
 	pushRef?: string;
 
 	/** Data needed for a worker to run a manual execution. */
