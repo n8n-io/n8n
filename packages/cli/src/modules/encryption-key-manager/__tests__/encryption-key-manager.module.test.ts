@@ -20,18 +20,18 @@ describe('EncryptionKeyManagerModule', () => {
 	});
 
 	describe('settings()', () => {
-		it('reports rotation as disabled by default', async () => {
-			const settings = await new EncryptionKeyManagerModule().settings();
-
-			expect(settings).toEqual({ rotationEnabled: false });
-		});
-
-		it('reports rotation as enabled when the flag is set', async () => {
-			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
-
+		it('reports rotation as enabled by default', async () => {
 			const settings = await new EncryptionKeyManagerModule().settings();
 
 			expect(settings).toEqual({ rotationEnabled: true });
+		});
+
+		it('reports rotation as disabled when the flag is set to false', async () => {
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
+
+			const settings = await new EncryptionKeyManagerModule().settings();
+
+			expect(settings).toEqual({ rotationEnabled: false });
 		});
 	});
 
