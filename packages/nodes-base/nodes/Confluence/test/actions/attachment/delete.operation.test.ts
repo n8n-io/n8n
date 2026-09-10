@@ -61,22 +61,6 @@ describe('attachment:delete', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
-	// Without the prefix the API answers with an "Expected type is ContentId" type error
-	it.each([
-		['a page ID', '123456'],
-		['free text', 'my-file.png'],
-		['a prefix in the wrong case', 'ATT123'],
-	])('rejects %s without calling the API', async (_label, attachmentId) => {
-		const promise = runDelete({ attachmentId });
-
-		await expect(promise).rejects.toThrow(NodeOperationError);
-		await expect(promise).rejects.toThrow(`"${attachmentId}" is not an attachment ID`);
-		await expect(promise).rejects.toMatchObject({
-			description: expect.stringContaining('Get Many'),
-		});
-		expect(apiRequest).not.toHaveBeenCalled();
-	});
-
 	it('explains a 404 from the plain delete instead of leaking the API error', async () => {
 		apiRequest.mockRejectedValue(apiError('404'));
 

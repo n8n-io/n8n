@@ -104,14 +104,6 @@ export const execute: ConfluenceOperation = async function (
 			itemIndex,
 		});
 	}
-	// Without the prefix the API answers "Expected type is ContentId"
-	if (!attachmentId.startsWith('att')) {
-		throw new NodeOperationError(this.getNode(), `"${attachmentId}" is not an attachment ID`, {
-			itemIndex,
-			description:
-				'Attachment IDs start with "att", for example att123456. The Get Many operation returns them in the "id" field.',
-		});
-	}
 
 	// Strict compare, not a cast: an expression can hand back the string "false",
 	// which is truthy and would permanently delete the attachment by accident
