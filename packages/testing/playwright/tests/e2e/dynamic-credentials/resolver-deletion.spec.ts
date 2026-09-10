@@ -13,10 +13,7 @@ import { test, expect } from '../../../fixtures/base';
  * Requires:
  *   - capability: 'dynamic-credentials' (Keycloak container + env vars)
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true,
-});
+test.use({ capability: 'dynamic-credentials' });
 
 test.describe(
 	'Dynamic Credentials: resolver deletion cleanup @capability:dynamic-credentials @licensed',

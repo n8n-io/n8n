@@ -2,6 +2,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import { expectScheduleTriggerFires } from './schedule-trigger-helpers';
 import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
+import { durableScheduleTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
 // Durable scheduler under a multi-main cluster. The scheduler has no leader: the
@@ -16,16 +17,7 @@ import { test, expect } from '../../../fixtures/base';
 // project too, which throws at startup without a license; instead the tests skip
 // via `mainUrls.length < 2` on single-main projects. Only the scheduler env is
 // added here, merged with the project's container config.
-test.use({
-	capability: {
-		env: {
-			N8N_SCHEDULER_ENABLED: 'true',
-			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
-			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
-		},
-	},
-});
+test.use(durableScheduleTestConfig);
 
 test.describe(
 	'Schedule Trigger multi-main (durable scheduler) @mode:multi-main',

@@ -29,10 +29,7 @@ import type { McpSession } from '../../../services/mcp-api-helper';
  * (`N8N_ENV_FEAT_DYNAMIC_CREDENTIALS=true`, which seeds the `system-n8n`
  * resolver) and provides Keycloak as the credential's OAuth2 provider.
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
-});
+test.use({ capability: 'dynamic-credentials' });
 
 interface GatedWorkflowSetup {
 	mainApi: ApiHelpers;

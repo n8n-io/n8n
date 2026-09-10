@@ -11,9 +11,7 @@ test.use({
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
-			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
 		},
 	},
 });

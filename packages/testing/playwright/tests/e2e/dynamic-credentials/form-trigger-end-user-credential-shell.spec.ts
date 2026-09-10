@@ -28,18 +28,11 @@ import type { ApiHelpers } from '../../../services/api-helper';
  *   a sandboxed document replacing only itself would render the redirect target
  *   inside the little iframe.
  *
- * Uses the `dynamic-credentials` capability config (Keycloak as the account's OAuth2
- * provider, plus the seeded `system-n8n` resolver), inlined here rather than reusing
- * the named capability.
+ * Uses the `dynamic-credentials` capability config. It provides Keycloak as the account's
+ * OAuth2 provider and adds the seeded `system-n8n` resolver.
  */
 test.use({
-	capability: {
-		services: ['keycloak'],
-		env: {
-			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: 'true',
-			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
-		},
-	},
+	capability: 'dynamic-credentials',
 	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
 });
 

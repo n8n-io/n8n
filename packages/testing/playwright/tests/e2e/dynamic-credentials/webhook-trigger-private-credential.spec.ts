@@ -16,20 +16,10 @@ import { test, expect } from '../../../fixtures/base';
  * `requireExecuteAccess: false` lets the member mint a token for the trigger
  * without holding `workflow:execute`.
  *
- * Uses the `dynamic-credentials` capability config (Keycloak as the credential's
- * OAuth2 provider, plus the seeded `system-n8n` resolver), inlined here rather
- * than reusing the named capability.
+ * Uses the `dynamic-credentials` capability config. It provides Keycloak as the credential's
+ * OAuth2 provider and adds the seeded `system-n8n` resolver.
  */
-test.use({
-	capability: {
-		services: ['keycloak'],
-		env: {
-			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: 'true',
-			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
-		},
-	},
-	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
-});
+test.use({ capability: 'dynamic-credentials' });
 
 interface CredentialGateResponse {
 	readyToExecute: boolean;

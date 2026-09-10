@@ -5,6 +5,7 @@ import {
 	makeScheduleTriggerWorkflow,
 	makeCronScheduleTriggerWorkflow,
 } from './schedule-trigger-workflow';
+import { durableScheduleTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
 // Durable scheduler path. Both flags are required: with only
@@ -14,16 +15,7 @@ import { test, expect } from '../../../fixtures/base';
 //
 // A successful trigger-mode execution does not by itself prove durable-vs-legacy
 // (both emit `mode:trigger`); the restart-continuity spec distinguishes them.
-test.use({
-	capability: {
-		env: {
-			N8N_SCHEDULER_ENABLED: 'true',
-			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
-			N8N_SCHEDULER_SWEEP_INTERVAL: '1',
-			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
-		},
-	},
-});
+test.use(durableScheduleTestConfig);
 
 test.describe(
 	'Schedule Trigger (durable scheduler)',

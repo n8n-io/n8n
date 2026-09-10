@@ -10,10 +10,7 @@ import { DYNAMIC_CRED_ENDPOINT_TOKEN } from '../../../services/dynamic-credentia
  *   - capability: 'dynamic-credentials' (Keycloak container + env vars)
  *   - api.enableFeature('dynamicCredentials') (license feature)
  */
-test.use({
-	capability: 'dynamic-credentials',
-	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate
-});
+test.use({ capability: 'dynamic-credentials' });
 
 /**
  * Integration test: external user triggers a workflow via a production webhook.

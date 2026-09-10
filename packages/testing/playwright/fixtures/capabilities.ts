@@ -2,7 +2,7 @@ import type { N8NConfig } from 'n8n-containers/stack';
 
 /**
  * Capability definitions for `test.use({ capability: 'email' })`.
- * Add `@capability:X` tag to tests for orchestration grouping.
+ * Add `@capability:X` to tests for filtering, reporting, and image pre-pulls.
  *
  * Maps capability names to service registry keys.
  * Note: task-runner is always enabled, no capability needed.
@@ -32,6 +32,11 @@ export const CAPABILITIES = {
 		},
 	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
+
+export const PROXY_WITHOUT_COMMUNITY_PACKAGES = {
+	services: ['proxy'],
+	env: { N8N_COMMUNITY_PACKAGES_ENABLED: 'false' },
+} as const satisfies Partial<N8NConfig>;
 
 export type Capability = keyof typeof CAPABILITIES;
 
