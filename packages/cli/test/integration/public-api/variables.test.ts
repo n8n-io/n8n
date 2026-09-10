@@ -30,7 +30,7 @@ describe('Variables in Public API', () => {
 	});
 
 	describe('GET /variables', () => {
-		it('if licensed, should return all variables with pagination', async () => {
+		it('should return all variables with pagination', async () => {
 			/**
 			 * Arrange
 			 */
@@ -68,7 +68,7 @@ describe('Variables in Public API', () => {
 			});
 		});
 
-		it('if licensed, should be able to filter variables by projectId and state', async () => {
+		it('should be able to filter variables by projectId and state', async () => {
 			/**
 			 * Arrange
 			 */
@@ -105,7 +105,7 @@ describe('Variables in Public API', () => {
 			);
 		});
 
-		it('if licensed, should return only global variables for a "null" projectId', async () => {
+		it('should return only global variables for a "null" projectId', async () => {
 			/**
 			 * Arrange
 			 */
@@ -131,7 +131,7 @@ describe('Variables in Public API', () => {
 			);
 		});
 
-		it('if licensed, should clamp a limit above the maximum instead of rejecting it', async () => {
+		it('should clamp a limit above the maximum instead of rejecting it', async () => {
 			/**
 			 * Arrange
 			 */
@@ -153,7 +153,7 @@ describe('Variables in Public API', () => {
 			expect(response.body.data).toHaveLength(1);
 		});
 
-		it('if licensed, should only return the documented variable fields', async () => {
+		it('should only return the documented variable fields', async () => {
 			/**
 			 * Arrange
 			 */
@@ -193,7 +193,7 @@ describe('Variables in Public API', () => {
 			expect(response.body.data.filter((v: Variables) => v.project === null)).toHaveLength(1);
 		});
 
-		it('if licensed, should return the stored project icon unchanged', async () => {
+		it('should return the stored project icon unchanged', async () => {
 			/**
 			 * Arrange
 			 */
@@ -216,7 +216,7 @@ describe('Variables in Public API', () => {
 			expect(response.body.data[0].project.icon).toEqual(icon);
 		});
 
-		it('if licensed, should paginate with an opaque cursor', async () => {
+		it('should paginate with an opaque cursor', async () => {
 			/**
 			 * Arrange
 			 */
@@ -365,7 +365,7 @@ describe('Variables in Public API', () => {
 	});
 
 	describe('POST /variables', () => {
-		it('if licensed, should create a new variable', async () => {
+		it('should create a new variable', async () => {
 			/**
 			 * Arrange
 			 */
@@ -389,7 +389,7 @@ describe('Variables in Public API', () => {
 			);
 		});
 
-		it('if licensed, should create a variable linked to a project', async () => {
+		it('should create a variable linked to a project', async () => {
 			/**
 			 * Arrange
 			 */
@@ -446,7 +446,7 @@ describe('Variables in Public API', () => {
 			variable = await createVariable();
 		});
 
-		it('if licensed, should update a variable', async () => {
+		it('should update a variable', async () => {
 			testServer.license.enable('feat:variables');
 
 			const response = await testServer
@@ -459,7 +459,7 @@ describe('Variables in Public API', () => {
 			expect(updatedVariable).toEqual(expect.objectContaining(variablePayload));
 		});
 
-		it('if licensed, should update a variable to link it to a project', async () => {
+		it('should update a variable to link it to a project', async () => {
 			testServer.license.enable('feat:variables');
 
 			const response = await testServer
@@ -494,7 +494,7 @@ describe('Variables in Public API', () => {
 			variable = await createVariable();
 		});
 
-		it('if licensed, should delete a variable', async () => {
+		it('should delete a variable', async () => {
 			/**
 			 * Arrange
 			 */
