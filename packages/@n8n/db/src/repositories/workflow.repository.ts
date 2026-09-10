@@ -1128,39 +1128,37 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private buildCallablePolicyConditions(parentWorkflowId: string): {
 		conditions: string[];
-		params: Record<string, string>;
+		params: Record<string, string | string[]>;
 	} {
 		const defaultPolicy = this.globalConfig.workflows.callerPolicyDefaultOption;
 		const callerPolicy = this.settingsTextValue('cpw.settings', 'callerPolicy');
 		const callerIds = this.settingsTextValue('cpw.settings', 'callerIds');
 
 		const conditions: string[] = [];
-		const params: Record<string, string> = {
+		const params: Record<string, string | string[]> = {
 			cpParentWorkflowId: parentWorkflowId,
 			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
-		// Branch 1: callerPolicy = 'any'
-		conditions.push(`${callerPolicy} = 'any'`);
-
-		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
+		// Branch 1: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
 			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
-		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
+		// Branch 2: callerPolicy = 'workflowsFromSameOwner' (or the workflow inherits the
+		// instance default and it is 'workflowsFromSameOwner'). A stored value outside the
+		// supported policies, e.g. the removed 'any', counts as unset and inherits the default.
 		const sameOwnerPolicyClauses = [`${callerPolicy} = 'workflowsFromSameOwner'`];
 		if (defaultPolicy === 'workflowsFromSameOwner') {
-			sameOwnerPolicyClauses.push(`${callerPolicy} IS NULL`);
+			sameOwnerPolicyClauses.push(
+				`${callerPolicy} IS NULL`,
+				`${callerPolicy} NOT IN (:...cpValidPolicies)`,
+			);
+			params.cpValidPolicies = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
 		}
 		conditions.push(
 			`((${sameOwnerPolicyClauses.join(' OR ')}) AND sw_sub.projectId = sw_par.projectId AND sw_par.projectId IS NOT NULL)`,
 		);
-
-		// Handle NULL callerPolicy when default is 'any'
-		if (defaultPolicy === 'any') {
-			conditions.push(`${callerPolicy} IS NULL`);
-		}
 
 		return { conditions, params };
 	}

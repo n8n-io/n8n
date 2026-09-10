@@ -1096,6 +1096,18 @@ describe('GlobalConfig', () => {
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
 		});
+
+		it('should warn and fall back to default for the removed `any` caller policy', () => {
+			process.env = {
+				N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION: 'any',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.workflows.callerPolicyDefaultOption).toEqual('workflowsFromSameOwner');
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid value for N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION'),
+			);
+		});
 	});
 
 	describe('health endpoint transformation', () => {

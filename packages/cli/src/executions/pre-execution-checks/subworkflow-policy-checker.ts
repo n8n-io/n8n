@@ -10,8 +10,13 @@ import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
-type DenialPolicy = Exclude<Policy, 'any'>;
 type WorkflowWithCallerPolicy = Pick<IWorkflowBase, 'id' | 'settings'>;
+
+const VALID_POLICIES: readonly Policy[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
+
+function isValidPolicy(policy: string): policy is Policy {
+	return VALID_POLICIES.some((validPolicy) => validPolicy === policy);
+}
 
 @Service()
 export class SubworkflowPolicyChecker {
@@ -37,8 +42,6 @@ export class SubworkflowPolicyChecker {
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
 		const policy = this.findPolicy(subworkflow);
-
-		if (policy === 'any') return;
 
 		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
 
@@ -76,8 +79,6 @@ export class SubworkflowPolicyChecker {
 
 		const policy = this.findPolicy(subworkflow);
 
-		if (policy === 'any') return;
-
 		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflowId);
 
 		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id) return;
@@ -110,12 +111,16 @@ export class SubworkflowPolicyChecker {
 	}
 
 	/**
-	 * Find the subworkflow's caller policy.
+	 * Find the subworkflow's caller policy. A stored value outside the supported
+	 * policies, e.g. the removed `any`, counts as unset and resolves to the
+	 * instance default.
 	 */
-	private findPolicy(subworkflow: WorkflowWithCallerPolicy): WorkflowSettings.CallerPolicy {
-		return (
-			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
-		);
+	private findPolicy(subworkflow: WorkflowWithCallerPolicy): Policy {
+		const storedPolicy: string | undefined = subworkflow.settings?.callerPolicy;
+
+		if (storedPolicy !== undefined && isValidPolicy(storedPolicy)) return storedPolicy;
+
+		return this.globalConfig.workflows.callerPolicyDefaultOption;
 	}
 
 	/**
@@ -149,7 +154,7 @@ export class SubworkflowPolicyChecker {
 		return callerIds.includes(parentWorkflowId);
 	}
 
-	private readonly denialReasons: Record<DenialPolicy, string> = {
+	private readonly denialReasons: Record<Policy, string> = {
 		none: 'Subworkflow may not be called by any workflow',
 		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
 		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
@@ -158,7 +163,7 @@ export class SubworkflowPolicyChecker {
 	private logDenial(
 		details: {
 			subworkflowId: string;
-			policy: DenialPolicy;
+			policy: Policy;
 		} & ({ parentWorkflowId: string } | { parentProjectId: string }),
 	) {
 		const { policy, ...context } = details;

@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 3.0.0
+
+### What changed?
+
+The "Any workflow" caller policy (`any`) was removed. A workflow that still stores this value now uses the instance default policy. The instance default comes from `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION` (default: `workflowsFromSameOwner`). If you set this environment variable to `any`, n8n logs a warning and uses the default value. The public API rejects `any` as a value for `settings.callerPolicy`.
+
+### When is action necessary?
+
+If your workflows rely on being callable from any project. Open the workflow settings and select a supported policy, or list the allowed callers with the `workflowsFromAList` policy. The migration report on version 2 lists every affected workflow.
+
 # 2.0.0
 
 ### What changed?
