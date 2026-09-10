@@ -179,34 +179,38 @@ function buildDiagnosticPayload(
 	};
 }
 
-const UNTRUSTED_BLOCK_SENTINEL = '__N8N_UNTRUSTED_BLOCK__';
+const BODY_SENTINEL = '__N8N_ASSISTANT_DRAFT_BODY__';
 
 /**
- * Put untrusted text into an assistant draft template. The body goes in via a
- * sentinel so `baseText` can never interpolate it a second time, and via a
- * replacer function so `$&` and `$1` in it stay literal.
+ * Put caller-supplied text into an assistant draft template. The body goes in
+ * via a sentinel so `baseText` can never interpolate it a second time, and via
+ * a replacer function so `$&` and `$1` in it stay literal.
  */
-export function renderUntrustedDraft(
+export function renderAssistantDraft(
 	i18n: FixWithAssistantI18n,
 	templateKey: BaseTextKey,
 	placeholder: string,
-	source: string,
 	body: string,
 ): string {
-	const block = [`<untrusted_data source="${source}">`, body, '</untrusted_data>'].join('\n');
 	const template = i18n.baseText(templateKey, {
-		interpolate: { [placeholder]: UNTRUSTED_BLOCK_SENTINEL },
+		interpolate: { [placeholder]: BODY_SENTINEL },
 	});
-	return template.replaceAll(UNTRUSTED_BLOCK_SENTINEL, () => block);
+	return template.replaceAll(BODY_SENTINEL, () => body);
 }
 
 function renderPrompt(payload: DiagnosticPayload, i18n: FixWithAssistantI18n): string {
-	return renderUntrustedDraft(
+	// Tool output from external services — genuinely untrusted, so it is fenced
+	// and the template tells the assistant to read it as data.
+	const diagnostics = [
+		'<untrusted_data source="agent-preview-tool-errors">',
+		JSON.stringify(payload, null, 2),
+		'</untrusted_data>',
+	].join('\n');
+	return renderAssistantDraft(
 		i18n,
 		'agents.builder.preview.fixWithAssistantPrompt.template',
 		'diagnostics',
-		'agent-preview-tool-errors',
-		JSON.stringify(payload, null, 2),
+		diagnostics,
 	);
 }
 

@@ -1,7 +1,7 @@
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import {
-	renderUntrustedDraft,
+	renderAssistantDraft,
 	sanitizeDiagnosticText,
 	type FixWithAssistantI18n,
 } from './fix-with-assistant';
@@ -57,7 +57,9 @@ export function looksLikeAgentChangeRequest(text: string): boolean {
 
 /**
  * Draft that hands a preview-chat change request to the AI Assistant. The user
- * text is untrusted — it reached the preview chat as a message to the agent.
+ * wrote this sentence themselves and sees it in the composer, so it goes across
+ * as plain text — no fencing, no "treat this as data" preamble. It is still
+ * scrubbed, because a pasted secret should not travel to another surface.
  */
 export function buildAgentChangeRequestPrompt(
 	changeRequest: string,
@@ -69,11 +71,10 @@ export function buildAgentChangeRequestPrompt(
 		0,
 		MAX_CHANGE_REQUEST_LENGTH,
 	);
-	return renderUntrustedDraft(
+	return renderAssistantDraft(
 		i18n,
 		'agents.builder.preview.editRequest.prompt.template',
 		'request',
-		'agent-preview-change-request',
 		sanitized,
 	);
 }
