@@ -188,7 +188,7 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
  */
 function getWorkflowId(source: unknown): string | undefined {
 	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
-	const workflowId = (source as { workflowId: unknown }).workflowId;
+	const workflowId = source.workflowId;
 	return typeof workflowId === 'string' ? workflowId : undefined;
 }
 

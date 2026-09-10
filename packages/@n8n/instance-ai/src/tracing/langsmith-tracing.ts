@@ -1331,7 +1331,7 @@ function replayWrapTool(
 			const remappedInput: unknown = idRemapper.remapInput(input);
 			const realOutput = await tool.handler(remappedInput, context);
 			if (event) {
-				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+				idRemapper.learn(event.output, realOutput);
 			}
 			return realOutput;
 		},

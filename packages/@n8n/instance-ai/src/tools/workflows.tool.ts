@@ -1255,7 +1255,7 @@ async function handleSetupApply(
 			type: node.type,
 			typeVersion: node.typeVersion,
 			position: node.position,
-			parameters: node.parameters as Record<string, unknown> | undefined,
+			parameters: node.parameters,
 			credentials: node.credentials,
 			disabled: node.disabled,
 		}));

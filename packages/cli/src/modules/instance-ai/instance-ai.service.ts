@@ -101,7 +101,6 @@ import {
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
 	type ServiceProxyConfig,
-	type StreamableAgent,
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
@@ -4145,7 +4144,7 @@ export class InstanceAiService {
 
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
-						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+						return await streamAgentRun(agent, streamInput, streamOptions, {
 							threadId,
 							runId,
 							agentId: orchestratorAgentId(runId),
@@ -4156,7 +4155,7 @@ export class InstanceAiService {
 							stopSignal,
 						});
 					})
-				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+				: await streamAgentRun(agent, streamInput, streamOptions, {
 						threadId,
 						runId,
 						agentId: orchestratorAgentId(runId),

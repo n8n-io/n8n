@@ -78,7 +78,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 			name: nodeName,
 			config: {
 				name: nodeName,
-				parameters: n8nNode.parameters as IDataObject,
+				parameters: n8nNode.parameters,
 				credentials,
 				...({ _originalName: n8nNode.name } as Record<string, unknown>),
 				position: n8nNode.position,
