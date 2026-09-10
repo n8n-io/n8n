@@ -525,6 +525,13 @@ type TerminalGuardOrderServiceInternals = {
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
+	executeRun: (
+		user: User,
+		threadId: string,
+		runId: string,
+		message: string,
+		abortController: AbortController,
+	) => Promise<void>;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -3485,6 +3492,76 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
 			'run-1',
 			tracing,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('does not publish the confirmation card when the initial run is cancelled during the row write', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		// The smallest executeRun surface: no tracing, no attachments, no handoff.
+		Object.assign(service, {
+			resolveContextAttachments: vi.fn(async () => []),
+			createProxyRunConfig: vi.fn(async () => ({})),
+			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			readThreadProvenance: vi.fn(async () => ({})),
+			isRunDebugEnabled: vi.fn(() => false),
+			createExecutionEnvironment: vi.fn(async () => ({
+				context: {},
+				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+				taskStorage: { get: vi.fn(async () => undefined) },
+				orchestrationContext: {},
+			})),
+			snapshotAttachedAgents: vi.fn(),
+			buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			instanceContext: { buildBlock: vi.fn(async () => undefined) },
+			resolveProjectContextSection: vi.fn(async () => ''),
+			createAgentFromEnvironment: vi.fn(async () => ({})),
+			buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+			domainAccessTrackersByThread: new Map(),
+		});
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+		const abortController = new AbortController();
+		// cancelRun aborts the suspended run while the row write is in flight.
+		service.suspendedThreads.persistPendingConfirmation.mockImplementationOnce(async () => {
+			abortController.abort();
+		});
+		const confirmationEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'orchestrator:run-1',
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'ask-user',
+				args: {},
+				severity: 'info',
+				message: 'Set up the slack channel',
+			},
+		} as unknown as Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+		vi.mocked(streamAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			suspension: {
+				toolCallId: 'tool-call-1',
+				requestId: 'req-1',
+				toolName: 'ask-user',
+				suspendPayload: { requestId: 'req-1', message: 'Set up the slack channel' },
+			},
+			confirmationEvent,
+		});
+
+		await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Set up slack', abortController);
+
+		// The run did suspend; the abort landed after that, not before the stream.
+		expect(service.runState.suspendRun).toHaveBeenCalled();
+		expect(service.eventBus.publish).not.toHaveBeenCalledWith('thread-a', confirmationEvent);
+		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalledWith(
+			'run-1',
+			undefined,
 			expect.objectContaining({ status: 'suspended' }),
 		);
 	});
