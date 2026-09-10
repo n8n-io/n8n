@@ -438,6 +438,44 @@ describe('processError', () => {
 		);
 	});
 
+	test('processError stops rechecking a stalled-count error once the grace window elapses', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+
+		globalConfig.executions.mode = 'queue';
+		vi.useFakeTimers();
+
+		const findSingleExecution = vi
+			.spyOn(executionRepository, 'findSingleExecution')
+			.mockImplementation(async () => {
+				vi.setSystemTime(Date.now() + 10_000);
+				return mock<IExecutionBase>({ status: 'running' });
+			});
+
+		try {
+			const processing = runner.processError(
+				new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+				new Date(),
+				'webhook',
+				execution.id,
+				hooks,
+			);
+			await vi.runAllTimersAsync();
+			await processing;
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(findSingleExecution.mock.calls.length).toBeLessThan(10);
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'error' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
 	test('processError should return early if the error is `ExecutionNotFoundError`', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'success', finished: true }, workflow);
