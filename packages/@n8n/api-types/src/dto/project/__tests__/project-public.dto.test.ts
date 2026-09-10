@@ -4,6 +4,7 @@ import {
 	ListProjectsQueryPublicDto,
 	ProjectListPublicDto,
 	ProjectPublicDto,
+	projectPublicSchema,
 } from '../project-public.dto';
 
 const project = {
@@ -17,6 +18,27 @@ const project = {
 	createdAt: '2026-01-01T00:00:00.000Z',
 	updatedAt: '2026-01-02T00:00:00.000Z',
 };
+
+describe('projectPublicSchema', () => {
+	test.each([
+		{ name: 'an icon with a color', icon: { type: 'emoji', value: '🚀', color: '#ff0000' } },
+		{ name: 'an icon without a color', icon: { type: 'icon', value: 'smile' } },
+		{ name: 'a type outside the input enum', icon: { type: 'image', value: 'logo.png' } },
+		{ name: 'an icon without a value', icon: { type: 'emoji' } },
+		{ name: 'no icon', icon: null },
+	])('passes $name through unchanged', ({ icon }) => {
+		const result = projectPublicSchema.safeParse({ ...project, icon });
+
+		expect(result.success).toBe(true);
+		expect(result.data?.icon).toEqual(icon);
+	});
+
+	it('rejects an icon that is not an object', () => {
+		const result = projectPublicSchema.safeParse({ ...project, icon: '🚀' });
+
+		expect(result.success).toBe(false);
+	});
+});
 
 describe('ProjectPublicDto', () => {
 	test('accepts all the expected fields', () => {
@@ -34,10 +56,6 @@ describe('ProjectPublicDto', () => {
 		});
 
 		expect(result.success).toBe(true);
-	});
-
-	test('accepts an unknown project type', () => {
-		expect(ProjectPublicDto.safeParse({ ...project, type: 'future' }).success).toBe(true);
 	});
 
 	test.each([

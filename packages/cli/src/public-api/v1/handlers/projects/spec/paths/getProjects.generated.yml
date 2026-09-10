@@ -32,14 +32,14 @@ responses:
                     example: Marketing
                   type:
                     type: string
-                    readOnly: true
-                    example: team
                     enum:
                       - personal
                       - team
+                    readOnly: true
+                    example: team
                   icon:
                     type: object
-                    nullable: true
+                    description: Icon of the project, or null when the project has none
                     properties:
                       type:
                         type: string
@@ -53,9 +53,7 @@ responses:
                     required:
                       - type
                       - value
-                    example:
-                      type: icon
-                      value: layers
+                    nullable: true
                   description:
                     type: string
                     nullable: true

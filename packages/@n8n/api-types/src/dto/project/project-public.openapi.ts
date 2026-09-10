@@ -1,10 +1,22 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
+import { alsoNullable } from '../openapi-nullable';
+
+export const projectIconOpenApi: ZodOpenAPIMetadata = alsoNullable({
+	type: 'object',
+	description: 'Icon of the project, or null when the project has none',
+	properties: {
+		type: { type: 'string', enum: ['emoji', 'icon'] },
+		value: { type: 'string' },
+		color: { type: 'string' },
+	},
+	required: ['type', 'value'],
+});
+
 export const projectFieldDocs = {
 	id: { readOnly: true, example: 'VmwOO9HeTEj20kxM' },
 	name: { example: 'Marketing' },
 	type: { readOnly: true, example: 'team' },
-	icon: { example: { type: 'icon', value: 'layers' } },
 	description: { example: 'Workflows the marketing team owns.' },
 	creatorId: { example: 'f9a2cbb8-0b1e-4b64-9c1c-0d5f5f1f2a3b' },
 	createdAt: { readOnly: true },

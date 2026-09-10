@@ -51,7 +51,7 @@ const SettingsInstanceAiView = async () => await import('./views/SettingsInstanc
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
-	name: 'AI Assistant',
+	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [

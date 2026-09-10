@@ -189,7 +189,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/otel/otel.handler.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
-			'./src/public-api/v1/handlers/source-control/source-control.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 			'./src/public-api/v1/handlers/tags/tags.handler.ts',

@@ -6,35 +6,43 @@ import {
 	createdProjectFieldDocs,
 	createProjectReadOnlyFieldDocs,
 	projectFieldDocs,
+	projectIconOpenApi,
 	projectListFieldDocs,
 } from './project-public.openapi';
+import { nullableObjectGuardSchema } from '../../schemas/object-guard.schema';
 import {
-	projectIconSchema,
 	projectNameSchema,
 	projectTypeSchema,
+	type ProjectIcon,
 } from '../../schemas/project.schema';
 import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
+// `icon` is a JSON column, so a strict schema would strip a stored `color` and answer 500 for a
+// legacy shape. Check only the basic type, and let `.openapi()` document the shape.
+const projectIconPublicSchema =
+	nullableObjectGuardSchema<ProjectIcon>().openapi(projectIconOpenApi);
+
+const projectCustomTelemetryTagPublicSchema = z.object({
+	key: z.string(),
+	value: z.string(),
+});
+
+/** The project as the Public API publishes it, on its own routes and inside another resource. */
 export const projectPublicSchema = z.object({
 	id: z.string().openapi(projectFieldDocs.id),
 	name: z.string().openapi(projectFieldDocs.name),
-	type: z.string().openapi({ ...projectFieldDocs.type, enum: [...projectTypeSchema.options] }),
-	icon: z
-		.object({
-			type: z.string().openapi({ enum: [...projectIconSchema.shape.type.options] }),
-			value: z.string(),
-			color: z.string().optional(),
-		})
-		.nullable()
-		.openapi(projectFieldDocs.icon),
+	type: projectTypeSchema.openapi(projectFieldDocs.type),
+	icon: projectIconPublicSchema,
 	description: z.string().nullable().openapi(projectFieldDocs.description),
-	customTelemetryTags: z.array(z.object({ key: z.string(), value: z.string() })),
+	customTelemetryTags: z.array(projectCustomTelemetryTagPublicSchema),
 	creatorId: z.string().nullable().openapi(projectFieldDocs.creatorId),
 	createdAt: z.string().datetime().openapi(projectFieldDocs.createdAt),
 	updatedAt: z.string().datetime().openapi(projectFieldDocs.updatedAt),
 });
+
+export type ProjectPublic = z.infer<typeof projectPublicSchema>;
 
 export class ProjectPublicDto extends Z.class(projectPublicSchema.shape) {}
 
