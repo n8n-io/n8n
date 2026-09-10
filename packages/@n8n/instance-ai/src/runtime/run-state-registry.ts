@@ -707,10 +707,10 @@ export class RunStateRegistry<TUser = unknown> {
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
 		pendingThreadIds: string[];
 	} {
-		// Capture the resolved profile before clearing per-thread state.
+		// Capture the selected version before clearing per-thread state.
 		const activeRuns = [...this.activeRuns.values()].map((run) => ({
 			...run,
-			promptVersion: this.getPromptConfiguration(run.threadId)?.version,
+			promptVersion: this.getPromptVersion(run.threadId),
 		}));
 		const suspendedRuns = [...this.suspendedRuns.values()];
 		const pendingThreadIds = [

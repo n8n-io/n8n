@@ -1077,13 +1077,20 @@ describe('RunStateRegistry', () => {
 				'thread-2',
 				createSuspendedRunState({ threadId: 'thread-2', runId: 'run_suspended' }),
 			);
+			registry.startRun({ threadId: 'thread-3', user: { id: 'u3', name: 'C' } });
+			registry.setPromptVersion('thread-3', 'default@1');
+			expect(registry.getPromptConfiguration('thread-3')).toBeUndefined();
 
 			const result = registry.shutdown();
 
-			expect(result.activeRuns).toHaveLength(1);
+			expect(result.activeRuns).toHaveLength(2);
 			expect(result.activeRuns[0].runId).toBe('run_id-1');
 			expect(result.activeRuns[0].promptVersion).toBe('progressive@1');
+			expect(result.activeRuns.find((run) => run.threadId === 'thread-3')?.promptVersion).toBe(
+				'default@1',
+			);
 			expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+			expect(registry.getPromptVersion('thread-3')).toBeUndefined();
 			expect(result.suspendedRuns).toHaveLength(1);
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});
