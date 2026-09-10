@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 
+import { blockStaticData } from '../block-context';
 import { renderPartial } from '../templates';
 import type { BlockRenderer } from '../types';
 
@@ -17,13 +18,7 @@ export const buttonBlockRenderer: BlockRenderer<'button'> = {
 				: { blockId: target.blockId, actionName: target.action };
 
 		const pageContext = Container.get(PageContextFactory).build({
-			app: ctx.app,
-			page: ctx.page,
-			blockId,
-			params: ctx.params,
-			query: ctx.query,
-			viewer: ctx.viewer,
-			baseUrl: ctx.baseUrl,
+			...blockStaticData(ctx, blockId),
 			logs: [],
 		});
 

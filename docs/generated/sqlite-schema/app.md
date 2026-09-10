@@ -76,6 +76,7 @@ erDiagram
   TEXT content
   datetime_3_ createdAt
   varchar_36_ id PK
+  TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
   datetime_3_ updatedAt

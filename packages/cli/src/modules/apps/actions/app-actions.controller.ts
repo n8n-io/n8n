@@ -1,4 +1,4 @@
-import type { AppBlock, AppVersionSnapshot } from '@n8n/api-types';
+import type { AppLayoutBlock, AppVersionSnapshot } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Options, Post, RootLevelController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
@@ -137,7 +137,11 @@ export class AppActionsController {
 		const { snapshot } = version;
 
 		const page = snapshot.pages.find((p) => p.id === pageId);
-		const block = page?.content?.find((b) => b.id === blockId);
+		// A layout block of this page runs from every page that inherits the layout;
+		// its action URL names the owner page, so the lookup covers `layout` too.
+		const block = page
+			? [...(page.content ?? []), ...(page.layout ?? [])].find((b) => b.id === blockId)
+			: undefined;
 		if (!page || !block) {
 			res.status(404).json({ error: 'Action not found' });
 			return;
@@ -179,7 +183,7 @@ export class AppActionsController {
 	private async dispatch(input: {
 		app: { id: string; name: string; namespace: string; projectId: string };
 		page: AppVersionSnapshot['pages'][number];
-		block: AppBlock;
+		block: AppLayoutBlock;
 		name: string;
 		input: Record<string, unknown>;
 		viewer: Viewer | null;
@@ -190,10 +194,12 @@ export class AppActionsController {
 		const staticData = {
 			app,
 			page: { id: page.id, route: page.route, path: '' },
+			actionPageId: page.id,
 			blockId: block.id,
 			params: {},
 			query: {},
 			viewer,
+			menu: [],
 			baseUrl,
 		};
 

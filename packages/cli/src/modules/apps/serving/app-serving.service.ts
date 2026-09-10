@@ -5,6 +5,7 @@ import type { App } from '../app.entity';
 import { renderPage } from '../rendering/page-renderer';
 import type { PublishedPageResolution } from '../rendering/types';
 import { pagePath } from './page-menu';
+import { resolveLayout } from './resolve-layout';
 import { resolvePagePath } from './resolve-page-path';
 import type { Viewer } from './viewer.service';
 
@@ -42,6 +43,7 @@ export class AppServingService {
 			page,
 			pages: version.snapshot.pages,
 			params,
+			layout: resolveLayout(version.snapshot.pages, page.id),
 		};
 	}
 
@@ -53,9 +55,9 @@ export class AppServingService {
 		baseUrl: string,
 		viewer: Viewer | null,
 	): Promise<string> {
-		const { app, page, pages, params } = resolution;
+		const { app, page, pages, params, layout } = resolution;
 
-		return await renderPage({
+		const { html } = await renderPage({
 			app,
 			page: {
 				id: page.id,
@@ -64,11 +66,13 @@ export class AppServingService {
 				path: pagePath(app.namespace, segments),
 			},
 			pages,
+			layout,
 			params,
 			query,
 			viewer,
 			baseUrl,
 			preview: false,
 		});
+		return html;
 	}
 }

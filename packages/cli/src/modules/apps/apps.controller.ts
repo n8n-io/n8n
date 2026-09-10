@@ -40,6 +40,15 @@ const parsePreviewParams = (raw: unknown): Record<string, string> => {
 	return params;
 };
 
+const RENDER_ERRORS_HEADER = 'X-N8N-App-Render-Errors';
+
+/** Header values must be Latin-1; the JSON stays valid with `\uXXXX` escapes. */
+const toHeaderJson = (value: unknown): string =>
+	JSON.stringify(value).replace(
+		/[^\x20-\x7e]/g,
+		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+	);
+
 @RestController('/projects/:projectId/apps')
 export class AppsController {
 	constructor(
@@ -228,6 +237,18 @@ export class AppsController {
 		await this.appsService.deletePage(appId, pageId);
 	}
 
+	/** The sanitized effective draft layout, for the editor to place its content editor into. */
+	@Get('/:appId/pages/:pageId/layout-preview')
+	@ProjectScope('app:read')
+	async previewLayout(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('pageId') pageId: string,
+	) {
+		return await this.appsService.previewLayout(appId, pageId);
+	}
+
 	/** Renders the draft page tree, for the editor/AI Assistant preview iframe. */
 	@Get('/:appId/pages/:pageId/preview', { usesTemplates: true })
 	@ProjectScope('app:read')
@@ -242,13 +263,16 @@ export class AppsController {
 		@Param('appId') appId: string,
 		@Param('pageId') pageId: string,
 	) {
-		const html = await this.appsService.preview(
+		const { html, errors } = await this.appsService.preview(
 			appId,
 			pageId,
 			req.query.path,
 			parsePreviewParams(req.query.params),
 		);
 		res.setHeader('X-Content-Type-Options', 'nosniff');
+		if (Object.keys(errors).length > 0) {
+			res.setHeader(RENDER_ERRORS_HEADER, toHeaderJson(errors));
+		}
 		res.type('html').send(html);
 	}
 }

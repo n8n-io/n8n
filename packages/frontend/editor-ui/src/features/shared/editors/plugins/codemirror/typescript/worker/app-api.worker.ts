@@ -8,7 +8,7 @@ import { appPageApiTypes, APP_PAGE_API_FILE_NAME } from '@n8n/api-types';
 
 import { indexedDbCache } from '@/app/plugins/cache';
 import type { LanguageServiceWorker } from '../types';
-import { COMPILER_OPTIONS } from './constants';
+import { APP_COMPILER_OPTIONS } from './constants';
 import { removeUnusedLibs } from './env';
 import { bufferChangeSets } from './utils';
 import { getCompletionsAtPos } from './completions';
@@ -34,12 +34,12 @@ export interface AppLanguageServiceWorkerInit {
  */
 export const appApiWorker: AppLanguageServiceWorkerInit = {
 	async init(options) {
-		const fileName = `${options.id}.ts`;
+		const fileName = `${options.id}.tsx`;
 		const busyApplyingChangesToCode = ref(false);
 
 		const cache = await indexedDbCache('typescript-cache', 'fs-map');
 		const fsMap = await tsvfs.createDefaultMapFromCDN(
-			COMPILER_OPTIONS,
+			APP_COMPILER_OPTIONS,
 			ts.version,
 			true,
 			ts,
@@ -56,7 +56,7 @@ export const appApiWorker: AppLanguageServiceWorkerInit = {
 			system,
 			Array.from(fsMap.keys()),
 			ts,
-			COMPILER_OPTIONS,
+			APP_COMPILER_OPTIONS,
 		);
 
 		const applyChangesToCode = bufferChangeSets((bufferedChanges) => {

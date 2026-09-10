@@ -5,8 +5,12 @@ import { TableBlockTool } from '@/features/apps/components/blocks/TableBlockTool
 import { FormBlockTool } from '@/features/apps/components/blocks/FormBlockTool.tool';
 import { ButtonBlockTool } from '@/features/apps/components/blocks/ButtonBlockTool.tool';
 import { HtmlBlockTool } from '@/features/apps/components/blocks/HtmlBlockTool.tool';
-import { CodeBlockTool } from '@/features/apps/components/blocks/CodeBlockTool.tool';
+import {
+	CodeBlockTool,
+	DEFAULT_CODE_BLOCK_SOURCE,
+} from '@/features/apps/components/blocks/CodeBlockTool.tool';
 import { ImageBlockTool } from '@/features/apps/components/blocks/ImageBlockTool.tool';
+import { SlotBlockTool } from '@/features/apps/components/blocks/SlotBlockTool.tool';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: () => ({
@@ -113,5 +117,39 @@ describe('Editor.js custom block tools', () => {
 		tool.render();
 
 		expect(tool.save()).toEqual(data);
+	});
+
+	it.each([{}, { source: '' }])(
+		'CodeBlockTool starts a new block from the render template when data is %o',
+		(data) => {
+			const tool = new CodeBlockTool({ data } as BlockToolConstructorOptions);
+
+			tool.render();
+
+			expect(tool.save()).toEqual({ source: DEFAULT_CODE_BLOCK_SOURCE });
+		},
+	);
+
+	it('SlotBlockTool renders a static card and saves empty data', () => {
+		const tool = new SlotBlockTool();
+
+		const element = tool.render();
+
+		expect(element.querySelector('[data-test-id="slot-block-card"]')?.textContent).toContain(
+			'Page content',
+		);
+		expect(tool.save()).toEqual({});
+	});
+
+	it.each([
+		TableBlockTool,
+		FormBlockTool,
+		ButtonBlockTool,
+		HtmlBlockTool,
+		CodeBlockTool,
+		ImageBlockTool,
+		SlotBlockTool,
+	])('%o keeps Enter inside its inputs instead of splitting the block', (tool) => {
+		expect(tool.enableLineBreaks).toBe(true);
 	});
 });

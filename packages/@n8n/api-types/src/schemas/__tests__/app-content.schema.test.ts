@@ -1,4 +1,4 @@
-import { appContentSchema, appBlockSchema } from '../app-content.schema';
+import { appBlockSchema, appContentSchema, appLayoutSchema } from '../app-content.schema';
 
 const header = { id: 'h1', type: 'header', data: { text: 'Hello', level: 1 } };
 
@@ -125,5 +125,31 @@ describe('appContentSchema', () => {
 		const blocks = Array.from({ length: 201 }, (_, i) => ({ ...header, id: `h${i}` }));
 
 		expect(appContentSchema.safeParse(blocks).success).toBe(false);
+	});
+});
+
+describe('appLayoutSchema', () => {
+	const slot = { id: 's1', type: 'slot', data: {} };
+
+	test('accepts blocks around exactly one slot', () => {
+		expect(
+			appLayoutSchema.safeParse([header, slot, { id: 'd1', type: 'divider', data: {} }]).success,
+		).toBe(true);
+	});
+
+	test('rejects a layout without a slot', () => {
+		expect(appLayoutSchema.safeParse([header]).success).toBe(false);
+	});
+
+	test('rejects a layout with two slots', () => {
+		expect(appLayoutSchema.safeParse([slot, { ...slot, id: 's2' }]).success).toBe(false);
+	});
+
+	test('rejects duplicate block ids', () => {
+		expect(appLayoutSchema.safeParse([slot, { ...header, id: 's1' }]).success).toBe(false);
+	});
+
+	test('a slot block is not allowed in page content', () => {
+		expect(appContentSchema.safeParse([slot]).success).toBe(false);
 	});
 });

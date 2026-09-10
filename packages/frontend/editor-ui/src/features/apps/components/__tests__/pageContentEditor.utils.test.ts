@@ -118,5 +118,40 @@ describe('pageContentEditor.utils', () => {
 				{ id: 'b1', type: 'list', data: { style: 'unordered', items: ['a'] } },
 			]);
 		});
+
+		it('rejects a slot block in content mode', () => {
+			const blocks: OutputBlockData[] = [{ id: 'b1', type: 'slot', data: {} }];
+
+			const result = validateEditorBlocks(blocks);
+
+			expect(result.content).toBeUndefined();
+			expect(Object.keys(result.issues)).toEqual(['b1']);
+		});
+
+		it('returns a layout with exactly one slot in layout mode', () => {
+			const blocks: OutputBlockData[] = [
+				{ id: 'b1', type: 'header', data: { text: 'Menu', level: 2 } },
+				{ id: 'b2', type: 'slot', data: {} },
+			];
+
+			const result = validateEditorBlocks(blocks, 'layout');
+
+			expect(result.issues).toEqual({});
+			expect(result.content).toBeUndefined();
+			expect(result.layout).toEqual([
+				{ id: 'b1', type: 'header', data: { text: 'Menu', level: 2 } },
+				{ id: 'b2', type: 'slot', data: {} },
+			]);
+		});
+
+		it('rejects a layout without a slot', () => {
+			const blocks: OutputBlockData[] = [
+				{ id: 'b1', type: 'header', data: { text: 'Menu', level: 2 } },
+			];
+
+			const result = validateEditorBlocks(blocks, 'layout');
+
+			expect(result.layout).toBeUndefined();
+		});
 	});
 });

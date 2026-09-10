@@ -15,6 +15,10 @@ export class Page extends WithTimestampsAndStringId {
 	@Column({ type: 'json', nullable: true })
 	content: unknown[] | null;
 
+	/** `null` inherits the nearest ancestor's layout. */
+	@Column({ type: 'json', nullable: true })
+	layout: unknown[] | null;
+
 	@ManyToOne(() => App)
 	@JoinColumn({ name: 'appId' })
 	app: Relation<App>;

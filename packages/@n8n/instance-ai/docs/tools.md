@@ -849,7 +849,7 @@ thread to the app without an extra read.
 | `update-page` | Change a page's route |
 | `delete-page` | Delete a page. HITL. |
 | `publish` | Freeze the draft pages as a new version and serve it. HITL. |
-| `code-api` | Get the TypeScript types for the `code` block's `PageContext` API |
+| `code-api` | Get the ambient types for a `code` block (TSX): `PageContext`, the JSX factory `h` / `Fragment`, `raw()` and `Renderable` |
 
 **Content validation**: `create-page` and `set-content` validate `content`
 against the block schema (`appContentSchema`) after filling in any missing

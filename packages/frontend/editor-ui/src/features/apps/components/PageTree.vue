@@ -53,6 +53,7 @@ const rows = computed<PageTreeRow[]>(() => {
 		parentPageId: draft.value.parentPageId,
 		route: '',
 		content: null,
+		layout: null,
 		createdAt: '',
 		updatedAt: '',
 	};

@@ -22,6 +22,9 @@ const compile = (files: Record<string, string>) => {
 			module: ts.ModuleKind.ESNext,
 			lib: ['lib.es2023.d.ts'],
 			types: [],
+			jsx: ts.JsxEmit.React,
+			jsxFactory: 'h',
+			jsxFragmentFactory: 'Fragment',
 		});
 		return ts
 			.getPreEmitDiagnostics(program)
@@ -59,6 +62,36 @@ describe('appPageApiTypes', () => {
 		`;
 
 		expect(compile({ [APP_PAGE_API_FILE_NAME]: appPageApiTypes, 'block.ts': source })).toEqual([]);
+	});
+
+	test('types a TSX code block that uses JSX, Fragment, raw() and a function component', () => {
+		const source = `
+			const Badge = (props: { label: string; children?: Renderable }) => (
+				<span className="badge">{props.label}{props.children}</span>
+			);
+			export async function render(ctx: PageContext) {
+				const table = await ctx.dataTables.get('customers');
+				const { data } = await table.getManyRowsAndCount({ take: 10 });
+				if (data.length === 0) return null;
+				return (
+					<>
+						<h2 style={{ marginTop: '0' }}>{ctx.app.name}</h2>
+						{raw('<hr>')}
+						<ul>
+							{data.map((row) => (
+								<li>
+									<Badge label={String(row.name)}>{row.id}</Badge>
+								</li>
+							))}
+						</ul>
+					</>
+				);
+			}
+			const module: CodeBlockModule = { render };
+			void module;
+		`;
+
+		expect(compile({ [APP_PAGE_API_FILE_NAME]: appPageApiTypes, 'block.tsx': source })).toEqual([]);
 	});
 
 	test('rejects a code block that misuses the API', () => {

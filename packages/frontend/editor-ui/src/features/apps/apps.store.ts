@@ -9,6 +9,7 @@ import {
 	deleteAppApi,
 	deletePageApi,
 	fetchAppsApi,
+	fetchLayoutPreviewApi,
 	fetchPagesApi,
 	fetchPreviewApi,
 	fetchVersionsApi,
@@ -116,6 +117,10 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return await fetchPreviewApi(rootStore.restApiContext, projectId, appId, pageId, options);
 	};
 
+	const fetchLayoutPreview = async (projectId: string, appId: string, pageId: string) => {
+		return await fetchLayoutPreviewApi(rootStore.restApiContext, projectId, appId, pageId);
+	};
+
 	return {
 		apps,
 		pages,
@@ -132,5 +137,6 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		fetchVersions,
 		activateVersion,
 		fetchPreview,
+		fetchLayoutPreview,
 	};
 });

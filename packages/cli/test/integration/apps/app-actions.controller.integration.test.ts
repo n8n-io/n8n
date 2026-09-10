@@ -74,7 +74,7 @@ async function publishAppWithBlocks(blocks: AppBlock[], namespace = 'acme') {
 	await pageRepository.updatePage(page, { content: blocks });
 
 	const snapshot: AppVersionSnapshot = {
-		pages: [{ id: page.id, route: page.route, parentPageId: null, content: blocks }],
+		pages: [{ id: page.id, route: page.route, parentPageId: null, content: blocks, layout: null }],
 		theme: null,
 	};
 	const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
@@ -226,6 +226,38 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 			.query({ _token: token })
 			.send({ _token: token })
 			.expect(401);
+	});
+
+	test('runs an action of a layout block through the owner page named in the URL', async () => {
+		const { app, page, bearer } = await publishAppWithBlocks([]);
+		const layout = [
+			codeBlock(
+				'layout-code',
+				"export function render() { return ''; } export const actions = { go: (ctx) => ({ data: { menu: ctx.menu, url: ctx.actionUrl('go') } }) };",
+			),
+			{ id: 'slot', type: 'slot' as const, data: {} },
+		];
+		const child = await pageRepository.createPage(app.id, page.id, 'child');
+		const snapshot: AppVersionSnapshot = {
+			pages: [
+				{ id: page.id, route: page.route, parentPageId: null, content: [], layout },
+				{ id: child.id, route: 'child', parentPageId: page.id, content: null, layout: null },
+			],
+			theme: null,
+		};
+		const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
+		await appRepository.setActiveVersionId(app, version.id);
+
+		const response = await visitor
+			.post(actionUrl('acme', page.id, 'layout-code', 'go'))
+			.set('Authorization', bearer)
+			.send({})
+			.expect(200);
+
+		expect(response.body.data.menu).toEqual([]);
+		expect(response.body.data.url).toMatch(
+			new RegExp(`${actionUrl('acme', page.id, 'layout-code', 'go')}$`),
+		);
 	});
 
 	test('answers 404 for a block that does not exist on the page', async () => {

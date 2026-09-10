@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDebounceFn } from '@vueuse/core';
 import type { AppContent, AppTheme } from '@n8n/api-types';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import LayoutPanel from '@/features/apps/components/LayoutPanel.vue';
 import PageContentEditor from '@/features/apps/components/PageContentEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
-import type { App } from '@/features/apps/apps.types';
-import { flattenPageTree, getPageOptions } from '@/features/apps/pageTree.utils';
+import type { App, LayoutPreview } from '@/features/apps/apps.types';
+import { findPageIdByPath, flattenPageTree, getPageOptions } from '@/features/apps/pageTree.utils';
 
 const props = defineProps<{
 	projectId: string;
@@ -39,6 +40,12 @@ const saving = ref(false);
 const saved = ref(false);
 /** Content waiting to be saved, pinned to the page it belongs to so a page switch cannot misfile it. */
 const dirty = ref<{ pageId: string; content: AppContent } | null>(null);
+
+const layoutPanelOpen = ref(false);
+const layoutPreview = ref<LayoutPreview | null>(null);
+const canvasRef = ref<HTMLDivElement>();
+/** The element the content editor is teleported into; null while the canvas is (re)rendering. */
+const slotEl = ref<HTMLElement | null>(null);
 
 const page = computed(() => appsStore.pages.find((p) => p.id === props.pageId));
 const menuRows = computed(() => flattenPageTree(appsStore.pages));
@@ -92,7 +99,50 @@ const onContentChange = (content: AppContent) => {
 	void debouncedSave();
 };
 
-watch(() => props.pageId, save);
+/** A layout that failed to render keeps the last good html on the canvas (the failing blocks are empty when there is none yet); only its errors are shown. */
+const fetchLayoutPreview = async () => {
+	try {
+		const preview = await appsStore.fetchLayoutPreview(props.projectId, props.appId, props.pageId);
+		const failed = Object.keys(preview.errors).length > 0;
+		layoutPreview.value = failed
+			? { ...preview, html: layoutPreview.value?.html ?? preview.html }
+			: preview;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.preview.error'));
+	}
+};
+
+/** Links in the rendered layout switch the edited page instead of navigating the editor. */
+const onLayoutClick = (event: MouseEvent) => {
+	const href =
+		event.target instanceof Element ? event.target.closest('a[href]')?.getAttribute('href') : null;
+	if (!href) return;
+	event.preventDefault();
+	const { pathname } = new URL(href, window.location.href);
+	const pageId = findPageIdByPath(appsStore.pages, props.app.namespace, pathname);
+	if (pageId) emit('update:pageId', pageId);
+};
+
+// The slot lives inside `v-html` markup, so it has to be looked up after that
+// markup is in the DOM and again whenever it is replaced.
+watch(
+	() => layoutPreview.value?.html,
+	async () => {
+		slotEl.value = null;
+		await nextTick();
+		slotEl.value = canvasRef.value?.querySelector('[data-app-slot]') ?? null;
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => props.pageId,
+	async (_, previous) => {
+		if (previous !== undefined) await save();
+		await fetchLayoutPreview();
+	},
+	{ immediate: true },
+);
 onBeforeUnmount(save);
 </script>
 
@@ -121,42 +171,66 @@ onBeforeUnmount(save);
 			>
 				{{ saving ? i18n.baseText('generic.saving') : i18n.baseText('apps.page.save.saved') }}
 			</N8nText>
+			<N8nTooltip :content="i18n.baseText('apps.layout.title')" placement="bottom">
+				<N8nIconButton
+					icon="layout-template"
+					:variant="layoutPanelOpen ? 'subtle' : 'ghost'"
+					size="small"
+					:class="$style.layoutToggle"
+					:aria-label="i18n.baseText('apps.layout.title')"
+					:aria-pressed="layoutPanelOpen"
+					data-test-id="page-editor-layout-toggle"
+					@click="layoutPanelOpen = !layoutPanelOpen"
+				/>
+			</N8nTooltip>
 		</div>
 
-		<div
-			:class="[$style.canvas, 'app-canvas']"
-			:style="themeStyle"
-			data-app-canvas
-			data-test-id="page-editor-canvas"
-		>
-			<component :is="'style'" v-if="scopedCss" data-test-id="page-editor-custom-css">
-				{{ scopedCss }}
-			</component>
-			<div :class="[$style.shell, 'app-shell']">
-				<nav :class="[$style.menu, 'app-menu']" data-test-id="page-editor-menu">
-					<span :class="$style.appName">{{ app.name }}</span>
-					<ul :class="$style.menuList">
-						<li
-							v-for="{ page: menuPage, depth } in menuRows"
-							:key="menuPage.id"
-							:style="{ paddingLeft: `calc(${depth} * var(--spacing--sm))` }"
-						>
-							<span v-if="menuPage.id === pageId" :class="$style.menuCurrent">
-								{{ menuLabel(menuPage.route) }}
-							</span>
-							<a
-								v-else
-								href="#"
-								:class="$style.menuLink"
-								data-test-id="page-editor-menu-link"
-								@click.prevent="emit('update:pageId', menuPage.id)"
+		<div :class="$style.body">
+			<div
+				ref="canvasRef"
+				:class="[$style.canvas, 'app-canvas']"
+				:style="themeStyle"
+				data-app-canvas
+				data-test-id="page-editor-canvas"
+			>
+				<component :is="'style'" v-if="scopedCss" data-test-id="page-editor-custom-css">
+					{{ scopedCss }}
+				</component>
+				<!-- eslint-disable vue/no-v-html -- sanitized on the server -->
+				<div
+					v-if="layoutPreview?.html"
+					data-test-id="page-editor-layout"
+					@click="onLayoutClick"
+					v-html="layoutPreview.html"
+				/>
+				<!-- eslint-enable vue/no-v-html -->
+				<div v-else :class="[$style.shell, 'app-shell']">
+					<nav :class="[$style.menu, 'app-menu']" data-test-id="page-editor-menu">
+						<span :class="$style.appName">{{ app.name }}</span>
+						<ul :class="$style.menuList">
+							<li
+								v-for="{ page: menuPage, depth } in menuRows"
+								:key="menuPage.id"
+								:style="{ paddingLeft: `calc(${depth} * var(--spacing--sm))` }"
 							>
-								{{ menuLabel(menuPage.route) }}
-							</a>
-						</li>
-					</ul>
-				</nav>
-				<main :class="[$style.main, 'app-main']">
+								<span v-if="menuPage.id === pageId" :class="$style.menuCurrent">
+									{{ menuLabel(menuPage.route) }}
+								</span>
+								<a
+									v-else
+									href="#"
+									:class="$style.menuLink"
+									data-test-id="page-editor-menu-link"
+									@click.prevent="emit('update:pageId', menuPage.id)"
+								>
+									{{ menuLabel(menuPage.route) }}
+								</a>
+							</li>
+						</ul>
+					</nav>
+					<main :class="[$style.main, 'app-main']" data-app-slot />
+				</div>
+				<Teleport :to="slotEl" :disabled="!slotEl">
 					<PageContentEditor
 						v-if="page"
 						:key="pageId"
@@ -165,8 +239,17 @@ onBeforeUnmount(save);
 						data-test-id="page-content-editor"
 						@update:content="onContentChange"
 					/>
-				</main>
+				</Teleport>
 			</div>
+			<LayoutPanel
+				v-if="layoutPanelOpen && page"
+				:project-id="projectId"
+				:app-id="appId"
+				:page="page"
+				:owner-page-id="layoutPreview?.ownerPageId ?? null"
+				:render-errors="layoutPreview?.errors ?? {}"
+				@saved="fetchLayoutPreview"
+			/>
 		</div>
 	</div>
 </template>
@@ -195,6 +278,16 @@ onBeforeUnmount(save);
 	max-width: 220px;
 }
 
+.layoutToggle {
+	margin-left: auto;
+}
+
+.body {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
 // Mirrors the served shell in packages/cli/src/modules/apps/rendering/styles/app.css.
 .canvas {
 	flex: 1;
@@ -202,6 +295,24 @@ onBeforeUnmount(save);
 	background: var(--app-color-background, var(--background--subtle));
 	color: var(--app-color-text, var(--text-color));
 	font-family: var(--app-font-family, var(--font-family));
+
+	:global(.app-menu),
+	:global(.app-main) {
+		background: var(--app-color-surface, var(--background--surface));
+		border-radius: var(--app-radius, var(--radius--md));
+		border: 1px solid var(--border-color);
+	}
+
+	:global(.app-layout) {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--md);
+		padding: var(--spacing--xl);
+	}
+
+	:global(.app-main) {
+		padding: var(--spacing--xl);
+	}
 }
 
 .shell {
@@ -211,13 +322,6 @@ onBeforeUnmount(save);
 	max-width: 64rem;
 	margin: 0 auto;
 	padding: var(--spacing--xl);
-}
-
-.menu,
-.main {
-	background: var(--app-color-surface, var(--background--surface));
-	border-radius: var(--app-radius, var(--radius--md));
-	border: 1px solid var(--border-color);
 }
 
 .menu {
@@ -262,6 +366,5 @@ onBeforeUnmount(save);
 .main {
 	flex: 1;
 	min-width: 0;
-	padding: var(--spacing--xl);
 }
 </style>

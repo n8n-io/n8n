@@ -227,6 +227,13 @@
 	padding: var(--spacing--xl);
 }
 
+.app-layout {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	padding: var(--spacing--xl);
+}
+
 .app-notice {
 	background: var(--app-color-surface, var(--background--surface));
 	border: 1px solid var(--border-color--danger);

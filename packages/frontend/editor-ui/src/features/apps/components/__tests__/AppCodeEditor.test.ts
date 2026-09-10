@@ -26,6 +26,17 @@ describe('AppCodeEditor', () => {
 		expect(container.querySelector('.cm-content')?.textContent).toEqual(modelValue);
 	});
 
+	it('renders a JSX source', () => {
+		const modelValue =
+			'export function render(ctx: PageContext) { return <div>{ctx.page.title}</div>; }';
+		const { container } = renderComponent(AppCodeEditor, {
+			global: { plugins: [createTestingPinia()] },
+			props: { modelValue },
+		});
+
+		expect(container.querySelector('.cm-content')?.textContent).toEqual(modelValue);
+	});
+
 	it('asks the TypeScript worker to type-check when editable', () => {
 		renderComponent(AppCodeEditor, {
 			global: { plugins: [createTestingPinia()] },

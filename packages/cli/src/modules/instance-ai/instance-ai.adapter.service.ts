@@ -11,6 +11,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	appContentSchema,
+	appLayoutSchema,
 	appPageApiTypes,
 	CreateAppDto,
 	CreatePageDto,
@@ -3487,6 +3488,7 @@ export class InstanceAiAdapterService {
 				return {
 					...toPageSummary(app.namespace, page, pagesById),
 					content: appContentSchema.safeParse(page.content).data ?? null,
+					layout: appLayoutSchema.safeParse(page.layout).data ?? null,
 				};
 			},
 

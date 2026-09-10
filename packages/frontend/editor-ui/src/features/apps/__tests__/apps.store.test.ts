@@ -18,6 +18,7 @@ vi.mock('@/features/apps/apps.api', () => ({
 	fetchVersionsApi: vi.fn(),
 	activateVersionApi: vi.fn(),
 	fetchPreviewApi: vi.fn(),
+	fetchLayoutPreviewApi: vi.fn(),
 }));
 
 const app: App = {
@@ -71,11 +72,12 @@ describe('apps.store', () => {
 		expect(updated.activeVersionId).toBe('v1');
 	});
 
-	it('fetchPreview() forwards path and params to the API', async () => {
-		vi.mocked(appsApi.fetchPreviewApi).mockResolvedValue('<html></html>');
+	it('fetchPreview() forwards path and params to the API and returns html with render errors', async () => {
+		const preview = { html: '<html></html>', errors: { b1: 'boom' } };
+		vi.mocked(appsApi.fetchPreviewApi).mockResolvedValue(preview);
 		const store = useAppsStore();
 
-		const html = await store.fetchPreview('p1', 'app1', 'page1', {
+		const result = await store.fetchPreview('p1', 'app1', 'page1', {
 			path: 'clients/:id',
 			params: { id: '42' },
 		});
@@ -84,7 +86,47 @@ describe('apps.store', () => {
 			path: 'clients/:id',
 			params: { id: '42' },
 		});
-		expect(html).toBe('<html></html>');
+		expect(result).toEqual(preview);
+	});
+
+	it('fetchLayoutPreview() returns the effective layout of a page', async () => {
+		const preview = { ownerPageId: 'page1', html: '<div data-app-root></div>', errors: {} };
+		vi.mocked(appsApi.fetchLayoutPreviewApi).mockResolvedValue(preview);
+		const store = useAppsStore();
+
+		const result = await store.fetchLayoutPreview('p1', 'app1', 'page2');
+
+		expect(appsApi.fetchLayoutPreviewApi).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'app1',
+			'page2',
+		);
+		expect(result).toEqual(preview);
+	});
+
+	it('updatePage() forwards the layout and replaces the page in the store', async () => {
+		const page = {
+			id: 'page1',
+			appId: 'app1',
+			parentPageId: null,
+			route: '',
+			content: [],
+			layout: null,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+		const layout = [{ id: 'slot', type: 'slot' as const, data: {} }];
+		vi.mocked(appsApi.updatePageApi).mockResolvedValue({ ...page, layout });
+		const store = useAppsStore();
+		store.pages = [page];
+
+		await store.updatePage('p1', 'app1', 'page1', { layout });
+
+		expect(appsApi.updatePageApi).toHaveBeenCalledWith(expect.anything(), 'p1', 'app1', 'page1', {
+			layout,
+		});
+		expect(store.pages[0].layout).toEqual(layout);
 	});
 
 	it('updateApp() saves the theme', async () => {

@@ -14,7 +14,7 @@ characters). Pass `theme: null` to reset.
 
 ## Page anatomy
 
-Every served page has this shell:
+A page without a layout (see [layouts.md](layouts.md)) has this shell:
 
 ```html
 <body class="app-canvas app-text">
@@ -43,9 +43,26 @@ Root element of each typed block inside `main`:
 | `html` | `div.app-block-html.mb-md` |
 | `code` | no wrapper; the returned HTML is inserted as-is |
 
-Blocks have no per-block id in the HTML. To target one block, give it a
-class or id inside an `html` block, or use structural selectors such as
+Content blocks have no per-block id in the HTML. To target one block, give it
+a class or id inside an `html` block, or use structural selectors such as
 `.app-main > h1:first-child`.
+
+A page with a layout replaces the shell with this structure:
+
+```html
+<body class="app-canvas app-text">
+  <div class="app-layout" data-app-root>
+    <div class="app-block" data-block-id="menu">…one layout block…</div>
+    <main class="app-main" data-app-slot>…content blocks in order…</main>
+    <div class="app-block" data-block-id="footer">…one layout block…</div>
+  </div>
+</body>
+```
+
+`.app-layout` is a vertical flex column (`gap: var(--spacing--md)`) with no
+menu. Each layout block sits in `.app-block[data-block-id="<id>"]`; the
+`slot` block becomes `main.app-main[data-app-slot]`. Use the block ids as
+CSS hooks to build columns or grids in `theme.customCss`.
 
 ## Theme variables
 
@@ -107,8 +124,8 @@ uppercase w-full whitespace-nowrap
 ```
 
 Hand-written shell classes (not utilities, defined in the stylesheet):
-`app-canvas app-shell app-menu app-main app-text app-muted app-link
-app-block-html`.
+`app-canvas app-shell app-menu app-main app-layout app-block app-text
+app-muted app-link app-block-html`.
 
 Rules for block output:
 

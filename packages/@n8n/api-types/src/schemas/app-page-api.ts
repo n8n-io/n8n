@@ -10,9 +10,42 @@
 export const APP_PAGE_API_FILE_NAME = 'app-page-api.d.ts';
 
 export const appPageApiTypes = `// Ambient types for App page code blocks.
+// A code block is TSX: JSX compiles to h()/Fragment (classic runtime) and renders to HTML.
 export {};
 
 declare global {
+	/** HTML produced by JSX or raw(); inserted into the page without escaping. */
+	interface Html {
+		readonly __html: string;
+		toString(): string;
+	}
+	/**
+	 * What render() and JSX children may be. A string returned from render() is raw HTML;
+	 * a string inside JSX is escaped. Numbers become text; booleans, null and undefined
+	 * render nothing; arrays render each entry in order.
+	 */
+	type Renderable = Html | string | number | boolean | null | undefined | readonly Renderable[];
+	type JsxProps = Record<string, unknown> & { children?: Renderable };
+	/** JSX factory. Escapes text children and attribute values; drops unsafe URL attributes. */
+	function h(
+		tag: string | ((props: JsxProps) => Renderable),
+		props: JsxProps | null,
+		...children: Renderable[]
+	): Html;
+	/** <>...</> renders its children with no wrapping element. */
+	const Fragment: (props: { children?: Renderable }) => Html;
+	/** Trusted HTML you already escaped or produced yourself; JSX inserts it as-is. */
+	function raw(html: string): Html;
+	namespace JSX {
+		type Element = Html;
+		interface IntrinsicElements {
+			[tag: string]: Record<string, unknown>;
+		}
+		interface ElementChildrenAttribute {
+			children: {};
+		}
+	}
+
 	/** One row of a data table. System columns are \`id\`, \`createdAt\`, \`updatedAt\`. */
 	type DataTableValue = string | number | boolean | Date | null;
 	type DataTableRow = Record<string, DataTableValue>;
@@ -95,6 +128,9 @@ declare global {
 		get(name: string): Promise<Record<string, unknown>>;
 	}
 
+	/** One entry of the App's page tree, as a menu shows it. */
+	type MenuItem = { title: string; path: string; current: boolean; children: MenuItem[] };
+
 	interface PageContext {
 		readonly app: { id: string; name: string; namespace: string; projectId: string };
 		readonly page: { id: string; route: string; path: string };
@@ -103,6 +139,8 @@ declare global {
 		readonly query: Readonly<Record<string, string>>;
 		/** Signed-in n8n user viewing the page, or null on a public visit. */
 		readonly viewer: { id: string; email: string } | null;
+		/** The page tree with absolute paths, the current page marked; pages behind an unresolved \`:param\` are left out. Render your own menu from it. */
+		readonly menu: readonly MenuItem[];
 		readonly dataTables: DataTablesApi;
 		readonly workflows: WorkflowsApi;
 		readonly credentials: CredentialsApi;
@@ -140,7 +178,7 @@ declare global {
 
 	/** What a code block's module exports. */
 	interface CodeBlockModule {
-		render(ctx: PageContext): Promise<string> | string;
+		render(ctx: PageContext): Promise<Renderable> | Renderable;
 		actions?: Record<string, (ctx: ActionContext) => Promise<ActionResult> | ActionResult>;
 	}
 }

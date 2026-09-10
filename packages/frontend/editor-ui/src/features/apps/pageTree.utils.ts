@@ -29,6 +29,24 @@ export function getPageUrl(namespace: string, ancestors: Page[], ownRoute: strin
 	return `${window.location.origin}/${path}`;
 }
 
+/**
+ * The page a served pathname (`/apps/<namespace>/<segments>`) points at, or null.
+ * A trailing slash is ignored; pages with a dynamic segment never match.
+ */
+export function findPageIdByPath(
+	pages: Page[],
+	namespace: string,
+	pathname: string,
+): string | null {
+	const wanted = pathname.replace(/\/+$/, '');
+	const match = pages.find((page) => {
+		const path = getPagePath(getAncestorPages(pages, page.id), page.route);
+		if (getDynamicParamNames(path).length > 0) return false;
+		return ['/apps', namespace, path].filter(Boolean).join('/') === wanted;
+	});
+	return match?.id ?? null;
+}
+
 /** Names of the dynamic (`:name`) segments in a page path, in order. */
 export function getDynamicParamNames(path: string): string[] {
 	return path

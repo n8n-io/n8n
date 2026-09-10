@@ -3,10 +3,10 @@ import EditorJS, { type ToolboxConfigEntry } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Delimiter from '@editorjs/delimiter';
-import type { AppContent } from '@n8n/api-types';
+import type { AppContent, AppLayout } from '@n8n/api-types';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { TableBlockTool } from '@/features/apps/components/blocks/TableBlockTool.tool';
@@ -16,43 +16,57 @@ import { HtmlBlockTool } from '@/features/apps/components/blocks/HtmlBlockTool.t
 import { CodeBlockTool } from '@/features/apps/components/blocks/CodeBlockTool.tool';
 import { ImageBlockTool } from '@/features/apps/components/blocks/ImageBlockTool.tool';
 import { ParagraphTool } from '@/features/apps/components/blocks/ParagraphTool.tool';
+import { SlotBlockTool } from '@/features/apps/components/blocks/SlotBlockTool.tool';
 import {
 	toEditorBlocks,
 	validateEditorBlocks,
+	type EditorSchema,
 } from '@/features/apps/components/pageContentEditor.utils';
 
-const props = defineProps<{
-	content: AppContent;
-	projectId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		content: AppLayout;
+		projectId: string;
+		/** `layout` adds the slot tool and validates against `appLayoutSchema`. */
+		schema?: EditorSchema;
+		/** Problems found outside the editor (e.g. render errors), highlighted by block id. */
+		externalIssues?: Record<string, string>;
+	}>(),
+	{ schema: 'content', externalIssues: () => ({}) },
+);
 
 const emit = defineEmits<{
 	'update:content': [content: AppContent];
+	'update:layout': [layout: AppLayout];
 }>();
 
 const style = useCssModule();
 const holderRef = ref<HTMLDivElement>();
 const issues = ref<Record<string, string>>({});
+const highlighted = computed(() => ({ ...issues.value, ...props.externalIssues }));
 let editor: EditorJS | null = null;
 
-function applyIssueHighlights(nextIssues: Record<string, string>) {
+function applyIssueHighlights() {
 	if (!editor) return;
 	for (let i = 0; i < editor.blocks.getBlocksCount(); i++) {
 		const block = editor.blocks.getBlockByIndex(i);
 		if (!block) continue;
-		block.holder.classList.toggle(style.blockError, Boolean(nextIssues[block.id]));
+		block.holder.classList.toggle(style.blockError, Boolean(highlighted.value[block.id]));
 	}
 }
 
 async function handleChange() {
 	if (!editor) return;
 	const output = await editor.save();
-	const { content, issues: nextIssues } = validateEditorBlocks(output.blocks);
+	const { content, layout, issues: nextIssues } = validateEditorBlocks(output.blocks, props.schema);
 
 	issues.value = nextIssues;
-	applyIssueHighlights(nextIssues);
+	applyIssueHighlights();
 	if (content) emit('update:content', content);
+	if (layout) emit('update:layout', layout);
 }
+
+watch(() => props.externalIssues, applyIssueHighlights);
 
 const debouncedHandleChange = useDebounceFn(
 	handleChange,
@@ -85,8 +99,10 @@ onMounted(() => {
 			button: { class: ButtonBlockTool, config: { projectId: props.projectId } },
 			html: HtmlBlockTool,
 			code: CodeBlockTool,
+			...(props.schema === 'layout' ? { slot: SlotBlockTool } : {}),
 		},
 		data: { blocks: toEditorBlocks(props.content) },
+		onReady: applyIssueHighlights,
 		onChange: () => {
 			void debouncedHandleChange();
 		},

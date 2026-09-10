@@ -6,7 +6,7 @@ import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { AppIsolatePool, type AppIsolateSlot } from './app-isolate-pool';
-import type { AppActionContext, AppPageContext } from './page-context.factory';
+import type { AppActionContext, AppPageContext, PageContextInput } from './page-context.factory';
 
 export class AppCodeError extends Error {}
 
@@ -139,8 +139,8 @@ function __reviveDates(json) {
 	});
 }
 async function __call(method, args) {
-	var raw = await __hostCall.apply(undefined, [method, JSON.stringify(args)], { arguments: { copy: true }, result: { promise: true, copy: true } });
-	var envelope = __reviveDates(raw);
+	var json = await __hostCall.apply(undefined, [method, JSON.stringify(args)], { arguments: { copy: true }, result: { promise: true, copy: true } });
+	var envelope = __reviveDates(json);
 	if (!envelope.ok) throw new Error(envelope.error);
 	return envelope.value;
 }
@@ -163,6 +163,7 @@ function __buildCtx(staticData) {
 		params: staticData.params,
 		query: staticData.query,
 		viewer: staticData.viewer,
+		menu: staticData.menu,
 		input: staticData.input,
 		dataTables: {
 			list: function () { return __call('dataTables.list', []); },
@@ -181,7 +182,7 @@ function __buildCtx(staticData) {
 		},
 		actionUrl: function (name) {
 			return staticData.baseUrl + '/apps/' + staticData.app.namespace + '/_actions/'
-				+ staticData.page.id + '/' + staticData.blockId + '/' + name;
+				+ staticData.actionPageId + '/' + staticData.blockId + '/' + name;
 		},
 		fetch: async function (url, init) {
 			var res = await __call('fetch', [url, init || {}]);
@@ -197,23 +198,71 @@ function __buildCtx(staticData) {
 		},
 	};
 }
+var __VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+var __URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'poster']);
+var __HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function __escapeHtml(value) {
+	return String(value).replace(/[&<>"']/g, function (c) { return __HTML_ESCAPES[c]; });
+}
+function raw(html) {
+	var text = String(html);
+	return { __html: text, toString: function () { return text; } };
+}
+function __toHtml(value, escapeText) {
+	if (value === null || value === undefined || typeof value === 'boolean') return '';
+	if (typeof value === 'string') return escapeText ? __escapeHtml(value) : value;
+	if (typeof value === 'number') return String(value);
+	if (Array.isArray(value)) {
+		return value.map(function (item) { return __toHtml(item, escapeText); }).join('');
+	}
+	if (typeof value === 'object' && typeof value.__html === 'string') return value.__html;
+	throw new Error('render() must return HTML, text, a number, null or an array of those');
+}
+function __styleToString(style) {
+	return Object.keys(style).map(function (key) {
+		var name = key.replace(/[A-Z]/g, function (c) { return '-' + c.toLowerCase(); });
+		return name + ': ' + style[key] + ';';
+	}).join(' ');
+}
+function __isSafeUrl(value) {
+	var scheme = /^\\s*([a-z][a-z0-9+.-]*):/i.exec(value);
+	return !scheme || /^(https?|mailto|tel)$/i.test(scheme[1]);
+}
+function __attributes(props) {
+	var out = '';
+	for (var key in props) {
+		var value = props[key];
+		if (key === 'children' || value === null || value === undefined || value === false) continue;
+		if (key === 'style' && typeof value === 'object') value = __styleToString(value);
+		if (__URL_ATTRIBUTES.has(key) && !__isSafeUrl(String(value))) continue;
+		var name = key === 'className' ? 'class' : key === 'htmlFor' ? 'for' : key;
+		out += value === true ? ' ' + name : ' ' + name + '="' + __escapeHtml(value) + '"';
+	}
+	return out;
+}
+function Fragment(props) {
+	return raw(__toHtml(props.children, true));
+}
+function h(tag, props) {
+	var children = Array.prototype.slice.call(arguments, 2);
+	if (typeof tag === 'function') {
+		return raw(__toHtml(tag(Object.assign({}, props, { children: children })), true));
+	}
+	var open = '<' + tag + __attributes(props || {}) + '>';
+	if (__VOID_ELEMENTS.has(tag)) return raw(open);
+	return raw(open + __toHtml(children, true) + '</' + tag + '>');
+}
 `;
 
-export interface RunStaticData {
-	app: { id: string; name: string; namespace: string; projectId: string };
-	page: { id: string; route: string; path: string };
-	blockId: string;
-	params: Record<string, string>;
-	query: Record<string, string>;
-	viewer: { id: string; email: string } | null;
-	baseUrl: string;
+export interface RunStaticData extends Omit<PageContextInput, 'logs'> {
 	/** Present only for an action call. */
 	input?: Record<string, unknown>;
 }
 
 /**
- * Compiles and runs an App `code` block's TypeScript source in an
- * `isolated-vm` isolate against the real `PageContext`, per `code-api.md`.
+ * Compiles and runs an App `code` block's TSX source in an `isolated-vm`
+ * isolate against the real `PageContext`, per `code-api.md`. JSX compiles to
+ * the prelude's `h`/`Fragment`, which build escaped HTML.
  *
  * Adapted from the isolate-execution pattern in
  * `packages/cli/src/modules/agents/runtime/agent-secure-runtime.ts` (by
@@ -252,7 +301,13 @@ export class AppCodeRuntime {
 		if (cached) return cached;
 
 		const { transform } = await import('sucrase');
-		const { code } = transform(source, { transforms: ['typescript', 'imports'] });
+		const { code } = transform(source, {
+			transforms: ['typescript', 'jsx', 'imports'],
+			jsxRuntime: 'classic',
+			jsxPragma: 'h',
+			jsxFragmentPragma: 'Fragment',
+			production: true,
+		});
 
 		if (this.compileCache.size >= COMPILE_CACHE_SIZE) {
 			const oldestKey = this.compileCache.keys().next().value;
@@ -279,11 +334,7 @@ export class AppCodeRuntime {
 					throw new Error("This code block does not export a 'render' function");
 				}
 				var __ctx = __buildCtx($0);
-				var html = await module.exports.render(__ctx);
-				if (typeof html !== 'string') {
-					throw new Error('render() must return a string');
-				}
-				return html;
+				return __toHtml(await module.exports.render(__ctx), false);
 			})();
 		`;
 		const { value, logs } = await this.run<string>(runScript, ctx, staticData);

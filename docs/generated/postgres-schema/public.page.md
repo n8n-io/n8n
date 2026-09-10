@@ -8,6 +8,7 @@
 | content | json |  | true |  |  | Block tree (Editor.js-shaped); empty until the renderer lands |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.page](public.page.md) |  |  |
+| layout | json |  | true |  |  | Blocks rendered around the page content, with one slot block; null inherits the nearest ancestor layout |
 | parentPageId | varchar(36) |  | true |  | [public.page](public.page.md) | Self-reference; null for a top-level page |
 | route | varchar(255) |  | false |  |  | Path segment under its parent, may contain :params |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -46,6 +47,7 @@ erDiagram
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json layout
   varchar_36_ parentPageId FK
   varchar_255_ route
   timestamp_3__with_time_zone updatedAt

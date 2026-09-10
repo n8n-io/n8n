@@ -22,8 +22,15 @@ const version = mock<AppVersion>({
 	snapshot: {
 		theme: null,
 		pages: [
-			{ id: 'index', route: '', parentPageId: null, content: [] },
-			{ id: 'clients', route: 'clients', parentPageId: null, content: null },
+			{ id: 'index', route: '', parentPageId: null, content: [], layout: null },
+			{
+				id: 'clients',
+				route: 'clients',
+				parentPageId: null,
+				content: null,
+				layout: [{ id: 'slot', type: 'slot', data: {} }],
+			},
+			{ id: 'orders', route: 'orders', parentPageId: 'clients', content: null, layout: null },
 		],
 	},
 });
@@ -59,6 +66,19 @@ describe('AppServingService', () => {
 			});
 		});
 
+		test('resolves no layout for a page without one on its way up', async () => {
+			const resolution = await service.resolvePublished(app, []);
+
+			expect(resolution?.layout).toBeNull();
+		});
+
+		test('resolves the nearest ancestor layout with its owner', async () => {
+			const resolution = await service.resolvePublished(app, ['clients', 'orders']);
+
+			expect(resolution?.layout?.ownerPageId).toBe('clients');
+			expect(resolution?.layout?.blocks.map((block) => block.id)).toEqual(['slot']);
+		});
+
 		test('does not read the draft page tree', async () => {
 			await service.resolvePublished(app, ['clients']);
 
@@ -75,6 +95,22 @@ describe('AppServingService', () => {
 
 			expect(html).toContain('Acme Portal');
 			expect(html).toContain("name='n8n-app-base' content='http://localhost:5678/apps/acme'");
+		});
+
+		test('renders the resolved layout instead of the shell', async () => {
+			const resolution = await service.resolvePublished(app, ['clients', 'orders']);
+			if (!resolution) throw new Error('expected the orders page to resolve');
+
+			const html = await service.render(
+				resolution,
+				['clients', 'orders'],
+				{},
+				'http://localhost:5678',
+				null,
+			);
+
+			expect(html).toContain("<div class='app-layout' data-app-root>");
+			expect(html).not.toContain('app-shell');
 		});
 	});
 });

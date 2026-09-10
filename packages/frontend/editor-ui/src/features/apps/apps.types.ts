@@ -1,4 +1,4 @@
-import type { AppAuth, AppContent, AppTheme } from '@n8n/api-types';
+import type { AppAuth, AppContent, AppLayout, AppTheme } from '@n8n/api-types';
 
 export interface App {
 	id: string;
@@ -20,6 +20,8 @@ export interface Page {
 	parentPageId: string | null;
 	route: string;
 	content: AppContent | null;
+	/** `null` inherits the nearest ancestor's layout. */
+	layout: AppLayout | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -34,6 +36,7 @@ export interface UpdateAppInput {
 export interface UpdatePageInput {
 	route?: string;
 	content?: AppContent | null;
+	layout?: AppLayout | null;
 }
 
 export interface AppVersionSummary {
@@ -46,4 +49,19 @@ export interface AppVersionSummary {
 export interface PreviewParams {
 	path: string;
 	params?: Record<string, string>;
+}
+
+/** Message per block id for blocks whose renderer failed; such a block renders as nothing. */
+export type RenderErrors = Record<string, string>;
+
+export interface PagePreview {
+	html: string;
+	errors: RenderErrors;
+}
+
+/** The page's effective layout, rendered and sanitized server-side; `html` is null when no ancestor defines one. */
+export interface LayoutPreview {
+	ownerPageId: string | null;
+	html: string | null;
+	errors: RenderErrors;
 }

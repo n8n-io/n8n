@@ -51,6 +51,12 @@ describe('sanitizeHtml', () => {
 		expect(sanitizeHtml("<form action='/x'><input /></form>")).not.toContain('<form');
 	});
 
+	test('keeps the layout hooks the editor reads', () => {
+		expect(
+			sanitizeHtml("<div data-block-id='menu' data-foo='x'></div><main data-app-slot></main>"),
+		).toBe('<div data-block-id="menu"></div><main data-app-slot></main>');
+	});
+
 	test('strips an unsupported element but keeps its text', () => {
 		expect(sanitizeHtml('<marquee>hi</marquee>')).toBe('hi');
 	});

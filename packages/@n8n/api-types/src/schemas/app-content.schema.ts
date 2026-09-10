@@ -114,16 +114,40 @@ export const appBlockSchema = z.discriminatedUnion('type', [
 	codeBlockSchema,
 ]);
 
+const hasUniqueIds = (blocks: Array<{ id: string }>) =>
+	new Set(blocks.map((b) => b.id)).size === blocks.length;
+
 export const appContentSchema = z
 	.array(appBlockSchema)
 	.max(200)
-	.refine((blocks) => new Set(blocks.map((b) => b.id)).size === blocks.length, {
-		message: 'Block ids must be unique within a page',
+	.refine(hasUniqueIds, { message: 'Block ids must be unique within a page' });
+
+/** Marks where a layout places the page content. Allowed in a layout only. */
+export const slotBlockSchema = block('slot', z.object({}));
+
+export const appLayoutBlockSchema = z.discriminatedUnion('type', [
+	...appBlockSchema.options,
+	slotBlockSchema,
+]);
+
+/**
+ * The blocks a page renders around its content (`Page.layout`). Inherited by
+ * the page's subtree; exactly one `slot` block receives the page content.
+ */
+export const appLayoutSchema = z
+	.array(appLayoutBlockSchema)
+	.max(200)
+	.refine(hasUniqueIds, { message: 'Block ids must be unique within a layout' })
+	.refine((blocks) => blocks.filter((b) => b.type === 'slot').length === 1, {
+		message: 'A layout must contain exactly one slot block',
 	});
 
 export type AppBlock = z.infer<typeof appBlockSchema>;
 export type AppBlockType = AppBlock['type'];
 export type AppContent = z.infer<typeof appContentSchema>;
+export type SlotBlock = z.infer<typeof slotBlockSchema>;
+export type AppLayoutBlock = z.infer<typeof appLayoutBlockSchema>;
+export type AppLayout = z.infer<typeof appLayoutSchema>;
 export type HeaderBlock = z.infer<typeof headerBlockSchema>;
 export type ParagraphBlock = z.infer<typeof paragraphBlockSchema>;
 export type ListBlock = z.infer<typeof listBlockSchema>;

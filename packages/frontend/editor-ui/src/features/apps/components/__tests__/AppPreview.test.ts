@@ -27,6 +27,7 @@ const page = (id: string, route: string, parentPageId: string | null = null): Pa
 	parentPageId,
 	route,
 	content: [],
+	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
 });
@@ -43,7 +44,7 @@ describe('AppPreview', () => {
 			page('clients', 'clients'),
 			page('client', ':id', 'clients'),
 		];
-		appsStore.fetchPreview.mockResolvedValue('<html></html>');
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
 	});
 
 	afterEach(() => {
@@ -85,6 +86,26 @@ describe('AppPreview', () => {
 		await userEvent.click(getByTestId('app-preview-device-mobile'));
 
 		expect(getByTestId('app-preview-iframe').style.width).toBe('390px');
+	});
+
+	it('lists the render errors above the frame and hides the list when there are none', async () => {
+		appsStore.fetchPreview.mockResolvedValue({
+			html: '<html></html>',
+			errors: { menu: 'boom' },
+		});
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { projectId: 'p1', appId: 'app1', pageId: 'home', app },
+		});
+
+		await waitFor(() =>
+			expect(getByTestId('app-preview-render-errors').textContent).toContain('Block menu: boom'),
+		);
+		expect(getByTestId('app-preview-iframe')).toBeInTheDocument();
+
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
+		await userEvent.click(getByTestId('app-preview-refresh'));
+
+		await waitFor(() => expect(queryByTestId('app-preview-render-errors')).toBeNull());
 	});
 
 	it('refetches on refresh', async () => {

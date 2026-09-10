@@ -16,6 +16,8 @@ function ctx(query: Record<string, string> = {}): BlockRenderContext {
 	return {
 		app: { id: 'app-1', name: 'My App', namespace: 'my-app', projectId: 'project-1', theme: null },
 		page: { id: 'page-1', route: '', path: '/apps/my-app' },
+		actionPageId: 'page-1',
+		menu: [],
 		params: { id: '42' },
 		query,
 		viewer: null,

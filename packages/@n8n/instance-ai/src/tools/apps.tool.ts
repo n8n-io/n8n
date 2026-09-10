@@ -7,6 +7,7 @@ import { Tool } from '@n8n/agents';
 import {
 	appAuthSchema,
 	appContentSchema,
+	appLayoutSchema,
 	appNameSchema,
 	appNamespaceSchema,
 	appThemeSchema,
@@ -15,7 +16,7 @@ import {
 	buildAppsSessionGrantKey,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import type { AppContent } from '@n8n/api-types';
+import type { AppContent, AppLayout } from '@n8n/api-types';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -128,9 +129,12 @@ function ensureBlockIds(blocks: RawBlock[]): RawBlock[] {
 	});
 }
 
-/** Backfills block ids, then validates against `appContentSchema`. */
-function validateContent(rawBlocks: RawBlock[]): { data: AppContent } | { issues: z.ZodIssue[] } {
-	const parsed = appContentSchema.safeParse(ensureBlockIds(rawBlocks));
+/** Backfills block ids, then validates against the content or layout schema. */
+function validateBlocks<T>(
+	schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+	rawBlocks: RawBlock[],
+): { data: T } | { issues: z.ZodIssue[] } {
+	const parsed = schema.safeParse(ensureBlockIds(rawBlocks));
 	return parsed.success ? { data: parsed.data } : { issues: parsed.error.issues };
 }
 
@@ -203,6 +207,25 @@ const setContentAction = z.object({
 	content: z.array(rawBlockSchema).max(200).describe(contentDescribe),
 });
 
+const setLayoutAction = z.object({
+	action: z
+		.literal('set-layout')
+		.describe(
+			"Replace a page's layout: the blocks rendered around the content of this page and of every page below it that has no layout of its own",
+		),
+	appId: z.string().describe('App ID'),
+	pageId: z.string().describe('Page ID'),
+	layout: z
+		.array(rawBlockSchema)
+		.max(200)
+		.nullable()
+		.describe(
+			'Layout blocks (see the `app-builder` skill, "Layouts"): any content block plus exactly one ' +
+				'`slot` block where the page content goes. Block `id` is optional. Pass null to inherit the ' +
+				"nearest ancestor's layout, or the built-in shell when no ancestor has one.",
+		),
+});
+
 const updatePageAction = z.object({
 	action: z.literal('update-page').describe("Change a page's route"),
 	appId: z.string().describe('App ID'),
@@ -241,6 +264,7 @@ const allActions = [
 	createPageAction,
 	getPageAction,
 	setContentAction,
+	setLayoutAction,
 	updatePageAction,
 	deletePageAction,
 	publishAction,
@@ -354,7 +378,7 @@ async function handleCreatePage(
 ) {
 	let content: AppContent | undefined;
 	if (input.content) {
-		const validated = validateContent(input.content);
+		const validated = validateBlocks(appContentSchema, input.content);
 		if ('issues' in validated) {
 			return { denied: true, reason: 'Invalid page content', issues: validated.issues };
 		}
@@ -390,6 +414,7 @@ async function handleGetPage(
 		route: page.route,
 		path: page.path,
 		content: page.content,
+		layout: page.layout,
 	};
 }
 
@@ -397,7 +422,7 @@ async function handleSetContent(
 	appService: InstanceAiAppService,
 	input: Extract<FullInput, { action: 'set-content' }>,
 ) {
-	const validated = validateContent(input.content);
+	const validated = validateBlocks(appContentSchema, input.content);
 	if ('issues' in validated) {
 		return { denied: true, reason: 'Invalid page content', issues: validated.issues };
 	}
@@ -411,6 +436,30 @@ async function handleSetContent(
 			pageId: page.id,
 			path: page.path,
 			blockCount: validated.data.length,
+		};
+	});
+}
+
+async function handleSetLayout(
+	appService: InstanceAiAppService,
+	input: Extract<FullInput, { action: 'set-layout' }>,
+) {
+	let layout: AppLayout | null = null;
+	if (input.layout) {
+		const validated = validateBlocks(appLayoutSchema, input.layout);
+		if ('issues' in validated) {
+			return { denied: true, reason: 'Invalid page layout', issues: validated.issues };
+		}
+		layout = validated.data;
+	}
+
+	return await callOrDeny(async () => {
+		const page = await appService.updatePage(input.appId, input.pageId, { layout });
+		return {
+			appId: input.appId,
+			pageId: page.id,
+			path: page.path,
+			blockCount: layout?.length ?? null,
 		};
 	});
 }
@@ -519,7 +568,7 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Load `app-builder` via `load_skill` before calling this tool. Build and edit end-user-facing ' +
 				'web Apps served at /apps/<namespace>/ — list/create apps, manage pages made of typed content ' +
-				'blocks, publish, and read the `code` block API types.',
+				'blocks and their layouts, publish, and read the `code` block API types.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -540,6 +589,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleGetPage(appService, input);
 				case 'set-content':
 					return await handleSetContent(appService, input);
+				case 'set-layout':
+					return await handleSetLayout(appService, input);
 				case 'update-page':
 					return await handleUpdatePage(appService, input);
 				case 'delete-page':

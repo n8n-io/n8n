@@ -11,6 +11,11 @@ import HtmlBlockConfig from './HtmlBlockConfig.vue';
 type HtmlBlockData = HtmlBlock['data'];
 
 export class HtmlBlockTool implements BlockTool {
+	/** The config card holds inputs; Editor.js must not turn Enter into a new block. */
+	static get enableLineBreaks(): boolean {
+		return true;
+	}
+
 	static get toolbox(): ToolboxConfigEntry {
 		return { title: 'HTML' };
 	}
