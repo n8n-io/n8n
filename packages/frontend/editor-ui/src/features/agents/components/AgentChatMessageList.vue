@@ -146,10 +146,14 @@ const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
 
 /**
- * Dismissing the note silences it for the rest of the browser session, so a
- * user who does not want the hand-off is not asked again on every request.
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
  */
-const changeNoteDismissed = useSessionStorage('N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED', false);
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
 
 /**
  * Newest user message that reads as a request to change the agent itself. Only
@@ -559,31 +563,34 @@ watch(
 						v-if="group.id === changeRequestGroupId"
 						theme="info"
 						icon="wand-sparkles"
+						slim
 						:class="$style.changeRequestNote"
 						data-testid="agent-preview-change-request-note"
 					>
 						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
 						<template #trailingContent>
-							<div :class="$style.changeRequestActions">
-								<N8nButton
-									size="small"
-									variant="subtle"
-									data-testid="agent-preview-change-request-link"
-									@click="onEditWithAssistant(group.message.content)"
-								>
-									<template #icon><N8nIcon icon="sparkles" size="small" /></template>
-									{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
-								</N8nButton>
-								<N8nIconButton
-									icon="x"
-									variant="ghost"
-									size="small"
-									:aria-label="i18n.baseText('generic.dismiss')"
-									:title="i18n.baseText('generic.dismiss')"
-									data-testid="agent-preview-change-request-dismiss"
-									@click="changeNoteDismissed = true"
-								/>
-							</div>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
 						</template>
 					</N8nCallout>
 					<AiThinkingBlock
@@ -712,19 +719,25 @@ watch(
 }
 
 /* Stretches past the right-aligned user bubble it follows, and stacks the
-   hand-off button under the note instead of squeezing it in beside the text. */
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
 .changeRequestNote {
 	align-self: stretch;
 	margin-top: var(--spacing--2xs);
 	flex-direction: column;
-	align-items: flex-start;
+	align-items: stretch;
 	gap: var(--spacing--2xs);
 }
 
-.changeRequestActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
 }
 
 .chatMessage {

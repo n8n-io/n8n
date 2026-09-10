@@ -38,8 +38,9 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['size', 'color', 'tag'],
 	},
 	N8nCallout: {
-		template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
-		props: ['theme', 'icon', 'slim'],
+		template:
+			'<div v-bind="$attrs"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
+		props: ['theme', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
 		template:
@@ -152,7 +153,7 @@ describe('AgentChatMessageList', () => {
 			]);
 		});
 
-		it('stays dismissed for the rest of the session, across a remount', async () => {
+		it('stays dismissed for the rest of the chat session, but asks again in a new one', async () => {
 			const props = {
 				messages: [changeRequest],
 				messagingState: 'idle' as const,
@@ -167,15 +168,24 @@ describe('AgentChatMessageList', () => {
 				false,
 			);
 
-			// A fresh mount with a new matching message must stay quiet.
-			const remounted = mount(AgentChatMessageList, {
+			// Resuming the same session — the chat panel remounts on navigation, so
+			// the dismissal has to outlive the component.
+			const resumed = mount(AgentChatMessageList, {
 				props: {
 					...props,
 					messages: [{ ...changeRequest, id: 'user-2', content: 'add a slack channel' }],
 				},
 			});
-			expect(remounted.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+			expect(resumed.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
 				false,
+			);
+
+			// A new chat starts over.
+			const newSession = mount(AgentChatMessageList, {
+				props: { ...props, sessionId: 'thread-2' },
+			});
+			expect(newSession.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				true,
 			);
 		});
 
