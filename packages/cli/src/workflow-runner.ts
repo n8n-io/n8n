@@ -19,7 +19,6 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
-	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -28,9 +27,9 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
-	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
+	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
@@ -94,9 +93,6 @@ const MAX_STALLED_COUNT_RECHECK_ATTEMPTS = Math.floor(
  * the scheduler timeline.
  */
 const MAX_STALLED_COUNT_RECHECK_JITTER_RATIO = 0.2;
-
-/** Statuses a stored execution can still leave for `success` while the recheck loop runs */
-const RECHECKABLE_EXECUTION_STATUSES: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES;
 
 /**
  * Flush the response through the compression middleware.
@@ -171,9 +167,13 @@ export class WorkflowRunner {
 					executionId,
 					{ includeData: false },
 				);
-				if (executionWithoutData?.status === 'success') {
-					// false positive, execution was successful
-					let successRunData: IRun | undefined;
+				const status = executionWithoutData?.status;
+
+				// A `waiting` row means the worker finished its segment and no resume has claimed
+				// the execution yet, so the pause is left intact for the wait tracker to resume.
+				if (status === 'success' || status === 'waiting') {
+					// false positive, the execution was not lost
+					let storedRunData: IRun | undefined;
 
 					try {
 						const fullExecutionData = await this.executionPersistence.findSingleExecution(
@@ -185,7 +185,7 @@ export class WorkflowRunner {
 						);
 
 						if (fullExecutionData?.data) {
-							successRunData = {
+							storedRunData = {
 								finished: fullExecutionData.finished,
 								mode: fullExecutionData.mode,
 								startedAt: fullExecutionData.startedAt,
@@ -199,7 +199,7 @@ export class WorkflowRunner {
 
 						// No lifecycle hooks ran for this execution, so make the retention
 						// decision they would have made, regardless of data readability.
-						if (fullExecutionData) {
+						if (fullExecutionData && status === 'success') {
 							try {
 								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
 								const isManualExecution = fullExecutionData.mode === 'manual';
@@ -220,28 +220,42 @@ export class WorkflowRunner {
 							}
 						}
 					} catch (readError) {
-						this.logger.warn('Could not read execution data for a successful execution', {
+						this.logger.warn('Could not read execution data for a recovered execution', {
 							executionId,
 							error: ensureError(readError),
 						});
 					}
 
-					const runData: IRun = successRunData ?? {
-						data: createRunExecutionData({
-							resultData: {
-								error: new WorkflowOperationError(
-									`Execution ${executionId} succeeded, but its result could not be read`,
-								),
-								runData: {},
-							},
-						}),
-						finished: false,
-						mode: executionMode,
-						startedAt,
-						stoppedAt: new Date(),
-						status: 'error',
-						storedAt: this.storageConfig.modeTag,
-					};
+					const unreadableRunData: IRun =
+						status === 'waiting'
+							? {
+									data: createRunExecutionData({ resultData: { runData: {} } }),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'waiting',
+									waitTill: executionWithoutData?.waitTill ?? undefined,
+									storedAt: this.storageConfig.modeTag,
+								}
+							: {
+									data: createRunExecutionData({
+										resultData: {
+											error: new WorkflowOperationError(
+												`Execution ${executionId} succeeded, but its result could not be read`,
+											),
+											runData: {},
+										},
+									}),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'error',
+									storedAt: this.storageConfig.modeTag,
+								};
+
+					const runData: IRun = storedRunData ?? unreadableRunData;
 
 					this.activeExecutions.resolveExecutionResponsePromise(executionId);
 					this.activeExecutions.finalizeExecution(executionId, runData);
@@ -249,10 +263,9 @@ export class WorkflowRunner {
 					return;
 				}
 
-				// Only an execution that is still in progress can still reach `success`. Every
-				// other status keeps its value, so stop rechecking and fail the run now.
-				const status = executionWithoutData?.status;
-				if (status === undefined || !RECHECKABLE_EXECUTION_STATUSES.includes(status)) break;
+				// A terminal status will not change, and a missing row cannot become one, so
+				// stop rechecking and fail the run now.
+				if (status === undefined || isTerminalExecutionStatus(status)) break;
 
 				if (recheck >= rechecks || Date.now() >= recheckUntil) break;
 
