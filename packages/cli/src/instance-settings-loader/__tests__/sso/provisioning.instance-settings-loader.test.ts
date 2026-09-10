@@ -11,22 +11,32 @@ describe('ProvisioningInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const settingsRepository = mock<SettingsRepository>();
 
-	const globalConfig = {
-		sso: {
-			provisioning: {
-				scopesName: 'n8n',
-				scopesInstanceRoleClaimName: 'n8n_instance_role',
-				scopesProjectsRolesClaimName: 'n8n_projects',
+	const createGlobalConfig = (scopesUseExpressionMapping = false) =>
+		({
+			sso: {
+				provisioning: {
+					scopesName: 'n8n',
+					scopesInstanceRoleClaimName: 'n8n_instance_role',
+					scopesProjectsRolesClaimName: 'n8n_projects',
+					scopesUseExpressionMapping,
+				},
 			},
-		},
-	} as GlobalConfig;
+		}) as GlobalConfig;
 
-	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
+	const createLoader = (
+		configOverrides: Partial<InstanceSettingsLoaderConfig> = {},
+		scopesUseExpressionMapping = false,
+	) => {
 		const config = {
 			ssoUserRoleProvisioning: 'disabled',
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
-		return new ProvisioningInstanceSettingsLoader(config, globalConfig, settingsRepository, logger);
+		return new ProvisioningInstanceSettingsLoader(
+			config,
+			createGlobalConfig(scopesUseExpressionMapping),
+			settingsRepository,
+			logger,
+		);
 	};
 
 	beforeEach(() => {
@@ -106,6 +116,78 @@ describe('ProvisioningInstanceSettingsLoader', () => {
 		);
 	});
 
+	describe('N8N_SSO_SCOPES_USE_EXPRESSION_MAPPING', () => {
+		// It is the "role mapping method" dropdown: it picks how claims map to the roles the
+		// mode provisions, and clears the direct-claim flags because the two are exclusive.
+		it.each(['instance_role', 'instance_and_project_roles'] as const)(
+			'should select expression mapping for the %s mode',
+			async (mode) => {
+				const loader = createLoader({ ssoUserRoleProvisioning: mode }, true);
+
+				await loader.apply();
+
+				expect(settingsRepository.upsert).toHaveBeenCalledWith(
+					{
+						key: 'features.provisioning',
+						value: JSON.stringify({
+							scopesProvisionInstanceRole: false,
+							scopesProvisionProjectRoles: false,
+							scopesUseExpressionMapping: true,
+							scopesName: 'n8n',
+							scopesInstanceRoleClaimName: 'n8n_instance_role',
+							scopesProjectsRolesClaimName: 'n8n_projects',
+						}),
+						loadOnStartup: true,
+					},
+					{ conflictPaths: ['key'] },
+				);
+			},
+		);
+
+		it('should stay off for the disabled mode, which assigns roles manually', async () => {
+			const loader = createLoader({ ssoUserRoleProvisioning: 'disabled' }, true);
+
+			await loader.apply();
+
+			const upsertCall = settingsRepository.upsert.mock.calls[0][0] as { value: string };
+			expect(jsonParse(upsertCall.value)).toMatchObject({
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesUseExpressionMapping: false,
+			});
+		});
+
+		it('should warn that it has no effect for the disabled mode', async () => {
+			const loader = createLoader({ ssoUserRoleProvisioning: 'disabled' }, true);
+
+			await loader.apply();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_SSO_SCOPES_USE_EXPRESSION_MAPPING=true has no effect'),
+			);
+		});
+
+		it('should not warn when the mode provisions roles', async () => {
+			const loader = createLoader({ ssoUserRoleProvisioning: 'instance_role' }, true);
+
+			await loader.apply();
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it.each(['disabled', 'instance_role', 'instance_and_project_roles'] as const)(
+			'should leave %s untouched when unset',
+			async (mode) => {
+				const loader = createLoader({ ssoUserRoleProvisioning: mode });
+
+				await loader.apply();
+
+				const upsertCall = settingsRepository.upsert.mock.calls[0][0] as { value: string };
+				expect(jsonParse(upsertCall.value)).toMatchObject({ scopesUseExpressionMapping: false });
+			},
+		);
+	});
+
 	describe('persisted value is consumable by ProvisioningConfigDto', () => {
 		// The loader writes the row that the provisioning service reads back via
 		// ProvisioningConfigDto.parse(). If parse fails the service silently falls
@@ -114,6 +196,17 @@ describe('ProvisioningInstanceSettingsLoader', () => {
 
 		it.each(modes)('round-trips for %s', async (mode) => {
 			const loader = createLoader({ ssoUserRoleProvisioning: mode });
+
+			await loader.apply();
+
+			const upsertCall = settingsRepository.upsert.mock.calls[0][0] as { value: string };
+			const persisted = jsonParse<unknown>(upsertCall.value);
+
+			expect(() => ProvisioningConfigDto.parse(persisted)).not.toThrow();
+		});
+
+		it.each(modes)('round-trips for %s with expression mapping', async (mode) => {
+			const loader = createLoader({ ssoUserRoleProvisioning: mode }, true);
 
 			await loader.apply();
 
