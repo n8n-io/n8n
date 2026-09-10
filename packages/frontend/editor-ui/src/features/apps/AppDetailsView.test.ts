@@ -849,9 +849,12 @@ describe('AppDetailsView', () => {
 			expect(queryByTestId('app-connection-data-table')).toBeNull();
 		});
 
-		it('flags an unpublished agent connection', async () => {
+		it('flags an unpublished agent connection with the badge only', async () => {
 			appsStore.bindings = [{ ...supportBinding, published: false }];
-			const { getByRole, getByTestId } = await renderApp(makeApp());
+			appsStore.bindingWarnings = [
+				`Binding 'support': agent "Support" is not published. The app gets an error until it is published.`,
+			];
+			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
 
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
@@ -859,6 +862,7 @@ describe('AppDetailsView', () => {
 				'Not published — the app cannot chat yet',
 			);
 			expect(getByTestId('app-connection-agent')).toHaveTextContent('Support');
+			expect(queryByTestId('app-connection-warning')).toBeNull();
 		});
 
 		it('disconnects an agent after confirmation with the agent copy', async () => {
