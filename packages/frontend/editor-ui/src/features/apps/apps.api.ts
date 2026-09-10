@@ -93,3 +93,52 @@ export const deleteBindingApi = async (
 		`/projects/${projectId}/apps/${appId}/bindings/${key}`,
 	);
 };
+
+export const fetchAppVersionFilesApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+) => {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files`,
+	);
+};
+
+export const fetchAppVersionFileContentApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+	filePath: string,
+) => {
+	// Each segment is encoded on its own so a `/` inside the path keeps routing
+	// to the right file, not a `%2F` the server would reject.
+	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+	const { content } = await makeRestApiRequest<{ content: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+	);
+	return content;
+};
+
+/** Overwrites one existing source file and rebuilds the app; returns the app with its new active version. */
+export const saveAppVersionFileContentApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+	filePath: string,
+	content: string,
+) => {
+	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+	return await makeRestApiRequest<App>(
+		context,
+		'PUT',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+		{ content },
+	);
+};

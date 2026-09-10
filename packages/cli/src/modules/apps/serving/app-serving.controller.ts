@@ -6,14 +6,8 @@ import path from 'node:path';
 
 import { AppServingService } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
+import { pathSegments } from './path-segments';
 import { renderAppPage, renderAppPageNotFound } from './render-page';
-
-/** Express 5 hands a wildcard path over as its segments; an empty path has none. */
-const pathSegments = (path: unknown): string[] => {
-	if (Array.isArray(path))
-		return path.filter((segment): segment is string => typeof segment === 'string');
-	return typeof path === 'string' && path !== '' ? [path] : [];
-};
 
 @RootLevelController('/apps')
 export class AppServingController {

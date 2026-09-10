@@ -37,6 +37,8 @@ import { BindingIncompatibleError } from './errors/binding-incompatible.error';
 import { BindingNotFoundError } from './errors/binding-not-found.error';
 import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
 import { BindingWorkflowNotFoundError } from './errors/binding-workflow-not-found.error';
+import { AppVersionFileNotFoundError } from './errors/app-version-file-not-found.error';
+import { AppVersionNotFoundError } from './errors/app-version-not-found.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
 import { InvalidBindingsError } from './errors/invalid-bindings.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
@@ -279,6 +281,25 @@ export class AppsService {
 			const draft = await this.workflowLoader.loadWorkflow(projectId, reference);
 			return draft && { workflow: draft, published: false };
 		}
+	}
+
+	/** Scoped to `appId` so a versionId from a different app is treated as not found. */
+	private async getVersion(appId: string, versionId: string) {
+		const version = await this.appVersionService.findById(versionId);
+		if (!version || version.appId !== appId) throw new AppVersionNotFoundError(versionId);
+		return version;
+	}
+
+	async listVersionFiles(appId: string, versionId: string) {
+		const version = await this.getVersion(appId, versionId);
+		return await this.appVersionService.listSourceFiles(version);
+	}
+
+	async getVersionFileContent(appId: string, versionId: string, segments: string[]) {
+		const version = await this.getVersion(appId, versionId);
+		const content = await this.appVersionService.readSourceFile(version, segments);
+		if (content === undefined) throw new AppVersionFileNotFoundError(segments.join('/'));
+		return { content };
 	}
 
 	async createPage(appId: string, dto: CreatePageDto) {

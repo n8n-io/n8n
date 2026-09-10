@@ -22,6 +22,7 @@ import CopyInput from '@/app/components/CopyInput.vue';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import AppCodeViewer from '@/features/apps/components/AppCodeViewer.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import type { InspectedElement } from '@/features/apps/components/AppPreviewFrame.vue';
 import AppThemeEditor from '@/features/apps/components/AppThemeEditor.vue';
@@ -102,12 +103,7 @@ const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
 	{ value: 'connections' as const, label: i18n.baseText('apps.connections') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
-	{
-		value: 'code' as const,
-		label: i18n.baseText('apps.builder.code'),
-		disabled: true,
-		tooltip: i18n.baseText('apps.builder.codeComingSoon'),
-	},
+	{ value: 'code' as const, label: i18n.baseText('apps.builder.code') },
 ]);
 
 // The API reports warnings as one flat list; each starts with the quoted binding key.
@@ -240,6 +236,11 @@ const onElementSelected = async (element: InspectedElement) => {
 const onThemeApplied = (updated: App) => {
 	app.value = updated;
 	mode.value = 'preview';
+};
+
+// Unlike a theme save, stay on the Code tab: the user is likely still editing.
+const onCodeSaved = (updated: App) => {
+	app.value = updated;
 };
 
 const onOpenInAssistant = async () => {
@@ -517,6 +518,15 @@ watch(versionId, (next, previous) => {
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
 					<AppThemeEditor :project-id="projectId" :app="app" @applied="onThemeApplied" />
 				</div>
+
+				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
+					<AppCodeViewer
+						:project-id="projectId"
+						:app-id="appId"
+						:version-id="versionId"
+						@saved="onCodeSaved"
+					/>
+				</div>
 			</div>
 		</div>
 	</component>
@@ -613,6 +623,14 @@ watch(versionId, (next, previous) => {
 	gap: var(--spacing--sm);
 	width: 100%;
 	padding-bottom: var(--spacing--lg);
+}
+
+// Unlike the flowing Pages/Theme content, the tree + viewer need a bounded
+// height to fill so each can scroll on its own, the same way `.preview` does.
+.codeContainer {
+	flex: 1;
+	min-height: 0;
+	padding-bottom: var(--spacing--2xs);
 }
 
 .header {
