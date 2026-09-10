@@ -104,6 +104,10 @@ describe('KeyManagerService', () => {
 			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
 		});
 
+		afterEach(() => {
+			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+		});
+
 		// Fresh instances: the legacy descriptor is memoized per service instance.
 		const createService = () =>
 			new KeyManagerService(repository, cipher, instanceSettings, mock<Logger>());
