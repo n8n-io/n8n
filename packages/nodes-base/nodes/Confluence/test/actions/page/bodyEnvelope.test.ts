@@ -70,6 +70,13 @@ describe('buildBodyEnvelope', () => {
 			['an array document', JSON.stringify([1, 2]), 'must be a JSON object'],
 			['a null document', 'null', 'must be a JSON object'],
 			['a scalar document', '"text"', 'must be a JSON object'],
+			// Confluence answers these with a raw "Error converting ADF to storage format" 400
+			['an object that is not a document', '{"foo":"bar"}', 'must be a document'],
+			[
+				'a document whose content is not an array',
+				'{"type":"doc","content":{}}',
+				'must be a document',
+			],
 		])('rejects %s', (_name, input, message) => {
 			expect(() => buildBodyEnvelope('atlas_doc_format', input)).toThrow(message);
 		});

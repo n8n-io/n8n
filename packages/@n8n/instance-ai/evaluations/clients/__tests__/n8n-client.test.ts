@@ -4,6 +4,7 @@ import type {
 	EvaluationConfigDto,
 	InstanceAiEvalSeedAgent,
 } from '@n8n/api-types';
+import { InstanceAiSendMessageRequest } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 import {
@@ -13,6 +14,41 @@ import {
 } from '../n8n-client';
 
 const BASE_URL = 'http://localhost:5678';
+
+describe('N8nClient.sendMessage', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('preserves the Execute target through the REST request schema', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		const client = new N8nClient(BASE_URL);
+		const context = { source: 'setup-panel-execute', workflowId: 'wf-remapped' } as const;
+		const attachments = [{ type: 'workflow', id: context.workflowId, name: 'Greeting' }] as const;
+
+		await expect(
+			client.sendMessage(
+				'thread-1',
+				'Run a test.',
+				[...attachments],
+				'progressive',
+				'progressive@1',
+				context,
+			),
+		).resolves.toEqual({ runId: 'run-1' });
+
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe(`${BASE_URL}/rest/instance-ai/chat/thread-1`);
+		if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+		const body = jsonParse<Record<string, unknown>>(init.body);
+		expect(InstanceAiSendMessageRequest.parse(body)).toMatchObject({
+			message: 'Run a test.',
+			attachments,
+			context,
+			mode: 'progressive',
+			promptVersion: 'progressive@1',
+		});
+		expect(body).not.toHaveProperty('handoffContext');
+	});
+});
 
 /** Builds a minimal `Response`-shaped object for the client's private `fetch()` to consume. */
 function jsonResponse(body: unknown): Response {
@@ -39,6 +75,51 @@ function stubFetch(body: unknown) {
 	vi.stubGlobal('fetch', fetchMock);
 	return fetchMock;
 }
+
+describe('N8nClient chat build mode', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('sends an explicit prompt version with the chat message', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		await new N8nClient(BASE_URL).sendMessage(
+			'thread-1',
+			'Build it',
+			undefined,
+			'default',
+			'progressive@1',
+		);
+		expect(fetchMock).toHaveBeenCalledWith(
+			`${BASE_URL}/rest/instance-ai/chat/thread-1`,
+			expect.objectContaining({
+				body: JSON.stringify({
+					message: 'Build it',
+					mode: 'default',
+					promptVersion: 'progressive@1',
+				}),
+			}),
+		);
+	});
+
+	it.each([undefined, 'default', 'progressive'] as const)(
+		'sends an explicit eval mode when the override is %s',
+		async (mode) => {
+			const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+			const client = new N8nClient(BASE_URL);
+
+			await expect(
+				client.sendMessage('thread-1', 'Build a workflow', undefined, mode),
+			).resolves.toEqual({ runId: 'run-1' });
+
+			expect(fetchMock).toHaveBeenCalledWith(
+				`${BASE_URL}/rest/instance-ai/chat/thread-1`,
+				expect.objectContaining({
+					method: 'POST',
+					body: JSON.stringify({ message: 'Build a workflow', mode: mode ?? 'default' }),
+				}),
+			);
+		},
+	);
+});
 
 describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 	afterEach(() => {

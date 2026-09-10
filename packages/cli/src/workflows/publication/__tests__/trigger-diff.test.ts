@@ -86,7 +86,7 @@ describe('computeTriggerDiff', () => {
 		expect(computeTriggerDiff([], [])).toEqual({ toAdd: new Set(), toRemove: new Set() });
 	});
 
-	describe('triggers that observe the publication itself', () => {
+	describe('triggers that are always re-registered on a version change', () => {
 		const n8nTrigger = makeNode('n8n', {
 			type: 'n8n-nodes-base.n8nTrigger',
 			parameters: { events: ['update'] },
@@ -129,6 +129,19 @@ describe('computeTriggerDiff', () => {
 			});
 
 			expect(diff).toEqual({ toAdd: new Set(['imap']), toRemove: new Set(['imap']) });
+		});
+
+		test('re-registers an unchanged Postgres Trigger so a republish reconnects its LISTEN connection', () => {
+			const postgresTrigger = makeNode('pg', {
+				type: 'n8n-nodes-base.postgresTrigger',
+				parameters: { triggerMode: 'listenTrigger', channelName: 'n8n_channel' },
+			});
+
+			const diff = computeTriggerDiff([postgresTrigger], [{ ...postgresTrigger }], {
+				versionChanged: true,
+			});
+
+			expect(diff).toEqual({ toAdd: new Set(['pg']), toRemove: new Set(['pg']) });
 		});
 
 		test('does not force other unchanged trigger types when the published version changed', () => {

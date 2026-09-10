@@ -4,6 +4,57 @@ This reference records the fixture contracts and remaining evidence for [DEVP-10
 The source baseline is `33eb5c196e0ce3a2c71525929a4ef861cb94b168`.
 The parent plan is [DEVP-1063](https://linear.app/n8n/issue/DEVP-1063).
 
+## DEVP-1066 handover
+
+DEVP-1066 adds correlated startup telemetry for the container stack and
+Playwright diagnostics. The implementation is in draft PR [#37920](https://github.com/n8n-io/n8n/pull/37920),
+stacked on [DEVP-1064 PR #37913](https://github.com/n8n-io/n8n/pull/37913).
+The stack is based on the latest `master`.
+
+### Delivered
+
+- Every stack startup has a unique `attemptId`.
+- Startup stages record their source, start time, elapsed time, and outcome.
+- Failed and cancelled stages preserve their failure phase and elapsed time.
+- Correlation records include resolved profile, shard, worker, CI retry, and restart reason.
+- Startup diagnostics include the attempt ID and Playwright retry metadata.
+- Telemetry webhook tests use an isolated loopback contract server.
+- Invalid webhook payloads receive `400` responses.
+- Credential-shaped values are removed from telemetry errors before delivery.
+- Framework tests live under `tests/framework/` and stay separate from product E2E specs.
+
+### Review learnings
+
+| Category | Learning | Guard added |
+| --- | --- | --- |
+| Readiness | A polling helper must reject when a required readiness condition never succeeds. A warning followed by a resolved promise records a false success. | `pollContainerHttpEndpoint()` throws after its timeout. The readiness stage records failure. |
+| Correlation | Unknown context must remain explicit. Missing and unrecognized restart reasons are different states. | Unknown restart reasons map to `unknown`. Resolved profiles are documented separately from unavailable fields. |
+| Evidence | A test must prove the failure mode it names. `toThrow()` cannot validate a detached, fire-and-forget sender. | Integration tests inspect the received failure payload, attempt ID, failure stage, and elapsed duration. |
+| Timing | `expect.any(Number)` does not prove that a failed stage recorded useful elapsed time. | Tests introduce a small delay and require a non-zero duration. |
+| Contract testing | A mock server validator must affect its response. Otherwise invalid payload tests are dead code. | The telemetry contract server returns `400` for invalid payloads and tests that behavior. |
+| Secret handling | Error messages can contain bare provider token formats, not only `key=value` or authorization headers. | Sanitization covers AWS, GitHub, Slack, and OpenAI-style credential shapes. Regression tests keep the literals split to avoid repository secret scanners. |
+| Test taxonomy | Framework tests are not product E2E tests. Browser-backed harness tests need a separate Vitest configuration. | Framework tests use `tests/framework/`; browser-backed consumers remain in `vitest.harness.config.ts`. |
+| Stack delivery | A stacked PR must use an allowed repository title scope and be rebased when its trunk moves. | PR titles use the unscoped `test:` form. `gh stack sync` keeps DEVP-1064 and DEVP-1066 aligned. |
+
+### Verification
+
+- Full Playwright Vitest suite: 89 tests passed.
+- Containers and Playwright typecheck passed.
+- Containers and Playwright lint passed.
+- Janitor reported no new violations.
+- GitHub push protection passed after splitting credential-shaped test values.
+
+### Remaining evidence
+
+- CI checks and review approval on PR #37920.
+- Matched workload measurements for telemetry instrumentation overhead.
+- Controlled real-container retry and cancellation evidence.
+- Real application sentinels without the synthetic support override.
+
+After DEVP-1066 lands, the next parent implementation item is DEVP-1065:
+safe resource acquisition and cleanup. Keep this telemetry contract when
+refactoring resource ownership and teardown.
+
 ## Consumer contracts
 
 `pnpm test:harness` runs six Vitest cases. Each case starts a real Playwright process that imports `fixtures/base.ts`.

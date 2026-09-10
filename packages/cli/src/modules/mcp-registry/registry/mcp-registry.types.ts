@@ -92,6 +92,8 @@ const mcpRegistryServerBaseSchema = z.object({
 		z.object({
 			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
 			url: z.string(),
+			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
+			headers: z.record(z.string(), z.string()).optional(),
 		}),
 	),
 	tools: z.array(

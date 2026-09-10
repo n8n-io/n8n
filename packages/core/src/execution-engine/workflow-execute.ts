@@ -2092,7 +2092,7 @@ export class WorkflowExecute {
 				this.runExecutionData.resultData.runData[executionNode.name][runIndex]?.inputOverride || {};
 			taskData.data = {
 				[executionNode.rewireOutputLogTo]: [[{ json: { error: executionError.message } }]],
-			} as ITaskDataConnections;
+			};
 		}
 
 		this.upsertTaskData(executionNode.name, runIndex, taskData);
@@ -2164,7 +2164,7 @@ export class WorkflowExecute {
 			this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]?.inputOverride || {};
 		taskData.data = {
 			[executionNode.rewireOutputLogTo]: nodeSuccessData,
-		} as ITaskDataConnections;
+		};
 	}
 
 	/** True while there are nodes queued for execution. */

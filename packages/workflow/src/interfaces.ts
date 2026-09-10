@@ -4392,6 +4392,9 @@ export interface IUserSettings {
 		modelName?: string;
 		localGatewayDisabled?: boolean;
 	};
+	mcpJsonNudge?: {
+		impressions: number;
+	};
 }
 
 export interface IProcessedDataConfig {

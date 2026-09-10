@@ -1,18 +1,19 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { User } from '@n8n/db';
+import { ProjectRelationRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { DataTableRepository } from './data-table.repository';
+import { RoleService } from '@/services/role.service';
 
-import { ProjectService } from '@/services/project.service.ee';
+import { DataTableRepository } from './data-table.repository';
 
 @Service()
 export class DataTableAggregateService {
 	constructor(
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('data-table');
@@ -25,9 +26,15 @@ export class DataTableAggregateService {
 			return await this.dataTableRepository.getManyAndCount(options);
 		}
 
-		const projects = await this.projectService.getProjectRelationsForUser(user);
+		// Membership alone isn't enough — a project role without dataTable:listProject
+		// (e.g. project:chatUser, or a custom role missing dataTable:read) grants no
+		// data table access, so it must not surface that project's tables here either.
+		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
+		let projectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
+			user.id,
+			roles,
+		);
 
-		let projectIds = projects.map((x) => x.projectId);
 		if (options.filter?.projectId) {
 			const mask = [options.filter?.projectId].flat();
 			projectIds = projectIds.filter((x) => mask.includes(x));

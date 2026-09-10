@@ -331,6 +331,15 @@ export abstract class BaseCommand<F = never> {
 		throw new UnexpectedError(message);
 	}
 
+	/** Print an error banner, optionally preceded by a command-specific summary. */
+	protected logError(error: Error, summary?: string) {
+		if (summary) this.logger.error(summary);
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
+	}
+
 	async initBinaryDataService() {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);

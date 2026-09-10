@@ -843,7 +843,7 @@ function tryParseSeedWorkflow(code: string): { workflow: ParsedSeedWorkflow } | 
 			workflow: {
 				name: workflow.name,
 				nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
-				connections: (workflow.connections ?? {}) as Record<string, unknown>,
+				connections: workflow.connections ?? {},
 			},
 		};
 	} catch (error) {
