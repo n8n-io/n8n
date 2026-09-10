@@ -7,6 +7,7 @@ import { Header } from 'tar';
 import { AppVersionService } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { injectInspectorScript } from '@/modules/apps/serving/inject-inspector-script';
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -67,7 +68,7 @@ const createBuiltApp = async () => {
 };
 
 describe('GET /apps/:namespace/ with an active version', () => {
-	test('serves index.html unchanged to the anonymous visitor', async () => {
+	test('serves index.html to the anonymous visitor without a cookie', async () => {
 		await createBuiltApp();
 
 		const response = await visitor.get('/apps/acme/').expect(200);
@@ -76,7 +77,7 @@ describe('GET /apps/:namespace/ with an active version', () => {
 		expect(response.headers['content-security-policy']).toContain('sandbox');
 		expect(response.headers['cache-control']).toBe('no-cache');
 		expect(response.headers['set-cookie']).toBeUndefined();
-		expect(response.text).toBe(INDEX_HTML);
+		expect(response.text).toBe(injectInspectorScript(INDEX_HTML));
 	});
 
 	test('serves assets unchanged', async () => {
