@@ -43,8 +43,12 @@ const clearSelection = () => {
 	editedContent.value = undefined;
 };
 
+// Guards against an older fetch resolving after a newer one (e.g. clicking a
+// second file before the first one's content arrives).
+let selectRequestId = 0;
+
 const selectFile = async (path: string) => {
-	selectedPath.value = [path];
+	const requestId = ++selectRequestId;
 	buildError.value = undefined;
 	try {
 		const content = await appsStore.fetchAppVersionFileContent(
@@ -53,10 +57,18 @@ const selectFile = async (path: string) => {
 			props.versionId!,
 			path,
 		);
+		if (requestId !== selectRequestId) return;
+		// `selectedPath` (the viewer's `path`) and `fileContent`/`editedContent`
+		// (its `content`) must land in the same tick — the viewer only recreates
+		// on a `path` change, so a `path` update with stale content would show
+		// the previous file's text under the new file's name until the next click.
+		selectedPath.value = [path];
 		fileContent.value = content;
 		editedContent.value = content;
 	} catch (error) {
-		toast.showError(error, i18n.baseText('apps.builder.code.error'));
+		if (requestId === selectRequestId) {
+			toast.showError(error, i18n.baseText('apps.builder.code.error'));
+		}
 	}
 };
 

@@ -105,6 +105,36 @@ describe('AppCodeViewer', () => {
 		expect(getByTestId('file-code-viewer-stub')).toHaveTextContent('main.ts:export {};');
 	});
 
+	it("never pairs the new file's path with the previous file's content while its fetch is pending", async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		let resolveA: (content: string) => void = () => {};
+		appsStore.fetchAppVersionFileContent.mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveA = resolve)),
+		);
+		const { getByText, getByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('a.ts'));
+		resolveA('a content');
+		await waitAllPromises();
+
+		let resolveB: (content: string) => void = () => {};
+		appsStore.fetchAppVersionFileContent.mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveB = resolve)),
+		);
+		await userEvent.click(getByText('b.ts'));
+
+		// While b.ts's content is still in flight, the viewer must keep showing
+		// a.ts's own pairing — never b.ts's path against a.ts's stale content.
+		expect(getByTestId('fcv-content')).toHaveTextContent('a.ts:a content');
+
+		resolveB('b content');
+		await waitAllPromises();
+
+		expect(getByTestId('fcv-content')).toHaveTextContent('b.ts:b content');
+	});
+
 	it('shows an error toast when listing the files fails', async () => {
 		appsStore.fetchAppVersionFiles.mockRejectedValue(new Error('boom'));
 		renderViewer({ props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' } });
