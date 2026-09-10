@@ -18,14 +18,14 @@ import {
 	HANDSHAKE_FAILED_ERROR_MESSAGE,
 	MISSING_PROTOCOL_VERSION_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService, type McpFeatureFlags } from './mcp.service';
+import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from './mcp.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type {
 	McpAuthContext,
 	McpAuthenticatedRequest,
 	UserConnectedToMCPEventPayload,
 } from './mcp.types';
-import { getClientInfo, getProtocolVersion } from './mcp.utils';
+import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -131,8 +131,7 @@ export class McpController {
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
 		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
-		const isConnectionHandshake =
-			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
+		const isHandshake = isConnectionHandshake(body);
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
@@ -153,8 +152,10 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
-			if (isConnectionHandshake) {
+			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body, {
+				isConnectionHandshake: isHandshake,
+			});
+			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
@@ -182,7 +183,7 @@ export class McpController {
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',
@@ -217,6 +218,7 @@ export class McpController {
 		res: FlushableResponse,
 		featureFlags: McpFeatureFlags,
 		body: unknown,
+		options: McpServerBuildOptions,
 	): Promise<string | undefined> {
 		const { createMcpHandler } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -237,7 +239,8 @@ export class McpController {
 		// 2026-07-28 protocol and, via the stateless legacy fallback, 2025-era
 		// clients on this same endpoint.
 		const handler = createMcpHandler(
-			async () => await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth),
+			async () =>
+				await this.mcpService.getServer(req.user, featureFlags, getClientInfo(req), auth, options),
 			{
 				legacy: 'stateless',
 				onerror: (error) => {

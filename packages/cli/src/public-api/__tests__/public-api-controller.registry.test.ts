@@ -1,4 +1,5 @@
 import { Z } from '@n8n/api-types';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import {
 	ApiResponse,
 	Body,
@@ -29,6 +30,7 @@ describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
 	const lastActiveAtService = mock<LastActiveAtService>();
 	const eventService = mock<EventService>();
+	const authenticatedUser = mock<User>({ id: 'user-1' });
 
 	function activate(): express.Express {
 		const app = express();
@@ -45,13 +47,19 @@ describe('PublicApiControllerRegistry', () => {
 			lastActiveAtService,
 			eventService,
 		).activate(router, 'v1');
-		app.use(router);
+		// mirrors the production mount, `apiController.use('/api/v1', ..., controllerRouter)`
+		app.use('/api/v1', router);
 		return app;
 	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		authStrategyRegistry.authenticate.mockResolvedValue(true);
+		// mirrors the real strategies, which set `req.user` on success
+		authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+			req.user = authenticatedUser;
+			return true;
+		});
+		lastActiveAtService.updateLastActiveIfStale.mockResolvedValue(undefined);
 		Container.set(ControllerRegistryMetadata, new ControllerRegistryMetadata());
 	});
 
@@ -69,7 +77,7 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		const response = await request(activate()).get('/widgets').expect(200);
+		const response = await request(activate()).get('/api/v1/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 	});
@@ -89,7 +97,7 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		const response = await request(activate()).get('/widgets').expect(401);
+		const response = await request(activate()).get('/api/v1/widgets').expect(401);
 
 		expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 	});
@@ -105,9 +113,32 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		const response = await request(activate()).get('/widgets').expect(200);
+		const response = await request(activate()).get('/api/v1/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ method: 'GET', path: '/widgets' }),
+		);
+	});
+
+	it('reports the version-less route path for a sub-path route', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).get('/api/v1/widgets/w-1').expect(200);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
+		);
 	});
 
 	describe('validation failures', () => {
@@ -128,7 +159,7 @@ describe('PublicApiControllerRegistry', () => {
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 			const response = await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.send({ name: 'w', active: false })
 				.expect(400);
 
@@ -158,7 +189,7 @@ describe('PublicApiControllerRegistry', () => {
 		it('rejects a value that fails its schema with a 400 naming the parameter', async () => {
 			registerValidatedRoute();
 
-			const response = await request(activate()).get('/widgets/abc').expect(400);
+			const response = await request(activate()).get('/api/v1/widgets/abc').expect(400);
 
 			expect(response.body.message).toBe('request/params/widgetId must be a positive integer');
 		});
@@ -166,7 +197,7 @@ describe('PublicApiControllerRegistry', () => {
 		it('hands a passing value to the handler as a string', async () => {
 			registerValidatedRoute();
 
-			const response = await request(activate()).get('/widgets/12').expect(200);
+			const response = await request(activate()).get('/api/v1/widgets/12').expect(200);
 
 			expect(response.body).toEqual({ widgetId: '12' });
 		});
@@ -182,7 +213,7 @@ describe('PublicApiControllerRegistry', () => {
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-			const response = await request(activate()).get('/widgets/abc').expect(200);
+			const response = await request(activate()).get('/api/v1/widgets/abc').expect(200);
 
 			expect(response.body).toEqual({ widgetId: 'abc' });
 		});
@@ -213,11 +244,27 @@ describe('PublicApiControllerRegistry', () => {
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 		}
 
+		function registerRequiredOptionalBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(
+					_req: unknown,
+					_res: unknown,
+					@Body({ required: true }) body: OptionalWidgetBodyDto,
+				) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
 		it('accepts application/json', async () => {
 			registerBodyRoute();
 
 			await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.set('Content-Type', 'application/json')
 				.send({ name: 'a' })
 				.expect(200);
@@ -227,7 +274,7 @@ describe('PublicApiControllerRegistry', () => {
 			registerBodyRoute();
 
 			await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.set('Content-Type', 'application/json; charset=utf-8')
 				.send({ name: 'a' })
 				.expect(200);
@@ -244,7 +291,7 @@ describe('PublicApiControllerRegistry', () => {
 			registerBodyRoute();
 
 			const response = await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.set('Content-Type', sent)
 				.send('a')
 				.expect(415);
@@ -256,7 +303,7 @@ describe('PublicApiControllerRegistry', () => {
 			registerBodyRoute();
 
 			const response = await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.set('Content-Type', 'application/x-www-form-urlencoded')
 				.expect(415);
 
@@ -272,7 +319,7 @@ describe('PublicApiControllerRegistry', () => {
 		];
 
 		function postWithContentType(header: string | undefined) {
-			const pending = request(activate()).post('/widgets');
+			const pending = request(activate()).post('/api/v1/widgets');
 
 			return header === undefined ? pending : pending.set('Content-Type', header);
 		}
@@ -294,11 +341,32 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.body.message).toBe('unsupported media type undefined');
 		});
 
+		it.each(namesNoMediaType)(
+			'rejects %s when @Body({ required: true }) overrides an otherwise-optional DTO',
+			async (_label, header) => {
+				registerRequiredOptionalBodyRoute();
+
+				const response = await postWithContentType(header).expect(415);
+
+				expect(response.body.message).toBe('unsupported media type undefined');
+			},
+		);
+
+		it('accepts application/json with an empty object when @Body({ required: true }) is set', async () => {
+			registerRequiredOptionalBodyRoute();
+
+			await request(activate())
+				.post('/api/v1/widgets')
+				.set('Content-Type', 'application/json')
+				.send({})
+				.expect(200);
+		});
+
 		it('accepts application/json carrying an unrelated parameter', async () => {
 			registerBodyRoute();
 
 			await request(activate())
-				.post('/widgets')
+				.post('/api/v1/widgets')
 				.set('Content-Type', 'application/json; Foo=BAR')
 				.send({ name: 'a' })
 				.expect(200);

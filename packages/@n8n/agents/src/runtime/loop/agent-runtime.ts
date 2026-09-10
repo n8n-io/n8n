@@ -44,6 +44,7 @@ import type {
 } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type {
+	AgentPersistenceOptions,
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
@@ -51,7 +52,6 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -60,7 +60,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
-import type { FetchFn } from '../model/model-factory';
+import { supportsSplitSystemMessages, type FetchFn } from '../model/model-factory';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
@@ -81,6 +81,14 @@ import {
 	type ToolBatchContext,
 	type ToolCallBatchResult,
 } from '../tools/tool-call-executor';
+
+export interface VolatileInstructionsContext {
+	persistence?: AgentPersistenceOptions;
+}
+
+export type VolatileInstructionsProvider = (
+	context: VolatileInstructionsContext,
+) => Promise<string | undefined>;
 
 export interface AgentRuntimeConfig {
 	name: string;
@@ -138,6 +146,8 @@ export interface AgentRuntimeConfig {
 	 * aborting the run.
 	 */
 	mcpConnectionFailures?: McpConnectionFailedEvent[];
+	/** The runtime loads these host instructions before each model call but does not save them. */
+	volatileInstructionsProvider?: VolatileInstructionsProvider;
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -207,7 +217,12 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				// Let the discovery tools recognize the always-available toolset, so a
+				// `load_tool` call for one of those answers `already_loaded`.
+				activeTools: config.tools,
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
@@ -392,7 +407,7 @@ export class AgentRuntime {
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
-			resumeData = parseResult.data as JSONValue;
+			resumeData = parseResult.data;
 		}
 
 		try {
@@ -871,10 +886,16 @@ export class AgentRuntime {
 				options?.persistence,
 				options?.executionCounter,
 			);
+			const hostVolatileInstructions = await this.resolveVolatileInstructions(options?.persistence);
+			const combinedVolatileInstructions = [volatileInstructions, hostVolatileInstructions]
+				.map((value) => value?.trim())
+				.filter((value): value is string => Boolean(value))
+				.join('\n\n');
 			const { system, messages } = list.forLlm(
 				effectiveInstructions,
 				instructionProviderOptions,
-				volatileInstructions,
+				combinedVolatileInstructions || undefined,
+				supportsSplitSystemMessages(this.config.model),
 			);
 			// Runtime breakpoints (conversation history, static tools) are per-call
 			// only — never persisted back to the message list or tool set.
@@ -983,6 +1004,17 @@ export class AgentRuntime {
 			usage: totalUsage,
 			structuredOutput,
 		});
+	}
+
+	private async resolveVolatileInstructions(
+		persistence: AgentPersistenceOptions | undefined,
+	): Promise<string | undefined> {
+		try {
+			return await this.config.volatileInstructionsProvider?.({ persistence });
+		} catch (error) {
+			logger.warn('Failed to resolve volatile agent instructions', { runId: this.runId, error });
+			return undefined;
+		}
 	}
 
 	/**

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/computer-use",
   "version": "0.22.0",
-  "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
+  "description": "Local AI gateway for n8n Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
       "n8n-computer-use": "dist/cli.js"

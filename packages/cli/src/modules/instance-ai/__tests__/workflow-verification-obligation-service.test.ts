@@ -1,4 +1,6 @@
 import type { PlannedTaskGraph, PlannedTaskRecord, WorkflowBuildOutcome } from '@n8n/instance-ai';
+import type { WorkflowLoopWorkItemRecord } from '@n8n/instance-ai';
+import { mock } from 'vitest-mock-extended';
 
 import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
 import { WorkflowVerificationObligationService } from '../workflow-verification-obligation-service';
@@ -83,4 +85,94 @@ describe('WorkflowVerificationObligationService.findPendingPlannedWorkflowVerifi
 
 		expect(verification).toBeUndefined();
 	});
+});
+
+describe('WorkflowVerificationObligationService setup panel policy', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it.each([true, false])(
+		'applies the panel flag to direct and planned reads: %s',
+		async (enabled) => {
+			const getThread = vi.fn<TypeORMAgentMemory['getThread']>();
+			const memory = mock<TypeORMAgentMemory>({ getThread });
+			const service = new WorkflowVerificationObligationService(memory, () => enabled);
+			const outcome = makeOutcome({
+				needsUserInput: true,
+				nodeSimulationPlan: [],
+				verificationReadiness: {
+					status: 'needs_setup',
+					reason: 'workflow-needs-setup',
+					guidance: 'Connect the account.',
+				},
+				remediation: {
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Connect the account.',
+				},
+			});
+			const record: WorkflowLoopWorkItemRecord = {
+				state: {
+					workItemId: outcome.workItemId,
+					threadId: 'thread-1',
+					phase: 'blocked',
+					status: 'blocked',
+					source: 'create',
+					rebuildAttempts: 0,
+					lastRemediation: outcome.remediation,
+				},
+				attempts: [],
+				lastBuildOutcome: outcome,
+			};
+			const thread = {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Setup',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				metadata: { instanceAiWorkflowLoop: { [outcome.workItemId]: record } },
+			};
+			getThread.mockResolvedValue(thread);
+			expect(
+				(await service.getObligation('thread-1', outcome.workItemId, { source: 'direct' }))?.status,
+			).toBe(enabled ? 'ready_to_verify' : 'needs_setup');
+			for (const stored of [thread, null]) {
+				getThread.mockResolvedValue(stored);
+				const pending = await service.findPendingPlannedWorkflowVerification(
+					'thread-1',
+					makeGraph(outcome),
+				);
+				if (enabled)
+					expect(pending?.obligation).toMatchObject({
+						status: 'ready_to_verify',
+						source: 'planned',
+						plannedTaskId: 'task-1',
+					});
+				else expect(pending).toBeUndefined();
+			}
+		},
+	);
+
+	it.each([
+		{ verifyAttempts: 1 },
+		{ verification: { attempted: true, success: false, status: 'error' } },
+		{ executionIntent: 'one-off' },
+	] satisfies Array<Partial<WorkflowBuildOutcome>>)(
+		'keeps attempted and one-off outcomes settled: %j',
+		async (overrides) => {
+			const service = new WorkflowVerificationObligationService(emptyMemory, () => true);
+			const outcome = makeOutcome({
+				needsUserInput: true,
+				nodeSimulationPlan: [],
+				verificationReadiness: {
+					status: 'needs_setup',
+					reason: 'workflow-needs-setup',
+					guidance: 'Connect the account.',
+				},
+				...overrides,
+			});
+			await expect(
+				service.findPendingPlannedWorkflowVerification('thread-1', makeGraph(outcome)),
+			).resolves.toBeUndefined();
+		},
+	);
 });

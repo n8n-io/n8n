@@ -850,8 +850,10 @@ describe('credentials tool', () => {
 		function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn<() => string | undefined>(() => undefined),
+				workflowIds: vi.fn(() => []),
 			};
 			const context = createMockContext({
 				setupItemsEmitter: emitter,

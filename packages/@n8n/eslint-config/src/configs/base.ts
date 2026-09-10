@@ -442,6 +442,9 @@ export const baseConfig = tseslint.config(
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
 			'@typescript-eslint/unbound-method': 'off',
+			// Test code casts mocks into position; the rule's assignability check reads
+			// those casts as redundant and removing them breaks the build.
+			'@typescript-eslint/no-unnecessary-type-assertion': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 			'n8n-local-rules/no-error-instance-in-to-throw': 'error',
 			'n8n-local-rules/no-dynamic-regexp': 'off',

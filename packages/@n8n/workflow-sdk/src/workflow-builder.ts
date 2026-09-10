@@ -454,6 +454,33 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Route the error output of the node the cursor is on (the last node added via
+	 * `.to()`/`.add()`) to `handler`. The cursor stays on that node, so a following
+	 * `.to()` continues the main branch — the same way `.onTrue()`/`.onFalse()` behave.
+	 */
+	onError(handler: unknown): WorkflowBuilder {
+		assertNotOutputSelector(handler, 'onError');
+
+		const sourceKey = this._currentNode;
+		const sourceGraphNode = sourceKey ? this._nodes.get(sourceKey) : undefined;
+		if (!sourceGraphNode) {
+			throw new Error(
+				'.onError() must follow adding a node. Use it as ' +
+					'workflow.add(trigger).to(httpNode).onError(errorHandler).',
+			);
+		}
+
+		if (handler === null || handler === undefined) return this;
+
+		const sourceInstance = sourceGraphNode.instance;
+		sourceInstance.onError(handler as NodeInstance<string, string, unknown>);
+		// The handler is reachable only through the node's declared connections, so pull it
+		// — and anything it fans out to — into the graph.
+		this.addSingleNodeConnectionTargets(this._nodes, sourceInstance);
+		return this;
+	}
+
+	/**
 	 * Connect a branch output of the node the cursor is on (the last node added
 	 * via `.to()`/`.add()`) to `target`, without advancing the cursor — so
 	 * sibling branches (`.onTrue().onFalse()`, `.onCase(0).onCase(1)`) all attach
@@ -490,7 +517,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		this._currentNode = sourceKey;
 		this._currentOutput = outputIndex;
-		this.to(target as NodeInstance<string, string, unknown>);
+		this.to(target);
 		// Re-anchor the cursor on the branching node so the next sibling branch wires correctly.
 		this._currentNode = sourceKey;
 		this._currentOutput = 0;
@@ -647,13 +674,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Merge connections declared on node instances via .to() into the graph connections.
-	 * This prepares the graph for serialization by ensuring all connections are stored
-	 * in graphNode.connections.
+	 * Merge connections declared on node instances — via `.to()`, or `.onError()` on an
+	 * imported handle — into the graph connections. This prepares the graph for
+	 * serialization by ensuring all connections are stored in graphNode.connections.
 	 */
 	private mergeInstanceConnections(): void {
 		for (const graphNode of this._nodes.values()) {
-			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
+			// Some composites (e.g. SplitInBatchesBuilder) declare no connections of their own.
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
 				for (const { target, outputIndex, targetInputIndex, connectionType } of nodeConns) {
@@ -1330,7 +1357,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 }
 
-function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
+function assertNotOutputSelector(value: unknown, method: 'add' | 'to' | 'onError'): void {
 	if (!isOutputSelector(value)) return;
 	const sourceName = value.node.name;
 	throw new TypeError(

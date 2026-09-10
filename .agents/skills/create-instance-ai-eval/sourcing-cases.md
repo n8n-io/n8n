@@ -70,7 +70,12 @@ ids. Full table in
 5. **Encode a durable synthetic case** — turn the confirmed failure into an
    authored case ([SKILL.md](SKILL.md), [`case-shapes.md`](case-shapes.md)). The
    failure mode is the anchor; the conversation is yours to write, in the user's
-   voice.
+   voice. **Write down the precondition, not just the failure mode** — the state
+   the thread was in when the call went wrong, which is usually narrower than the
+   theme label suggests and is often stated outright in the assistant text just
+   before the failing call. Get this wrong and the case grades green because it
+   never set the situation up; see
+   [First reproduce, then reclassify](SKILL.md#first-reproduce-then-reclassify).
 6. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
    [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). An `inline`
@@ -305,14 +310,17 @@ what catch a clean-up that kept the shape but lost the point.
 
 You don't need to do these by hand:
 
-- **Credential references on nodes are dropped as the seed loads.** The case's own
-  `credentials[]` decides what the assistant can see, and a credential's display name
-  goes with the reference.
+- **Credential references on nodes resolve against the case's `credentials[]` as the
+  seed loads.** A reference is kept only when exactly one seeded credential has that
+  type and display name; any other reference is dropped. On a `published: true`
+  workflow an unresolved reference fails the restore instead.
 - **Data tables are columns only.** The seed format has no place for rows, and a
   `rows` key is rejected rather than quietly removed — so table contents can't come
   along by accident.
-- **A seed workflow is only `id`, `name`, `nodes` and `connections`.** Pinned example
-  data, instance metadata and settings never travel.
+- **A seed workflow is only `id`, `name`, `nodes`, `connections` and an optional
+  `published` flag.** `published: true` activates the workflow on restore, the way the
+  user's publish left it. Pinned example data, instance metadata and settings never
+  travel.
 - **Ids and workflow names are per run.** Ids are replaced with fresh ones and names
   get a `[seed <8hex>]` suffix, with mentions updated in the prose — though not inside
   node definitions or recorded tool calls.

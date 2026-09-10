@@ -371,14 +371,19 @@ export class InstanceAiCreditService {
 		delta: number,
 	): Promise<number | undefined> {
 		try {
-			const thread = await this.threadRepo.findOneBy({ id: threadId });
-			if (!thread) return undefined;
-			const prev =
-				typeof thread.metadata?.creditsUsed === 'number' ? thread.metadata.creditsUsed : 0;
-			const creditsUsed = prev + delta;
-			thread.metadata = { ...thread.metadata, creditsUsed };
-			await this.threadRepo.save(thread);
-			return creditsUsed;
+			const thread = await this.threadRepo.updateThread({
+				threadId,
+				update: ({ metadata }) => ({
+					metadata: {
+						...metadata,
+						creditsUsed:
+							(typeof metadata?.creditsUsed === 'number' ? metadata.creditsUsed : 0) + delta,
+					},
+				}),
+			});
+			return typeof thread?.metadata?.creditsUsed === 'number'
+				? thread.metadata.creditsUsed
+				: undefined;
 		} catch (error) {
 			this.logger.warn('Failed to persist Instance AI thread credit total', {
 				error: getErrorMessage(error),

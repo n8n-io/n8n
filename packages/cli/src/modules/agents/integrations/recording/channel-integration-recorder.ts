@@ -1,3 +1,4 @@
+import { ALWAYS_SENSITIVE_HEADERS } from '@n8n/utils/redaction/sensitive-headers';
 import { mkdir, readFile, readdir, rm } from 'fs/promises';
 import { jsonParse } from 'n8n-workflow';
 import { join, resolve } from 'path';
@@ -39,15 +40,7 @@ export interface FetchRecord {
 export type ChannelIntegrationRecord = WebhookRecord | ApiCallRecord | FetchRecord;
 
 const SENSITIVE_HEADERS = new Set([
-	'authorization',
-	'cookie',
-	'set-cookie',
-	'x-api-key',
-	'x-auth-token',
-	'x-access-token',
-	'x-refresh-token',
-	'x-csrf-token',
-	'x-xsrf-token',
+	...ALWAYS_SENSITIVE_HEADERS,
 	'x-slack-signature',
 	'x-telegram-bot-api-secret-token',
 ]);
