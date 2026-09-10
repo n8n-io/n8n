@@ -85,7 +85,7 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
+import { useAppThreadScope, useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -131,6 +131,9 @@ const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
+// On the app page the app panel is the point of the view: it stays open, the
+// artifacts sidebar is dropped, and the chat collapses behind the panel instead.
+const isAppPage = useAppThreadScope() !== null;
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -522,9 +525,10 @@ const isArtifactsPanelInLayout = computed(
 );
 const canShowArtifactsPanel = computed(
 	() =>
-		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
-		(Boolean(props.threadId) && thread.isHydratingThread),
+		!isAppPage &&
+		(thread.hasMessages ||
+			preview.allArtifactTabs.value.length > 0 ||
+			(Boolean(props.threadId) && thread.isHydratingThread)),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -1351,7 +1355,42 @@ async function dismissComposerContextChip() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<template v-if="isAppPage">
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="history"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:aria-pressed="!sidebar.collapsed.value"
+									:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+									data-test-id="app-builder-thread-history"
+									@click="sidebar.toggle"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
+								:content="i18n.baseText('apps.builder.collapseChat')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:disabled="!preview.isPreviewVisible.value"
+									:aria-label="i18n.baseText('apps.builder.collapseChat')"
+									data-test-id="app-builder-collapse-chat"
+									@click="togglePreviewExpanded"
+								/>
+							</N8nTooltip>
+						</template>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -1580,7 +1619,7 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:preview-toggle-label="artifactsPreviewToggleLabel"
+							:preview-toggle-label="isAppPage ? undefined : artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>

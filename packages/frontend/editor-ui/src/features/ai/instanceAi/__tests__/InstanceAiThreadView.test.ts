@@ -12,7 +12,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
+import { AppThreadScopeKey, SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
@@ -1909,6 +1909,48 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('on the app page drops the artifacts panel and offers history and collapse-chat instead', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+		const toggleSidebar = vi.fn();
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+			global: {
+				provide: {
+					[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: toggleSidebar },
+					[AppThreadScopeKey as symbol]: ref({
+						appId: 'app-1',
+						projectId: 'proj-1',
+						name: 'Greeter',
+					}),
+				},
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(getByTestId('app-builder-thread-history')).toBeInTheDocument();
+		});
+		expect(queryByTestId('instance-ai-artifacts-panel-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-preview-toggle')).not.toBeInTheDocument();
+		expect(getByTestId('app-builder-back')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-sidebar-toggle')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('app-builder-thread-history'));
+		expect(toggleSidebar).toHaveBeenCalled();
 	});
 
 	it('renders the agent artifact preview when an agent is created', async () => {
