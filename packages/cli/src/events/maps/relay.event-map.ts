@@ -51,6 +51,13 @@ export type UserLike = {
 	};
 };
 
+/**
+ * Which write path produced a policy document event. A composed save emits a document event
+ * of its own, so a consumer that already reports the composed save uses this to skip it
+ * instead of counting one save twice.
+ */
+export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
 export type ProjectSummary = {
 	id: string;
 	name: string;
@@ -1311,6 +1318,7 @@ export type RelayEventMap = {
 		updatedBy: string;
 		kind: string;
 		policyId: string;
+		origin: PolicyWriteOrigin;
 		after: { rules: readonly PolicyRule[]; version: number };
 	};
 
@@ -1318,6 +1326,7 @@ export type RelayEventMap = {
 		updatedBy: string;
 		kind: string;
 		policyId: string;
+		origin: PolicyWriteOrigin;
 		before: { rules: readonly PolicyRule[]; version: number };
 		after: { rules: readonly PolicyRule[]; version: number };
 	};

@@ -242,6 +242,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-1',
 				kind: KIND,
 				policyId: created.id,
+				origin: 'document-api',
 				after: { rules: created.rules, version: created.version },
 			});
 		});
@@ -358,6 +359,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				updatedBy: 'user-2',
 				kind: KIND,
 				policyId: before.id,
+				origin: 'document-api',
 				before: { rules: [], version: 1 },
 				after: { rules: [RULE], version: 2 },
 			});
@@ -803,7 +805,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-created',
-				expect.objectContaining({ policyId: createdPolicy.id }),
+				expect.objectContaining({ policyId: createdPolicy.id, origin: 'composed-save' }),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('node-type-policy-saved', {
 				updatedBy: 'user-1',
@@ -850,6 +852,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'node-type-policy-document-updated',
 				expect.objectContaining({
+					origin: 'composed-save',
 					before: { rules: [], version: 1 },
 					after: { rules: [RULE], version: 2 },
 				}),

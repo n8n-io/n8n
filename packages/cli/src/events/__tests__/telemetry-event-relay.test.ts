@@ -771,6 +771,7 @@ describe('TelemetryEventRelay', () => {
 				updatedBy: 'user123',
 				kind: 'node-types',
 				policyId: 'policy-1',
+				origin: 'document-api',
 				after: { rules: [denyRule], version: 1 },
 			};
 
@@ -797,6 +798,7 @@ describe('TelemetryEventRelay', () => {
 				updatedBy: 'user123',
 				kind: 'node-types',
 				policyId: 'policy-1',
+				origin: 'document-api',
 				before: { rules: [denyRule], version: 1 },
 				after: { rules: [denyRule, allowPackageRule], version: 2 },
 			};
@@ -833,6 +835,25 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 		});
+
+		it.each(['created', 'updated'] as const)(
+			'should not report a composed save as a %s document, which would double-count it',
+			(operation) => {
+				eventService.emit(`node-type-policy-document-${operation}`, {
+					updatedBy: 'user123',
+					kind: 'node-types',
+					policyId: 'policy-1',
+					origin: 'composed-save',
+					before: { rules: [], version: 1 },
+					after: { rules: [denyRule], version: 2 },
+				});
+
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+					expect.anything(),
+				);
+			},
+		);
 
 		it('should track replaced attachments', () => {
 			const event: RelayEventMap['node-type-policy-attachments-updated'] = {

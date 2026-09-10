@@ -518,20 +518,30 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	/**
+	 * A composed save reports itself, and also emits a document event for the audit log. Only
+	 * the advanced document API reaches telemetry here, so one save stays one row.
+	 */
 	private nodeTypePolicyDocumentCreated({
 		updatedBy,
 		policyId,
+		origin,
 		after,
 	}: RelayEventMap['node-type-policy-document-created']) {
+		if (origin === 'composed-save') return;
+
 		this.trackPolicyDocument(updatedBy, policyId, 'created', after.rules, null);
 	}
 
 	private nodeTypePolicyDocumentUpdated({
 		updatedBy,
 		policyId,
+		origin,
 		before,
 		after,
 	}: RelayEventMap['node-type-policy-document-updated']) {
+		if (origin === 'composed-save') return;
+
 		this.trackPolicyDocument(updatedBy, policyId, 'updated', after.rules, before.rules);
 	}
 
