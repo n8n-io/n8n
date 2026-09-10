@@ -8,7 +8,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections, IWorkflowGroup } from 'n8n-workflow';
+import type {
+	IConnections,
+	IWorkflowGroup,
+	IWorkflowGroupVisualLink,
+	IWorkflowGroupVisualLinkGroupEndpoint,
+	IWorkflowGroupVisualLinkNodeEndpoint,
+} from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import {
@@ -46,6 +52,31 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
+}
+
+function nodeEndpoint(id: string): IWorkflowGroupVisualLinkNodeEndpoint {
+	return { kind: 'node', id, port: { type: NodeConnectionTypes.Main, index: 0 } };
+}
+
+function groupEndpoint(id: string): IWorkflowGroupVisualLinkGroupEndpoint {
+	return { kind: 'group', id, port: { type: NodeConnectionTypes.Main, index: 0 } };
+}
+
+function visualLink(
+	source: IWorkflowGroupVisualLink['source'],
+	target: IWorkflowGroupVisualLink['target'],
+): IWorkflowGroupVisualLink {
+	return { source, target };
+}
+
+function createEmptyGroup(visualLinks: IWorkflowGroupVisualLink[] = []): IWorkflowGroup {
+	return {
+		id: 'group-empty',
+		name: 'Empty group',
+		nodeIds: [],
+		frame: { position: [100, 200], size: [320, 160] },
+		visualLinks,
+	};
 }
 
 describe('workflowDocument.store orchestration', () => {
@@ -136,6 +167,98 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	describe('empty-group structural transactions', () => {
+		it('publishes a completed visual path and its canonical connection together', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const uiStore = useUIStore();
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+			store.applyNodeGroupConnectionState([createEmptyGroup([inputLink])]);
+			uiStore.markStateClean();
+			const markDirtySpy = vi.spyOn(uiStore, 'markStateDirty');
+			let eventSnapshot = '';
+			store.onNodeGroupsChange(() => {
+				eventSnapshot = JSON.stringify({
+					connections: store.connectionsBySourceNode,
+					groups: store.allGroups,
+					children: store.getChildNodes('A', NodeConnectionTypes.Main),
+				});
+			});
+
+			const result = store.applyNodeGroupConnectionState([
+				createEmptyGroup([inputLink, outputLink]),
+			]);
+
+			expect(result.success).toBe(true);
+			const expected = {
+				connections: {
+					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				groups: [createEmptyGroup([inputLink, outputLink])],
+				children: ['B'],
+			};
+			expect(JSON.parse(eventSnapshot)).toEqual(expected);
+			expect(markDirtySpy).toHaveBeenCalledOnce();
+		});
+
+		it('removes only the projection owned by a deleted visual link', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+			store.applyNodeGroupConnectionState([createEmptyGroup([inputLink, outputLink])]);
+
+			const result = store.applyNodeGroupConnectionState([createEmptyGroup([inputLink])]);
+
+			expect(result.success).toBe(true);
+			expect(store.getChildNodes('A', NodeConnectionTypes.Main)).toEqual([]);
+		});
+
+		it('publishes nothing when a visual path collides with an ordinary connection', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const uiStore = useUIStore();
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			store.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+			store.setNodeGroups([createEmptyGroup()]);
+			uiStore.markStateClean();
+			const groupChangeSpy = vi.fn();
+			store.onNodeGroupsChange(groupChangeSpy);
+			const before = JSON.stringify({
+				connections: store.connectionsBySourceNode,
+				groups: store.allGroups,
+			});
+
+			const result = store.applyNodeGroupConnectionState([
+				createEmptyGroup([
+					visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty')),
+					visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b')),
+				]),
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				issues: [{ code: 'canonical-connection-collision' }],
+			});
+			expect(
+				JSON.stringify({ connections: store.connectionsBySourceNode, groups: store.allGroups }),
+			).toBe(before);
+			expect(groupChangeSpy).not.toHaveBeenCalled();
+			expect(uiStore.stateIsDirty).toBe(false);
+		});
 	});
 
 	describe('nodeValidationIssues', () => {
@@ -306,18 +429,22 @@ describe('workflowDocument.store orchestration', () => {
 			expect(data.connections).not.toHaveProperty('C');
 		});
 
-		it('preserves true empty group data', () => {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
-			const group: IWorkflowGroup = {
-				id: 'group-1',
-				name: 'Plan later',
-				nodeIds: [],
-				frame: { position: [560, 280], size: [240, 160] },
-				visualLinks: [],
-			};
-			workflowDocumentStore.setNodeGroups([group]);
+		it('deep-copies nested empty-group data in serialized data and snapshots', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			store.setNodeGroups([createEmptyGroup([inputLink])]);
+			const serialized = store.serialize();
+			const snapshot = store.getSnapshot();
 
-			expect(workflowDocumentStore.serialize().nodeGroups).toEqual([group]);
+			const liveGroup = store.getGroupById('group-empty');
+			if (!liveGroup?.frame || !liveGroup.visualLinks) throw new Error('Expected empty-group data');
+			liveGroup.frame.position[0] = 999;
+			liveGroup.visualLinks[0].source.id = 'changed';
+
+			expect(serialized.nodeGroups?.[0].frame?.position).toEqual([100, 200]);
+			expect(serialized.nodeGroups?.[0].visualLinks?.[0].source.id).toBe('node-a');
+			expect(snapshot.nodeGroups?.[0].frame?.position).toEqual([100, 200]);
+			expect(snapshot.nodeGroups?.[0].visualLinks?.[0].source.id).toBe('node-a');
 		});
 	});
 

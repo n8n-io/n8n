@@ -1,5 +1,9 @@
 import { STICKY_NODE_TYPE } from './constants';
 import {
+	type EmptyGroupConnectionIssueCode,
+	validateEmptyGroupConnectionState,
+} from './empty-group-connection-reconciliation';
+import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
 	type ExtractableErrorResult,
@@ -180,10 +184,9 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 export type WorkflowGroupViolationCode =
 	| 'duplicate-group-id'
 	| 'duplicate-group-name'
-	| 'invalid-empty-group-frame'
-	| 'non-empty-group-data'
 	| 'unknown-node-id'
 	| 'node-in-multiple-groups'
+	| EmptyGroupConnectionIssueCode
 	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
 
 export type WorkflowGroupViolation = {
@@ -213,6 +216,12 @@ export type WorkflowGroupsValidationResult =
 	| { valid: false; violations: [WorkflowGroupViolation, ...WorkflowGroupViolation[]] };
 
 export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+type AddWorkflowGroupViolation = (
+	group: IWorkflowGroup,
+	code: WorkflowGroupViolationCode,
+	message: string,
+) => void;
 
 function isFinitePair(value: unknown): value is [number, number] {
 	return (
@@ -295,6 +304,45 @@ export function validateWorkflowGroups<TNode extends INode>({
 	};
 }
 
+function addEmptyGroupConnectionViolations<TNode extends INode>({
+	nodes,
+	connections,
+	nodeGroups,
+	firstEmptyGroup,
+	addViolation,
+	groupsWithBasicViolations,
+}: {
+	nodes: TNode[];
+	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
+	firstEmptyGroup: IWorkflowGroup;
+	addViolation: AddWorkflowGroupViolation;
+	groupsWithBasicViolations: Set<IWorkflowGroup>;
+}) {
+	const result = validateEmptyGroupConnectionState({ nodes, connections, nodeGroups });
+	if (result.success) return;
+
+	for (const issue of result.issues) {
+		// These checks already ran where object identity is unambiguous.
+		if (
+			issue.code === 'duplicate-group-id' ||
+			issue.code === 'invalid-empty-group-frame' ||
+			issue.code === 'non-empty-group-data'
+		) {
+			continue;
+		}
+
+		const group =
+			(issue.groupId
+				? nodeGroups.find((candidate) => candidate.id === issue.groupId)
+				: undefined) ?? firstEmptyGroup;
+		if (group.nodeIds.length > 0) continue;
+
+		addViolation(group, issue.code, issue.message);
+		groupsWithBasicViolations.add(group);
+	}
+}
+
 function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
@@ -326,6 +374,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	const seenGroupIds = new Set<string>();
 	const seenGroupNames = new Set<string>();
 	const nodeToGroup = new Map<string, string>();
+	let hasDuplicateGroupId = false;
 
 	for (const group of nodeGroups) {
 		const addBasicViolation = (code: WorkflowGroupViolationCode, message: string) => {
@@ -335,6 +384,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 
 		// Unique group IDs
 		if (seenGroupIds.has(group.id)) {
+			hasDuplicateGroupId = true;
 			addBasicViolation('duplicate-group-id', `Duplicate node group ID "${group.id}".`);
 		}
 		seenGroupIds.add(group.id);
@@ -379,6 +429,18 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				nodeToGroup.set(nodeId, group.name);
 			}
 		}
+	}
+
+	const firstEmptyGroup = nodeGroups.find((group) => group.nodeIds.length === 0);
+	if (firstEmptyGroup && !hasDuplicateGroupId) {
+		addEmptyGroupConnectionViolations({
+			nodes,
+			connections: connectionsBySourceNode ?? {},
+			nodeGroups,
+			firstEmptyGroup,
+			addViolation,
+			groupsWithBasicViolations,
+		});
 	}
 
 	if (getNodeType) {

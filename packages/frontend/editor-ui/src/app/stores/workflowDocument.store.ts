@@ -38,8 +38,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
+import type { INode, IWorkflowGroup, ProjectSharingData } from 'n8n-workflow';
+import { deepCopy, nodeIssuesToString, reconcileEmptyGroupConnections } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -281,6 +281,24 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodeGroups.clearNodeGroups();
 		}
 
+		function applyNodeGroupConnectionState(nextNodeGroups: IWorkflowGroup[]) {
+			const result = reconcileEmptyGroupConnections({
+				nodes: workflowDocumentNodes.allNodes.value,
+				connections: workflowDocumentConnections.connectionsBySourceNode.value,
+				previousNodeGroups: workflowDocumentNodeGroups.allGroups.value,
+				nextNodeGroups,
+			});
+			if (!result.success) return result;
+
+			// `setConnections` publishes no event. Publish the group event only after
+			// the executable graph is current, so existing event consumers see the pair.
+			workflowDocumentConnections.setConnections(result.value.connections);
+			workflowDocumentNodeGroups.setNodeGroups(result.value.nodeGroups);
+			useUIStore().markStateDirty();
+
+			return result;
+		}
+
 		function serialize(): WorkflowData {
 			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map((node) =>
 				serializeNode(nodeTypesStore, node),
@@ -302,10 +320,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				tags: [...workflowDocumentTags.tags.value],
 				versionId: workflowDocumentVersionData.versionId.value,
 				meta: workflowDocumentMeta.meta.value,
-				nodeGroups: workflowDocumentNodeGroups.allGroups.value.map((group) => ({
-					...group,
-					nodeIds: [...group.nodeIds],
-				})),
+				nodeGroups: deepCopy(workflowDocumentNodeGroups.allGroups.value),
 			};
 
 			if (workflowId) {
@@ -455,7 +470,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				meta: workflowDocumentMeta.meta.value,
 				parentFolder: workflowDocumentParentFolder.parentFolder.value ?? undefined,
 				checksum: workflowDocumentChecksum.checksum.value,
-				nodeGroups: [...workflowDocumentNodeGroups.allGroups.value],
+				nodeGroups: deepCopy(workflowDocumentNodeGroups.allGroups.value),
 			};
 		}
 
@@ -489,6 +504,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodeMetadata,
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
+			applyNodeGroupConnectionState,
 			removeAllNodes,
 			setHydrated,
 			hydrate,

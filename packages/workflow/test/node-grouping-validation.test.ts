@@ -707,6 +707,55 @@ describe('validateWorkflowGroups', () => {
 		expect(result).toEqual({ valid: true });
 	});
 
+	it('accepts an empty-group visual path only when its canonical connection is present', () => {
+		const graph = makeLinearGraph();
+		const nodeGroups = [
+			{
+				id: 'g1',
+				name: 'Group',
+				nodeIds: [],
+				frame: { position: [100, 200] as [number, number], size: [240, 160] as [number, number] },
+				visualLinks: [
+					{
+						source: { kind: 'node' as const, id: 'a', port: { type: 'main' as const, index: 0 } },
+						target: {
+							kind: 'group' as const,
+							id: 'g1',
+							port: { type: 'main' as const, index: 0 as const },
+						},
+					},
+					{
+						source: {
+							kind: 'group' as const,
+							id: 'g1',
+							port: { type: 'main' as const, index: 0 as const },
+						},
+						target: { kind: 'node' as const, id: 'b', port: { type: 'main' as const, index: 0 } },
+					},
+				],
+			},
+		];
+
+		expect(
+			validateWorkflowGroups({
+				nodes: graph.nodes,
+				connectionsBySourceNode: graph.connections,
+				nodeGroups,
+				getNodeType,
+			}),
+		).toEqual({ valid: true });
+
+		expectViolations(
+			validateWorkflowGroups({
+				nodes: graph.nodes,
+				connectionsBySourceNode: {},
+				nodeGroups,
+				getNodeType,
+			}),
+			[{ code: 'missing-projected-connection' }],
+		);
+	});
+
 	it('reports an empty group without a valid frame', () => {
 		const result = validateWorkflowGroups({
 			nodes: [],
