@@ -1329,6 +1329,23 @@ export type RelayEventMap = {
 		before: { rules: readonly PolicyRule[]; version: number };
 	};
 
+	/**
+	 * One composed save of a scope's whole effective policy: its default action and its rules.
+	 * Emitted alongside the granular scope and document events, which the audit log needs, so a
+	 * consumer that wants one row per save listens to this one instead of joining those two.
+	 */
+	'node-type-policy-saved': {
+		updatedBy: string;
+		kind: string;
+		projectId: string | null;
+		scopeId: string;
+		before: { defaultAction: PolicyAction; version: number } | null;
+		after: { defaultAction: PolicyAction; version: number };
+		rulesBefore: readonly PolicyRule[] | null;
+		rulesAfter: readonly PolicyRule[];
+		warningCount: number;
+	};
+
 	'node-type-policy-attachments-updated': {
 		updatedBy: string;
 		kind: string;

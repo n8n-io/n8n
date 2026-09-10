@@ -39,6 +39,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
+import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
 
 import { EventRelay } from './event-relay';
@@ -57,6 +58,39 @@ function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
 
 function countNodeCustomTelemetryTags(nodes: INode[]): number {
 	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
+/**
+ * A policy write has no acting user when configuration bootstraps it. `user_id` builds the
+ * RudderStack user, so the literal actor is reported as a source instead of as a user id.
+ */
+function policyActor(updatedBy: string): { user_id?: string; source: 'user' | 'environment' } {
+	return updatedBy === 'environment'
+		? { source: 'environment' }
+		: { user_id: updatedBy, source: 'user' };
+}
+
+function policyScope(projectId: string | null): {
+	scope: 'instance' | 'project';
+	project_id?: string;
+} {
+	return projectId === null ? { scope: 'instance' } : { scope: 'project', project_id: projectId };
+}
+
+function countRuleActions(rules: readonly PolicyRule[]) {
+	return {
+		rule_count: rules.length,
+		allow_rule_count: rules.filter((rule) => rule.action === 'allow').length,
+		deny_rule_count: rules.filter((rule) => rule.action === 'deny').length,
+		delegate_rule_count: rules.filter((rule) => rule.action === 'delegate').length,
+	};
+}
+
+function countSelectorKinds(rules: readonly PolicyRule[]) {
+	return {
+		name_selector_count: rules.filter((rule) => rule.selector.kind === 'name').length,
+		package_selector_count: rules.filter((rule) => rule.selector.kind === 'package').length,
+	};
 }
 
 function limitNodeGraphStringSize(nodeGraphString: string): string {
@@ -124,6 +158,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
+			'node-type-policy-saved': (event) => this.nodeTypePolicySaved(event),
+			'node-type-policy-document-created': (event) => this.nodeTypePolicyDocumentCreated(event),
+			'node-type-policy-document-updated': (event) => this.nodeTypePolicyDocumentUpdated(event),
+			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
+			'node-type-policy-attachments-updated': (event) =>
+				this.nodeTypePolicyAttachmentsUpdated(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -449,6 +489,97 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			...(projectId && { project_id: projectId }),
 		});
+	}
+
+	// #endregion
+
+	// #region Node type policy
+
+	private nodeTypePolicySaved({
+		updatedBy,
+		projectId,
+		before,
+		after,
+		rulesBefore,
+		rulesAfter,
+		warningCount,
+	}: RelayEventMap['node-type-policy-saved']) {
+		this.telemetry.track(TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY, {
+			...policyActor(updatedBy),
+			...policyScope(projectId),
+			default_action: after.defaultAction,
+			previous_default_action: before?.defaultAction ?? null,
+			is_first_write: before === null,
+			...countRuleActions(rulesAfter),
+			...countSelectorKinds(rulesAfter),
+			previous_rule_count: rulesBefore?.length ?? null,
+			shadow_warning_count: warningCount,
+			version: after.version,
+		});
+	}
+
+	private nodeTypePolicyDocumentCreated({
+		updatedBy,
+		policyId,
+		after,
+	}: RelayEventMap['node-type-policy-document-created']) {
+		this.trackPolicyDocument(updatedBy, policyId, 'created', after.rules, null);
+	}
+
+	private nodeTypePolicyDocumentUpdated({
+		updatedBy,
+		policyId,
+		before,
+		after,
+	}: RelayEventMap['node-type-policy-document-updated']) {
+		this.trackPolicyDocument(updatedBy, policyId, 'updated', after.rules, before.rules);
+	}
+
+	private nodeTypePolicyDocumentDeleted({
+		updatedBy,
+		policyId,
+		before,
+	}: RelayEventMap['node-type-policy-document-deleted']) {
+		this.trackPolicyDocument(updatedBy, policyId, 'deleted', [], before.rules);
+	}
+
+	private trackPolicyDocument(
+		updatedBy: string,
+		policyId: string,
+		operation: 'created' | 'updated' | 'deleted',
+		rulesAfter: readonly PolicyRule[],
+		rulesBefore: readonly PolicyRule[] | null,
+	) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_DOCUMENT,
+			{
+				...policyActor(updatedBy),
+				operation,
+				policy_id: policyId,
+				...countRuleActions(rulesAfter),
+				previous_rule_count: rulesBefore?.length ?? null,
+			},
+		);
+	}
+
+	private nodeTypePolicyAttachmentsUpdated({
+		updatedBy,
+		projectId,
+		scopeId,
+		before,
+		after,
+	}: RelayEventMap['node-type-policy-attachments-updated']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_UPDATED_NODE_TYPE_POLICY_ATTACHMENTS,
+			{
+				...policyActor(updatedBy),
+				...policyScope(projectId),
+				scope_id: scopeId,
+				attachment_count: after.attachments.length,
+				floor_attachment_count: after.attachments.filter((a) => a.isFloor).length,
+				previous_attachment_count: before.attachments.length,
+			},
+		);
 	}
 
 	// #endregion

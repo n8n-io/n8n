@@ -674,6 +674,18 @@ export class TypeAvailabilityPolicyService {
 			});
 		}
 
+		this.eventService.emit('node-type-policy-saved', {
+			updatedBy,
+			kind,
+			projectId,
+			scopeId: result.scopeId,
+			before: result.scopeBefore,
+			after: result.scopeAfter,
+			rulesBefore: result.documentBefore?.rules ?? null,
+			rulesAfter: result.documentAfter.rules,
+			warningCount: warnings.length,
+		});
+
 		return {
 			scopeId: result.scopeId,
 			defaultAction: result.scopeAfter.defaultAction,
