@@ -12,17 +12,26 @@ describe('buildFileTree', () => {
 			{
 				id: 'src',
 				label: 'src',
+				icon: 'folder',
 				children: [
 					{
 						id: 'src/components',
 						label: 'components',
-						children: [{ id: 'src/components/Button.vue', label: 'Button.vue' }],
+						icon: 'folder',
+						children: [{ id: 'src/components/Button.vue', label: 'Button.vue', icon: 'file-code' }],
 					},
-					{ id: 'src/main.ts', label: 'main.ts' },
+					{ id: 'src/main.ts', label: 'main.ts', icon: 'file-code' },
 				],
 			},
-			{ id: 'index.html', label: 'index.html' },
+			{ id: 'index.html', label: 'index.html', icon: 'file-code' },
 		]);
+	});
+
+	it('gives directories a folder icon and files a file icon', () => {
+		const tree = buildFileTree(['src/main.ts']);
+
+		expect(tree[0].icon).toBe('folder');
+		expect(tree[0].children?.[0].icon).toBe('file-code');
 	});
 
 	it('orders directories before files, alphabetically within each', () => {

@@ -29,12 +29,12 @@ export function buildFileTree(paths: string[]): TreeBranch[] {
 			id = id ? `${id}/${segment}` : segment;
 			const isFile = index === segments.length - 1;
 			if (isFile) {
-				siblings.push({ id, label: segment });
+				siblings.push({ id, label: segment, icon: 'file-code' });
 				return;
 			}
 			let dir = dirsById.get(id);
 			if (!dir) {
-				dir = { id, label: segment, children: [] };
+				dir = { id, label: segment, icon: 'folder', children: [] };
 				dirsById.set(id, dir);
 				siblings.push(dir);
 			}
