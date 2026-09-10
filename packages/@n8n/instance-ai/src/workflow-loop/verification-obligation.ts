@@ -120,7 +120,7 @@ function deriveStatus(
 	if (outcome.executionIntent === 'one-off') {
 		return state.status === 'blocked' ? 'blocked' : 'not_verifiable';
 	}
-	if (coverage && (outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+	if ((outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
 		return 'blocked';
 	}
 
@@ -189,10 +189,10 @@ function deriveBlockingReason(
 			nodesNotReached.length > 0 ? ` Nodes not reached: ${nodesNotReached.join(', ')}.` : '';
 		return `Automatic verification failed with: ${failure}. Re-running it will reproduce the same failure — explain this blocker to the user and have them resolve it (e.g. configure credentials or fix the data) before verifying manually.${unreached}`;
 	}
-	if (coverage && (outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
+	if (status === 'blocked' && (outcome.verifyAttempts ?? 0) >= MAX_VERIFY_ATTEMPTS) {
 		return (
-			'Automatic verification reached its attempt limit before every trigger and planned node ' +
-			'was covered. Report the remaining coverage and let the user test it manually.'
+			'Automatic verification reached its attempt limit. ' +
+			'Report the remaining coverage. Ask the user to test the remaining nodes manually.'
 		);
 	}
 	const outcomeRemediation = outcome.remediation;

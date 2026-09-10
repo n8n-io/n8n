@@ -552,7 +552,13 @@ function makeContext(
 		getAsWorkflowJSON: vi.fn(async () => {
 			await Promise.resolve();
 			return {
-				nodes: overrides.workflowNodes ?? [],
+				nodes:
+					overrides.workflowNodes ??
+					outcome?.triggerNodes?.map(({ nodeName, nodeType }) => ({
+						name: nodeName,
+						type: nodeType,
+					})) ??
+					[],
 				connections: overrides.workflowConnections ?? {},
 			};
 		}),
@@ -1657,23 +1663,18 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		);
 	});
 
-	it('keeps evidence unscoped when the workflow graph cannot be loaded', async () => {
-		const { ctx, updateBuildOutcome } = makeContext(
-			makeTrackedOutcome({ nodeSimulationPlan: [executeVerdict('Step A')] }),
-			successfulA,
-			{ workflowConnections },
-		);
+	it('preserves verification state when the workflow graph cannot be loaded', async () => {
+		const outcome = makeTrackedOutcome({ verificationProgress: passedA, verifyAttempts: 1 });
+		const { ctx, getOutcome } = makeContext(outcome, successfulA, { workflowConnections });
 		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValueOnce(
 			new Error('workflow unavailable'),
 		);
 
 		const result = await runTool(ctx, triggerAInput);
 
-		expect(result.nodesNotReached).toBeUndefined();
-		expect(updateBuildOutcome.mock.calls.at(-1)![1].verificationProgress).toEqual({});
-		expect(updateBuildOutcome.mock.calls.at(-1)![1].verification?.evidence).not.toHaveProperty(
-			'triggerNodeName',
-		);
+		expect(result.success).toBe(false);
+		expect(getOutcome()).toEqual(outcome);
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 	});
 
 	const withoutTrigger = { workItemId: 'wi-1', workflowId: 'wf-1' };
@@ -1699,7 +1700,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	it.each(invalidPasses)(
 		'does not record %s as a successful trigger pass',
 		async (_name, runResult, input) => {
-			const { ctx, updateBuildOutcome } = makeContext(
+			const { ctx, getOutcome } = makeContext(
 				makeTrackedOutcome({ nodeSimulationPlan: [executeVerdict('Step A')] }),
 				runResult,
 				{ workflowConnections },
@@ -1707,9 +1708,7 @@ describe('verify-built-workflow tool — trigger selection', () => {
 
 			await runTool(ctx, input);
 
-			expect(
-				Object.keys(updateBuildOutcome.mock.calls.at(-1)![1].verificationProgress ?? {}),
-			).toEqual([]);
+			expect(Object.keys(getOutcome().verificationProgress ?? {})).toEqual([]);
 		},
 	);
 
@@ -1756,11 +1755,15 @@ describe('verify-built-workflow tool — trigger selection', () => {
 	});
 
 	it('starts verification from the named trigger', async () => {
-		const { ctx } = makeContext(makeBuildOutcome(), {
-			executionId: 'exec-monthly',
-			status: 'success',
-			data: { 'Post Summary': [{ ok: true }] },
-		});
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-monthly',
+				status: 'success',
+				data: { 'Post Summary': [{ ok: true }] },
+			},
+			{ workflowNodes: [{ name: 'First of Month', type: 'n8n-nodes-base.scheduleTrigger' }] },
+		);
 
 		await runTool(ctx, {
 			workItemId: 'wi-1',

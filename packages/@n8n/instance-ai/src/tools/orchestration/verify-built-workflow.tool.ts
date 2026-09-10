@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -201,6 +202,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
 				.catch(() => undefined);
+			if (
+				resolvedInput.triggerNodeName !== undefined &&
+				!workflow?.nodes.some(
+					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+				)
+			) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
+				};
+			}
 			const chatModelRecovery = workflow
 				? await collectChatModelRecoveryContext(
 						target.domainContext,
