@@ -323,48 +323,12 @@
 		},
 		{
 			"parameters": {
-				"code": {
-					"execute": {
-						"code": "const { PromptTemplate } = require('@langchain/core/prompts');\n\nconst vectorStore = await this.getInputConnectionData('ai_vectorStore', 0);\nconst retriever = vectorStore.asRetriever(40);\n\nconst documents = await retriever.invoke('Some query');\nreturn [ {json: { documents } } ];"
-					}
-				},
-				"inputs": {
-					"input": [
-						{
-							"type": "main",
-							"maxConnections": 1,
-							"required": true
-						},
-						{
-							"type": "ai_vectorStore",
-							"maxConnections": 1,
-							"required": true
-						}
-					]
-				},
-				"outputs": {
-					"output": [
-						{
-							"type": "main"
-						}
-					]
-				}
-			},
-			"id": "547331e8-808f-4015-854c-06cf8a876e12",
-			"name": "LangChain Code",
-			"type": "@n8n/n8n-nodes-langchain.code",
-			"typeVersion": 1,
-			"position": [1160, 1840],
-			"executeOnce": true
-		},
-		{
-			"parameters": {
 				"assignments": {
 					"assignments": [
 						{
 							"id": "5a9bd52c-f383-4f1c-9a6c-dc1f326775ce",
 							"name": "has_correct_length",
-							"value": "={{ $json.documents.length === 12 }}",
+							"value": "={{ $input.all().length === 12 }}",
 							"type": "boolean"
 						}
 					]
@@ -375,7 +339,8 @@
 			"name": "Edit Fields",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.4,
-			"position": [1540, 1840]
+			"position": [1540, 1840],
+			"executeOnce": true
 		},
 		{
 			"parameters": {
@@ -499,6 +464,9 @@
 		},
 		{
 			"parameters": {
+				"mode": "load",
+				"prompt": "Some query",
+				"topK": 40,
 				"options": {
 					"metadata": {
 						"metadataValues": [
@@ -514,13 +482,14 @@
 			"name": "Postgres PGVector Store3",
 			"type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
 			"typeVersion": 1,
-			"position": [1120, 2040],
+			"position": [1160, 1840],
 			"credentials": {
 				"postgres": {
 					"id": "pHGfJmTMIpWliDSS",
 					"name": "PGVector account"
 				}
-			}
+			},
+			"executeOnce": true
 		}
 	],
 	"connections": {
@@ -598,7 +567,7 @@
 						"index": 0
 					},
 					{
-						"node": "LangChain Code",
+						"node": "Postgres PGVector Store3",
 						"type": "main",
 						"index": 0
 					},
@@ -730,17 +699,6 @@
 				]
 			]
 		},
-		"LangChain Code": {
-			"main": [
-				[
-					{
-						"node": "Edit Fields",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
 		"Embeddings OpenAI5": {
 			"ai_embedding": [
 				[
@@ -786,11 +744,11 @@
 			]
 		},
 		"Postgres PGVector Store3": {
-			"ai_vectorStore": [
+			"main": [
 				[
 					{
-						"node": "LangChain Code",
-						"type": "ai_vectorStore",
+						"node": "Edit Fields",
+						"type": "main",
 						"index": 0
 					}
 				]
