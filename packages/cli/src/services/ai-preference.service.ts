@@ -58,7 +58,11 @@ export class AiPreferenceService {
 				projects.set(project.id, project);
 			}
 		}
-		return await this.getApplicable(user.id, [...projects.values()]);
+		// The lookups carry no ORDER BY, so sort here to keep the block stable across databases.
+		const sorted = [...projects.values()].sort(
+			(a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+		);
+		return await this.getApplicable(user.id, sorted);
 	}
 }
 
