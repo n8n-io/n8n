@@ -1,0 +1,32 @@
+packages/cli/test/shared/self-signed-git-server.ts
+  s_26539691738467::t_15c244d0f0f3b4 33,35,51
+  s_26539691738467::t_a2aed85574ace2 7-10
+  s_26539691738467::t_56d9f077d4465f 1-6,11-32,34,36-50,52-57
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.integration.test.ts
+  s_26539691738467::t_b02e0d057dec53 1-2,5-10,12-13,15-23,25-27,29-34,36-39,41-43,45-48
+  s_26539691738467::t_a2aed85574ace2 3,40
+  s_26539691738467::t_56d9f077d4465f 4,11,14,24,28,35,44
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_26539691738467::t_525c3bc176ff2f 39-41,43-44,46-47,53-54,56-57,72,75
+  s_26539691738467::t_b02e0d057dec53 1-2
+  s_26539691738467::t_c468893763c4e2 48-52,58,67-68,71
+  s_26539691738467::t_174b83378be602 59-60,62-63,65-66,69,73,76
+  s_26539691738467::t_56d9f077d4465f 42,45,55,61,64,74
+  s_26539691738467::t_a2aed85574ace2 4,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8727b1ba89620cea4911bf050e71bc14b8e57776",
+  "prompts": {},
+  "sessions": {
+    "s_26539691738467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c451a462-203e-4d98-849b-716a05b47d80",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": null
+    }
+  }
+}
