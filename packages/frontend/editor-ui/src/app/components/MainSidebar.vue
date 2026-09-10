@@ -12,6 +12,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -39,6 +40,7 @@ const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
+const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const resourceCenterStore = useResourceCenterStore();
 
@@ -116,7 +118,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			templatesStore.hasCustomTemplatesHost &&
-			!isResourceCenterEnabled.value,
+			!isResourceCenterEnabled.value &&
+			!usersStore.isDataTableOnlyUser,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -128,7 +131,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!isResourceCenterEnabled.value,
+			!isResourceCenterEnabled.value &&
+			!usersStore.isDataTableOnlyUser,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',

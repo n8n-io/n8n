@@ -125,11 +125,15 @@ export const API_KEY_RESOURCES = {
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
 export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
+export const GLOBAL_DATA_TABLE_USER_ROLE_SLUG = 'global:dataTableUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+export const PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG = 'project:dataTableViewer';
+export const PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG = 'project:dataTableEditor';
+export const PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG = 'project:dataTableAdmin';
 export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 	key: 'security.personalSpacePublishing',
 	scopes: ['workflow:publish', 'agent:publish'],

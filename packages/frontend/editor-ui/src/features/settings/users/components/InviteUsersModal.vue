@@ -315,6 +315,14 @@ onMounted(() => {
 								},
 							]
 						: []),
+					...(settingsStore.isDataTableFeatureEnabled
+						? [
+								{
+									value: ROLE.DataTableUser,
+									label: i18n.baseText('auth.roles.dataTableUser'),
+								},
+							]
+						: []),
 					{
 						value: ROLE.Admin,
 						label: i18n.baseText('auth.roles.admin'),

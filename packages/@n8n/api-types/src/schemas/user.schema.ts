@@ -9,6 +9,7 @@ export const ROLE = {
 	Member: 'global:member',
 	Admin: 'global:admin',
 	ChatUser: 'global:chatUser',
+	DataTableUser: 'global:dataTableUser',
 	Default: 'default', // default user with no email when setting up instance
 } as const;
 

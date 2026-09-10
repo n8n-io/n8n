@@ -109,6 +109,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const isAdminOrOwner = computed(() => isInstanceOwner.value || isAdmin.value);
 
+	// Data table users only see data tables; every other feature is hidden for them
+	const isDataTableOnlyUser = computed(() => currentUser.value?.role === ROLE.DataTableUser);
+
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
@@ -505,6 +508,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isInstanceOwner,
 		isAdmin,
 		isAdminOrOwner,
+		isDataTableOnlyUser,
 		mfaEnabled,
 		globalRoleName,
 		userClaimedAiCredits,

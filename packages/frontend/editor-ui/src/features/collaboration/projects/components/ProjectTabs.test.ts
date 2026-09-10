@@ -4,6 +4,7 @@ import { mockedStore } from '@/__tests__/utils';
 import ProjectTabs from './ProjectTabs.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useProjectsStore } from '../projects.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Project } from '../projects.types';
 
 vi.mock('vue-router', async () => {
@@ -28,9 +29,11 @@ const renderComponent = createComponentRenderer(ProjectTabs, {
 
 describe('ProjectTabs', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let usersStore: MockedStore<typeof useUsersStore>;
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		projectsStore = mockedStore(useProjectsStore);
+		usersStore = mockedStore(useUsersStore);
 		vi.spyOn(projectsStore, 'currentProject', 'get').mockReturnValue(null);
 	});
 
@@ -128,6 +131,22 @@ describe('ProjectTabs', () => {
 			'HomeVariables',
 			'dataTables',
 		]);
+	});
+
+	it('should only render the additional tabs for a data table user', () => {
+		vi.spyOn(usersStore, 'isDataTableOnlyUser', 'get').mockReturnValue(true);
+		const { container, queryByText } = renderComponent({
+			props: {
+				showSettings: true,
+				additionalTabs: [{ label: 'Data tables', value: 'data-tables' }],
+			},
+		});
+
+		expect(queryByText('Workflows')).not.toBeInTheDocument();
+		expect(queryByText('Credentials')).not.toBeInTheDocument();
+		expect(queryByText('Executions')).not.toBeInTheDocument();
+		expect(queryByText('Variables')).not.toBeInTheDocument();
+		expect(getTabValuesInOrder(container)).toEqual(['data-tables', 'ProjectSettings']);
 	});
 
 	it('appends the additional tab when insertAfter does not match any base tab', () => {

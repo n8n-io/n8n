@@ -12,6 +12,7 @@ import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -94,7 +95,7 @@ const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 	route: {
 		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
+			name: usersStore.isDataTableOnlyUser ? PROJECT_DATA_TABLES : VIEWS.PROJECTS_WORKFLOWS,
 			params: { projectId: project.id },
 		},
 	},
@@ -171,7 +172,10 @@ onBeforeUnmount(() => {
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
+					!usersStore.isDataTableOnlyUser
+				"
 				:item="personalProject"
 				:compact="props.collapsed"
 				:active="activeTabId === personalProject.id"
@@ -180,7 +184,8 @@ onBeforeUnmount(() => {
 			<N8nMenuItem
 				v-if="
 					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-					hasMultipleVerifiedUsers
+					hasMultipleVerifiedUsers &&
+					!usersStore.isDataTableOnlyUser
 				"
 				:item="shared"
 				:compact="props.collapsed"
@@ -188,7 +193,7 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible"
+				v-if="isWorkflowReviewsNavVisible && !usersStore.isDataTableOnlyUser"
 				:item="workflowReviews"
 				:compact="props.collapsed"
 				:active="activeTabId === 'workflow-reviews'"

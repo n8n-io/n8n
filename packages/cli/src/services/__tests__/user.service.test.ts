@@ -519,6 +519,83 @@ describe('UserService', () => {
 			);
 		});
 
+		it('keeps project memberships and demotes the personal project when a member becomes a data table user', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			const personalProject = new Project();
+			personalProject.id = uuid();
+			personalProject.type = 'personal';
+			personalProject.creatorId = user.id;
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
+
+			await userService.changeUserRole(user, { newRoleName: 'global:dataTableUser' });
+
+			// Project membership is how data table users reach tables, so it is kept
+			expect(manager.find).not.toHaveBeenCalled();
+			expect(manager.delete).not.toHaveBeenCalled();
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					projectId: personalProject.id,
+				},
+				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			);
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+		});
+
+		it('assigns data table user project:personalOwner when upgraded to member', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:dataTableUser';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			const personalProject = new Project();
+			personalProject.id = uuid();
+			personalProject.type = 'personal';
+			personalProject.creatorId = user.id;
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
+
+			await userService.changeUserRole(user, { newRoleName: 'global:member' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_VIEWER_ROLE_SLUG },
+					projectId: personalProject.id,
+				},
+				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+			);
+		});
+
+		it('leaves the personal project alone when a chat user becomes a data table user', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:chatUser';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:dataTableUser' });
+
+			expect(manager.update).toHaveBeenCalledTimes(1); // only the User row
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:dataTableUser' } },
+			);
+			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
+		});
+
 		it('assigns a custom global role when it is licensed', async () => {
 			const user = new User();
 			user.id = uuid();

@@ -195,3 +195,23 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
+
+export const PROJECT_DATA_TABLE_VIEWER_SCOPES: Scope[] = [
+	'dataTable:listProject',
+	'dataTable:read',
+	'dataTable:readRow',
+	'dataTable:readColumn',
+];
+
+export const PROJECT_DATA_TABLE_EDITOR_SCOPES: Scope[] = [
+	...PROJECT_DATA_TABLE_VIEWER_SCOPES,
+	'dataTable:writeRow',
+];
+
+export const PROJECT_DATA_TABLE_ADMIN_SCOPES: Scope[] = [
+	...PROJECT_DATA_TABLE_EDITOR_SCOPES,
+	'dataTable:update',
+	'dataTable:writeColumn',
+	'dataTable:create',
+	'dataTable:delete',
+];

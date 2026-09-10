@@ -15,6 +15,7 @@ export const globalRoleSchema = z.enum([
 	'global:admin',
 	'global:member',
 	'global:chatUser',
+	'global:dataTableUser',
 ]);
 
 const customGlobalRoleSchema = z
@@ -41,6 +42,9 @@ export const teamRoleSchema = z.enum([
 	'project:editor',
 	'project:viewer',
 	'project:chatUser',
+	'project:dataTableViewer',
+	'project:dataTableEditor',
+	'project:dataTableAdmin',
 ]);
 
 // Custom project role can be anything but the system roles

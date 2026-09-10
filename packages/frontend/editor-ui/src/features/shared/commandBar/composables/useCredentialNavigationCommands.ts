@@ -7,6 +7,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { CommandBarItem } from '../types';
 import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -29,6 +30,7 @@ export function useCredentialNavigationCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const uiStore = useUIStore();
+	const usersStore = useUsersStore();
 	const sourceControlStore = useSourceControlStore();
 
 	const route = useRoute();
@@ -128,6 +130,9 @@ export function useCredentialNavigationCommands(options: {
 	});
 
 	const credentialNavigationCommands = computed<CommandBarItem[]>(() => {
+		if (usersStore.isDataTableOnlyUser) {
+			return [];
+		}
 		const hasCreatePermission =
 			!sourceControlStore.preferences.branchReadOnly &&
 			getResourcePermissions(homeProject.value?.scopes).credential.create;

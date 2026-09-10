@@ -135,8 +135,10 @@ const debouncedPersistViewSettings = debounce(
 );
 
 const saveViewSettings = (metadata: DataTableMetadata) => {
-	if (settingsReadOnly.value || !dataTable.value) return;
+	if (!dataTable.value) return;
 	dataTable.value.metadata = metadata;
+	// Read-only users can still switch views locally; only writers persist the choice
+	if (settingsReadOnly.value) return;
 	pendingViewSettingsSave = {
 		dataTableId: dataTable.value.id,
 		projectId: dataTable.value.projectId,
@@ -310,7 +312,7 @@ onBeforeUnmount(() => {
 					<DataTableViewSettings
 						:data-table="dataTable"
 						:view="view"
-						:disabled="settingsReadOnly || saving"
+						:disabled="saving"
 						:save="saveViewSettings"
 					/>
 					<DependencyPill

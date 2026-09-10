@@ -9,6 +9,7 @@ import { useBugReporting } from '@/app/composables/useBugReporting';
 import type { CommandGroup, CommandBarItem } from '../types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
@@ -33,6 +34,7 @@ export function useGenericCommands(): CommandGroup {
 	const uiStore = useUIStore();
 	const router = useRouter();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 	const projectsStore = useProjectsStore();
 	const templatesStore = useTemplatesStore();
 	const { getReportingURL } = useBugReporting();
@@ -75,7 +77,7 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		...(projectsStore.canViewProjects
+		...(projectsStore.canViewProjects && !usersStore.isDataTableOnlyUser
 			? [
 					{
 						id: ITEM_ID.TEMPLATES,
@@ -98,7 +100,7 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		...(projectsStore.canViewProjects
+		...(projectsStore.canViewProjects && !usersStore.isDataTableOnlyUser
 			? [
 					{
 						id: ITEM_ID.VARIABLES,
@@ -117,7 +119,7 @@ export function useGenericCommands(): CommandGroup {
 					},
 				]
 			: []),
-		...(projectsStore.canViewProjects
+		...(projectsStore.canViewProjects && !usersStore.isDataTableOnlyUser
 			? [
 					{
 						id: ITEM_ID.INSIGHTS,

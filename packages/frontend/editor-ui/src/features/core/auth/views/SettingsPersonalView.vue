@@ -158,6 +158,10 @@ const currentUserRole = computed<RoleContent>(() => {
 			name: i18n.baseText('auth.roles.chatUser'),
 			description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
 		},
+		[ROLE.DataTableUser]: {
+			name: i18n.baseText('auth.roles.dataTableUser'),
+			description: i18n.baseText('settings.personal.role.tooltip.dataTableUser'),
+		},
 		[ROLE.Admin]: {
 			name: i18n.baseText('auth.roles.admin'),
 			description: i18n.baseText('settings.personal.role.tooltip.admin'),

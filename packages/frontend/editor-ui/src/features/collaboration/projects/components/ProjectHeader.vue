@@ -273,6 +273,11 @@ const mainButtonConfig = computed(() => {
 const menu = computed(() => {
 	const items: Array<UserAction<IUser>> = [];
 
+	// Data table users only create data tables, which is already the main button
+	if (usersStore.isDataTableOnlyUser) {
+		return items;
+	}
+
 	// Add workflow to menu if it's not the main button
 	if (selectedMainButtonType.value !== ACTION_TYPES.WORKFLOW) {
 		items.push({

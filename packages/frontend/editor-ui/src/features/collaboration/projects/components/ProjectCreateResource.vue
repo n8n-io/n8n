@@ -26,6 +26,7 @@ defineExpose({
 	<div :class="[$style.buttonGroup]">
 		<slot></slot>
 		<N8nActionToggle
+			v-if="actions.length"
 			ref="actionToggleRef"
 			data-test-id="add-resource"
 			:actions="actions"

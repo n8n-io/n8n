@@ -223,3 +223,5 @@ export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 ];
+
+export const GLOBAL_DATA_TABLE_USER_SCOPES: Scope[] = ['dataTable:list'];

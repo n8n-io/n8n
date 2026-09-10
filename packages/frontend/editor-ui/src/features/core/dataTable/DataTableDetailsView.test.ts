@@ -6,6 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRouter } from 'vue-router';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 
@@ -153,6 +154,56 @@ describe('DataTableDetailsView', () => {
 
 			expect(container.querySelector('data-table-breadcrumbs-stub')).not.toBeInTheDocument();
 			expect(container.querySelector('data-table-table-stub')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('View settings for read-only users', () => {
+		// No project scopes are mocked here, so the user has no dataTable:update permission
+		const renderWithViewSettingsStub = createComponentRenderer(DataTableDetailsView, {
+			props: { id: 'ds1', projectId: 'proj1' },
+			global: {
+				stubs: {
+					DataTableBreadcrumbs: true,
+					DataTableTable: true,
+					DataTableViewSettings: {
+						props: ['dataTable', 'view', 'disabled', 'save'],
+						template: `<button
+							data-test-id="switch-to-kanban"
+							:disabled="disabled"
+							@click="save({ view: 'kanban', kanban: { groupByColumnId: '3' } })"
+						/>`,
+					},
+				},
+			},
+		});
+
+		it('switches the view locally without persisting', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue({
+				...DEFAULT_DATA_TABLE,
+				columns: [
+					...DEFAULT_DATA_TABLE.columns,
+					{ id: '3', name: 'status', type: 'enum', index: 2 },
+				],
+			});
+			const updateMetadata = vi
+				.spyOn(dataTableStore, 'updateDataTableMetadata')
+				.mockResolvedValue(DEFAULT_DATA_TABLE);
+
+			const { getByTestId, container } = renderWithViewSettingsStub({ pinia });
+
+			await waitFor(() => {
+				expect(container.querySelector('data-table-table-stub')).toBeInTheDocument();
+			});
+			expect(getByTestId('switch-to-kanban')).not.toBeDisabled();
+
+			await userEvent.click(getByTestId('switch-to-kanban'));
+
+			await waitFor(() => {
+				expect(container.querySelector('data-table-table-stub')).not.toBeInTheDocument();
+			});
+			expect(updateMetadata).not.toHaveBeenCalled();
 		});
 	});
 

@@ -20,6 +20,7 @@ parameters:
             - global:admin
             - global:member
             - global:chatUser
+            - global:dataTableUser
         - type: string
           minLength: 1
     required: false

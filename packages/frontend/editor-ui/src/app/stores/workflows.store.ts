@@ -78,7 +78,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	});
 
 	const canViewWorkflows = computed(
-		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
+		() =>
+			!usersStore.isDataTableOnlyUser &&
+			(!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser'])),
 	);
 
 	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases

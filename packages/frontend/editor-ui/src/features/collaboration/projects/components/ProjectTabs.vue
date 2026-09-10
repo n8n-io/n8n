@@ -11,6 +11,7 @@ import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { ProjectTypes } from '../projects.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 type Props = {
@@ -30,6 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 const locale = useI18n();
 const route = useRoute();
 const projectStore = useProjectsStore();
+const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
@@ -102,18 +104,25 @@ const createTab = (
 // Generate the tabs configuration
 const options = computed<Array<TabOptions<string>>>(() => {
 	const routes = getRouteConfigs();
-	const tabs = [
-		createTab('mainSidebar.workflows', 'workflows', routes),
-		createTab('mainSidebar.credentials', 'credentials', routes),
-	];
+	// Data table users only get the module tabs (data tables)
+	const dataTableOnly = usersStore.isDataTableOnlyUser;
+	const tabs: Array<TabOptions<string>> = dataTableOnly
+		? []
+		: [
+				createTab('mainSidebar.workflows', 'workflows', routes),
+				createTab('mainSidebar.credentials', 'credentials', routes),
+			];
 
-	if (props.showExecutions) {
+	if (props.showExecutions && !dataTableOnly) {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
 	// Optimistic while currentProject loads — hiding the tab until the fetch
 	// resolves would shift the tab strip on every overview → project navigation
-	if (props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value)) {
+	if (
+		!dataTableOnly &&
+		(props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value))
+	) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 

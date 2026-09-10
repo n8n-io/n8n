@@ -10,8 +10,12 @@ import {
 	type Role,
 	GLOBAL_OWNER_ROLE_SLUG,
 	GLOBAL_CHAT_USER_ROLE_SLUG,
+	GLOBAL_DATA_TABLE_USER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_CHAT_USER_ROLE_SLUG,
+	PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG,
+	PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG,
+	PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG,
 } from '@n8n/permissions';
 import * as rolesApi from '@n8n/rest-api-client/api/roles';
 import { defineStore } from 'pinia';
@@ -47,7 +51,15 @@ export const useRolesStore = defineStore('roles', () => {
 		'project:chatUser',
 		'project:editor',
 		'project:admin',
+		PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG,
+		PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG,
+		PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG,
 	]);
+	const DATA_TABLE_PROJECT_ROLE_SLUGS: string[] = [
+		PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG,
+		PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG,
+		PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG,
+	];
 	const projectRoleOrderMap = computed<Map<string, number>>(
 		() => new Map(projectRoleOrder.value.map((role, idx) => [role, idx])),
 	);
@@ -62,7 +74,9 @@ export const useRolesStore = defineStore('roles', () => {
 			.filter(
 				(role) =>
 					role.slug !== GLOBAL_OWNER_ROLE_SLUG &&
-					(settingsStore.isChatFeatureEnabled || role.slug !== GLOBAL_CHAT_USER_ROLE_SLUG),
+					(settingsStore.isChatFeatureEnabled || role.slug !== GLOBAL_CHAT_USER_ROLE_SLUG) &&
+					(settingsStore.isDataTableFeatureEnabled ||
+						role.slug !== GLOBAL_DATA_TABLE_USER_ROLE_SLUG),
 			)
 			.sort(sortByOrderThenName(globalRoleOrderMap.value)),
 	);
@@ -76,7 +90,9 @@ export const useRolesStore = defineStore('roles', () => {
 			.filter(
 				(role) =>
 					role.slug !== PROJECT_OWNER_ROLE_SLUG &&
-					(settingsStore.isChatFeatureEnabled || role.slug !== PROJECT_CHAT_USER_ROLE_SLUG),
+					(settingsStore.isChatFeatureEnabled || role.slug !== PROJECT_CHAT_USER_ROLE_SLUG) &&
+					(settingsStore.isDataTableFeatureEnabled ||
+						!DATA_TABLE_PROJECT_ROLE_SLUGS.includes(role.slug)),
 			)
 			.sort(sortByOrderThenName(projectRoleOrderMap.value)),
 	);

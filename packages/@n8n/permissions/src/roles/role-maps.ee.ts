@@ -16,6 +16,7 @@ import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_CHAT_USER_SCOPES,
+	GLOBAL_DATA_TABLE_USER_SCOPES,
 } from './scopes/global-scopes.ee';
 import {
 	REGULAR_PROJECT_ADMIN_SCOPES,
@@ -23,6 +24,9 @@ import {
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	PROJECT_CHAT_USER_SCOPES,
+	PROJECT_DATA_TABLE_VIEWER_SCOPES,
+	PROJECT_DATA_TABLE_EDITOR_SCOPES,
+	PROJECT_DATA_TABLE_ADMIN_SCOPES,
 } from './scopes/project-scopes.ee';
 import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
@@ -38,6 +42,7 @@ export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:admin': GLOBAL_ADMIN_SCOPES,
 	'global:member': GLOBAL_MEMBER_SCOPES,
 	'global:chatUser': GLOBAL_CHAT_USER_SCOPES,
+	'global:dataTableUser': GLOBAL_DATA_TABLE_USER_SCOPES,
 };
 
 export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
@@ -46,6 +51,9 @@ export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:editor': PROJECT_EDITOR_SCOPES,
 	'project:viewer': PROJECT_VIEWER_SCOPES,
 	'project:chatUser': PROJECT_CHAT_USER_SCOPES,
+	'project:dataTableViewer': PROJECT_DATA_TABLE_VIEWER_SCOPES,
+	'project:dataTableEditor': PROJECT_DATA_TABLE_EDITOR_SCOPES,
+	'project:dataTableAdmin': PROJECT_DATA_TABLE_ADMIN_SCOPES,
 };
 
 export const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {

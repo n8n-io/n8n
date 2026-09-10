@@ -19,6 +19,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	getGlobalScopes,
+	hasReadOnlyPersonalProject,
 	isBuiltInRole,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
@@ -369,12 +370,17 @@ export class UserService {
 
 			const isDowngradedToChatUser =
 				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
-			const isUpgradedChatUser =
-				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+			const isDowngradedToRestricted =
+				!hasReadOnlyPersonalProject(user.role.slug) &&
+				hasReadOnlyPersonalProject(newRole.newRoleName);
+			const isUpgradedFromRestricted =
+				hasReadOnlyPersonalProject(user.role.slug) &&
+				!hasReadOnlyPersonalProject(newRole.newRoleName);
 			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
 
 			if (isDowngradedToChatUser) {
 				// Revoke user's project roles in any shared projects they have access to.
+				// Data table users keep theirs: project membership is how they reach tables.
 				const projectRelations = await trx.find(ProjectRelation, {
 					where: { userId: user.id, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
 					relations: ['role'],
@@ -401,7 +407,9 @@ export class UserService {
 						projectId: relation.projectId,
 					});
 				}
+			}
 
+			if (isDowngradedToRestricted) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					trx,
@@ -419,11 +427,11 @@ export class UserService {
 					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
 				);
 
-				// Revoke all API keys from chat users
+				// Restricted roles have no apiKey scopes, so revoke every key
 				await this.publicApiKeyService.deleteAllApiKeysForUser(user, trx);
 			} else if (isDowngradedAdmin) {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
-			} else if (isUpgradedChatUser) {
+			} else if (isUpgradedFromRestricted) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					trx,

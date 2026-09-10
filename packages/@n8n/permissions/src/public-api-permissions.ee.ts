@@ -222,6 +222,8 @@ const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 	'global:admin': ADMIN_API_KEY_SCOPES,
 	'global:member': MEMBER_API_KEY_SCOPES,
 	'global:chatUser': CHAT_USER_API_KEY_SCOPES,
+	// Data table users have no apiKey scopes, so they can never create a key
+	'global:dataTableUser': [],
 };
 
 export const getApiKeyScopesForRole = (user: AuthPrincipal) => {

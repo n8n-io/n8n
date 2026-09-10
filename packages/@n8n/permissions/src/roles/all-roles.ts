@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
+	GLOBAL_CHAT_USER_ROLE_SLUG,
+	GLOBAL_DATA_TABLE_USER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_EDITOR_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 	PROJECT_CHAT_USER_ROLE_SLUG,
+	PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG,
+	PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG,
+	PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG,
 } from '../constants.ee';
 import {
 	CREDENTIALS_SHARING_SCOPE_MAP,
@@ -21,11 +26,15 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:admin': 'Admin',
 	'global:member': 'Member',
 	'global:chatUser': 'Chat User',
+	'global:dataTableUser': 'Data Table User',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]: 'Project Admin',
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Project Editor',
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Project Viewer',
 	[PROJECT_CHAT_USER_ROLE_SLUG]: 'Project Chat User',
+	[PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG]: 'Data Table Viewer',
+	[PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG]: 'Data Table Editor',
+	[PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG]: 'Data Table Admin',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
@@ -39,6 +48,7 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'global:admin': 'Full control of the instance, including all workflows and credentials',
 	'global:member': 'Can create and use their own workflows and credentials',
 	'global:chatUser': 'Can only use workflows through the chat interface, not build them',
+	'global:dataTableUser': 'Can only view and manage data tables in the projects they belong to',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]:
 		'Full control of settings, members, workflows, credentials and executions',
@@ -46,6 +56,10 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Read-only access to workflows, credentials, and executions',
 	[PROJECT_CHAT_USER_ROLE_SLUG]:
 		'Chat-only access to chatting with workflows that have n8n Chat enabled',
+	[PROJECT_DATA_TABLE_VIEWER_ROLE_SLUG]: 'Read-only access to data tables',
+	[PROJECT_DATA_TABLE_EDITOR_ROLE_SLUG]: 'View and edit rows in data tables',
+	[PROJECT_DATA_TABLE_ADMIN_ROLE_SLUG]:
+		'Full control of data tables, including columns, and creating and deleting tables',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
@@ -83,3 +97,10 @@ export const ALL_ROLES: AllRolesMap = Object.freeze({
 export const isBuiltInRole = (role: string): role is AllRoleTypes => {
 	return Object.prototype.hasOwnProperty.call(ROLE_NAMES, role);
 };
+
+/**
+ * Restricted global roles get `project:viewer` on their personal project instead of
+ * `project:personalOwner`, so they cannot create resources anywhere on their own.
+ */
+export const hasReadOnlyPersonalProject = (role: string) =>
+	role === GLOBAL_CHAT_USER_ROLE_SLUG || role === GLOBAL_DATA_TABLE_USER_ROLE_SLUG;

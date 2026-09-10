@@ -115,6 +115,12 @@ const roles = computed<Record<string, { label: string; desc: string }>>(() => ({
 			desc: i18n.baseText('settings.users.table.row.role.description.chatUser'),
 		},
 	}),
+	...(settingsStore.isDataTableFeatureEnabled && {
+		[ROLE.DataTableUser]: {
+			label: i18n.baseText('auth.roles.dataTableUser'),
+			desc: i18n.baseText('settings.users.table.row.role.description.dataTableUser'),
+		},
+	}),
 	[ROLE.Default]: { label: i18n.baseText('auth.roles.default'), desc: '' },
 	...Object.fromEntries(
 		rolesStore.customInstanceRoles.map((role) => [

@@ -5,6 +5,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { DATA_TABLE_VIEW, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
@@ -26,6 +28,10 @@ function refreshInsightsSummary() {
 }
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
+	// Data table users never enter workflow, credential, execution or variable pages
+	if (useUsersStore().isDataTableOnlyUser) {
+		return false;
+	}
 	if (!to?.params.projectId) {
 		return true;
 	}
@@ -139,7 +145,12 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				meta: {
 					middleware: ['authenticated'],
 				},
-				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
+				redirect: (to) => ({
+					name: useUsersStore().isDataTableOnlyUser
+						? PROJECT_DATA_TABLES
+						: VIEWS.PROJECTS_WORKFLOWS,
+					params: to.params,
+				}),
 				children: commonChildRoutes
 					.map((route, idx) => ({
 						...route,
@@ -179,12 +190,18 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		meta: {
 			middleware: ['authenticated'],
 		},
-		redirect: '/home/workflows',
+		// Data table users land on the data tables overview. Resolving this in the redirect
+		// (not only in beforeEnter) keeps a bounce from the `custom` middleware from looping.
+		redirect: () =>
+			useUsersStore().isDataTableOnlyUser ? { name: DATA_TABLE_VIEW } : '/home/workflows',
 		beforeEnter: (_to, _from, next) => {
 			const settingsStore = useSettingsStore();
 			if (settingsStore.isChatFeatureEnabled && hasRole(['global:chatUser'])) {
 				// Prevent Chat users from accessing the home view
 				return next({ name: CHAT_VIEW });
+			}
+			if (useUsersStore().isDataTableOnlyUser) {
+				return next({ name: DATA_TABLE_VIEW });
 			}
 
 			// Refresh the weekly summary when entering the home route. The import is lazy and

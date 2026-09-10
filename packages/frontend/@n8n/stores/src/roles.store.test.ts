@@ -252,6 +252,50 @@ describe('roles store', () => {
 		});
 	});
 
+	describe('data table role filtering', () => {
+		const role = (slug: string, roleType: 'global' | 'project') => ({
+			displayName: slug,
+			slug,
+			description: slug,
+			scopes: [],
+			licensed: true,
+			systemRole: true,
+			roleType,
+			usedByUsers: 0,
+		});
+
+		beforeEach(() => {
+			vi.spyOn(rolesApi, 'getRoles').mockResolvedValue({
+				global: [role('global:member', 'global'), role('global:dataTableUser', 'global')],
+				project: [role('project:editor', 'project'), role('project:dataTableViewer', 'project')],
+				credential: [],
+				workflow: [],
+				secretsProviderConnection: [],
+			});
+		});
+
+		it('excludes data table roles when the data table module is disabled', async () => {
+			vi.spyOn(settingsStore, 'isDataTableFeatureEnabled', 'get').mockReturnValue(false);
+			await rolesStore.fetchRoles();
+
+			expect(rolesStore.processedInstanceRoles.map((r) => r.slug)).toEqual(['global:member']);
+			expect(rolesStore.processedProjectRoles.map((r) => r.slug)).toEqual(['project:editor']);
+		});
+
+		it('includes data table roles when the data table module is enabled', async () => {
+			vi.spyOn(settingsStore, 'isDataTableFeatureEnabled', 'get').mockReturnValue(true);
+			await rolesStore.fetchRoles();
+
+			expect(rolesStore.processedInstanceRoles.map((r) => r.slug)).toContain(
+				'global:dataTableUser',
+			);
+			expect(rolesStore.processedProjectRoles.map((r) => r.slug)).toEqual([
+				'project:editor',
+				'project:dataTableViewer',
+			]);
+		});
+	});
+
 	it('customInstanceRoles returns only non-system roles from processedInstanceRoles', async () => {
 		vi.spyOn(rolesApi, 'getRoles').mockResolvedValue({
 			global: [

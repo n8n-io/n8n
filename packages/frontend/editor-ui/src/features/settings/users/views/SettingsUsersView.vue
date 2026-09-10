@@ -155,6 +155,14 @@ const userRoles = computed((): Array<{ value: string; label: string; disabled?: 
 			label: i18n.baseText('auth.roles.chatUser'),
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},
+		...(settingsStore.isDataTableFeatureEnabled
+			? [
+					{
+						value: ROLE.DataTableUser,
+						label: i18n.baseText('auth.roles.dataTableUser'),
+					},
+				]
+			: []),
 		{
 			value: ROLE.Admin,
 			label: i18n.baseText('auth.roles.admin'),

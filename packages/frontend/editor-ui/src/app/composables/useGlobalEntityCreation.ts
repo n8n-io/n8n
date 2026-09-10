@@ -204,6 +204,11 @@ export const useGlobalEntityCreation = () => {
 		const variableTrailing = variableItem.value ? [variableItem.value] : [];
 		const dataTableTrailing = dataTableItem.value ? [dataTableItem.value] : [];
 
+		// Data table users can only create data tables
+		if (usersStore.isDataTableOnlyUser) {
+			return dataTableTrailing;
+		}
+
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return [
