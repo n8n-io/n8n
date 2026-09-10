@@ -2276,6 +2276,109 @@ describe('AgentRuntime — deferred tool loading', () => {
 		);
 	});
 
+	it('answers already_loaded when the model tries to load an active tool', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-load', toolName: 'load_tool', args: { toolName: 'core_tool' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('called it directly'));
+
+		const result = await runtime.generate('load the core tool');
+
+		const loadCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'load_tool');
+		expect(loadCall?.output).toEqual({
+			status: 'already_loaded',
+			toolName: 'core_tool',
+			tool: { name: 'core_tool', description: 'Mock tool core_tool', loaded: true },
+			message: 'Tool "core_tool" is already available. Call it directly.',
+		});
+	});
+
+	it('returns active tools from search_tools, marked as loaded', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-search', toolName: 'search_tools', args: { query: 'core tool' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('found it'));
+
+		const result = await runtime.generate('find the core tool');
+
+		const searchCall = result.toolCalls?.find((toolCall) => toolCall.tool === 'search_tools');
+		expect(searchCall?.output).toEqual({
+			results: [
+				{ name: 'core_tool', description: 'Mock tool core_tool', loaded: true },
+				{
+					name: 'deferred_capability',
+					description: 'Mock tool deferred_capability',
+					loaded: false,
+				},
+			],
+		});
+	});
+
+	it('keeps an active tool out of the loadable set', async () => {
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-load', toolName: 'load_tool', args: { toolName: 'core_tool' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('load the core tool');
+
+		// `already_loaded` for an active tool must not inject a duplicate of it.
+		const generateTextCalls = generateText.mock.calls as Array<
+			[{ tools: Record<string, unknown> }]
+		>;
+		const secondTurnTools = Object.keys(generateTextCalls[1][0].tools);
+		expect(secondTurnTools.filter((name) => name === 'core_tool')).toHaveLength(1);
+		expect(secondTurnTools).not.toContain('deferred_capability');
+	});
+
 	it('does not leak loaded deferred tools into the next generate run', async () => {
 		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
 		const deferredTool = makeMockTool(
