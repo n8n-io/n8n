@@ -208,6 +208,8 @@ vi.mock('@n8n/instance-ai', async () => {
 			}
 		},
 		resumeAgentRun: vi.fn(),
+		streamAgentRun: vi.fn(),
+		getDateTimeSection: vi.fn(() => '2026-09-08T10:00:00Z'),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
 		shutdownProductTelemetryProviders: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
@@ -222,6 +224,7 @@ vi.mock('@/permissions.ee/check-access', () => ({
 
 import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import type { InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -236,6 +239,7 @@ import {
 	createInstanceAiTraceContext,
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
+	streamAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
@@ -473,6 +477,7 @@ type TerminalGuardOrderServiceInternals = {
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -581,6 +586,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {};
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -693,6 +699,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			eventLog: { getSetupItemsSnapshots: Mock };
@@ -749,6 +756,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		const initialSnapshots = [{ workflowId: 'wf-old', items: [] }];
@@ -986,6 +994,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: { warn: Mock };
@@ -1042,6 +1051,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = { warn: vi.fn() };
@@ -1559,7 +1569,7 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 }
 
 describe('InstanceAiService — revalidateActiveUser', () => {
-	it('returns the user when active and scoped for AI Assistant', async () => {
+	it('returns the user when active and scoped for n8n Assistant', async () => {
 		const service = createRevalidationService();
 		const fresh = userWithScopes(['instanceAi:message']);
 		service.userRepository.findOne.mockResolvedValue(fresh);
@@ -1874,7 +1884,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			'Rejecting confirmation: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
 		);
 	});
@@ -2042,7 +2052,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling run: user no longer authorized for AI Assistant',
+			'Cancelling run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a' }),
 		);
 	});
@@ -2331,7 +2341,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling suspended run: user no longer authorized for AI Assistant',
+			'Cancelling suspended run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
 		);
 	});
@@ -4388,6 +4398,92 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		});
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 	});
+});
+
+describe('InstanceAiService setup panel Execute input', () => {
+	it.each([true, false])(
+		'forwards the Execute target only with the panel enabled: %s',
+		async (enabled) => {
+			vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(undefined);
+			vi.mocked(streamAgentRun).mockResolvedValueOnce({
+				status: 'cancelled',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve(''),
+				workSummary: {
+					toolCalls: [],
+					totalToolCalls: 0,
+					totalToolErrors: 0,
+					askedClarifyingQuestion: false,
+				},
+			});
+			const environment = {
+				context: { setupItemsEmitter: enabled ? {} : undefined },
+				memory: { getThread: vi.fn(async () => ({ title: 'Existing conversation' })) },
+				taskStorage: { get: vi.fn(async () => undefined) },
+				orchestrationContext: {},
+			};
+			const service = Object.assign(Object.create(InstanceAiService.prototype), {
+				resolveContextAttachments: vi.fn(async () => []),
+				instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
+				createProxyRunConfig: vi.fn(async () => ({})),
+				browserSessionService: { getExtensionTraceContext: vi.fn() },
+				readThreadProvenance: vi.fn(async () => ({})),
+				// `buildBlock` always answers with a result now, never a nullish value: the
+				// absent branch is what carries the reason a turn got no block.
+				instanceContext: {
+					buildBlock: vi.fn().mockResolvedValue({ state: 'absent', reason: 'disabled' }),
+				},
+				reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
+					throw error;
+				}),
+				isRunDebugEnabled: vi.fn(() => false),
+				eventBus: { publish: vi.fn() },
+				threadPushRef: new Map(),
+				createExecutionEnvironment: vi.fn(async () => environment),
+				snapshotAttachedAgents: vi.fn(),
+				buildMessageWithRunningTasks: vi.fn(async (_threadId: string, text: string) => text),
+				buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+				resolveProjectContextSection: vi.fn(async () => ''),
+				createAgentFromEnvironment: vi.fn(async () => ({})),
+				buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+				shouldPreserveHitlOnShutdown: vi.fn(() => true),
+				runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
+				domainAccessTrackersByThread: new Map(),
+				updateInternalFollowUpFailureStreak: vi.fn(),
+			}) as {
+				executeRun: (
+					user: User,
+					threadId: string,
+					runId: string,
+					message: string,
+					controller: AbortController,
+					attachments?: undefined,
+					context?: InstanceAiHandoffContext,
+				) => Promise<void>;
+			};
+
+			await service.executeRun(
+				fakeUser,
+				'thread-1',
+				'run-1',
+				'Run a test.',
+				new AbortController(),
+				undefined,
+				{ source: 'setup-panel-execute', workflowId: 'wf-target' },
+			);
+
+			expect(streamAgentRun).toHaveBeenCalled();
+			const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];
+			expect(input).toEqual(expect.any(String));
+			if (enabled) {
+				expect(input).toContain('<workflow-test-request>');
+				expect(input).toContain(JSON.stringify({ workflowId: 'wf-target' }));
+			} else {
+				expect(input).not.toContain('<workflow-test-request>');
+				expect(input).not.toContain('wf-target');
+			}
+		},
+	);
 });
 
 describe('InstanceAiService — user message persistence on cancel', () => {
