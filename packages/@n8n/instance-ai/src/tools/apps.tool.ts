@@ -1,8 +1,8 @@
 /**
- * Apps tool — create an app, restore its stored source into a fresh sandbox,
- * bind n8n workflows it may call, and publish it as a served version once the
- * user confirms. The agent edits files with the workspace tool in between; the
- * live preview follows.
+ * Apps tool — create an app, restore its stored source into the app's own
+ * sandbox, bind n8n workflows it may call, and publish it as a served version
+ * once the user confirms. The agent edits files with the workspace tools and
+ * `sandbox: 'app'` in between; the live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -37,7 +37,7 @@ export { APPS_TOOL_ID };
  */
 export type AppSandboxContext = Pick<
 	InstanceAiContext,
-	'appService' | 'workspace' | 'workspaceRoot'
+	'appService' | 'appWorkspace' | 'workspaceRoot' | 'getAppId'
 >;
 
 export const APP_BUILDER_SKILL_DIR = 'app-builder';
@@ -451,10 +451,10 @@ function requireSandbox(
 	context: AppSandboxContext,
 	abortSignal?: AbortSignal,
 ): {
-	workspace: NonNullable<InstanceAiContext['workspace']>;
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>;
 	run: SandboxRunner;
 } {
-	const workspace = context.workspace;
+	const workspace = context.appWorkspace;
 	const executeCommand = workspace?.sandbox?.executeCommand?.bind(workspace.sandbox);
 	if (!workspace || !executeCommand) {
 		throw new Error('The apps tool needs a sandbox workspace, which is not available in this run.');
@@ -503,9 +503,9 @@ async function installDependencies(
 }
 
 function requireFilesystem(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	purpose: string,
-): NonNullable<NonNullable<InstanceAiContext['workspace']>['filesystem']> {
+): NonNullable<NonNullable<InstanceAiContext['appWorkspace']>['filesystem']> {
 	const filesystem = workspace.filesystem;
 	if (!filesystem) throw new Error(`The sandbox workspace has no filesystem to ${purpose}.`);
 	return filesystem;
@@ -517,6 +517,14 @@ async function handleCreate(
 	abortSignal?: AbortSignal,
 ) {
 	const appService = requireAppService(context);
+	const boundAppId = context.getAppId?.();
+	if (boundAppId) {
+		const bound = await appService.get(boundAppId);
+		return {
+			denied: true,
+			reason: `This thread builds app "${bound.name}" (id ${bound.id}). Start a new thread to build another app.`,
+		};
+	}
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const namespace = input.namespace ?? slugifyNamespace(input.name);
 	if (!namespace) {
@@ -589,7 +597,7 @@ async function handleCreate(
 	} catch (error) {
 		throw new Error(
 			`App "${input.name}" is registered (id ${created.app.id}, namespace "${namespace}") but scaffolding failed: ` +
-				`${getErrorMessage(error)} Write the files by hand under ${workspacePath} (app id ${created.app.id}).`,
+				`${getErrorMessage(error)} Write the files by hand under ${workspacePath} with sandbox 'app' (app id ${created.app.id}).`,
 		);
 	}
 }
@@ -721,8 +729,8 @@ export async function handleBuild(
 
 /**
  * Rehydrate `apps/<namespace>/` from the newest stored source (a per-turn
- * snapshot or a build). Needed when a thread starts in a fresh sandbox that
- * never held the app's files.
+ * snapshot or a build). Needed when the app's sandbox is new and never held
+ * the app's files.
  */
 export async function handleRestore(
 	context: AppSandboxContext,
@@ -746,7 +754,7 @@ export async function handleRestore(
 	if (occupied.exitCode === 0) {
 		return {
 			denied: true,
-			reason: `${workspacePath} already exists and is not empty. Edit the files there; restore only fills an empty app directory.`,
+			reason: `${workspacePath} already exists and is not empty. Edit the files there with sandbox 'app'; restore only fills an empty app directory.`,
 		};
 	}
 
@@ -754,7 +762,7 @@ export async function handleRestore(
 	if (!tarball) {
 		return {
 			denied: true,
-			reason: `App "${app.name}" has no stored source to restore. Write the files under ${workspacePath} by hand.`,
+			reason: `App "${app.name}" has no stored source to restore. Write the files under ${workspacePath} by hand with sandbox 'app'.`,
 		};
 	}
 
@@ -843,7 +851,7 @@ async function handleAddComponent(
 }
 
 async function writeSdkTarball(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	namespace: string,
 	sdk: { filename: string; data: Uint8Array },
 	abortSignal?: AbortSignal,
@@ -856,7 +864,7 @@ async function writeSdkTarball(
 }
 
 async function writeBindingsTypes(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	namespace: string,
 	bindings: DescribedBinding[],
 	abortSignal?: AbortSignal,
@@ -1029,7 +1037,7 @@ async function handleBindings(context: InstanceAiContext, input: BindingsInput) 
 }
 
 async function readTarball(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	relativePath: string,
 	abortSignal?: AbortSignal,
 ): Promise<Buffer> {
@@ -1069,11 +1077,11 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Create, restore, bind and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
-				'`create` registers the app, copies a starter template into apps/<namespace>/ in the workspace and installs its dependencies; ' +
-				'edit the files there and the live preview updates by itself. Never build to check your work. ' +
+				"`create` registers the app, copies a starter template into apps/<namespace>/ in the app's own sandbox and installs its dependencies; " +
+				"edit the files there with the workspace tools and `sandbox: 'app'`, and the live preview updates by itself. Never build to check your work. " +
 				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
 				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
-				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
+				"`restore` unpacks the stored source of an existing app into apps/<namespace>/ when the app's sandbox does not have it yet. " +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
 				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`): ' +
 				'pass `{ key, kind: "workflow", workflowId }` entries, and it rewrites src/n8n-bindings.d.ts with the input types. ' +

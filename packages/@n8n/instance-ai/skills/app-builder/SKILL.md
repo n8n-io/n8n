@@ -20,8 +20,10 @@ recommended_tools:
 # App Builder
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
-source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-these actions: `create` registers an app and installs its dependencies,
+source lives in the app's own sandbox under `apps/<namespace>/`, shared by
+every conversation about that app: pass `sandbox: 'app'` to every
+`workspace_*` call that touches it (the default targets the thread sandbox,
+which holds no app). `apps` has these actions: `create` registers an app and installs its dependencies,
 `publish` builds the current source into the served version after the user
 confirms, `restore` brings the stored source back into a workspace that does
 not have it, `add-component` copies a component from this skill's own catalog
@@ -49,7 +51,7 @@ also publish with the Publish button above the preview, without you.
    Pass `projectId` only when the user names a project; otherwise the app
    lands in the project bound to this conversation, else the personal one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
-   `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
+   `workspace_str_replace_file`, always with `sandbox: 'app'`. The template's `AI_RULES.md` describes the
    layout. Do not start a dev server and do not run a build to check your
    work: the live preview updates on its own. Never run a build to check your
    work. Tell the user what changed and stop; the preview shows it.
@@ -85,8 +87,8 @@ also publish with the Publish button above the preview, without you.
    - `store`: n8n rejected the upload; `message` says why.
 
 For an already bound app (the conversation names an app id) skip step 1.
-Before you edit, confirm that `apps/<namespace>/` exists in this workspace
-(`workspace_execute_command` with `ls apps/<namespace>`). If it exists, just
+Before you edit, confirm that `apps/<namespace>/` exists in the app sandbox
+(`workspace_execute_command` with `ls apps/<namespace>` and `sandbox: 'app'`). If it exists, just
 edit: n8n restored it when the user opened the preview, and its `npm install`
 may still be running. Call `apps(action="restore", appId)` only when it is
 missing: it unpacks the newest stored source into `apps/<namespace>/` (with the

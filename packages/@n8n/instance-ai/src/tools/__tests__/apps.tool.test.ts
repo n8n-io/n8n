@@ -103,7 +103,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		credentialService: {},
 		dataTableService: {},
 		appService,
-		workspace: {
+		appWorkspace: {
 			sandbox: { executeCommand: vi.fn().mockResolvedValue(ok()) },
 			filesystem: {
 				readFile: vi.fn().mockResolvedValue(Buffer.from([0x1f, 0x8b])),
@@ -117,16 +117,18 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 }
 
 function executeCommandMock(context: InstanceAiContext): Mock {
-	return (context.workspace as unknown as { sandbox: { executeCommand: Mock } }).sandbox
+	return (context.appWorkspace as unknown as { sandbox: { executeCommand: Mock } }).sandbox
 		.executeCommand;
 }
 
 function readFileMock(context: InstanceAiContext): Mock {
-	return (context.workspace as unknown as { filesystem: { readFile: Mock } }).filesystem.readFile;
+	return (context.appWorkspace as unknown as { filesystem: { readFile: Mock } }).filesystem
+		.readFile;
 }
 
 function writeFileMock(context: InstanceAiContext): Mock {
-	return (context.workspace as unknown as { filesystem: { writeFile: Mock } }).filesystem.writeFile;
+	return (context.appWorkspace as unknown as { filesystem: { writeFile: Mock } }).filesystem
+		.writeFile;
 }
 
 function commandsRun(context: InstanceAiContext): string[] {
@@ -383,6 +385,20 @@ describe('apps tool', () => {
 				denied: true,
 				reason: 'Namespace "greeter" is taken. Choose another.',
 			});
+			expect(executeCommandMock(context)).not.toHaveBeenCalled();
+		});
+
+		it('returns denied when the thread already builds an app', async () => {
+			const context = createMockContext({ getAppId: () => 'app-1' });
+
+			const result = await runCreate(context);
+
+			expect(result).toEqual({
+				denied: true,
+				reason:
+					'This thread builds app "Greeter" (id app-1). Start a new thread to build another app.',
+			});
+			expect(context.appService?.create).not.toHaveBeenCalled();
 			expect(executeCommandMock(context)).not.toHaveBeenCalled();
 		});
 
@@ -696,7 +712,7 @@ describe('apps tool', () => {
 		});
 
 		it('fails when the run has no sandbox', async () => {
-			const context = createMockContext({ workspace: undefined });
+			const context = createMockContext({ appWorkspace: undefined });
 			await expect(runBuild(context)).rejects.toThrow('sandbox workspace');
 		});
 
