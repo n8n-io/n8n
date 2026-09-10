@@ -38,6 +38,14 @@ describe('ExecutionLevelTracer', () => {
 
 	const defaultWorkflow = { id: 'wf-1', name: 'Test', versionId: 'v1', nodeCount: 2 };
 
+	/**
+	 * Spans excluding the `workflow.execute.started` marker, which is emitted once per
+	 * `startWorkflow` and asserted on in its own describe below. Existing expectations stay
+	 * about the workflow/node spans under test rather than tracking the marker's presence.
+	 */
+	const visibleSpans = () =>
+		otel.getFinishedSpans().filter((span) => span.name !== 'workflow.execute.started');
+
 	describe('startWorkflow / endWorkflow', () => {
 		it('should create a workflow span with correct attributes', () => {
 			tracer.startWorkflow({
@@ -53,7 +61,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const spans = otel.getFinishedSpans();
+			const spans = visibleSpans();
 			expect(spans).toHaveLength(1);
 
 			const span = spans[0];
@@ -83,7 +91,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const span = otel.getFinishedSpans()[0];
+			const span = visibleSpans()[0];
 			expect(span.attributes['n8n.project.custom.env']).toBe('production');
 			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
 		});
@@ -112,7 +120,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const spans = otel.getFinishedSpans();
+			const spans = visibleSpans();
 			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
 			// No project custom attributes should appear on the node span
 			const projectCustomKeys = Object.keys(nodeSpan.attributes).filter((k) =>
@@ -134,7 +142,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			expect(otel.getFinishedSpans()[0].attributes['n8n.project.id']).toBeUndefined();
+			expect(visibleSpans()[0].attributes['n8n.project.id']).toBeUndefined();
 		});
 
 		it('should set error status on failed executions', () => {
@@ -153,7 +161,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const spans = otel.getFinishedSpans();
+			const spans = visibleSpans();
 			expect(spans).toHaveLength(1);
 			expect(spans[0].status.code).toBe(SpanStatusCode.ERROR);
 			expect(spans[0].attributes['n8n.execution.error_type']).toBe('Error');
@@ -179,7 +187,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const span = otel.getFinishedSpans()[0];
+			const span = visibleSpans()[0];
 			expect(span.attributes['n8n.execution.error_type']).toBe('ReferenceError');
 			expect(span.events[0].attributes?.['exception.type']).toBe('ReferenceError');
 		});
@@ -198,7 +206,7 @@ describe('ExecutionLevelTracer', () => {
 				retryOf: 'exec-original',
 			});
 
-			const span = otel.getFinishedSpans()[0];
+			const span = visibleSpans()[0];
 			expect(span.attributes['n8n.execution.is_retry']).toBe(true);
 			expect(span.attributes['n8n.execution.retry_of']).toBe('exec-original');
 		});
@@ -223,7 +231,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const span = otel.getFinishedSpans()[0];
+			const span = visibleSpans()[0];
 			expect(span.attributes['n8n.workflow.custom.environment']).toBe('production');
 			expect(span.attributes['n8n.workflow.custom.retryCount']).toBe('3');
 			expect(span.attributes['n8n.workflow.custom.isCritical']).toBe('true');
@@ -242,7 +250,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const span = otel.getFinishedSpans()[0];
+			const span = visibleSpans()[0];
 			// The span inherits the traceId from the inbound traceparent
 			expect(span.spanContext().traceId).toBe('0af7651916cd43dd8448eb211c80319c');
 		});
@@ -314,7 +322,7 @@ describe('ExecutionLevelTracer', () => {
 				}),
 			).not.toThrow();
 
-			expect(otel.getFinishedSpans()).toHaveLength(0);
+			expect(visibleSpans()).toHaveLength(0);
 		});
 	});
 
@@ -348,7 +356,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const spans = otel.getFinishedSpans();
+			const spans = visibleSpans();
 			expect(spans).toHaveLength(2);
 
 			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
@@ -389,7 +397,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.events).toHaveLength(1);
 			expect(nodeSpan.events[0].name).toBe('exception');
@@ -429,7 +437,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe(
 				'unknown is not defined [line 1]',
 			);
@@ -467,7 +475,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.events[0].attributes?.['exception.message']).toBe('Intentional error');
 			expect(nodeSpan.events[0].attributes?.['exception.type']).toBe('UnknownError');
 		});
@@ -481,7 +489,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('without a pre-existing parent workflow trace'),
 			);
-			expect(otel.getFinishedSpans()).toHaveLength(0);
+			expect(visibleSpans()).toHaveLength(0);
 		});
 
 		it('should no-op when endNode is called for a node that was never started', () => {
@@ -508,7 +516,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			// Only the workflow span should be finished.
-			const spans = otel.getFinishedSpans();
+			const spans = visibleSpans();
 			expect(spans).toHaveLength(1);
 			expect(spans[0].name).toBe('workflow.execute');
 		});
@@ -538,7 +546,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
 			expect(nodeSpan.attributes['n8n.node.custom.llm.tokens']).toBe('500');
 		});
@@ -570,7 +578,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
 			expect(nodeSpan.attributes['n8n.workflow.custom.retryCount']).toBeUndefined();
 			expect(nodeSpan.attributes['n8n.workflow.custom.isCritical']).toBeUndefined();
@@ -604,7 +612,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.attributes['n8n.workflow.custom.env']).toBeUndefined();
 			expect(nodeSpan.attributes['n8n.node.custom.env']).toBe('node');
 		});
@@ -643,7 +651,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.version']).toBe('v3');
 			expect(nodeSpan.attributes['n8n.node.custom.ai.agent.failure.type']).toBe(
@@ -671,7 +679,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const nodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const nodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpan).toBeDefined();
 			expect(nodeSpan.status.code).toBe(SpanStatusCode.ERROR);
 			expect(nodeSpan.attributes['n8n.node.termination_reason']).toBe('workflow_cancelled');
@@ -847,7 +855,7 @@ describe('ExecutionLevelTracer', () => {
 				isRetry: false,
 			});
 
-			const finishedNodeSpan = otel.getFinishedSpans().find((s) => s.name === 'node.execute')!;
+			const finishedNodeSpan = visibleSpans().find((s) => s.name === 'node.execute')!;
 			expect(nodeSpanId).toBe(finishedNodeSpan.spanContext().spanId);
 		});
 
@@ -877,6 +885,161 @@ describe('ExecutionLevelTracer', () => {
 		it('returns undefined when no spans are tracked for the execution', () => {
 			expect(tracer.getActiveContext('non-existent')).toBeUndefined();
 			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
+		});
+	});
+	describe('workflow identity on node spans', () => {
+		const startExecution = (executionId: string, project?: { id: string }) =>
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
+
+		const runNode = (executionId: string) => {
+			const node = {
+				id: 'node-1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+			tracer.startNode({ executionId, node });
+			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+		};
+
+		it('should stamp workflow, execution and project identity onto node spans', () => {
+			startExecution('exec-identity', { id: 'project-1' });
+			runNode('exec-identity');
+
+			const nodeSpan = visibleSpans().find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.workflow.name']).toBe('Test');
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-identity');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('project-1');
+			// Node-level attributes are still present alongside the inherited identity.
+			expect(nodeSpan.attributes['n8n.node.name']).toBe('HTTP Request');
+		});
+
+		it('should omit the project id when the execution has no project', () => {
+			startExecution('exec-no-project');
+			runNode('exec-no-project');
+
+			const nodeSpan = visibleSpans().find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.project.id']).toBeUndefined();
+		});
+
+		it('should not copy workflow-level-only attributes onto node spans', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-root-only',
+				workflow: {
+					...defaultWorkflow,
+					customAttributes: { env: 'production' },
+				},
+				project: { id: 'project-1', customAttributes: { team: 'platform' } },
+			});
+			runNode('exec-root-only');
+
+			const nodeSpan = visibleSpans().find((span) => span.name === 'node.execute')!;
+			// version_id / node_count are workflow-shaped, and custom attributes are
+			// license-gated - none of them belong on a per-node span.
+			expect(nodeSpan.attributes['n8n.workflow.version_id']).toBeUndefined();
+			expect(nodeSpan.attributes['n8n.workflow.node_count']).toBeUndefined();
+			expect(
+				Object.keys(nodeSpan.attributes).filter((key) => key.includes('.custom.')),
+			).toHaveLength(0);
+		});
+	});
+
+	describe('mid-execution export state', () => {
+		// A span is only exported once it ends, so `getFinishedSpans()` before `endWorkflow`
+		// models exactly what a collector holds while the execution is still running.
+		it('should export identifiable node spans before the workflow span ends', () => {
+			const nodeA = {
+				id: 'a',
+				name: 'Slow A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+			const nodeB = {
+				id: 'b',
+				name: 'Slow B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+			};
+
+			tracer.startWorkflow({
+				executionId: 'exec-live',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+			tracer.startNode({ executionId: 'exec-live', node: nodeA });
+			tracer.endNode({
+				executionId: 'exec-live',
+				node: nodeA,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			tracer.startNode({ executionId: 'exec-live', node: nodeB }); // still running
+
+			const exported = otel.getFinishedSpans();
+
+			// The root span has not ended, so monitoring cannot rely on it yet.
+			expect(exported.some((span) => span.name === 'workflow.execute')).toBe(false);
+
+			// ...but the finished node span already identifies its execution on its own.
+			const nodeSpan = exported.find((span) => span.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.node.name']).toBe('Slow A');
+			expect(nodeSpan.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(nodeSpan.attributes['n8n.execution.id']).toBe('exec-live');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('project-1');
+		});
+	});
+
+	describe('workflow start marker', () => {
+		it('should export an identified marker span at execution start', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-marker',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+
+			// Nothing else has ended yet, so this is the only span the collector has.
+			const exported = otel.getFinishedSpans();
+			expect(exported).toHaveLength(1);
+
+			const marker = exported[0];
+			expect(marker.name).toBe('workflow.execute.started');
+			expect(marker.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(marker.attributes['n8n.workflow.name']).toBe('Test');
+			expect(marker.attributes['n8n.execution.id']).toBe('exec-marker');
+			expect(marker.attributes['n8n.project.id']).toBe('project-1');
+		});
+
+		it('should parent the marker to the workflow span so they share a trace', () => {
+			tracer.startWorkflow({ executionId: 'exec-marker-parent', workflow: defaultWorkflow });
+			const marker = otel.getFinishedSpans()[0];
+
+			tracer.endWorkflow({
+				executionId: 'exec-marker-parent',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+			const workflowSpan = otel
+				.getFinishedSpans()
+				.find((span) => span.name === 'workflow.execute')!;
+
+			expect(marker.spanContext().traceId).toBe(workflowSpan.spanContext().traceId);
+			expect(marker.parentSpanContext?.spanId).toBe(workflowSpan.spanContext().spanId);
+		});
+
+		it('should keep license-gated custom attributes off the marker', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-marker-custom',
+				workflow: { ...defaultWorkflow, customAttributes: { env: 'production' } },
+				project: { id: 'project-1', customAttributes: { team: 'platform' } },
+			});
+
+			const marker = otel.getFinishedSpans()[0];
+			expect(Object.keys(marker.attributes).filter((key) => key.includes('.custom.'))).toHaveLength(
+				0,
+			);
 		});
 	});
 });
