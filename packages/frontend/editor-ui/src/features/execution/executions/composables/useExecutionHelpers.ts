@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { IRunDataDisplayMode } from '@/Interface';
 
 export interface IExecutionUIData {
@@ -20,6 +21,7 @@ export function useExecutionHelpers() {
 	const i18n = useI18n();
 	const router = useRouter();
 	const telemetry = useTelemetry();
+	const usersStore = useUsersStore();
 
 	function getUIDetails(execution: ExecutionSummary): IExecutionUIData {
 		const status = {
@@ -75,6 +77,13 @@ export function useExecutionHelpers() {
 		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
 	}
 
+	function getStartedByName(execution: ExecutionSummary): string {
+		const userId = execution.startedByUserId;
+		if (!userId) return '';
+		const user = usersStore.usersById[userId];
+		return user?.fullName ?? user?.email ?? i18n.baseText('executionsList.startedBy.unknownUser');
+	}
+
 	function openExecutionInNewTab(executionId: string, workflowId: string): void {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
@@ -127,6 +136,7 @@ export function useExecutionHelpers() {
 		getUIDetails,
 		formatDate,
 		isExecutionRetriable,
+		getStartedByName,
 		openExecutionInNewTab,
 		trackOpeningRelatedExecution,
 		resolveRelatedExecutionUrl,
