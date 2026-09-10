@@ -89,6 +89,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result).toEqual({
 				ok: true,
+				autoApproved: false,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -156,6 +157,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result).toEqual({
 				ok: true,
+				autoApproved: false,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -263,6 +265,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result).toEqual({
 				ok: true,
+				autoApproved: false,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: 'My Workflow',
@@ -304,6 +307,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result).toEqual({
 				ok: true,
+				autoApproved: false,
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: undefined,
