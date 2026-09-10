@@ -11,7 +11,7 @@ const sourceCheck = 'agents_memory_entry_sources_exactly_one_source';
 const candidateSourceUniqueIndex = 'agents_mem_src_candidate_unique';
 const captureStatuses = ['pending', 'completed', 'failed'];
 
-export class CreateAgentMemoryEntryCandidates1788877732544 implements ReversibleMigration {
+export class CreateAgentMemoryEntryCandidates1789029973536 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			queryRunner,
