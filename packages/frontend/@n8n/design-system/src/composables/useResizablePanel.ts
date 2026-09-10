@@ -182,6 +182,7 @@ function usePanelDimension(
 	}
 
 	function reset(value?: number): void {
+		if (!defaultSize.value) return;
 		setSize(value ?? defaultSize.value);
 		if (containerSize.value > 0) persistedSize.value = proportion.value;
 	}
@@ -215,7 +216,11 @@ function useContainerSize(container: UseResizablePanelOptions['container']) {
 			return toValue(container);
 		},
 		function observeContainer(element, _, onCleanup) {
-			if (!element) return;
+			if (!element) {
+				width.value = 0;
+				height.value = 0;
+				return;
+			}
 			const observedElement = element;
 			function measureContainer(): void {
 				width.value = observedElement.offsetWidth;
@@ -344,7 +349,11 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
 		height.reset(size.height);
 	}
 
-	function startResize(event: MouseEvent, handlers: ResizablePanelDragCallbacks = {}): void {
+	/** Return a cleanup function for this drag only. */
+	function startResize(
+		event: MouseEvent,
+		handlers: ResizablePanelDragCallbacks = {},
+	): (() => void) | undefined {
 		const target = event.currentTarget;
 		if (!isResizeHandle(target)) return;
 		const direction = target.dataset.dir;
@@ -354,7 +363,8 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
 		event.stopPropagation();
 		width.start(handlers.displayedSize?.width);
 		height.start(handlers.displayedSize?.height);
-		callbacks = handlers;
+		const dragCallbacks = { ...handlers };
+		callbacks = dragCallbacks;
 		targetWindow = handlers.window ?? target.ownerDocument.defaultView ?? window;
 		startX = event.clientX;
 		startY = event.clientY;
@@ -365,6 +375,10 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
 		targetWindow.addEventListener('mouseup', onMouseUp);
 		targetWindow.addEventListener('blur', finishResize);
 		callbacks.onResizeStart?.();
+
+		return function cancelDrag(): void {
+			if (callbacks === dragCallbacks) cleanupResize();
+		};
 	}
 
 	if (getCurrentScope()) onScopeDispose(cleanupResize);

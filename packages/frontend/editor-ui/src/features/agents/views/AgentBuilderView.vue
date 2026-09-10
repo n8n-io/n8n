@@ -2367,6 +2367,7 @@ function onSwitchAgent(nextAgentId: string) {
 				{
 					[$style.previewOpen]: isPreviewDockOpen,
 					[$style.aiPanelOpen]: showAiPanel,
+					[$style.previewResizing]: isPreviewDockResizing,
 				},
 			]"
 			:style="{
@@ -2554,6 +2555,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 	&.aiPanelOpen {
 		padding-left: var(--agent-ai-panel-width);
+	}
+
+	&.previewResizing {
+		transition: none;
 	}
 
 	@include motion.reduced-motion;

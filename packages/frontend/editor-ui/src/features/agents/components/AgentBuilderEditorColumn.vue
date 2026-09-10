@@ -336,6 +336,7 @@ const i18n = useI18n();
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .advancedTrigger {
 	display: flex;
@@ -386,13 +387,8 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-	/** Hides scrollbars so they don't clash with resize handle */
-	scrollbar-color: transparent transparent;
 	scrollbar-gutter: stable;
-	scrollbar-width: thin;
-	&:hover {
-		scrollbar-color: var(--border-color) transparent;
-	}
+	@include scrollbar-mixins.hoverable-scroll-bar;
 }
 
 .preventScroll {
