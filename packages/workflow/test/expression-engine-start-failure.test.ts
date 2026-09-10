@@ -51,9 +51,9 @@ describe('Expression.disposeExpressionEngine', () => {
 		};
 
 		await Expression.disposeExpressionEngine();
-		// The browser shape: a pre-loaded bundle puts the evaluator in
+		// The browser shape: a pre-loaded bundle plus an explicit request for
 		// shared-caller mode.
-		await Expression.initExpressionEngine({ ...options, runtimeBundle });
+		await Expression.initExpressionEngine({ ...options, runtimeBundle, sharedCaller: true });
 		expect(Expression.getActiveImplementation()).toBe('quickjs');
 
 		await Expression.disposeExpressionEngine();

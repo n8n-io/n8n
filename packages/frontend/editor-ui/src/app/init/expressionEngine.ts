@@ -42,5 +42,8 @@ export async function initializeExpressionEngine(
 		poolSize: 1,
 		maxCodeCacheSize: 1024,
 		runtimeBundle,
+		// The editor's evaluate() is synchronous, so it needs a bridge already
+		// acquired; one shared caller serves every Expression instance.
+		sharedCaller: true,
 	});
 }

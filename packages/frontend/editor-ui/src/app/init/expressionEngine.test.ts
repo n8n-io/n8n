@@ -19,7 +19,11 @@ describe('initializeExpressionEngine', () => {
 		await initializeExpressionEngine('quickjs');
 
 		expect(Expression.initExpressionEngine).toHaveBeenCalledWith(
-			expect.objectContaining({ engine: 'quickjs', runtimeBundle: '/* runtime bundle */' }),
+			expect.objectContaining({
+				engine: 'quickjs',
+				runtimeBundle: '/* runtime bundle */',
+				sharedCaller: true,
+			}),
 		);
 	});
 

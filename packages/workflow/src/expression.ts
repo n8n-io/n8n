@@ -253,6 +253,14 @@ export class Expression {
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
 		runtimeBundle?: string;
+		/**
+		 * Evaluate every expression through one shared, pre-acquired bridge rather
+		 * than one per caller. The browser needs this: its synchronous `evaluate()`
+		 * requires a caller that already holds a bridge, and Expression instances
+		 * are short-lived in the editor. Node leaves this off, so the pool hands
+		 * each execution its own bridge and disposes it on release.
+		 */
+		sharedCaller?: boolean;
 	}): Promise<void> {
 		if (options.engine === 'legacy') return;
 		if (options.engine === 'vm' && IS_FRONTEND) return;
@@ -292,14 +300,14 @@ export class Expression {
 			// fall back to the legacy evaluator.
 			try {
 				await evaluator.initialize();
-				// Browser always passes runtimeBundle (the pre-built IIFE string).
-				// Use its presence as an explicit signal that we are in browser mode,
-				// rather than relying on IS_FRONTEND which is unreliable when
-				// vite-plugin-node-polyfills shims process with extra keys.
-				// Browser uses a single shared caller for all evaluations since the
-				// sync evaluate() requires a pre-acquired caller and Expression
-				// instances are short-lived in the editor.
-				if (options.runtimeBundle) {
+				// Requested explicitly rather than inferred from `runtimeBundle`.
+				// That option only means "the bundle is already loaded, skip the disk
+				// read"; a backend that pre-loaded it to save an fs call per pooled
+				// bridge would otherwise be switched to one shared caller and lose
+				// per-execution isolation without asking for it. IS_FRONTEND is not
+				// usable as the signal either: vite-plugin-node-polyfills shims
+				// `process` with extra keys, which defeats its detection.
+				if (options.sharedCaller) {
 					await evaluator.acquire(Expression.BROWSER_CALLER);
 					this.useSharedCaller = true;
 				}
