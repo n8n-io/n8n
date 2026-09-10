@@ -13,6 +13,9 @@
  * literal found in the package's own config. That last part is what covers the
  * ratchet blocks — a scoped `off` in cli or editor-ui is invisible otherwise.
  *
+ * `samples.json` is formatted by `pnpm format`, so run that after regenerating
+ * it or the next person's format run shows up as an unrelated diff.
+ *
  * ponytail: globs are read out of the config text with a regex, not by
  * executing the config, so a glob built at runtime from a variable is missed.
  * None exist today; `majority.mjs` walks the real objects and would surface one.

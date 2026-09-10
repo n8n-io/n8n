@@ -181,42 +181,6 @@ export const baseConfig = tseslint.config(
 			],
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
-			 */
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'default',
-					format: ['camelCase'],
-				},
-				{
-					selector: 'import',
-					format: ['camelCase', 'PascalCase'],
-				},
-				{
-					selector: 'variable',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'property',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
-					leadingUnderscore: 'allowSingleOrDouble',
-					trailingUnderscore: 'allowSingleOrDouble',
-				},
-				{
-					selector: 'typeLike',
-					format: ['PascalCase'],
-				},
-				{
-					selector: ['method', 'function', 'parameter'],
-					format: ['camelCase'],
-					leadingUnderscore: 'allowSingleOrDouble',
-				},
-			],
-
-			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
 			 */
 			'@typescript-eslint/no-invalid-void-type': 'error',
@@ -257,11 +221,6 @@ export const baseConfig = tseslint.config(
 			'@typescript-eslint/no-unused-expressions': 'error',
 
 			/**
-			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
-			 */
-			'@typescript-eslint/prefer-nullish-coalescing': 'error',
-
-			/**
 			 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-optional-chain.md
 			 */
 			'@typescript-eslint/prefer-optional-chain': 'error',
@@ -294,26 +253,6 @@ export const baseConfig = tseslint.config(
 			 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 			 */
 			'import-x/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
-			 */
-			'import-x/no-default-export': 'error',
-
-			/**
-			 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
-			 */
-			'import-x/order': [
-				'error',
-				{
-					alphabetize: {
-						order: 'asc',
-						caseInsensitive: true,
-					},
-					groups: [['builtin', 'external'], 'internal', ['parent', 'index', 'sibling'], 'object'],
-					'newlines-between': 'always',
-				},
-			],
 
 			/**
 			 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
@@ -416,6 +355,15 @@ export const baseConfig = tseslint.config(
 			 */
 			'unused-imports/no-unused-imports': 'error',
 
+			/**
+			 * https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/filename-case.md
+			 *
+			 * Set here because 35 packages had each set it for themselves. The
+			 * `frontend` and `nodes` layers turn it off: a Vue component, a
+			 * composable and a node file all carry a meaningful capital letter.
+			 */
+			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+
 			/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
 			'unicorn/no-unnecessary-await': 'error',
 
@@ -424,13 +372,43 @@ export const baseConfig = tseslint.config(
 
 			'lodash/path-style': ['error', 'as-needed'],
 			'lodash/import-scope': ['error', 'method'],
+
+			/**
+			 * Rules the repo had already stopped enforcing.
+			 *
+			 * Each of these was switched off or downgraded in ten or more of the
+			 * 72 packages, one config at a time, and every lint script runs with
+			 * `--quiet`, so a downgrade to `warn` enforced nothing either. Turning
+			 * them off here states that once, instead of in fifty places.
+			 *
+			 * To enforce one again, set it to `error` in the package that is ready
+			 * for it; a local upgrade is allowed and is how `naming-convention`
+			 * still runs in twelve packages. Deleting a line from this list is a
+			 * repo-wide change and needs the violations fixed first.
+			 *
+			 * Counted by `scripts/lint-parity/majority.mjs`.
+			 */
+			'@typescript-eslint/naming-convention': 'off',
+			'@typescript-eslint/no-empty-object-type': 'off',
+			'@typescript-eslint/no-unsafe-argument': 'off',
+			'@typescript-eslint/no-unsafe-assignment': 'off',
+			'@typescript-eslint/no-unsafe-call': 'off',
+			'@typescript-eslint/no-unsafe-function-type': 'off',
+			'@typescript-eslint/no-unsafe-member-access': 'off',
+			'@typescript-eslint/no-unsafe-return': 'off',
+			'@typescript-eslint/prefer-nullish-coalescing': 'off',
+			'@typescript-eslint/require-await': 'off',
+			'@typescript-eslint/unbound-method': 'off',
+			'import-x/no-default-export': 'off',
+			'import-x/order': 'off',
+			'n8n-local-rules/no-uncaught-json-parse': 'off',
+			'no-empty': 'off',
 		},
 	},
 	{
 		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
-			'@typescript-eslint/unbound-method': 'off',
 			// Test code casts mocks into position; the rule's assignability check reads
 			// those casts as redundant and removing them breaks the build.
 			'@typescript-eslint/no-unnecessary-type-assertion': 'off',
