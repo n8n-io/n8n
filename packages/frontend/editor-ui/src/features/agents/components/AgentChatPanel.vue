@@ -19,7 +19,7 @@ import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -59,7 +59,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const locale = useI18n();

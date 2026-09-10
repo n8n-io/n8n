@@ -192,7 +192,7 @@ export class AgentWorkflowExecutionService {
 					sandboxPrincipalHash,
 					// A workflow execution cannot resume a suspended run — it throws
 					// instead (see `recorder.suspended` below).
-					false,
+					{ supportsHitl: false },
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {

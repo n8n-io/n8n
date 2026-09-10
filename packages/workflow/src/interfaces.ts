@@ -3413,6 +3413,12 @@ export interface RelatedAgentRun {
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
+	 * The run started in the in-app preview chat. `integrationType` cannot say
+	 * this: MCP and AI Assistant test runs use `n8n_chat` too, and they must
+	 * resume on the runtime they started on.
+	 */
+	previewChat?: boolean;
+	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
 	 */

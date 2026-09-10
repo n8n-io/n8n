@@ -38,6 +38,16 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<span v-bind="$attrs"><slot /></span>',
 		props: ['size', 'color', 'tag'],
 	},
+	N8nCallout: {
+		template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
+		props: ['theme', 'icon', 'slim'],
+	},
+	N8nButton: {
+		template:
+			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
+		emits: ['click'],
+		props: ['variant', 'size'],
+	},
 }));
 
 vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
@@ -111,6 +121,55 @@ vi.mock('@n8n/i18n', () => ({
 describe('AgentChatMessageList', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('agent change requests', () => {
+		const changeRequest = {
+			id: 'user-1',
+			role: 'user',
+			content: 'Please update your instructions to always answer in German',
+			status: 'success',
+		} satisfies ChatMessage;
+
+		it('offers the assistant hand-off for a change request in the preview', async () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [changeRequest],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+
+			expect(wrapper.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(true);
+			await wrapper.find('[data-testid="agent-preview-change-request-link"]').trigger('click');
+			expect(wrapper.emitted('sendToAssistant')?.[0]).toEqual([
+				{ changeRequest: changeRequest.content },
+			]);
+		});
+
+		it('stays hidden outside the preview and for ordinary messages', () => {
+			const outsidePreview = mount(AgentChatMessageList, {
+				props: { messages: [changeRequest], messagingState: 'idle' },
+			});
+			expect(
+				outsidePreview.find('[data-testid="agent-preview-change-request-note"]').exists(),
+			).toBe(false);
+
+			const ordinary = mount(AgentChatMessageList, {
+				props: {
+					messages: [{ ...changeRequest, content: 'What is the weather in Berlin?' }],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			expect(ordinary.find('[data-testid="agent-preview-change-request-note"]').exists()).toBe(
+				false,
+			);
+		});
 	});
 
 	it('renders streamed reasoning with the shared thinking components', () => {

@@ -200,6 +200,28 @@ describe('buildFromJson()', () => {
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
+	it('appends the self-modification policy only for the preview chat', async () => {
+		const build = async (previewChat?: boolean) =>
+			(
+				await buildFromJson(
+					makeConfig(),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+						previewChat,
+					},
+				)
+			).snapshot.instructions ?? '';
+
+		const preview = await build(true);
+		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Preview chat policy');
+		expect(await build(false)).toBe('You are a test agent.');
+		expect(await build()).toBe('You are a test agent.');
+	});
+
 	it('handles multi-slash model string for aggregator providers', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),

@@ -4,7 +4,7 @@ import { ref, useTemplateRef } from 'vue';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
@@ -26,7 +26,7 @@ defineProps<{
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const inputDraft = ref('');
