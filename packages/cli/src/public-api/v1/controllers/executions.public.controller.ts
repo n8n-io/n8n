@@ -47,6 +47,7 @@ import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { StopResult } from '@/executions/execution.types';
+import { toPublicTag } from '@/public-api/v1/handlers/tags/tags.mapper';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -515,15 +516,6 @@ function toDeletedExecutionPublicDto(
 	return {
 		id: Number(executionId),
 		...toBaseFields(execution),
-	};
-}
-
-function toPublicTag(tag: { id: string; name: string; createdAt: Date; updatedAt: Date }) {
-	return {
-		id: tag.id,
-		name: tag.name,
-		createdAt: tag.createdAt.toISOString(),
-		updatedAt: tag.updatedAt.toISOString(),
 	};
 }
 
