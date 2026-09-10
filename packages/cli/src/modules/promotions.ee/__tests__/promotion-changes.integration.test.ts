@@ -1,6 +1,7 @@
 import {
 	createTeamProject,
 	createWorkflow,
+	createWorkflowWithHistory,
 	linkUserToProject,
 	mockInstance,
 	testDb,
@@ -105,7 +106,10 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
 	const otherProject = await createTeamProject('Other', owner);
-	await createWorkflow({ name: 'Unchanged', nodes: [], connections: {} }, project);
+	const publishable = await createWorkflowWithHistory(
+		{ name: 'Publication', nodes: [], connections: {} },
+		project,
+	);
 	const modified = await createWorkflow({ name: 'Modified', nodes: [], connections: {} }, project);
 	const archived = await createWorkflow({ name: 'Archived', nodes: [], connections: {} }, project);
 	const removed = await createWorkflow({ name: 'Removed', nodes: [], connections: {} }, project);
@@ -125,6 +129,12 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
 
 	const workflows = Container.get(WorkflowRepository);
+	await workflows.update(publishable.id, { activeVersionId: publishable.versionId });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
+		expect.objectContaining({ id: publishable.id, status: 'modified' }),
+	]);
+	await workflows.update(publishable.id, { activeVersionId: null });
+	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
 	await workflows.update(modified.id, { name: 'Renamed', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: true });
 	await workflows.delete(removed.id);

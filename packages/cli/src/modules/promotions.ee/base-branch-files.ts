@@ -20,7 +20,7 @@ export type PackageFile = Readonly<{
 	projectId: string | null;
 	fileName:
 		| (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName']
-		| typeof WORKFLOW_LIFECYCLE_FILE_NAME;
+		| typeof WORKFLOW_METADATA_FILE_NAME;
 	path: string;
 	blobSha: string;
 	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
@@ -90,7 +90,7 @@ export function parsePackageFiles(
 			entityId: entityIdOfSegment(entitySegment),
 			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
 			projectId: segments[0] === projects.directory ? projectId : null,
-			fileName: isWorkflowLifecycle ? WORKFLOW_LIFECYCLE_FILE_NAME : entity.fileName,
+			fileName: isWorkflowMetadata ? WORKFLOW_METADATA_FILE_NAME : entity.fileName,
 			path,
 			blobSha,
 			type,

@@ -9,7 +9,7 @@ import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-
 import { parseBaseBranchFiles, parsePackageFiles } from '../base-branch-files';
 import { diffPackageFiles } from '../diff-package-files';
 
-it('compares Git and writer output without losing scoped identities or lifecycle files', async () => {
+it('compares Git and writer output without losing scoped identities or workflow metadata', async () => {
 	const root = await mkdtemp(path.join(tmpdir(), 'promotion-diff-'));
 	try {
 		const project = 'n8n-export/projects/orders-Project1';
@@ -19,8 +19,11 @@ it('compares Git and writer output without losing scoped identities or lifecycle
 			{ path: `${project}/workflows/move-Move/workflow.json`, content: 'move' },
 			{ path: `${project}/workflows/both-Both/workflow.json`, content: 'before' },
 			{ path: `${project}/workflows/delete-Delete/workflow.json`, content: 'delete' },
-			{ path: `${project}/workflows/lifecycle-Life/workflow.json`, content: 'same' },
-			{ path: `${project}/workflows/lifecycle-Life/workflow-lifecycle.json`, content: 'before' },
+			{ path: `${project}/workflows/published-Published/workflow.json`, content: 'same' },
+			{
+				path: `${project}/workflows/published-Published/workflow-metadata.json`,
+				content: 'before',
+			},
 			{ path: `${project}/variables/api-1/variable.json`, content: 'project' },
 			{ path: 'n8n-export/variables/api-2/variable.json', content: 'global' },
 			{ path: `${project}/credentials/shared-Edit/credential.json`, content: 'credential' },
@@ -82,7 +85,7 @@ it('compares Git and writer output without losing scoped identities or lifecycle
 				{ entityId: 'Move', type: 'workflow', change: 'renamed' },
 				{ entityId: 'Both', type: 'workflow', change: 'renamed-and-modified' },
 				{ entityId: 'Delete', type: 'workflow', change: 'deleted' },
-				{ entityId: 'Life', type: 'workflow', change: 'modified' },
+				{ entityId: 'Published', type: 'workflow', change: 'modified' },
 				{ entityId: 'New', type: 'workflow', change: 'added' },
 				{ entityId: '2', type: 'variable', change: 'modified' },
 			]),
@@ -91,7 +94,10 @@ it('compares Git and writer output without losing scoped identities or lifecycle
 		expect(changes).toContainEqual(
 			expect.objectContaining({
 				change: 'modified',
-				desired: expect.objectContaining({ entityId: 'Life', fileName: 'workflow-lifecycle.json' }),
+				desired: expect.objectContaining({
+					entityId: 'Published',
+					fileName: 'workflow-metadata.json',
+				}),
 			}),
 		);
 		expect(diffPackageFiles(baseFiles, baseFiles)).toEqual([]);

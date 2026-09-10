@@ -9,9 +9,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
-	WORKFLOW_LIFECYCLE_FILE_NAME,
 	entityFilePath,
-	workflowLifecycleFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
@@ -20,7 +18,7 @@ import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { serializedWorkflowLifecycleSchema } from '@/modules/n8n-packages/spec/serialized/workflow-lifecycle.schema';
+import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -72,11 +70,9 @@ export class PromotionChangeService {
 				writeDirectory: (path) => writer.writeDirectory(path),
 				writeFile(path, content) {
 					writer.writeFile(path, content);
-					if (path.endsWith(`/${WORKFLOW_LIFECYCLE_FILE_NAME}`)) {
-						archiveState.set(
-							path,
-							serializedWorkflowLifecycleSchema.parse(jsonParse(String(content))).isArchived,
-						);
+					if (path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.workflows.fileName}`)) {
+						const workflow = jsonParse<SerializedWorkflow>(String(content));
+						archiveState.set(path, workflow.isArchived);
 					}
 				},
 			},
@@ -158,7 +154,7 @@ export class PromotionChangeService {
 			let status: PromotableResource['status'] = 'modified';
 			if (!entry) status = 'deleted';
 			else if (!baseIds.has(id)) status = 'new';
-			else if (archiveState.get(workflowLifecycleFilePath(entry.target))) status = 'archived';
+			else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
 			return {
 				id,
 				name: entry?.name ?? id,
