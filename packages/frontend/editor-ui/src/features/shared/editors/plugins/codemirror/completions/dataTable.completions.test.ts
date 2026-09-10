@@ -45,16 +45,20 @@ describe('dataTableOptions', () => {
 	});
 
 	test('offers the accessors of a table', async () => {
-		expect(await labels('$datatable.users')).toEqual(['first', 'last', 'row', 'find']);
+		expect(await labels('$datatable.users')).toEqual(['first', 'last', 'row', 'by']);
 	});
 
-	test('offers the columns of a row', async () => {
-		const columns = ['id', 'createdAt', 'updatedAt', 'email', 'Sign Up Date'];
+	const columns = ['id', 'createdAt', 'updatedAt', 'email', 'Sign Up Date'];
 
+	test('offers the columns of a row', async () => {
 		expect(await labels('$datatable.users.first')).toEqual(columns);
 		expect(await labels('$datatable.users.last')).toEqual(columns);
 		expect(await labels('$datatable.users.row[$json.id]')).toEqual(columns);
-		expect(await labels('$datatable.users.find({ email: $json.email })')).toEqual(columns);
+		expect(await labels('$datatable.users.by.email[$json.email]')).toEqual(columns);
+	});
+
+	test('offers the columns to look a row up by', async () => {
+		expect(await labels('$datatable.users.by')).toEqual(columns);
 	});
 
 	test('offers nothing for an unknown table or an unfinished path', async () => {

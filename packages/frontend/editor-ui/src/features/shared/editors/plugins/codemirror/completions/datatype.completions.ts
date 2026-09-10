@@ -104,7 +104,7 @@ export async function datatypeCompletions(
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (base.startsWith('$datatable')) {
+	} else if (describeDataTablePath(base)) {
 		options = await dataTableOptions(base, workflowDocumentId);
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
@@ -1309,7 +1309,11 @@ export const dataTableOptions = async (
 		);
 	}
 
-	const description = i18n.baseText('codeNodeEditor.completer.$datatable.column');
+	const description = i18n.baseText(
+		path.at === 'column'
+			? 'codeNodeEditor.completer.$datatable.by.column'
+			: 'codeNodeEditor.completer.$datatable.column',
+	);
 
 	return [
 		...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP),

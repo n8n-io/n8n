@@ -51,6 +51,7 @@ export class DataRequestResponseBuilder {
 			restartExecutionId: additionalData.restartExecutionId,
 			userId: additionalData.userId,
 			evaluationRunId: additionalData.evaluationRunId,
+			dataTableExpressionRows: additionalData.dataTableExpressionRows,
 		};
 	}
 

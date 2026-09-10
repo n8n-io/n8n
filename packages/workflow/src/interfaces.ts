@@ -24,7 +24,6 @@ import type {
 } from './constants';
 
 import type {
-	DataTableExpressionAccessors,
 	DataTableExpressionProxy,
 	DataTableExpressionRows,
 	IDataTableProjectAggregateService,
@@ -3226,7 +3225,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
-	$datatable?: Record<string, DataTableExpressionAccessors>;
+	$datatable?: DataTableExpressionRows;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */

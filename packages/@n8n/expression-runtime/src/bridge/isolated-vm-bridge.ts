@@ -506,8 +506,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						return this.handleEvaluateExpression(msg, data);
 					case 'getPairedItem':
 						return this.handleGetPairedItem(msg, data);
-					case 'findDataTableRow':
-						return this.handleFindDataTableRow(msg, data);
 					default: {
 						// Unreachable at runtime — zod rejects unknown `type` values
 						// before the switch. The `never` assignment is the compile-time
@@ -621,24 +619,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		data: WorkflowData,
 	): unknown {
 		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
-	}
-
-	/**
-	 * Handler for `$datatable.<table>.find({ <column>: <value> })`. The host's
-	 * `find` only reads rows the engine prefetched for this node, so it never
-	 * reaches the database.
-	 *
-	 * @private
-	 */
-	private handleFindDataTableRow(
-		msg: Extract<BridgeMessage, { type: 'findDataTableRow' }>,
-		data: WorkflowData,
-	): unknown {
-		const tables = data.$datatable;
-		if (tables === null || typeof tables !== 'object') return undefined;
-
-		const table = (tables as Record<string, { find?: (criteria: object) => unknown }>)[msg.table];
-		return table?.find?.({ [msg.column]: msg.value });
 	}
 
 	/**

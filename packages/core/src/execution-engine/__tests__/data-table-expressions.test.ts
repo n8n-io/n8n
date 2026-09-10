@@ -104,8 +104,11 @@ describe('prefetchDataTableRows', () => {
 		expect(getRows).toHaveBeenCalledTimes(2);
 	});
 
-	it('resolves a row key for every item and batches them into one query', async () => {
-		getRows.mockResolvedValue({ count: 2, data: [row(1), row(2)] });
+	it('runs one query for each distinct row key', async () => {
+		getRows.mockImplementation(async (options: Partial<ListDataTableRowsOptions>) => {
+			const id = Number(options.filter?.filters[0].value);
+			return { count: 1, data: [row(id)] };
+		});
 
 		const rows = await run({ a: '={{ $datatable.users.row[$json.userId].plan }}' }, [
 			{ json: { userId: 1 } },
@@ -113,13 +116,11 @@ describe('prefetchDataTableRows', () => {
 			{ json: { userId: 1 } },
 		]);
 
-		expect(getRows).toHaveBeenCalledTimes(1);
-		expect(getRows.mock.calls[0][0].filter).toEqual({
-			type: 'or',
-			filters: [
-				{ columnName: 'id', condition: 'eq', value: 1 },
-				{ columnName: 'id', condition: 'eq', value: 2 },
-			],
+		expect(getRows).toHaveBeenCalledTimes(2);
+		expect(getRows.mock.calls[0][0]).toEqual({
+			filter: { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] },
+			sortBy: ['id', 'ASC'],
+			take: 1,
 		});
 		expect(rows?.users.row['1'].id).toBe(1);
 		expect(rows?.users.row['2'].id).toBe(2);
@@ -135,32 +136,35 @@ describe('prefetchDataTableRows', () => {
 		expect(rows?.users.row['99']).toBeUndefined();
 	});
 
-	it('ignores an id that does not resolve to a number', async () => {
+	it('treats a key the column rejects as a missing row', async () => {
+		getRows.mockRejectedValue(new Error('does not match column type'));
+
 		const rows = await run({ a: '={{ $datatable.users.row[$json.userId].plan }}' }, [
 			{ json: { userId: 'not-an-id' } },
 		]);
 
-		expect(getRows).not.toHaveBeenCalled();
 		expect(rows?.users.row).toEqual({});
 	});
 
-	it('stores a find lookup under the requested value', async () => {
-		getRows.mockResolvedValue({ count: 1, data: [row(7, { email: 'a@b.c' })] });
+	it('stores a column lookup under the requested value', async () => {
+		getRows.mockImplementation(async (options: Partial<ListDataTableRowsOptions>) => {
+			const value = options.filter?.filters[0].value;
+			return value === 'a@b.c'
+				? { count: 1, data: [row(7, { email: value })] }
+				: { count: 0, data: [] };
+		});
 
-		const rows = await run({ a: '={{ $datatable.users.find({ email: $json.email }) }}' }, [
+		const rows = await run({ a: '={{ $datatable.users.by.email[$json.email].plan }}' }, [
 			{ json: { email: 'a@b.c' } },
 			{ json: { email: 'missing@b.c' } },
 		]);
 
 		expect(getRows.mock.calls[0][0].filter).toEqual({
-			type: 'or',
-			filters: [
-				{ columnName: 'email', condition: 'eq', value: 'a@b.c' },
-				{ columnName: 'email', condition: 'eq', value: 'missing@b.c' },
-			],
+			type: 'and',
+			filters: [{ columnName: 'email', condition: 'eq', value: 'a@b.c' }],
 		});
-		expect(rows?.users.matched.email['a@b.c'].id).toBe(7);
-		expect(rows?.users.matched.email['missing@b.c']).toBeUndefined();
+		expect(rows?.users.by.email['a@b.c'].id).toBe(7);
+		expect(rows?.users.by.email['missing@b.c']).toBeUndefined();
 	});
 
 	it('skips a table the workflow project cannot reach', async () => {

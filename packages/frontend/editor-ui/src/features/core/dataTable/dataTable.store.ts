@@ -40,8 +40,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { DataTableListSortBy, DataTableMetadata } from '@n8n/api-types';
 
-const EXPRESSION_TABLE_LIMIT = 200;
-
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
 	const projectStore = useProjectsStore();
@@ -106,19 +104,20 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
-	/** Cached for `$datatable` completions. Kept apart from `dataTables`, which backs the list view. */
-	const dataTablesByProject = ref<Record<string, DataTable[]>>({});
+	/** Cached for `$datatable` completions and previews. Kept apart from `dataTables`, which backs the list view. */
+	const dataTablesByProject = new Map<string, Promise<DataTable[]>>();
 
 	const fetchDataTablesForProject = async (projectId: string) => {
-		if (dataTablesByProject.value[projectId]) return dataTablesByProject.value[projectId];
-
-		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
-			skip: 0,
-			take: EXPRESSION_TABLE_LIMIT,
-		});
-		dataTablesByProject.value[projectId] = response.data;
-
-		return response.data;
+		let pending = dataTablesByProject.get(projectId);
+		if (!pending) {
+			pending = fetchDataTablesApi(rootStore.restApiContext, projectId, {
+				skip: 0,
+				take: 200,
+			}).then((response) => response.data);
+			pending.catch(() => dataTablesByProject.delete(projectId));
+			dataTablesByProject.set(projectId, pending);
+		}
+		return await pending;
 	};
 
 	const createDataTable = async (
@@ -144,6 +143,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 		dataTables.value.push(newTable);
 		totalCount.value += 1;
+		dataTablesByProject.delete(projectId);
 		return newTable;
 	};
 
@@ -201,6 +201,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		if (deleted) {
 			dataTables.value = dataTables.value.filter((dataTable) => dataTable.id !== dataTableId);
 			totalCount.value -= 1;
+			dataTablesByProject.delete(projectId);
 		}
 		return deleted;
 	};
@@ -249,6 +250,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 				dataTables.value[index] = { ...dataTables.value[index], name };
 			}
 			useFavoritesStore().renameFavorite(dataTableId, 'dataTable', name);
+			dataTablesByProject.delete(projectId);
 		}
 		return updated;
 	};

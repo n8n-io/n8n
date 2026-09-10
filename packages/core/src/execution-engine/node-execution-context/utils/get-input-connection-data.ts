@@ -35,6 +35,7 @@ import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
 import { createNodeAsTool, getSchema } from './create-node-as-tool';
+import { prefetchDataTableRows } from '../../data-table-expressions';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
 // eslint-disable-next-line import-x/no-cycle
 import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
@@ -442,6 +443,17 @@ export async function getInputConnectionData(
 
 	const nodes: SupplyData[] = [];
 	for (const connectedNode of connectedNodes) {
+		await prefetchDataTableRows({
+			workflow,
+			node: connectedNode,
+			additionalData,
+			runExecutionData,
+			runIndex: parentRunIndex,
+			connectionInputData,
+			mode,
+			executeData,
+		});
+
 		// Check if this is an HITL (Human-in-the-Loop) tool node
 		// HITL tools need special handling to create the middleware tool
 		if (isHitlToolType(connectedNode?.type)) {

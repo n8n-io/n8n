@@ -20,7 +20,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
-	buildDataTableAccessors,
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
@@ -96,6 +95,7 @@ export async function resolveParameter<T = IDataObject>(
 					inputNodeName: opts_.inputNode?.name,
 					inputRunIndex: opts_.inputNode?.runIndex,
 					inputBranchIndex: opts_.inputNode?.branchIndex,
+					contextNodeName: opts_.nodeName,
 					additionalKeys: opts_.additionalKeys,
 				}
 			: opts_;
@@ -143,7 +143,7 @@ export async function resolveParameter<T = IDataObject>(
 					skipDataTableRows: true,
 				}),
 		);
-		if (rows) additionalKeys.$datatable = buildDataTableAccessors(rows);
+		if (rows) additionalKeys.$datatable = rows;
 	}
 
 	if (opts.isForCredential) {

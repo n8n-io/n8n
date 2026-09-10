@@ -101,6 +101,7 @@ export interface PartialAdditionalData {
 	variables: IDataObject;
 	/** Parent evaluation TestRun.id, exposed to Code nodes as `$evaluation.runId`. */
 	evaluationRunId?: string;
+	dataTableExpressionRows?: IWorkflowExecuteAdditionalData['dataTableExpressionRows'];
 }
 
 /** RPC methods that are exposed directly to the Code Node */

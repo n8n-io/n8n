@@ -4,7 +4,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { buildDataTableAccessors } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
@@ -25,9 +24,6 @@ export function getAdditionalKeys(
 	options: { isCredential?: boolean; nodeName?: string } = {},
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const dataTableRows = options.nodeName
-		? additionalData.dataTableExpressionRows?.[options.nodeName]
-		: undefined;
 
 	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
@@ -52,7 +48,9 @@ export function getAdditionalKeys(
 			: undefined,
 		$vars: additionalData.variables,
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
-		$datatable: dataTableRows && buildDataTableAccessors(dataTableRows),
+		$datatable: options.nodeName
+			? additionalData.dataTableExpressionRows?.[options.nodeName]
+			: undefined,
 
 		// deprecated
 		$executionId: executionId,

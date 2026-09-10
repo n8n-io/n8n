@@ -172,49 +172,18 @@ describe('getAdditionalKeys', () => {
 
 	describe('$datatable', () => {
 		const rowsForNode = {
-			Node: {
-				users: {
-					row: { '4': { id: 4 } },
-					matched: { email: { 'a@b.c': { id: 7 } } },
-					first: { id: 1 },
-				},
-			},
+			Node: { users: { row: { '4': { id: 4 } }, by: {}, first: { id: 1 } } },
 		} as unknown as IWorkflowExecuteAdditionalData['dataTableExpressionRows'];
-
-		const accessors = () => {
-			const result = getAdditionalKeys(
-				{ ...additionalData, dataTableExpressionRows: rowsForNode },
-				'manual',
-				null,
-				{ nodeName: 'Node' },
-			);
-			return result.$datatable!.users;
-		};
+		const withRows = { ...additionalData, dataTableExpressionRows: rowsForNode };
 
 		it('is undefined without a node name', () => {
-			const result = getAdditionalKeys(
-				{ ...additionalData, dataTableExpressionRows: rowsForNode },
-				'manual',
-				null,
-			);
-
-			expect(result.$datatable).toBeUndefined();
+			expect(getAdditionalKeys(withRows, 'manual', null).$datatable).toBeUndefined();
 		});
 
-		it('exposes the prefetched data paths and replaces matched with find()', () => {
-			const table = accessors();
+		it('exposes the rows prefetched for the node', () => {
+			const result = getAdditionalKeys(withRows, 'manual', null, { nodeName: 'Node' });
 
-			expect(table).toMatchObject({ first: { id: 1 }, row: { '4': { id: 4 } } });
-			expect(table).not.toHaveProperty('matched');
-			expect(table.find({ email: 'a@b.c' })).toEqual({ id: 7 });
-		});
-
-		it('returns undefined for a value or column it did not prefetch', () => {
-			const table = accessors();
-
-			expect(table.find({ email: 'nope@b.c' })).toBeUndefined();
-			expect(table.find({ nickname: 'a@b.c' })).toBeUndefined();
-			expect(table.find({})).toBeUndefined();
+			expect(result.$datatable).toBe(rowsForNode?.Node);
 		});
 	});
 

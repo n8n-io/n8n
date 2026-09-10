@@ -1,49 +1,35 @@
 import {
-	collectStrings,
 	extractDataTableRefs,
-	isKeyedDataTableRef,
 	type DataTableColumnJsType,
-	type DataTableColumnReturnJsType,
-	type DataTableExpressionRef,
+	type DataTableExpressionProxy,
 	type DataTableExpressionRows,
 	type DataTableRowReturn,
-	type KeyedDataTableRef,
 	type IExecuteData,
 	type INode,
 	type INodeExecutionData,
 	type IRunExecutionData,
 	type IWorkflowExecuteAdditionalData,
+	type ListDataTableRowsOptions,
 	type Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
 
-/** Keys per query. One `or` filter with thousands of terms is hard on the database. */
-const KEY_BATCH_SIZE = 100;
+const isColumnValue = (value: unknown): value is DataTableColumnJsType =>
+	value instanceof Date || ['string', 'number', 'boolean'].includes(typeof value);
 
-/** A stored value can come back typed differently from the key that asked for it. */
-function matches(stored: DataTableColumnReturnJsType, requested: DataTableColumnJsType): boolean {
-	if (stored instanceof Date) {
-		return requested instanceof Date
-			? stored.getTime() === requested.getTime()
-			: String(stored) === String(requested);
+/** A key that does not fit the column type has no row, the same as a key with no match. */
+async function fetchOne(
+	api: ReturnType<DataTableExpressionProxy['rows']>,
+	options: Pick<ListDataTableRowsOptions, 'filter' | 'sortBy'>,
+): Promise<DataTableRowReturn | undefined> {
+	try {
+		const { data } = await api.getManyRowsAndCount({ sortBy: ['id', 'ASC'], ...options, take: 1 });
+		return data[0];
+	} catch {
+		return undefined;
 	}
-	// Enum columns come back as `{ id, value, color }`.
-	if (stored !== null && typeof stored === 'object') {
-		return String(stored.value) === String(requested);
-	}
-	return String(stored) === String(requested);
-}
-
-function uniqueRefs(node: INode): DataTableExpressionRef[] {
-	const byKey = new Map<string, DataTableExpressionRef>();
-
-	for (const text of collectStrings(node.parameters)) {
-		for (const ref of extractDataTableRefs(text)) byKey.set(JSON.stringify(ref), ref);
-	}
-
-	return [...byKey.values()];
 }
 
 /**
@@ -65,7 +51,7 @@ export async function prefetchDataTableRows(context: {
 	const { workflow, node, additionalData, runExecutionData, runIndex, mode, executeData } = context;
 	const { connectionInputData } = context;
 
-	const refs = uniqueRefs(node);
+	const refs = extractDataTableRefs(node.parameters);
 	if (refs.length === 0) return;
 
 	const provider = additionalData['data-table']?.dataTableProxyProvider;
@@ -75,19 +61,15 @@ export async function prefetchDataTableRows(context: {
 		nodeName: node.name,
 	});
 
-	/**
-	 * A key expression gives a different key for each item, so all of them are
-	 * resolved. Keyed by the string the expression looks the row up by, which
-	 * deduplicates at the same time.
-	 */
-	const resolveLookupKeys = (ref: KeyedDataTableRef) => {
-		const byKey = new Map<string, DataTableColumnJsType>();
+	/** Every distinct key the expression looks a row up by, one for each input item. */
+	const resolveKeys = (keyExpression: string) => {
+		const keys = new Map<string, DataTableColumnJsType>();
 
 		for (let itemIndex = 0; itemIndex < Math.max(connectionInputData.length, 1); itemIndex++) {
 			let key: unknown;
 			try {
 				key = workflow.expression.resolveSimpleParameterValue(
-					`={{ ${ref.keyExpression} }}`,
+					`={{ ${keyExpression} }}`,
 					{},
 					runExecutionData,
 					runIndex,
@@ -102,16 +84,10 @@ export async function prefetchDataTableRows(context: {
 				// An unresolvable key has no row to prefetch.
 				continue;
 			}
-
-			if (ref.accessor === 'row') {
-				const id = Number(key);
-				if (Number.isFinite(id)) byKey.set(String(key), id);
-			} else if (key instanceof Date || ['string', 'number', 'boolean'].includes(typeof key)) {
-				byKey.set(String(key), key as DataTableColumnJsType);
-			}
+			if (isColumnValue(key)) keys.set(String(key), key);
 		}
 
-		return byKey;
+		return keys;
 	};
 
 	const service = await provider.getDataTableExpressionProxy(
@@ -119,56 +95,43 @@ export async function prefetchDataTableRows(context: {
 		additionalData.dataTableProjectId,
 	);
 	const { data: tables } = await service.tables.getManyAndCount({});
-	const idByName = new Map(tables.map((table) => [table.name.toLowerCase(), table.id]));
 
 	const rows: DataTableExpressionRows = {};
 	const fetches: Array<Promise<void>> = [];
 
 	for (const ref of refs) {
-		const dataTableId = idByName.get(ref.table.toLowerCase());
+		const dataTableId = tables.find((table) => table.name === ref.table)?.id;
 		if (!dataTableId) continue;
 
-		const target = (rows[ref.table] ??= { row: {}, matched: {} });
+		const target = (rows[ref.table] ??= { row: {}, by: {} });
 		const api = service.rows(dataTableId);
 
-		if (!isKeyedDataTableRef(ref)) {
-			const sortBy: ['id', 'ASC' | 'DESC'] = ['id', ref.accessor === 'first' ? 'ASC' : 'DESC'];
+		if (!('column' in ref)) {
+			const sortBy: ListDataTableRowsOptions['sortBy'] = [
+				'id',
+				ref.accessor === 'first' ? 'ASC' : 'DESC',
+			];
 			fetches.push(
-				api.getManyRowsAndCount({ sortBy, take: 1 }).then(({ data }) => {
-					if (data[0]) target[ref.accessor] = data[0];
+				fetchOne(api, { sortBy }).then((row) => {
+					if (row) target[ref.accessor] = row;
 				}),
 			);
 			continue;
 		}
 
-		const column = ref.accessor === 'row' ? 'id' : ref.column;
-		const entries = [...resolveLookupKeys(ref).entries()];
-
-		// Stored under the requested key, because that is what the expression
-		// looks the row up by.
-		const store = (requested: string, row: DataTableRowReturn) => {
-			if (ref.accessor === 'row') target.row[requested] = row;
-			else (target.matched[column] ??= {})[requested] = row;
-		};
-
-		for (let at = 0; at < entries.length; at += KEY_BATCH_SIZE) {
-			const batch = entries.slice(at, at + KEY_BATCH_SIZE);
+		// ponytail: one query per distinct key; batch with an `or` filter if this shows up in profiles.
+		for (const [requested, value] of resolveKeys(ref.keyExpression)) {
+			const filter = {
+				type: 'and' as const,
+				filters: [{ columnName: ref.column, condition: 'eq' as const, value }],
+			};
 			fetches.push(
-				api
-					.getManyRowsAndCount({
-						filter: {
-							type: 'or',
-							filters: batch.map(([, value]) => ({ columnName: column, condition: 'eq', value })),
-						},
-						sortBy: ['id', 'ASC'],
-						take: batch.length,
-					})
-					.then(({ data }) => {
-						for (const [requested, value] of batch) {
-							const row = data.find((candidate) => matches(candidate[column], value));
-							if (row) store(requested, row);
-						}
-					}),
+				fetchOne(api, { filter }).then((row) => {
+					if (!row) return;
+					// Stored under the requested key, because that is what the expression looks up.
+					if (ref.accessor === 'row') target.row[requested] = row;
+					else (target.by[ref.column] ??= {})[requested] = row;
+				}),
 			);
 		}
 	}

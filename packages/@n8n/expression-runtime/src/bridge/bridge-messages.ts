@@ -243,21 +243,6 @@ export const getPairedItemMessage = z
 	.strict();
 
 /**
- * `$datatable.<table>.find({ <column>: <value> })` — read one prefetched row by
- * column value. The criteria object holds a single column; `value` is
- * `z.unknown()` because any column type can be matched, and the host compares
- * it as a string.
- */
-export const findDataTableRowMessage = z
-	.object({
-		type: z.literal('findDataTableRow'),
-		table: z.string(),
-		column: z.string(),
-		value: z.unknown(),
-	})
-	.strict();
-
-/**
  * The full set of messages the bridge will accept. Discriminator is `type`.
  *
  * Use `.strict()` on each member so unknown fields are rejected rather than
@@ -278,7 +263,6 @@ export const bridgeMessageSchema = z.discriminatedUnion('type', [
 	getNodeItemMessage,
 	evaluateExpressionMessage,
 	getPairedItemMessage,
-	findDataTableRowMessage,
 ]);
 
 export type BridgeMessage = z.infer<typeof bridgeMessageSchema>;

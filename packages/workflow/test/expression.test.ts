@@ -1013,16 +1013,9 @@ describe('Expression', () => {
 				// every accessor is plain property access on that data.
 				const $datatable = {
 					users: {
-						first: { id: 1, email: 'first@test.com', plan: 'free' },
-						last: { id: 9, email: 'last@test.com', plan: 'pro' },
-						row: { '4': { id: 4, email: 'four@test.com', plan: 'team' } },
-						find: (criteria: Record<string, unknown>) => {
-							const [column, value] = Object.entries(criteria ?? {})[0] ?? [];
-							const matched: Record<string, Record<string, unknown>> = {
-								email: { 'four@test.com': { id: 4, plan: 'team' } },
-							};
-							return column === undefined ? undefined : matched[column]?.[String(value)];
-						},
+						first: { id: 1, plan: 'free' },
+						row: { '4': { id: 4, plan: 'team' } },
+						by: { email: { 'four@test.com': { id: 4, plan: 'team' } } },
 					},
 				} as unknown as IWorkflowDataProxyAdditionalKeys['$datatable'];
 
@@ -1037,23 +1030,13 @@ describe('Expression', () => {
 					);
 
 				it.each([
-					['={{ $datatable.users.first.email }}', 'first@test.com'],
-					['={{ $datatable.users.last.email }}', 'last@test.com'],
+					['={{ $datatable.users.first.plan }}', 'free'],
 					['={{ $datatable.users.row[4].plan }}', 'team'],
-					["={{ $datatable.users.find({ email: 'four@test.com' }).plan }}", 'team'],
-					["={{ $datatable['users'].first.plan }}", 'free'],
+					["={{ $datatable.users.by.email['four@test.com'].plan }}", 'team'],
+					["={{ $datatable.users.row[99]?.plan ?? 'free' }}", 'free'],
+					['={{ $datatable.missing?.first }}', undefined],
 				])('resolves %s', (value, expected) => {
 					expect(resolve(value)).toBe(expected);
-				});
-
-				it('resolves a missing row to undefined', () => {
-					expect(resolve('={{ $datatable.users.row[99] }}')).toBeUndefined();
-					expect(resolve('={{ $datatable.users.row[99]?.plan }}')).toBeUndefined();
-					expect(resolve("={{ $datatable.users.row[99]?.plan ?? 'free' }}")).toBe('free');
-				});
-
-				it('resolves a missing table to undefined', () => {
-					expect(resolve('={{ $datatable.missing?.first }}')).toBeUndefined();
 				});
 			});
 		});

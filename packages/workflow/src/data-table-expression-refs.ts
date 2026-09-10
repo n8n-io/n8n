@@ -1,30 +1,19 @@
 /**
  * Finds `$datatable` references in expression text, so the engine can fetch the
  * rows before a node runs. Reads `$datatable.<table>.first`, `.last`,
- * `.row[<expr>]` and `.find({ <column>: <expr> })`. The table and column names
- * must be literal, so a reference is always discoverable without running the
- * expression.
+ * `.row[<expr>]` and `.by.<column>[<expr>]`. The table and column names must be
+ * literal, so a reference is always discoverable without running the expression.
  */
-
-import type { DataTableExpressionAccessors, DataTableExpressionRows } from './data-table.types';
 
 const PREFIX = '$datatable';
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*/;
 
-/** An unquoted object key cannot hold these, so anything left is not a column name. */
-const INVALID_COLUMN = /[,:{}()[\]]/;
-
 export type DataTableExpressionRef =
 	| { table: string; accessor: 'first' | 'last' }
-	| { table: string; accessor: 'row'; keyExpression: string }
-	| { table: string; accessor: 'find'; column: string; keyExpression: string };
+	| { table: string; accessor: 'row' | 'by'; column: string; keyExpression: string };
 
-/** A reference whose row is looked up by a key, rather than by position. */
-export type KeyedDataTableRef = Extract<DataTableExpressionRef, { keyExpression: string }>;
-
-export const isKeyedDataTableRef = (ref: DataTableExpressionRef): ref is KeyedDataTableRef =>
-	'keyExpression' in ref;
+export const DATA_TABLE_ACCESSORS = ['first', 'last', 'row', 'by'] as const;
 
 /** A literal name read as `.name`, `['name']` or `["name"]`. */
 function readMember(text: string, pos: number): { name: string; end: number } | undefined {
@@ -45,14 +34,9 @@ function readMember(text: string, pos: number): { name: string; end: number } | 
 	return undefined;
 }
 
-/** The text inside a bracketed accessor, with nested brackets and quotes kept intact. */
-function readDelimited(
-	text: string,
-	pos: number,
-	open: '[' | '(' | '{',
-): { expression: string; end: number } | undefined {
-	const close = { '[': ']', '(': ')', '{': '}' }[open];
-	if (text[pos] !== open) return undefined;
+/** The text inside `[...]`, with nested brackets and quotes kept intact. */
+function readKey(text: string, pos: number): { expression: string; end: number } | undefined {
+	if (text[pos] !== '[') return undefined;
 
 	let depth = 0;
 	let quote: string | undefined;
@@ -67,8 +51,8 @@ function readDelimited(
 		}
 
 		if (char === "'" || char === '"' || char === '`') quote = char;
-		else if (char === open) depth++;
-		else if (char === close) {
+		else if (char === '[') depth++;
+		else if (char === ']') {
 			depth--;
 			if (depth === 0) {
 				const expression = text.slice(pos + 1, i).trim();
@@ -80,124 +64,85 @@ function readDelimited(
 	return undefined;
 }
 
-const readBracketExpression = (text: string, pos: number) => readDelimited(text, pos, '[');
-
-/**
- * The single `{ <column>: <expr> }` argument of a `find(...)` call. One column
- * only, because a reference always resolves to at most one row.
- */
-function readFindArgument(
+/** As much of a `$datatable` path as is there, and where the reading stopped. */
+function readPath(
 	text: string,
 	pos: number,
-): { column: string; expression: string; end: number } | undefined {
-	const call = readDelimited(text, pos, '(');
-	if (!call) return undefined;
-
-	const object = readDelimited(call.expression, 0, '{');
-	if (!object || object.end !== call.expression.length) return undefined;
-
-	const separator = object.expression.indexOf(':');
-	if (separator === -1) return undefined;
-
-	const key = object.expression.slice(0, separator).trim();
-	const expression = object.expression.slice(separator + 1).trim();
-	if (!expression) return undefined;
-
-	const column = /^(['"])(.*)\1$/.exec(key)?.[2] ?? key;
-	if (!column || INVALID_COLUMN.test(column)) return undefined;
-
-	return { column, expression, end: call.end };
-}
-
-function readRef(text: string, pos: number): DataTableExpressionRef | undefined {
+): { table: string; accessor?: string; ref?: DataTableExpressionRef; end: number } | undefined {
 	const table = readMember(text, pos);
 	if (!table) return undefined;
 
 	const accessor = readMember(text, table.end);
-	if (!accessor) return undefined;
+	if (!accessor) return { table: table.name, end: table.end };
+
+	const path = { table: table.name, accessor: accessor.name, end: accessor.end };
 
 	switch (accessor.name) {
 		case 'first':
 		case 'last':
-			return { table: table.name, accessor: accessor.name };
+			return { ...path, ref: { table: table.name, accessor: accessor.name } };
 
 		case 'row': {
-			const key = readBracketExpression(text, accessor.end);
-			return key
-				? { table: table.name, accessor: 'row', keyExpression: key.expression }
-				: undefined;
+			const key = readKey(text, accessor.end);
+			if (!key) return path;
+			return {
+				...path,
+				ref: { table: table.name, accessor: 'row', column: 'id', keyExpression: key.expression },
+				end: key.end,
+			};
 		}
 
-		case 'find': {
-			const argument = readFindArgument(text, accessor.end);
-			return argument
-				? {
-						table: table.name,
-						accessor: 'find',
-						column: argument.column,
-						keyExpression: argument.expression,
-					}
-				: undefined;
+		case 'by': {
+			const column = readMember(text, accessor.end);
+			const key = column && readKey(text, column.end);
+			if (!column || !key) return path;
+			return {
+				...path,
+				ref: {
+					table: table.name,
+					accessor: 'by',
+					column: column.name,
+					keyExpression: key.expression,
+				},
+				end: key.end,
+			};
 		}
 
 		default:
-			return undefined;
+			return path;
 	}
-}
-
-/** Every `$datatable` reference in a piece of expression text. */
-export function extractDataTableRefs(text: string): DataTableExpressionRef[] {
-	if (!text.includes(PREFIX)) return [];
-
-	const refs: DataTableExpressionRef[] = [];
-
-	for (let at = text.indexOf(PREFIX); at !== -1; at = text.indexOf(PREFIX, at + PREFIX.length)) {
-		const ref = readRef(text, at + PREFIX.length);
-		if (ref) refs.push(ref);
-	}
-
-	return refs;
-}
-
-/**
- * Exposes prefetched rows the way an expression reads them. `find()` is a
- * function rather than a data path, so it replaces the stored `matched` index;
- * it only reads rows that were already fetched.
- */
-export function buildDataTableAccessors(
-	rows: DataTableExpressionRows,
-): Record<string, DataTableExpressionAccessors> {
-	return Object.fromEntries(
-		Object.entries(rows).map(([table, { matched, ...accessors }]) => [
-			table,
-			{
-				...accessors,
-				find(criteria: Record<string, unknown>) {
-					const [column, value] = Object.entries(criteria ?? {})[0] ?? [];
-					if (column === undefined) return undefined;
-					return matched[column]?.[String(value)];
-				},
-			},
-		]),
-	);
 }
 
 /** Every string in a parameter tree, so nested and collection parameters are scanned too. */
-export function* collectStrings(value: unknown): Generator<string> {
+function* collectStrings(value: unknown): Generator<string> {
 	if (typeof value === 'string') yield value;
 	else if (Array.isArray(value)) for (const entry of value) yield* collectStrings(entry);
 	else if (value !== null && typeof value === 'object')
 		for (const entry of Object.values(value)) yield* collectStrings(entry);
 }
 
+/** Every distinct `$datatable` reference in a string or parameter tree. */
+export function extractDataTableRefs(parameters: unknown): DataTableExpressionRef[] {
+	const byKey = new Map<string, DataTableExpressionRef>();
+
+	for (const text of collectStrings(parameters)) {
+		for (let at = text.indexOf(PREFIX); at !== -1; at = text.indexOf(PREFIX, at + PREFIX.length)) {
+			const ref = readPath(text, at + PREFIX.length)?.ref;
+			if (ref) byKey.set(JSON.stringify(ref), ref);
+		}
+	}
+
+	return [...byKey.values()];
+}
+
 /** What a partly typed `$datatable` path points at, for editor completions. */
 export type DataTableExpressionPath =
 	| { at: 'table' }
 	| { at: 'accessor'; table: string }
+	/** After `.by`, so the next name is a column. */
+	| { at: 'column'; table: string }
 	/** On a row, so the next name is one of its columns. */
 	| { at: 'rowField'; table: string };
-
-export const DATA_TABLE_ACCESSORS = ['first', 'last', 'row', 'find'] as const;
 
 /**
  * Reads a `$datatable` path that the editor may still be completing, so the
@@ -207,29 +152,11 @@ export function describeDataTablePath(base: string): DataTableExpressionPath | u
 	if (base === PREFIX) return { at: 'table' };
 	if (!base.startsWith(PREFIX)) return undefined;
 
-	const table = readMember(base, PREFIX.length);
-	if (!table) return undefined;
-	if (table.end === base.length) return { at: 'accessor', table: table.name };
+	const path = readPath(base, PREFIX.length);
+	if (!path || path.end !== base.length) return undefined;
 
-	const accessor = readMember(base, table.end);
-	if (!accessor) return undefined;
-
-	switch (accessor.name) {
-		case 'first':
-		case 'last':
-			return accessor.end === base.length ? { at: 'rowField', table: table.name } : undefined;
-
-		case 'row': {
-			const key = readBracketExpression(base, accessor.end);
-			return key?.end === base.length ? { at: 'rowField', table: table.name } : undefined;
-		}
-
-		case 'find': {
-			const argument = readFindArgument(base, accessor.end);
-			return argument?.end === base.length ? { at: 'rowField', table: table.name } : undefined;
-		}
-
-		default:
-			return undefined;
-	}
+	if (!path.accessor) return { at: 'accessor', table: path.table };
+	if (path.ref) return { at: 'rowField', table: path.table };
+	if (path.accessor === 'by') return { at: 'column', table: path.table };
+	return undefined;
 }

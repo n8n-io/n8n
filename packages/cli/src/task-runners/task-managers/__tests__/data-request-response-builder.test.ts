@@ -25,6 +25,7 @@ const additionalData = mock<PartialAdditionalData>({
 	executionTimeoutTimestamp: undefined,
 	restartExecutionId: undefined,
 	evaluationRunId: 'test-run-id-123',
+	dataTableExpressionRows: undefined,
 });
 
 const node = mock<INode>();
@@ -110,6 +111,7 @@ describe('DataRequestResponseBuilder', () => {
 			executionTimeoutTimestamp: undefined,
 			restartExecutionId: undefined,
 			evaluationRunId: 'test-run-id-123',
+			dataTableExpressionRows: undefined,
 		});
 	});
 

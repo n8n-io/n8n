@@ -492,6 +492,7 @@ export class JsTaskRunner extends TaskRunner {
 				data.additionalData as IWorkflowExecuteAdditionalData,
 				data.mode,
 				data.runExecutionData,
+				{ nodeName: data.activeNodeName },
 			),
 			data.executeData,
 			data.defaultReturnRunIndex,
