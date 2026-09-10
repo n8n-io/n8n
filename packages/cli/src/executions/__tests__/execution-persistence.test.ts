@@ -1872,6 +1872,7 @@ describe('ExecutionPersistence', () => {
 			'waitTill',
 			'finished',
 			'status',
+			'startedByUserId',
 		];
 
 		beforeEach(() => {
@@ -1891,7 +1892,7 @@ describe('ExecutionPersistence', () => {
 			);
 			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
 				{ select: publicApiSelect, where, order: { id: 'DESC' }, take: 10 },
-				{ includeData: undefined, unflattenData: true },
+				{ includeData: undefined, unflattenData: true, maxDataSizeBytes: undefined },
 			);
 		});
 

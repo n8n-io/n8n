@@ -157,6 +157,10 @@ responses:
                     nullable: true
                     format: date-time
                     description: The time at which a waiting execution resumes.
+                  startedByUserId:
+                    type: string
+                    nullable: true
+                    description: ID of the n8n user whose identity started the execution. Null for schedule, polling and third-party triggers.
                   storedAt:
                     type: string
                     description: Where the execution data is stored.
@@ -215,6 +219,7 @@ responses:
                   - stoppedAt
                   - workflowId
                   - waitTill
+                  - startedByUserId
             nextCursor:
               type: string
               nullable: true

@@ -66,6 +66,10 @@ export const executionFieldDocs = {
 		description: 'Whether the execution used credentials that are not shared with the project.',
 		example: false,
 	},
+	startedByUserId: alsoNullable({
+		description:
+			'ID of the n8n user whose identity started the execution. Null for schedule, polling and third-party triggers.',
+	}),
 	dataTooLargeToDisplay: {
 		description:
 			'Present and true when the execution data was larger than ' +

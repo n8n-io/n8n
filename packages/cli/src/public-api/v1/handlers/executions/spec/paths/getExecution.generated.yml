@@ -160,6 +160,10 @@ responses:
               type: boolean
               description: Whether the execution used credentials that are not shared with the project.
               example: false
+            startedByUserId:
+              type: string
+              nullable: true
+              description: ID of the n8n user whose identity started the execution. Null for schedule, polling and third-party triggers.
             data:
               type: object
               description: Detailed execution data. Only included when `includeData` is `true`.
@@ -211,6 +215,7 @@ responses:
             - binaryDataSizeBytes
             - workflowVersionId
             - usedPrivateCredentials
+            - startedByUserId
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

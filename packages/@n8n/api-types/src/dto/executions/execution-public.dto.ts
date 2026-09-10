@@ -37,6 +37,7 @@ const executionBaseShape = {
 	binaryDataSizeBytes: z.number().openapi(executionFieldDocs.binaryDataSizeBytes),
 	workflowVersionId: z.string().nullable().openapi(executionFieldDocs.workflowVersionId),
 	usedPrivateCredentials: z.boolean().openapi(executionFieldDocs.usedPrivateCredentials),
+	startedByUserId: z.string().nullable().openapi(executionFieldDocs.startedByUserId),
 };
 
 export const executionPublicSchema = z.object({
@@ -69,6 +70,7 @@ export const executionListItemPublicSchema = executionPublicSchema
 		stoppedAt: true,
 		workflowId: true,
 		waitTill: true,
+		startedByUserId: true,
 	})
 	.extend({
 		storedAt: executionPublicSchema.shape.storedAt.optional(),

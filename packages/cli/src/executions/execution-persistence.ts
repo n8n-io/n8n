@@ -619,6 +619,7 @@ export class ExecutionPersistence {
 					'waitTill',
 					'finished',
 					'status',
+					'startedByUserId',
 				],
 				where: this.executionRepository.getFindManyInWorkflowsCondition(workflowIds, options),
 				order: { id: 'DESC' },

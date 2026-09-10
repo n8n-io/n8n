@@ -454,6 +454,7 @@ function toBaseFields(execution: PublicExecution) {
 		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
 		workflowVersionId: execution.workflowVersionId ?? null,
 		usedPrivateCredentials: execution.usedPrivateCredentials ?? false,
+		startedByUserId: execution.startedByUserId ?? null,
 	};
 }
 
@@ -469,6 +470,7 @@ function toExecutionListItem(execution: PublicExecution) {
 		stoppedAt: execution.stoppedAt ? execution.stoppedAt.toISOString() : null,
 		workflowId: execution.workflowId,
 		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
+		startedByUserId: execution.startedByUserId ?? null,
 		...('storedAt' in execution && { storedAt: execution.storedAt }),
 		...('jsonSizeBytes' in execution && { jsonSizeBytes: execution.jsonSizeBytes }),
 		...('workflowVersionId' in execution && { workflowVersionId: execution.workflowVersionId }),

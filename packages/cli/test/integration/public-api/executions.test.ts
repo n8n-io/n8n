@@ -261,6 +261,29 @@ describe('GET /executions/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	test('should return the id of the user who started the execution in startedByUserId', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{ finished: true, status: 'success', startedByUserId: user1.id },
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.startedByUserId).toBe(user1.id);
+	});
+
+	test('should return null startedByUserId when no user started the execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.startedByUserId).toBeNull();
+	});
 });
 
 describe('DELETE /executions/:id', () => {
@@ -666,6 +689,31 @@ describe('GET /executions', () => {
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].dataTooLargeToDisplay).toBe(true);
 		expect(response.body.data[0].data?.resultData?.runData).toEqual({});
+	});
+
+	test('should return startedByUserId on a list item', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{ finished: true, status: 'success', startedByUserId: user1.id },
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].startedByUserId).toBe(user1.id);
+	});
+
+	test('should return null startedByUserId on a list item when unset', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+
+		const response = await authOwnerAgent.get('/executions');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].startedByUserId).toBeNull();
 	});
 
 	test('should return 400 for an invalid cursor', async () => {
