@@ -239,7 +239,7 @@ test.describe(
 				],
 			},
 			async ({ api, n8nContainer, n8n }, testInfo) => {
-				test.setTimeout(600_000);
+				test.setTimeout(120_000);
 				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
 
 				await n8n.navigate.toInstanceAi();
@@ -261,7 +261,7 @@ test.describe(
 				// deterministic to assert in its place — and the behaviour this guards
 				// (a real build, not the legacy path) is already pinned below by
 				// `usedLegacyBuilderTool: false` and the `build-workflow` call assertion.
-				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 90_000 });
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
