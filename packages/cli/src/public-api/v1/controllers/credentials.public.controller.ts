@@ -216,7 +216,7 @@ export class CredentialsPublicController {
 	async updateCredential(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('credentialId') credentialId: string,
+		@Param('credentialId', credentialIdParamSchema) credentialId: string,
 		@Body body: UpdateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
 		if (body.type !== undefined) {
