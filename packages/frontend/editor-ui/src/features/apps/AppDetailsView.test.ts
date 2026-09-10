@@ -213,7 +213,6 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('app-basics-editor')).toBeInTheDocument();
 		expect(queryByTestId('app-page-add-root')).not.toBeInTheDocument();
 		expect(queryByTestId('tab-code')).not.toBeInTheDocument();
-		expect(getByTestId('app-builder-mode-code')).toBeDisabled();
 
 		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
@@ -744,6 +743,7 @@ describe('AppDetailsView', () => {
 			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
 			const rows = getAllByTestId('app-connection');
@@ -766,8 +766,9 @@ describe('AppDetailsView', () => {
 		it('deletes a connection after confirmation', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
 
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
 
@@ -782,8 +783,9 @@ describe('AppDetailsView', () => {
 		it('keeps the connection when the confirmation is cancelled', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue('cancel');
-			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
 
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
 
@@ -793,6 +795,7 @@ describe('AppDetailsView', () => {
 		it('shows the empty state when no workflow is connected', async () => {
 			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
 
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
 			expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
@@ -834,18 +837,19 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
-	it('shows the Code tab, enabled, and renders AppCodeViewer with the active version', async () => {
-		const { getByRole, getByTestId, queryByTestId } = await renderApp(
-			makeApp({ activeVersionId: 'v-7' }),
-		);
-		await userEvent.click(getByTestId('radio-button-build'));
-		const codeTab = getByRole('tab', { name: 'Code' });
-		expect(codeTab).not.toHaveAttribute('aria-disabled', 'true');
+	it('shows the code as its own builder mode, not a Build tab', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 		expect(queryByTestId('app-code-viewer-stub')).not.toBeInTheDocument();
 
-		await userEvent.click(codeTab);
+		await userEvent.click(getByTestId('app-builder-mode-code'));
 
+		expect(getByTestId('app-builder-code')).toBeInTheDocument();
 		expect(getByTestId('app-code-viewer-stub')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		expect(queryByTestId('tab-code')).not.toBeInTheDocument();
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {

@@ -47,10 +47,10 @@ import {
 } from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
-type BuilderMode = 'build' | 'preview';
+type BuilderMode = 'build' | 'code' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
 type PreviewTheme = AppTheme['mode'];
-type BuildTab = 'build' | 'pages' | 'connections' | 'theme' | 'versions' | 'code';
+type BuildTab = 'build' | 'pages' | 'connections' | 'theme' | 'versions';
 type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
 
 const props = withDefaults(
@@ -218,7 +218,6 @@ const buildTabOptions = computed(() => [
 		label: i18n.baseText('apps.builder.versions'),
 		icon: 'history' as const,
 	},
-	{ value: 'code' as const, label: i18n.baseText('apps.builder.code'), icon: 'code' as const },
 ]);
 
 // The API reports warnings as one flat list; each starts with the quoted binding key.
@@ -332,7 +331,7 @@ const onDeleteBinding = async (binding: DescribedBinding) => {
 // A toggle group lets the pressed option be clicked again, which yields
 // undefined; the builder always shows one of its modes.
 const onModeChange = (value: unknown) => {
-	if (value === 'build' || value === 'preview') mode.value = value;
+	if (value === 'build' || value === 'code' || value === 'preview') mode.value = value;
 };
 
 const onDeviceChange = (value: unknown) => {
@@ -460,7 +459,7 @@ const onPublishMenuSelect = async (action: PublishMenuAction) => {
 	}
 };
 
-// Unlike a theme save, stay on the Code tab: the user is likely still editing.
+// Unlike a theme save, stay in Code: the user is likely still editing.
 const onCodeSaved = (updated: App) => {
 	setApp(updated);
 };
@@ -594,7 +593,6 @@ watch(
 								icon="code"
 								:variant="variant"
 								:size="size"
-								disabled
 								data-test-id="app-builder-mode-code"
 							/>
 							<N8nToggle
@@ -783,6 +781,19 @@ watch(
 				</div>
 			</div>
 
+			<div
+				v-else-if="app && mode === 'code'"
+				:class="$style.codeContainer"
+				data-test-id="app-builder-code"
+			>
+				<AppCodeViewer
+					:project-id="projectId"
+					:app-id="appId"
+					:version-id="versionId"
+					@saved="onCodeSaved"
+				/>
+			</div>
+
 			<div v-else-if="app" :class="$style.build" data-test-id="app-builder-build">
 				<N8nTabs v-model="buildTab" :options="buildTabOptions" data-test-id="app-builder-tabs" />
 				<div v-if="buildTab === 'build'" :class="$style.container">
@@ -945,15 +956,6 @@ watch(
 							{{ i18n.baseText('apps.builder.versions.activate') }}
 						</N8nButton>
 					</div>
-				</div>
-
-				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
-					<AppCodeViewer
-						:project-id="projectId"
-						:app-id="appId"
-						:version-id="versionId"
-						@saved="onCodeSaved"
-					/>
 				</div>
 			</div>
 		</div>
@@ -1219,12 +1221,12 @@ watch(
 	padding-bottom: var(--spacing--lg);
 }
 
-// Unlike the flowing Pages/Theme content, the tree + viewer need a bounded
-// height to fill so each can scroll on its own, the same way `.preview` does.
+// The tree + viewer need a bounded height to fill so each can scroll on its
+// own, the same way `.preview` does.
 .codeContainer {
+	display: flex;
 	flex: 1;
 	min-height: 0;
-	padding-bottom: var(--spacing--2xs);
 }
 
 .header {
