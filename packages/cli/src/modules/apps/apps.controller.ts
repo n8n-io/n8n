@@ -27,6 +27,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
+import { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-memory.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { sendErrorResponse } from '@/response-helper';
 import { ProjectService } from '@/services/project.service.ee';
@@ -85,6 +86,7 @@ export class AppsController {
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly appSourceEditBuildService: AppSourceEditBuildService,
+		private readonly instanceAiMemoryService: InstanceAiMemoryService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -227,6 +229,18 @@ export class AppsController {
 	) {
 		this.checkInstanceWriteAccess();
 		return await this.appsService.removeBinding(appId, key);
+	}
+
+	/** The caller's assistant threads that build this app, newest activity first. */
+	@Get('/:appId/threads')
+	@ProjectScope('app:read')
+	async listThreads(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		await this.appsService.getApp(appId);
+		return { threads: await this.instanceAiMemoryService.listThreadsForApp(req.user.id, appId) };
 	}
 
 	/** Serves a stored built version again, or unpublishes the app with `versionId: null`. */

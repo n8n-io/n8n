@@ -105,6 +105,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockPendingConfirmationRepository as never,
 		mockEventLogRepository as never,
 		mockDurableLogMetrics as never,
+		{ findByApp: vi.fn(async () => []), setApp: vi.fn() } as never,
 	);
 }
 

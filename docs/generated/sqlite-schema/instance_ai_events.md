@@ -56,6 +56,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "instance_ai_threads" {
+  varchar_36_ appId FK
   datetime_3_ createdAt
   varchar id PK
   TEXT metadata

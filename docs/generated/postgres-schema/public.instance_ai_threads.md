@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| appId | varchar(36) |  | true |  | [public.app](public.app.md) | App this thread builds; null for other threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | uuid |  | false | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) [public.instance_ai_events](public.instance_ai_events.md) [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) [public.instance_ai_messages](public.instance_ai_messages.md) [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) [public.instance_ai_observations](public.instance_ai_observations.md) [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) |  |  |
 | metadata | json |  | true |  |  |  |
@@ -18,6 +19,7 @@
 | ---- | ---- | ---------- |
 | FK_instance_ai_threads_projectId | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_35575100e45cdedeb89ae0643e9 | PRIMARY KEY | PRIMARY KEY (id) |
+| instance_ai_threads_appId_foreign | FOREIGN KEY | FOREIGN KEY ("appId") REFERENCES app(id) ON DELETE SET NULL |
 | instance_ai_threads_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_ai_threads_id_not_null | n | NOT NULL id |
 | instance_ai_threads_projectId_not_null | n | NOT NULL "projectId" |
@@ -30,6 +32,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_f36dea4d38fe92e0e8f44d5a56 | CREATE INDEX "IDX_f36dea4d38fe92e0e8f44d5a56" ON public.instance_ai_threads USING btree ("resourceId") |
+| IDX_instance_ai_threads_appId_updatedAt | CREATE INDEX "IDX_instance_ai_threads_appId_updatedAt" ON public.instance_ai_threads USING btree ("appId", "updatedAt") |
 | IDX_instance_ai_threads_projectId | CREATE INDEX "IDX_instance_ai_threads_projectId" ON public.instance_ai_threads USING btree ("projectId") |
 | PK_35575100e45cdedeb89ae0643e9 | CREATE UNIQUE INDEX "PK_35575100e45cdedeb89ae0643e9" ON public.instance_ai_threads USING btree (id) |
 
@@ -38,6 +41,7 @@
 ```mermaid
 erDiagram
 
+"public.instance_ai_threads" }o--o| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE SET NULL"
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
@@ -52,12 +56,23 @@ erDiagram
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.instance_ai_threads" {
+  varchar_36_ appId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   json metadata
   varchar_36_ projectId FK
   varchar_255_ resourceId
   text title
+  timestamp_3__with_time_zone updatedAt
+}
+"public.app" {
+  varchar_36_ activeVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  json theme
   timestamp_3__with_time_zone updatedAt
 }
 "public.ai_builder_temporary_workflow" {

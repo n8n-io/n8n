@@ -1732,6 +1732,8 @@ export interface InstanceAiThreadInfo {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** App this thread builds, when it is bound to one. */
+	appId?: string;
 }
 
 export interface InstanceAiThreadListResponse {

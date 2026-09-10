@@ -404,6 +404,8 @@ export class InstanceAiAdapterService {
 			modelId?: ModelConfig;
 			/** The thread's live sandbox, if a run created it: `apps publish` snapshots its draft first. */
 			getThreadWorkspace?: () => Workspace | undefined;
+			/** Called when the run creates or builds an app, so the caller can bind the thread to it. */
+			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiContext {
 		const {
@@ -420,6 +422,7 @@ export class InstanceAiAdapterService {
 			conversationHistory,
 			modelId,
 			getThreadWorkspace,
+			onAppTouched,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -466,7 +469,7 @@ export class InstanceAiAdapterService {
 								appPublishService: this.appPublishService,
 							},
 							user,
-							{ boundProjectId: projectId, threadId, getThreadWorkspace },
+							{ boundProjectId: projectId, threadId, getThreadWorkspace, onAppTouched },
 						),
 					}
 				: {}),
@@ -3184,9 +3187,21 @@ export class InstanceAiAdapterService {
 			boundProjectId?: string;
 			threadId?: string;
 			getThreadWorkspace?: () => Workspace | undefined;
+			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiAppService {
 		const { appsService, urlService, appPublishService } = services;
+		// Best effort: a failed binding must not fail the tool call that did the real work.
+		const noteAppTouched = async (app: { id: string; projectId: string; name: string }) => {
+			try {
+				await run.onAppTouched?.({ id: app.id, projectId: app.projectId, name: app.name });
+			} catch (error) {
+				this.logger.warn('Could not bind the thread to the app', {
+					appId: app.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('apps');
 		const { resolveProjectId, assertProjectScope } = this.createProjectScopeHelpers(
 			user,
@@ -3210,6 +3225,7 @@ export class InstanceAiAdapterService {
 				}
 				try {
 					const app = await appsService.createApp(projectId, dto.data);
+					await noteAppTouched(app);
 					return {
 						app: {
 							id: app.id,
@@ -3239,6 +3255,7 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const app = await getAccessibleApp(['app:update'], appId);
 				const version = await appsService.createVersion(app.id, source, dist);
+				await noteAppTouched(app);
 				// Same URL the apps UI shows; the trailing slash keeps relative asset URLs working.
 				return {
 					versionId: version.id,

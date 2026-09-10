@@ -2591,6 +2591,7 @@ export class InstanceAiService {
 			conversationHistory,
 			modelId,
 			getThreadWorkspace: () => this.getCachedWorkspace(threadId),
+			onAppTouched: async (app) => await this.memoryService.bindThreadToApp(threadId, app),
 		});
 
 		// Merge both local gateway and direct browser-use into a single

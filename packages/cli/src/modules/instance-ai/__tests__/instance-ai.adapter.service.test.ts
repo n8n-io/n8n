@@ -4987,6 +4987,37 @@ describe('createContext — app service wiring', () => {
 		).resolves.toEqual({ conflict: true });
 	});
 
+	it('reports the app to onAppTouched when it is created or built, and survives a failing hook', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const onAppTouched = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue(undefined);
+		const service = createAdapterWithApps({
+			createApp: vi.fn().mockResolvedValue(app),
+			getApp: vi.fn().mockResolvedValue(app),
+			createVersion: vi.fn().mockResolvedValue({ id: 'v-1', appId: 'app-1' }),
+		});
+		const appService = service.createContext(mockUser, {
+			projectId: 'proj-1',
+			threadId: 'thread-1',
+			onAppTouched,
+		}).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual(expect.objectContaining({ app: expect.objectContaining({ id: 'app-1' }) }));
+		await appService?.storeVersion('app-1', { source: Buffer.from('s'), dist: Buffer.from('d') });
+
+		expect(onAppTouched).toHaveBeenCalledTimes(2);
+		expect(onAppTouched).toHaveBeenCalledWith({
+			id: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		});
+	});
+
 	it('stores a version after checking app:update on the app project and returns the served url', async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
