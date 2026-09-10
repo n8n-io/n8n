@@ -306,7 +306,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags).toMatchObject({ '111_instance_activity_context': true });
+				expect(flags).toMatchObject({ '114_instance_activity_context': true });
 			});
 
 			it('leaves the instance-activity-context flag to PostHog when the record is off', async () => {
@@ -318,7 +318,7 @@ describe('PostHog', () => {
 
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
-				expect(flags['111_instance_activity_context']).toBeUndefined();
+				expect(flags['114_instance_activity_context']).toBeUndefined();
 			});
 
 			it('force-enables the folder-exploration flag when N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED is set', async () => {

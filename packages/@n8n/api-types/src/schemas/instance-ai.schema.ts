@@ -2446,7 +2446,7 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * questions. Watch both numbers together: fewer questions with worse builds is a
  * regression, not a win. `INSTANCE_CONTEXT_TURN` carries both sides per turn.
  */
-export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '111_instance_activity_context';
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
