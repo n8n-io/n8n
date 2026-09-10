@@ -366,6 +366,31 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('should refetch credentials when the dropdown opens so a rename from another tab shows up', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential({ name: 'Scout' }),
+		};
+
+		renderComponent();
+
+		// The rename happened in another tab: only a fresh fetch can bring the new name.
+		credentialsStore.fetchUsableCredentials = vi.fn().mockImplementation(async () => {
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ name: 'Scout renamed' }),
+			};
+			return Object.values(credentialsStore.state.credentials);
+		});
+
+		// Click the input: the dropdown only opens from inside the select trigger.
+		const select = screen.getByTestId('node-credentials-select');
+		await userEvent.click(select.querySelector('input') as HTMLElement);
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: '1' });
+		expect(await screen.findByText('Scout renamed')).toBeInTheDocument();
+		expect(screen.queryByText('Scout')).not.toBeInTheDocument();
+	});
+
 	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
 		// Hosts with a synthetic workflow document (e.g. the tool config modal)
 		// own the credential fetch themselves; the component's own fetch would
