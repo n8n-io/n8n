@@ -210,6 +210,14 @@ the composed DOM - the document plus every open shadow tree, and slotted content
 from where it renders, not from where it is written - runs no axe rules, and
 leaves the default WCAG 2.1 A + AA tag selection alone.
 
+A `<section>` or `<form>` is a landmark only once it has an accessible name, so the
+check computes one: `aria-label`, an `aria-labelledby` reference resolved in the
+element's own root, or `title`. A reference resolves through the same routine, so
+the referenced element can name through its own reference, a naming attribute such
+as `img[alt]`, or its text. A reference to a missing or empty element names
+nothing, and a `<section>` full of text stays unnamed, because `region` does not
+take its name from content.
+
 ```typescript
 import { assertMainLandmarkStructure } from '../../../utils/a11y-landmark-check';
 

@@ -56,20 +56,81 @@ export async function checkMainLandmarkStructure(page: Page): Promise<MainLandma
 			return root instanceof ShadowRoot ? root : document;
 		};
 
-		const hasAccessibleName = (element: Element) => {
-			if (element.getAttribute('aria-label')?.trim()) return true;
-
-			// An aria-labelledby that resolves to nothing, or to empty elements, names nothing.
-			const labelledBy = element.getAttribute('aria-labelledby')?.trim();
-			if (!labelledBy) return false;
-
-			const root = rootOf(element);
-			return labelledBy.split(/\s+/).some((id) => {
-				const referenced = root.getElementById(id);
-				if (!referenced) return false;
-				return !!referenced.getAttribute('aria-label')?.trim() || !!referenced.textContent?.trim();
-			});
+		// The naming attribute an element carries instead of text content.
+		const nameFromAttributes = (element: Element): string => {
+			switch (element.tagName) {
+				case 'IMG':
+				case 'AREA':
+					return element.getAttribute('alt')?.trim() ?? '';
+				case 'INPUT': {
+					const type = element.getAttribute('type')?.trim().toLowerCase();
+					if (type === 'image') return element.getAttribute('alt')?.trim() ?? '';
+					if (type === 'button' || type === 'submit' || type === 'reset')
+						return element.getAttribute('value')?.trim() ?? '';
+					return '';
+				}
+				default:
+					return '';
+			}
 		};
+
+		/**
+		 * The accessible name of an element, enough of the computation for this check:
+		 * `aria-label`, then `aria-labelledby`, then a naming attribute, then - only for an
+		 * element reached through a reference - its content, and `title` as the last resort.
+		 *
+		 * `fromReference` keeps name-from-content off the element being classified, because
+		 * `region` and `form` do not take their name from content: a plain `<section>` full of
+		 * text stays unnamed, and so is not a landmark. A referenced element does name through
+		 * its content, which is how `<h2 id="title">Settings</h2>` names the section pointing at
+		 * it, and how an `<img alt="...">` inside that element still names it.
+		 *
+		 * `visited` bounds the walk, so a reference cycle ends instead of recursing forever.
+		 */
+		const accessibleNameOf = (
+			element: Element,
+			visited: Set<Element>,
+			fromReference: boolean,
+		): string => {
+			if (visited.has(element)) return '';
+			visited.add(element);
+
+			const ariaLabel = element.getAttribute('aria-label')?.trim();
+			if (ariaLabel) return ariaLabel;
+
+			// A reference to a missing element, or to elements that name nothing, names nothing.
+			const labelledBy = element.getAttribute('aria-labelledby')?.trim();
+			if (labelledBy) {
+				const root = rootOf(element);
+				const referenced = labelledBy
+					.split(/\s+/)
+					.map((id) => root.getElementById(id))
+					.map((target) => (target ? accessibleNameOf(target, visited, true) : ''))
+					.filter(Boolean)
+					.join(' ');
+				if (referenced) return referenced;
+			}
+
+			const fromAttributes = nameFromAttributes(element);
+			if (fromAttributes) return fromAttributes;
+
+			if (fromReference) {
+				const fromContent = Array.from(element.childNodes)
+					.map((child) =>
+						child instanceof Element
+							? accessibleNameOf(child, visited, true)
+							: (child.textContent ?? ''),
+					)
+					.filter((name) => name.trim())
+					.join(' ')
+					.trim();
+				if (fromContent) return fromContent;
+			}
+
+			return element.getAttribute('title')?.trim() ?? '';
+		};
+
+		const hasAccessibleName = (element: Element) => !!accessibleNameOf(element, new Set(), false);
 
 		const landmarkRoleOf = (element: Element): string | undefined => {
 			// An explicit role wins over the tag, including when it is not a landmark.

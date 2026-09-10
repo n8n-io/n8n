@@ -93,12 +93,109 @@ test.describe(
 			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
 		});
 
-		test('passes a page whose <section> aria-labelledby resolves to nothing', async ({ page }) => {
+		test('fails a page whose <main> is inside a <form> named by aria-labelledby', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<form aria-labelledby="form-title">' +
+					'<h2 id="form-title">Filters</h2>' +
+					'<main id="content">nested</main>' +
+					'</form>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(ok).toBe(false);
+			expect(problems.map((problem) => problem.rule)).toContain('main-not-nested');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
+		});
+
+		test('fails a page whose <section> is named by a referenced image alt', async ({ page }) => {
+			await page.setContent(
+				'<section aria-labelledby="image-title">' +
+					'<img id="image-title" alt="Settings" />' +
+					'<main id="content">nested</main>' +
+					'</section>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(ok).toBe(false);
+			expect(problems.map((problem) => problem.rule)).toContain('main-not-nested');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
+		});
+
+		test('fails a page whose <section> is named through a chain of aria-labelledby', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<section aria-labelledby="proxy-title">' +
+					'<span id="proxy-title" aria-labelledby="real-title"></span>' +
+					'<span id="real-title">Settings</span>' +
+					'<main id="content">nested</main>' +
+					'</section>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(ok).toBe(false);
+			expect(problems.map((problem) => problem.rule)).toContain('main-not-nested');
+			await expect(assertMainLandmarkStructure(page)).rejects.toThrow(/main-not-nested/);
+		});
+
+		test('passes a page whose <section> aria-labelledby points at a missing id', async ({
+			page,
+		}) => {
 			await page.setContent(
 				'<section aria-labelledby="missing-title">' +
 					'<main id="content">not nested in a landmark</main>' +
-					'</section>' +
-					'<form aria-labelledby="empty-title"><span id="empty-title"> </span></form>',
+					'</section>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(problems).toEqual([]);
+			expect(ok).toBe(true);
+		});
+
+		test('passes a page whose <form> aria-labelledby points at an empty element', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<form aria-labelledby="empty-title">' +
+					'<span id="empty-title"> </span>' +
+					'<main id="content">not nested in a landmark</main>' +
+					'</form>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(problems).toEqual([]);
+			expect(ok).toBe(true);
+		});
+
+		test('passes a page whose <section> aria-labelledby references form a cycle', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<section aria-labelledby="first-title">' +
+					'<span id="first-title" aria-labelledby="second-title"></span>' +
+					'<span id="second-title" aria-labelledby="first-title"></span>' +
+					'<main id="content">not nested in a landmark</main>' +
+					'</section>',
+			);
+
+			const { ok, problems } = await checkMainLandmarkStructure(page);
+
+			expect(problems).toEqual([]);
+			expect(ok).toBe(true);
+		});
+
+		test('passes a page whose <main> is inside an unnamed <section> that has text', async ({
+			page,
+		}) => {
+			await page.setContent(
+				'<section><p>Section text</p><main id="content">not nested in a landmark</main></section>',
 			);
 
 			const { ok, problems } = await checkMainLandmarkStructure(page);
