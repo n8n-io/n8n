@@ -448,10 +448,92 @@ input[type='checkbox'] + label {
 		color: var(--sticky--code--color--text);
 	}
 
-	a {
+	// Shared markdown link look, minus `font-weight: medium`: a weight change
+	// shifts wrap points and note heights must stay stable (ADO-5800).
+	// Links inside headings keep the heading style, like the shared skin.
+	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
+		color: var(--color--text--shade-1);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		text-decoration-thickness: 1px;
+		transition: color 0.15s ease;
+
 		&:hover {
-			text-decoration: underline;
+			color: var(--color--primary);
 		}
+	}
+
+	// Shared markdown blockquote look with the sticky's compact vertical
+	// rhythm, and sticky-aware colors so it stays visible on all note colors.
+	blockquote {
+		margin-bottom: var(--spacing--2xs);
+		padding-left: var(--spacing--sm);
+		border-left: var(--spacing--4xs) solid var(--sticky--border-color, currentColor);
+		font-style: italic;
+
+		p:first-of-type::before {
+			content: open-quote;
+		}
+
+		p:last-of-type::after {
+			content: close-quote;
+		}
+
+		// The blockquote carries the bottom spacing; don't stack the paragraph's.
+		p:last-of-type {
+			margin-bottom: 0;
+		}
+	}
+
+	// Shared markdown table look with the sticky's compact vertical rhythm,
+	// and sticky-aware colors so borders stay visible on all note colors.
+	table {
+		width: 100%;
+		table-layout: auto;
+		margin-bottom: var(--spacing--2xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	thead {
+		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+	}
+
+	thead th {
+		color: var(--sticky--color--text);
+		font-weight: var(--font-weight--bold);
+		vertical-align: bottom;
+		padding: 0 0.6em 0.8em;
+	}
+
+	tbody tr {
+		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+
+		&:last-child {
+			border-bottom-width: 0;
+		}
+	}
+
+	tbody td {
+		vertical-align: baseline;
+		padding: 0.8em 0.6em;
+	}
+
+	thead th,
+	tbody td {
+		text-align: start;
+
+		&:first-child {
+			padding-inline-start: 0;
+		}
+
+		&:last-child {
+			padding-inline-end: 0;
+		}
+	}
+
+	td code {
+		font-size: var(--font-size--xs);
 	}
 
 	img {
