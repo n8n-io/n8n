@@ -1,18 +1,21 @@
 /**
  * Apps tool — create an app, restore its stored source into a fresh sandbox,
- * bind n8n workflows it may call, and publish it as a served version once the
- * user confirms. The agent edits files with the workspace tool in between; the
- * live preview follows.
+ * bind n8n workflows and data tables it may use, and publish it as a served
+ * version once the user confirms. The agent edits files with the workspace tool
+ * in between; the live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	appBindingMetaSchema,
+	dataTablePermissionSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	type AppBinding,
 	type AppBindingMeta,
 	type DescribedBinding,
+	type DescribedDataTableBinding,
+	type DescribedWorkflowBinding,
 } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
@@ -23,7 +26,7 @@ import { z } from 'zod';
 import { APPS_TOOL_ID } from './tool-ids';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { SANDBOX_RUNTIME_SKILLS_DIR } from '../skills/materialize-runtime-skills';
-import type { InstanceAiContext } from '../types';
+import type { AppSummary, InstanceAiContext } from '../types';
 import { escapeSingleQuotes } from '../workspace/sandbox-fs';
 import { NPM_INSTALL_FLAGS } from '../workspace/sandbox-setup';
 
@@ -109,6 +112,8 @@ const addComponentSchema = z.object({
 		),
 });
 
+// A flat object, not a union per kind: the sanitized schema the model sees flattens a
+// nested union to this shape anyway, so the per-kind field check lives in `handleBind`.
 const bindSchema = z.object({
 	action: z.literal('bind'),
 	appId: z.string(),
@@ -118,13 +123,22 @@ const bindSchema = z.object({
 				key: z
 					.string()
 					.describe(
-						'Slug the app calls the workflow by, e.g. "submit" (lowercase, digits, hyphens)',
+						'Slug the app calls the workflow or table by, e.g. "submit" or "tasks" (lowercase, digits, hyphens)',
 					),
-				kind: z.literal('workflow'),
-				workflowId: z.string(),
+				kind: z.enum(['workflow', 'dataTable']),
+				workflowId: z.string().optional().describe('For kind "workflow"'),
+				dataTableId: z.string().optional().describe('For kind "dataTable"'),
+				permissions: z
+					.array(dataTablePermissionSchema)
+					.optional()
+					.describe(
+						'For kind "dataTable": "read" lists rows; "write" inserts, updates and deletes them',
+					),
 			}),
 		)
-		.describe('Bindings to add or replace by key; other bindings stay'),
+		.describe(
+			'Bindings to add or replace by key; other bindings stay. One kind per call: workflows and data tables are approved separately.',
+		),
 });
 
 const unbindSchema = z.object({
@@ -156,6 +170,10 @@ type PublishInput = z.infer<typeof publishSchema>;
 type RestoreInput = z.infer<typeof restoreSchema>;
 type AddComponentInput = z.infer<typeof addComponentSchema>;
 type BindInput = z.infer<typeof bindSchema>;
+type FlatBinding = BindInput['bindings'][number];
+type WorkflowBinding = Extract<AppBinding, { kind: 'workflow' }>;
+type DataTableBinding = Extract<AppBinding, { kind: 'dataTable' }>;
+type BindPermission = 'bindAppWorkflow' | 'bindAppDataTable';
 type UnbindInput = z.infer<typeof unbindSchema>;
 type BindingsInput = z.infer<typeof bindingsSchema>;
 type AppsInput =
@@ -396,22 +414,36 @@ export function jsonSchemaToTs(schema: JSONSchema7Definition): string {
 	);
 }
 
+const isWorkflowBinding = (binding: DescribedBinding): binding is DescribedWorkflowBinding =>
+	binding.kind === 'workflow' && !binding.missing;
+const isDataTableBinding = (binding: DescribedBinding): binding is DescribedDataTableBinding =>
+	binding.kind === 'dataTable' && !binding.missing;
+
 /**
  * `src/n8n-bindings.d.ts`: keys, input schema and observed output schema of the bound
- * workflows as types for `n8n.workflows.run`.
+ * workflows as types for `n8n.workflows.run`, and the row type of each bound data table
+ * for `n8n.tables.<key>`. A binding whose resource is gone gets no entry.
  */
 export function renderBindingsTypes(bindings: DescribedBinding[]): string {
-	const workflows = bindings.map(
+	const liveWorkflows = bindings.filter(isWorkflowBinding);
+	const workflows = liveWorkflows.map(
 		(binding) =>
 			`\t\t\t${JSON.stringify(binding.key)}: { input: ${jsonSchemaToTs(binding.input)}; output: ${jsonSchemaToTs(binding.output)} };`,
 	);
-	const sources = bindings.flatMap((binding) =>
+	const tables = bindings
+		.filter(isDataTableBinding)
+		.map(
+			(binding) => `\t\t\t${JSON.stringify(binding.key)}: { row: ${jsonSchemaToTs(binding.row)} };`,
+		);
+	const sources = liveWorkflows.flatMap((binding) =>
 		binding.outputSource.kind === 'execution'
 			? [
 					`// output of ${JSON.stringify(binding.key)} inferred from execution ${binding.outputSource.executionId} (${binding.outputSource.at}); re-run \`apps bindings\` after changing the workflow`,
 				]
 			: [],
 	);
+	const block = (name: string, lines: string[]) =>
+		lines.length > 0 ? [`\t\t${name}: {`, ...lines, '\t\t};'] : [`\t\t${name}: {};`];
 	// Tabs, like the rest of the template.
 	return [
 		'// Generated by `apps bind`. Do not edit; re-run bind.',
@@ -419,9 +451,8 @@ export function renderBindingsTypes(bindings: DescribedBinding[]): string {
 		"import '@n8n/app-sdk';",
 		"declare module '@n8n/app-sdk' {",
 		'\tinterface Bindings {',
-		...(workflows.length > 0
-			? ['\t\tworkflows: {', ...workflows, '\t\t};']
-			: ['\t\tworkflows: {};']),
+		...block('workflows', workflows),
+		...block('tables', tables),
 		'\t}',
 		'}',
 		'',
@@ -920,20 +951,22 @@ async function resolveWorkflowName(context: InstanceAiContext, workflowId: strin
 }
 
 /**
- * The `bindAppWorkflow` permission, the way `workflows` asks before a publish: `null`
- * when the action may proceed, the reason when it may not; suspends for the card
- * when the user has not answered it yet.
+ * The `bindAppWorkflow` or `bindAppDataTable` permission, the way `workflows` asks before
+ * a publish: `null` when the action may proceed, the reason when it may not; suspends for
+ * the card when the user has not answered it yet.
  */
-async function requireBindAppWorkflowApproval(
+async function requireBindApproval(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
+	permission: BindPermission,
 	describe: () => Promise<{ message: string; appBinding?: AppBindingMeta }>,
 ): Promise<AppActionDenied | null> {
-	if (context.permissions?.bindAppWorkflow === 'blocked') {
+	const mode = context.permissions?.[permission];
+	if (mode === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
 	}
 	const resumeData = ctx.resumeData;
-	const needsApproval = context.permissions?.bindAppWorkflow !== 'always_allow';
+	const needsApproval = mode !== 'always_allow';
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -947,9 +980,93 @@ async function requireBindAppWorkflowApproval(
 	return null;
 }
 
+type BoundApp = Omit<AppSummary, 'createdAt'>;
+type BindDescription = { message: string; appBinding?: AppBindingMeta };
+
+/** The model passes one flat object per binding; the service wants the discriminated union. */
+function toAppBinding(flat: FlatBinding): AppBinding | AppActionDenied {
+	const { key, kind, workflowId, dataTableId, permissions } = flat;
+	if (kind === 'workflow') {
+		return workflowId !== undefined && dataTableId === undefined && permissions === undefined
+			? { key, kind, workflowId }
+			: { denied: true, reason: `Binding "${key}": kind "workflow" takes workflowId only.` };
+	}
+	return dataTableId !== undefined && permissions !== undefined && workflowId === undefined
+		? { key, kind, dataTableId, permissions }
+		: {
+				denied: true,
+				reason: `Binding "${key}": kind "dataTable" takes dataTableId and permissions ("read", "write") only.`,
+			};
+}
+
+async function describeWorkflowBind(
+	context: InstanceAiContext,
+	app: BoundApp,
+	bindings: WorkflowBinding[],
+): Promise<BindDescription> {
+	const appService = requireAppService(context);
+	const lines = await Promise.all(
+		bindings.map(
+			async ({ key, workflowId }) =>
+				`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
+		),
+	);
+	// One line: the card renders the message as plain HTML text, which folds newlines.
+	const message = `${lines.join('; ')} (callable by anyone with the app URL)`;
+	// The structured card shows one binding. A multi-binding call, or a workflow the
+	// preview cannot resolve (the write refuses it with the reason), gets the plain text.
+	const [described] =
+		bindings.length === 1 ? (await appService.previewBindings(app.id, bindings)).bindings : [];
+	if (!described || !isWorkflowBinding(described)) return { message };
+	return {
+		message,
+		appBinding: {
+			kind: 'workflow',
+			appId: app.id,
+			appName: app.name,
+			appNamespace: app.namespace,
+			workflowId: described.workflowId,
+			workflowName: described.name,
+			key: described.key,
+		},
+	};
+}
+
+async function describeDataTableBind(
+	context: InstanceAiContext,
+	app: BoundApp,
+	bindings: DataTableBinding[],
+): Promise<BindDescription> {
+	// The preview is the one source of a table's name; a table it cannot resolve reads as its key.
+	const described = (await requireAppService(context).previewBindings(app.id, bindings)).bindings;
+	const nameOf = (key: string) => described.find((binding) => binding.key === key)?.name ?? key;
+	const lines = bindings.map(
+		({ key, dataTableId, permissions }) =>
+			`Connect data table "${nameOf(key)}" (${dataTableId}) to app "${app.name}" as "${key}" with ${permissions.join(' and ')} access`,
+	);
+	const message = `${lines.join('; ')} (anyone with the app URL gets this access)`;
+	const [only] = described;
+	if (bindings.length !== 1 || !only || !isDataTableBinding(only)) return { message };
+	return {
+		message,
+		appBinding: {
+			kind: 'dataTable',
+			appId: app.id,
+			appName: app.name,
+			appNamespace: app.namespace,
+			dataTableId: only.dataTableId,
+			dataTableName: only.name,
+			key: only.key,
+			permissions: only.permissions,
+			projectId: app.projectId,
+		},
+	};
+}
+
 /**
  * Upsert by key: a binding with an existing key replaces it, the others stay. A bind
- * exposes a workflow to anyone with the app's URL, so it asks the user first.
+ * exposes a workflow or a data table to anyone with the app's URL, so it asks the user
+ * first; one card per call, so a call binds one kind.
  */
 async function handleBind(
 	context: InstanceAiContext,
@@ -960,48 +1077,45 @@ async function handleBind(
 	if (!input.bindings?.length) {
 		return {
 			denied: true,
-			reason: 'Pass at least one binding as { key, kind: "workflow", workflowId }.',
+			reason:
+				'Pass at least one binding as { key, kind: "workflow", workflowId } or { key, kind: "dataTable", dataTableId, permissions }.',
 		};
 	}
-	const appService = requireAppService(context);
-	const app = await appService.get(input.appId);
+	const bindings: AppBinding[] = [];
+	for (const flat of input.bindings) {
+		const binding = toAppBinding(flat);
+		if ('denied' in binding) return binding;
+		bindings.push(binding);
+	}
+	const workflows = bindings.filter((b): b is WorkflowBinding => b.kind === 'workflow');
+	const tables = bindings.filter((b): b is DataTableBinding => b.kind === 'dataTable');
+	if (workflows.length > 0 && tables.length > 0) {
+		return { denied: true, reason: 'Bind workflows and data tables in separate calls.' };
+	}
+	const app = await requireAppService(context).get(input.appId);
 
-	const denied = await requireBindAppWorkflowApproval(context, ctx, async () => {
-		const lines = await Promise.all(
-			input.bindings.map(
-				async ({ key, workflowId }) =>
-					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
-			),
-		);
-		// One line: the card renders the message as plain HTML text, which folds newlines.
-		const message = `${lines.join('; ')} (callable by anyone with the app URL)`;
-		// The structured card shows one binding. A multi-binding call, or a workflow the
-		// preview cannot resolve (the write refuses it with the reason), gets the plain text.
-		const [described] =
-			input.bindings.length === 1
-				? (await appService.previewBindings(app.id, input.bindings)).bindings
-				: [];
-		if (!described) return { message };
-		return {
-			message,
-			appBinding: {
-				appId: app.id,
-				appName: app.name,
-				appNamespace: app.namespace,
-				workflowId: described.workflowId,
-				workflowName: described.name,
-				key: described.key,
-			},
-		};
-	});
+	const denied =
+		tables.length > 0
+			? await requireBindApproval(
+					context,
+					ctx,
+					'bindAppDataTable',
+					async () => await describeDataTableBind(context, app, tables),
+				)
+			: await requireBindApproval(
+					context,
+					ctx,
+					'bindAppWorkflow',
+					async () => await describeWorkflowBind(context, app, workflows),
+				);
 	if (denied) return denied;
 
-	const replaced = new Set(input.bindings.map((binding) => binding.key));
+	const replaced = new Set(bindings.map((binding) => binding.key));
 	return await replaceBindings(
 		context,
 		app.id,
 		app.namespace,
-		(current) => [...current.filter((binding) => !replaced.has(binding.key)), ...input.bindings],
+		(current) => [...current.filter((binding) => !replaced.has(binding.key)), ...bindings],
 		ctx.abortSignal,
 	);
 }
@@ -1021,11 +1135,22 @@ async function handleUnbind(
 	);
 }
 
-async function handleBindings(context: InstanceAiContext, input: BindingsInput) {
+/**
+ * Lists and re-describes the bindings. The types follow the current resources (a
+ * published trigger, a new execution sample, a changed table column), so the file is
+ * rewritten here too.
+ */
+async function handleBindings(
+	context: InstanceAiContext,
+	input: BindingsInput,
+	abortSignal?: AbortSignal,
+) {
 	const appService = requireAppService(context);
+	const { workspace } = requireSandbox(context, abortSignal);
 	const app = await appService.get(input.appId);
 	const { bindings, warnings } = await appService.getBindings(app.id);
-	return { appId: app.id, bindings, warnings };
+	await writeBindingsTypes(workspace, app.namespace, bindings, abortSignal);
+	return { appId: app.id, bindings, typesPath: BINDINGS_TYPES_PATH, warnings };
 }
 
 async function readTarball(
@@ -1075,10 +1200,10 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
-				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`): ' +
-				'pass `{ key, kind: "workflow", workflowId }` entries, and it rewrites src/n8n-bindings.d.ts with the input types. ' +
-				'It asks the user for approval first: every app is public, so a bound workflow is callable by anyone with the app URL. ' +
-				'`unbind` removes a key; `bindings` lists the current ones. Bind before writing code that calls a workflow.',
+				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`) and read or write data table rows (`n8n.tables.<key>.list/insert/update/delete`): ' +
+				'pass `{ key, kind: "workflow", workflowId }` or `{ key, kind: "dataTable", dataTableId, permissions: ["read", "write"] }` entries (one kind per call), and it rewrites src/n8n-bindings.d.ts with the input and row types. ' +
+				'It asks the user for approval first: every app is public, so a bound workflow or table is reachable by anyone with the app URL. ' +
+				'`unbind` removes a key; `bindings` lists the current ones and rewrites the types (call it after a bound table changes columns). Bind before writing code that uses a workflow or table.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -1098,7 +1223,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				case 'unbind':
 					return await handleUnbind(context, input, ctx.abortSignal);
 				case 'bindings':
-					return await handleBindings(context, input);
+					return await handleBindings(context, input, ctx.abortSignal);
 			}
 		})
 		.build();
