@@ -699,6 +699,9 @@ export function useWorkflowSaving({
 				description: null,
 			});
 			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
+			// Before the first save the store carries project scopes as a stand-in;
+			// the create response has the real workflow scopes.
+			workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 
 			if (workflowData.settings) {
 				workflowDocumentStore.setSettings(workflowData.settings);
