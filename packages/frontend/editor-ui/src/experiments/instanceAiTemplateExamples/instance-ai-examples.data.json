@@ -431,10 +431,6 @@
    "type": "file",
    "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTEzIDUxNCI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iLjUiIHk9Ii41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSJub25lIj48cGF0aCBmaWxsPSIjZmY0NTAwIiBkPSJNMCA3Ni44QzAgMzQuMjUzIDM0LjI1MyAwIDc2LjggMGgzNTguNEM0NzcuNzQ3IDAgNTEyIDM0LjI1MyA1MTIgNzYuOHYzNTguNGMwIDQyLjU0Ny0zNC4yNTMgNzYuOC03Ni44IDc2LjhINzYuOEMzNC4yNTMgNTEyIDAgNDc3Ljc0NyAwIDQzNS4yeiIvPjxwYXRoIGQ9Ik03OSAzMDVjMC02OC4xNDIgNzguOTQyLTEyMyAxNzctMTIzczE3NyA1NC44NTggMTc3IDEyMy03OC45NDIgMTIzLTE3NyAxMjNTNzkgMzczLjE0MiA3OSAzMDUiLz48ZyBmaWxsPSIjZmY0NTAwIj48cGF0aCBkPSJNMTk5IDM0N2MzNSAyOSA3OSAyOSAxMTQgMGwxMiAxMWMtNDIgMzUtOTYgMzUtMTM4IDB6Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHg9Ii0xMTgiLz48L2c+PC9nPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiI+PHVzZSB4bGluazpocmVmPSIjYiIgeD0iNzUiIHk9Ii0xNjAiIHN0cm9rZS13aWR0aD0iMjUiLz48cGF0aCBzdHJva2Utd2lkdGg9IjIyIiBkPSJNODcgMjgyYy00NS0yMi01LTkyIDQwLTUwbTI5OCA1MGM0NS0yMiA1LTkyLTQwLTUwbS0xMjctNDUgMjQtODMgODAgMTYiLz48L2c+PC9zeW1ib2w+PGRlZnM+PHBhdGggaWQ9ImIiIGQ9Ik0yODcgMjg1YTI3Ljk0IDI3Ljk0IDAgMSAxIDU2IDAgMjcuOTQgMjcuOTQgMCAxIDEtNTYgMCIvPjwvZGVmcz48L3N2Zz4="
   },
-  "@n8n/n8n-nodes-langchain.code": {
-   "icon": "code",
-   "type": "icon"
-  },
   "n8n-nodes-base.baserow": {
    "type": "file",
    "fileBuffer": "data:image/svg+xml;base64,PHN2ZyBpZD0iV2Fyc3R3YV8xIiBkYXRhLW5hbWU9IldhcnN0d2EgMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNjAwIDYwMCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiM0ZDY4YzQ7fS5jbHMtMntmaWxsOiM1MTkwZWY7fS5jbHMtM3tmaWxsOiMyYmMzZjE7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5iYXNlcm93X2xvZ29fZ2x5cGg8L3RpdGxlPjxyZWN0IGNsYXNzPSJjbHMtMSIgeT0iNDUxLjY1MjMzIiB3aWR0aD0iMzc0LjE3MzgzIiBoZWlnaHQ9IjE0OC4zNDc2NyIgcng9IjMyLjI1NTYyIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzQuMTczODMgMTA1MS42NTIzMykgcm90YXRlKDE4MCkiLz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Ik0zMi4yNTYsMjI1LjgyNjE3SDU2Ny43NDRBMzIuMjU2LDMyLjI1NiwwLDAsMSw2MDAsMjU4LjA4MjE3djgzLjgzNTY3YTMyLjI1NiwzMi4yNTYsMCwwLDEtMzIuMjU2LDMyLjI1NkgzMi4yNTU2MkEzMi4yNTU2MiwzMi4yNTU2MiwwLDAsMSwwLDM0MS45MTgyMXYtODMuODM2QTMyLjI1NiwzMi4yNTYsMCwwLDEsMzIuMjU2LDIyNS44MjYxN1oiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDYwMCA2MDApIHJvdGF0ZSgxODApIi8+PHJlY3QgY2xhc3M9ImNscy0zIiB4PSIyMjUuODI2MTciIHdpZHRoPSIzNzQuMTczODMiIGhlaWdodD0iMTQ4LjM0NzY3IiByeD0iMzIuMjU2IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg4MjUuODI2MTcgMTQ4LjM0NzY3KSByb3RhdGUoMTgwKSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iNDUxLjY1MjMzIiB5PSI0NTEuNjUyMzMiIHdpZHRoPSIxNDguMzQ3NjciIGhlaWdodD0iMTQ4LjM0NzY3IiByeD0iMzIuMjU2IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUxLjY1MjMzIDEwNTEuNjUyMzQpIHJvdGF0ZSgtMTgwKSIvPjxyZWN0IGNsYXNzPSJjbHMtMyIgd2lkdGg9IjE0OC4zNDc2NyIgaGVpZ2h0PSIxNDguMzQ3NjYiIHJ4PSIzMi4yNTYiLz48L3N2Zz4K"
@@ -4558,10 +4554,6 @@
     {
      "name": "@n8n/n8n-nodes-langchain.agent",
      "displayName": "AI Agent"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
@@ -49195,10 +49187,6 @@
      "displayName": "Basic LLM Chain"
     },
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
      "displayName": "OpenAI Chat Model"
     },
@@ -78456,10 +78444,6 @@
     {
      "name": "@n8n/n8n-nodes-langchain.agent",
      "displayName": "AI Agent"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     }
    ],
    "category": "Engineering",
@@ -100454,10 +100438,6 @@
     {
      "name": "n8n-nodes-base.code",
      "displayName": "Code"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
@@ -162808,10 +162788,6 @@
      "displayName": "AI Agent"
     },
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
      "displayName": "OpenAI Chat Model"
     },
@@ -163466,10 +163442,6 @@
    "id": 2082,
    "name": "Run LangChain Code in n8n to Summarize YouTube Videos",
    "nodes": [
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
     {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
      "displayName": "OpenAI Chat Model"
@@ -170709,10 +170681,6 @@
    "name": "Custom Conversational AI Agent with LangChain and Gemini",
    "nodes": [
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
      "displayName": "Simple Memory"
     },
@@ -171332,10 +171300,6 @@
     {
      "name": "n8n-nodes-base.gmail",
      "displayName": "Gmail"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.informationExtractor",
@@ -174791,10 +174755,6 @@
     {
      "name": "@n8n/n8n-nodes-langchain.agent",
      "displayName": "AI Agent"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
@@ -181100,10 +181060,6 @@
      "displayName": "AI Agent"
     },
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
      "displayName": "Simple Memory"
     },
@@ -182073,10 +182029,6 @@
     {
      "name": "@n8n/n8n-nodes-langchain.agent",
      "displayName": "AI Agent"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
@@ -199260,10 +199212,6 @@
     {
      "name": "@n8n/n8n-nodes-langchain.agent",
      "displayName": "AI Agent"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.lmChatOllama",
@@ -222460,10 +222408,6 @@
      "displayName": "Code"
     },
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
      "displayName": "Structured Output Parser"
     },
@@ -225216,10 +225160,6 @@
      "displayName": "AI Agent"
     },
     {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
-    },
-    {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
      "displayName": "OpenAI Chat Model"
     },
@@ -225528,10 +225468,6 @@
     {
      "name": "n8n-nodes-base.code",
      "displayName": "Code"
-    },
-    {
-     "name": "@n8n/n8n-nodes-langchain.code",
-     "displayName": "LangChain Code"
     },
     {
      "name": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
