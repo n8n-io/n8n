@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /audit:
+    post:
+      $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
   /credentials:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredentials.generated.yml

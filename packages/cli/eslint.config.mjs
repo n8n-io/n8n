@@ -173,7 +173,6 @@ export default defineConfig(
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
 		files: [
-			'./src/public-api/v1/handlers/audit/audit.handler.ts',
 			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
 			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',

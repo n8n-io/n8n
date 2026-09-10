@@ -20,7 +20,6 @@ import type { AuthenticatedRequest, TagEntity } from '@n8n/db';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { AuthlessRequest } from '@/requests';
-import type { Risk } from '@/security-audit/types';
 
 export type PaginatedRequest = AuthenticatedRequest<
 	{},
@@ -294,18 +293,6 @@ export declare namespace CommunityPackageRequest {
 	type List = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
 	type Uninstall = AuthenticatedRequest<{ name: string }>;
-}
-
-// ----------------------------------
-//           /audit
-// ----------------------------------
-
-export declare namespace AuditRequest {
-	type Generate = AuthenticatedRequest<
-		{},
-		{},
-		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
-	>;
 }
 
 // ----------------------------------

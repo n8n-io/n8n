@@ -75,8 +75,6 @@ tags:
     description: Operations about workflows
 
 paths:
-  /audit:
-    $ref: './handlers/audit/spec/paths/audit.yml'
   /settings/ldap:
     $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:

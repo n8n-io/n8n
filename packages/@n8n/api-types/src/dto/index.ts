@@ -40,6 +40,13 @@ export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
 
+export { AuditPublicDto, type AuditPublic } from './audit/audit-public.dto';
+export {
+	AUDIT_RISK_CATEGORIES,
+	GenerateAuditRequestDto,
+	type AuditRiskCategory,
+} from './audit/generate-audit-request.dto';
+
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
