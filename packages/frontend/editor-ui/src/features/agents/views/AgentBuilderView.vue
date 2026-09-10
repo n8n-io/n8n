@@ -263,11 +263,16 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	};
 
 	if (isArtifactMode.value) {
+		// The host closes the dock — only it knows whether the hand-off went
+		// through (it refuses one while its composer holds a draft).
 		emit('assistant-handoff', params);
 		return;
 	}
 
-	await sendPreviewSessionToInstanceAi(params);
+	// Close the preview once the assistant has the request: coming back to an
+	// open preview chat beside the assistant reads as two places to ask.
+	// No route push — the hand-off already navigated to the assistant.
+	if (await sendPreviewSessionToInstanceAi(params)) persistedPreviewOpen.value = false;
 }
 
 /**
