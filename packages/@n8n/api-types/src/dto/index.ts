@@ -88,6 +88,8 @@ export {
 	ProjectMemberPublicDto,
 	ProjectMemberListPublicDto,
 	ListProjectMembersQueryPublicDto,
+	AddProjectMembersPublicDto,
+	ChangeProjectMemberRolePublicDto,
 } from './project/project-member-public.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';

@@ -29,20 +29,18 @@ requestBody:
                 userId:
                   type: string
                   minLength: 1
+                  description: The unique identifier of the user.
+                  example: 91765f0d-3b29-45df-adb9-35b23937eb92
                 role:
-                  anyOf:
-                    - type: string
-                      enum:
-                        - project:admin
-                        - project:editor
-                        - project:viewer
-                        - project:chatUser
-                    - type: string
-                      minLength: 1
+                  type: string
+                  minLength: 1
+                  description: The role assigned to the user in the project.
+                  example: project:viewer
               required:
                 - userId
                 - role
             minItems: 1
+            description: A list of userIds and roles to add to the project.
         required:
           - relations
 responses:

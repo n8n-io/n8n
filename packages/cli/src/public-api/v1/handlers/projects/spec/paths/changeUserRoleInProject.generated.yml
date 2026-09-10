@@ -28,15 +28,10 @@ requestBody:
         type: object
         properties:
           role:
-            anyOf:
-              - type: string
-                enum:
-                  - project:admin
-                  - project:editor
-                  - project:viewer
-                  - project:chatUser
-              - type: string
-                minLength: 1
+            type: string
+            minLength: 1
+            description: The role assigned to the user in the project.
+            example: project:viewer
         required:
           - role
 responses:

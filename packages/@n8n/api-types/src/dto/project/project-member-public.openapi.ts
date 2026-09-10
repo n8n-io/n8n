@@ -45,3 +45,12 @@ export const projectMemberListFieldDocs = {
 		example: 'eyJvZmZzZXQiOjEwMCwibGltaXQiOjEwMH0=',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const addProjectMembersFieldDocs = {
+	relations: { description: 'A list of userIds and roles to add to the project.' },
+	userId: {
+		description: 'The unique identifier of the user.',
+		example: '91765f0d-3b29-45df-adb9-35b23937eb92',
+	},
+	role: { description: 'The role assigned to the user in the project.', example: 'project:viewer' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;

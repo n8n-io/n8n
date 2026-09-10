@@ -1,6 +1,6 @@
 import {
-	AddUsersToProjectDto,
-	ChangeUserRoleInProject,
+	AddProjectMembersPublicDto,
+	ChangeProjectMemberRolePublicDto,
 	CreatedProjectPublicDto,
 	CreateProjectPublicDto,
 	DeleteProjectQueryPublicDto,
@@ -212,7 +212,7 @@ export class ProjectsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
-		@Body body: AddUsersToProjectDto,
+		@Body body: AddProjectMembersPublicDto,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 
@@ -233,7 +233,7 @@ export class ProjectsPublicController {
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Param('userId', userIdParamSchema) userId: string,
-		@Body body: ChangeUserRoleInProject,
+		@Body body: ChangeProjectMemberRolePublicDto,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 

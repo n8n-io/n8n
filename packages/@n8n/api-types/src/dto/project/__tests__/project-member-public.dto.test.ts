@@ -1,4 +1,6 @@
 import {
+	AddProjectMembersPublicDto,
+	ChangeProjectMemberRolePublicDto,
 	ListProjectMembersQueryPublicDto,
 	ProjectMemberListPublicDto,
 	ProjectMemberPublicDto,
@@ -64,5 +66,27 @@ describe('ListProjectMembersQueryPublicDto', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.data).toEqual({ limit: 5, cursor: 'abc' });
+	});
+});
+
+describe('AddProjectMembersPublicDto', () => {
+	test('accepts relations and, as the legacy schema did, ignores an unknown key', () => {
+		const result = AddProjectMembersPublicDto.safeParse({
+			relations: [{ userId: member.id, role: 'project:viewer', extra: true }],
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data).toEqual({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+	});
+
+	test('rejects an empty relations list', () => {
+		expect(AddProjectMembersPublicDto.safeParse({ relations: [] }).success).toBe(false);
+	});
+});
+
+describe('ChangeProjectMemberRolePublicDto', () => {
+	test('accepts any non-empty role; the service checks that it exists', () => {
+		expect(ChangeProjectMemberRolePublicDto.safeParse({ role: 'custom:role' }).success).toBe(true);
+		expect(ChangeProjectMemberRolePublicDto.safeParse({ role: '' }).success).toBe(false);
 	});
 });

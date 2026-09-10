@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	addProjectMembersFieldDocs,
 	projectMemberDocs,
 	projectMemberFieldDocs,
 	projectMemberListFieldDocs,
@@ -32,4 +33,22 @@ export class ProjectMemberListPublicDto extends Z.class({
 export class ListProjectMembersQueryPublicDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
+}) {}
+
+const projectMemberRoleSchema = z.string().min(1).openapi(addProjectMembersFieldDocs.role);
+
+export class AddProjectMembersPublicDto extends Z.class({
+	relations: z
+		.array(
+			z.object({
+				userId: z.string().min(1).openapi(addProjectMembersFieldDocs.userId),
+				role: projectMemberRoleSchema,
+			}),
+		)
+		.min(1)
+		.openapi(addProjectMembersFieldDocs.relations),
+}) {}
+
+export class ChangeProjectMemberRolePublicDto extends Z.class({
+	role: projectMemberRoleSchema,
 }) {}
