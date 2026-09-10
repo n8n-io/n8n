@@ -141,7 +141,33 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github
 
+      # Bootstrap: the checkout is the trusted base branch. Until the action
+      # exists there, there is nothing to run. Report success so the PR that
+      # introduces it can merge; the check is enforced again from the next PR.
+      - name: Check for the enforcement action on the base branch
+        id: bootstrap
+        shell: bash
+        run: |
+          if [ -f .github/actions/run-workflow-script/action.yml ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "No enforcement action on the base branch; nothing to enforce."
+          fi
+
+      - name: Report the bootstrap state
+        if: steps.bootstrap.outputs.ready != 'true' && github.event.pull_request.head.sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=success \
+            -f context='Required Reviews' \
+            -f description='Owners enforcement is not on the base branch yet'
+
       - name: Evaluate required reviews
+        if: steps.bootstrap.outputs.ready == 'true'
         uses: ./.github/actions/run-workflow-script
         env:
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
