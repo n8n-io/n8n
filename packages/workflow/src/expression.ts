@@ -305,6 +305,10 @@ export class Expression {
 				}
 				this.vmEvaluator = evaluator;
 			} catch (error) {
+				// Tear down what the start already built. The pool replenishes in
+				// the background, so an orphaned one keeps creating bridges that
+				// nobody owns, and a retried start would add another.
+				await evaluator.dispose().catch(() => {});
 				this.useSharedCaller = false;
 				throw error;
 			}
