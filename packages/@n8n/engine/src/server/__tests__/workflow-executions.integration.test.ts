@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
+import { UnexpectedError } from '../../common';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
 import { generateId } from '../../database/generate-id';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
@@ -29,6 +30,9 @@ const sampleWorkflow = {
 };
 
 const secret = 'a'.repeat(32);
+
+/** A well-formed cursor, to test what pairs with it rather than its own shape. */
+const sampleCursor = { id: generateId(), createdAt: '2026-09-07T12:00:00.000Z' };
 
 const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
@@ -61,8 +65,21 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 		{ workflowIds: 'all', status: [] },
 		{ workflowIds: 'all', before: { id: 'bad', createdAt: 'today' } },
 		{ workflowIds: Array.from({ length: 10_001 }, () => 'wf') },
+		{ workflowIds: 'all', before: sampleCursor, order: { top: 'running' } },
 	])('rejects an invalid search body %#', async (body) => {
 		await search(body).expect(400);
+	});
+
+	it('rejects a cursor paired with a status-first sort at the store', async () => {
+		const { executionViewStore } = createStores(dataSource);
+		await expect(
+			executionViewStore.listExecutionViews({
+				workflowIds: 'all',
+				limit: 20,
+				before: sampleCursor,
+				order: { top: 'running' },
+			}),
+		).rejects.toThrow(UnexpectedError);
 	});
 
 	it('filters workflows and selects exactly the summary columns', async () => {
