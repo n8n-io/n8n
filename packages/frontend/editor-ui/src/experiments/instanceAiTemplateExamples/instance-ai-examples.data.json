@@ -1,6 +1,6 @@
 {
  "generatedAt": "2026-07-02T00:10:06.250Z",
- "totalWorkflows": 10246,
+ "totalWorkflows": 10245,
  "categories": [
   "Sales",
   "Marketing",
@@ -49198,7 +49198,7 @@
    "category": "Engineering",
    "subcategory": "AI & RAG Pipelines",
    "relevanceScore": 4,
-   "prompt": "Process customer complaints through an AI agent that dynamically switches between multiple LLMs via LangChain code, escalating to a more capable model if the initial response fails validation before returning a final answer."
+   "prompt": "Process customer complaints through an AI agent that dynamically switches between multiple LLMs, escalating to a more capable model if the initial response fails validation before returning a final answer."
   },
   {
    "id": 3822,
@@ -163439,20 +163439,6 @@
    "prompt": "Send Telegram notifications for new emails and temporarily host the email content as a secret HTML page on GitHub Gist for secure preview."
   },
   {
-   "id": 2082,
-   "name": "Run LangChain Code in n8n to Summarize YouTube Videos",
-   "nodes": [
-    {
-     "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-     "displayName": "OpenAI Chat Model"
-    }
-   ],
-   "category": "Engineering",
-   "subcategory": "AI & RAG Pipelines",
-   "relevanceScore": 3,
-   "prompt": "Execute custom LangChain code within n8n to summarize a YouTube video by providing its video ID, leveraging LangChain modules and OpenAI."
-  },
-  {
    "id": 2083,
    "name": "Translate Audio Between Languages Using ElevenLabs and OpenAI",
    "nodes": [
@@ -170692,7 +170678,7 @@
    "category": "Engineering",
    "subcategory": "AI & RAG Pipelines",
    "relevanceScore": 3,
-   "prompt": "Implement a fully customizable conversational AI agent using LangChain code nodes and Google Gemini, giving users granular control over prompts while minimizing unnecessary token usage."
+   "prompt": "Implement a fully customizable conversational AI agent using an AI Agent node with Simple Memory and Google Gemini, giving users granular control over prompts while minimizing unnecessary token usage."
   },
   {
    "id": 3327,
@@ -171309,7 +171295,7 @@
    "category": "Engineering",
    "subcategory": "AI & RAG Pipelines",
    "relevanceScore": 3,
-   "prompt": "Use a Langchain code node to capture token usage and cost for every LLM call per client, log the data to Google Sheets, and send usage summaries via Gmail for multi-tenant AI services."
+   "prompt": "Capture token usage and cost for every LLM call per client, log the data to Google Sheets, and send usage summaries via Gmail for multi-tenant AI services."
   },
   {
    "id": 3441,
