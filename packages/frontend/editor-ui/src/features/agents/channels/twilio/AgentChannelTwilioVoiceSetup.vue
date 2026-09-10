@@ -4,9 +4,17 @@ import type {
 	AgentTwilioVoiceIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCopyInput,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
@@ -28,6 +36,8 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		savedSettings?: AgentIntegrationSettings;
 		forceNewCredential?: boolean;
+		projectId: string;
+		agentId: string;
 	}>(),
 	{
 		credentialsLoading: false,
@@ -47,8 +57,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
+const configurationMode = ref<AgentTwilioVoiceIntegrationSettings['configurationMode']>('manual');
 const phoneNumber = ref('');
 const allowedCallersText = ref('');
+
+const webhookUrl = computed(() => {
+	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
+	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/twilioVoice`;
+});
 
 function twilioSettings(
 	settings: AgentIntegrationSettings,
@@ -71,6 +88,7 @@ watch(
 	(settings) => {
 		const saved = twilioSettings(settings);
 		if (!saved) return;
+		configurationMode.value = saved.configurationMode;
 		phoneNumber.value = saved.phoneNumber;
 		allowedCallersText.value = saved.allowedCallers.join(', ');
 	},
@@ -100,6 +118,7 @@ const validationError = computed<string | null>(() => {
 });
 
 const currentSettings = computed<AgentTwilioVoiceIntegrationSettings>(() => ({
+	configurationMode: configurationMode.value,
 	phoneNumber: phoneNumber.value.trim(),
 	allowedCallers: allowedCallers.value,
 }));
@@ -127,6 +146,47 @@ defineExpose({ credentialId, currentSettings, validationError });
 		/>
 
 		<div :class="$style.field">
+			<label for="twilio-voice-configuration-mode">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.twilioVoice.configurationMode.label') }}
+				</N8nText>
+			</label>
+			<N8nSelect
+				id="twilio-voice-configuration-mode"
+				v-model="configurationMode"
+				:disabled="loading"
+				data-testid="twilio-voice-configuration-mode"
+			>
+				<N8nOption
+					value="manual"
+					:label="i18n.baseText('agents.channels.twilioVoice.configurationMode.manual')"
+				/>
+				<N8nOption
+					value="automatic"
+					:label="i18n.baseText('agents.channels.twilioVoice.configurationMode.automatic')"
+				/>
+			</N8nSelect>
+		</div>
+
+		<div v-if="configurationMode === 'manual'" :class="$style.field">
+			<label for="twilio-voice-webhook-url">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.twilioVoice.webhookUrl.label') }}
+				</N8nText>
+			</label>
+			<N8nCopyInput
+				id="twilio-voice-webhook-url"
+				:value="webhookUrl"
+				:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
+				:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
+				data-testid="twilio-voice-webhook-url"
+			/>
+			<N8nText size="small" color="text-light">
+				{{ i18n.baseText('agents.channels.twilioVoice.webhookUrl.hint') }}
+			</N8nText>
+		</div>
+
+		<div :class="$style.field">
 			<label for="twilio-voice-phone-number">
 				<N8nText size="small" bold>
 					{{ i18n.baseText('agents.channels.twilioVoice.phoneNumber.label') }}
@@ -140,7 +200,13 @@ defineExpose({ credentialId, currentSettings, validationError });
 				data-testid="twilio-voice-phone-number"
 			/>
 			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.channels.twilioVoice.phoneNumber.hint') }}
+				{{
+					i18n.baseText(
+						configurationMode === 'manual'
+							? 'agents.channels.twilioVoice.phoneNumber.manualHint'
+							: 'agents.channels.twilioVoice.phoneNumber.automaticHint',
+					)
+				}}
 			</N8nText>
 		</div>
 
