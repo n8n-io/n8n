@@ -1008,7 +1008,26 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
-			nodeBeforeLast?: string,
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new PairedItemMemo(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
