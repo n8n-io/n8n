@@ -1486,7 +1486,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.deleteThread(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
 			expect(memoryService.deleteThread).toHaveBeenCalledWith(THREAD_ID);
 		});
 

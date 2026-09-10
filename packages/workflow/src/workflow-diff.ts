@@ -327,7 +327,7 @@ export function determineNodeSize(parameters: INodeParameters | NodeParameterVal
 	} else if (typeof parameters !== 'object' || parameters instanceof Date) {
 		return 1;
 	} else if (Array.isArray(parameters)) {
-		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 1);
+		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v), 1);
 	} else {
 		// Record case
 		return Object.values(parameters).reduce<number>(

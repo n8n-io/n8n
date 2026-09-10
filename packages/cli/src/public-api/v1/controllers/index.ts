@@ -5,6 +5,7 @@
  */
 import './credentials.public.controller';
 import './executions.public.controller';
+import './projects.public.controller';
 import './promotions.public.controller';
 import './role-mapping-rules.public.controller';
 import './roles.public.controller';

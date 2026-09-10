@@ -5,11 +5,11 @@ import type {
 	NonDelegatingPolicyRule,
 	PolicyAction,
 	PolicyRule,
-} from '../policy-rule.types';
+} from './policy-rule.types';
 import { policySelectorSchema } from './policy-selector.schema';
 
 /**
- * Zod counterpart of `PolicyAction` in `../policy-rule.types.ts`. The `satisfies` check
+ * Zod counterpart of `PolicyAction` in `./policy-rule.types.ts`. The `satisfies` check
  * keeps this schema honest against that type.
  */
 export const policyActionSchema = z.enum([
@@ -19,7 +19,7 @@ export const policyActionSchema = z.enum([
 ]) satisfies z.ZodType<PolicyAction>;
 
 /**
- * Zod counterpart of `PolicyRule` in `../policy-rule.types.ts`. The `satisfies` check
+ * Zod counterpart of `PolicyRule` in `./policy-rule.types.ts`. The `satisfies` check
  * keeps this schema honest against that type.
  */
 export const policyRuleSchema = z.object({

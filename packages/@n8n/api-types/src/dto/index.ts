@@ -72,7 +72,16 @@ export { DeleteProjectDto } from './project/delete-project.dto';
 export { AddUsersToProjectDto } from './project/add-users-to-project.dto';
 export { ChangeUserRoleInProject } from './project/change-user-role-in-project.dto';
 export { ListProjectsQueryDto } from './project/list-projects-query.dto';
-export { projectPublicSchema } from './project/project-public.dto';
+export {
+	projectPublicSchema,
+	ProjectPublicDto,
+	ProjectListPublicDto,
+	CreatedProjectPublicDto,
+	CreateProjectPublicDto,
+	ListProjectsQueryPublicDto,
+	UpdateProjectPublicDto,
+	DeleteProjectQueryPublicDto,
+} from './project/project-public.dto';
 export type { ProjectPublic } from './project/project-public.dto';
 
 export { SamlAcsDto } from './saml/saml-acs.dto';
@@ -229,6 +238,27 @@ export {
 } from './log-streaming/public-destination.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
+
+export type {
+	NonDelegatingPolicyAction,
+	NonDelegatingPolicyRule,
+	PolicyAction,
+	PolicyRule,
+	PolicySelector,
+} from './node-type-policies/policy-rule.types';
+export { policySelectorSchema } from './node-type-policies/policy-selector.schema';
+export {
+	nonDelegatingPolicyActionSchema,
+	nonDelegatingPolicyRuleListSchema,
+	policyActionSchema,
+	policyRuleListSchema,
+	policyRuleSchema,
+} from './node-type-policies/policy-rule.schema';
+export { PutInstancePolicyDto } from './node-type-policies/put-instance-policy.dto';
+export { PutProjectPolicyDto } from './node-type-policies/put-project-policy.dto';
+export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-document.dto';
+export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
+export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,

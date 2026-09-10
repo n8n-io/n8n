@@ -446,7 +446,7 @@ export class InMemoryMemory
 	private async releaseScopeLock(handle: ObservationLogTaskLockHandle): Promise<void> {
 		const key = handle.observationScopeId;
 		const current = this.locksByScope.get(key);
-		if (current && current.holderId === handle.holderId) {
+		if (current?.holderId === handle.holderId) {
 			this.locksByScope.delete(key);
 		}
 	}
@@ -664,7 +664,7 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async releaseEpisodicMemoryTaskLock(handle: EpisodicMemoryTaskLockHandle): Promise<void> {
 		const current = this.episodicMemoryLocksByResource.get(handle.resourceId);
-		if (current && current.holderId === handle.holderId) {
+		if (current?.holderId === handle.holderId) {
 			this.episodicMemoryLocksByResource.delete(handle.resourceId);
 		}
 	}

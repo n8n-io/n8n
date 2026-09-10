@@ -761,7 +761,8 @@ export class ToolCallExecutor {
 				this.deps.onCancelled();
 				return this.buildCancelledOutcome(params, 'Run aborted');
 			}
-			return await this.toolError(params, error as Error, builtTool);
+
+			return await this.toolError(params, error, builtTool);
 		}
 
 		if (isSuspendedToolResult(toolResult)) {
@@ -1024,7 +1025,7 @@ export class ToolCallExecutor {
 					new Error(`Invalid suspend payload: ${parseResult.error}`),
 				);
 			}
-			toolResult.payload = parseResult.data as JSONValue;
+			toolResult.payload = parseResult.data;
 		}
 		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
 		if (!resumeSchema) {

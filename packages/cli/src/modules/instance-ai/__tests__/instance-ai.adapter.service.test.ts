@@ -5840,6 +5840,56 @@ describe('createCredentialAdapter', () => {
 		});
 	});
 
+	// A scope/setup answer has to be grounded in the credential's own docs page rather
+	// than recalled, so every search result carries the URL to look up (AGENT-743).
+	describe('searchCredentialTypes', () => {
+		/** An adapter over one credential type declaring `documentationUrl`. */
+		const adapterFor = (documentationUrl: string | undefined, { loadable = true } = {}) =>
+			createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: () => {
+						if (!loadable) throw new Error('not loadable');
+						return { type: { name: 'slackApi', displayName: 'Slack API', documentationUrl } };
+					},
+					knownCredentials: { slackApi: {} },
+				},
+			}).credentialService;
+
+		it('resolves a docs slug to the credential docs URL', async () => {
+			const results = await adapterFor('slack').searchCredentialTypes!('slack');
+
+			expect(results).toEqual([
+				{
+					type: 'slackApi',
+					displayName: 'Slack API',
+					documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/slack/',
+				},
+			]);
+		});
+
+		// A few classes declare a full URL instead of a slug; it must not be re-prefixed.
+		it('passes a full documentation URL through unchanged', async () => {
+			const url = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
+			const results = await adapterFor(url).searchCredentialTypes!('slack');
+
+			expect(results[0].documentationUrl).toBe(url);
+		});
+
+		it('omits the URL when the type declares none', async () => {
+			const results = await adapterFor(undefined).searchCredentialTypes!('slack');
+
+			expect(results[0]).not.toHaveProperty('documentationUrl');
+		});
+
+		it('still returns a match when the class will not load, without a URL', async () => {
+			const results = await adapterFor('slack', { loadable: false }).searchCredentialTypes!(
+				'slack',
+			);
+
+			expect(results).toEqual([{ type: 'slackApi', displayName: 'slackApi' }]);
+		});
+	});
+
 	describe('isTestable', () => {
 		// A versioned node whose `testedBy` sits only on the versions named in `testedByOn`.
 		const loaderWithTestedByOn = (testedByOn: number[]) => {

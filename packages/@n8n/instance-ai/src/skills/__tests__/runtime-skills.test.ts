@@ -269,7 +269,7 @@ describe('Instance AI runtime skills', () => {
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
+			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
