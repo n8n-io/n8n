@@ -1429,6 +1429,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'browser_recording',
+	'browser_recommendation',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	'workflow_list_auto',

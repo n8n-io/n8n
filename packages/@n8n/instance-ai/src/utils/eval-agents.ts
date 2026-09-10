@@ -166,6 +166,9 @@ export function createEvalAgent(
 		cache?: boolean;
 		/** Host-resolved model used when no eval model API key is configured in the environment. */
 		fallbackModelConfig?: ModelConfig;
+		/** Set false to skip extended thinking — for latency-sensitive calls (e.g. a quick
+		 *  suggestion) where the added reasoning time isn't worth it. Defaults to true. */
+		thinking?: boolean;
 	},
 ): Agent {
 	const model = resolveAgentModel(options.model, options.fallbackModelConfig);
@@ -177,7 +180,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	applyAgentThinking(agent, model);
+	if (options.thinking !== false) applyAgentThinking(agent, model);
 
 	return agent;
 }

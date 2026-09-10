@@ -1185,6 +1185,83 @@ describe('RelayConnection', () => {
 			expect(findSent(ws, 'recordingScreenshotCaptured')).toBeUndefined();
 		});
 	});
+
+	describe('recommendations', () => {
+		it('sends a recommendationsRequested frame for the given page', () => {
+			relay.requestRecommendations('https://github.com/org/repo/pull/1', 'Pull request title');
+
+			expect(findSent(ws, 'recommendationsRequested')).toEqual({
+				method: 'recommendationsRequested',
+				params: { url: 'https://github.com/org/repo/pull/1', pageText: 'Pull request title' },
+			});
+		});
+
+		it('does not send a recommendationsRequested frame while the socket is closed', () => {
+			ws.readyState = MockWebSocket.CLOSED;
+
+			expect(relay.requestRecommendations('https://example.com', 'text')).toBe(false);
+			expect(findSent(ws, 'recommendationsRequested')).toBeUndefined();
+		});
+
+		it('delivers ideas from a recommendationsReady command to onrecommendationsready', async () => {
+			const onrecommendationsready = vi.fn();
+			relay.onrecommendationsready = onrecommendationsready;
+			const ideas = [{ id: 'i1', title: 'Triage issues', description: 'Label new issues' }];
+
+			ws.onmessage?.({
+				data: JSON.stringify({ id: 8, method: 'recommendationsReady', params: { ideas } }),
+			});
+			await tick();
+
+			expect(onrecommendationsready).toHaveBeenCalledWith(ideas);
+			expect(parseSent(ws)).toEqual({ id: 8, result: {} });
+		});
+
+		it('sends a recommendationAccepted frame for the picked idea', () => {
+			relay.sendRecommendationAccepted({ title: 'Triage issues', description: 'Label new issues' });
+
+			expect(findSent(ws, 'recommendationAccepted')).toEqual({
+				method: 'recommendationAccepted',
+				params: { title: 'Triage issues', description: 'Label new issues' },
+			});
+		});
+
+		it('includes the source page url when the idea carries one', () => {
+			relay.sendRecommendationAccepted({
+				title: 'Triage issues',
+				description: 'Label new issues',
+				url: 'https://github.com/n8n-io/n8n/pull/1',
+			});
+
+			expect(findSent(ws, 'recommendationAccepted')).toEqual({
+				method: 'recommendationAccepted',
+				params: {
+					title: 'Triage issues',
+					description: 'Label new issues',
+					url: 'https://github.com/n8n-io/n8n/pull/1',
+				},
+			});
+		});
+
+		it('delivers a recommendationAcceptedResult command to onrecommendationacceptedresult', async () => {
+			const onrecommendationacceptedresult = vi.fn();
+			relay.onrecommendationacceptedresult = onrecommendationacceptedresult;
+
+			ws.onmessage?.({
+				data: JSON.stringify({
+					id: 9,
+					method: 'recommendationAcceptedResult',
+					params: { accepted: true, threadUrl: 'https://n8n.example.com/assistant/t1' },
+				}),
+			});
+			await tick();
+
+			expect(onrecommendationacceptedresult).toHaveBeenCalledWith(
+				true,
+				'https://n8n.example.com/assistant/t1',
+			);
+		});
+	});
 });
 
 describe('RelayConnection keepalive', () => {

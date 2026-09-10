@@ -26,6 +26,12 @@ const state = {
 	updateRecordingSetting: vi.fn(),
 };
 
+const recommendationsState = {
+	status: ref<'loading' | 'ready' | 'unavailable' | 'sent'>('unavailable'),
+	ideas: ref<Array<{ id: string; title: string; description: string }>>([]),
+	send: vi.fn(),
+};
+
 vi.mock('./composables/useConnection', () => ({ useConnection: () => state }));
 vi.mock('./composables/useRecording', () => ({
 	useRecording: () => ({
@@ -40,6 +46,9 @@ vi.mock('./composables/useRecording', () => ({
 		maskAction: vi.fn(),
 	}),
 }));
+vi.mock('./composables/useRecommendations', () => ({
+	useRecommendations: () => recommendationsState,
+}));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -51,6 +60,8 @@ beforeEach(() => {
 	state.approvedHosts.value = [];
 	state.recordingSettings.networkRequests = false;
 	state.recordingSettings.screenshots = false;
+	recommendationsState.status.value = 'unavailable';
+	recommendationsState.ideas.value = [];
 });
 
 describe('connect prompt', () => {
@@ -90,5 +101,55 @@ describe('remembered hosts', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(state.forgetHost).toHaveBeenCalledWith('localhost:5678');
+	});
+});
+
+describe('automation ideas', () => {
+	beforeEach(() => {
+		state.status.value = 'connected';
+	});
+
+	it('shows a skeleton while loading', () => {
+		recommendationsState.status.value = 'loading';
+
+		expect(mount(App).find('.skeleton').exists()).toBe(true);
+	});
+
+	it('swaps the pitch copy for an idea-oriented heading once ideas are showing', () => {
+		recommendationsState.status.value = 'ready';
+		recommendationsState.ideas.value = [
+			{ id: '1', title: 'Triage new issues', description: 'Label and route new GitHub issues' },
+		];
+
+		const wrapper = mount(App);
+		expect(wrapper.text()).toContain('Automation ideas for this page');
+		expect(wrapper.text()).not.toContain('Record a browser task');
+	});
+
+	it('shows the idea and sends it on click, without starting a recording', async () => {
+		recommendationsState.status.value = 'ready';
+		recommendationsState.ideas.value = [
+			{ id: '1', title: 'Triage new issues', description: 'Label and route new GitHub issues' },
+		];
+
+		const wrapper = mount(App);
+		expect(wrapper.text()).toContain('Triage new issues');
+
+		await wrapper.find('.idea-card').trigger('click');
+		expect(recommendationsState.send).toHaveBeenCalledWith(recommendationsState.ideas.value[0]);
+	});
+
+	it('falls back to the static instructional copy when unavailable', () => {
+		recommendationsState.status.value = 'unavailable';
+
+		expect(mount(App).text()).toContain('Record a browser task');
+	});
+
+	it('shows the sent confirmation instead of the recording pitch', () => {
+		recommendationsState.status.value = 'sent';
+
+		const wrapper = mount(App);
+		expect(wrapper.text()).toContain('AI Assistant is building this in a new conversation.');
+		expect(wrapper.text()).not.toContain('Record a browser task');
 	});
 });

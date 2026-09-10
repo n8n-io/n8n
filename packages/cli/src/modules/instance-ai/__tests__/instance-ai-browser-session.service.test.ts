@@ -25,6 +25,11 @@ vi.mock('@n8n/mcp-browser', () => {
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
+		onRecommendationsRequested?: (url: string, pageText: string) => Promise<unknown[]>;
+		onRecommendationAccepted?: (idea: {
+			title: string;
+			description: string;
+		}) => Promise<{ threadUrl?: string }>;
 		attachExtension = vi.fn();
 		attachController = vi.fn();
 		stop = vi.fn();
@@ -57,6 +62,11 @@ const mcpBrowserMock: {
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
+		onRecommendationsRequested?: (url: string, pageText: string) => Promise<unknown[]>;
+		onRecommendationAccepted?: (idea: {
+			title: string;
+			description: string;
+		}) => Promise<{ threadUrl?: string }>;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
@@ -72,6 +82,11 @@ const mcpBrowserMock: {
 		onRecordingCompleted?: (recording: unknown) => Promise<{ threadUrl?: string }>;
 		onRecordingActionAppended?: (recordingId: string, action: unknown) => void;
 		onRecordingScreenshotCaptured?: (recordingId: string, screenshot: unknown) => void;
+		onRecommendationsRequested?: (url: string, pageText: string) => Promise<unknown[]>;
+		onRecommendationAccepted?: (idea: {
+			title: string;
+			description: string;
+		}) => Promise<{ threadUrl?: string }>;
 		attachExtension: Mock;
 		attachController: Mock;
 		stop: Mock;
@@ -862,6 +877,67 @@ describe('InstanceAiBrowserSessionService', () => {
 			await relay.onRecordingCompleted?.(recording);
 
 			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('recommendations requested', () => {
+		it('returns the ideas from the handler', async () => {
+			const { relay } = await createSession(service);
+			const handler = vi.fn(async () => [{ id: 'i1', title: 'Triage issues', description: 'D' }]);
+			service.setRecommendationHandler(handler);
+
+			const ideas = await relay.onRecommendationsRequested?.('https://example.com', 'page text');
+
+			expect(handler).toHaveBeenCalledWith({
+				userId: USER_ID,
+				url: 'https://example.com',
+				pageText: 'page text',
+			});
+			expect(ideas).toEqual([{ id: 'i1', title: 'Triage issues', description: 'D' }]);
+		});
+
+		it('returns no ideas when no handler is set', async () => {
+			const { relay } = await createSession(service);
+
+			const ideas = await relay.onRecommendationsRequested?.('https://example.com', 'page text');
+
+			expect(ideas).toEqual([]);
+		});
+
+		it('returns no ideas and logs a warning when the handler throws', async () => {
+			const { relay } = await createSession(service);
+			service.setRecommendationHandler(vi.fn(async () => await Promise.reject(new Error('boom'))));
+
+			const ideas = await relay.onRecommendationsRequested?.('https://example.com', 'page text');
+
+			expect(ideas).toEqual([]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to generate automation ideas',
+				expect.objectContaining({ userId: USER_ID }),
+			);
+		});
+	});
+
+	describe('recommendation accepted', () => {
+		const idea = { title: 'Triage issues', description: 'Label and route new GitHub issues' };
+
+		it('starts a new thread via the handler and returns its URL', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+			const handler = vi.fn(async () => ({ threadId: 'thread-1' }));
+			service.setRecommendationAcceptedHandler(handler);
+
+			const result = await relay.onRecommendationAccepted?.(idea);
+
+			expect(handler).toHaveBeenCalledWith({ userId: USER_ID, projectId: 'project-1', idea });
+			expect(result).toEqual({ threadUrl: 'http://localhost:5678/assistant/thread-1' });
+		});
+
+		it('returns nothing when no handler is set', async () => {
+			const { relay } = await createConnectedSession(service, projectRepository);
+
+			const result = await relay.onRecommendationAccepted?.(idea);
+
+			expect(result).toEqual({});
 		});
 	});
 });

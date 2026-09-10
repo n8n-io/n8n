@@ -1,4 +1,5 @@
 import type {
+	BrowserAutomationIdea,
 	BrowserRecording,
 	BrowserRecordingAction,
 	BrowserRecordingScreenshot,
@@ -115,6 +116,21 @@ export class InstanceAiBrowserSessionService {
 		actions: BrowserRecordingAction[];
 	}) => Promise<string | undefined>;
 
+	/** Generates automation ideas for the extension's current page. Set from
+	 *  instance-ai.service.ts, which has the model resolution this needs. */
+	private recommendationHandler?: (input: {
+		userId: string;
+		url: string;
+		pageText: string;
+	}) => Promise<BrowserAutomationIdea[]>;
+
+	/** Starts a new Instance AI conversation from an accepted idea. */
+	private recommendationAcceptedHandler?: (input: {
+		userId: string;
+		projectId: string;
+		idea: { title: string; description: string; url?: string };
+	}) => Promise<{ threadId: string }>;
+
 	constructor(
 		logger: Logger,
 		private readonly urlService: UrlService,
@@ -141,6 +157,26 @@ export class InstanceAiBrowserSessionService {
 		}) => Promise<string | undefined>,
 	): void {
 		this.actionCaptionHandler = handler;
+	}
+
+	setRecommendationHandler(
+		handler: (input: {
+			userId: string;
+			url: string;
+			pageText: string;
+		}) => Promise<BrowserAutomationIdea[]>,
+	): void {
+		this.recommendationHandler = handler;
+	}
+
+	setRecommendationAcceptedHandler(
+		handler: (input: {
+			userId: string;
+			projectId: string;
+			idea: { title: string; description: string; url?: string };
+		}) => Promise<{ threadId: string }>,
+	): void {
+		this.recommendationAcceptedHandler = handler;
 	}
 
 	async createLink(userId: string): Promise<InstanceAiBrowserCreateLinkResponse> {
@@ -317,6 +353,10 @@ export class InstanceAiBrowserSessionService {
 			this.handleRecordingActionAppended(userId, action);
 		relay.onRecordingScreenshotCaptured = (_recordingId, screenshot) =>
 			this.handleRecordingScreenshotCaptured(userId, screenshot);
+		relay.onRecommendationsRequested = async (url, pageText) =>
+			await this.handleRecommendationsRequested(userId, url, pageText);
+		relay.onRecommendationAccepted = async (idea) =>
+			await this.handleRecommendationAccepted(userId, idea);
 
 		const toolkit = createBrowserTools(
 			{ mode: 'remote' },
@@ -403,6 +443,40 @@ export class InstanceAiBrowserSessionService {
 			session.completedRecordingIds.delete(recording.id);
 			throw error;
 		}
+	}
+
+	/** Generate automation ideas for the page the extension is currently on. Never throws —
+	 *  a failed or unconfigured generation just means no ideas are offered. */
+	private async handleRecommendationsRequested(
+		userId: string,
+		url: string,
+		pageText: string,
+	): Promise<BrowserAutomationIdea[]> {
+		const handler = this.recommendationHandler;
+		if (!handler) return [];
+		try {
+			return await handler({ userId, url, pageText });
+		} catch (error) {
+			this.logger.warn('Failed to generate automation ideas', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		}
+	}
+
+	/** Start a new Instance AI conversation from an idea the user picked. */
+	private async handleRecommendationAccepted(
+		userId: string,
+		idea: { title: string; description: string; url?: string },
+	): Promise<{ threadUrl?: string }> {
+		const handler = this.recommendationAcceptedHandler;
+		if (!handler) return {};
+		const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+		const { threadId } = await handler({ userId, projectId: project.id, idea });
+		return {
+			threadUrl: `${this.urlService.getInstanceBaseUrl().replace(/\/$/, '')}/assistant/${threadId}`,
+		};
 	}
 
 	/** Reset the in-progress recording state — clears the caption tick, pending debounced

@@ -1797,6 +1797,16 @@ type BrowserRecordingServiceInternals = {
 		userId: string;
 		actions: unknown[];
 	}) => Promise<string | undefined>;
+	suggestAutomationIdeas: (input: {
+		userId: string;
+		url: string;
+		pageText: string;
+	}) => Promise<Array<{ id: string; title: string; description: string }>>;
+	launchIdeaThread: (input: {
+		userId: string;
+		projectId: string;
+		idea: { title: string; description: string; url?: string };
+	}) => Promise<{ threadId: string }>;
 	settingsService: {
 		isInstanceAiEnabled: Mock;
 		isBrowserUseEnabled: Mock;
@@ -1806,6 +1816,7 @@ type BrowserRecordingServiceInternals = {
 	memoryService: { ensureThread: Mock; deleteThread: Mock };
 	startRun: Mock;
 	resolveAgentModelConfig: Mock;
+	logger: { debug: Mock; warn: Mock };
 };
 
 function createBrowserRecordingService(): BrowserRecordingServiceInternals {
@@ -1817,6 +1828,7 @@ function createBrowserRecordingService(): BrowserRecordingServiceInternals {
 		isBrowserUseEnabled: vi.fn(() => true),
 		isModelConfigured: vi.fn(async () => true),
 	};
+	service.logger = { debug: vi.fn(), warn: vi.fn() };
 	service.revalidateActiveUser = vi.fn(async () => userWithScopes(['instanceAi:message']));
 	service.memoryService = {
 		ensureThread: vi.fn(async () => {}),
@@ -1879,6 +1891,85 @@ describe('InstanceAiService — summarizeRecordingActions', () => {
 		const result = await service.summarizeRecordingActions({ userId: 'user-1', actions: [] });
 
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('InstanceAiService — suggestAutomationIdeas', () => {
+	it('returns no ideas when Instance AI is not enabled', async () => {
+		const service = createBrowserRecordingService();
+		service.settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+		const result = await service.suggestAutomationIdeas({
+			userId: 'user-1',
+			url: 'https://github.com/org/repo',
+			pageText: '',
+		});
+
+		expect(result).toEqual([]);
+	});
+
+	it('returns no ideas when the user can no longer be revalidated', async () => {
+		const service = createBrowserRecordingService();
+		service.revalidateActiveUser.mockResolvedValue(null);
+
+		const result = await service.suggestAutomationIdeas({
+			userId: 'user-1',
+			url: 'https://github.com/org/repo',
+			pageText: '',
+		});
+
+		expect(result).toEqual([]);
+	});
+});
+
+describe('InstanceAiService — launchIdeaThread', () => {
+	const IDEA = { title: 'Triage issues', description: 'Label and route new GitHub issues' };
+
+	it('throws when Instance AI is not enabled', async () => {
+		const service = createBrowserRecordingService();
+		service.settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+		await expect(
+			service.launchIdeaThread({ userId: 'user-1', projectId: 'project-1', idea: IDEA }),
+		).rejects.toThrow('The AI Assistant is not available');
+	});
+
+	it('starts a new thread seeded with the idea description', async () => {
+		const service = createBrowserRecordingService();
+
+		const result = await service.launchIdeaThread({
+			userId: 'user-1',
+			projectId: 'project-1',
+			idea: IDEA,
+		});
+
+		expect(service.memoryService.ensureThread).toHaveBeenCalledWith(
+			expect.any(String),
+			result.threadId,
+			'project-1',
+			expect.objectContaining({ source: 'browser_recommendation' }),
+		);
+		expect(service.startRun).toHaveBeenCalledWith(
+			expect.anything(),
+			result.threadId,
+			IDEA.description,
+		);
+	});
+
+	it('appends the source page to the message when the idea carries a url', async () => {
+		const service = createBrowserRecordingService();
+
+		const result = await service.launchIdeaThread({
+			userId: 'user-1',
+			projectId: 'project-1',
+			idea: { ...IDEA, url: 'https://github.com/n8n-io/n8n/pull/1' },
+		});
+
+		expect(service.startRun).toHaveBeenCalledWith(
+			expect.anything(),
+			result.threadId,
+			`${IDEA.description}\n\nThis was suggested for: https://github.com/n8n-io/n8n/pull/1`,
+		);
 	});
 });
 

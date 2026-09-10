@@ -28,6 +28,9 @@ export interface GenerateValidatedJsonOptions<T> {
 	schema: z.ZodType<T>;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Set false to skip extended thinking, for a latency-sensitive call that doesn't need
+	 *  deep reasoning. Defaults to true. */
+	thinking?: boolean;
 }
 
 function stripMarkdownFences(text: string): string {
@@ -46,6 +49,7 @@ export async function generateValidatedJson<T>(
 			model: options.model,
 			instructions: options.instructions,
 			fallbackModelConfig: options.fallbackModelConfig,
+			thinking: options.thinking,
 		});
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },

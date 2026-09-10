@@ -98,4 +98,18 @@ describe('generateValidatedJson', () => {
 			expect.objectContaining({ fallbackModelConfig }),
 		);
 	});
+
+	it('forwards thinking: false to agent creation for latency-sensitive calls', async () => {
+		setupAgentMock('{"ok": true}');
+		await generateValidatedJson('test-agent', {
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			thinking: false,
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ thinking: false }),
+		);
+	});
 });

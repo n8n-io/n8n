@@ -9,7 +9,9 @@ import {
 	N8nLogo,
 } from '@n8n/design-system';
 import { useConnection } from './composables/useConnection';
+import { useRecommendations } from './composables/useRecommendations';
 import { useRecording } from './composables/useRecording';
+import AutomationIdeas from './components/AutomationIdeas.vue';
 import InfoRow from './components/InfoRow.vue';
 import RecordingCaptureSettings from './components/RecordingCaptureSettings.vue';
 import RecordingReview from './components/RecordingReview.vue';
@@ -53,11 +55,32 @@ const {
 	removeNetworkRequest,
 } = useRecording();
 
+const {
+	status: recommendationsStatus,
+	ideas: recommendationIdeas,
+	send: sendRecommendation,
+} = useRecommendations();
+
 const showTabSelection = ref(false);
 const showRecordingSettings = ref(false);
 const showSettings = ref(false);
 const showDestinations = ref(false);
 const instanceUrl = ref('');
+
+const ideaPitchCopy = computed(() => {
+	if (recommendationsStatus.value === 'ready' || recommendationsStatus.value === 'loading') {
+		return {
+			title: 'Automation ideas for this page',
+			subtitle: 'Pick one to have AI Assistant build it, or record the task yourself.',
+		};
+	}
+	return {
+		title: 'Record a browser task',
+		subtitle:
+			'Show AI Assistant how you complete a task. The extension records your clicks, typing, ' +
+			'and navigation so AI Assistant can build a workflow.',
+	};
+});
 
 const isConnected = computed(() => status.value === 'connected');
 const showConnectPrompt = computed(() => hasRelayUrl.value && isRelayAllowed.value);
@@ -209,30 +232,34 @@ async function submitToInstanceUrl() {
 					{{ recordingTitle }}
 				</h1>
 				<template v-if="!recording">
-					<h1 class="title">Record a browser task</h1>
-					<p class="subtitle">
-						Show AI Assistant how you complete a task. The extension records your clicks, typing,
-						and navigation so AI Assistant can build a workflow.
-					</p>
+					<template v-if="recommendationsStatus !== 'sent'">
+						<h1 class="title">{{ ideaPitchCopy.title }}</h1>
+						<p class="subtitle">{{ ideaPitchCopy.subtitle }}</p>
+					</template>
+					<AutomationIdeas
+						:status="recommendationsStatus"
+						:ideas="recommendationIdeas"
+						@pick="sendRecommendation"
+					/>
+					<div v-if="recommendationsStatus === 'unavailable'" class="panel">
+						<InfoRow
+							icon="mouse-pointer"
+							title="Demonstrate the task"
+							description="Complete the task in your browser as you usually do"
+						/>
+						<InfoRow
+							icon="shield"
+							title="Review before sharing"
+							description="Passwords and detected secrets are redacted. You can remove or mask other details before you send the recording."
+						/>
+					</div>
 				</template>
-				<div v-if="!recording" class="panel">
-					<InfoRow
-						icon="mouse-pointer"
-						title="Demonstrate the task"
-						description="Complete the task in your browser as you usually do"
-					/>
-					<InfoRow
-						icon="shield"
-						title="Review before sharing"
-						description="Passwords and detected secrets are redacted. You can remove or mask other details before you send the recording."
-					/>
-				</div>
 				<p v-else-if="recording.status === 'recording'" class="subtitle">
 					Complete the task in your browser. Return here when you're ready to review the recorded
 					actions.
 				</p>
 				<p v-else-if="recording.status === 'submitted'" class="subtitle">
-					AI Assistant is processing your recording in a new conversation.
+					AI Assistant is building this in a new conversation.
 				</p>
 				<p v-else-if="recording.status === 'submitting'" class="subtitle">
 					n8n is starting a new conversation from your recording.

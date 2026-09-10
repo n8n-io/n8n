@@ -1,4 +1,5 @@
 import type {
+	BrowserAutomationIdea,
 	BrowserRecording,
 	BrowserRecordingAction,
 	BrowserRecordingScreenshot,
@@ -13,7 +14,7 @@ import type {
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
@@ -75,6 +76,19 @@ export interface ExtensionCommands {
 	discardRecording: {
 		params: Record<string, never>;
 	};
+	/** Deliver the automation ideas generated for the page the extension asked about. */
+	recommendationsReady: {
+		params: {
+			ideas: BrowserAutomationIdea[];
+		};
+	};
+	/** Report whether an accepted idea started an Instance AI conversation. */
+	recommendationAcceptedResult: {
+		params: {
+			accepted: boolean;
+			threadUrl?: string;
+		};
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +140,22 @@ export interface ExtensionEvents {
 		params: {
 			recordingId: string;
 			screenshot: BrowserRecordingScreenshot;
+		};
+	};
+	/** The popup opened on this page and wants automation ideas for it. */
+	recommendationsRequested: {
+		params: {
+			url: string;
+			pageText: string;
+		};
+	};
+	/** The user picked one of the offered ideas to build. */
+	recommendationAccepted: {
+		params: {
+			title: string;
+			description: string;
+			/** The page the idea was generated for, so Instance AI doesn't have to ask. */
+			url?: string;
 		};
 	};
 }

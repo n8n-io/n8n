@@ -12,7 +12,9 @@ import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
 	formatAttachmentSizeLimit,
+	MAX_BROWSER_AUTOMATION_IDEAS,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	type BrowserAutomationIdea,
 	type BrowserRecording,
 	type BrowserRecordingAction,
 	type InstanceAiAttachment,
@@ -870,6 +872,12 @@ export class InstanceAiService {
 		this.browserSessionService.setActionCaptionHandler(
 			async (input) => await this.summarizeRecordingActions(input),
 		);
+		this.browserSessionService.setRecommendationHandler(
+			async (input) => await this.suggestAutomationIdeas(input),
+		);
+		this.browserSessionService.setRecommendationAcceptedHandler(
+			async (input) => await this.launchIdeaThread(input),
+		);
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
 		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
@@ -1607,6 +1615,100 @@ export class InstanceAiService {
 			fallbackModelConfig,
 		});
 		return result.ok ? result.data.summary : undefined;
+	}
+
+	private static readonly automationIdeasSchema = z.object({
+		ideas: z
+			.array(z.object({ title: z.string().max(80), description: z.string().max(250) }))
+			.max(MAX_BROWSER_AUTOMATION_IDEAS),
+	});
+
+	/** Suggest a few automations for the page the extension's popup is open on. Never
+	 *  throws — a failed or unconfigured generation just means no ideas are offered. */
+	private async suggestAutomationIdeas(input: {
+		userId: string;
+		url: string;
+		pageText: string;
+	}): Promise<BrowserAutomationIdea[]> {
+		this.logger.debug('Generating automation ideas', { userId: input.userId, url: input.url });
+		if (
+			!this.settingsService.isInstanceAiEnabled() ||
+			!this.settingsService.isBrowserUseEnabled() ||
+			!(await this.settingsService.isModelConfigured())
+		) {
+			this.logger.debug(
+				'Skipped automation idea generation: Instance AI is not enabled or configured',
+			);
+			return [];
+		}
+		const user = await this.revalidateActiveUser(input.userId);
+		if (!user) {
+			this.logger.warn('Skipped automation idea generation: user could not be revalidated', {
+				userId: input.userId,
+			});
+			return [];
+		}
+
+		const fallbackModelConfig = await this.resolveAgentModelConfig(user);
+		const result = await generateValidatedJson('automation-idea-suggester', {
+			model: HAIKU_MODEL,
+			instructions:
+				`Suggest up to ${MAX_BROWSER_AUTOMATION_IDEAS} n8n automations for the page described ` +
+				'below. Each idea needs a short title (a few words) and a crisp one-clause description ' +
+				'(under 15 words, no sub-clauses) of what it would do — this is shown on a small card, ' +
+				'so brevity matters more than completeness. Base ideas on what this specific page is ' +
+				'(e.g. a GitHub pull request, an inbox, a spreadsheet), not generic advice. Output a ' +
+				'single JSON object {"ideas": [{"title": string, "description": string}]}. Return only ' +
+				'the JSON object — no prose, no markdown fences.',
+			userText: JSON.stringify({ url: input.url, pageText: redactString(input.pageText) }),
+			schema: InstanceAiService.automationIdeasSchema,
+			fallbackModelConfig,
+			thinking: false,
+		});
+		if (!result.ok) {
+			this.logger.warn('Automation idea generation failed', {
+				userId: input.userId,
+				reason: result.reason,
+			});
+			return [];
+		}
+		this.logger.debug('Generated automation ideas', { count: result.data.ideas.length });
+		return result.data.ideas.map((idea) => ({ id: randomUUID(), ...idea }));
+	}
+
+	/** Start a new Instance AI conversation from an idea the user picked in the extension —
+	 *  the same shape as sending that idea as a chat message, no recording involved. */
+	private async launchIdeaThread(input: {
+		userId: string;
+		projectId: string;
+		idea: { title: string; description: string; url?: string };
+	}): Promise<{ threadId: string }> {
+		if (
+			!this.settingsService.isInstanceAiEnabled() ||
+			!this.settingsService.isBrowserUseEnabled() ||
+			!(await this.settingsService.isModelConfigured())
+		) {
+			throw new UserError('The AI Assistant is not available');
+		}
+		const user = await this.revalidateActiveUser(input.userId);
+		if (!user) throw new UserError('The AI Assistant is not available for this user');
+
+		const threadId = randomUUID();
+		await this.memoryService.ensureThread(user.id, threadId, input.projectId, {
+			source: 'browser_recommendation',
+			origin: 'external',
+			sourceContext: { title: input.idea.title },
+		});
+		const message = input.idea.url
+			? `${input.idea.description}\n\nThis was suggested for: ${input.idea.url}`
+			: input.idea.description;
+		try {
+			this.startRun(user, threadId, message);
+		} catch (error) {
+			await this.memoryService.deleteThread(threadId);
+			throw error;
+		}
+		return { threadId };
 	}
 
 	/** Get the current messageGroupId for a thread (used by SSE sync). */

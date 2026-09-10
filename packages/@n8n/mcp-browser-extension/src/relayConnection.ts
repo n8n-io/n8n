@@ -8,6 +8,7 @@
  */
 
 import type {
+	BrowserAutomationIdea,
 	BrowserRecording,
 	BrowserRecordingAction,
 	BrowserRecordingScreenshot,
@@ -130,6 +131,8 @@ export class RelayConnection {
 	onstopandsubmitrecording?: () => Promise<RecordingCommandResult>;
 	ondiscardrecording?: () => Promise<RecordingCommandResult>;
 	onnetworkrequest?: (request: CapturedNetworkRequest) => void;
+	onrecommendationsready?: (ideas: BrowserAutomationIdea[]) => void;
+	onrecommendationacceptedresult?: (accepted: boolean, threadUrl?: string) => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -286,6 +289,22 @@ export class RelayConnection {
 	sendRecording(recording: BrowserRecording): boolean {
 		if (this.ws.readyState !== WebSocket.OPEN) return false;
 		this.sendMessage({ method: 'recordingCompleted', params: { recording } });
+		return true;
+	}
+
+	/** Ask the relay for automation ideas for the given page. Result arrives via
+	 *  `onrecommendationsready`. */
+	requestRecommendations(url: string, pageText: string): boolean {
+		if (this.ws.readyState !== WebSocket.OPEN) return false;
+		this.sendMessage({ method: 'recommendationsRequested', params: { url, pageText } });
+		return true;
+	}
+
+	/** Tell the relay the user picked an idea to build. Result arrives via
+	 *  `onrecommendationacceptedresult`. */
+	sendRecommendationAccepted(idea: { title: string; description: string; url?: string }): boolean {
+		if (this.ws.readyState !== WebSocket.OPEN) return false;
+		this.sendMessage({ method: 'recommendationAccepted', params: idea });
 		return true;
 	}
 
@@ -693,6 +712,22 @@ export class RelayConnection {
 				return (await this.onstopandsubmitrecording?.()) ?? {};
 			case 'discardRecording':
 				return (await this.ondiscardrecording?.()) ?? {};
+			case 'recommendationsReady': {
+				const ideas = message.params?.ideas;
+				if (Array.isArray(ideas)) this.onrecommendationsready?.(ideas as BrowserAutomationIdea[]);
+				return {};
+			}
+			case 'recommendationAcceptedResult': {
+				const accepted = message.params?.accepted;
+				const threadUrl = message.params?.threadUrl;
+				if (typeof accepted === 'boolean') {
+					this.onrecommendationacceptedresult?.(
+						accepted,
+						typeof threadUrl === 'string' ? threadUrl : undefined,
+					);
+				}
+				return {};
+			}
 			default:
 				log.debug(`unknown command: ${message.method}`);
 				return undefined;
