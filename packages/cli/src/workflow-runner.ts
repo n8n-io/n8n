@@ -196,41 +196,35 @@ export class WorkflowRunner {
 								storedAt: fullExecutionData.storedAt,
 							};
 						}
+
+						// No lifecycle hooks ran for this execution, so make the retention
+						// decision they would have made, regardless of data readability.
+						if (fullExecutionData) {
+							try {
+								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+								const isManualExecution = fullExecutionData.mode === 'manual';
+								if (isManualExecution && !saveSettings.manual) {
+									await this.executionRepository.softDelete(executionId);
+								} else if (!isManualExecution && !saveSettings.success) {
+									await this.executionPersistence.deleteInFlightExecution({
+										workflowId: fullExecutionData.workflowId,
+										executionId,
+										storedAt: fullExecutionData.storedAt,
+									});
+								}
+							} catch (pruneError) {
+								this.logger.warn('Could not prune a recovered false-positive success', {
+									executionId,
+									error: ensureError(pruneError),
+								});
+							}
+						}
 					} catch (readError) {
 						this.logger.warn('Could not read execution data for a successful execution', {
 							executionId,
 							error: ensureError(readError),
 						});
 					}
-
-					// No lifecycle hooks ran for this execution, so make the retention
-					// decision they would have made, regardless of data readability.
-					if (fullExecutionData) {
-						try {
-							const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
-							const isManualExecution = fullExecutionData.mode === 'manual';
-							if (isManualExecution && !saveSettings.manual) {
-								await this.executionRepository.softDelete(executionId);
-							} else if (!isManualExecution && !saveSettings.success) {
-								await this.executionPersistence.deleteInFlightExecution({
-									workflowId: fullExecutionData.workflowId,
-									executionId,
-									storedAt: fullExecutionData.storedAt,
-								});
-							}
-						} catch (pruneError) {
-							this.logger.warn('Could not prune a recovered false-positive success', {
-								executionId,
-								error: ensureError(pruneError),
-							});
-						}
-					}
-				} catch (readError) {
-					this.logger.warn('Could not read execution data for a successful execution', {
-						executionId,
-						error: ensureError(readError),
-					});
-				}
 
 					const runData: IRun = successRunData ?? {
 						data: createRunExecutionData({
