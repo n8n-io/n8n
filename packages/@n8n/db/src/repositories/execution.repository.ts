@@ -953,6 +953,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		startedAt: true,
 		stoppedAt: true,
 		usedPrivateCredentials: true,
+		startedByUserId: true,
 	};
 
 	private annotationFields = {

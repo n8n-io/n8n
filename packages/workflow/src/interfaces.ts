@@ -4201,6 +4201,8 @@ export interface ExecutionSummary {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
 	usedPrivateCredentials?: boolean;
+	/** n8n user whose identity started the execution; `null` when there was none. */
+	startedByUserId?: string | null;
 	annotation?: {
 		vote: AnnotationVote;
 		tags: Array<{

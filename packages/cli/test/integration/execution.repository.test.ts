@@ -90,6 +90,20 @@ describe('UserRepository', () => {
 			expect(summary.binaryDataSizeBytes).toBe(2048);
 			expect(summary.workflowVersionId).toBe('v-123');
 		});
+
+		test('returns startedByUserId in execution summaries', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecution({ status: 'success', startedByUserId: 'editor-user' }, workflow);
+
+			const summaries = await executionRepository.findManyByRangeQuery({
+				kind: 'range',
+				range: { limit: 10 },
+				workflowId: workflow.id,
+				user: owner,
+			});
+
+			expect(summaries[0].startedByUserId).toBe('editor-user');
+		});
 	});
 
 	describe('setRunning', () => {
