@@ -18,10 +18,12 @@ import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare'
 import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { sanitizeAgentArtifact } from '../harness/artifacts/agent-artifact';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
 import type {
+	AgentArtifact,
 	BuildExpectationResult,
 	MultiRunEvaluation,
 	WorkflowTestCase,
@@ -347,6 +349,23 @@ export async function runEvalAndPersist(
 	}
 }
 
+function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
+	agentArtifact?: AgentArtifact;
+	agentArtifactPerRun?: Array<AgentArtifact | null>;
+} {
+	const agentAnchored = runs.some(
+		(run) => run.agentId !== undefined || run.agentArtifact !== undefined,
+	);
+	if (!agentAnchored) return {};
+
+	const agentArtifactPerRun = runs.map((run) => sanitizeAgentArtifact(run.agentArtifact));
+	const agentArtifact = agentArtifactPerRun.find((artifact) => artifact !== null);
+	return {
+		...(agentArtifact ? { agentArtifact } : {}),
+		agentArtifactPerRun,
+	};
+}
+
 export function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
@@ -416,6 +435,9 @@ export function writeEvalResults(
 			// it (its Dockerfile used to sed-inject this exact field; keep the
 			// expression verbatim so that patch detects upstream support and no-ops).
 			workflowJson: tc.runs[0]?.workflowJson,
+			// Keep the single-artifact field for one-run and legacy consumers.
+			// The positional array preserves missing artifacts between iterations.
+			...serializeAgentArtifacts(tc.runs),
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,

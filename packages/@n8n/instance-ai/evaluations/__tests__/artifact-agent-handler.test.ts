@@ -26,25 +26,31 @@ describe('agentHandler', () => {
 		]);
 	});
 
-	it('fetch() resolves the personal project, fetches config + skills, and sanitizes the config', async () => {
+	it('fetch() resolves the personal project and returns a redacted structured preview artifact', async () => {
 		const projectId = 'project-123';
-		// `unsupportedLegacyField` is a top-level key AgentJsonConfigSchema doesn't
-		// know about -- sanitizeAgentJsonConfig strips it. Cast is required because
-		// this deliberately doesn't conform to AgentJsonConfig (that's the point).
+		// Future fields must survive in the raw preview even when this checkout's
+		// AgentJsonConfig type does not know them yet.
 		const rawConfig = {
 			name: 'My Agent',
 			model: { provider: 'anthropic', model: 'claude' },
-			instructions: 'Be helpful.',
-			unsupportedLegacyField: 'should-be-stripped',
+			instructions: 'Use sk-abc123DEF456ghi789jkl012 when needed.',
+			futureDisplayMode: { density: 'compact' },
 		} as unknown as AgentJsonConfig;
-		const skills: Record<string, AgentSkill> = {
+		const skills = {
 			'skill-1': {
 				name: 'Skill One',
 				description: 'Does a thing',
-				instructions: 'Follow these steps to do the thing.',
-				references: [{ path: 'references/guide.md', content: 'Guide content here.' }],
+				instructions: 'Send api_key=skill-secret.',
+				references: [
+					{
+						path: 'references/guide.md',
+						content: 'Authorization: Bearer abcdef1234567890',
+						futureFormat: 'markdown-v2',
+					},
+				],
+				futurePolicy: { mode: 'strict' },
 			},
-		};
+		} as unknown as Record<string, AgentSkill>;
 
 		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue(projectId);
 		const getAgentConfig: Mock = vi.fn().mockResolvedValue(rawConfig);
@@ -60,9 +66,26 @@ describe('agentHandler', () => {
 		expect(getPersonalProjectId).toHaveBeenCalled();
 		expect(getAgentConfig).toHaveBeenCalledWith(projectId, 'agent-1');
 		expect(getAgentSkills).toHaveBeenCalledWith(projectId, 'agent-1');
-		expect(result.skills).toBe(skills);
-		expect(result.config).toMatchObject({ name: 'My Agent', instructions: 'Be helpful.' });
-		expect(JSON.stringify(result.config)).not.toContain('should-be-stripped');
+		expect(result.agentId).toBe('agent-1');
+		expect(result.config).toMatchObject({
+			name: 'My Agent',
+			instructions: 'Use [REDACTED] when needed.',
+			futureDisplayMode: { density: 'compact' },
+		});
+		expect(result.skills['skill-1']).toMatchObject({
+			instructions: 'Send [REDACTED]',
+			references: [
+				{
+					path: 'references/guide.md',
+					content: 'Authorization: [REDACTED]',
+					futureFormat: 'markdown-v2',
+				},
+			],
+			futurePolicy: { mode: 'strict' },
+		});
+		const serialized = JSON.stringify(result);
+		expect(serialized).not.toContain('skill-secret');
+		expect(serialized).not.toContain('abcdef1234567890');
 	});
 
 	it('renderArtifact() surfaces skill instructions and reference content for the judge', () => {

@@ -44,6 +44,24 @@ const passingCheck: CheckOutcome = {
 	status: 'pass',
 };
 
+const agentArtifact = {
+	agentId: 'agent-1',
+	config: {
+		name: 'Digest agent',
+		instructions: 'Use sk-abc123DEF456ghi789jkl012 to call the provider.',
+		credentials: { slack: { id: 'credential-1' } },
+		futureDisplayMode: { density: 'compact' },
+	},
+	skills: {
+		digest: {
+			name: 'Digest',
+			description: 'Summarize updates.',
+			instructions: 'Send with api_key=skill-secret.',
+			futurePolicy: { mode: 'strict' },
+		},
+	},
+};
+
 const transcript: TranscriptTurn[] = [
 	{
 		userMessage: 'send me a daily digest',
@@ -66,6 +84,7 @@ function iteration1(): WorkflowTestCaseResult {
 		threadId: '3f0c9a2e-8d41-4b77-9a10-1c2d3e4f5a6b',
 		transcript,
 		workflowChecks: [passingCheck],
+		agentArtifact,
 		workflowJson: {
 			id: 'wf-1',
 			name: 'Digest',
@@ -114,6 +133,8 @@ interface DispatcherView {
 	testCases: Array<{
 		buildSuccessCount: number;
 		workflowJson?: { id: string };
+		agentArtifact?: Record<string, unknown>;
+		agentArtifactPerRun: Array<Record<string, unknown> | null>;
 		totalRuns: number;
 		workflowChecksPerRun: Array<Record<string, string> | null>;
 		buildExpectations: Array<{
@@ -179,6 +200,27 @@ describe('eval-results.json — dispatcher contract', () => {
 		// Produced workflow rides along (first iteration's) — the dispatcher's
 		// Dockerfile patch greps for upstream support of this field and no-ops.
 		expect(tc.workflowJson).toMatchObject({ id: 'wf-1' });
+
+		// The first structured agent artifact supports legacy/single consumers.
+		// The positional array keeps one artifact or null per build iteration.
+		expect(tc.agentArtifact).toEqual({
+			agentId: 'agent-1',
+			config: {
+				name: 'Digest agent',
+				instructions: 'Use [REDACTED] to call the provider.',
+				credentials: '[REDACTED]',
+				futureDisplayMode: { density: 'compact' },
+			},
+			skills: {
+				digest: {
+					name: 'Digest',
+					description: 'Summarize updates.',
+					instructions: 'Send with [REDACTED]',
+					futurePolicy: { mode: 'strict' },
+				},
+			},
+		});
+		expect(tc.agentArtifactPerRun).toEqual([tc.agentArtifact, null]);
 
 		// Per-iteration build signals. Checks serialize as a name→status map (an
 		// iteration without checks serializes as null, not as a hole).
@@ -256,6 +298,33 @@ describe('eval-results.json — dispatcher contract', () => {
 		});
 		// A passing run carries no attribution at all — nobody owns a pass.
 		expect(sc.runs[0]).not.toHaveProperty('attribution');
+	});
+
+	it('keeps positional nulls when an agent build produced no preview artifact', () => {
+		const evaluation = aggregateResults(
+			[
+				[{ ...iteration1(), agentId: 'agent-1', agentArtifact: undefined }],
+				[{ ...iteration2(), agentId: 'agent-1' }],
+			],
+			2,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-agent-artifact-missing',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+		const tc = report.testCases[0];
+
+		expect(tc).not.toHaveProperty('agentArtifact');
+		expect(tc.agentArtifactPerRun).toEqual([null, null]);
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
