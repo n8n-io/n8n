@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+
 import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 
