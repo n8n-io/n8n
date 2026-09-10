@@ -1,52 +1,115 @@
-packages/cli/src/executions/__tests__/executions.controller.test.ts
-  s_2725a696667b9d::t_006d1ae7b01070 113-117
-  s_2725a696667b9d::t_46ab10c733df19 8-9,19,21,25,28,106-107,112,118-130,133-143,145-146
-packages/cli/src/executions/execution.service.ts
-  s_2725a696667b9d::t_2afd9a3416c7af 1
-packages/cli/src/executions/engine-v2-execution-reader.service.ts
-  s_2725a696667b9d::t_e7268b70555f98 3-4,8,59-60
-packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
-  s_2725a696667b9d::t_94dee3ee592bf8 7,29,34-35,60,82,128,135,148,156,163,172,180,194,197,201,221
-packages/cli/src/modules/mcp/mcp.service.ts
-  s_2725a696667b9d::t_0d1d9218ec8f44 28,212,472
 packages/cli/src/executions/__tests__/execution.service.test.ts
-  s_2725a696667b9d::t_f82f7a934145bf 19
-packages/cli/src/executions/engine-v2-mapping.ts
-  s_2725a696667b9d::t_e7268b70555f98 1-25
-packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
-  s_2725a696667b9d::t_77fec9b9fc6c69 11,127
-packages/cli/src/executions/execution-list.service.ts
-  s_2725a696667b9d::t_6b5e08c1d26e49 1-23,29,33-68
-  s_2725a696667b9d::t_bb3471a020a1fa 24-28,30-32
+  ai_agent 14
+  s_8ffb60b90d5223::t_9738730585f098 19
+  s_b657e90b8812af::t_06432b56f0a605 21,28
+  s_b657e90b8812af::t_df3df0905cede8 989,991-992,999-1004
+  s_b657e90b8812af::t_09214cb156d749 1020,1023-1024,1031-1036
+packages/cli/src/executions/execution.service.ts
+  s_b657e90b8812af::t_0c5995352ff57b 69
+  s_b657e90b8812af::t_c115e571c355c0 121-129
 packages/cli/src/executions/executions.controller.ts
-  s_2725a696667b9d::t_3b5a12cb694903 15,26,41,49,52
-packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
-  s_2725a696667b9d::t_bbc744b51c8006 1,3-6,8-49,55-61,67-99
-  s_2725a696667b9d::t_6c9c5e6599bc6a 2,50-54,62-66
-  s_2725a696667b9d::t_006d1ae7b01070 7
-packages/cli/src/executions/execution-list-v1.service.ts
-  s_2725a696667b9d::t_58cb54c20831ce 1-128
+  s_8ffb60b90d5223::t_1322106bd6231a 41
+  s_8ffb60b90d5223::t_338c91ff13ef66 52
+packages/cli/src/executions/execution-list.service.ts
+  s_8ffb60b90d5223::t_b33b66d8fd3b73 1,6,15
+  s_8ffb60b90d5223::t_58a4253bec0987 3,5,16,19-21
+  s_d7bd7ccd8b27bd::t_4ca4575643e473 8-12,23
+  h_8fb27e0cdf6d1e 13
+  s_b657e90b8812af::t_7f2ed65e763a92 17-18,22,42,46-47,50,52-54,56-58
+  s_8ffb60b90d5223::t_b00ba0e7c80a97 33-34,48-49,51
+  s_d7bd7ccd8b27bd::t_f12891e007b866 35-36,38
+  s_8ffb60b90d5223::t_4134d51d06baf4 41,43-45
+  s_b657e90b8812af::t_a7da2ab25a34fa 55,59-68
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_b657e90b8812af::t_dfa96a9f69bd2b 1-4,6-13,15-19,21-23,25
+  s_8ffb60b90d5223::t_61dea0b801320d 5,14,20,24
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_8ffb60b90d5223::t_2f81395b3a1a68 11,127
 packages/cli/src/modules/mcp/tools/search-executions.tool.ts
-  s_2725a696667b9d::t_0d1d9218ec8f44 6,73,120,140
+  h_8fb27e0cdf6d1e 6,73,142
+  s_8ffb60b90d5223::t_1d16e771ba9fcf 120
+  s_b657e90b8812af::t_4994ac70a04318 131
 packages/cli/test/integration/execution.service.integration.test.ts
-  s_2725a696667b9d::t_7b8f672aea41c6 7,13,19-26,29,40-43,100,145,176,201,229,253,277,304,332,363,396,449,484,519,550,588-589,626-627,651,680,714,848,872,894,908,990,1039,1081,1126
-  s_2725a696667b9d::t_490f993bed7263 84,527,725,753-754,827
-  s_2725a696667b9d::t_006d1ae7b01070 933-935
-packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
-  s_2725a696667b9d::t_77fec9b9fc6c69 22,113,166,374,965,1020,1100
+  s_8ffb60b90d5223::t_72a8a48950138e 7
+  s_d7bd7ccd8b27bd::t_76da0f3fc5ee63 13,933-935
+  s_d7bd7ccd8b27bd::t_559358a0bb2832 20-26
+  s_8ffb60b90d5223::t_20908d7d38665a 31-34
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 84,100,145,176,201,229,253,277,304,332,363,396,449,484,519,527,550,588-589,626-627,651,680,714,990,1039,1081,1126
+  s_8ffb60b90d5223::t_8c66668a256c81 91,136,167,192,220,244,268,295,323,354,387,440,475,510,541,579-580,617-618,642,671,705,744-745,839,863,885,899,924,979,1028,1070,1115
+  s_d7bd7ccd8b27bd::t_033740472d10d6 725,753-754,827,848,872,894,908
+packages/cli/src/modules/mcp/mcp.service.ts
+  h_8fb27e0cdf6d1e 28,212,472
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_8ffb60b90d5223::t_bcb6cd56def5e7 7
+  s_8ffb60b90d5223::t_2d2aaa2d9a763d 29
+  s_8ffb60b90d5223::t_09241b99c31527 34
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 35,82,128,135,148,156,163,172,180,201,221
+  s_8ffb60b90d5223::t_dc2bfe381cc03f 60
+  s_b657e90b8812af::t_408db7d4ff8689 166
+  s_8ffb60b90d5223::t_f3f4a3f98e1918 174-179
+  s_8ffb60b90d5223::t_e9b7ef9b049834 184
+  s_8ffb60b90d5223::t_400ba2727b9ac0 198
+  s_8ffb60b90d5223::t_10c18d40200b5e 205,225
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_8ffb60b90d5223::t_d48f89a4baebfa 1,3-5,8-9,11,14-15,18-20,27,29,31-32,37,39-42,48-49,55,57-58,61,67,71,74-77,84-90,94-95,97-99
+  s_d7bd7ccd8b27bd::t_aadc072207032d 12
+  s_d7bd7ccd8b27bd::t_c5bf56a6b279c6 66
 packages/cli/src/executions/__tests__/execution-list.service.test.ts
-  s_2725a696667b9d::t_791c2cd54e0202 1-92
+  s_b657e90b8812af::t_7804d79547a523 2-3
+  s_8ffb60b90d5223::t_b30733d7dd021c 9-10
+  s_b657e90b8812af::t_7f2ed65e763a92 12,19,21
+  s_8ffb60b90d5223::t_df60ce8fcccc57 13,84
+  s_8ffb60b90d5223::t_92b484db45ab31 14-15
+  s_d7bd7ccd8b27bd::t_8fed0d0eb10c01 16,18,59,74-76,82
+  s_8ffb60b90d5223::t_820ccd9d35d876 22,69,71
+  s_d7bd7ccd8b27bd::t_c3d07cc73e14da 23
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_8ffb60b90d5223::t_2f81395b3a1a68 22,113,166,374,965,1020,1100
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  h_8fb27e0cdf6d1e 12
+  s_b657e90b8812af::t_426f93e0b3cee0 13,19
+  s_b657e90b8812af::t_ec836a8e627c81 14,16-17,20-27
+  s_b657e90b8812af::t_7f2ed65e763a92 15,18
+  s_b657e90b8812af::t_401c02dec2844f 74-75
+packages/cli/src/executions/execution-list-v1.service.ts
+  s_8ffb60b90d5223::t_6994c53e7c7e12 1,3-4,6,11,16-18,20-22
+  h_8fb27e0cdf6d1e 2,5,7,9-10,12-15,19,23,25-31,50-57,72,74,76-85,87-89,91-102,104-105,107-114,116-125,128
+  s_8ffb60b90d5223::t_f2e0246e41882b 32-37,40-41,43-47,49
+  s_8ffb60b90d5223::t_bcd7b3b0148466 58-61,65,70-71,75
+  s_d7bd7ccd8b27bd::t_2084b91680495e 62-64,66-69,73
+  s_8ffb60b90d5223::t_546c27b87e298f 106
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
   "base_commit_sha": "2e3d77232c59e16b5bec8cfc03bdb343f924be2c",
   "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  },
   "sessions": {
-    "s_2725a696667b9d": {
+    "s_8ffb60b90d5223": {
       "agent_id": {
         "tool": "claude",
-        "id": "b1636a30-5e65-49b1-8820-7dfdb03b0e5e",
+        "id": "03c01f0c-6a29-4038-9e4e-6da02b39e1bf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_b657e90b8812af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "426da0c5-5c8d-43c8-834f-b42cae6044b9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_d7bd7ccd8b27bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edee8da2-eddc-464d-90f4-93834788f73b",
         "model": "claude-opus-5"
       },
       "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
