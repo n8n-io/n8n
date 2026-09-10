@@ -1,3 +1,4 @@
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
@@ -8,7 +9,7 @@ import type {
 	BinaryDataService,
 	InstanceSettings,
 } from 'n8n-core';
-import { ExternalSecretsProxy } from 'n8n-core';
+import { ExternalSecretsProxy, StructuredToolkit } from 'n8n-core';
 import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
@@ -29,6 +30,7 @@ import {
 } from 'n8n-workflow';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -1304,6 +1306,139 @@ describe('JobProcessor', () => {
 				response: unknown;
 			};
 			expect(lastResponse.response).toBe('supply data tool result');
+		});
+
+		describe('MCP toolkit execution on the worker', () => {
+			const toolNode = {
+				name: 'Remote Tools',
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				typeVersion: 1.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+
+			const setupToolkitJob = (toolName: string) => {
+				const firstCall = vi.fn().mockResolvedValue('first result');
+				const secondCall = vi.fn().mockResolvedValue('second result');
+				const closeFunction = vi.fn().mockResolvedValue(undefined);
+				const toolkit = new StructuredToolkit(
+					[firstCall, secondCall].map(
+						(func, index) =>
+							new DynamicStructuredTool({
+								name: `Remote_Tools_${index === 0 ? 'first' : 'second'}`,
+								description: 'Search remote data',
+								schema: z.object({ query: z.string() }),
+								func,
+							}),
+					),
+				);
+
+				const executionPersistence = mock<ExecutionPersistence>();
+				executionPersistence.findSingleExecution.mockResolvedValue(
+					mock<IExecutionResponse>({
+						mode: 'trigger',
+						status: 'success',
+						workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+						data: mock<IRunExecutionData>({ executionData: undefined }),
+					}),
+				);
+
+				const nodeTypes = mock<NodeTypes>();
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						name: 'mcpClientTool',
+						outputs: [NodeConnectionTypes.AiTool],
+						properties: [],
+					},
+					supplyData: vi.fn().mockResolvedValue({ response: toolkit, closeFunction }),
+				} as never);
+
+				const jobProcessor = new JobProcessor(
+					logger,
+					mock(),
+					executionPersistence,
+					mock(),
+					nodeTypes,
+					mock<InstanceSettings>({ hostId: 'worker-host-123' }),
+					createManualExecutionServiceMock(),
+					executionsConfig,
+					mock(),
+					mock(),
+				);
+
+				const job = mock<Job>();
+				job.data = {
+					workflowId: 'wf-1',
+					executionId: 'exec-mcp-toolkit',
+					loadStaticData: false,
+					isMcpExecution: true,
+					mcpType: 'trigger',
+					mcpSessionId: 'session-toolkit',
+					mcpMessageId: 'msg-toolkit',
+					mcpToolCall: {
+						toolName,
+						arguments: { query: 'test' },
+						sourceNodeName: toolNode.name,
+					},
+				};
+
+				return { jobProcessor, job, firstCall, secondCall, closeFunction };
+			};
+
+			it('should invoke only the requested toolkit member and close the connection', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_second');
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).toHaveBeenCalledTimes(1);
+				expect(secondCall.mock.calls[0][0]).toEqual({ query: 'test' });
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({ kind: 'mcp-response', response: 'second result' }),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
+
+			it('should report an unknown member and close the connection without invoking a tool', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_missing');
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).not.toHaveBeenCalled();
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({
+						kind: 'mcp-response',
+						response: {
+							error: expect.objectContaining({
+								message:
+									'Tool "Remote_Tools_missing" not found in toolkit from node "Remote Tools"',
+							}),
+						},
+					}),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
+
+			it('should return the tool error and close the connection when invocation fails', async () => {
+				const { jobProcessor, job, firstCall, secondCall, closeFunction } =
+					setupToolkitJob('Remote_Tools_second');
+				secondCall.mockRejectedValue(new Error('Remote tool failed'));
+
+				await jobProcessor.processJob(job);
+
+				expect(firstCall).not.toHaveBeenCalled();
+				expect(secondCall).toHaveBeenCalledTimes(1);
+				expect(job.progress).toHaveBeenCalledWith(
+					expect.objectContaining({
+						kind: 'mcp-response',
+						response: { error: { message: 'Remote tool failed', name: 'Error' } },
+					}),
+				);
+				expect(closeFunction).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		describe('MCP request context on the worker', () => {
