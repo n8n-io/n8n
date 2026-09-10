@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { html } from '@n8n/codemirror-lang-html';
+import { history } from '@codemirror/commands';
 import { css } from '@codemirror/lang-css';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { foldGutter } from '@codemirror/language';
 import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, lineNumbers } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { onBeforeUnmount, useTemplateRef, watch } from 'vue';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
+import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keymap';
 
 const props = defineProps<{
 	path: string;
@@ -51,6 +53,8 @@ function createEditor() {
 				...languageExtension(props.path),
 				lineNumbers(),
 				foldGutter(),
+				history(),
+				keymap.of(editorKeymap),
 				EditorView.lineWrapping,
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) emit('update:content', update.state.doc.toString());
@@ -66,6 +70,20 @@ function createEditor() {
 // fed back in as a controlled prop (that would recreate the editor on every
 // keystroke and lose cursor position/undo history).
 watch([containerRef, () => props.path], createEditor);
+
+// A path-only recreate misses an external content update for the *same* path
+// (e.g. AppCodeViewer re-fetching after a save) — apply it in place, but only
+// when it actually differs, so the user's own typing (which already matches
+// what's in the editor) never triggers a redundant/looping dispatch.
+watch(
+	() => props.content,
+	(content) => {
+		if (!editor || content === editor.state.doc.toString()) return;
+		editor.dispatch({
+			changes: { from: 0, to: editor.state.doc.length, insert: content },
+		});
+	},
+);
 
 onBeforeUnmount(() => editor?.destroy());
 </script>

@@ -253,4 +253,94 @@ describe('AppCodeViewer', () => {
 		expect(confirm).toHaveBeenCalled();
 		expect(getByTestId('fcv-content')).toHaveTextContent('b.ts:b content');
 	});
+
+	it('clears the buffer immediately when appId changes, before the new app has loaded', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		const { getByText, getByTestId, queryByTestId, rerender } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+		expect(getByTestId('file-code-viewer-stub')).toBeInTheDocument();
+
+		// Same versionId as before — a real app switch keeps versionId stale for
+		// a moment too, so this isolates that the reset is keyed off `appId`.
+		await rerender({ projectId: 'proj-2', appId: 'app-2', versionId: 'v-1' });
+
+		expect(queryByTestId('file-code-viewer-stub')).not.toBeInTheDocument();
+		expect(getByText('Select a file to view its contents')).toBeInTheDocument();
+	});
+
+	it('does not apply an in-flight save result after appId changes before it resolves', async () => {
+		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		let resolveSave: (app: App) => void = () => {};
+		appsStore.saveAppVersionFileContent.mockImplementation(
+			async () => await new Promise((resolve) => (resolveSave = resolve)),
+		);
+		const { getByText, getByTestId, emitted, rerender } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+		await userEvent.click(getByTestId('app-code-save'));
+
+		// Switch apps while app-1's save is still in flight.
+		await rerender({ projectId: 'proj-2', appId: 'app-2', versionId: undefined });
+		resolveSave(makeApp({ id: 'app-1', activeVersionId: 'v-99' }));
+		await waitAllPromises();
+
+		expect(emitted().saved).toBeUndefined();
+	});
+
+	it('ignores an older file-list response that resolves after a newer one', async () => {
+		let resolveV1: (files: string[]) => void = () => {};
+		appsStore.fetchAppVersionFiles.mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveV1 = resolve)),
+		);
+		const { queryByText, rerender } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+		});
+		await waitAllPromises();
+
+		let resolveV2: (files: string[]) => void = () => {};
+		appsStore.fetchAppVersionFiles.mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveV2 = resolve)),
+		);
+		await rerender({ projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' });
+
+		// Resolve out of order: the newer request first, then the stale one.
+		resolveV2(['v2-file.ts']);
+		await waitAllPromises();
+		resolveV1(['v1-file.ts']);
+		await waitAllPromises();
+
+		expect(queryByText('v2-file.ts')).toBeInTheDocument();
+		expect(queryByText('v1-file.ts')).not.toBeInTheDocument();
+	});
+
+	it('shows a loading indicator instead of an empty tree while the first file list request is pending', async () => {
+		let resolveFiles: (files: string[]) => void = () => {};
+		appsStore.fetchAppVersionFiles.mockImplementationOnce(
+			async () => await new Promise((resolve) => (resolveFiles = resolve)),
+		);
+		const { getByTestId, queryByTestId } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+		});
+		await waitAllPromises();
+
+		expect(getByTestId('app-code-tree-loading')).toBeInTheDocument();
+		expect(queryByTestId('app-code-tree')).not.toBeInTheDocument();
+
+		resolveFiles(['main.ts']);
+		await waitAllPromises();
+
+		expect(queryByTestId('app-code-tree-loading')).not.toBeInTheDocument();
+		expect(getByTestId('app-code-tree')).toBeInTheDocument();
+	});
 });

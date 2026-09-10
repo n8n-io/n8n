@@ -191,7 +191,7 @@ describe('AppSourceEditBuildService', () => {
 		expect(buildApp).not.toHaveBeenCalled();
 	});
 
-	it('surfaces a build failure', async () => {
+	it('surfaces a build failure with its log folded into the message', async () => {
 		const { service } = createService();
 		vi.mocked(buildApp).mockResolvedValue({
 			error: true,
@@ -204,7 +204,8 @@ describe('AppSourceEditBuildService', () => {
 
 		expect(result).toEqual({
 			error: true,
-			message: '`npm run build` exited with code 1.',
+			message: expect.stringContaining('`npm run build` exited with code 1.'),
 		});
+		expect((result as { message: string }).message).toContain('Module not found');
 	});
 });

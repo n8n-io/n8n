@@ -156,7 +156,12 @@ export class AppSourceEditBuildService {
 
 		const built = await buildApp(sandboxContext, { action: 'build', appId });
 		if ('denied' in built) return { error: true, message: built.reason };
-		if ('error' in built) return { error: true, message: built.message };
+		if ('error' in built) {
+			// The log carries the actual compiler/build diagnostics — far more
+			// actionable than the generic message for a failure in user-edited code.
+			const message = built.log ? `${built.message}\n\n${built.log}` : built.message;
+			return { error: true, message };
+		}
 		return { versionId: built.versionId, url: built.url };
 	}
 }

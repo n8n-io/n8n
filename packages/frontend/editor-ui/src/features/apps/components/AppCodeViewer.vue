@@ -36,6 +36,9 @@ const tree = computed(() => buildFileTree(files.value));
 const dirty = computed(
 	() => editedContent.value !== undefined && editedContent.value !== fileContent.value,
 );
+// Only worth calling out before the first list has ever loaded — once files
+// are showing, a background refresh shouldn't yank them away for a spinner.
+const showTreeLoading = computed(() => loading.value && files.value.length === 0);
 
 const clearSelection = () => {
 	selectedPath.value = [];
@@ -72,7 +75,12 @@ const selectFile = async (path: string) => {
 	}
 };
 
+// Guards against an older list request resolving after a newer one (e.g. two
+// rapid version changes), the same way `selectRequestId` guards file fetches.
+let loadRequestId = 0;
+
 const loadFiles = async () => {
+	const requestId = ++loadRequestId;
 	if (!props.versionId) {
 		files.value = [];
 		clearSelection();
@@ -80,11 +88,13 @@ const loadFiles = async () => {
 	}
 	loading.value = true;
 	try {
-		files.value = await appsStore.fetchAppVersionFiles(
+		const fetched = await appsStore.fetchAppVersionFiles(
 			props.projectId,
 			props.appId,
 			props.versionId,
 		);
+		if (requestId !== loadRequestId) return;
+		files.value = fetched;
 		// Re-select the file that was open, so a version change from this tab's
 		// own save doesn't reset the view the user was just looking at.
 		const current = selectedPath.value[0];
@@ -94,9 +104,13 @@ const loadFiles = async () => {
 			clearSelection();
 		}
 	} catch (error) {
+		if (requestId !== loadRequestId) return;
+		// A stale/broken list shouldn't stay on screen looking editable.
+		files.value = [];
+		clearSelection();
 		toast.showError(error, i18n.baseText('apps.builder.code.error'));
 	} finally {
-		loading.value = false;
+		if (requestId === loadRequestId) loading.value = false;
 	}
 };
 
@@ -121,25 +135,51 @@ const onSelect = async (selected: string[]) => {
 const onSave = async () => {
 	const path = selectedPath.value[0];
 	if (!path || !dirty.value || editedContent.value === undefined || !props.versionId) return;
+	// Snapshot everything the request needs and identifies: `props.appId`, the
+	// selection, and the buffer can all change while this request is in
+	// flight (switching apps/files, or just continuing to type), and neither
+	// the request nor its result should follow those later changes.
+	const requestAppId = props.appId;
+	const contentToSave = editedContent.value;
+	const stillOnSameSelection = () => props.appId === requestAppId && selectedPath.value[0] === path;
 	saving.value = true;
 	buildError.value = undefined;
 	try {
 		const updated = await appsStore.saveAppVersionFileContent(
 			props.projectId,
-			props.appId,
+			requestAppId,
 			props.versionId,
 			path,
-			editedContent.value,
+			contentToSave,
 		);
-		fileContent.value = editedContent.value;
-		emit('saved', updated);
-		toast.showMessage({ title: i18n.baseText('apps.builder.code.saved'), type: 'success' });
+		if (props.appId === requestAppId) {
+			emit('saved', updated);
+			toast.showMessage({ title: i18n.baseText('apps.builder.code.saved'), type: 'success' });
+		}
+		// Only mark the buffer clean if it's still the file this save was for —
+		// otherwise a since-switched file's `fileContent` would be corrupted
+		// with this file's saved text.
+		if (stillOnSameSelection()) fileContent.value = contentToSave;
 	} catch (error) {
-		buildError.value = error instanceof Error ? error.message : String(error);
+		if (stillOnSameSelection()) {
+			buildError.value = error instanceof Error ? error.message : String(error);
+		}
 	} finally {
 		saving.value = false;
 	}
 };
+
+// Reused route component instance across an app switch: `appId` updates
+// synchronously, well before the parent's async re-fetch replaces `app`/
+// `versionId` — clear the buffer immediately so a save can't fire in that gap
+// with the previous app's content under the new app's id.
+watch(
+	() => props.appId,
+	() => {
+		files.value = [];
+		clearSelection();
+	},
+);
 
 watch(() => props.versionId, loadFiles, { immediate: true });
 </script>
@@ -151,7 +191,11 @@ watch(() => props.versionId, loadFiles, { immediate: true });
 		</N8nText>
 		<template v-else>
 			<div :class="$style.tree">
+				<N8nText v-if="showTreeLoading" color="text-light" data-test-id="app-code-tree-loading">
+					{{ i18n.baseText('apps.builder.code.loading') }}
+				</N8nText>
 				<N8nTree2
+					v-else
 					:items="tree"
 					:model-value="selectedPath"
 					data-test-id="app-code-tree"

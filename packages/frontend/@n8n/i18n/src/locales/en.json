@@ -5166,6 +5166,7 @@
 	"apps.builder.code": "Code",
 	"apps.builder.code.empty": "Build this app to see its source files here",
 	"apps.builder.code.selectFile": "Select a file to view its contents",
+	"apps.builder.code.loading": "Loading files…",
 	"apps.builder.code.error": "Error loading file",
 	"apps.builder.code.save": "Save",
 	"apps.builder.code.saved": "File saved",
