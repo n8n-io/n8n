@@ -1,13 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentJsonTaskConfig } from '@n8n/api-types';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource, CustomToolEntry } from '../types';
-import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
+import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 
 const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
 	() => null,
@@ -35,10 +35,6 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 
-vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
-}));
-
 const openModalWithDataSpy = vi.fn();
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData: openModalWithDataSpy }),
@@ -58,11 +54,6 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 		ensureLoaded: ensureProjectAgentsLoadedSpy,
 		refresh: refreshProjectAgentsSpy,
 	}),
-}));
-
-const getAgentTasksSpy = vi.fn();
-vi.mock('../composables/useAgentApi', () => ({
-	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
 }));
 
 const integrationsCatalogRef = ref<Array<{ type: string; label: string; icon?: string }>>([]);
@@ -127,18 +118,6 @@ function mountSection(
 	});
 }
 
-function makeTask(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
-	return {
-		id: 'task-1',
-		name: 'Daily summary',
-		objective: 'Do X',
-		cronExpression: '0 9 * * *',
-		createdAt: '2026-01-01T00:00:00.000Z',
-		updatedAt: '2026-01-01T00:00:00.000Z',
-		...overrides,
-	};
-}
-
 function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	return {
 		id: 'agent-2',
@@ -157,10 +136,6 @@ function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 	};
 }
 
-function taskRef(id = 'task-1', enabled = true): AgentJsonTaskConfig {
-	return { type: 'task', id, enabled };
-}
-
 function configWithMcpServers(
 	mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
 ): AgentJsonConfig {
@@ -176,7 +151,6 @@ function configWithMcpServers(
 describe('AgentCapabilitiesSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		getAgentTasksSpy.mockResolvedValue([]);
 		projectAgentsListRef.value = [];
 		ensureProjectAgentsLoadedSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
 		refreshProjectAgentsSpy.mockImplementation(async () => projectAgentsListRef.value ?? []);
@@ -396,7 +370,10 @@ describe('AgentCapabilitiesSection', () => {
 			expect.objectContaining({
 				name: AGENT_SUB_AGENTS_MODAL_KEY,
 				data: expect.objectContaining({
-					agents: [{ id: 'agent-3', name: 'Research Agent' }],
+					agents: [
+						{ id: 'agent-3', name: 'Research Agent' },
+						{ id: 'agent-4', name: 'Draft Agent' },
+					],
 				}),
 			}),
 		);
@@ -405,8 +382,8 @@ describe('AgentCapabilitiesSection', () => {
 			data: { onConfirm: (payload: { agentId: string; useWhen?: string }) => void };
 		};
 		modalCall.data.onConfirm({
-			agentId: 'agent-3',
-			useWhen: 'Use for research requests.',
+			agentId: 'agent-4',
+			useWhen: 'Use for draft research requests.',
 		});
 
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([
@@ -415,7 +392,7 @@ describe('AgentCapabilitiesSection', () => {
 					maxChildren: 7,
 					agents: [
 						{ agentId: 'agent-2', useWhen: 'Use for billing support requests.' },
-						{ agentId: 'agent-3', useWhen: 'Use for research requests.' },
+						{ agentId: 'agent-4', useWhen: 'Use for draft research requests.' },
 					],
 				},
 			},
@@ -611,89 +588,6 @@ describe('AgentCapabilitiesSection', () => {
 		]);
 	});
 
-	it('renders task chips from task refs and fetched bodies', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-
-		const wrapper = mountSection([], {}, null, [taskRef()]);
-		await flushPromises();
-
-		expect(wrapper.text()).toContain('Daily summary');
-		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]').length).toBe(1);
-	});
-
-	it('does not load tasks for an agent that has not been saved yet', async () => {
-		const wrapper = mountSection([], {}, null, [], [], { agentUnsaved: true });
-		await flushPromises();
-
-		expect(getAgentTasksSpy).not.toHaveBeenCalled();
-		expect(wrapper.text()).not.toContain('not found');
-	});
-
-	it('reloads task bodies when switching agents', async () => {
-		getAgentTasksSpy.mockImplementation(
-			async (_context: unknown, _projectId: string, agentId: string) =>
-				agentId === 'agent-2'
-					? [makeTask({ id: 'task-2', name: 'Weekly digest' })]
-					: [makeTask({ id: 'task-1', name: 'Daily summary' })],
-		);
-
-		const wrapper = mountSection([], {}, null, [taskRef('task-1')]);
-		await flushPromises();
-
-		expect(wrapper.text()).toContain('Daily summary');
-
-		await wrapper.setProps({
-			agentId: 'agent-2',
-			taskRefs: [taskRef('task-2')],
-		});
-		await flushPromises();
-
-		expect(getAgentTasksSpy).toHaveBeenLastCalledWith({}, 'project-id', 'agent-2');
-		expect(wrapper.text()).toContain('Weekly digest');
-		expect(wrapper.text()).not.toContain('Daily summary');
-	});
-
-	it('opens the task modal when adding or editing a task', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-		const wrapper = mountSection([], {}, null, [taskRef('task-1', true)]);
-		await flushPromises();
-
-		await wrapper.find('[data-testid="agent-capabilities-task-row"]').trigger('click');
-		expect(openModalWithDataSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: AGENT_TASK_MODAL_KEY,
-				data: expect.objectContaining({
-					task: expect.objectContaining({ id: 'task-1' }),
-					taskState: {
-						enabled: true,
-					},
-				}),
-			}),
-		);
-
-		await wrapper.find('[data-testid="agent-capabilities-add-task"]').trigger('click');
-		expect(openModalWithDataSpy).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				name: AGENT_TASK_MODAL_KEY,
-				data: expect.objectContaining({ task: null }),
-			}),
-		);
-	});
-
-	it('forwards task modal callbacks as capability events', async () => {
-		getAgentTasksSpy.mockResolvedValue([makeTask()]);
-		const wrapper = mountSection([], {}, null, [taskRef()]);
-		await flushPromises();
-
-		await wrapper.find('[data-testid="agent-capabilities-task-row"]').trigger('click');
-		const modalData = openModalWithDataSpy.mock.calls[0][0].data;
-		modalData.onToggle({ id: 'task-1', enabled: false });
-		modalData.onSaved();
-
-		expect(wrapper.emitted('toggle-task')).toEqual([[{ id: 'task-1', enabled: false }]]);
-		expect(wrapper.emitted('tasks-changed')).toEqual([[]]);
-	});
-
 	it('disables the add-tool and add-skill buttons when disabled (read-only host)', async () => {
 		const wrapper = mountSection(
 			[],
@@ -792,9 +686,7 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	describe('validation issues', () => {
-		it('marks node-tool, MCP-server, and task chips invalid when matching issues are present', async () => {
-			getAgentTasksSpy.mockResolvedValue([makeTask()]);
-
+		it('marks node-tool and MCP-server chips invalid when matching issues are present', async () => {
 			const tools: AgentJsonToolRef[] = [
 				{
 					type: 'node',
@@ -818,7 +710,7 @@ describe('AgentCapabilitiesSection', () => {
 						authentication: 'bearerAuth',
 					},
 				]),
-				[taskRef('task-1')],
+				[],
 				[],
 				{
 					validationIssues: [
@@ -831,11 +723,6 @@ describe('AgentCapabilitiesSection', () => {
 							code: 'missing_credential',
 							path: 'mcpServers.0.credential',
 							capability: { kind: 'mcpServer', id: 'github', index: 0 },
-						},
-						{
-							code: 'missing_reference',
-							path: 'tasks.0.id',
-							capability: { kind: 'task', id: 'task-1', index: 0 },
 						},
 					],
 				},
@@ -850,12 +737,6 @@ describe('AgentCapabilitiesSection', () => {
 			expect(wrapper.findAll('[data-testid="agent-chip-invalid-icon"]').length).toBeGreaterThan(0);
 			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.missingCredential',
-			);
-
-			const taskChip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
-			expect(taskChip.classes().some((c) => c.includes('invalid'))).toBe(true);
-			expect(taskChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
-				'agents.builder.validation.issue.missingReference',
 			);
 		});
 
@@ -1025,6 +906,33 @@ describe('AgentCapabilitiesSection', () => {
 			);
 		});
 
+		it('marks an unpublished workflow tool as a warning, not as invalid', async () => {
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflowId: 'wf-1', workflow: 'Draft Flow' },
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'tools.0.workflowId',
+						capability: { kind: 'tool', id: 'Draft Flow', index: 0, toolType: 'workflow' },
+						reason: 'not_published',
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('warning'))).toBe(true);
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+			expect(chip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.notPublished',
+			);
+		});
+
 		it('leaves capability chips unmarked when there are no matching validation issues', () => {
 			const tools: AgentJsonToolRef[] = [
 				{
@@ -1053,7 +961,6 @@ describe('AgentCapabilitiesSection', () => {
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 		});
 
 		it('renders only the allowlisted sections and skips sub-agents', async () => {
@@ -1066,8 +973,7 @@ describe('AgentCapabilitiesSection', () => {
 					projectId: 'project-id',
 					agentId: 'agent-id',
 					isPublished: false,
-					taskRefs: [],
-					sections: ['tools', 'tasks', 'skills'],
+					sections: ['tools', 'skills'],
 				},
 				global: {
 					stubs: {
@@ -1088,7 +994,6 @@ describe('AgentCapabilitiesSection', () => {
 			// Allowlisted rows present.
 			expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 			expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
-			expect(wrapper.find('[data-testid="agent-capabilities-add-task"]').exists()).toBe(true);
 
 			// Suppressed rows absent.
 			expect(wrapper.find('[data-testid="agent-capabilities-add-sub-agent"]').exists()).toBe(false);

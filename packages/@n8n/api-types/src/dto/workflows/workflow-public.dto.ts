@@ -13,7 +13,9 @@ import {
 	settingsOpenApi,
 	staticDataOpenApi,
 } from './workflow-public.openapi';
+import { nullableObjectGuardSchema, objectGuardSchema } from '../../schemas/object-guard.schema';
 import { Z } from '../../zod-class';
+import { projectPublicSchema } from '../project/project-public.dto';
 import { tagPublicSchema } from '../tag/tag-public.dto';
 
 // These fields can look different for every workflow, so we only check
@@ -27,12 +29,9 @@ const nodesPublicSchema = z
 	.custom<INode[]>((value) => Array.isArray(value), { message: 'Nodes must be an array' })
 	.openapi(nodesOpenApi);
 
-const connectionsPublicSchema = z
-	.custom<IConnections>(
-		(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
-		{ message: 'Connections must be an object' },
-	)
-	.openapi(connectionsOpenApi);
+const connectionsPublicSchema = objectGuardSchema<IConnections>(
+	'Connections must be an object',
+).openapi(connectionsOpenApi);
 
 const nodeGroupsPublicSchema = z
 	.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
@@ -40,10 +39,7 @@ const nodeGroupsPublicSchema = z
 	})
 	.openapi(nodeGroupsOpenApi);
 
-const nullableObjectPublicSchema = z.custom<Record<string, unknown> | null>(
-	(value) => value === null || (typeof value === 'object' && !Array.isArray(value)),
-	{ message: 'Must be an object or null' },
-);
+const nullableObjectPublicSchema = nullableObjectGuardSchema<Record<string, unknown>>();
 
 const settingsPublicSchema = nullableObjectPublicSchema.openapi(settingsOpenApi);
 
@@ -53,35 +49,11 @@ const pinDataPublicSchema = nullableObjectPublicSchema.openapi(pinDataOpenApi);
 
 const metaPublicSchema = nullableObjectPublicSchema.openapi(metaOpenApi);
 
-const projectIconPublicSchema = z
-	.object({
-		type: z.enum(['emoji', 'icon']),
-		value: z.string(),
-	})
-	.nullable();
-
-const projectCustomTelemetryTagPublicSchema = z.object({
-	key: z.string(),
-	value: z.string(),
-});
-
-const workflowProjectPublicSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	type: z.enum(['personal', 'team']),
-	icon: projectIconPublicSchema,
-	description: z.string().nullable(),
-	customTelemetryTags: z.array(projectCustomTelemetryTagPublicSchema),
-	creatorId: z.string().nullable(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-});
-
 export const sharedWorkflowPublicSchema = z.object({
 	role: z.string(),
 	workflowId: z.string(),
 	projectId: z.string(),
-	project: workflowProjectPublicSchema,
+	project: projectPublicSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
@@ -156,6 +128,23 @@ export class CreatedWorkflowPublicDto extends Z.class(createdWorkflowPublicSchem
 export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: true });
 
 export class WorkflowPublishPublicDto extends Z.class(workflowPublishPublicSchema.shape) {}
+
+// Update returns the publish history only when it re-published, so both shapes must pass.
+export const updatedWorkflowActiveVersionPublicSchema = activeWorkflowVersionPublicSchema.extend({
+	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema).optional(),
+});
+
+export const updatedWorkflowPublicSchema = workflowPublicSchema.omit({ shared: true }).extend({
+	activeVersion: updatedWorkflowActiveVersionPublicSchema.nullable(),
+});
+
+export class UpdatedWorkflowPublicDto extends Z.class(updatedWorkflowPublicSchema.shape) {}
+
+export const deletedWorkflowPublicSchema = workflowPublicSchema.extend({
+	activeVersion: activeWorkflowVersionPublicSchema.nullable().optional(),
+});
+
+export class DeletedWorkflowPublicDto extends Z.class(deletedWorkflowPublicSchema.shape) {}
 
 // The list query selects fewer columns than a single-workflow fetch, so these are absent from every
 // item — adding them back makes the response fail its own validation.

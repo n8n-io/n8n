@@ -1,6 +1,16 @@
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 
+// Define an own data field rather than assigning through an inherited setter.
+function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
+	Object.defineProperty(target, key, {
+		value,
+		writable: true,
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 const min = Math.min;
 const max = Math.max;
 
@@ -29,7 +39,7 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 	}
 	const result: Record<string, unknown> = {};
 	for (let i = 0; i < keys.length; i++) {
-		result[keys[i] as string] = values[i];
+		defineField(result, keys[i] as PropertyKey, values[i]);
 	}
 	return result;
 };

@@ -9,6 +9,18 @@ export class AzureOpenAiApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Endpoint Type',
+			name: 'endpointType',
+			type: 'options',
+			options: [
+				{ name: 'Classic', value: 'classic' },
+				{ name: 'Azure AI Foundry', value: 'foundry' },
+			],
+			default: 'classic',
+			description:
+				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Azure AI Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
@@ -22,6 +34,7 @@ export class AzureOpenAiApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
+			displayOptions: { show: { endpointType: ['classic'] } },
 		},
 		{
 			displayName: 'API Version',
@@ -29,13 +42,26 @@ export class AzureOpenAiApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '2025-03-01-preview',
+			displayOptions: { show: { endpointType: ['classic'] } },
+		},
+		{
+			displayName: 'Endpoint',
+			name: 'foundryEndpoint',
+			type: 'string',
+			required: true,
+			default: '',
+			placeholder: 'https://<resource>.services.ai.azure.com/openai/v1',
+			displayOptions: { show: { endpointType: ['foundry'] } },
+			hint: 'The full Azure AI Foundry OpenAI-compatible base URL.',
 		},
 		{
 			displayName: 'Endpoint',
 			name: 'endpoint',
 			type: 'string',
 			default: undefined,
-			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
+			placeholder: 'https://<resource>.openai.azure.com',
+			displayOptions: { show: { endpointType: ['classic'] } },
+			hint: 'Optional. Defaults to https://<resourceName>.openai.azure.com.',
 		},
 	];
 

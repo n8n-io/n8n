@@ -1,0 +1,47 @@
+{
+	"name": "Databricks Permission Denied Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "listCatalogs"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "catalog-list-403",
+			"name": "List Catalogs",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "List Catalogs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

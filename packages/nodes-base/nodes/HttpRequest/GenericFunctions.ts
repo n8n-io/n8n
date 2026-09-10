@@ -205,9 +205,6 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftAzureMonitorOAuth2Api: {
 			tokenExpiredStatusCode: 403,
 		},
-		microsoftDynamicsOAuth2Api: {
-			property: 'id_token',
-		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
 		},
@@ -312,8 +309,7 @@ export const setAgentOptions = (
 		if (sslCertificates.ca) agentOptions.ca = formatPemBlock(sslCertificates.ca);
 		if (sslCertificates.cert) agentOptions.cert = formatPemBlock(sslCertificates.cert);
 		if (sslCertificates.key) agentOptions.key = formatPemBlock(sslCertificates.key);
-		if (sslCertificates.passphrase)
-			agentOptions.passphrase = formatPemBlock(sslCertificates.passphrase);
+		if (sslCertificates.passphrase) agentOptions.passphrase = sslCertificates.passphrase;
 		requestOptions.agentOptions = agentOptions;
 	}
 };

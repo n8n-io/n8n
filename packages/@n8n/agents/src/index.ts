@@ -136,6 +136,11 @@ export {
 	sanitizeToolName,
 } from './sdk/tool';
 export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
+export {
+	stripInvisibleUnicode,
+	UNTRUSTED_OUTPUT_DOCTRINE,
+	wrapUntrustedData,
+} from './sdk/untrusted-content';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {
@@ -172,6 +177,10 @@ export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
+export type {
+	VolatileInstructionsContext,
+	VolatileInstructionsProvider,
+} from './runtime/loop/agent-runtime';
 export type { AgentSnapshot } from './sdk/agent';
 export {
 	appendSkillCatalogToInstructions,
@@ -213,6 +222,8 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillStateScope,
+	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './skills';
@@ -223,6 +234,12 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
+export {
+	hasMcpMediaContent,
+	mcpContentToMessageParts,
+	mcpContentToModelParts,
+} from './runtime/mcp/mcp-content';
+export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
@@ -465,4 +482,5 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
+export { modelConfigToId } from './utils/model';
 export { isZodSchema, zodToJsonSchema } from './utils/zod';

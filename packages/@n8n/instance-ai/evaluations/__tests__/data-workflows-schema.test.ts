@@ -131,10 +131,25 @@ describe('EvalTestCaseSchema', () => {
 		expect(seed.dataTables).toEqual([]);
 	});
 
-	it('rejects an inline seed with no messages', () => {
+	// Emptiness is judged over EVERY slot, not just `messages`: a seed carrying
+	// nothing restores nothing and the case then grades as an unseeded build — green
+	// for the wrong reason.
+	it('rejects an inline seed that carries nothing at all', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({ ...validFixture(), seed: { mode: 'inline', messages: [] } }),
 		).toThrow();
+	});
+
+	it('accepts a fixture-only inline seed that carries just a project', () => {
+		// The project-scope shape: a seeded project must exist on the instance, but the
+		// conversation under test starts from scratch, so there is no history to seed.
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: { mode: 'inline', projects: [{ name: 'Foobar' }] },
+		});
+		const seed = inlineSeedOf(parsed);
+		expect(seed.projects).toEqual([{ name: 'Foobar' }]);
+		expect(seed.messages).toEqual([]);
 	});
 
 	it('rejects an unknown seed mode', () => {

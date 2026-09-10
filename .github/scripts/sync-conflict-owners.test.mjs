@@ -229,20 +229,6 @@ test('buildOutputs carries the regen instruction when the lockfile was deferred'
 	assert.match(out.body, /pnpm install --lockfile-only/);
 });
 
-test('buildOutputs warns about conflict PRs that were closed without merging', () => {
-	const abandoned = [{ number: 42, url: 'https://github.com/n8n-io/n8n/pull/42' }];
-	const out = buildOutputs({
-		syncBranch: 'sync/master-to-3x',
-		files: ['x.ts'],
-		owners: ['alice'],
-		abandoned,
-	});
-	assert.match(out.body, /#42\) was closed without being merged/);
-	assert.match(out.body, /Merge, don't close/);
-	assert.match(out.slack, /<https:\/\/github\.com\/n8n-io\/n8n\/pull\/42\|#42>/);
-	assert.match(out.slack, /merge this one, don't close it/);
-});
-
 test('buildOutputs names the master commit behind each conflicted file', () => {
 	const out = buildOutputs({
 		syncBranch: 'sync/master-to-3x',

@@ -9,6 +9,8 @@ import {
 	pageRLC,
 	parsePositiveInt,
 	resolvePageId,
+	sortDirectionOption,
+	sortQs,
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
@@ -53,17 +55,7 @@ const properties: INodeProperties[] = [
 					{ name: 'Name', value: 'name' },
 				],
 			},
-			{
-				displayName: 'Sort Direction',
-				name: 'sortDirection',
-				type: 'options',
-				default: 'asc',
-				description: 'The direction to order in. Only applies when Sort By is set.',
-				options: [
-					{ name: 'ASC', value: 'asc' },
-					{ name: 'DESC', value: 'desc' },
-				],
-			},
+			sortDirectionOption,
 		],
 	},
 ];
@@ -100,12 +92,8 @@ export const execute: ConfluenceOperation = async function (
 
 	const pageId = await resolvePageId.call(this, itemIndex);
 
-	const qs: IDataObject = {};
+	const qs: IDataObject = sortQs(options);
 	if (prefixes.length > 0) qs.prefix = prefixes.join(',');
-	// The API takes one enum encoding both field and direction, e.g. `name` / `-name`
-	if (typeof options.sortBy === 'string' && options.sortBy !== '') {
-		qs.sort = options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy;
-	}
 
 	return await fetchPaginatedResults.call(
 		this,

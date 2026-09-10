@@ -94,6 +94,13 @@ export default class PackageExport extends BaseCommand {
 				'Whether expression values from credential data are bundled into the package; literal values never travel (default on the instance: expression-values-only)',
 			aliases: ['credential-export-policy'],
 		}),
+		includeArchivedWorkflows: Flags.string({
+			description:
+				'Whether folder and project exports include their archived workflows (workflows given by id always export)',
+			options: ['true', 'false'],
+			default: 'false',
+			aliases: ['include-archived-workflows'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -106,6 +113,7 @@ export default class PackageExport extends BaseCommand {
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 		const workflowVersionPolicy = flags.workflowVersionPolicy;
 		const credentialExportPolicy = flags.credentialExportPolicy;
+		const includeArchivedWorkflows = flags.includeArchivedWorkflows === 'true';
 
 		// A package is either loose workflows/folders or whole projects, not both.
 		if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -128,6 +136,7 @@ export default class PackageExport extends BaseCommand {
 								missingWorkflowDependencyPolicy,
 								workflowVersionPolicy,
 								credentialExportPolicy,
+								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
 							}
 						: {
 								workflowIds,
@@ -137,6 +146,7 @@ export default class PackageExport extends BaseCommand {
 								missingWorkflowDependencyPolicy,
 								workflowVersionPolicy,
 								credentialExportPolicy,
+								...(includeArchivedWorkflows ? { includeArchivedWorkflows } : {}),
 							},
 				);
 			} catch (error) {

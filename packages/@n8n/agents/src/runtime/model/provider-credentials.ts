@@ -47,12 +47,45 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,
 
-	'azure-openai': z.object({
-		apiKey: z.string().optional(),
-		resourceName: z.string().min(1, 'Azure resourceName is required'),
-		apiVersion: z.string().optional(),
-		baseURL: z.string().optional(),
-	}),
+	'azure-openai': z
+		.object({
+			apiKey: z.string().optional(),
+			resourceName: z.string().optional(),
+			apiVersion: z.string().optional(),
+			baseURL: z.string().optional(),
+			/**
+			 * Classic targets *.openai.azure.com (resource name + deployment-based
+			 * URLs); Foundry targets *.services.ai.azure.com/openai/v1 (full base
+			 * URL). The factory branches on this instead of sniffing the host.
+			 */
+			endpointType: z.enum(['classic', 'foundry']).optional(),
+			/**
+			 * User-defined Azure deployment name for classic endpoints. The catalog
+			 * model id is not the deployment id, so the agent flow must carry this
+			 * separately. Only used by the classic branch.
+			 */
+			deploymentName: z.string().optional(),
+		})
+		.superRefine((data, ctx) => {
+			if (data.endpointType === 'foundry') {
+				if (!data.baseURL?.trim()) {
+					ctx.addIssue({
+						code: 'custom',
+						path: ['baseURL'],
+						message: 'baseURL is required',
+					});
+				}
+				return;
+			}
+			// Classic is the default when endpointType is omitted (legacy credentials).
+			if (!data.resourceName?.trim()) {
+				ctx.addIssue({
+					code: 'custom',
+					path: ['resourceName'],
+					message: 'Azure resourceName is required',
+				});
+			}
+		}),
 	'aws-bedrock': z.object({
 		region: z.string().min(1, 'AWS region is required'),
 		accessKeyId: z.string().min(1, 'AWS accessKeyId is required'),

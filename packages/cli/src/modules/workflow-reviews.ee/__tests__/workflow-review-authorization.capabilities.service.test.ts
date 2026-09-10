@@ -11,18 +11,25 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
-
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 
-describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
+/**
+ * What a viewer may do with a review they can see. The allow/deny rule itself is a
+ * pure function with its own truth table in `workflow-review-decision-policy.test.ts`;
+ * what this suite covers is the facts fed into it — who counts as an admin, and what
+ * "can read every covered workflow" resolves to — plus the commenting rule, which
+ * only exists here.
+ */
+describe('WorkflowReviewAuthorizationService.resolveViewerEligibility', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
@@ -62,113 +69,65 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
 	});
 
-	describe('who may decide', () => {
-		it('lets an assigned non-author viewer decide', async () => {
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+	it('lets an assigned reviewer decide and comment', async () => {
+		const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
-			expect(eligibility).toEqual({
-				canDecide: true,
-				decisionIneligibilityReason: null,
-				canComment: true,
-			});
+		expect(eligibility).toEqual({
+			canDecide: true,
+			decisionIneligibilityReason: null,
+			canComment: true,
 		});
+	});
 
-		it('reports a non-assigned viewer as ineligible', async () => {
-			reviewerRepository.isReviewer.mockResolvedValue(false);
+	it('refuses both to someone who is not assigned to review it', async () => {
+		reviewerRepository.isReviewer.mockResolvedValue(false);
 
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+		const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_reviewer_permission',
-				canComment: false,
-			});
+		expect(eligibility).toEqual({
+			canDecide: false,
+			decisionIneligibilityReason: 'missing_reviewer_permission',
+			canComment: false,
 		});
+	});
 
-		it('lets an assigned reviewer decide even when they authored a version', async () => {
-			authorRepository.isAuthor.mockResolvedValue(true);
-			reviewerRepository.isReviewer.mockResolvedValue(true);
+	// The only case where the two answers differ: authors keep talking about a
+	// review they may not decide.
+	it('lets an author who cannot decide comment anyway', async () => {
+		authorRepository.isAuthor.mockResolvedValue(true);
+		reviewerRepository.isReviewer.mockResolvedValue(false);
 
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+		const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
-			expect(eligibility).toEqual({
-				canDecide: true,
-				decisionIneligibilityReason: null,
-				canComment: true,
-			});
+		expect(eligibility).toEqual({
+			canDecide: false,
+			decisionIneligibilityReason: 'author',
+			canComment: true,
 		});
+	});
 
-		it('stops a non-assigned author from approving their own review', async () => {
-			authorRepository.isAuthor.mockResolvedValue(true);
-			reviewerRepository.isReviewer.mockResolvedValue(false);
-
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
-
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'author',
-				canComment: true,
-			});
-		});
-
-		it.each([['global:admin'], ['global:owner']])(
-			'lets an instance %s decide on a review they authored',
-			async (slug) => {
-				authorRepository.isAuthor.mockResolvedValue(true);
-				reviewerRepository.isReviewer.mockResolvedValue(false);
-				const admin = mock<User>({ id: 'user-1', role: { slug } });
-
-				const eligibility = await service.resolveViewerEligibility(admin, readable());
-
-				expect(eligibility).toEqual({
-					canDecide: true,
-					decisionIneligibilityReason: null,
-					canComment: true,
-				});
-				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
-			},
+	// The capability answers "who", not "when": a closed review still reports the
+	// viewer's own eligibility honestly, and callers gate on state separately.
+	it.each([
+		['a closed review', { state: 'closed' as const }],
+		['an approved review', { decision: 'approved' as const }],
+	])('still says who may act on %s', async (_label, overrides) => {
+		const eligibility = await service.resolveViewerEligibility(
+			memberUser(),
+			readable({
+				request: mock<WorkflowReviewRequest>({ id: requestId, projectId, ...overrides }),
+			}),
 		);
 
-		it('lets an author who is a project admin of the review project decide', async () => {
-			authorRepository.isAuthor.mockResolvedValue(true);
-			reviewerRepository.isReviewer.mockResolvedValue(false);
-			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
-
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
-
-			expect(eligibility).toEqual({
-				canDecide: true,
-				decisionIneligibilityReason: null,
-				canComment: true,
-			});
+		expect(eligibility).toEqual({
+			canDecide: true,
+			decisionIneligibilityReason: null,
+			canComment: true,
 		});
+	});
 
-		it('still stops an author whose project-admin rights are in another project', async () => {
-			authorRepository.isAuthor.mockResolvedValue(true);
-			reviewerRepository.isReviewer.mockResolvedValue(false);
-			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
-
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
-
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'author',
-				canComment: true,
-			});
-		});
-
-		it('still queries project roles for a non-admin', async () => {
-			await service.resolveViewerEligibility(memberUser(), readable());
-
-			// Only global admin/owner short-circuit; everyone else hits the project-role lookup.
-			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledOnce();
-		});
-
-		it('tells an author without view access about the permission, not about their authorship', async () => {
-			// An author who cannot view the workflow would hit the endpoint's 404 first,
-			// so the surfaced reason must be the permission one, not 'author'.
-			authorRepository.isAuthor.mockResolvedValue(true);
-
+	describe('what counts as reading every covered workflow', () => {
+		it('refuses everything, without a participation lookup, when none is readable', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
 				readable({ readableWorkflowRows: [] }),
@@ -179,30 +138,11 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			});
+			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 		});
 
-		// The capability answers "who", not "when": a closed review still reports the
-		// viewer's own eligibility honestly, and callers gate on state separately.
-		it.each([
-			['a closed review', { state: 'closed' as const }],
-			['an approved review', { decision: 'approved' as const }],
-		])('still says who may act on %s', async (_label, overrides) => {
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				readable({
-					request: mock<WorkflowReviewRequest>({ id: requestId, projectId, ...overrides }),
-				}),
-			);
-
-			expect(eligibility).toEqual({
-				canDecide: true,
-				decisionIneligibilityReason: null,
-				canComment: true,
-			});
-		});
-
-		it('requires read access to every covered workflow, not just one of them', async () => {
+		it('requires every covered workflow, not just one of them', async () => {
 			const rows = [row('wf-1'), row('wf-2')];
 
 			const eligibility = await service.resolveViewerEligibility(
@@ -216,35 +156,10 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 				canComment: false,
 			});
 		});
-	});
 
-	describe('who may comment', () => {
-		it('refuses commenting to a viewer who cannot open the workflow under review', async () => {
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				readable({ readableWorkflowRows: [] }),
-			);
-
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_permission',
-				canComment: false,
-			});
-		});
-
-		it('refuses commenting to a non-assigned viewer even when they can open the workflow', async () => {
-			reviewerRepository.isReviewer.mockResolvedValue(false);
-
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
-
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_reviewer_permission',
-				canComment: false,
-			});
-		});
-
-		it('refuses commenting to an author who can no longer open the workflow under review', async () => {
+		// An author who cannot view the workflow would hit the endpoint's 404 first,
+		// so the surfaced reason must be the permission one, not 'author'.
+		it('tells an author about the permission rather than their authorship', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
 
 			const eligibility = await service.resolveViewerEligibility(
@@ -258,23 +173,52 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 				canComment: false,
 			});
 		});
+	});
 
-		it('refuses both deciding and commenting on a review whose workflow is gone', async () => {
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				readable({ readableWorkflowRows: [] }),
+	describe('who counts as an admin of the review', () => {
+		beforeEach(() => {
+			// An admin override only matters for someone who could not decide otherwise.
+			authorRepository.isAuthor.mockResolvedValue(true);
+			reviewerRepository.isReviewer.mockResolvedValue(false);
+		});
+
+		it.each([['global:admin'], ['global:owner']])(
+			'lets an instance %s decide a review they authored, without a project lookup',
+			async (slug) => {
+				const admin = mock<User>({ id: 'user-1', role: { slug } });
+
+				const eligibility = await service.resolveViewerEligibility(admin, readable());
+
+				expect(eligibility.canDecide).toBe(true);
+				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			},
+		);
+
+		it('lets a project admin of the review project decide', async () => {
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
+
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+
+			expect(eligibility.canDecide).toBe(true);
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				'user-1',
+				['project:admin'],
 			);
+		});
 
-			expect(eligibility).toEqual({
+		it('does not let a project admin of some other project decide', async () => {
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
+
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+
+			expect(eligibility).toMatchObject({
 				canDecide: false,
-				decisionIneligibilityReason: 'missing_permission',
-				canComment: false,
+				decisionIneligibilityReason: 'author',
 			});
-			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('the admin rule', () => {
+	describe('isAdminForProject', () => {
 		it.each([['global:admin'], ['global:owner']])(
 			'treats a %s as admin of every project',
 			async (slug) => {

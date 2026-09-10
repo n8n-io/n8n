@@ -4,14 +4,41 @@ These tests cover the `/instance-ai` UI and exercise the end-to-end agent flow
 (chat, tool calls, workflow preview). They're tagged
 `@capability:proxy` because the standard CI run uses a MockServer proxy to
 record/replay LLM traffic instead of hitting the real Anthropic API. The shared
-fixture also starts the sandbox service that the workflow builder requires.
+fixture also brings in the sandbox service that the workflow builder requires.
+
+### Sandbox service: hosted or local
+
+Set `N8N_SANDBOX_SERVICE_URL` and `N8N_SANDBOX_SERVICE_API_KEY` and the stack
+points n8n at that deployment and starts no sandbox containers. CI supplies both
+as repository secrets, so internal runs use the hosted service.
+
+The stack falls back to booting the local stack (cert bootstrap + API +
+privileged dind runner + image load, a couple of minutes) when either:
+
+- a var is missing — fork PRs get no secrets; or
+- the deployment fails a preflight check. Before claiming the deployment, the
+  `sandbox` service calls `GET /sandboxes` on it with a 10s timeout. Anything
+  other than a 2xx — service down, DNS failure, no egress, revoked key — means
+  the run uses local containers instead of going red. `/healthz` is deliberately
+  *not* used: it is unauthenticated and returns a static 200, so it would pass
+  with a wrong key.
+
+Nothing else changes between the two paths: the provider is `n8n-sandbox`
+either way. The stack logs which one it picked (`Using hosted: Sandbox service
+(API + runner)`), and a failed preflight prints a warning — a GitHub Actions
+`::warning::` annotation in CI, so a silent downgrade to the slow path is
+visible in the run summary.
+
+The preflight only covers stack startup. A deployment that dies mid-run still
+fails the tests it was serving; the check narrows the window, it does not close
+it.
 
 ## Two run modes
 
 ### CI / container mode (default)
 
-Spins up an n8n container plus the MockServer proxy and sandbox service. The
-proxy either:
+Spins up an n8n container plus the MockServer proxy, and wires in the sandbox
+service (hosted or local, see above). The proxy either:
 
 - **Replays** previously-recorded responses from `expectations/instance-ai/<test-slug>/`
   when no real Anthropic key is present (the default in CI).
@@ -73,10 +100,10 @@ From the isolated runner you get:
   `~/.n8n/database.sqlite` is never touched.
 - **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so the `@capability:proxy` tag
   is honoured locally.
-- **Self-managed n8n** with a real `/rest/e2e/reset` readiness check (not the
-  racy default favicon poll), `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop
-  Playwright from spawning a duplicate, and process-group cleanup so
-  `node ./n8n` doesn't get orphaned.
+- **Self-managed n8n** with a `/rest/e2e/reset` readiness check that waits for
+  the E2E controller, `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop Playwright from
+  spawning a duplicate, and process-group cleanup so `node ./n8n` doesn't get
+  orphaned.
 
 The `instanceAiProxySetup` fixture (`fixtures.ts`) detects the missing
 `n8nContainer` and short-circuits all proxy + tool-trace setup, so every LLM

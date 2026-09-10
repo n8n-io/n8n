@@ -133,6 +133,7 @@ describe('createToolsFromLocalMcpServer', () => {
 			const tools = createToolsFromLocalMcpServer({ server, logger: mockLogger });
 			expect(tools.has('write_file')).toBe(true);
 			expect(tools.has('read_file')).toBe(true);
+			expect(tools.get('write_file')?.outputTrust).toBe('untrusted');
 		});
 
 		it('falls back to record schema when inputSchema conversion fails', () => {

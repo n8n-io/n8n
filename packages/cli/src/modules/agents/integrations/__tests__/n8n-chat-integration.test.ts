@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { createIntegrationActionTool } from '../integration-tools';
 import type {
@@ -210,7 +211,11 @@ describe('internal integration dispatch', () => {
 	});
 
 	it('action executor skips getChatInstance and routes respond to the integration', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'respond',
@@ -223,7 +228,11 @@ describe('internal integration dispatch', () => {
 	});
 
 	it('action executor returns UNSUPPORTED_ACTION for send_dm on n8n_chat', async () => {
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
@@ -241,7 +250,11 @@ describe('internal integration dispatch', () => {
 			lastName: 'Lovelace',
 			email: 'ada@example.com',
 		} as User);
-		const executor = new ChatIntegrationContextQueryExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationContextQueryExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
 		const result = await executor.execute({
 			descriptor,
 			query: 'get_user',

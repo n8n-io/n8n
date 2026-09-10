@@ -1,34 +1,22 @@
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
-import {
-	createGetExecutionHandler,
-	createGetExecutionStepsHandler,
-} from './workflow-executions.handlers';
+import { createGetExecutionHandler } from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
-import { UnimplementedError, type JsonValue } from '../../common';
+import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
 
 const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.array(jsonValueSchema),
-		z.record(jsonValueSchema),
-	]),
-);
-
 const StepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
 
+// Non-empty: lifecycle events reship both as identifiers.
 const GraphNodeSchema = z.object({
-	id: z.string(),
-	name: z.string(),
+	id: z.string().min(1),
+	name: z.string().min(1),
 	type: StepTypeSchema,
 	config: z.unknown().optional(),
 });
@@ -51,9 +39,25 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
+	/**
+	 * The workflow the graph came from. Only its JSON-ness is checked: the engine
+	 * stores and reports it without reading a field out of it.
+	 */
+	workflow: jsonObjectSchema,
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
+	// `strict`, so a misspelled key fails loudly instead of running the step
+	// without the fact the caller meant to supply.
+	callerContext: z
+		.object({
+			userId: z.string().min(1).optional(),
+			projectId: z.string().min(1).optional(),
+			hostMode: z.string().min(1).optional(),
+		})
+		.strict(),
+	/** The caller mints the id. v7 only, so ids stay time-ordered. */
+	executionId: z.string().regex(UUID_V7_PATTERN),
 });
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
@@ -87,8 +91,6 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
-
-	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }

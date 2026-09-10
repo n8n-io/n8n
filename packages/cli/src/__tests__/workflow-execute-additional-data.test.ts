@@ -35,6 +35,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
+	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
@@ -127,6 +128,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
+	const workflowPreExecute = mockInstance(WorkflowPreExecute);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
@@ -186,10 +188,25 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
+			workflowPreExecute.run.mockResolvedValue(undefined);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(
 				mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
 			);
+		});
+
+		it('does not persist when preExecute blocks the run', async () => {
+			workflowPreExecute.run.mockRejectedValue(new Error('blocked'));
+
+			await expect(
+				executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				),
+			).rejects.toThrow('blocked');
+
+			expect(activeExecutions.add).not.toHaveBeenCalled();
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
@@ -271,7 +288,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
-			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+			// getBase backfills projectId from the workflow owner (mocked to
+			// 'project-id-1' in this describe's beforeEach) before calling getVariables.
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, 'project-id-1');
 		});
 
 		describe('credential permission check routing', () => {
@@ -1329,6 +1348,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			expect(additionalData.workflowSettings).toBe(workflowSettings);
+		});
+
+		describe('projectId resolution', () => {
+			const ownershipService = mockInstance(OwnershipService);
+
+			beforeEach(() => {
+				ownershipService.getWorkflowProjectCached.mockReset();
+				// Both this and the executeWorkflow/executeAgent describes call
+				// mockInstance(OwnershipService), which each Container.set a fresh mock.
+				// Re-bind ours so the source resolves it.
+				Container.set(OwnershipService, ownershipService);
+			});
+
+			it('backfills projectId from the workflow owner when missing', async () => {
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: 'owning-project-1' }),
+				);
+
+				const additionalData = await getBase({ workflowId: 'workflow-1' });
+
+				expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
+				expect(additionalData.projectId).toBe('owning-project-1');
+			});
+
+			it('keeps the given projectId untouched when already present', async () => {
+				const additionalData = await getBase({
+					workflowId: 'workflow-1',
+					projectId: 'given-project',
+				});
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBe('given-project');
+			});
+
+			it('leaves projectId unset when workflowId is missing', async () => {
+				const additionalData = await getBase();
+
+				expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+				expect(additionalData.projectId).toBeUndefined();
+			});
+
+			it('rejects when the workflow has no resolvable owning project', async () => {
+				ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('not found'));
+
+				await expect(getBase({ workflowId: 'workflow-1' })).rejects.toThrow('not found');
+			});
 		});
 	});
 

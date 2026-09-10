@@ -7,6 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	FeatureFlagPayloads,
 	FeatureFlags,
 	IUserSettings,
 	AnnotationVote,
@@ -66,6 +67,7 @@ export interface IExecutionBase {
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
@@ -142,6 +144,7 @@ export interface PublicUser {
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
+	featureFlagPayloads?: FeatureFlagPayloads;
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;

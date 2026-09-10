@@ -7,6 +7,9 @@
                 "canAcceptOwnership": {
                     "type": "boolean"
                 },
+                "canAccessViaGenAi": {
+                    "type": "boolean"
+                },
                 "canAddChildren": {
                     "type": "boolean"
                 },
@@ -390,5 +393,5 @@
             "type": "boolean"
         }
     },
-    "version": 7
+    "version": 8
 }

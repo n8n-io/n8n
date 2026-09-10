@@ -137,7 +137,7 @@ const storyComponents = {
 
 const slotStyles = '';
 
-export const Group: StoryFn = () => ({
+export const Default: StoryFn = () => ({
 	components: { N8nAiActivityStepGroup, N8nAiActivityStep, ...storyComponents },
 	setup() {
 		return { steps };

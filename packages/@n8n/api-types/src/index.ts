@@ -11,6 +11,8 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './instance-registry-types';
+export type * from './worker-pools';
+export type * from './node-type-availability';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -120,11 +122,24 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
+export { CONTEXT_PREFERENCES_FLAG } from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export {
+	credentialIdParamSchema,
+	executionIdParamSchema,
+	projectIdParamSchema,
+	promotionConnectionIdParamSchema,
+	promotionDirectionParamSchema,
+	promotionProviderIdParamSchema,
+	roleMappingRuleIdParamSchema,
+	roleSlugParamSchema,
+	workflowIdParamSchema,
+	workflowVersionIdParamSchema,
+} from './schemas/public-api-path-params.schema';
 export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
@@ -168,6 +183,18 @@ export {
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
+
+export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+
+export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
 
 export {
 	insightsSummarySchema,
@@ -238,6 +265,8 @@ export {
 export {
 	WorkflowPublicationStatusSchema,
 	type WorkflowPublicationStatus,
+	WorkflowListPublicationStatusSchema,
+	type WorkflowListPublicationStatus,
 } from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
@@ -292,6 +321,7 @@ export {
 export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
@@ -330,7 +360,10 @@ export {
 	credentialSetupHintSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
+	shouldAutoResolveCredential,
 	workflowSetupNodeSchema,
+	setupItemSchema,
+	setupItemsPayloadSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -347,11 +380,19 @@ export {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	CANVAS_NODE_CONTEXT_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	credentialDestinationSchema,
+	credentialDestinationDecisionSchema,
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
@@ -378,9 +419,11 @@ export {
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	instanceAiNodesAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -410,9 +453,14 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	instanceAiBuildModeSchema,
+	instanceAiPromptConfigurationSchema,
+	INSTANCE_AI_RUN_LIMIT_REASONS,
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,
@@ -424,6 +472,8 @@ export type {
 	InstanceAiWebSearchSource,
 	InstanceAiSetupState,
 	InstanceAiSetupStateInput,
+	InstanceAiRunLimitReason,
+	InstanceAiRunLimitMeta,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -460,6 +510,8 @@ export type {
 	InstanceAiToolResultEvent,
 	InstanceAiToolErrorEvent,
 	InstanceAiConfirmationRequestEvent,
+	InstanceAiSetupItem,
+	InstanceAiSetupItemsEvent,
 	InstanceAiErrorEvent,
 	InstanceAiFilesystemRequestEvent,
 	InstanceAiFilesystemResponse,
@@ -519,6 +571,8 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialDestination,
+	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
@@ -720,4 +774,5 @@ export {
 	BLOCK_ACCESS_ASSIGNMENT,
 	SSO_ERROR_ACCESS_DENIED,
 	SSO_ERROR_QUERY_PARAM,
+	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';

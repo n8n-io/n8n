@@ -72,6 +72,18 @@ describe('useAgentThreadsApi', () => {
 		expect(result).toBe(response);
 	});
 
+	it('percent-encodes a rotated session id so the # survives as a URL, not a fragment', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ thread: { id: 'x' }, executions: [] });
+
+		await getThreadDetail(restApiContext, 'project-1', 'agent-1', 'agent-1:chat:bot-1-2#1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project-1/agents/v2/agent-1/threads/agent-1%3Achat%3Abot-1-2%231',
+		);
+	});
+
 	it('deletes a thread from the agent-scoped collection', async () => {
 		const response = { success: true };
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);

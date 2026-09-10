@@ -206,6 +206,10 @@ defineExpose({
 					:type="item.data.actionPill.type ?? 'default'"
 					:text="item.data.actionPill.text"
 				/>
+				<span v-if="item.data?.connectedLabel" :class="$style.connected">
+					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
+					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
+				</span>
 			</div>
 		</template>
 
@@ -233,7 +237,7 @@ defineExpose({
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	height: var(--height--lg);
+	height: var(--n8n-ai-select--height, var(--height--lg));
 	padding: 0 var(--spacing--xs);
 	gap: var(--spacing--xs);
 	border: var(--border);
@@ -267,9 +271,16 @@ defineExpose({
 .dropdownButtonBorderless {
 	border-color: transparent;
 	background-color: transparent;
+	padding: 0 var(--spacing--2xs);
 
 	&:hover {
-		background-color: var(--color--foreground);
+		background-color: var(--background--hover);
+	}
+
+	&:active,
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
+		background-color: var(--background--active);
 	}
 }
 
@@ -306,6 +317,18 @@ defineExpose({
 .infoIcon {
 	flex-shrink: 0;
 	margin-inline: var(--spacing--5xs);
+}
+
+.connected {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.connectedIcon {
+	color: var(--color--success);
 }
 
 .emoji {

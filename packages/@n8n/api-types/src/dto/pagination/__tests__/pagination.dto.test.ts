@@ -1,4 +1,9 @@
-import { PaginationDto, MAX_ITEMS_PER_PAGE, createTakeValidator } from '../pagination.dto';
+import {
+	PaginationDto,
+	MAX_ITEMS_PER_PAGE,
+	createTakeValidator,
+	publicApiPaginationSchema,
+} from '../pagination.dto';
 
 describe('PaginationDto', () => {
 	describe('valid inputs', () => {
@@ -161,5 +166,21 @@ describe('PaginationDto', () => {
 			expect(validator.parse('5')).toBe(5);
 			expect(validator.parse('9999')).toBe(MAX_ITEMS_PER_PAGE);
 		});
+	});
+});
+
+describe('publicApiPaginationSchema', () => {
+	const limit = publicApiPaginationSchema.limit;
+
+	test('defaults limit to 100', () => {
+		expect(limit.parse(undefined)).toBe(100);
+	});
+
+	test('caps limit at MAX_ITEMS_PER_PAGE', () => {
+		expect(limit.parse('300')).toBe(MAX_ITEMS_PER_PAGE);
+	});
+
+	test('rejects a non-numeric limit', () => {
+		expect(limit.safeParse('abc').success).toBe(false);
 	});
 });

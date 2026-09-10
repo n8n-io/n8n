@@ -700,6 +700,14 @@ function preventOutsideClose(event: Event): void {
 	event.preventDefault();
 }
 
+// Reka's focus trap otherwise focuses the first tabbable field, which makes a
+// filterable select open its dropdown as soon as the wizard appears. Focus the
+// dialog itself instead so keyboard navigation still starts inside it.
+function focusDialogInsteadOfFirstField(event: Event): void {
+	event.preventDefault();
+	if (event.target instanceof HTMLElement) event.target.focus();
+}
+
 const failureKey = computed(() => VERIFICATION_FAILURE_COPY[failure.value ?? 'provider_error']);
 const successMessage = computed(() => {
 	if (!success.value) return '';
@@ -732,6 +740,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 		:data-test-id="dialogTestId"
 		@update:open="handleOpenChange"
 		@interact-outside="preventOutsideClose"
+		@open-auto-focus="focusDialogInsteadOfFirstField"
 	>
 		<div :class="$style.body">
 			<template v-if="step === 'model'">
@@ -868,6 +877,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							:model-value="modelName"
 							:teleported="true"
 							filterable
+							:disabled="readOnly"
 							:data-test-id="
 								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
 							"
@@ -889,7 +899,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							id="assistant-model-name"
 							v-model="modelName"
 							class="ph-no-capture"
-							:disabled="modelNameLocked"
+							:disabled="modelNameLocked || readOnly"
 							:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
 							:spellcheck="false"
 							:data-test-id="

@@ -1,5 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { isPlaceholderValue } from '@n8n/utils/placeholder';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ExecutionRunResult, VerificationNodePreview } from './types';
 import {
@@ -23,6 +25,10 @@ export type ChatModelRecoveryOptions = Pick<
 >;
 
 type ExecutionNodeError = NonNullable<ExecutionRunResult['nodeErrors']>[number];
+
+/** Disclosure for a node whose output came from pin data saved on the workflow. */
+export const WORKFLOW_PIN_SIMULATION_REASON =
+	'Output came from pinned data saved on the workflow — unpin it for a live test';
 
 const CREDENTIAL_FAILURE_KEYWORDS = [
 	'credential',
@@ -248,7 +254,7 @@ function classifyVerificationFailure(
 						lastNodeExecuted,
 						chatModelRecovery?.creditsCoveredNodeNames,
 					)
-					? " If the user's own key or free tier is exhausted, switch the chat-model node to n8n credits or another provider they can run."
+					? " If the user's own key or free tier is exhausted, switch the chat-model node to Gateway credits or another provider they can run."
 					: " If the user's own key or free tier is exhausted, switch the chat-model node to another provider or key the user can run."
 				: '';
 		return createRemediation({
@@ -335,8 +341,20 @@ function buildCoverageNote(
 	result: ExecutionRunResult,
 	success: boolean,
 	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -346,7 +364,18 @@ function buildCoverageNote(
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
 			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
 			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
-			'treating it as verified.'
+			'treating it as verified.' +
+			triggerScopeNote
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			" Any unreached node that IS on this trigger's branch did not receive input items " +
+			'(usually an empty lookup or query) — seed matching test data and re-run before treating ' +
+			'it as verified.'
 		);
 	}
 	const ending = result.lastNodeExecuted
@@ -390,6 +419,7 @@ export interface VerificationAnalysis {
 	success: boolean;
 	reachedNames: Set<string>;
 	reachedSimulatedNodes: Array<{ nodeName: string; reason: string }>;
+	workflowPinnedNodeNames: string[];
 	nodesNotReached: string[];
 	remediation?: RemediationMetadata;
 	nodesExecuted?: string[];
@@ -397,6 +427,16 @@ export interface VerificationAnalysis {
 	coverageNote?: string;
 	errorMessage?: string;
 	nodeErrors: ExecutionNodeError[];
+}
+
+export function getTriggerMainFlowScope(
+	connections: WorkflowJSON['connections'],
+	triggerNodeName: string,
+): Set<string> {
+	return new Set([
+		triggerNodeName,
+		...getChildNodes(toEngineConnections(connections), triggerNodeName, NodeConnectionTypes.Main),
+	]);
 }
 
 export function analyzeVerificationResult(args: {
@@ -415,6 +455,10 @@ export function analyzeVerificationResult(args: {
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
+	/** Main-flow nodes that belong to the selected trigger. */
+	verificationScope?: ReadonlySet<string>;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -425,6 +469,8 @@ export function analyzeVerificationResult(args: {
 		runId,
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
+		triggerNodeName,
+		verificationScope,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -436,16 +482,14 @@ export function analyzeVerificationResult(args: {
 	const plannedSimulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
 	const workflowPinnedNodes = (result.workflowPinnedNodeNames ?? [])
 		.filter((name) => reachedNames.has(name) && !plannedSimulatedNames.has(name))
-		.map((name) => ({
-			nodeName: name,
-			reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
-		}));
+		.map((name) => ({ nodeName: name, reason: WORKFLOW_PIN_SIMULATION_REASON }));
 	const reachedSimulatedNodes = [
 		...simulatedNodes.filter((n) => reachedNames.has(n.nodeName)),
 		...workflowPinnedNodes,
 	];
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
+		.filter((name) => !verificationScope || verificationScope.has(name))
 		.filter((name) => !reachedNames.has(name));
 	const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 	const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
@@ -476,6 +520,7 @@ export function analyzeVerificationResult(args: {
 		success,
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames: workflowPinnedNodes.map((n) => n.nodeName),
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
@@ -485,6 +530,7 @@ export function analyzeVerificationResult(args: {
 			result,
 			success,
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
 		),
 		errorMessage,
 		nodeErrors,

@@ -73,6 +73,13 @@ test.describe(
 				expect(metadata.bearer_methods_supported).toEqual(['header']);
 				expect(metadata.authorization_servers).toHaveLength(1);
 			});
+
+			test('should 404 a path-inserted authorization server probe', async ({ api }) => {
+				const response = await api.mcpOauth.getAuthorizationServerMetadata('/mcp/some-trigger');
+
+				expect(response.status()).toBe(404);
+				expect(response.headers()['content-type']).not.toContain('text/html');
+			});
 		});
 
 		test.describe('Authorization code flow', () => {
@@ -401,6 +408,28 @@ test.describe(
 				});
 
 				expect(response.status()).toBe(201);
+			});
+
+			// A client that cached the MCP resource URL skips discovery, so the
+			// authorize URL is where it must learn the resource is gone — before
+			// the user is sent through login and consent.
+			test('should refuse authorization while MCP access is disabled', async ({ api }) => {
+				const client = await api.mcpOauth.registerClientOrFail({
+					client_name: `e2e OAuth client ${nanoid(8)}`,
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+				});
+
+				const authorizeResponse = await api.mcpOauth.authorize({
+					clientId: client.client_id,
+					redirectUri: 'https://example.com/callback',
+					challenge: api.mcpOauth.createPkcePair().challenge,
+				});
+
+				expect(authorizeResponse.status()).toBe(400);
+				const body = await authorizeResponse.json();
+				expect(body.error).toBe('invalid_target');
 			});
 		});
 

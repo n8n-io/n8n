@@ -1,4 +1,10 @@
-import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	inTest,
+	isContainedWithin,
+	isEnvFeatureEnabled,
+	Logger,
+	ModuleRegistry,
+} from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
@@ -89,7 +95,7 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
 
-		if (process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS !== 'true') {
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
@@ -403,7 +409,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	private shouldInjectContextEstablishmentHooks() {
-		return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+		return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 	}
 
 	private injectContextEstablishmentHooks() {
@@ -656,6 +662,16 @@ export class LoadNodesAndCredentials {
 			this.augmentNodeTypeDescription(loadedNode.type.description);
 		}
 		return loadedNode;
+	}
+
+	/**
+	 * Absolute path of a node's source file. A loader keeps the path relative to
+	 * its own package directory, so it must be resolved before any file access.
+	 */
+	resolveNodeSourcePath(fullNodeType: string, sourcePath: string): string {
+		const [packageName] = fullNodeType.split('.');
+		const loader = this.loaders[packageName];
+		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {

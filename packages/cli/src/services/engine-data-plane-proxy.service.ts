@@ -1,15 +1,27 @@
 import { Service } from '@n8n/di';
-import type { StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
+import type { ExecutionSnapshot, StartExecutionRequest, StartExecutionResult } from '@n8n/engine';
 import { UserError } from 'n8n-workflow';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
+
 /**
- * Starts an execution on the engine 2.0 data plane.
+ * Starts and reads executions on the engine 2.0 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
  */
 export interface EngineDataPlaneProvider {
 	startExecution(request: StartExecutionRequest): Promise<StartExecutionResult>;
+
+	/**
+	 * `undefined` when the data plane holds no execution under that id.
+	 *
+	 * @param options.includeSteps Also report the steps, on the same round trip.
+	 */
+	getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined>;
 }
 
 /**
@@ -40,5 +52,15 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		}
 
 		return await this.provider.startExecution(request);
+	}
+
+	/** No provider means no v2 execution can exist, so this is a miss, not an error. */
+	async getExecution(
+		id: ExecutionIdV2,
+		options?: { includeSteps?: boolean },
+	): Promise<ExecutionSnapshot | undefined> {
+		if (!this.provider) return undefined;
+
+		return await this.provider.getExecution(id, options);
 	}
 }

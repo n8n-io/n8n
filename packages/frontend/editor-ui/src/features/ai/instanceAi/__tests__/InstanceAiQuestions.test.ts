@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiQuestions, { type QuestionItem } from '../components/InstanceAiQuestions.vue';
 
@@ -36,6 +36,46 @@ function render(questions: QuestionItem[]) {
 describe('InstanceAiQuestions', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it('keeps the text input between three and eight rows while editing', async () => {
+		const originalGetComputedStyle = window.getComputedStyle;
+		vi.spyOn(window, 'getComputedStyle').mockImplementation(function getComputedStyle(element) {
+			const styles = originalGetComputedStyle(element);
+			const originalGetPropertyValue = styles.getPropertyValue.bind(styles);
+			vi.spyOn(styles, 'getPropertyValue').mockImplementation(function getPropertyValue(property) {
+				if (property === 'box-sizing') return 'content-box';
+				if (property.startsWith('padding-') || property.startsWith('border-')) return '0px';
+				return originalGetPropertyValue(property);
+			});
+			return styles;
+		});
+		vi.spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get').mockImplementation(
+			function getScrollHeight(this: HTMLTextAreaElement) {
+				return Math.max(this.value.split('\n').length, 1) * 20;
+			},
+		);
+
+		const { getByRole } = render([textQuestion]);
+		const textarea = getByRole('textbox');
+
+		await waitFor(() => {
+			expect(textarea).toHaveStyle({ height: '60px', minHeight: '60px' });
+		});
+
+		const longText = Array.from({ length: 10 }, (_, index) => `Line ${index + 1}`).join('\n');
+		await fireEvent.update(textarea, longText);
+
+		await waitFor(() => {
+			expect(textarea).toHaveStyle({ height: '160px', overflowY: 'auto' });
+		});
+
+		const editedText = longText.replace('Line 5', 'Edited line 5');
+		await fireEvent.update(textarea, editedText);
+
+		expect(textarea).toHaveValue(editedText);
+		expect(textarea).toHaveStyle({ height: '160px', overflow: 'auto' });
 	});
 
 	it('submits the final empty text question as skipped', async () => {

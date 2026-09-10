@@ -1,9 +1,4 @@
-import type {
-	BuiltTool,
-	CredentialListItem,
-	CredentialProvider,
-	InterruptibleToolContext,
-} from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	channelSuspendPayloadSchema,
@@ -11,8 +6,10 @@ import {
 	interactionQuestionSchema,
 	questionAnswerSchema,
 	questionsSuspendPayloadSchema,
+	shouldAutoResolveCredential,
 	type InteractionQuestion,
 } from '@n8n/api-types';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -20,16 +17,29 @@ import { z } from 'zod';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
 
-/** Filters an already-fetched credential list down to one type, in the shape the setup cards need. */
+/** Filter an already-fetched credential list down to one type, in the shape setup cards need. */
 function credentialsOfType(
-	all: CredentialListItem[],
+	all: Array<{ id: string; name: string; type: string }>,
 	credentialType: string,
 ): Array<{ id: string; name: string }> {
 	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
 }
 
+/** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
+async function credentialNameById(
+	credentialService: InstanceAiCredentialService,
+	credentialId: string,
+): Promise<string> {
+	try {
+		const credential = await credentialService.get(credentialId);
+		return credential.name;
+	} catch {
+		return credentialId;
+	}
+}
+
 export interface FinishSetupToolDeps {
-	credentialProvider: CredentialProvider;
+	credentialService: InstanceAiCredentialService;
 	agentId: string;
 	projectId: string;
 	track: BuilderTrackFn;
@@ -218,7 +228,7 @@ async function computeInitialPlan(
 
 	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
-		const all = await deps.credentialProvider.list();
+		const all = await deps.credentialService.list({ projectId: deps.projectId });
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
 		for (const slot of credentialRequests) {
@@ -228,8 +238,10 @@ async function computeInitialPlan(
 				integrationCredentialIds.includes(credential.id),
 			);
 			const autoResolved =
-				channelMatch ?? (existingCredentials.length === 1 ? existingCredentials[0] : undefined);
-
+				channelMatch ??
+				(shouldAutoResolveCredential(slot.credentialType, existingCredentials.length)
+					? existingCredentials[0]
+					: undefined);
 			if (autoResolved) {
 				credentials[key] = autoResolved;
 			} else {
@@ -281,7 +293,6 @@ async function mergeResumeIntoCollected(
 		return { ...previous, channels };
 	}
 
-	const all = await deps.credentialProvider.list();
 	const credentials = { ...(previous.credentials ?? {}) };
 	for (const slot of phase.slots) {
 		const key = slot.credentialSlot ?? slot.credentialType;
@@ -293,9 +304,7 @@ async function mergeResumeIntoCollected(
 		credentials[key] = credentialId
 			? {
 					id: credentialId,
-					name:
-						credentialsOfType(all, slot.credentialType).find((c) => c.id === credentialId)?.name ??
-						credentialId,
+					name: await credentialNameById(deps.credentialService, credentialId),
 				}
 			: 'skipped';
 	}
@@ -349,7 +358,7 @@ async function suspendForPhase(params: {
 		});
 	}
 
-	const all = await deps.credentialProvider.list();
+	const all = await deps.credentialService.list({ projectId: deps.projectId });
 	const seenTypes = new Set<string>();
 	const credentialRequests: Array<{
 		credentialType: string;

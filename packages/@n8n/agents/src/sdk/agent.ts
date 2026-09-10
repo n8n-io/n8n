@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { JSONSchema7 } from 'json-schema';
 import type { z } from 'zod';
 
@@ -9,7 +10,11 @@ import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './me
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import {
+	AgentRuntime,
+	type AgentRuntimeConfig,
+	type VolatileInstructionsProvider,
+} from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -80,6 +85,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
+import { modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -199,6 +205,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
+	private runStateManager?: RunStateManager;
+
 	private thinkingConfig?: ThinkingConfig;
 
 	private reasoningLevel?: ReasoningLevel;
@@ -221,6 +229,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * Merged with `mcpClients`-sourced failures by `getMcpConnectionFailures()`.
 	 */
 	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
+
+	private volatileInstructionsProviderValue?: VolatileInstructionsProvider;
 
 	private defaultExecutionOptions?: ExecutionOptions;
 
@@ -278,6 +288,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	instructions(text: string, options?: { providerOptions?: ProviderOptions }): this {
 		this.instructionsText = text;
 		this.instructionProviderOpts = options?.providerOptions;
+		return this;
+	}
+
+	/** Set the provider that supplies host instructions before each model call. */
+	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this {
+		this.volatileInstructionsProviderValue = provider;
 		return this;
 	}
 
@@ -430,6 +446,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * ```
 	 */
 	checkpoint(storage: 'memory' | CheckpointStore): this {
+		if (this.checkpointStore !== storage) {
+			this.runStateManager = undefined;
+		}
 		this.checkpointStore = storage;
 		return this;
 	}
@@ -874,16 +893,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	/**
 	 * @internal Lazy-build the agent on first use. Stores the promise so
-	 * concurrent callers share one build operation. On error the promise is
-	 * cleared so the caller can retry.
+	 * concurrent callers share one build operation. An error clears the promise.
+	 * An MCP connection failure also clears it so the next run can retry discovery.
 	 */
 	private async ensureBuilt(): Promise<AgentRuntimeConfig> {
 		if (!this.buildPromise) {
 			const p = this.build();
 			this.buildPromise = p;
-			p.catch(() => {
-				if (this.buildPromise === p) this.buildPromise = undefined;
-			});
+			void p.then(
+				(config) => {
+					if (config.mcpConnectionFailures?.length && this.buildPromise === p) {
+						this.buildPromise = undefined;
+					}
+				},
+				() => {
+					if (this.buildPromise === p) this.buildPromise = undefined;
+				},
+			);
 		}
 		return await this.buildPromise;
 	}
@@ -1071,7 +1097,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
 				? { topK: this.deferredToolSearchTopK }
 				: undefined;
-		const runState = new RunStateManager(this.checkpointStore);
+		const runState = (this.runStateManager ??= new RunStateManager(this.checkpointStore));
 
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
@@ -1102,6 +1128,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
+			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
@@ -1127,6 +1154,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
+			...(this.volatileInstructionsProviderValue
+				? { volatileInstructionsProvider: this.volatileInstructionsProviderValue }
+				: {}),
 		};
 	}
 
@@ -1181,11 +1211,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								request: DelegateSubAgentResumeRequest,
 								helpersFromHandler: DelegateSubAgentRunnerHelpers,
 							) => {
-								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
-								}
 								if (hostResumeRunner !== undefined) {
 									return await hostResumeRunner(request, helpersFromHandler);
+								}
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									return await runInlineSubAgent(request, helpersFromHandler.emitChunk, request);
 								}
 								return configuredSubAgentNotFound(request);
 							},
@@ -1193,12 +1223,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 								request: DelegateSubAgentCancelRequest,
 								helpersFromHandler: DelegateSubAgentRunnerHelpers,
 							) => {
-								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
-									await options.runState.cancel(request.childRunId);
-									return;
-								}
 								if (hostCancelRunner !== undefined) {
 									await hostCancelRunner(request, helpersFromHandler);
+									return;
+								}
+								if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+									await options.runState.cancel(request.childRunId);
 									return;
 								}
 								throw new Error(
@@ -1414,29 +1444,10 @@ function resolveInlineSubAgentModelConfig(
 	return mappedModel ?? options.modelConfig;
 }
 
-function modelConfigToId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
-}
-
 function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
-	const modelId = modelConfigToId(modelConfig);
-	if (!modelId) return undefined;
-	const slashIndex = modelId.indexOf('/');
-	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
+	const id = modelConfigToId(modelConfig);
+	if (id === undefined) return undefined;
+	return getProviderPrefix(id) || undefined;
 }
 
 function shouldInheritThinking(

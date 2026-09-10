@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -12,6 +12,29 @@ import type { ConfluenceOperation } from '../router';
 const SEARCH_PAGE_SIZE = 50;
 // Search post-filters results by permission, so empty pages mid-stream are legitimate
 const MAX_CONSECUTIVE_EMPTY_PAGES = 5;
+
+const CQL_REFERENCE_URL =
+	'https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/';
+
+// Confluence rejects some syntax errors with nothing after the colon, so the API
+// message carries no reason at all. Any other rejection says something usable and
+// is left alone.
+const NO_REASON_GIVEN = 'Could not parse cql :';
+
+function toSearchError(
+	this: IExecuteFunctions,
+	error: unknown,
+	itemIndex: number,
+): NodeOperationError | undefined {
+	if (!(error instanceof NodeApiError) || !error.message.trim().endsWith(NO_REASON_GIVEN)) {
+		return undefined;
+	}
+
+	return new NodeOperationError(this.getNode(), 'Could not parse the CQL query', {
+		itemIndex,
+		description: `Confluence did not say which part it rejected. Check the syntax against Atlassian's <a href="${CQL_REFERENCE_URL}" target="_blank">CQL reference</a>.`,
+	});
+}
 
 const properties: INodeProperties[] = [
 	{
@@ -134,13 +157,12 @@ export const execute: ConfluenceOperation = async function (
 		};
 		if (pageParam !== undefined) pageQs[pageParam.key] = pageParam.value;
 
-		const response = await confluenceApiRequest.call(
-			this,
-			'GET',
-			'/wiki/rest/api/search',
-			{},
-			pageQs,
-		);
+		let response: IDataObject;
+		try {
+			response = await confluenceApiRequest.call(this, 'GET', '/wiki/rest/api/search', {}, pageQs);
+		} catch (error) {
+			throw toSearchError.call(this, error, itemIndex) ?? error;
+		}
 		const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		results.push.apply(results, entries);
 		if (results.length >= limit) break;

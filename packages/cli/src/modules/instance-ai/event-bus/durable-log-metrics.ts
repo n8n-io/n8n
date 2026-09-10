@@ -103,15 +103,6 @@ export class DurableLogMetrics {
 		this.eventService.emit('instance-ai-history-folded', { latencyMs, trees });
 	}
 
-	/**
-	 * The parser is pure module code and keeps its own counter
-	 * (messageParserStats); this only forwards new activations to the
-	 * metrics pipeline.
-	 */
-	notifyParserFallbacks(count: number): void {
-		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
-	}
-
 	recordSweepRunExamined(): void {
 		this.sweep.runsExamined++;
 	}

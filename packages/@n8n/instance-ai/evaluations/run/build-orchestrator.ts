@@ -13,6 +13,7 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
@@ -105,6 +106,9 @@ export type BuildArgs = Pick<
 	WorkflowTestCase,
 	| 'conversation'
 	| 'messageBudget'
+	| 'buildMode'
+	| 'promptVersion'
+	| 'allowUserExecution'
 	| 'credentials'
 	| 'seed'
 	| 'executionScenarios'
@@ -115,7 +119,15 @@ export type BuildArgs = Pick<
 	// callback's parameter type, so tsc cannot catch a dropped field here; the
 	// orchestrator test pins it.
 	| 'credentialFixture'
-> & { timeoutMs: number };
+> & {
+	timeoutMs: number;
+	/** Which case this build is, and which repeat of it. Not used by the build
+	 *  itself — it rides to `ensureThread` as sourceContext so the LangSmith
+	 *  trace carries `source_context.evalCase` / `evalIteration`. Without it
+	 *  every build in a traced project is an anonymous conversation. */
+	fileSlug: string;
+	iteration: number;
+};
 
 /** A lane plus the allocator-managed counters and the caller-provided (traced)
  *  build/execute wrappers. `runner` is the underlying Lane (n8n client,
@@ -418,6 +430,23 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			searchableBuildText(build);
 		const testCase = testCaseByFileSlug.get(fileSlug);
 		if (!testCase) return;
+		// Staging never landed, so the case has no premise to be judged against. The row
+		// itself is short-circuited in `case-pipeline`, but expectations are counted
+		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
+		// does not reach them. A priorRuns case is usually expectation-only, so without
+		// this the single graded unit still lands in the builder's baseline as a red.
+		if (build.priorRunFailed) {
+			buildExpectationsByKey.set(
+				key,
+				Promise.resolve(
+					allFailVerdicts(
+						collectExpectations(testCase),
+						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+					),
+				),
+			);
+			return;
+		}
 		// Deterministic credential-setup verdicts, started EAGERLY: per-build
 		// cleanup deletes artifacts later, and a credential read that lost that
 		// race would report "not created" for a run that did create one.
@@ -618,12 +647,17 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await lane.tracedBuild({
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
+						buildMode: entry.buildMode,
+						promptVersion: entry.promptVersion,
+						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
 						credentialFixture: entry.credentialFixture,
 						timeoutMs,
+						fileSlug,
+						iteration,
 					});
 				} finally {
 					allocator.release(lane, fileSlug);

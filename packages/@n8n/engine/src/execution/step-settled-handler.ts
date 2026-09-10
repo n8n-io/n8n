@@ -1,5 +1,6 @@
 import { UnexpectedError } from '../common';
 import { deriveLoops, findTriggerNode, getDescendantNodeIds, getSuccessorNodeIds } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -27,6 +28,7 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -39,7 +41,7 @@ export class StepSettledHandler {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
-			await this.failExecution(execution.id);
+			await this.failExecution(execution);
 			return;
 		}
 
@@ -50,7 +52,7 @@ export class StepSettledHandler {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
-				await this.failExecution(execution.id);
+				await this.failExecution(execution);
 				return;
 			}
 
@@ -64,9 +66,20 @@ export class StepSettledHandler {
 		await this.finishExecutionIfDone(execution);
 	}
 
-	private async failExecution(executionId: string): Promise<void> {
-		await this.executionStore.finishExecution(executionId, 'failed');
-		await this.stepStore.cancelQueuedSteps(executionId);
+	private async failExecution(execution: ExecutionRecord): Promise<void> {
+		// Only the worker whose write won announces the outcome.
+		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
+		if (finished) {
+			this.lifecycleEventPublisher.publish({
+				type: 'execution:failed',
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				at: new Date().toISOString(),
+			});
+		}
+
+		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
+		await this.stepStore.cancelQueuedSteps(execution.id);
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -157,7 +170,18 @@ export class StepSettledHandler {
 		if (settled < expected) return;
 
 		const failed = await this.stepStore.hasFailedSteps(execution.id);
-		await this.executionStore.finishExecution(execution.id, failed ? 'failed' : 'completed');
+		const finished = await this.executionStore.finishExecution(
+			execution.id,
+			failed ? 'failed' : 'completed',
+		);
+		if (finished) {
+			this.lifecycleEventPublisher.publish({
+				type: failed ? 'execution:failed' : 'execution:completed',
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				at: new Date().toISOString(),
+			});
+		}
 	}
 
 	private reachableNodeIds(execution: ExecutionRecord): Set<string> {
