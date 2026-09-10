@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
@@ -42,6 +43,10 @@ export class AppRepository extends Repository<App> {
 		}
 
 		return await this.save(Object.assign(app, updates));
+	}
+
+	async updateBindings(app: App, bindings: AppBinding[]) {
+		return await this.save(Object.assign(app, { bindings }));
 	}
 
 	async setActiveVersionId(id: string, activeVersionId: string | null) {

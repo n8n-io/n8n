@@ -7,6 +7,8 @@ import {
 	buildCheckScript,
 	createAppsTool,
 	handleBuild,
+	jsonSchemaToTs,
+	renderBindingsTypes,
 	slugifyNamespace,
 	tailLog,
 } from '../apps.tool';
@@ -28,6 +30,51 @@ const APP = {
 const BUILD_PREFIX = 'ulimit -c 0; export PATH="$PWD/node_modules/.bin:$PATH";';
 
 const SOURCE_TARBALL = Buffer.from([0x1f, 0x8b, 0x08, 0x00]);
+const SDK_TARBALL = Buffer.from([0x1f, 0x8b, 0x08, 0x01]);
+
+const SUBMIT_BINDING = {
+	key: 'submit',
+	kind: 'workflow' as const,
+	workflowId: 'wf-1',
+	name: 'Echo',
+	published: true,
+	input: {
+		type: 'object' as const,
+		properties: { message: { type: ['string', 'null'] as Array<'string' | 'null'> } },
+		additionalProperties: false,
+	},
+	output: {
+		type: 'array' as const,
+		items: {
+			type: 'object' as const,
+			properties: { reply: { type: 'string' as const } },
+			required: ['reply'],
+		},
+	},
+	outputSource: {
+		kind: 'execution' as const,
+		executionId: '42',
+		at: '2026-09-09T10:00:01.000Z',
+	},
+};
+const NOTIFY_BINDING = {
+	key: 'notify',
+	kind: 'workflow' as const,
+	workflowId: 'wf-2',
+	name: 'Notify',
+	published: false,
+	input: { type: 'object' as const, additionalProperties: true },
+	output: {
+		type: 'array' as const,
+		items: { type: 'object' as const, additionalProperties: true },
+	},
+	outputSource: { kind: 'unknown' as const },
+};
+const STORED_BINDINGS = [
+	{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' },
+	{ key: 'notify', kind: 'workflow' as const, workflowId: 'wf-2' },
+];
+const TYPES_PATH = 'apps/greeter/src/n8n-bindings.d.ts';
 
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
 const fail = (stdout: string, exitCode = 1) => ({ exitCode, stdout, stderr: '' });
@@ -40,13 +87,17 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		storeVersion: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-1', url: 'http://localhost:5678/apps/greeter/' }),
+		setBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		previewBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [] }),
+		getBindings: vi.fn().mockResolvedValue({ bindings: [], warnings: [], stored: [] }),
+		getSdkTarball: vi.fn().mockResolvedValue({ filename: 'n8n-app-sdk.tgz', data: SDK_TARBALL }),
 		publish: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' }),
 	};
 	return {
 		userId: 'user-1',
-		workflowService: {},
+		workflowService: { get: vi.fn().mockResolvedValue({ name: 'Echo' }) },
 		executionService: {},
 		nodeService: {},
 		credentialService: {},
@@ -124,6 +175,23 @@ function mockEmptyAppDir(context: InstanceAiContext) {
 	executeCommandMock(context).mockImplementation(
 		async (command: string) => await Promise.resolve(command.startsWith('[ -d ') ? fail('') : ok()),
 	);
+}
+
+async function runAction(
+	context: InstanceAiContext,
+	input: Record<string, unknown>,
+	toolContext: unknown = {},
+) {
+	const tool = createAppsTool(context);
+	const parsed: unknown = inputSchema(tool).parse({ appId: 'app-1', ...input });
+	return await executeTool<Record<string, unknown>>(tool, parsed, toolContext);
+}
+
+/** The second call of an approval flow: the user already answered the card. */
+const approved = { resumeData: { approved: true } };
+
+function appServiceMock(context: InstanceAiContext, method: keyof InstanceAiAppService): Mock {
+	return (context.appService as unknown as Record<string, Mock>)[method];
 }
 
 async function runCreate(context: InstanceAiContext, input: Record<string, unknown> = {}) {
@@ -257,6 +325,41 @@ describe('apps tool', () => {
 				installed: false,
 				warnings: [expect.stringMatching(/npm install failed.*run `npm install`.*E404 left-pad/)],
 			});
+		});
+
+		it('writes the SDK tarball into vendor/ and an empty bindings augmentation before the scaffold commit', async () => {
+			const context = createMockContext();
+			const order: string[] = [];
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				order.push(command.includes('git init') ? 'git' : 'shell');
+				return await Promise.resolve(ok());
+			});
+			writeFileMock(context).mockImplementation(async (path: string) => {
+				order.push(path);
+				await Promise.resolve();
+			});
+
+			await runCreate(context);
+
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				SDK_TARBALL,
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes([]),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(order).toEqual([
+				'shell',
+				'shell',
+				'shell',
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				TYPES_PATH,
+				'git',
+				'shell',
+			]);
 		});
 
 		it('uses the given namespace and skips the template when asked', async () => {
@@ -626,14 +729,14 @@ describe('apps tool', () => {
 
 			expect(context.appService?.getSourceTarball).toHaveBeenCalledWith('app-1');
 			const writeCalls = writeFileMock(context).mock.calls as Array<[string, Buffer, unknown]>;
-			expect(writeCalls).toHaveLength(1);
+			expect(writeCalls).toHaveLength(2);
 			expect(writeCalls[0][0]).toMatch(/^\.app-builds\/greeter-\d+-restore\.tgz$/);
 			expect(Buffer.isBuffer(writeCalls[0][1])).toBe(true);
 			expect(writeCalls[0][1]).toEqual(SOURCE_TARBALL);
 
 			const commands = commandsRun(context);
 			expect(commands[0]).toBe(
-				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(ls -A '/home/daytona/workspace/apps/greeter')\" ]",
+				"[ -d '/home/daytona/workspace/apps/greeter' ] && [ -n \"$(cd '/home/daytona/workspace/apps/greeter' && find . -type f ! -path './src/n8n-bindings.d.ts')\" ]",
 			);
 			expect(commands[1]).toBe("mkdir -p '/home/daytona/workspace/.app-builds'");
 			expect(commands[2]).toMatch(
@@ -657,6 +760,51 @@ describe('apps tool', () => {
 				installed: true,
 				warnings: [],
 			});
+		});
+
+		it('rewrites the binding types from the current bindings after unpacking, but not the SDK tarball', async () => {
+			const context = createMockContext();
+			mockEmptyAppDir(context);
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: ['Binding submit: not published'],
+				stored: STORED_BINDINGS.slice(0, 1),
+			});
+			const order: string[] = [];
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				order.push(
+					command.startsWith('[ -d ') ? 'check' : command.includes('git init') ? 'git' : 'shell',
+				);
+				return await Promise.resolve(command.startsWith('[ -d ') ? fail('') : ok());
+			});
+			writeFileMock(context).mockImplementation(async (path: string) => {
+				order.push(path);
+				await Promise.resolve();
+			});
+
+			const result = await runRestore(context);
+
+			expect(writeFileMock(context)).not.toHaveBeenCalledWith(
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes([SUBMIT_BINDING]),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(order).toEqual([
+				'check',
+				'shell',
+				expect.stringMatching(/restore\.tgz$/),
+				'shell',
+				TYPES_PATH,
+				'git',
+				'shell',
+				'shell',
+			]);
+			expect(result).toMatchObject({ warnings: ['Binding submit: not published'] });
 		});
 
 		it('restores with a warning when the install fails, and without one when there is no package.json', async () => {
@@ -775,8 +923,8 @@ describe('apps tool', () => {
 			const writeCalls = writeFileMock(context).mock.calls as Array<
 				[string, Buffer, { abortSignal?: AbortSignal }]
 			>;
-			expect(writeCalls).toHaveLength(1);
-			expect(writeCalls[0][2].abortSignal).toBe(abortSignal);
+			expect(writeCalls).toHaveLength(2);
+			for (const call of writeCalls) expect(call[2].abortSignal).toBe(abortSignal);
 		});
 	});
 
@@ -831,6 +979,396 @@ describe('apps tool', () => {
 				log: expect.stringContaining('not in the component catalog: accordion'),
 			});
 			expect(commandsRun(context)).toHaveLength(1);
+		});
+	});
+
+	describe('renderBindingsTypes', () => {
+		it('renders the input the runtime validates and the observed output', () => {
+			const types = renderBindingsTypes([
+				{
+					...SUBMIT_BINDING,
+					// What zod-to-json-schema emits for one field of each trigger type.
+					input: {
+						type: 'object',
+						properties: {
+							text: { type: ['string', 'null'], description: 'text' },
+							amount: { type: ['number', 'null'] },
+							flag: { type: ['boolean', 'null'] },
+							items: { anyOf: [{ type: 'array', items: {} }, { type: 'null' }] },
+							meta: { anyOf: [{ type: 'object', additionalProperties: {} }, { type: 'null' }] },
+							raw: { anyOf: [{}, { type: 'null' }] },
+						},
+						additionalProperties: false,
+					},
+				},
+				NOTIFY_BINDING,
+			]);
+
+			expect(types).toBe(
+				[
+					'// Generated by `apps bind`. Do not edit; re-run bind.',
+					'// output of "submit" inferred from execution 42 (2026-09-09T10:00:01.000Z); re-run `apps bindings` after changing the workflow',
+					"import '@n8n/app-sdk';",
+					"declare module '@n8n/app-sdk' {",
+					'\tinterface Bindings {',
+					'\t\tworkflows: {',
+					'\t\t\t"submit": { input: { "text"?: string | null; "amount"?: number | null; "flag"?: boolean | null; "items"?: unknown[] | null; "meta"?: Record<string, any> | null; "raw"?: unknown }; output: Array<{ "reply": string }> };',
+					'\t\t\t"notify": { input: Record<string, any>; output: Array<Record<string, any>> };',
+					'\t\t};',
+					'\t}',
+					'}',
+					'',
+				].join('\n'),
+			);
+		});
+
+		it('makes required properties non-optional and types every observed output kind', () => {
+			const types = renderBindingsTypes([
+				{
+					...SUBMIT_BINDING,
+					output: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								reply: { type: 'string' },
+								count: { type: ['number', 'null'] },
+								ok: { type: 'boolean' },
+								rows: { type: ['array', 'null'] },
+								meta: { type: 'object' },
+								gone: { type: 'null' },
+								mixed: {},
+								'first name': { type: 'string' },
+							},
+							required: ['reply', 'rows', 'meta', 'gone', 'mixed', 'first name'],
+						},
+					},
+				},
+			]);
+
+			expect(types).toContain(
+				'output: Array<{ "reply": string; "count"?: number | null; "ok"?: boolean; "rows": unknown[] | null; "meta": Record<string, unknown>; "gone": null; "mixed": unknown; "first name": string }>',
+			);
+		});
+
+		it('types nested arrays and typed records', () => {
+			expect(
+				jsonSchemaToTs({ type: 'array', items: { type: 'array', items: { type: 'integer' } } }),
+			).toBe('number[][]');
+			expect(jsonSchemaToTs({ type: 'array', items: { type: ['string', 'null'] } })).toBe(
+				'Array<string | null>',
+			);
+			expect(jsonSchemaToTs({ type: 'object', additionalProperties: { type: 'number' } })).toBe(
+				'Record<string, number>',
+			);
+			expect(jsonSchemaToTs(true)).toBe('unknown');
+			expect(jsonSchemaToTs(false)).toBe('never');
+		});
+
+		it('omits the inference comment for a binding without an execution sample', () => {
+			const types = renderBindingsTypes([NOTIFY_BINDING]);
+
+			expect(types).not.toContain('inferred from execution');
+			expect(types).toContain('output: Array<Record<string, any>>');
+		});
+
+		it('renders an empty workflows map when nothing is bound', () => {
+			expect(renderBindingsTypes([])).toContain('\t\tworkflows: {};\n');
+			expect(renderBindingsTypes([])).not.toContain('workflows: {\n');
+		});
+
+		it('quotes keys and property names that are not identifiers', () => {
+			const types = renderBindingsTypes([
+				{
+					...SUBMIT_BINDING,
+					key: 'send-mail',
+					input: { type: 'object', properties: { 'first name': { type: ['string', 'null'] } } },
+				},
+			]);
+			expect(types).toContain('"send-mail": { input: { "first name"?: string | null }');
+		});
+	});
+
+	describe('bind', () => {
+		it('upserts by key over the stored bindings, saves them and regenerates the types', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING, NOTIFY_BINDING],
+				warnings: [],
+				stored: STORED_BINDINGS,
+			});
+			const saved = {
+				bindings: [NOTIFY_BINDING, { ...SUBMIT_BINDING, workflowId: 'wf-9' }],
+				warnings: ['Binding \'notify\': workflow "Notify" is not published.'],
+			};
+			appServiceMock(context, 'setBindings').mockResolvedValue(saved);
+
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-9' }],
+				},
+				approved,
+			);
+
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
+				{ key: 'submit', kind: 'workflow', workflowId: 'wf-9' },
+			]);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes(saved.bindings),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(result).toEqual({
+				appId: 'app-1',
+				bindings: saved.bindings,
+				typesPath: 'src/n8n-bindings.d.ts',
+				warnings: saved.warnings,
+			});
+		});
+
+		it('returns denied with the service reason when a binding is refused', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'setBindings').mockRejectedValue(
+				new Error('Binding \'submit\': workflow "Echo" needs a trigger.'),
+			);
+
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
+				},
+				approved,
+			);
+
+			expect(result).toEqual({
+				denied: true,
+				reason: 'Binding \'submit\': workflow "Echo" needs a trigger.',
+			});
+			expect(writeFileMock(context)).not.toHaveBeenCalled();
+		});
+
+		it('reports the types stage when the bindings are saved but the file cannot be written', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'setBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: [],
+			});
+			writeFileMock(context).mockRejectedValue(new Error('disk full'));
+
+			const result = await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' }],
+				},
+				approved,
+			);
+
+			expect(result).toMatchObject({
+				error: true,
+				stage: 'types',
+				message: expect.stringContaining('disk full'),
+			});
+		});
+
+		it('returns denied for an empty bindings list without touching the app', async () => {
+			const context = createMockContext();
+
+			const result = await runAction(context, { action: 'bind', bindings: [] }, approved);
+
+			expect(result).toMatchObject({
+				denied: true,
+				reason: expect.stringContaining('at least one'),
+			});
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('bind approval', () => {
+		const bindInput = {
+			action: 'bind',
+			bindings: [
+				{ key: 'submit', kind: 'workflow', workflowId: 'wf-1' },
+				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
+			],
+		};
+
+		it('is denied when the admin blocked bindAppWorkflow', async () => {
+			const context = createMockContext({ permissions: { bindAppWorkflow: 'blocked' } } as never);
+			const suspend = vi.fn();
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends with plain text naming every workflow when several are bound at once', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toBe('suspended');
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit"; ' +
+					'Connect workflow "Echo" (wf-2) to app "Greeter" as "notify" ' +
+					'(callable by anyone with the app URL)',
+				severity: 'warning',
+			});
+			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends with the structured binding details for a single binding', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: [],
+			});
+			const suspend = vi.fn().mockResolvedValue('suspended');
+			const single = { action: 'bind', bindings: [bindInput.bindings[0]] };
+
+			await runAction(context, single, { resumeData: undefined, suspend });
+
+			expect(appServiceMock(context, 'previewBindings')).toHaveBeenCalledWith('app-1', [
+				bindInput.bindings[0],
+			]);
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect workflow "Echo" (wf-1) to app "Greeter" as "submit" (callable by anyone with the app URL)',
+				severity: 'warning',
+				appBinding: {
+					appId: 'app-1',
+					appName: 'Greeter',
+					appNamespace: 'greeter',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+				},
+			});
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('falls back to plain text when the preview cannot describe the workflow', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [],
+				warnings: ['gone'],
+			});
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(
+				context,
+				{ action: 'bind', bindings: [bindInput.bindings[0]] },
+				{ resumeData: undefined, suspend },
+			);
+
+			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBinding');
+		});
+
+		it('falls back to the workflow id when the workflow cannot be read', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockRejectedValue(new Error('gone'));
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend.mock.calls[0][0].message).toContain('Connect workflow "wf-1" (wf-1)');
+		});
+
+		it('is denied when the user rejects the card', async () => {
+			const context = createMockContext();
+
+			const result = await runAction(context, bindInput, { resumeData: { approved: false } });
+
+			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('skips the card when the admin set bindAppWorkflow to always_allow', async () => {
+			const context = createMockContext({
+				permissions: { bindAppWorkflow: 'always_allow' },
+			} as never);
+			const suspend = vi.fn();
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalled();
+		});
+	});
+
+	describe('unbind', () => {
+		it('drops the key, saves the rest and regenerates the types', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING, NOTIFY_BINDING],
+				warnings: [],
+				stored: STORED_BINDINGS,
+			});
+			appServiceMock(context, 'setBindings').mockResolvedValue({
+				bindings: [NOTIFY_BINDING],
+				warnings: [],
+			});
+
+			const result = await runAction(context, { action: 'unbind', key: 'submit' });
+
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				{ key: 'notify', kind: 'workflow', workflowId: 'wf-2' },
+			]);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes([NOTIFY_BINDING]),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(result).toEqual({
+				appId: 'app-1',
+				bindings: [NOTIFY_BINDING],
+				typesPath: 'src/n8n-bindings.d.ts',
+				warnings: [],
+			});
+		});
+
+		it('keeps a stored binding that describe left out of the list', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [NOTIFY_BINDING],
+				warnings: ['Binding \'submit\': workflow "Echo" no longer starts with a trigger.'],
+				stored: STORED_BINDINGS,
+			});
+
+			await runAction(context, { action: 'unbind', key: 'notify' });
+
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				STORED_BINDINGS[0],
+			]);
+		});
+	});
+
+	describe('bindings', () => {
+		it('lists the current bindings with their warnings', async () => {
+			const context = createMockContext();
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: ['w'],
+				stored: [STORED_BINDINGS[0]],
+			});
+
+			const result = await runAction(context, { action: 'bindings' });
+
+			expect(result).toEqual({ appId: 'app-1', bindings: [SUBMIT_BINDING], warnings: ['w'] });
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+			expect(writeFileMock(context)).not.toHaveBeenCalled();
 		});
 	});
 

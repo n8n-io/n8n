@@ -4,9 +4,12 @@ import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-ut
 import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -39,7 +42,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate(['App', 'Page', 'ExecutionEntity']);
 });
 
 describe('POST /projects/:projectId/apps', () => {
@@ -124,6 +127,193 @@ describe('GET /projects/:projectId/apps/data-workflows', () => {
 			.expect(200);
 
 		expect(response.body.data).toEqual([]);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/bindings', () => {
+	test('describes a bound workflow with its trigger fields and a not-published warning', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: {
+							inputSource: 'workflowInputs',
+							workflowInputs: { values: [{ name: 'message', type: 'string' }] },
+						},
+					},
+				],
+			},
+			ownerProject,
+		);
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.expect(200);
+
+		expect(response.body.data.bindings).toEqual([
+			{
+				key: 'submit',
+				kind: 'workflow',
+				workflowId: workflow.id,
+				name: 'Echo',
+				published: false,
+				input: {
+					type: 'object',
+					properties: { message: { type: ['string', 'null'], description: 'message' } },
+					additionalProperties: false,
+				},
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
+				outputSource: { kind: 'unknown' },
+			},
+		]);
+		expect(response.body.data.warnings).toHaveLength(2);
+		expect(response.body.data.warnings[0]).toContain('not published');
+		expect(response.body.data.warnings[1]).toContain("Binding 'submit': output is untyped");
+	});
+
+	test('types the output from the latest successful execution', async () => {
+		const workflow = await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: { inputSource: 'passthrough' },
+					},
+				],
+			},
+			ownerProject,
+		);
+		const runData = (items: Array<Record<string, unknown>>) => ({
+			resultData: {
+				lastNodeExecuted: 'Reply',
+				runData: { Reply: [{ data: { main: [items.map((json) => ({ json }))] } }] },
+			},
+		});
+		await createExecution(
+			{ status: 'success', data: stringify(runData([{ reply: 'old', legacy: true }])) },
+			workflow,
+		);
+		await createExecution({ status: 'error', data: stringify(runData([{ failed: 1 }])) }, workflow);
+		const latest = await createExecution(
+			{
+				status: 'success',
+				stoppedAt: new Date('2026-09-09T10:00:01.000Z'),
+				data: stringify(
+					runData([
+						{ reply: 'a', count: 1 },
+						{ reply: 'b', count: null },
+					]),
+				),
+			},
+			workflow,
+		);
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.expect(200);
+
+		expect(response.body.data.bindings[0]).toMatchObject({
+			input: { type: 'object', additionalProperties: true },
+			output: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: { reply: { type: 'string' }, count: { type: ['number', 'null'] } },
+					required: ['reply', 'count'],
+				},
+			},
+			outputSource: {
+				kind: 'execution',
+				executionId: latest.id,
+				at: '2026-09-09T10:00:01.000Z',
+			},
+		});
+		expect(response.body.data.warnings).not.toContainEqual(expect.stringContaining('untyped'));
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authMemberAgent.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`).expect(403);
+	});
+});
+
+describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
+	const passthroughWorkflow = async () =>
+		await createWorkflow(
+			{
+				name: 'Echo',
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'When Executed by Another Workflow',
+						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+						typeVersion: 1.1,
+						position: [0, 0],
+						parameters: { inputSource: 'passthrough' },
+					},
+				],
+			},
+			ownerProject,
+		);
+
+	test('removes the binding by key and describes the remaining ones', async () => {
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+			{ key: 'notify', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.expect(200);
+
+		expect(response.body.data.bindings.map((b: { key: string }) => b.key)).toEqual(['notify']);
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([
+			{ key: 'notify', kind: 'workflow', workflowId: workflow.id },
+		]);
+	});
+
+	test('answers 404 for a key the app has not bound and keeps the others', async () => {
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		await authOwnerAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/nope`)
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toHaveLength(1);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authMemberAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.expect(403);
 	});
 });
 

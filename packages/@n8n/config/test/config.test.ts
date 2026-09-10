@@ -92,6 +92,8 @@ describe('GlobalConfig', () => {
 			maxAppsPerProject: 20,
 			maxVersionsPerApp: 50,
 			maxProjectBlobSize: 500 * 1024 * 1024,
+			runtimeRateLimit: 60,
+			runtimeMaxConcurrent: 10,
 		},
 		database: {
 			logging: {

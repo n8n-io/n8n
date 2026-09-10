@@ -192,6 +192,14 @@ export {
 	appPreviewStatusSchema,
 	type AppPreviewStatus,
 } from './schemas/app.schema';
+export {
+	appBindingSchema,
+	appBindingsSchema,
+	workflowBindingSchema,
+	type AppBinding,
+	type DescribedBinding,
+	type OutputSource,
+} from './schemas/app-binding.schema';
 
 export {
 	insightsSummarySchema,
@@ -384,6 +392,7 @@ export {
 	domainAccessMetaSchema,
 	instanceAiApprovalResumeSchema,
 	webSearchMetaSchema,
+	appBindingMetaSchema,
 	credentialFlowSchema,
 	credentialDestinationSchema,
 	credentialDestinationDecisionSchema,
@@ -567,6 +576,7 @@ export type {
 	DomainAccessGrants,
 	DomainAccessMeta,
 	WebSearchMeta,
+	AppBindingMeta,
 	InstanceAiCredentialFlow,
 	InstanceAiCredentialDestination,
 	InstanceAiCredentialDestinationDecision,

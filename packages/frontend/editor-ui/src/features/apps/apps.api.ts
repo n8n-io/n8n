@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import type { AppPreviewStatus } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -130,6 +131,33 @@ export const fetchRoutesApi = async (
 		context,
 		'GET',
 		`/projects/${projectId}/apps/${appId}/routes`,
+	);
+};
+
+type DescribedBindings = { bindings: DescribedBinding[]; warnings: string[] };
+
+export const fetchBindingsApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+) => {
+	return await makeRestApiRequest<DescribedBindings>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/bindings`,
+	);
+};
+
+export const deleteBindingApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	key: string,
+) => {
+	return await makeRestApiRequest<DescribedBindings>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/apps/${appId}/bindings/${key}`,
 	);
 };
 

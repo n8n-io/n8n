@@ -18,6 +18,7 @@ import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-set
 import { AiService } from '@/services/ai.service';
 import { UrlService } from '@/services/url.service';
 
+import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from './app-sdk-tarball';
 import { AppVersionService } from './app-version.service';
 import { AppsService } from './apps.service';
 
@@ -91,6 +92,21 @@ export class AppSourceEditBuildService {
 					versionId: version.id,
 					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
 				};
+			},
+			setBindings() {
+				throw new UnexpectedError('setBindings is not supported by the file-save rebuild pipeline');
+			},
+			previewBindings() {
+				throw new UnexpectedError(
+					'previewBindings is not supported by the file-save rebuild pipeline',
+				);
+			},
+			async getBindings(appId) {
+				const app = await appsService.getApp(appId);
+				return { ...(await appsService.describeBindings(app)), stored: app.bindings };
+			},
+			async getSdkTarball() {
+				return { filename: APP_SDK_TARBALL_FILENAME, data: await getAppSdkTarball() };
 			},
 		};
 	}

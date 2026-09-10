@@ -8,6 +8,7 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "@n8n/app-sdk": "file:vendor/n8n-app-sdk.tgz",
     "@ark-ui/vue": "^5.39.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

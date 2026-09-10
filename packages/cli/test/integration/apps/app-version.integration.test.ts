@@ -696,11 +696,20 @@ describe('GET /apps/:namespace with an active version', () => {
 });
 
 describe('GET /apps/:namespace without a version', () => {
-	test('still serves pages, without a redirect', async () => {
+	test('redirects the bare namespace to the trailing-slash URL', async () => {
 		const app = await createApp();
 		await pageRepository.createPage(app.id, null, '');
 
-		const response = await visitor.get('/apps/hello').expect(200);
+		const response = await visitor.get('/apps/hello').expect(302);
+
+		expect(response.headers.location).toBe('/apps/hello/');
+	});
+
+	test('still serves pages', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '');
+
+		const response = await visitor.get('/apps/hello/').expect(200);
 
 		expect(response.headers['content-type']).toContain('text/html');
 		expect(response.headers['content-security-policy']).toContain('sandbox');

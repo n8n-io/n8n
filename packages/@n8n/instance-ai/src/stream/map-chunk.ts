@@ -1,5 +1,6 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	appBindingMetaSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -339,6 +340,7 @@ function mapSuspendedChunk(
 	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
+	const appBinding = parseSchemaRecord(suspendPayload.appBinding, appBindingMetaSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
 	const credentialDestination = parseSchemaRecord(
 		suspendPayload.credentialDestination,
@@ -388,6 +390,7 @@ function mapSuspendedChunk(
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
+			...(appBinding ? { appBinding } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
 			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),

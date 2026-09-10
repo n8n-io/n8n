@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DescribedBinding } from '@n8n/api-types';
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
 	type ActionDropdownItem,
@@ -6,7 +7,9 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
+	N8nIcon,
 	N8nIconButton,
+	N8nLink,
 	N8nSegmentControl,
 	N8nTabs,
 	N8nText,
@@ -43,7 +46,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 
 type BuilderMode = 'build' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'theme' | 'versions' | 'code';
+type BuildTab = 'pages' | 'connections' | 'theme' | 'versions' | 'code';
 type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
 
 const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
@@ -94,7 +97,7 @@ const clipboard = useClipboard();
 const message = useMessage();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
-const { confirmAndDeleteApp } = useAppDeletion();
+const { confirmAndDeleteApp, confirmAndDeleteBinding } = useAppDeletion();
 const { requestPageChange } = useAppPageAssistant();
 const { selectElement } = useAppElementSelection();
 const instanceAiAvailable = useInstanceAiAvailable();
@@ -139,6 +142,10 @@ const publishUpToDate = computed(
 	() =>
 		Boolean(app.value?.activeVersionId) && !app.value?.hasUnpublishedChanges && !props.draftDirty,
 );
+const publishLabelKey = computed(() => {
+	if (publishing.value) return 'apps.builder.publish.inProgress' as const;
+	return publishUpToDate.value ? ('generic.published' as const) : ('apps.builder.publish' as const);
+});
 
 const publishMenuActions = computed<Array<ActionDropdownItem<PublishMenuAction>>>(() => [
 	{ id: 'open', label: i18n.baseText('apps.builder.openApp') },
@@ -188,10 +195,28 @@ const modeOptions = computed(() => [
 
 const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
+	{ value: 'connections' as const, label: i18n.baseText('apps.connections') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
 	{ value: 'versions' as const, label: i18n.baseText('apps.builder.versions') },
 	{ value: 'code' as const, label: i18n.baseText('apps.builder.code') },
 ]);
+
+// The API reports warnings as one flat list; each starts with the quoted binding key.
+// The key is not shown in the UI, so the tooltip drops that prefix.
+const bindingWarnings = (key: string) => {
+	const prefix = `Binding '${key}':`;
+	return appsStore.bindingWarnings
+		.filter((warning) => warning.startsWith(prefix))
+		.map((warning) => warning.slice(prefix.length).trim());
+};
+
+// Warnings about bindings the API left out (workflow gone or incompatible) have no row.
+const unlistedBindingWarnings = computed(() =>
+	appsStore.bindingWarnings.filter(
+		(warning) =>
+			!appsStore.bindings.some((binding) => warning.startsWith(`Binding '${binding.key}':`)),
+	),
+);
 
 const showErrorAndGoBack = async (error: unknown) => {
 	toast.showError(error, i18n.baseText('apps.getDetails.error'));
@@ -205,6 +230,7 @@ const initialize = async () => {
 		const [result] = await Promise.all([
 			appsStore.getApp(props.projectId, props.appId),
 			appsStore.fetchPages(props.projectId, props.appId),
+			appsStore.fetchBindings(props.projectId, props.appId),
 		]);
 		setApp(result);
 		mode.value = showPreviewPane.value ? 'preview' : 'build';
@@ -277,6 +303,10 @@ const onDeletePage = async (pageId: string) => {
 		getFullRoutePath(appsStore.pages, page),
 		onEmbeddedDraft,
 	);
+};
+
+const onDeleteBinding = async (binding: DescribedBinding) => {
+	await confirmAndDeleteBinding(props.projectId, props.appId, binding);
 };
 
 const onDeviceChange = (value: unknown) => {
@@ -480,11 +510,7 @@ watch(
 											data-test-id="app-publish-indicator"
 										/>
 										<span :class="{ [$style.indicatorPublishedText]: publishUpToDate }">
-											{{
-												i18n.baseText(
-													publishUpToDate ? 'generic.published' : 'apps.builder.publish',
-												)
-											}}
+											{{ i18n.baseText(publishLabelKey) }}
 										</span>
 									</span>
 								</N8nButton>
@@ -670,6 +696,72 @@ watch(
 							@delete="onDeletePage"
 						/>
 					</div>
+				</div>
+
+				<div
+					v-else-if="buildTab === 'connections'"
+					:class="$style.container"
+					data-test-id="app-connections"
+				>
+					<div :class="$style.header">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+					</div>
+
+					<N8nText
+						v-if="appsStore.bindings.length === 0"
+						color="text-light"
+						data-test-id="app-connections-empty"
+					>
+						{{ i18n.baseText('apps.connections.empty') }}
+					</N8nText>
+
+					<div
+						v-for="binding in appsStore.bindings"
+						:key="binding.key"
+						:class="$style.connectionRow"
+						data-test-id="app-connection"
+					>
+						<N8nIcon icon="workflow" size="large" />
+						<N8nLink
+							:to="`/workflow/${binding.workflowId}`"
+							new-window
+							theme="text"
+							size="small"
+							:class="$style.connectionName"
+							data-test-id="app-connection-workflow"
+						>
+							{{ binding.name }}
+						</N8nLink>
+						<N8nTooltip
+							v-if="bindingWarnings(binding.key).length > 0"
+							:content="bindingWarnings(binding.key).join(' ')"
+						>
+							<N8nIcon
+								icon="triangle-alert"
+								color="warning"
+								size="small"
+								data-test-id="app-connection-warning"
+							/>
+						</N8nTooltip>
+						<N8nTooltip :content="i18n.baseText('generic.disconnect')">
+							<N8nIconButton
+								icon="trash-2"
+								variant="ghost"
+								size="small"
+								:aria-label="i18n.baseText('generic.disconnect')"
+								data-test-id="app-connection-delete"
+								@click="onDeleteBinding(binding)"
+							/>
+						</N8nTooltip>
+					</div>
+
+					<N8nCallout
+						v-if="unlistedBindingWarnings.length > 0"
+						theme="warning"
+						data-test-id="app-connections-warning"
+					>
+						{{ unlistedBindingWarnings.join(' ') }}
+					</N8nCallout>
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
@@ -911,6 +1003,26 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.connectionRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	border-radius: var(--radius);
+
+	&:hover {
+		background: var(--background--hover);
+	}
+}
+
+.connectionName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .versionRow {

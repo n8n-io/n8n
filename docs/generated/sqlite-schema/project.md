@@ -157,6 +157,7 @@ erDiagram
 }
 "app" {
   varchar_36_ activeVersionId FK
+  TEXT bindings
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

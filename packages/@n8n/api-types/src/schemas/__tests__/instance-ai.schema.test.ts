@@ -257,6 +257,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.bindAppWorkflow).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -310,6 +311,21 @@ describe('confirmationRequestPayloadSchema', () => {
 			credentialDestination: {
 				origin: 'https://api.example.com',
 				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of a bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				appId: 'app-1',
+				appName: 'Runner',
+				appNamespace: 'runner',
+				workflowId: 'wf-1',
+				workflowName: 'Echo',
+				key: 'submit',
 			},
 		});
 

@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | activeVersionId | varchar(36) |  | true |  | [public.app_version](public.app_version.md) | app_version served at /apps/\<namespace\>/; null falls back to pages |
+| bindings | json | '[]'::json | false |  |  | Resources the served app may call through its runtime API |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.page](public.page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -20,6 +21,7 @@
 | FK_f84dd7eb539e46e0c233fa09b20 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9478629fc093d229df09e560aea | PRIMARY KEY | PRIMARY KEY (id) |
 | app_activeVersionId_foreign | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES app_version(id) ON DELETE SET NULL |
+| app_bindings_not_null | n | NOT NULL bindings |
 | app_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_id_not_null | n | NOT NULL id |
 | app_name_not_null | n | NOT NULL name |
@@ -46,6 +48,7 @@ erDiagram
 
 "public.app" {
   varchar_36_ activeVersionId FK
+  json bindings
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name

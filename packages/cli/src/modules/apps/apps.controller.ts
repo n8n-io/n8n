@@ -206,6 +206,29 @@ export class AppsController {
 		return await this.appsService.listVersions(appId);
 	}
 
+	@Get('/:appId/bindings')
+	@ProjectScope('app:read')
+	async listBindings(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	) {
+		const app = await this.appsService.getApp(appId);
+		return await this.appsService.describeBindings(app);
+	}
+
+	@Delete('/:appId/bindings/:key')
+	@ProjectScope('app:update')
+	async removeBinding(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('key') key: string,
+	) {
+		this.checkInstanceWriteAccess();
+		return await this.appsService.removeBinding(appId, key);
+	}
+
 	/** Serves a stored built version again, or unpublishes the app with `versionId: null`. */
 	@Patch('/:appId/active-version')
 	@ProjectScope('app:update')
