@@ -27,6 +27,30 @@ empty node, or a missing node is a real defect to investigate, not something to
 explain away. If you genuinely cannot re-run the failing path, say so plainly and
 name what is unconfirmed instead of repeating a success claim.
 
+## Draft versus live
+
+A published workflow runs the version that was published, not the draft you
+edit. Your save creates a draft, and the draft is not live until somebody
+publishes it. So a fix to a live workflow changes nothing in production on its
+own.
+
+Two consequences when the user reports a live workflow failing:
+
+- **Read the version each execution ran.** `executions(action="list", workflowId)`
+  returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
+	(the published version) and `workflow.draftVersionId`. Only a row whose
+	`workflowVersionId` equals `workflow.activeVersionId` ran the published code.
+	A run of a draft proves nothing about production. A `workflow.draftVersionId`
+	different from `workflow.activeVersionId` means the latest changes, including
+	any fix you just made, are not live.
+- **Name the version when you invite a retest.** Say whether the user tests the
+  draft or the published version. "Try it again" after a draft-only fix sends
+  the user to the broken published version, and the fix looks like it failed.
+
+Do not report a fix as live until the published version is the fixed one. Ask
+whether to publish it instead. After a publish, a new live run is what confirms
+the fix — an earlier execution ran the old version.
+
 ## Testing event-triggered workflows
 
 Use `executions(action="run")` with `inputData` matching the trigger's output
