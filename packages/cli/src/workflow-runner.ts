@@ -176,6 +176,7 @@ export class WorkflowRunner {
 							storedAt: executionWithoutData.storedAt,
 						};
 
+				this.activeExecutions.resolveExecutionResponsePromise(executionId);
 				this.activeExecutions.finalizeExecution(executionId, successRunData);
 
 				return;

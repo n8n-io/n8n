@@ -10,6 +10,7 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -18,6 +19,7 @@ import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
+	type IExecuteResponsePromiseData,
 	type INode,
 	type IRun,
 	type IRunExecutionData,
@@ -51,6 +53,7 @@ import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WorkflowRunner } from '@/workflow-runner';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
@@ -116,26 +119,6 @@ describe('processError', () => {
 
 	test('processError should return early in Bull stalled edge case', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution(
-			{
-				status: 'success',
-				finished: true,
-			},
-			workflow,
-		);
-		globalConfig.executions.mode = 'queue';
-		await runner.processError(
-			new Error('test') as ExecutionError,
-			new Date(),
-			'webhook',
-			execution.id,
-			hooks,
-		);
-		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
-	});
-
-	test('processError settles the post-execute promise with the stored run when the execution already succeeded in queue mode', async () => {
-		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'waiting', finished: false }, workflow);
 		const activeExecutions = Container.get(ActiveExecutions);
 
@@ -144,6 +127,8 @@ describe('processError', () => {
 			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		const postExecutePromise = activeExecutions.getPostExecutePromise(execution.id);
+		const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+		activeExecutions.attachResponsePromise(execution.id, responsePromise);
 
 		const successData = createRunExecutionData({
 			resultData: { runData: { Start: [] }, lastNodeExecuted: 'Start' },
@@ -162,7 +147,6 @@ describe('processError', () => {
 		);
 
 		globalConfig.executions.mode = 'queue';
-
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -174,6 +158,7 @@ describe('processError', () => {
 		await expect(postExecutePromise).resolves.toEqual(
 			expect.objectContaining({ status: 'success', finished: true, data: successData }),
 		);
+		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
