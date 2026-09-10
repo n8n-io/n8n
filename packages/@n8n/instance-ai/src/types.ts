@@ -15,7 +15,9 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	AppBinding,
 	ChatIntegrationDescriptor,
+	DescribedBinding,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -1053,6 +1055,22 @@ export interface InstanceAiAppService {
 		appId: string,
 		files: { source: Buffer; dist: Buffer },
 	): Promise<{ versionId: string; url: string }>;
+	/** Replaces the app's bindings; `warnings` covers bindings that work only after a follow-up (e.g. publish). */
+	setBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** Describes `bindings` as if they were stored, without saving; for the bind approval card. */
+	previewBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** `stored` is the saved list as-is; `bindings` describes only the ones whose draft still resolves. */
+	getBindings(
+		appId: string,
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[]; stored: AppBinding[] }>;
+	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
+	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
 	/**
 	 * Builds the newest stored source (after snapshotting the thread's draft) in
 	 * n8n's own build sandbox and makes the result the served version.

@@ -21,6 +21,7 @@ import { InstanceAiSettingsService } from '@/modules/instance-ai/instance-ai-set
 import { AiService } from '@/services/ai.service';
 import { UrlService } from '@/services/url.service';
 
+import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from './app-sdk-tarball';
 import { AppsService } from './apps.service';
 
 /** Deterministic per-app sandbox id: repeated publishes of the same app reuse a warm sandbox. */
@@ -92,6 +93,15 @@ export class AppPublishService {
 		return {
 			create: unsupported('create'),
 			publish: unsupported('publish'),
+			setBindings: unsupported('setBindings'),
+			previewBindings: unsupported('previewBindings'),
+			async getBindings(appId) {
+				const app = await appsService.getApp(appId);
+				return { ...(await appsService.describeBindings(app)), stored: app.bindings };
+			},
+			async getSdkTarball() {
+				return { filename: APP_SDK_TARBALL_FILENAME, data: await getAppSdkTarball() };
+			},
 			async get(appId) {
 				const app = await appsService.getApp(appId);
 				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };

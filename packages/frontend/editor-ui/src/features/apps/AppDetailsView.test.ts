@@ -1,13 +1,16 @@
 import { createTestingPinia } from '@pinia/testing';
+import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
+import type { DescribedBinding } from '@n8n/api-types';
 import type { App, AppVersion } from './apps.types';
 
 const openAppArtifactThread = vi.hoisted(() => vi.fn());
@@ -30,6 +33,10 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async () => {
@@ -112,6 +119,11 @@ describe('AppDetailsView', () => {
 		appsStore.pages = [];
 		appsStore.versions = [];
 		appsStore.fetchPages.mockResolvedValue(undefined);
+		appsStore.bindings = [];
+		appsStore.bindingWarnings = [];
+		appsStore.fetchBindings.mockResolvedValue(undefined);
+		appsStore.deleteBinding.mockResolvedValue(undefined);
+		confirm.mockReset();
 		appsStore.fetchVersions.mockResolvedValue(undefined);
 	});
 
@@ -661,6 +673,95 @@ describe('AppDetailsView', () => {
 		await userEvent.click(getAllByTestId('app-page-edit')[1]);
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
 			initialDraft: 'Update the page at "/clients/:id" in this app.',
+		});
+	});
+
+	describe('Connections tab', () => {
+		const bindings: DescribedBinding[] = [
+			{
+				key: 'submit',
+				kind: 'workflow',
+				workflowId: 'wf-1',
+				name: 'Echo',
+				published: true,
+				input: { type: 'object', properties: { message: { type: 'string' } } },
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
+				outputSource: { kind: 'unknown' },
+			},
+			{
+				key: 'notify',
+				kind: 'workflow',
+				workflowId: 'wf-2',
+				name: 'Notify',
+				published: false,
+				input: { type: 'object', additionalProperties: true },
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
+				outputSource: { kind: 'unknown' },
+			},
+		];
+
+		it('lists the connected workflows with a link and per-binding warning', async () => {
+			appsStore.bindings = bindings;
+			appsStore.bindingWarnings = [
+				'Binding \'notify\': workflow "Notify" is not published.',
+				"Binding 'gone': workflow 'wf-3' no longer exists in the app's project.",
+			];
+			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
+
+			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			const rows = getAllByTestId('app-connection');
+			expect(rows).toHaveLength(2);
+			const links = getAllByTestId('app-connection-workflow');
+			expect(links[0]).toHaveAttribute('href', '/workflow/wf-1');
+			expect(links[0]).toHaveAttribute('target', '_blank');
+			expect(links[0]).toHaveTextContent('Echo');
+			expect(rows[0].querySelector('[data-test-id="app-connection-warning"]')).toBeNull();
+			const warned = rows[1].querySelector('[data-test-id="app-connection-warning"]');
+			expect(warned).not.toBeNull();
+			await userEvent.hover(warned!);
+			const tooltip = await screen.findByText(/workflow "Notify" is not published/);
+			expect(tooltip).not.toHaveTextContent("Binding 'notify'");
+			expect(getAllByTestId('app-connection-delete')).toHaveLength(2);
+			expect(getByTestId('app-connections-warning')).toHaveTextContent("Binding 'gone'");
+			expect(getByTestId('app-connections-warning')).not.toHaveTextContent("Binding 'notify'");
+		});
+
+		it('deletes a connection after confirmation', async () => {
+			appsStore.bindings = bindings;
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('disconnect the "Notify" workflow'),
+				'Disconnect workflow',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'notify');
+		});
+
+		it('keeps the connection when the confirmation is cancelled', async () => {
+			appsStore.bindings = bindings;
+			confirm.mockResolvedValue('cancel');
+			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
+
+			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
+		});
+
+		it('shows the empty state when no workflow is connected', async () => {
+			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+
+			expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
+			expect(queryByTestId('app-connection')).not.toBeInTheDocument();
 		});
 	});
 

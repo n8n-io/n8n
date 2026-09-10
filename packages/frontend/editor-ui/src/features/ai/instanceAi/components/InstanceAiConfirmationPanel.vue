@@ -10,6 +10,7 @@ import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
+import AppBindingApproval from './AppBindingApproval.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -649,6 +650,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 							:request-id="chunk.item.toolCall.confirmation.requestId"
 							:query="chunk.item.toolCall.confirmation.webSearch!.query"
 							:severity="chunk.item.toolCall.confirmation.severity"
+						/>
+
+						<!-- App binding -->
+						<AppBindingApproval
+							v-else-if="chunk.item.toolCall.confirmation.appBinding"
+							:app-binding="chunk.item.toolCall.confirmation.appBinding!"
+							:options="buildApprovalOptions(chunk.item)"
+							@select="(key) => handleApprovalSelect(chunk.item, key)"
 						/>
 
 						<!-- Generic approval -->

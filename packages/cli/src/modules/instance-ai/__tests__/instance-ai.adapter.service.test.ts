@@ -4916,6 +4916,7 @@ describe('createContext — app service wiring', () => {
 		name: 'Greeter',
 		namespace: 'greeter',
 		projectId: 'proj-1',
+		bindings: [{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' }],
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 	};
 
@@ -5110,6 +5111,78 @@ describe('createContext — app service wiring', () => {
 
 		await expect(appService?.getSourceTarball('app-1')).rejects.toThrow('required permissions');
 		expect(getSourceTarball).not.toHaveBeenCalled();
+	});
+
+	it('sets bindings as the user after checking app:update on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: ['not published'] };
+		const setBindings = vi.fn().mockResolvedValue(described);
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app), setBindings });
+		const appService = service.createContext(mockUser).appService;
+		const bindings = [{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' }];
+
+		await expect(appService?.setBindings('app-1', bindings)).resolves.toEqual(described);
+		expect(setBindings).toHaveBeenCalledWith('app-1', bindings, mockUser);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('previews bindings as if stored, after checking app:read, without saving them', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: [] };
+		const describeBindings = vi.fn().mockResolvedValue(described);
+		const setBindings = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+			setBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+		const bindings = [{ key: 'notify', kind: 'workflow' as const, workflowId: 'wf-2' }];
+
+		await expect(appService?.previewBindings('app-1', bindings)).resolves.toEqual(described);
+		expect(describeBindings).toHaveBeenCalledWith({ projectId: 'proj-1', bindings });
+		expect(setBindings).not.toHaveBeenCalled();
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('describes bindings after checking app:read on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: [] };
+		const describeBindings = vi.fn().mockResolvedValue(described);
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getBindings('app-1')).resolves.toEqual({
+			...described,
+			stored: app.bindings,
+		});
+		expect(describeBindings).toHaveBeenCalledWith(app);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('returns the packed SDK tarball under its vendor filename', async () => {
+		mockAppsModule(true);
+		const service = createAdapterWithApps({});
+		const appService = service.createContext(mockUser).appService;
+
+		const tarball = await appService?.getSdkTarball();
+
+		expect(tarball?.filename).toBe('n8n-app-sdk.tgz');
+		// gzip magic bytes
+		expect(Array.from(tarball?.data.subarray(0, 2) ?? [])).toEqual([0x1f, 0x8b]);
+		expect((await appService?.getSdkTarball())?.data).toBe(tarball?.data);
 	});
 });
 

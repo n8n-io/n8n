@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -6,8 +7,10 @@ import {
 	applyAppThemeApi,
 	createAppApi,
 	deleteAppApi,
+	deleteBindingApi,
 	fetchAppVersionsApi,
 	fetchAppsApi,
+	fetchBindingsApi,
 	fetchAppVersionFileContentApi,
 	fetchAppVersionFilesApi,
 	fetchRoutesApi,
@@ -25,6 +28,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 
 	const apps = ref<App[]>([]);
 	const pages = ref<Page[]>([]);
+	const bindings = ref<DescribedBinding[]>([]);
+	const bindingWarnings = ref<string[]>([]);
 	const versions = ref<AppVersion[]>([]);
 
 	const fetchApps = async (projectId: string) => {
@@ -92,6 +97,19 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
+	const setBindings = (described: { bindings: DescribedBinding[]; warnings: string[] }) => {
+		bindings.value = described.bindings;
+		bindingWarnings.value = described.warnings;
+	};
+
+	const fetchBindings = async (projectId: string, appId: string) => {
+		setBindings(await fetchBindingsApi(rootStore.restApiContext, projectId, appId));
+	};
+
+	const deleteBinding = async (projectId: string, appId: string, key: string) => {
+		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
+	};
+
 	const fetchAppVersionFiles = async (projectId: string, appId: string, versionId: string) => {
 		return await fetchAppVersionFilesApi(rootStore.restApiContext, projectId, appId, versionId);
 	};
@@ -133,6 +151,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	return {
 		apps,
 		pages,
+		bindings,
+		bindingWarnings,
 		versions,
 		fetchApps,
 		getApp,
@@ -144,6 +164,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		setActiveVersion,
 		deleteApp,
 		fetchPages,
+		fetchBindings,
+		deleteBinding,
 		fetchAppVersionFiles,
 		fetchAppVersionFileContent,
 		saveAppVersionFileContent,

@@ -143,6 +143,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from '@/modules/apps/app-sdk-tarball';
 import { AppPublishService } from '@/modules/apps/app-publish.service';
 import { AppsService } from '@/modules/apps/apps.service';
 import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
@@ -3243,6 +3244,26 @@ export class InstanceAiAdapterService {
 					versionId: version.id,
 					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
 				};
+			},
+
+			async setBindings(appId, bindings) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				return await appsService.setBindings(app.id, bindings, user);
+			},
+
+			async previewBindings(appId, bindings) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return await appsService.describeBindings({ projectId: app.projectId, bindings });
+			},
+
+			async getBindings(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return { ...(await appsService.describeBindings(app)), stored: app.bindings };
+			},
+
+			async getSdkTarball() {
+				return { filename: APP_SDK_TARBALL_FILENAME, data: await getAppSdkTarball() };
 			},
 
 			async publish(appId) {

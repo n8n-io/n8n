@@ -274,6 +274,17 @@ export const webSearchMetaSchema = z.object({
 });
 export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
 
+/** What the `apps` tool is about to connect, for the bind approval card. */
+export const appBindingMetaSchema = z.object({
+	appId: z.string(),
+	appName: z.string(),
+	appNamespace: z.string(),
+	workflowId: z.string(),
+	workflowName: z.string(),
+	key: z.string(),
+});
+export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
+
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function isSafeObjectKey(key: string): boolean {
@@ -764,6 +775,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	webSearch: webSearchMetaSchema
 		.optional()
 		.describe('When present, renders web-search approval UI instead of generic confirm'),
+	appBinding: appBindingMetaSchema
+		.optional()
+		.describe('When present, renders the app binding approval UI instead of generic confirm'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -827,6 +841,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.appBinding) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 
@@ -1875,6 +1890,7 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	bindAppWorkflow: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1901,6 +1917,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeMcpTool: 'require_approval',
+	bindAppWorkflow: 'require_approval',
 };
 
 /**

@@ -1,15 +1,21 @@
 /**
  * Apps tool — create an app, restore its stored source into a fresh sandbox,
- * and publish it as a served version once the user confirms. The agent edits
- * files with the workspace tool in between; the live preview follows.
+ * bind n8n workflows it may call, and publish it as a served version once the
+ * user confirms. The agent edits files with the workspace tool in between; the
+ * live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
+	appBindingMetaSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	type AppBinding,
+	type AppBindingMeta,
+	type DescribedBinding,
 } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import { nanoid } from 'nanoid';
 import { posix } from 'node:path';
 import { z } from 'zod';
@@ -37,6 +43,10 @@ export type AppSandboxContext = Pick<
 export const APP_BUILDER_SKILL_DIR = 'app-builder';
 export const MAX_APP_TARBALL_BYTES = 20 * 1024 * 1024;
 const APPS_DIR = 'apps';
+/** Module augmentation of `@n8n/app-sdk`, rewritten on every bind/unbind; `tsconfig.json` includes `src/**`. */
+const BINDINGS_TYPES_PATH = 'src/n8n-bindings.d.ts';
+/** The template's `package.json` depends on `file:vendor/n8n-app-sdk.tgz`. */
+const SDK_VENDOR_DIR = 'vendor';
 /** Tarballs wait here for read-out: the scoped workspace filesystem rejects paths outside its root. */
 const BUILD_STAGING_DIR = '.app-builds';
 const COMMAND_TIMEOUT_MS = 600_000;
@@ -73,7 +83,9 @@ const createSchema = z.object({
 	template: z
 		.enum(['vue', 'none'])
 		.optional()
-		.describe('Starter files to copy (default "vue"). "none" leaves the app directory empty.'),
+		.describe(
+			'Starter files to copy (default "vue"). "none" writes only vendor/n8n-app-sdk.tgz and src/n8n-bindings.d.ts.',
+		),
 });
 
 const publishSchema = z.object({
@@ -97,11 +109,63 @@ const addComponentSchema = z.object({
 		),
 });
 
+const bindSchema = z.object({
+	action: z.literal('bind'),
+	appId: z.string(),
+	bindings: z
+		.array(
+			z.object({
+				key: z
+					.string()
+					.describe(
+						'Slug the app calls the workflow by, e.g. "submit" (lowercase, digits, hyphens)',
+					),
+				kind: z.literal('workflow'),
+				workflowId: z.string(),
+			}),
+		)
+		.describe('Bindings to add or replace by key; other bindings stay'),
+});
+
+const unbindSchema = z.object({
+	action: z.literal('unbind'),
+	appId: z.string(),
+	key: z.string(),
+});
+
+const bindingsSchema = z.object({
+	action: z.literal('bindings'),
+	appId: z.string(),
+});
+
+const confirmationSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+	appBinding: appBindingMetaSchema.optional(),
+});
+
+interface ConfirmationToolContext {
+	resumeData: z.infer<typeof instanceAiApprovalResumeSchema> | undefined;
+	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+	abortSignal?: AbortSignal;
+}
+
 type CreateInput = z.infer<typeof createSchema>;
 type PublishInput = z.infer<typeof publishSchema>;
 type RestoreInput = z.infer<typeof restoreSchema>;
 type AddComponentInput = z.infer<typeof addComponentSchema>;
-type AppsInput = CreateInput | PublishInput | RestoreInput | AddComponentInput;
+type BindInput = z.infer<typeof bindSchema>;
+type UnbindInput = z.infer<typeof unbindSchema>;
+type BindingsInput = z.infer<typeof bindingsSchema>;
+type AppsInput =
+	| CreateInput
+	| PublishInput
+	| RestoreInput
+	| AddComponentInput
+	| BindInput
+	| UnbindInput
+	| BindingsInput;
 
 /** Not a tool action: n8n's publish pipeline calls `handleBuild` directly. */
 export interface BuildInput {
@@ -111,19 +175,6 @@ export interface BuildInput {
 	command?: string;
 	/** Build output directory relative to the app (default "dist"). */
 	outDir?: string;
-}
-
-const confirmationSuspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-});
-
-type ResumeData = z.infer<typeof instanceAiApprovalResumeSchema>;
-
-interface ConfirmationToolContext {
-	resumeData: ResumeData | undefined;
-	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
 }
 
 /** Thread-level "always allow" grant; the editor derives the same `<tool>:<action>` key. */
@@ -285,6 +336,98 @@ export function buildScaffoldScript(input: {
 	].join('\n');
 }
 
+const dedupeUnion = (members: string[]) => {
+	const unique = [...new Set(members)];
+	return unique.includes('unknown') ? 'unknown' : unique.join(' | ');
+};
+
+/** `T[]` reads well for a bare name; anything with spaces or a union goes in `Array<…>`. */
+const arrayOf = (item: string) => (/^[\w.]+(\[\])*$/.test(item) ? `${item}[]` : `Array<${item}>`);
+
+function objectToTs(schema: JSONSchema7): string {
+	const properties = Object.entries(schema.properties ?? {});
+	if (properties.length === 0) {
+		const extra = schema.additionalProperties;
+		// An open object is `any`, not `unknown`: the file lives inside the app, and
+		// `unknown` would force a cast on every read of a result.
+		if (extra === true) return 'Record<string, any>';
+		if (typeof extra === 'object') {
+			const value = jsonSchemaToTs(extra);
+			return value === 'unknown' ? 'Record<string, any>' : `Record<string, ${value}>`;
+		}
+		return 'Record<string, unknown>';
+	}
+	const required = new Set(schema.required ?? []);
+	const fields = properties.map(
+		([name, property]) =>
+			`${JSON.stringify(name)}${required.has(name) ? '' : '?'}: ${jsonSchemaToTs(property)}`,
+	);
+	return `{ ${fields.join('; ')} }`;
+}
+
+/**
+ * The JSON Schema subset the backend emits (draft-07: `type`, type unions, `anyOf`,
+ * `properties`/`required`, `additionalProperties`, `items`) as a TypeScript type.
+ * Anything else is `unknown`.
+ */
+export function jsonSchemaToTs(schema: JSONSchema7Definition): string {
+	if (schema === true) return 'unknown';
+	if (schema === false) return 'never';
+	if (schema.anyOf) return dedupeUnion(schema.anyOf.map(jsonSchemaToTs));
+	if (schema.type === undefined) return 'unknown';
+	const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+	return dedupeUnion(
+		types.map((type) => {
+			switch (type) {
+				case 'object':
+					return objectToTs(schema);
+				case 'array':
+					return arrayOf(
+						schema.items === undefined || Array.isArray(schema.items)
+							? 'unknown'
+							: jsonSchemaToTs(schema.items),
+					);
+				case 'integer':
+					return 'number';
+				default:
+					return type;
+			}
+		}),
+	);
+}
+
+/**
+ * `src/n8n-bindings.d.ts`: keys, input schema and observed output schema of the bound
+ * workflows as types for `n8n.workflows.run`.
+ */
+export function renderBindingsTypes(bindings: DescribedBinding[]): string {
+	const workflows = bindings.map(
+		(binding) =>
+			`\t\t\t${JSON.stringify(binding.key)}: { input: ${jsonSchemaToTs(binding.input)}; output: ${jsonSchemaToTs(binding.output)} };`,
+	);
+	const sources = bindings.flatMap((binding) =>
+		binding.outputSource.kind === 'execution'
+			? [
+					`// output of ${JSON.stringify(binding.key)} inferred from execution ${binding.outputSource.executionId} (${binding.outputSource.at}); re-run \`apps bindings\` after changing the workflow`,
+				]
+			: [],
+	);
+	// Tabs, like the rest of the template.
+	return [
+		'// Generated by `apps bind`. Do not edit; re-run bind.',
+		...sources,
+		"import '@n8n/app-sdk';",
+		"declare module '@n8n/app-sdk' {",
+		'\tinterface Bindings {',
+		...(workflows.length > 0
+			? ['\t\tworkflows: {', ...workflows, '\t\t};']
+			: ['\t\tworkflows: {};']),
+		'\t}',
+		'}',
+		'',
+	].join('\n');
+}
+
 function dirnamePosix(path: string): string {
 	const index = path.lastIndexOf('/');
 	return index <= 0 ? '.' : path.slice(0, index);
@@ -425,6 +568,9 @@ async function handleCreate(
 				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
 			}
 		}
+
+		await writeSdkTarball(workspace, namespace, await appService.getSdkTarball(), abortSignal);
+		await writeBindingsTypes(workspace, namespace, [], abortSignal);
 
 		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
 		const install =
@@ -591,9 +737,12 @@ export async function handleRestore(
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${app.namespace}`;
 
-	const occupied = await run(`[ -d ${q(appDir)} ] && [ -n "$(ls -A ${q(appDir)})" ]`, {
-		cwd: root,
-	});
+	// `bind` may run before `restore` in a fresh sandbox; the file it generates is
+	// rewritten below, so it does not count as the user's work.
+	const occupied = await run(
+		`[ -d ${q(appDir)} ] && [ -n "$(cd ${q(appDir)} && find . -type f ! -path ${q(`./${BINDINGS_TYPES_PATH}`)})" ]`,
+		{ cwd: root },
+	);
 	if (occupied.exitCode === 0) {
 		return {
 			denied: true,
@@ -627,6 +776,11 @@ export async function handleRestore(
 			throw new Error(`Could not unpack the stored source: ${tailLog(combinedLog(extract))}`);
 		}
 
+		// The stored source keeps the SDK the app was created with: a restore must not
+		// upgrade it. The binding types follow the current bindings.
+		const described = await appService.getBindings(app.id);
+		await writeBindingsTypes(workspace, app.namespace, described.bindings, abortSignal);
+
 		const git = await run(gitInitCommand('restore'), { cwd: appDir });
 		const install = await installDependencies(run, appDir);
 		return {
@@ -640,6 +794,7 @@ export async function handleRestore(
 			warnings: [
 				...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
 				...(install.warning ? [install.warning] : []),
+				...described.warnings,
 			],
 		};
 	} catch (error) {
@@ -687,6 +842,192 @@ async function handleAddComponent(
 	return { appId: app.id, component: input.component };
 }
 
+async function writeSdkTarball(
+	workspace: NonNullable<InstanceAiContext['workspace']>,
+	namespace: string,
+	sdk: { filename: string; data: Uint8Array },
+	abortSignal?: AbortSignal,
+) {
+	await requireFilesystem(workspace, 'write the SDK into').writeFile(
+		`${APPS_DIR}/${namespace}/${SDK_VENDOR_DIR}/${sdk.filename}`,
+		sdk.data,
+		{ recursive: true, abortSignal },
+	);
+}
+
+async function writeBindingsTypes(
+	workspace: NonNullable<InstanceAiContext['workspace']>,
+	namespace: string,
+	bindings: DescribedBinding[],
+	abortSignal?: AbortSignal,
+) {
+	await requireFilesystem(workspace, 'write the binding types into').writeFile(
+		`${APPS_DIR}/${namespace}/${BINDINGS_TYPES_PATH}`,
+		renderBindingsTypes(bindings),
+		{ recursive: true, abortSignal },
+	);
+}
+
+type DescribedBindings = { bindings: DescribedBinding[]; warnings: string[] };
+
+/**
+ * Every binding check (scope, project, trigger, key format) lives in the app service,
+ * so anything it throws is a refusal the model can act on. The upsert starts from the
+ * stored list, not the described one: describe omits a binding whose resolved workflow
+ * is broken, and a write must not drop it silently.
+ */
+async function replaceBindings(
+	context: InstanceAiContext,
+	appId: string,
+	namespace: string,
+	next: (current: AppBinding[]) => AppBinding[],
+	abortSignal?: AbortSignal,
+) {
+	const appService = requireAppService(context);
+	const { workspace } = requireSandbox(context, abortSignal);
+
+	let described: DescribedBindings;
+	try {
+		const current = await appService.getBindings(appId);
+		described = await appService.setBindings(appId, next(current.stored));
+	} catch (error) {
+		return { denied: true, reason: getErrorMessage(error) };
+	}
+
+	try {
+		await writeBindingsTypes(workspace, namespace, described.bindings, abortSignal);
+	} catch (error) {
+		return {
+			error: true,
+			stage: 'types',
+			message: `The bindings are saved, but ${BINDINGS_TYPES_PATH} could not be written: ${getErrorMessage(error)}`,
+		};
+	}
+
+	return {
+		appId,
+		bindings: described.bindings,
+		typesPath: BINDINGS_TYPES_PATH,
+		warnings: described.warnings,
+	};
+}
+
+async function resolveWorkflowName(context: InstanceAiContext, workflowId: string) {
+	return await context.workflowService
+		.get(workflowId)
+		.then((workflow) => workflow.name)
+		.catch(() => workflowId);
+}
+
+/**
+ * The `bindAppWorkflow` permission, the way `workflows` asks before a publish: `null`
+ * when the action may proceed, the reason when it may not; suspends for the card
+ * when the user has not answered it yet.
+ */
+async function requireBindAppWorkflowApproval(
+	context: InstanceAiContext,
+	ctx: ConfirmationToolContext,
+	describe: () => Promise<{ message: string; appBinding?: AppBindingMeta }>,
+): Promise<AppActionDenied | null> {
+	if (context.permissions?.bindAppWorkflow === 'blocked') {
+		return { denied: true, reason: 'Action blocked by admin' };
+	}
+	const resumeData = ctx.resumeData;
+	const needsApproval = context.permissions?.bindAppWorkflow !== 'always_allow';
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		return await ctx.suspend({
+			requestId: nanoid(),
+			...(await describe()),
+			severity: 'warning' as const,
+		});
+	}
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { denied: true, reason: 'User denied the action' };
+	}
+	return null;
+}
+
+/**
+ * Upsert by key: a binding with an existing key replaces it, the others stay. A bind
+ * exposes a workflow to anyone with the app's URL, so it asks the user first.
+ */
+async function handleBind(
+	context: InstanceAiContext,
+	input: BindInput,
+	ctx: ConfirmationToolContext,
+) {
+	// The flattened schema the model sees makes every field optional, so the guard lives here.
+	if (!input.bindings?.length) {
+		return {
+			denied: true,
+			reason: 'Pass at least one binding as { key, kind: "workflow", workflowId }.',
+		};
+	}
+	const appService = requireAppService(context);
+	const app = await appService.get(input.appId);
+
+	const denied = await requireBindAppWorkflowApproval(context, ctx, async () => {
+		const lines = await Promise.all(
+			input.bindings.map(
+				async ({ key, workflowId }) =>
+					`Connect workflow "${await resolveWorkflowName(context, workflowId)}" (${workflowId}) to app "${app.name}" as "${key}"`,
+			),
+		);
+		// One line: the card renders the message as plain HTML text, which folds newlines.
+		const message = `${lines.join('; ')} (callable by anyone with the app URL)`;
+		// The structured card shows one binding. A multi-binding call, or a workflow the
+		// preview cannot resolve (the write refuses it with the reason), gets the plain text.
+		const [described] =
+			input.bindings.length === 1
+				? (await appService.previewBindings(app.id, input.bindings)).bindings
+				: [];
+		if (!described) return { message };
+		return {
+			message,
+			appBinding: {
+				appId: app.id,
+				appName: app.name,
+				appNamespace: app.namespace,
+				workflowId: described.workflowId,
+				workflowName: described.name,
+				key: described.key,
+			},
+		};
+	});
+	if (denied) return denied;
+
+	const replaced = new Set(input.bindings.map((binding) => binding.key));
+	return await replaceBindings(
+		context,
+		app.id,
+		app.namespace,
+		(current) => [...current.filter((binding) => !replaced.has(binding.key)), ...input.bindings],
+		ctx.abortSignal,
+	);
+}
+
+async function handleUnbind(
+	context: InstanceAiContext,
+	input: UnbindInput,
+	abortSignal?: AbortSignal,
+) {
+	const app = await requireAppService(context).get(input.appId);
+	return await replaceBindings(
+		context,
+		app.id,
+		app.namespace,
+		(current) => current.filter((binding) => binding.key !== input.key),
+		abortSignal,
+	);
+}
+
+async function handleBindings(context: InstanceAiContext, input: BindingsInput) {
+	const appService = requireAppService(context);
+	const app = await appService.get(input.appId);
+	const { bindings, warnings } = await appService.getBindings(app.id);
+	return { appId: app.id, bindings, warnings };
+}
+
 async function readTarball(
 	workspace: NonNullable<InstanceAiContext['workspace']>,
 	relativePath: string,
@@ -718,19 +1059,26 @@ export function createAppsTool(context: InstanceAiContext) {
 			publishSchema,
 			restoreSchema,
 			addComponentSchema,
+			bindSchema,
+			unbindSchema,
+			bindingsSchema,
 		]),
 	);
 
 	return new Tool(APPS_TOOL_ID)
 		.description(
-			'Create, restore and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
+			'Create, restore, bind and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
 				'`create` registers the app, copies a starter template into apps/<namespace>/ in the workspace and installs its dependencies; ' +
 				'edit the files there and the live preview updates by itself. Never build to check your work. ' +
 				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
 				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
 				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
-				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too.",
+				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
+				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`): ' +
+				'pass `{ key, kind: "workflow", workflowId }` entries, and it rewrites src/n8n-bindings.d.ts with the input types. ' +
+				'It asks the user for approval first: every app is public, so a bound workflow is callable by anyone with the app URL. ' +
+				'`unbind` removes a key; `bindings` lists the current ones. Bind before writing code that calls a workflow.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -745,6 +1093,12 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleRestore(context, input, ctx.abortSignal);
 				case 'add-component':
 					return await handleAddComponent(context, input, ctx.abortSignal);
+				case 'bind':
+					return await handleBind(context, input, ctx);
+				case 'unbind':
+					return await handleUnbind(context, input, ctx.abortSignal);
+				case 'bindings':
+					return await handleBindings(context, input);
 			}
 		})
 		.build();

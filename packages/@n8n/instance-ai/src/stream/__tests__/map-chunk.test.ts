@@ -556,6 +556,30 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the app binding details of a bind approval and drops an invalid one', () => {
+		const appBinding = {
+			appId: 'app-1',
+			appName: 'Runner',
+			appNamespace: 'runner',
+			workflowId: 'wf-1',
+			workflowName: 'Echo',
+			key: 'submit',
+		};
+		const suspended = (payload: unknown) =>
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				suspendPayload: { requestId: 'request-1', message: 'Connect', appBinding: payload },
+			});
+
+		expect(suspended(appBinding)).toMatchObject({
+			type: 'confirmation-request',
+			payload: { message: 'Connect', appBinding },
+		});
+		expect(suspended({ appId: 'app-1' })).not.toHaveProperty('payload.appBinding');
+	});
+
 	it('maps confirmations with a channelConfig payload', () => {
 		expect(
 			map({

@@ -17,24 +17,29 @@ export class AppServingController {
 	 * Serves an App to anyone with the URL: a file of its active version's
 	 * dist, or one of its pages when it has no version.
 	 *
-	 * `skipAuth` because no App is protected yet, and because the auth middleware
+	 * `skipAuth` because no App is protected, and because the auth middleware
 	 * would clear the visitor's editor session cookie: a top-level navigation
-	 * cannot send the `browser-id` header the middleware expects. Whichever auth
-	 * an App later declares gets resolved in this handler instead.
+	 * cannot send the `browser-id` header the middleware expects.
 	 */
 	@Get('/:namespace{/*path}', { skipAuth: true, usesTemplates: true })
 	async serve(req: Request, res: Response) {
 		const segments = pathSegments(req.params.path);
+		// Reserved for the runtime API; a built app must not get its index.html here.
+		if (segments[0] === 'api') {
+			res.status(404).json({ code: 'not_found', message: 'Not found' });
+			return;
+		}
 		const resolved = await this.appServingService.resolve(req.params.namespace, segments);
 
+		// A built app links its assets relative to its base URL, so the root document
+		// has to carry the trailing slash.
+		const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
+		if (resolved && segments.length === 0 && !pathname.endsWith('/')) {
+			res.redirect(302, `/apps/${req.params.namespace}/${search}`);
+			return;
+		}
+
 		if (resolved?.kind === 'static') {
-			// A built app links its assets relative to its base URL, so the
-			// root document has to carry the trailing slash.
-			const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
-			if (segments.length === 0 && !pathname.endsWith('/')) {
-				res.redirect(302, `/apps/${req.params.namespace}/${search}`);
-				return;
-			}
 			await this.sendStaticFile(res, resolved.filePath);
 			return;
 		}

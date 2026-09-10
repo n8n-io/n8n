@@ -1,3 +1,4 @@
+import type { DescribedBinding } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -7,7 +8,7 @@ import { escapeHtml } from '@/app/utils/htmlUtils';
 import { useAppsStore } from '@/features/apps/apps.store';
 import type { App } from '@/features/apps/apps.types';
 
-/** Confirm-then-delete an App. Pages are derived, not stored — deleting one is an Instance AI hand-off, not this. */
+/** Confirm-then-delete for Apps and Bindings. Pages are derived, not stored — deleting one is an Instance AI hand-off, not this. */
 export function useAppDeletion() {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -35,5 +36,32 @@ export function useAppDeletion() {
 		}
 	};
 
-	return { confirmAndDeleteApp };
+	/** @returns whether the binding was deleted (false if cancelled or the request failed) */
+	const confirmAndDeleteBinding = async (
+		projectId: string,
+		appId: string,
+		binding: DescribedBinding,
+	): Promise<boolean> => {
+		const response = await message.confirm(
+			i18n.baseText('apps.connections.delete.confirm.message', {
+				interpolate: { name: escapeHtml(binding.name) },
+			}),
+			i18n.baseText('apps.connections.delete.confirm.title'),
+			{
+				confirmButtonText: i18n.baseText('generic.disconnect'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
+		);
+		if (response !== MODAL_CONFIRM) return false;
+
+		try {
+			await appsStore.deleteBinding(projectId, appId, binding.key);
+			return true;
+		} catch (error) {
+			toast.showError(error, i18n.baseText('apps.connections.delete.error'));
+			return false;
+		}
+	};
+
+	return { confirmAndDeleteApp, confirmAndDeleteBinding };
 }

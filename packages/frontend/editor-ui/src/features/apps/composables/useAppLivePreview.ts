@@ -91,9 +91,13 @@ export function useAppLivePreview(
 	// Bumped on every ensure and on stop, so a stale answer cannot revive timers.
 	let requestSeq = 0;
 
-	const heartbeat = useIntervalFn(() => void ensure(), LIVE_PREVIEW_HEARTBEAT_MS, {
-		immediate: false,
-	});
+	const heartbeat = useIntervalFn(
+		() => {
+			void ensure();
+		},
+		LIVE_PREVIEW_HEARTBEAT_MS,
+		{ immediate: false },
+	);
 
 	function clearPoll() {
 		if (pollTimer === undefined) return;
@@ -116,7 +120,9 @@ export function useAppLivePreview(
 		pollingSince = result.pollingSince;
 		status.value = result.status;
 		if (result.next === 'poll') {
-			pollTimer = setTimeout(() => void ensure(), LIVE_PREVIEW_POLL_MS);
+			pollTimer = setTimeout(() => {
+				void ensure();
+			}, LIVE_PREVIEW_POLL_MS);
 		}
 		if (result.next === 'heartbeat') heartbeat.resume();
 		else heartbeat.pause();
