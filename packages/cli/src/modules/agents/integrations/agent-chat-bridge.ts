@@ -42,6 +42,7 @@ import {
 import { buildSuspendCardPayload, isApprovalSuspendPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
+import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
 import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
@@ -415,6 +416,16 @@ export class AgentChatBridge {
 		);
 	}
 
+	async deliverWakeResponse(threadId: string, chunks: StreamChunk[]): Promise<void> {
+		await this.streamConsumer.consume(
+			(async function* () {
+				yield* chunks;
+			})(),
+			this.chat.thread(threadId),
+			{ throwOnDeliveryError: true },
+		);
+	}
+
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
 	}
@@ -588,7 +599,10 @@ export class AgentChatBridge {
 	): Promise<void> {
 		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
-		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
+		const text = this.prepareInboundText(
+			await this.getInboundText(message),
+			platformAgentContext,
+		).trim();
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
@@ -916,6 +930,7 @@ export class AgentChatBridge {
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
 		thread: Thread,
+		throwOnDeliveryError = false,
 	): Promise<boolean> {
 		const agentMessage: AgentMessage = chunk.message;
 
@@ -943,12 +958,29 @@ export class AgentChatBridge {
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			if (throwOnDeliveryError) throw error;
 			return false;
 		}
 	}
 
 	private getPlatformAgentContext(): PlatformAgentContext {
 		return this.integrationImpl?.getPlatformAgentContext?.(this.chat) ?? {};
+	}
+
+	/** Keep labelled-link URLs because the Chat SDK plain-text projection removes them. */
+	private async getInboundText(message: Message): Promise<string> {
+		if (!message.formatted) return message.text;
+		const { isLinkNode, text, toPlainText, walkAst } = await loadChatSdk();
+		// Keep raw platform markdown when the adapter does not use the SDK projection.
+		if (toPlainText(message.formatted) !== message.text) return message.text;
+		const formatted = walkAst(structuredClone(message.formatted), (node) => {
+			if (!isLinkNode(node)) return node;
+			const label = toPlainText({ type: 'root', children: [node] });
+			// Keep GFM autolinks because their labels already contain the URL.
+			if ([label, `http://${label}`, `mailto:${label}`].includes(node.url)) return node;
+			return text(`[${label}](${node.url})`);
+		});
+		return toPlainText(formatted);
 	}
 
 	private prepareInboundText(text: string | undefined, context: PlatformAgentContext): string {
@@ -963,6 +995,7 @@ export class AgentChatBridge {
 	private async postErrorToThread(
 		thread: Thread<unknown, unknown> | null,
 		error: unknown,
+		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
@@ -995,6 +1028,7 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
+			if (throwOnDeliveryError) throw postError;
 		}
 	}
 }

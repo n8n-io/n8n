@@ -54,6 +54,24 @@ export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
 /** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
 export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
 export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
+export const WORKFLOW_TEST_REQUEST_OPEN_TAG = '<workflow-test-request>';
+export const WORKFLOW_TEST_REQUEST_CLOSE_TAG = '</workflow-test-request>';
+
+export function buildWorkflowTestRequestBlock(workflowId: string): string {
+	return [
+		WORKFLOW_TEST_REQUEST_OPEN_TAG,
+		JSON.stringify({ workflowId }),
+		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
+		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
+		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
+		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
+		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
+	].join('\n');
+}
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -62,7 +80,7 @@ export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;

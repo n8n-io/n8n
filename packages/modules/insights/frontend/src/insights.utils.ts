@@ -144,7 +144,7 @@ export const getAdjustedDateRange = (dateRange: DateRange): { startDate: Date; e
 	const timezone = getLocalTimeZone();
 
 	const todayInTimezone = today(timezone);
-	const isEndDateToday = dateRange.end && dateRange.end.compare(todayInTimezone) === 0;
+	const isEndDateToday = dateRange.end?.compare(todayInTimezone) === 0;
 	const daysDiff = dateRange.end && dateRange.start ? dateRange.end.compare(dateRange.start) : 0;
 
 	if (isEndDateToday) {

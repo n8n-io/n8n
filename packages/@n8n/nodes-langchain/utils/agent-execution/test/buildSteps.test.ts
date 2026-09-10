@@ -822,6 +822,59 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should reconstruct thinking blocks with empty thinking text', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_omitted_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.messageLog?.[0].content).toEqual([
+				{
+					type: 'thinking',
+					thinking: '',
+					signature: 'encrypted_signature_abc',
+				},
+				{
+					type: 'tool_use',
+					id: 'call_omitted_1',
+					name: 'Calculator',
+					input: { expression: '2+2' },
+				},
+			]);
+		});
+
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [

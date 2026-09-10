@@ -176,11 +176,11 @@ catalog:
   # Pinned exactly and kept together: these packages cross types with each other
   # (`rule-tester` pins `utils` exactly), so a caret that lets one float breaks the
   # other. Must match the `typescript-eslint` meta-package version below.
-  '@typescript-eslint/eslint-plugin': 8.35.0
-  '@typescript-eslint/parser': 8.35.0
-  '@typescript-eslint/rule-tester': 8.35.0
-  '@typescript-eslint/typescript-estree': 8.35.0
-  '@typescript-eslint/utils': 8.35.0
+  '@typescript-eslint/eslint-plugin': 8.70.0
+  '@typescript-eslint/parser': 8.70.0
+  '@typescript-eslint/rule-tester': 8.70.0
+  '@typescript-eslint/typescript-estree': 8.70.0
+  '@typescript-eslint/utils': 8.70.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
@@ -273,7 +273,7 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
-  typescript-eslint: 8.35.0
+  typescript-eslint: 8.70.0
   uuid: 11.1.1
   vite: ^8.0.2
   unplugin-dts: ^1.1.0

@@ -1,17 +1,14 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { RuntimeCredentialProxyService } from '@/services/runtime-credential-proxy.service';
 
-function isFeatureFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_RUNTIME_CREDENTIALS === 'true';
-}
-
 @BackendModule({ name: 'runtime-credentials' })
 export class RuntimeCredentialsModule implements ModuleInterface {
 	async init() {
-		if (!isFeatureFlagEnabled()) return;
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_RUNTIME_CREDENTIALS')) return;
 
 		const { RuntimeCredentialsService } = await import('./runtime-credentials.service.js');
 		Container.get(RuntimeCredentialsService).init();

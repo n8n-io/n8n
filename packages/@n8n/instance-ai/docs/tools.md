@@ -196,8 +196,18 @@ waiting-with-output-as-success fallback.
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
+For reusable workflows with multiple enabled triggers, pass `triggerNodeName`
+and run verification once for each trigger. Successful runs accumulate node
+coverage per trigger. Each retry reserves an attempt and clears that trigger's
+old pass before execution. A successful result restores the combined coverage.
+If either write fails, the tool reports an error. The attempt limit still applies.
+
+The returned and saved `claim` use the same cumulative evidence. Pending triggers
+and nodes without real coverage prevent a `verified` claim. Publishing during a
+retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
+
 **Writes on success/failure**: the tool persists a structured `verification`
-record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
@@ -413,6 +423,17 @@ recipes and does not count temporary credential replacement requests as user pro
 This observation reads saved bindings and checks required values and placeholders.
 It does not test credentials or fetch provider resource lists. It does not produce
 fresh connection-test warnings. Live checks remain part of setup and verification.
+
+When setup items settle between turns, none remain open, and there are no
+validation warnings, the agent verifies the current configuration on the next
+user turn. Setup changes do not start an agent run by themselves.
+The panel's Execute action sends a normal chat message with
+`context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
+the host adds a private `workflow-test-request` block that identifies the target.
+If required setup remains open, the agent reports those items and ends the turn
+without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
+the output, and reports the test result in chat. Execution approval policy still
+applies. The new panel does not use the wizard's trigger-test resume loop.
 
 ### `workflows(action="publish")`
 

@@ -271,8 +271,6 @@ onMounted(async () => {
 		:name="VARIABLE_MODAL_KEY"
 		width="600px"
 		:lock-scroll="false"
-		:close-on-esc="true"
-		:close-on-click-modal="false"
 		:show-close="true"
 	>
 		<template #content>

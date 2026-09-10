@@ -1293,7 +1293,7 @@ function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 		parameters[key] = {
 			...rl,
 			value: synthesizeResourceLocatorValue(key),
-		} as INodeParameters[string];
+		};
 	}
 }
 
@@ -1343,7 +1343,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 		const value = mapper.value;
 		const mappingKeys =
 			value !== null && typeof value === 'object' && !Array.isArray(value)
-				? Object.keys(value as Record<string, unknown>)
+				? Object.keys(value)
 				: [];
 
 		if (mappingKeys.length === 0) {
@@ -1355,7 +1355,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				mappingMode: 'autoMapInputData',
 				value: null,
 				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
-			} as INodeParameters[string];
+			};
 			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
 			continue;
 		}
@@ -1375,7 +1375,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				type: 'string',
 				canBeUsedToMatch: true,
 			})),
-		} as INodeParameters[string];
+		};
 	}
 	return changes;
 }
