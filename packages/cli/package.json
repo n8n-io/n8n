@@ -17,7 +17,7 @@
     "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"pnpm run watch\" \"nodemon webhook\"",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
+    "lint": "cross-env NODE_OPTIONS=\"--max-old-space-size=6144\" eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "recording:list": "node scripts/agent-integration-recordings.mjs --list",
     "recording:export": "node scripts/agent-integration-recordings.mjs",

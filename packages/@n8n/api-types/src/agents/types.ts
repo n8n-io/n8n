@@ -184,9 +184,20 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+export interface AgentConfigResponse {
+	config: AgentJsonConfig;
+	configHash: string;
+}
+
+export interface AgentConfigMutationResponse extends AgentConfigResponse {
+	updatedAt: string;
+	versionId: string | null;
+}
+
 export interface AgentSkillMutationResponse {
 	id: string;
 	skill: AgentSkill;
+	skillHash: string;
 	versionId: string | null;
 }
 

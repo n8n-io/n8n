@@ -53,6 +53,12 @@ export type McpInstructionsOptions = {
 	 * read — the one thing here a client would otherwise never think to ask for.
 	 */
 	isInstanceContextEnabled?: boolean;
+
+	/**
+	 * The caller's saved AI preferences, already rendered as a tagged block by
+	 * `AiPreferenceService`. Appended as the last section when set.
+	 */
+	aiPreferences?: string;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -61,6 +67,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
 		isInstanceContextEnabled = false,
+		aiPreferences,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -141,6 +148,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

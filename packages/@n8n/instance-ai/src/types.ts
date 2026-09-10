@@ -566,6 +566,9 @@ export interface InstanceAiExecutionService {
 export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
+	/** The type's own n8n docs page, so a scope/setup answer can be grounded in one
+	 *  `n8n-docs` lookup instead of recalled. Absent when the class won't load. */
+	documentationUrl?: string;
 }
 
 /** An HTTP-usable credential type with the API host(s) it authenticates against,
@@ -1902,6 +1905,11 @@ export interface WorkflowTaskService {
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
+	beginVerification(
+		outcome: WorkflowBuildOutcome,
+		state: WorkflowLoopState,
+		runId: string,
+	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
 

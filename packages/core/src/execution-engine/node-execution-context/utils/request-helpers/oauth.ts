@@ -201,7 +201,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 				client_id: credentials.clientId,
 				...(credentials.grantType === 'authorizationCode' &&
 					credentials.clientCredentialType !== 'certificate' && {
-						client_secret: credentials.clientSecret as string,
+						client_secret: credentials.clientSecret,
 					}),
 			};
 			tokenRefreshOptions.body = body;
@@ -565,7 +565,7 @@ export async function requestOAuth2(
 		.catch(async (error: IResponseError) => {
 			if (shouldRefreshToken(error.statusCode)) {
 				return await retryWithNewToken(
-					async (opts) => await this.helpers.request(opts as IRequestOptions),
+					async (opts) => await this.helpers.request(opts),
 					() => {
 						// Under simple:false the "error" is the full 401 response thrown above;
 						// hand it back resolved, matching what the caller gets without a retry

@@ -5,6 +5,7 @@ import {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
 	MCP_INSTANCE_CONTEXT_FLAG,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -16,6 +17,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -33,6 +35,11 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import {
+	AiPreferenceService,
+	renderAiPreferencesBlock,
+	type ApplicableAiPreferences,
+} from '@/services/ai-preference.service';
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -137,6 +144,13 @@ export type McpFeatureFlags = {
 	canvasGroupsEnabled: boolean;
 	/** The instance-context read surface: the activity tools and node-usage. */
 	instanceContextEnabled: boolean;
+	/** Saved AI preferences in the server instructions. */
+	aiPreferencesEnabled: boolean;
+};
+
+export type McpServerBuildOptions = {
+	/** True for `initialize` and `server/discover`, the requests that read the instructions. */
+	isConnectionHandshake?: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -188,7 +202,7 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
  */
 function getWorkflowId(source: unknown): string | undefined {
 	if (!source || typeof source !== 'object' || !('workflowId' in source)) return undefined;
-	const workflowId = (source as { workflowId: unknown }).workflowId;
+	const workflowId = source.workflowId;
 	return typeof workflowId === 'string' ? workflowId : undefined;
 }
 
@@ -236,12 +250,13 @@ export class McpService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {}
 
 	/**
 	 * Resolves every PostHog-gated MCP feature for a user with a single flags
 	 * lookup. Env overrides are force-enable-only and take precedence over
-	 * PostHog; the lookup is skipped entirely when every feature is overridden.
+	 * PostHog.
 	 */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
 		const { mcpAppsEnabled, mcpCanvasGroupsEnabled, mcpInstanceContextEnabled } =
@@ -250,23 +265,36 @@ export class McpService {
 		// `PostHogClient.getFeatureFlags` swallows PostHog errors internally and
 		// returns `{}`, so a transient outage fails closed (feature off, MCP Apps
 		// surfacing as `unassigned`).
-		const flags =
-			mcpAppsEnabled && mcpCanvasGroupsEnabled && mcpInstanceContextEnabled
-				? undefined
-				: await this.postHogClient.getFeatureFlags(user);
+		const flags = await this.postHogClient.getFeatureFlags(user);
 
 		return {
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags?.[MCP_CANVAS_GROUPS_FLAG] === true,
+			canvasGroupsEnabled: mcpCanvasGroupsEnabled || flags[MCP_CANVAS_GROUPS_FLAG] === true,
 			instanceContextEnabled:
-				mcpInstanceContextEnabled || flags?.[MCP_INSTANCE_CONTEXT_FLAG] === true,
+				mcpInstanceContextEnabled || flags[MCP_INSTANCE_CONTEXT_FLAG] === true,
+			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === true,
 		};
 	}
 
-	private resolveMcpApps(envOverride: boolean, flags?: FeatureFlags): McpAppsResolution {
+	/** Best-effort: a failed read costs the preferences, not the MCP request. */
+	private async readAiPreferencesBlock(user: User): Promise<string | undefined> {
+		let preferences: ApplicableAiPreferences;
+		try {
+			preferences = await this.aiPreferenceService.getApplicableAcrossProjects(user);
+		} catch (error) {
+			this.logger.warn('Failed to read the AI preferences for the MCP server instructions', {
+				userId: user.id,
+				error: ensureError(error).message,
+			});
+			return undefined;
+		}
+		return renderAiPreferencesBlock(preferences);
+	}
+
+	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
 		if (envOverride) return { enabled: true, variant: 'env_override' };
 
-		const raw = flags?.[MCP_APPS_FLAG];
+		const raw = flags[MCP_APPS_FLAG];
 		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
 		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
 		return { enabled: false, variant: 'unassigned' };
@@ -410,7 +438,15 @@ export class McpService {
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		options: McpServerBuildOptions = {},
 	) {
+		// Only the handshake response carries the instructions, so the per-user
+		// block is read only there and not on every tool call. The read starts
+		// first so it overlaps the other lookups below; it never rejects.
+		const aiPreferences =
+			featureFlags.aiPreferencesEnabled && options.isConnectionHandshake
+				? this.readAiPreferencesBlock(user)
+				: undefined;
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
 		);
@@ -444,6 +480,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
+					aiPreferences: await aiPreferences,
 				}),
 			},
 		);

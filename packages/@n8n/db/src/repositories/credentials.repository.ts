@@ -489,7 +489,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		// Apply other filters
 		// projectId is always handled in the subquery, so skip it to avoid issues
 		const filtersToApply =
-			options.filter && typeof options.filter.projectId !== 'undefined'
+			typeof options.filter?.projectId !== 'undefined'
 				? { ...options.filter, projectId: undefined }
 				: options.filter;
 

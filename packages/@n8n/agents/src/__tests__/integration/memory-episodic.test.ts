@@ -366,7 +366,7 @@ function toolNames(messages: Parameters<typeof findAllToolCalls>[0]): string[] {
 
 function resolvedToolOutput(messages: Parameters<typeof findAllToolCalls>[0], toolName: string) {
 	const toolCall = findAllToolCalls(messages).find((call) => call.toolName === toolName);
-	if (!toolCall || toolCall.state !== 'resolved') {
+	if (toolCall?.state !== 'resolved') {
 		throw new Error(`${toolName} did not resolve`);
 	}
 	return toolCall.output;
