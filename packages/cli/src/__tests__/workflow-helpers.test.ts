@@ -602,7 +602,27 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
-	it('should throw when a group has no members', () => {
+	it('should accept a memberless group with a valid persisted frame', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [
+						{
+							id: 'g1',
+							name: 'My Group',
+							nodeIds: [],
+							frame: { position: [100, 200], size: [240, 160] },
+							visualLinks: [],
+						},
+					],
+				},
+				null,
+			),
+		).not.toThrow();
+	});
+
+	it('should reject a memberless group without a valid persisted frame', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
 				{
@@ -611,7 +631,7 @@ describe('validateWorkflowNodeGroups', () => {
 				},
 				null,
 			),
-		).toThrow('Group "My Group" has no members.');
+		).toThrow('Empty group "My Group" must have a finite position and positive finite size.');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {
