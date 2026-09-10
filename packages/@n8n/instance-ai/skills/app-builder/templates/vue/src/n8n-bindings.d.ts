@@ -4,5 +4,6 @@ declare module '@n8n/app-sdk' {
 	interface Bindings {
 		workflows: {};
 		tables: {};
+		agents: {};
 	}
 }
