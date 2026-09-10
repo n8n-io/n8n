@@ -7,6 +7,10 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AppVersion } from '../app-version.entity';
@@ -16,6 +20,7 @@ import type { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
 import { AppNotFoundError } from '../errors/app-not-found.error';
 import { AppQuotaExceededError } from '../errors/app-quota-exceeded.error';
+import { BindingDataTableNotFoundError } from '../errors/binding-data-table-not-found.error';
 import { BindingIncompatibleError } from '../errors/binding-incompatible.error';
 import { BindingNotFoundError } from '../errors/binding-not-found.error';
 import { BindingProjectMismatchError } from '../errors/binding-project-mismatch.error';
@@ -41,6 +46,7 @@ describe('AppsService', () => {
 			globalConfig,
 			mock<WorkflowToolWorkflowLoader>(),
 			mock<ExecutionPersistence>(),
+			mock<DataTableService>(),
 		);
 	});
 
@@ -118,6 +124,17 @@ const binding = (key = 'submit', workflowId = 'wf-1'): AppBinding => ({
 	workflowId,
 });
 
+const tableBinding = (
+	permissions: Array<'read' | 'write'> = ['read', 'write'],
+	key = 'tasks',
+): AppBinding => ({ key, kind: 'dataTable', dataTableId: 'dt-1', permissions });
+
+const table = (overrides: Partial<DataTable> = {}): DataTable =>
+	({ id: 'dt-1', name: 'Tasks', projectId: 'proj-1', ...overrides }) as DataTable;
+
+const column = (name: string, type: DataTableColumn['type']) =>
+	({ name, type, dataTableId: 'dt-1' }) as DataTableColumn;
+
 const notPublished = () => new WorkflowToolUnavailableError('not_published', 'not published');
 
 const successfulExecution = (items: IDataObject[]): IExecutionResponse =>
@@ -156,6 +173,7 @@ describe('AppsService bindings', () => {
 	let workflowFinderService: ReturnType<typeof mock<WorkflowFinderService>>;
 	let workflowLoader: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
+	let dataTableService: ReturnType<typeof mock<DataTableService>>;
 	let service: AppsService;
 	let app: App;
 
@@ -164,6 +182,7 @@ describe('AppsService bindings', () => {
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowLoader = mock<WorkflowToolWorkflowLoader>();
 		executionPersistence = mock<ExecutionPersistence>();
+		dataTableService = mock<DataTableService>();
 		executionPersistence.findMultipleExecutions.mockResolvedValue([
 			successfulExecution([{ reply: 'hi' }]),
 		]);
@@ -175,6 +194,7 @@ describe('AppsService bindings', () => {
 			mock<GlobalConfig>({ executions: { maxDisplaySize: 1024 } }),
 			workflowLoader,
 			executionPersistence,
+			dataTableService,
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);
@@ -265,6 +285,68 @@ describe('AppsService bindings', () => {
 
 			expect(app.bindings).toEqual([binding()]);
 			expect(result.bindings.map((b) => b.key)).toEqual(['submit']);
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('rejects a data table the user cannot read', async () => {
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([]);
+
+			await expect(
+				service.setBindings('app-1', [tableBinding(['read'])], user),
+			).rejects.toBeInstanceOf(BindingDataTableNotFoundError);
+			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt-1'], user, [
+				'dataTable:readRow',
+			]);
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('requires the write scope for a write binding', async () => {
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([]);
+
+			await expect(service.setBindings('app-1', [tableBinding()], user)).rejects.toBeInstanceOf(
+				BindingDataTableNotFoundError,
+			);
+			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt-1'], user, [
+				'dataTable:readRow',
+				'dataTable:writeRow',
+			]);
+		});
+
+		it('rejects a data table owned by another project', async () => {
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([
+				table({ projectId: 'proj-2' }),
+			]);
+
+			await expect(service.setBindings('app-1', [tableBinding()], user)).rejects.toThrow(
+				'Binding \'tasks\': data table "Tasks" belongs to another project.',
+			);
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('rejects a data table binding without permissions', async () => {
+			await expect(service.setBindings('app-1', [tableBinding([])], user)).rejects.toBeInstanceOf(
+				InvalidBindingsError,
+			);
+			expect(dataTableService.findDataTablesByIdsForUser).not.toHaveBeenCalled();
+		});
+
+		it('binds a data table and describes its columns', async () => {
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([table()]);
+			dataTableService.validateDataTableExists.mockResolvedValue(table());
+			dataTableService.getColumns.mockResolvedValue([column('title', 'string')]);
+
+			const result = await service.setBindings('app-1', [tableBinding(['read'])], user);
+
+			expect(appRepository.updateBindings).toHaveBeenCalledWith(app, [tableBinding(['read'])]);
+			expect(result.bindings).toEqual([
+				expect.objectContaining({
+					key: 'tasks',
+					kind: 'dataTable',
+					name: 'Tasks',
+					permissions: ['read'],
+					columns: [{ name: 'title', type: 'string' }],
+				}),
+			]);
 			expect(result.warnings).toEqual([]);
 		});
 	});
@@ -361,7 +443,9 @@ describe('AppsService bindings', () => {
 
 			const result = await service.describeBindings(app);
 
-			expect(result.bindings[0].input).toEqual(inputOf({ message: stringField('message') }));
+			expect(result.bindings[0]).toMatchObject({
+				input: inputOf({ message: stringField('message') }),
+			});
 			expect(result.warnings).toEqual([]);
 		});
 
@@ -373,13 +457,15 @@ describe('AppsService bindings', () => {
 
 			const result = await service.describeBindings(app);
 
-			expect(result.bindings[0].input).toEqual({ type: 'object', additionalProperties: true });
+			expect(result.bindings[0]).toMatchObject({
+				input: { type: 'object', additionalProperties: true },
+			});
 			expect(result.warnings).toEqual([
 				'Binding \'submit\': workflow "Echo" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.',
 			]);
 		});
 
-		it('leaves out a binding whose workflow no longer exists and warns', async () => {
+		it('keeps a binding whose workflow no longer exists as missing and warns', async () => {
 			app.bindings = [binding('gone', 'wf-gone'), binding()];
 			workflowLoader.loadWorkflow.mockImplementation(async (_projectId, reference) =>
 				reference.workflowId === 'wf-1' ? workflow() : null,
@@ -387,8 +473,96 @@ describe('AppsService bindings', () => {
 
 			const result = await service.describeBindings(app);
 
-			expect(result.bindings.map((b) => b.key)).toEqual(['submit']);
-			expect(result.warnings).toEqual([expect.stringContaining("'gone'")]);
+			expect(result.bindings).toEqual([
+				{ key: 'gone', kind: 'workflow', name: 'gone', missing: true },
+				expect.objectContaining({ key: 'submit', workflowId: 'wf-1' }),
+			]);
+			expect(result.warnings).toEqual([
+				"Binding 'gone': workflow 'wf-gone' no longer exists in the app's project.",
+			]);
+		});
+
+		it('keeps a binding whose workflow lost its trigger as missing and warns', async () => {
+			app.bindings = [binding()];
+			workflowLoader.loadWorkflow.mockResolvedValue(
+				workflow({ nodes: [{ ...triggerNode(), type: 'n8n-nodes-base.manualTrigger' }] }),
+			);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings).toEqual([
+				{ key: 'submit', kind: 'workflow', name: 'submit', missing: true },
+			]);
+			expect(result.warnings).toEqual([expect.stringContaining('no longer starts with')]);
+		});
+
+		it('describes a data table binding with its columns and a nullable row schema', async () => {
+			app.bindings = [tableBinding()];
+			dataTableService.validateDataTableExists.mockResolvedValue(table());
+			dataTableService.getColumns.mockResolvedValue([
+				column('title', 'string'),
+				column('points', 'number'),
+				column('done', 'boolean'),
+				column('due', 'date'),
+			]);
+
+			const result = await service.describeBindings(app);
+
+			expect(dataTableService.validateDataTableExists).toHaveBeenCalledWith('dt-1', 'proj-1');
+			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-1', 'proj-1');
+			expect(result.bindings).toEqual([
+				{
+					key: 'tasks',
+					kind: 'dataTable',
+					dataTableId: 'dt-1',
+					name: 'Tasks',
+					permissions: ['read', 'write'],
+					columns: [
+						{ name: 'title', type: 'string' },
+						{ name: 'points', type: 'number' },
+						{ name: 'done', type: 'boolean' },
+						{ name: 'due', type: 'date' },
+					],
+					row: {
+						type: 'object',
+						properties: {
+							id: { type: 'number' },
+							createdAt: { type: 'string', format: 'date-time' },
+							updatedAt: { type: 'string', format: 'date-time' },
+							title: { type: ['string', 'null'] },
+							points: { type: ['number', 'null'] },
+							done: { type: ['boolean', 'null'] },
+							due: { type: ['string', 'null'], format: 'date-time' },
+						},
+						required: ['id', 'createdAt', 'updatedAt', 'title', 'points', 'done', 'due'],
+						additionalProperties: false,
+					},
+				},
+			]);
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('keeps a binding whose data table no longer exists as missing and warns', async () => {
+			app.bindings = [tableBinding()];
+			dataTableService.validateDataTableExists.mockRejectedValue(
+				new DataTableNotFoundError('dt-1'),
+			);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings).toEqual([
+				{ key: 'tasks', kind: 'dataTable', name: 'tasks', missing: true },
+			]);
+			expect(result.warnings).toEqual([
+				"Binding 'tasks': data table 'dt-1' no longer exists in the app's project.",
+			]);
+		});
+
+		it('rethrows a data table failure that is not a missing table', async () => {
+			app.bindings = [tableBinding()];
+			dataTableService.validateDataTableExists.mockRejectedValue(new Error('db down'));
+
+			await expect(service.describeBindings(app)).rejects.toThrow('db down');
 		});
 
 		it('types the output from the latest successful execution of the workflow', async () => {

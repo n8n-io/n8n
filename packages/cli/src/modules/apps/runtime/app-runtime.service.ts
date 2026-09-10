@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
@@ -99,7 +100,9 @@ export class AppRuntimeService {
 			throw new AppRuntimeError(404, 'app_not_found', `No app is served at /apps/${namespace}.`);
 		}
 
-		const binding = app.bindings.find((b) => b.key === key && b.kind === 'workflow');
+		const binding = app.bindings.find(
+			(b): b is Extract<AppBinding, { kind: 'workflow' }> => b.key === key && b.kind === 'workflow',
+		);
 		if (!binding) {
 			throw new AppRuntimeError(
 				404,
