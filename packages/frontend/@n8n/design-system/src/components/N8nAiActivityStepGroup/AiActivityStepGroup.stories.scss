@@ -1,0 +1,21 @@
+.background-tasks-story {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
+
+	button {
+		height: auto;
+		min-height: var(--height--xl);
+		padding: var(--spacing--xs) var(--spacing--sm);
+		color: var(--text-color);
+	}
+
+	.waiting circle {
+		fill: currentColor;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.task-spinner {
+			animation: none;
+		}
+	}
+}

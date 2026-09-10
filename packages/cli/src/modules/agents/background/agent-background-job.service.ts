@@ -9,6 +9,7 @@ import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow'
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
 	AgentBackgroundJobRepository,
@@ -126,6 +127,7 @@ export class AgentBackgroundJobService {
 		private readonly publisher: Publisher,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -148,6 +150,7 @@ export class AgentBackgroundJobService {
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
+		this.updateBroadcaster.notifyBackgroundTasks(params.parentAgentId, params.parentThreadId);
 
 		return { status: 'started', jobId: params.id };
 	}
@@ -165,6 +168,9 @@ export class AgentBackgroundJobService {
 			kind: 'workflow',
 			childExecutionId: executionId,
 		});
+		if (outcome.inserted) {
+			this.updateBroadcaster.notifyBackgroundTasks(params.parentAgentId, params.parentThreadId);
+		}
 
 		return { status: 'started', jobId: outcome.inserted ? params.id : outcome.existing.id };
 	}
@@ -183,7 +189,10 @@ export class AgentBackgroundJobService {
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
 		try {
 			const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
-			if (settled) await this.requestWakeSafely(jobId);
+			if (settled) {
+				await this.notifyTaskUpdate(jobId);
+				await this.requestWakeSafely(jobId);
+			}
 			return settled;
 		} finally {
 			// Drop the handle even when the write throws — a leaked entry would
@@ -231,6 +240,27 @@ export class AgentBackgroundJobService {
 		}));
 	}
 
+	async listCurrentGroupForThread(parentThreadId: string): Promise<BackgroundJobView[]> {
+		const jobs = (await this.listForThread(parentThreadId)).sort(
+			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+		);
+		let group: BackgroundJobView[] = [];
+		let groupEndsAt = Number.NEGATIVE_INFINITY;
+		for (const job of jobs) {
+			const startedAt = job.createdAt.getTime();
+			// A gap with no running jobs starts a new group.
+			if (startedAt > groupEndsAt) group = [];
+			group.push(job);
+			groupEndsAt = Math.max(
+				groupEndsAt,
+				job.status === 'running'
+					? Number.POSITIVE_INFINITY
+					: (job.settledAt?.getTime() ?? startedAt),
+			);
+		}
+		return group.some((job) => job.status === 'running') ? group : [];
+	}
+
 	/**
 	 * Cancel a job. A sub-agent row is claimed as cancelled first and its live
 	 * run aborted second, so the aborted run's own settle write loses to the
@@ -250,6 +280,7 @@ export class AgentBackgroundJobService {
 
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
+		this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
 
 		const controller = this.abortControllers.get(jobId);
 		if (controller) {
@@ -272,6 +303,15 @@ export class AgentBackgroundJobService {
 
 		await this.consumeCancelledMail(parentThreadId, jobId);
 		return 'cancelled';
+	}
+
+	private async notifyTaskUpdate(jobId: string): Promise<void> {
+		try {
+			const job = await this.jobRepository.findById(jobId);
+			if (job) this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+		} catch (error) {
+			this.logger.warn('Failed to resolve background task update', { jobId, error });
+		}
 	}
 
 	private async requestWakeSafely(jobId: string): Promise<void> {
@@ -364,7 +404,10 @@ export class AgentBackgroundJobService {
 
 		// The stopped execution's settle hook may have written `cancelled` first;
 		// either way the job is cancelled.
-		await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		const settled = await this.jobRepository.settleIfRunning(job.id, { status: 'cancelled' });
+		if (settled) {
+			this.updateBroadcaster.notifyBackgroundTasks(job.parentAgentId, job.parentThreadId);
+		}
 		await this.consumeCancelledMail(job.parentThreadId, job.id);
 		return 'cancelled';
 	}

@@ -12,6 +12,7 @@ import AgentChatPanel from './AgentChatPanel.vue';
 
 withDefaults(
 	defineProps<{
+		active?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -61,6 +62,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:background-tasks-active="active !== false"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"

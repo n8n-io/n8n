@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
+import {
+	N8nAiActivityStepGroup,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nSendStopButton,
+} from '@n8n/design-system';
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	APPROVAL_TOOL_NAME,
@@ -24,7 +32,9 @@ import type {
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
-import { TOOL_CALL_STATE } from '../constants';
+import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import { TIME } from '@/app/constants/durations';
+import { useAgentBackgroundTasks } from '../composables/useAgentBackgroundTasks';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +50,7 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
+		backgroundTasksActive?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -49,6 +60,7 @@ const props = withDefaults(
 		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
+		backgroundTasksActive: false,
 	},
 );
 
@@ -65,6 +77,96 @@ const emit = defineEmits<{
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
+
+const { tasks: backgroundTasks } = useAgentBackgroundTasks({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.continueSessionId,
+	active: () => props.backgroundTasksActive,
+});
+const backgroundTitle = computed(() => {
+	const count = backgroundTasks.value.filter((task) => task.status === 'running').length;
+	return locale.baseText('agents.chat.backgroundTasks.runningCount', {
+		adjustToNumber: count,
+		interpolate: { count },
+	});
+});
+const backgroundTraceRoute = computed(() => ({
+	name: AGENT_SESSION_DETAIL_VIEW,
+	params: {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+	},
+}));
+const backgroundTaskStatuses = computed(() => ({
+	running: {
+		icon: 'loader-circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
+	},
+	completed: {
+		icon: 'circle-check',
+		label: locale.baseText('agents.chat.backgroundTasks.status.completed'),
+	},
+	failed: { icon: 'circle-x', label: locale.baseText('agents.chat.backgroundTasks.status.failed') },
+	cancelled: {
+		icon: 'circle-minus',
+		label: locale.baseText('agents.chat.backgroundTasks.status.cancelled'),
+	},
+	waiting: {
+		icon: 'circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.waiting'),
+	},
+}));
+const backgroundTaskRows = computed(() =>
+	backgroundTasks.value.map((task) => ({
+		...task,
+		label: locale.baseText(
+			task.kind === 'workflow'
+				? 'agents.chat.backgroundTasks.workflow'
+				: 'agents.chat.backgroundTasks.subagent',
+			{ interpolate: { title: task.title } },
+		),
+		indicator:
+			backgroundTaskStatuses.value[
+				task.kind === 'workflow' && task.status === 'running' ? 'waiting' : task.status
+			],
+	})),
+);
+const now = ref(Date.now());
+const documentVisibility = useDocumentVisibility();
+const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
+	() => {
+		now.value = Date.now();
+	},
+	TIME.SECOND,
+	{ immediate: false },
+);
+watch(
+	() =>
+		props.backgroundTasksActive &&
+		backgroundTasks.value.length > 0 &&
+		documentVisibility.value === 'visible',
+	(active) => {
+		if (active) {
+			now.value = Date.now();
+			resumeTimer();
+		} else pauseTimer();
+	},
+	{ immediate: true },
+);
+const backgroundElapsed = computed(() => {
+	const startedAt = backgroundTasks.value[0]?.startedAt;
+	const start = startedAt ? Date.parse(startedAt) : now.value;
+	const seconds = Number.isFinite(start)
+		? Math.max(0, Math.floor((now.value - start) / TIME.SECOND))
+		: 0;
+	const minutes = Math.floor(seconds / 60);
+	const remainder = String(seconds % 60).padStart(2, '0');
+	return minutes < 60
+		? `${minutes}:${remainder}`
+		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+});
 
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
@@ -455,6 +557,71 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
+				<template v-if="backgroundTasksActive && backgroundTasks.length" #header>
+					<div :class="$style.backgroundTasks" data-testid="agent-background-tasks">
+						<N8nAiActivityStepGroup
+							:key="continueSessionId"
+							:label="backgroundTitle"
+							full-width
+							content-position="above"
+						>
+							<template #prefix>
+								<N8nIcon
+									icon="loader-circle"
+									spin
+									size="small"
+									:class="$style.taskSpinner"
+									aria-hidden="true"
+								/>
+							</template>
+							<template #header-trailing>
+								<span
+									:class="$style.taskTimer"
+									aria-live="off"
+									data-testid="agent-background-tasks-timer"
+									>{{ backgroundElapsed }}</span
+								>
+							</template>
+							<div :class="$style.backgroundTaskDetails">
+								<ul :class="$style.backgroundTaskList">
+									<li v-for="task in backgroundTaskRows" :key="task.id">
+										<span
+											role="img"
+											:aria-label="task.indicator.label"
+											:title="task.indicator.label"
+											:class="[
+												$style.taskStatus,
+												{ [$style.taskWaiting]: task.indicator.icon === 'circle' },
+											]"
+											:data-status="task.status"
+										>
+											<N8nIcon
+												:icon="task.indicator.icon"
+												:spin="task.indicator.icon === 'loader-circle'"
+												size="small"
+												:class="{ [$style.taskSpinner]: task.indicator.icon === 'loader-circle' }"
+											/>
+										</span>
+										<span>{{ task.label }}</span>
+									</li>
+								</ul>
+								<N8nLink
+									v-if="continueSessionId"
+									:to="backgroundTraceRoute"
+									theme="text"
+									size="small"
+									underline
+									data-testid="agent-background-tasks-trace"
+								>
+									<span :class="$style.taskTraceLabel">
+										<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+										{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+									</span>
+								</N8nLink>
+							</div>
+						</N8nAiActivityStepGroup>
+					</div>
+				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>
 					<div :class="$style.attachmentsStrip">
 						<AttachmentPreview
@@ -500,6 +667,7 @@ onBeforeUnmount(() => {
 }
 
 .inputArea {
+	flex-shrink: 0;
 	padding: var(--spacing--xs) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
@@ -507,6 +675,88 @@ onBeforeUnmount(() => {
 	width: 100%;
 	max-width: 800px;
 	margin: 0 auto;
+}
+
+.backgroundTasks {
+	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
+	border-bottom: var(--border);
+	min-width: 0;
+
+	button {
+		height: auto;
+		min-height: var(--height--xl);
+		padding: var(--spacing--xs) var(--spacing--sm);
+		color: var(--text-color);
+	}
+}
+
+.backgroundTaskDetails {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	border-bottom: var(--border);
+	border-bottom-style: dashed;
+}
+
+.backgroundTaskList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-height: 20vh;
+	overflow-y: auto;
+
+	li {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
+		padding-block: var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		color: var(--text-color--subtle);
+		overflow-wrap: anywhere;
+		line-height: var(--line-height--lg);
+	}
+}
+
+.taskStatus {
+	display: inline-flex;
+	flex-shrink: 0;
+	line-height: inherit;
+	color: var(--text-color--subtler);
+
+	&[data-status='completed'] {
+		color: var(--icon-color--success);
+	}
+
+	&[data-status='failed'] {
+		color: var(--icon-color--danger);
+	}
+}
+
+.taskWaiting circle {
+	fill: currentColor;
+}
+
+.taskTraceLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.taskSpinner {
+	flex-shrink: 0;
+	color: var(--color--primary);
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+.taskTimer {
+	font-variant-numeric: tabular-nums;
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtler);
 }
 
 .attachmentsStrip {

@@ -60,6 +60,7 @@ export namespace PubSub {
 		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
+		export type RelayAgentBackgroundTasksUpdate = ToCommand<'relay-agent-background-tasks-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
 		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
 		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
@@ -107,6 +108,7 @@ export namespace PubSub {
 		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayAgentExecutionUpdate
+		| Commands.RelayAgentBackgroundTasksUpdate
 		| Commands.RelayAgentUpdate
 		| Commands.ResumeAgentWorkflowTool
 		| Commands.CancelAgentBackgroundJob
