@@ -2431,21 +2431,29 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * Rollout flag for reading instance-activity context: the per-turn
  * `<instance-context>` block, the `activity` tool, and the skill that explains them.
  *
- * One flag over the whole feature rather than one per side. `N8N_ACTIVITY_LOG_ENABLED`
- * is the single operator control: it decides whether the record accrues, and it
- * force-enables this flag unless an explicit override says otherwise. The read is
- * useless without the write — the edit leg would be permanently empty — and the write is
- * pointless without a reader.
+ * One flag over the whole feature rather than one per side. Either control turns the
+ * read on and neither one means nothing is read:
  *
- * The coupling runs one way. Turning the record on turns the read on, but PostHog can
- * still enable the read where the record is off, which renders the workflow and run legs
- * with a permanently empty edit leg. Those two legs do not come from the log.
+ * | `N8N_ACTIVITY_LOG_ENABLED` | this flag in PostHog | writes | reads |
+ * | -- | -- | -- | -- |
+ * | off | off | off | off |
+ * | off | on | off | on |
+ * | on | anything | on | on |
+ * | on | explicit `false` override | on | off |
  *
- * Within an instance that has the record on, this flag stages the read per user, which
- * is what the rollout ramps and what a token regression rolls back. The write side stays
- * instance-wide on purpose: its actor arrives as `UserLike`, which carries no
- * `createdAt` for PostHog to evaluate against, so gating it per user would cost a user
- * lookup on every recorded event to buy nothing the env var does not already give.
+ * The env var force-enables this flag unless an explicit override says otherwise, so
+ * this flag alone answers for both controls — which is why the read gate reads only it.
+ * The last row is the kill switch: an operator can stop the read without giving up the
+ * record it already has.
+ *
+ * Row two is the degraded case, and deliberate. The rollout can turn the read on with no
+ * deploy, and the record then holds only what accrued before, so the edit leg is thin.
+ * The other two legs are unaffected: what exists comes from the workflows themselves and
+ * runs come from `execution_entity`, neither of which is the log.
+ *
+ * The write side stays instance-wide because its actor arrives as `UserLike`, which
+ * carries no `createdAt` for PostHog to evaluate against — gating it per user would cost
+ * a user lookup on every recorded event.
  *
  * Roll the read back if the agent starts answering about the most recent thing rather
  * than the question, or if turn tokens rise with no matching fall in clarifying

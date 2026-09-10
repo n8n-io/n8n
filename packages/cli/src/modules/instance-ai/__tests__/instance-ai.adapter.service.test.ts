@@ -5296,16 +5296,25 @@ describe('resolveExperimentGates', () => {
 	});
 
 	/**
-	 * The read needs the record as well as the flag. Without it the relay registers no
-	 * writers while every turn still pays for the reads, and the edit leg can only ever
-	 * be empty.
+	 * The rollout turns the read on by itself, with no deploy. The record then holds only
+	 * what accrued before, so the block's edit leg is thin — its other two legs read the
+	 * workflows and the executions directly and are unaffected.
 	 */
-	it('keeps the instance-context read off when the record is not accruing', async () => {
+	it('turns the instance-context read on from the rollout alone', async () => {
 		stubContainer(allEnabled);
 
 		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
-			instanceContextEnabled: false,
+			instanceContextEnabled: true,
 			nodeUsageEnabled: true,
+		});
+	});
+
+	/** Neither control on means nothing is written and nothing is read. */
+	it('keeps the instance-context read off when neither control is on', async () => {
+		stubContainer({});
+
+		await expect(createAdapter(true, false).resolveExperimentGates(user)).resolves.toMatchObject({
+			instanceContextEnabled: false,
 		});
 	});
 

@@ -596,11 +596,11 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
-			// Both sides, not just the flag. The relay registers no writers when the record is
-			// off, so reading in that state costs a query per turn to render a block whose
-			// edit leg can only ever be empty. The env var and the flag are one control.
-			instanceContextEnabled:
-				this.globalConfig.activityLog.enabled && flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true,
+			// The flag alone, because it already answers for both controls:
+			// `N8N_ACTIVITY_LOG_ENABLED` force-enables it unless an explicit override says
+			// otherwise, so this reads on when either the env var or the rollout says so, off
+			// when neither does, and off when an operator kills it while the record accrues.
+			instanceContextEnabled: flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true,
 		};
 	}
 
