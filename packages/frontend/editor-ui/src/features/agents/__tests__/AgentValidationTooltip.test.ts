@@ -90,7 +90,9 @@ describe('AgentValidationTooltip', () => {
 		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
 
 		expect(content).toContain('agents.builder.preview.issue.agent.instructions.missingRequired');
-		expect(content).not.toContain('agents.builder.validation.issue.tool.workflow.notPublished');
+		expect(content).not.toContain(
+			'agents.builder.preview.issue.tool.workflow.incompatibleReference',
+		);
 		expect(content).not.toContain('agents.builder.validation.issue.httpRequestUrlFromAi');
 		expect(content).not.toContain('agents.builder.tasks.title');
 		expect(content).not.toContain('agents.builder.triggers.title');
