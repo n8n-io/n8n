@@ -41,7 +41,20 @@ if (!match) {
 // (NodeTestHarness) — the sanctioned way to write node workflow tests, so every
 // new suite would otherwise ratchet the count up. Exempt the class; turbo's
 // `implicitDependencies` only covers undeclared-package issues, not path leaves.
-const exempted = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? []).length;
+const exemptedHarness = (output.match(/import `@nodes-testing\/[^`]+` leaves the package/g) ?? [])
+	.length;
+
+// The editor's browser shim for `@n8n/expression-runtime` re-exports that package's
+// source directly: the barrel reaches IsolatedVmBridge, which requires isolated-vm, a
+// native Node module that cannot be bundled for a browser. The shim is the sanctioned
+// way to keep it out of the editor bundle, so every export added to it would otherwise
+// ratchet the count up. Keyed on the diagnostic's location line, not the specifier:
+// turbo wraps long specifiers across lines, but never the `,-[file:line:col]` line.
+const exemptedBrowserShim = (
+	output.match(/,-\[[^\]]*editor-ui\/vite\/expression-runtime-stub\.ts:/g) ?? []
+).length;
+
+const exempted = exemptedHarness + exemptedBrowserShim;
 const current = Number(match[1]) - exempted;
 
 if (write) {
@@ -51,7 +64,7 @@ if (write) {
 }
 
 console.log(
-	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exempted} node-test-harness imports exempted)`,
+	`turbo boundaries: ${current} issues (baseline ${baseline}, ${exemptedHarness} node-test-harness + ${exemptedBrowserShim} browser-shim imports exempted)`,
 );
 
 if (current > baseline) {
