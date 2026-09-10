@@ -25,6 +25,12 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
+// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
+function routePath(prefix: string, req: Request): string {
+	const path = (prefix === '/' ? '' : prefix) + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
@@ -105,7 +111,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(deprecated(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion));
+			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -140,7 +146,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
 			const authenticated = await this.authStrategyRegistry.authenticate(
 				req as AuthenticatedRequest,
@@ -156,7 +162,7 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
-					path: req.path,
+					path: routePath(prefix, req),
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
