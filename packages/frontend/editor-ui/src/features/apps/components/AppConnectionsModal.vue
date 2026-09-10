@@ -140,7 +140,6 @@ async function handleRowActivate(item: ToolConnectionItem) {
 		:title="i18n.baseText('apps.connections.picker.title')"
 		:search-placeholder="i18n.baseText('apps.connections.picker.search')"
 		:detail-item="null"
-		@connect="handleRowActivate"
 		@open-detail="handleRowActivate"
 	/>
 </template>
