@@ -38,7 +38,10 @@ export function toPreferencePermissions(row: Preference): PreferencePermissions 
  * in-memory server so the picker and the rows it produces cannot disagree:
  *
  *  - `projectVariable:create` resolves to project admins and editors, which is the set
- *    that may write project preferences.
+ *    that may write project preferences. A global owner also holds it on every
+ *    project, because the backend merges global scopes into each project's scopes.
+ *    That is deliberate and matches project variables: an instance owner may already
+ *    write those anywhere, and `projectPreference:create` will grant the same.
  *  - instance preferences reuse the instance owner/admin check.
  *
  * Swap both for the real `projectPreference:create` and `preference:manageInstance`

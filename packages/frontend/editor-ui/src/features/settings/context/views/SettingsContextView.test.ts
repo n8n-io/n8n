@@ -7,6 +7,11 @@ import SettingsContextView from './SettingsContextView.vue';
 import { useContextStore } from '../context.store';
 
 const push = vi.fn();
+const showErrorMock = vi.fn();
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
@@ -20,6 +25,17 @@ describe('SettingsContextView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		push.mockClear();
+		showErrorMock.mockClear();
+	});
+
+	it('reports a failed count instead of leaving the row at zero', async () => {
+		const contextStore = mockedStore(useContextStore);
+		contextStore.fetchPreferenceCount.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(showErrorMock).toHaveBeenCalled();
 	});
 
 	it('lists Preferences, Skills and Sources', () => {

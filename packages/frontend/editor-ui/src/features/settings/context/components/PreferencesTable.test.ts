@@ -24,9 +24,9 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 
 const renderTable = createComponentRenderer(PreferencesTable);
 
-function render(preferences: Preference[]) {
+function render(preferences: Preference[], showEmpty = false) {
 	return renderTable({
-		props: { preferences, itemsLength: preferences.length, loading: false },
+		props: { preferences, itemsLength: preferences.length, loading: false, showEmpty },
 	});
 }
 
@@ -75,6 +75,23 @@ describe('PreferencesTable', () => {
 
 		expect(getByTestId('preference-edit-button')).toBeDisabled();
 		expect(getByTestId('preference-delete-button')).toBeDisabled();
+	});
+
+	// The data table renders its cover row whenever the slot exists, so an always-on
+	// slot would leave a blank row above the data.
+	it('renders no cover row while rows are shown', () => {
+		const { container } = render([preference()], false);
+
+		expect(container.querySelector('td.cover')).toBeNull();
+	});
+
+	it('renders the cover row only when asked for the empty state', () => {
+		const { container } = renderTable({
+			props: { preferences: [], itemsLength: 0, loading: false, showEmpty: true },
+			slots: { empty: '<div data-test-id="stub-empty">No preferences yet</div>' },
+		});
+
+		expect(container.querySelector('td.cover')).not.toBeNull();
 	});
 
 	it('emits edit and delete for a writable row', async () => {

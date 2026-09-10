@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -19,6 +20,7 @@ const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
+const { showError } = useToast();
 
 const preferenceCount = computed(() =>
 	i18n.baseText('settings.context.preferences.count', {
@@ -33,7 +35,12 @@ async function openPreferences() {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.title'));
-	await contextStore.fetchPreferenceCount();
+	try {
+		await contextStore.fetchPreferenceCount();
+	} catch (error) {
+		// The row would otherwise sit at "0 preferences" as though the count were real.
+		showError(error, i18n.baseText('settings.context.preferences.error.load'));
+	}
 });
 </script>
 

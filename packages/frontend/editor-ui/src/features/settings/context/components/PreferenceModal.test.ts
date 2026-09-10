@@ -9,6 +9,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import PreferenceModal from './PreferenceModal.vue';
 import { PREFERENCE_MODAL_KEY, PREFERENCE_TEXT_MAX_LENGTH } from '../context.constants';
+import { useUIStore } from '@/app/stores/ui.store';
+
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
 
@@ -54,6 +56,7 @@ const renderModal = createComponentRenderer(PreferenceModal);
 let pinia: ReturnType<typeof createTestingPinia>;
 let contextStore: MockedStore<typeof useContextStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
+let uiStore: MockedStore<typeof useUIStore>;
 
 function scopeOptions() {
 	return Array.from(document.querySelectorAll('li.el-select-dropdown__item'));
@@ -68,6 +71,7 @@ describe('PreferenceModal', () => {
 		pinia = createTestingPinia({ initialState });
 		contextStore = mockedStore(useContextStore);
 		usersStore = mockedStore(useUsersStore);
+		uiStore = mockedStore(useUIStore);
 		usersStore.isAdminOrOwner = false;
 		trackMock.mockReset();
 	});
@@ -187,6 +191,41 @@ describe('PreferenceModal', () => {
 				scope_type: 'user',
 				text_length: 'Keep replies short.'.length,
 			});
+		});
+
+		const pendingSaveResult: Preference = {
+			id: 'p9',
+			content: 'Keep replies short.',
+			userId: 'user-1',
+			projectId: null,
+			project: null,
+			scopes: [],
+			createdAt: '2026-09-08T00:00:00.000Z',
+			updatedAt: '2026-09-08T00:00:00.000Z',
+		};
+
+		it('does not close the dialog after its own instance is gone', async () => {
+			let settle: (value: Preference) => void = () => {};
+			contextStore.createPreference.mockReturnValue(
+				new Promise<Preference>((resolve) => {
+					settle = resolve;
+				}),
+			);
+
+			const { getByTestId, unmount } = renderModal({ props: { mode: 'new' }, global, pinia });
+			await userEvent.type(
+				getByTestId('preference-modal-text-input').querySelector('textarea')!,
+				'Keep replies short.',
+			);
+			await userEvent.click(getByTestId('preference-modal-save-button'));
+
+			// The modal root unmounts on close and mounts a fresh instance on reopen, so
+			// a late close here would shut whichever dialog is open by then.
+			unmount();
+			settle(pendingSaveResult);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 
 		it('keeps the project scope when editing a project preference', async () => {

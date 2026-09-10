@@ -14,6 +14,13 @@ export const useContextStore = defineStore('context', () => {
 	const count = ref(0);
 	const loading = ref(false);
 
+	/**
+	 * Bumped after every successful write. The create/edit modal is mounted by the
+	 * global modal root rather than by the list, so it cannot emit to the list. The
+	 * list watches this instead and reloads the page it is showing.
+	 */
+	const changeVersion = ref(0);
+
 	const isEmpty = computed(() => count.value === 0);
 
 	async function fetchPreferences(query: PreferenceListQuery = {}) {
@@ -39,27 +46,34 @@ export const useContextStore = defineStore('context', () => {
 	}
 
 	async function createPreference(payload: PreferencePayload) {
-		return await api.createPreference(rootStore.restApiContext, payload);
+		const created = await api.createPreference(rootStore.restApiContext, payload);
+		changeVersion.value += 1;
+		return created;
 	}
 
 	async function updatePreference(id: string, payload: PreferencePayload) {
-		return await api.updatePreference(rootStore.restApiContext, id, payload);
+		const updated = await api.updatePreference(rootStore.restApiContext, id, payload);
+		changeVersion.value += 1;
+		return updated;
 	}
 
 	async function deletePreference(id: string) {
 		await api.deletePreference(rootStore.restApiContext, id);
+		changeVersion.value += 1;
 	}
 
 	async function deletePreferences(ids: string[]) {
 		for (const id of ids) {
 			await api.deletePreference(rootStore.restApiContext, id);
 		}
+		changeVersion.value += 1;
 	}
 
 	return {
 		preferences,
 		count,
 		loading,
+		changeVersion,
 		isEmpty,
 		fetchPreferences,
 		fetchPreferenceCount,

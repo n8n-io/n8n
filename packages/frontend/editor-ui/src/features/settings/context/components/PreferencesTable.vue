@@ -13,6 +13,12 @@ const props = defineProps<{
 	preferences: Preference[];
 	itemsLength: number;
 	loading?: boolean;
+	/**
+	 * The data table renders its cover row whenever the slot exists, so the slot is
+	 * withheld rather than emptied. Passing content but no flag would leave a blank
+	 * row above the data.
+	 */
+	showEmpty?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -90,7 +96,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 			:item-selectable="isSelectable"
 			@update:options="emit('update:options', $event)"
 		>
-			<template #cover>
+			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
 			</template>
 

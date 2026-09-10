@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -43,6 +43,16 @@ const contextStore = useContextStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
+
+/**
+ * The modal root unmounts this component when the dialog closes and mounts a fresh
+ * one when it reopens, so a slow save can outlive its own dialog. Closing on a stale
+ * continuation would shut the dialog the user just opened.
+ */
+let disposed = false;
+onBeforeUnmount(() => {
+	disposed = true;
+});
 
 const USER_SCOPE_VALUE = 'user';
 const INSTANCE_SCOPE_VALUE = 'instance';
@@ -98,6 +108,9 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 		},
 	];
 
+	// Team projects only. A personal project holds one member, so scoping a preference
+	// to it would duplicate "Just you" under a second name. Variables list personal
+	// projects because they have no per-user scope to offer; preferences do.
 	options.push(
 		...projectsStore.myProjects
 			.filter((project) => project.type === 'team')
@@ -160,7 +173,9 @@ async function handleSubmit() {
 				...(projectId ? { project_id: projectId } : {}),
 			});
 		}
-		closeModal();
+		// The write and its telemetry still count when the dialog is gone; only the
+		// close is unsafe, and an error is still worth reporting either way.
+		if (!disposed) closeModal();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.preferences.error.save'));
 	} finally {

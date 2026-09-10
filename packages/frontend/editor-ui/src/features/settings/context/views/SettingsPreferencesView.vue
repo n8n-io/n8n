@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -40,18 +40,43 @@ const tableOptions = ref<TableOptions>({
 	sortBy: [],
 });
 const selection = ref<string[]>([]);
+const loadFailed = ref(false);
 
-const showEmptyState = computed(() => !contextStore.loading && contextStore.count === 0);
+// A failed load also reports zero rows, so the empty state must not stand in for it.
+const showEmptyState = computed(
+	() => !contextStore.loading && !loadFailed.value && contextStore.count === 0,
+);
 const selectedCount = computed(() => selection.value.length);
 
 async function load() {
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	try {
 		await contextStore.fetchPreferences({ skip: page * itemsPerPage, take: itemsPerPage });
+		loadFailed.value = false;
+
+		// Deleting the last rows of a page can leave the current page past the end,
+		// which would show neither rows nor the empty state. Checked against the count
+		// the fetch just stored, so one correction is always enough.
+		const lastPage = Math.max(0, Math.ceil(contextStore.count / itemsPerPage) - 1);
+		if (page > lastPage) {
+			tableOptions.value = { ...tableOptions.value, page: lastPage };
+			await contextStore.fetchPreferences({
+				skip: lastPage * itemsPerPage,
+				take: itemsPerPage,
+			});
+		}
 	} catch (error) {
+		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.preferences.error.load'));
 	}
 }
+
+// The create/edit modal lives in the global modal root, so it cannot tell this view
+// that it saved. Every successful write bumps the store instead.
+watch(
+	() => contextStore.changeVersion,
+	async () => await load(),
+);
 
 async function onOptionsUpdate(options: TableOptions) {
 	tableOptions.value = options;
@@ -102,7 +127,6 @@ async function onDelete(preference: Preference) {
 		await contextStore.deletePreference(preference.id);
 		trackDelete('row', [preferenceScope(preference)]);
 		selection.value = selection.value.filter((id) => id !== preference.id);
-		await load();
 		showMessage({
 			title: i18n.baseText('settings.context.preferences.delete.success'),
 			type: 'success',
@@ -126,7 +150,6 @@ async function onDeleteSelected() {
 			}),
 		);
 		selection.value = [];
-		await load();
 		showMessage({
 			title: i18n.baseText('settings.context.preferences.delete.success'),
 			type: 'success',
@@ -190,12 +213,13 @@ onMounted(async () => {
 			:preferences="contextStore.preferences"
 			:items-length="contextStore.count"
 			:loading="contextStore.loading"
+			:show-empty="showEmptyState"
 			@edit="openEditModal"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
-				<div v-if="showEmptyState" :class="$style.empty" data-test-id="preferences-empty-state">
+				<div :class="$style.empty" data-test-id="preferences-empty-state">
 					<N8nHeading tag="h2" size="medium" bold>
 						{{ i18n.baseText('settings.context.preferences.empty.title') }}
 					</N8nHeading>

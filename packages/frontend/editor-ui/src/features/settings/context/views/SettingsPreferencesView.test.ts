@@ -156,6 +156,68 @@ describe('SettingsPreferencesView', () => {
 		expect(trackMock).not.toHaveBeenCalled();
 	});
 
+	it('reloads the page it is showing after a write', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+
+		renderView();
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(1);
+
+		// The modal lives in the global modal root, so a save reaches the list only
+		// through the store's change signal.
+		contextStore.changeVersion = 1;
+		await new Promise(process.nextTick);
+
+		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(2);
+	});
+
+	it('hides the empty state when the load failed', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
+
+		const { queryByTestId } = renderView();
+		await new Promise(process.nextTick);
+
+		// Zero rows here means "we do not know", not "there are none".
+		expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('shows the empty state again once a load succeeds', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
+
+		const { queryByTestId } = renderView();
+		await new Promise(process.nextTick);
+		expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
+
+		contextStore.changeVersion = 1;
+		await new Promise(process.nextTick);
+
+		expect(queryByTestId('preferences-empty-state')).toBeInTheDocument();
+	});
+
+	it('falls back to the last page when the collection shrinks under it', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 60; // two pages at the default size of 50
+
+		const { getByTestId } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByTestId('pagination-next'));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 50, take: 50 });
+
+		// Everything on the second page goes; page 1 no longer exists.
+		contextStore.count = 5;
+		contextStore.changeVersion = 1;
+		await new Promise(process.nextTick);
+
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({ skip: 0, take: 50 });
+	});
+
 	it('returns to the Context landing page', async () => {
 		contextStore.preferences = [];
 		contextStore.count = 0;
