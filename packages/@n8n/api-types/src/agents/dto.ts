@@ -131,6 +131,8 @@ export class CreateAgentDto extends Z.class({
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
+	/** Hash of the config the edit was made against (`null` when the agent had none). */
+	baseConfigHash: z.string().nullable(),
 }) {}
 
 export class CreateAgentTaskDto extends Z.class({
@@ -156,6 +158,7 @@ const updateAgentSkillShape = {
 	instructions: agentSkillShape.instructions.optional(),
 	allowedTools: agentSkillShape.allowedTools.optional(),
 	references: agentSkillShape.references.optional(),
+	baseSkillHash: z.string().optional(),
 };
 
 const updateAgentSkillSchema = z.object(updateAgentSkillShape).strict();
