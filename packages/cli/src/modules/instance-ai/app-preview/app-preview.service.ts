@@ -24,7 +24,8 @@ const START_HANDOFF_MS = 2_000;
 /** An ensure waits this long for a rebuild in flight, so the frame reloads only once the new dist exists. */
 const REBUILD_WAIT_MS = 45_000;
 const START_TIMEOUT_MS = 600_000;
-const UNSUPPORTED_ROUTE_CACHE_MS = 10 * 60 * 1000;
+/** How long a service's `/healthz` capabilities are trusted before being re-read. */
+const CAPABILITIES_CACHE_MS = 10 * 60 * 1000;
 const LOG_TAIL_BYTES = 4096;
 /** Written by the start script inside the app directory; the sandbox image has no `pkill`. */
 const DEV_SERVER_PID_FILE = '.n8n-dev.pid';
@@ -182,7 +183,8 @@ export class AppPreviewService {
 	private readonly entries = new Map<string, AppPreviewEntry>();
 
 	/** The sandbox service answered 404/501 on the port route; previews are built until this time. */
-	private portRouteUnsupportedUntil = 0;
+	/** Per service URL: whether `/healthz` advertises the `ports` capability, and until when that answer is trusted. */
+	private readonly portRouteSupport = new Map<string, { supported: boolean; until: number }>();
 
 	constructor(
 		private readonly jwtService: JwtService,
@@ -215,9 +217,6 @@ export class AppPreviewService {
 		if (existing) {
 			const probe = await this.probe(existing);
 			if (probe === 'ready') return this.ready(existing);
-			if (probe === 'unsupported' && existing.kind === 'dev') {
-				await this.stopDevServer(existing).catch(() => undefined);
-			}
 			this.entries.delete(key);
 		}
 		return await this.start(input, key);
@@ -341,7 +340,7 @@ export class AppPreviewService {
 			expiresAt: new Date(startedAt.getTime() + TOKEN_TTL_SECONDS * 1000),
 		};
 		const entry: AppPreviewEntry =
-			input.sandbox && Date.now() >= this.portRouteUnsupportedUntil
+			input.sandbox && (await this.supportsPortRoute(input.sandbox))
 				? { ...base, kind: 'dev', sandbox: input.sandbox, port: APP_PREVIEW_PORT }
 				: this.builtEntry(base);
 		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
@@ -407,14 +406,10 @@ export class AppPreviewService {
 			timeoutMs: START_TIMEOUT_MS,
 		});
 		if (result.exitCode !== 0) return { status: this.startFailed(result), entry };
-		// Vite is up inside the sandbox; the probe tells whether the service can route to it.
+		// Vite is up inside the sandbox; the probe confirms the service routes to it.
 		const probe = await this.probe(entry);
 		if (probe === 'ready') return { status: this.ready(entry), entry };
-		if (probe === 'gone') return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
-		// No port route: the dev server is useless here, a build from the sandbox filesystem takes over.
-		await this.stopDevServer(entry).catch(() => undefined);
-		const { sandbox: _sandbox, port: _port, kind: _kind, starting: _starting, ...base } = entry;
-		return await this.runBuild(this.builtEntry(base), input);
+		return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
 	}
 
 	/**
@@ -538,7 +533,7 @@ export class AppPreviewService {
 	 * refreshes the sandbox's `last_active_at`. Built: checks that the dist is
 	 * still in the sandbox filesystem.
 	 */
-	private async probe(entry: AppPreviewEntry): Promise<'ready' | 'gone' | 'unsupported'> {
+	private async probe(entry: AppPreviewEntry): Promise<'ready' | 'gone'> {
 		if (entry.kind === 'built') {
 			try {
 				const present = await entry.dist?.filesystem.exists(`${entry.dist.dir}/index.html`);
@@ -554,29 +549,37 @@ export class AppPreviewService {
 				signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
 			});
 			if (response.ok) return 'ready';
-			// Vite answers an HTML 404 for a path outside its base; the service's route 404 is plain.
-			const isHtml = response.headers.get('content-type')?.includes('text/html') ?? false;
-			if (
-				response.status === 501 ||
-				(response.status === 404 && !isHtml && (await this.sandboxExists(entry)))
-			) {
-				this.portRouteUnsupportedUntil = Date.now() + UNSUPPORTED_ROUTE_CACHE_MS;
-				return 'unsupported';
-			}
 			return 'gone';
 		} catch {
 			return 'gone';
 		}
 	}
 
-	/** A 404 on the port route is only "route missing" when the sandbox itself is still there. */
-	private async sandboxExists(entry: AppPreviewDevEntry): Promise<boolean> {
-		try {
-			await this.client(entry.sandbox).getSandbox(entry.sandboxId);
-			return true;
-		} catch {
-			return false;
-		}
+	/**
+	 * The service advertises the port route on `/healthz` (`capabilities: ["ports"]`);
+	 * older deployments omit the field and get the built preview.
+	 */
+	private async supportsPortRoute(sandbox: AppPreviewSandbox): Promise<boolean> {
+		const cached = this.portRouteSupport.get(sandbox.url);
+		if (cached && Date.now() < cached.until) return cached.supported;
+		const supported = await fetch(`${sandbox.url.replace(/\/+$/, '')}/healthz`, {
+			signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+		})
+			.then(async (response) => {
+				if (!response.ok) return false;
+				const body: unknown = await response.json();
+				const capabilities =
+					typeof body === 'object' && body !== null && 'capabilities' in body
+						? body.capabilities
+						: undefined;
+				return Array.isArray(capabilities) && capabilities.includes('ports');
+			})
+			.catch(() => false);
+		this.portRouteSupport.set(sandbox.url, {
+			supported,
+			until: Date.now() + CAPABILITIES_CACHE_MS,
+		});
+		return supported;
 	}
 
 	private client(sandbox: AppPreviewSandbox): SandboxClient {

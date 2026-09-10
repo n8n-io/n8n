@@ -113,6 +113,17 @@ function givenAppDirMissing() {
 const httpResponse = (status: number, headers: Record<string, string> = {}) =>
 	new Response(null, { status, headers });
 
+const healthz = (capabilities: string[]) =>
+	new Response(JSON.stringify({ status: 'ok', capabilities }), { status: 200 });
+
+/** `/healthz` advertises the port route; every other request answers `status`. */
+const serviceWith =
+	(capabilities: string[], status = 200) =>
+	(url: string | URL | Request) =>
+		Promise.resolve(
+			String(url).endsWith('/healthz') ? healthz(capabilities) : httpResponse(status),
+		);
+
 describe('AppPreviewService', () => {
 	const jwtService = mock<JwtService>();
 	let service: AppPreviewService;
@@ -130,7 +141,7 @@ describe('AppPreviewService', () => {
 		getWorkspace.mockResolvedValue(workspace);
 		getSourceTarball.mockResolvedValue(tarball);
 		hasActiveRun.mockReturnValue(false);
-		fetchMock.mockResolvedValue(httpResponse(200));
+		fetchMock.mockImplementation(serviceWith(['ports']));
 		workspaceExec.mockResolvedValue(commandOk);
 		workspaceFs.exists.mockResolvedValue(true);
 		workspaceFs.writeFile.mockResolvedValue(undefined);
@@ -354,30 +365,16 @@ describe('AppPreviewService', () => {
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
 		});
 
-		it.each([501, 404])(
-			'falls back to a built preview on a plain %i from the port route and caches the missing route',
-			async (status) => {
-				fetchMock.mockResolvedValue(httpResponse(status, { 'Content-Type': 'text/plain' }));
+		it('falls back to a built preview when /healthz does not advertise the port route', async () => {
+			fetchMock.mockImplementation(serviceWith([]));
 
-				const first = await service.ensure(input);
+			const first = await service.ensure(input);
 
-				expect(first).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
-				const clientCommands = sandboxClient.exec.mock.calls.map(([, request]) => request.command);
-				expect(clientCommands).toEqual([
-					expect.stringContaining('exec node_modules/.bin/vite'),
-					buildDevServerStopScript('greeter'),
-				]);
-				expect(workspaceExec).toHaveBeenCalledTimes(1);
-				expect(service.resolveToken(tokenOf(first))).toMatchObject({ kind: 'built', buildSeq: 1 });
-
-				const second = await service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
-
-				expect(second).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-				expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
-				expect(workspaceExec.mock.calls[1][0]).toContain('cd apps/other && ');
-			},
-		);
+			expect(first).toMatchObject({ status: 'ready', url: expect.stringMatching(/\?b=1$/) });
+			expect(sandboxClient.exec).not.toHaveBeenCalled();
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/healthz$/);
+		});
 
 		it('treats an HTML 404 from the port route as a gone dev server, not a missing route', async () => {
 			await service.ensure(input);
@@ -392,10 +389,9 @@ describe('AppPreviewService', () => {
 			});
 		});
 
-		it('treats a 404 from the port route as gone when the sandbox is gone too', async () => {
+		it('treats a 404 from the port route as gone', async () => {
 			await service.ensure(input);
-			fetchMock.mockResolvedValue(httpResponse(404));
-			sandboxClient.getSandbox.mockRejectedValue(new SandboxServiceError('not found', 404));
+			fetchMock.mockImplementation(serviceWith(['ports'], 404));
 
 			await expect(service.ensure(input)).resolves.toEqual({
 				status: 'unavailable',
@@ -409,7 +405,7 @@ describe('AppPreviewService', () => {
 
 			expect(second).toEqual(first);
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
-			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(fetchMock).toHaveBeenCalledTimes(3); // healthz + two probes
 		});
 
 		it('restarts the dev server when the probe reports a restarted sandbox', async () => {
@@ -486,9 +482,11 @@ describe('AppPreviewService', () => {
 			});
 			// Like Vite: only the base of the dev server that is running answers; anything else is an HTML 404.
 			fetchMock.mockImplementation(async (url) =>
-				String(url).includes(`/apps-preview/${liveToken}/`)
-					? httpResponse(200)
-					: httpResponse(404, { 'Content-Type': 'text/html' }),
+				String(url).endsWith('/healthz')
+					? healthz(['ports'])
+					: String(url).includes(`/apps-preview/${liveToken}/`)
+						? httpResponse(200)
+						: httpResponse(404, { 'Content-Type': 'text/html' }),
 			);
 
 			const first = service.ensure(input);
