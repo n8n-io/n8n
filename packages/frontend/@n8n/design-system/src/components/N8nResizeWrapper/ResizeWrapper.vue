@@ -99,8 +99,8 @@ const resizer =
 	useResizablePanel({
 		width: {
 			size: toRef(props, 'width'),
-			allowCollapse: props.allowCollapse,
-			allowFullWidth: props.allowFullWidth,
+			allowCollapse: toRef(props, 'allowCollapse'),
+			allowFullSize: toRef(props, 'allowFullWidth'),
 			minSize: function getMinWidth() {
 				return props.minWidth;
 			},
@@ -110,8 +110,8 @@ const resizer =
 		},
 		height: {
 			size: toRef(props, 'height'),
-			allowCollapse: props.allowCollapse,
-			allowFullWidth: props.allowFullWidth,
+			allowCollapse: toRef(props, 'allowCollapse'),
+			allowFullSize: toRef(props, 'allowFullWidth'),
 			minSize: function getMinHeight() {
 				return props.minHeight;
 			},
@@ -169,17 +169,14 @@ function resetSize(event: MouseEvent, direction: Direction): void {
 }
 
 function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
-	if (resizer.isCollapsed.value) return 'min';
-	if (resizer.isFullSize.value) return 'max';
-
 	const resizesWidth = direction !== 'top' && direction !== 'bottom';
 	const resizesHeight = direction !== 'left' && direction !== 'right';
 	const isAtMin =
-		(resizesWidth && resizer.width.value <= props.minWidth) ||
-		(resizesHeight && resizer.height.value <= props.minHeight);
+		(resizesWidth && (resizer.isWidthCollapsed.value || resizer.width.value <= props.minWidth)) ||
+		(resizesHeight && (resizer.isHeightCollapsed.value || resizer.height.value <= props.minHeight));
 	const isAtMax =
-		(resizesWidth && resizer.width.value >= props.maxWidth) ||
-		(resizesHeight && resizer.height.value >= props.maxHeight);
+		(resizesWidth && (resizer.isWidthFullSize.value || resizer.width.value >= props.maxWidth)) ||
+		(resizesHeight && (resizer.isHeightFullSize.value || resizer.height.value >= props.maxHeight));
 
 	if (isAtMin) return 'min';
 	if (isAtMax) return 'max';

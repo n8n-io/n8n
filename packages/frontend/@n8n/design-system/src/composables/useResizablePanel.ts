@@ -26,9 +26,9 @@ export interface ResizablePanelDimensionOptions {
 	/** Snap near the default size. */
 	snap?: boolean;
 	/** Allow a temporary zero size while dragging near the container edge. */
-	allowCollapse?: boolean;
+	allowCollapse?: MaybeRefOrGetter<boolean>;
 	/** Allow a temporary full size while dragging near the container edge. */
-	allowFullSize?: boolean;
+	allowFullSize?: MaybeRefOrGetter<boolean>;
 	/** Save this dimension as a container proportion under this key. */
 	localStorageKey?: string;
 }
@@ -127,12 +127,12 @@ function usePanelDimension(
 		return proportion.value * containerSize.value;
 	});
 	const isCollapsed = computed(function getIsCollapsed() {
-		return isResizing.value && !!options.allowCollapse && rawSize.value < SNAP_DISTANCE;
+		return isResizing.value && !!toValue(options.allowCollapse) && rawSize.value < SNAP_DISTANCE;
 	});
 	const isFullSize = computed(function getIsFullSize() {
 		return (
 			isResizing.value &&
-			!!options.allowFullSize &&
+			!!toValue(options.allowFullSize) &&
 			containerSize.value > 0 &&
 			rawSize.value > containerSize.value - SNAP_DISTANCE
 		);
@@ -401,6 +401,10 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
 		height: height.size,
 		isCollapsed: isCollapsedComputed,
 		isFullSize: isFullSizeComputed,
+		isWidthCollapsed: width.isCollapsed,
+		isHeightCollapsed: height.isCollapsed,
+		isWidthFullSize: width.isFullSize,
+		isHeightFullSize: height.isFullSize,
 		isResizing: isResizingComputed,
 		activeDirection: activeDirectionComputed,
 		startResize,

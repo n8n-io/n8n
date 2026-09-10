@@ -25,6 +25,18 @@ function createResizer(options: { isCollapsed?: boolean; isFullSize?: boolean })
 		isFullSize: computed(function getIsFullSize() {
 			return options.isFullSize ?? false;
 		}),
+		isWidthCollapsed: computed(function getIsWidthCollapsed() {
+			return options.isCollapsed ?? false;
+		}),
+		isHeightCollapsed: computed(function getIsHeightCollapsed() {
+			return false;
+		}),
+		isWidthFullSize: computed(function getIsWidthFullSize() {
+			return options.isFullSize ?? false;
+		}),
+		isHeightFullSize: computed(function getIsHeightFullSize() {
+			return false;
+		}),
 		isResizing: computed(function getIsResizing() {
 			return false;
 		}),
