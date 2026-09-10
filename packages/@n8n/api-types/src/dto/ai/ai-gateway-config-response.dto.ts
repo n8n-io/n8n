@@ -21,4 +21,8 @@ export class AiGatewayConfigDto extends Z.class({
 	supportedActions: z.record(z.record(z.array(z.string()))).optional(),
 	minNodeTypeVersion: z.record(z.number()).optional(),
 	hiddenNodeProperties: z.record(z.array(z.string())).optional(),
+	// Keyed by credential type, like providerConfig. Only LLM providers appear here;
+	// tool providers restrict operations, not models, so they have no entry.
+	// Optional so an older ai-assistant-service that omits this field still parses.
+	supportedModels: z.record(z.string(), z.array(z.string())).optional(),
 }) {}

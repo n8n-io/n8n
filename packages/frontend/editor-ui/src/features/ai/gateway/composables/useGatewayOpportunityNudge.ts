@@ -39,7 +39,10 @@ export async function maybeShowGatewayOpportunityNudge(
 
 	const { scanNodes } = useWorkflowGatewayScan();
 	const result = scanNodes(nodes);
-	const opportunityCount = result.opportunities.length;
+	// A caveated node is not safe to switch as-is, so it must not count toward
+	// the headline ("N nodes could use Gateway credits"). The full list,
+	// caveated nodes included, still reaches the modal once it opens.
+	const opportunityCount = result.opportunities.filter((opportunity) => !opportunity.caveat).length;
 
 	const nudgeStore = useGatewayOpportunityNudgeStore();
 	if (!nudgeStore.shouldShow(opportunityCount, workflowId)) return;

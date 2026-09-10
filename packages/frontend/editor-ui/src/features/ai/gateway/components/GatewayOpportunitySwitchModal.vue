@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { N8nButton, N8nCheckbox, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -10,7 +10,10 @@ import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useApplyGatewayCredential } from '../composables/useApplyGatewayCredential';
-import type { GatewayOpportunity } from '../composables/useWorkflowGatewayScan';
+import type {
+	GatewayOpportunity,
+	GatewayOpportunityCaveat,
+} from '../composables/useWorkflowGatewayScan';
 
 const props = defineProps<{
 	modalName: string;
@@ -27,16 +30,30 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const { applyToNodes } = useApplyGatewayCredential();
 
-// Every row starts checked: the modal is the one-click-equivalent path — the
-// user deselects a node instead of opting in one at a time.
+// A clean row starts checked: the modal is the one-click-equivalent path — the
+// user deselects a node instead of opting in one at a time. A caveated row
+// starts unchecked instead: its current configuration is not supported, so
+// switching it now could break the node, and the user must opt in deliberately.
 const selected = reactive<Record<string, boolean>>(
-	Object.fromEntries(props.data.opportunities.map((opportunity) => [opportunity.nodeName, true])),
+	Object.fromEntries(
+		props.data.opportunities.map((opportunity) => [opportunity.nodeName, !opportunity.caveat]),
+	),
 );
 
 const selectedOpportunities = computed(() =>
 	props.data.opportunities.filter((opportunity) => selected[opportunity.nodeName]),
 );
 const selectedCount = computed(() => selectedOpportunities.value.length);
+
+const CAVEAT_MESSAGE_KEYS: Record<GatewayOpportunityCaveat, BaseTextKey> = {
+	unsupportedModel: 'aiGateway.switchModal.row.caveat.unsupportedModel',
+	unsupportedAction: 'aiGateway.switchModal.row.caveat.unsupportedAction',
+	hiddenPropertySet: 'aiGateway.switchModal.row.caveat.hiddenPropertySet',
+};
+
+function caveatMessage(opportunity: GatewayOpportunity): string | undefined {
+	return opportunity.caveat ? i18n.baseText(CAVEAT_MESSAGE_KEYS[opportunity.caveat]) : undefined;
+}
 
 function hasAuthChange(opportunity: GatewayOpportunity): boolean {
 	return Object.keys(opportunity.activationParameters).length > 0;
@@ -86,12 +103,14 @@ function showResultToast(appliedCount: number, failedCount: number): void {
 function confirm(): void {
 	const opportunities = selectedOpportunities.value;
 	const { applied, failed } = applyToNodes(opportunities);
+	const caveatedSelectedCount = opportunities.filter((opportunity) => opportunity.caveat).length;
 
 	telemetry.track(TELEMETRY_EVENT.GATEWAY.SWITCH_APPLIED, {
 		workflow_id: props.data.workflowId,
 		selected_count: opportunities.length,
 		applied_count: applied.length,
 		failed_count: failed.length,
+		caveated_selected_count: caveatedSelectedCount,
 	});
 
 	closeModal();
@@ -128,6 +147,16 @@ function confirm(): void {
 							</N8nText>
 						</template>
 					</N8nCheckbox>
+					<div
+						v-if="opportunity.caveat"
+						:class="$style.hint"
+						data-test-id="gateway-opportunity-switch-caveat-warning"
+					>
+						<N8nIcon icon="triangle-alert" size="small" color="warning" />
+						<N8nText tag="span" size="small" color="warning">
+							{{ caveatMessage(opportunity) }}
+						</N8nText>
+					</div>
 					<div
 						v-if="hasAuthChange(opportunity)"
 						:class="$style.hint"

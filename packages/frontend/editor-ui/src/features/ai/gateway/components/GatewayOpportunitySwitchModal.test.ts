@@ -123,6 +123,7 @@ describe('GatewayOpportunitySwitchModal', () => {
 			selected_count: 1,
 			applied_count: 1,
 			failed_count: 0,
+			caveated_selected_count: 0,
 		});
 		expect(showMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -189,5 +190,77 @@ describe('GatewayOpportunitySwitchModal', () => {
 
 		expect(applyToNodes).not.toHaveBeenCalled();
 		expect(closeModal).toHaveBeenCalledWith('gatewayOpportunitySwitch');
+	});
+
+	describe('caveated opportunities', () => {
+		it('starts a caveated row unchecked while a clean row stays checked', () => {
+			const opportunities = [
+				makeOpportunity({ nodeName: 'Node1' }),
+				makeOpportunity({ nodeName: 'Node2', caveat: 'unsupportedModel' }),
+			];
+			const { getByTestId } = renderModal(opportunities);
+
+			expect(getByTestId('gateway-opportunity-switch-checkbox-0')).toBeChecked();
+			expect(getByTestId('gateway-opportunity-switch-checkbox-1')).not.toBeChecked();
+		});
+
+		it('shows the caveat warning only for the caveated row', () => {
+			const opportunities = [
+				makeOpportunity({ nodeName: 'Node1' }),
+				makeOpportunity({ nodeName: 'Node2', caveat: 'unsupportedModel' }),
+			];
+			const { getAllByTestId } = renderModal(opportunities);
+
+			expect(getAllByTestId('gateway-opportunity-switch-caveat-warning')).toHaveLength(1);
+		});
+
+		it.each([
+			['unsupportedModel', "The selected model isn't supported via Gateway credits."],
+			['unsupportedAction', "The selected operation isn't supported via Gateway credits."],
+			['hiddenPropertySet', "This node uses a setting that Gateway credits doesn't support."],
+		] as const)('renders its own message for the %s caveat', (caveat, expectedMessage) => {
+			const { getByTestId } = renderModal([makeOpportunity({ caveat })]);
+
+			expect(getByTestId('gateway-opportunity-switch-caveat-warning')).toHaveTextContent(
+				expectedMessage,
+			);
+		});
+
+		it('excludes an unchecked caveated row from confirm, but includes it once the user checks it', async () => {
+			const opportunities = [
+				makeOpportunity({ nodeName: 'Node1' }),
+				makeOpportunity({ nodeName: 'Node2', caveat: 'unsupportedModel' }),
+			];
+			applyToNodes.mockReturnValue({ applied: ['Node1'], failed: [] });
+			const { getByTestId } = renderModal(opportunities);
+
+			await userEvent.click(getByTestId('gateway-opportunity-switch-confirm'));
+			expect(applyToNodes).toHaveBeenLastCalledWith([opportunities[0]]);
+
+			await userEvent.click(getByTestId('gateway-opportunity-switch-checkbox-1'));
+			await userEvent.click(getByTestId('gateway-opportunity-switch-confirm'));
+			expect(applyToNodes).toHaveBeenLastCalledWith(opportunities);
+		});
+
+		it('reports the caveated selection count in the switch-applied telemetry event', async () => {
+			const opportunities = [
+				makeOpportunity({ nodeName: 'Node1' }),
+				makeOpportunity({ nodeName: 'Node2', caveat: 'unsupportedModel' }),
+			];
+			applyToNodes.mockReturnValue({ applied: ['Node1'], failed: [] });
+			const { getByTestId } = renderModal(opportunities);
+
+			// Check the caveated row so both rows are selected on confirm.
+			await userEvent.click(getByTestId('gateway-opportunity-switch-checkbox-1'));
+			await userEvent.click(getByTestId('gateway-opportunity-switch-confirm'));
+
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.GATEWAY.SWITCH_APPLIED, {
+				workflow_id: 'wf1',
+				selected_count: 2,
+				applied_count: 1,
+				failed_count: 0,
+				caveated_selected_count: 1,
+			});
+		});
 	});
 });

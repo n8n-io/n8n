@@ -1,7 +1,7 @@
 import type { INode } from 'n8n-workflow';
 
 import type { AiGatewayConfigDto } from '../../dto/ai/ai-gateway-config-response.dto';
-import { checkAiGatewayEligibility } from '../ai-gateway-eligibility';
+import { checkAiGatewayEligibility, getSelectedModel } from '../ai-gateway-eligibility';
 
 function makeNode(overrides: Partial<INode> = {}): INode {
 	return {
@@ -279,5 +279,55 @@ describe('checkAiGatewayEligibility', () => {
 			);
 			expect(result).toMatchObject({ eligible: false, reason: 'unsupportedAction' });
 		});
+	});
+});
+
+describe('getSelectedModel', () => {
+	it('returns undefined when parameters is undefined', () => {
+		expect(getSelectedModel(undefined)).toBeUndefined();
+	});
+
+	it('returns undefined when neither model nor modelId is present', () => {
+		expect(getSelectedModel({})).toBeUndefined();
+	});
+
+	it('reads a plain string from model', () => {
+		expect(getSelectedModel({ model: 'gpt-4o' })).toBe('gpt-4o');
+	});
+
+	it('reads a plain string from modelId when model is absent', () => {
+		expect(getSelectedModel({ modelId: 'MiniMax-M3' })).toBe('MiniMax-M3');
+	});
+
+	it('prefers model over modelId when both are present', () => {
+		expect(getSelectedModel({ model: 'gpt-4o', modelId: 'MiniMax-M3' })).toBe('gpt-4o');
+	});
+
+	it('unwraps a resource-locator object', () => {
+		expect(
+			getSelectedModel({
+				model: { __rl: true, mode: 'id', value: 'claude-3-5-haiku-20241022' },
+			}),
+		).toBe('claude-3-5-haiku-20241022');
+	});
+
+	it('returns undefined for an empty string', () => {
+		expect(getSelectedModel({ model: '' })).toBeUndefined();
+	});
+
+	it('returns undefined for an empty resource-locator value', () => {
+		expect(getSelectedModel({ model: { __rl: true, mode: 'id', value: '' } })).toBeUndefined();
+	});
+
+	it('returns undefined for an unexpected shape (object without __rl)', () => {
+		expect(getSelectedModel({ model: { mode: 'id', value: 'gpt-4o' } })).toBeUndefined();
+	});
+
+	it('returns undefined for an unexpected shape (non-string, non-object)', () => {
+		expect(getSelectedModel({ model: 42 })).toBeUndefined();
+	});
+
+	it('returns undefined for an unexpected shape (array)', () => {
+		expect(getSelectedModel({ model: ['gpt-4o'] })).toBeUndefined();
 	});
 });

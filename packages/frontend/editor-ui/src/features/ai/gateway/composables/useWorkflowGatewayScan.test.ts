@@ -240,7 +240,7 @@ describe('useWorkflowGatewayScan', () => {
 		]);
 	});
 
-	it('returns a blocked node with reason unsupportedAction, judged against resolved defaults', () => {
+	it('returns an opportunity with caveat unsupportedAction when the resolved action is a real (non-default) selection outside the allowlist', () => {
 		gatewayState.config = makeConfig({
 			nodes: ['n8n-nodes-base.test'],
 			credentialTypes: ['testApi'],
@@ -273,19 +273,296 @@ describe('useWorkflowGatewayScan', () => {
 		gatewayState.supportedCredentialTypes = new Set(['testApi']);
 
 		// Node omits resource/operation entirely — the node type's default ("classify")
-		// is not on the allowlist, so it must be judged as unsupportedAction rather than
-		// skipped for "missing" values.
+		// is a real, non-blank value, so it counts as a selected action, and it is not
+		// on the allowlist.
 		const node = makeNode({ parameters: {} });
 
 		const { scanNodes } = useWorkflowGatewayScan();
 		const result = scanNodes([node]);
+
+		expect(result.blocked).toEqual([]);
+		expect(result.opportunities).toEqual([
+			{
+				nodeName: 'Node1',
+				nodeType: 'n8n-nodes-base.test',
+				credentialType: 'testApi',
+				activationParameters: {},
+				caveat: 'unsupportedAction',
+			},
+		]);
+	});
+
+	it('returns an opportunity with caveat unsupportedAction when an explicitly selected operation is outside the allowlist', () => {
+		gatewayState.config = makeConfig({
+			nodes: ['n8n-nodes-base.test'],
+			credentialTypes: ['testApi'],
+			supportedActions: {
+				'n8n-nodes-base.test': { __operation_only__: ['supportedOp'] },
+			},
+		});
+		gatewayState.nodeTypesByType.set(
+			'n8n-nodes-base.test',
+			makeNodeType({
+				credentials: [{ name: 'testApi', required: true }],
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: 'Supported', value: 'supportedOp' },
+							{ name: 'Unsupported', value: 'unsupportedOp' },
+						],
+						default: '',
+					},
+				],
+			}),
+		);
+		gatewayState.supportedCredentialTypes = new Set(['testApi']);
+
+		const node = makeNode({ parameters: { operation: 'unsupportedOp' } });
+
+		const { scanNodes } = useWorkflowGatewayScan();
+		const result = scanNodes([node]);
+
+		expect(result.blocked).toEqual([]);
+		expect(result.opportunities).toEqual([
+			{
+				nodeName: 'Node1',
+				nodeType: 'n8n-nodes-base.test',
+				credentialType: 'testApi',
+				activationParameters: {},
+				caveat: 'unsupportedAction',
+			},
+		]);
+	});
+
+	it('returns a clean opportunity when no operation is set (blank default, unspecified action)', () => {
+		gatewayState.config = makeConfig({
+			nodes: ['n8n-nodes-base.test'],
+			credentialTypes: ['testApi'],
+			supportedActions: {
+				'n8n-nodes-base.test': { __operation_only__: ['supportedOp'] },
+			},
+		});
+		gatewayState.nodeTypesByType.set(
+			'n8n-nodes-base.test',
+			makeNodeType({
+				credentials: [{ name: 'testApi', required: true }],
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [{ name: 'Supported', value: 'supportedOp' }],
+						default: '',
+					},
+				],
+			}),
+		);
+		gatewayState.supportedCredentialTypes = new Set(['testApi']);
+
+		const node = makeNode({ parameters: {} });
+
+		const { scanNodes } = useWorkflowGatewayScan();
+		const result = scanNodes([node]);
+
+		expect(result.blocked).toEqual([]);
+		expect(result.opportunities).toEqual([
+			{
+				nodeName: 'Node1',
+				nodeType: 'n8n-nodes-base.test',
+				credentialType: 'testApi',
+				activationParameters: {},
+			},
+		]);
+	});
+
+	it('returns an opportunity with caveat hiddenPropertySet when a hidden property is set', () => {
+		gatewayState.config = makeConfig({
+			nodes: ['n8n-nodes-base.test'],
+			credentialTypes: ['testApi'],
+			hiddenNodeProperties: { 'n8n-nodes-base.test': ['baseURL'] },
+		});
+		gatewayState.nodeTypesByType.set(
+			'n8n-nodes-base.test',
+			makeNodeType({ credentials: [{ name: 'testApi', required: true }] }),
+		);
+		gatewayState.supportedCredentialTypes = new Set(['testApi']);
+
+		const node = makeNode({ parameters: { baseURL: 'https://custom.example.com' } });
+
+		const { scanNodes } = useWorkflowGatewayScan();
+		const result = scanNodes([node]);
+
+		expect(result.blocked).toEqual([]);
+		expect(result.opportunities).toEqual([
+			{
+				nodeName: 'Node1',
+				nodeType: 'n8n-nodes-base.test',
+				credentialType: 'testApi',
+				activationParameters: {},
+				caveat: 'hiddenPropertySet',
+			},
+		]);
+	});
+
+	describe('model caveat', () => {
+		function setUpModelNode(modelDefault = '') {
+			gatewayState.nodeTypesByType.set(
+				'n8n-nodes-base.test',
+				makeNodeType({
+					credentials: [{ name: 'testApi', required: true }],
+					properties: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'string',
+							default: modelDefault,
+						},
+					],
+				}),
+			);
+			gatewayState.supportedCredentialTypes = new Set(['testApi']);
+		}
+
+		it('returns an opportunity with caveat unsupportedModel when the selected model is outside the allowlist', () => {
+			gatewayState.config = makeConfig({
+				nodes: ['n8n-nodes-base.test'],
+				credentialTypes: ['testApi'],
+				supportedModels: { testApi: ['gpt-4o', 'gpt-4o-mini'] },
+			});
+			setUpModelNode();
+
+			const node = makeNode({ parameters: { model: 'gpt-3.5' } });
+
+			const { scanNodes } = useWorkflowGatewayScan();
+			const result = scanNodes([node]);
+
+			expect(result.blocked).toEqual([]);
+			expect(result.opportunities).toEqual([
+				{
+					nodeName: 'Node1',
+					nodeType: 'n8n-nodes-base.test',
+					credentialType: 'testApi',
+					activationParameters: {},
+					caveat: 'unsupportedModel',
+				},
+			]);
+		});
+
+		it('returns a clean opportunity when the selected model is in the allowlist', () => {
+			gatewayState.config = makeConfig({
+				nodes: ['n8n-nodes-base.test'],
+				credentialTypes: ['testApi'],
+				supportedModels: { testApi: ['gpt-4o', 'gpt-4o-mini'] },
+			});
+			setUpModelNode();
+
+			const node = makeNode({ parameters: { model: 'gpt-4o' } });
+
+			const { scanNodes } = useWorkflowGatewayScan();
+			const result = scanNodes([node]);
+
+			expect(result.opportunities).toEqual([
+				{
+					nodeName: 'Node1',
+					nodeType: 'n8n-nodes-base.test',
+					credentialType: 'testApi',
+					activationParameters: {},
+				},
+			]);
+		});
+
+		it('returns a clean opportunity when no model is selected', () => {
+			gatewayState.config = makeConfig({
+				nodes: ['n8n-nodes-base.test'],
+				credentialTypes: ['testApi'],
+				supportedModels: { testApi: ['gpt-4o', 'gpt-4o-mini'] },
+			});
+			setUpModelNode();
+
+			const node = makeNode({ parameters: {} });
+
+			const { scanNodes } = useWorkflowGatewayScan();
+			const result = scanNodes([node]);
+
+			expect(result.opportunities).toEqual([
+				{
+					nodeName: 'Node1',
+					nodeType: 'n8n-nodes-base.test',
+					credentialType: 'testApi',
+					activationParameters: {},
+				},
+			]);
+		});
+
+		it('skips the model check entirely when supportedModels is absent (older gateway service)', () => {
+			gatewayState.config = makeConfig({
+				nodes: ['n8n-nodes-base.test'],
+				credentialTypes: ['testApi'],
+			});
+			setUpModelNode();
+
+			const node = makeNode({ parameters: { model: 'gpt-3.5' } });
+
+			const { scanNodes } = useWorkflowGatewayScan();
+			const result = scanNodes([node]);
+
+			expect(result.opportunities).toEqual([
+				{
+					nodeName: 'Node1',
+					nodeType: 'n8n-nodes-base.test',
+					credentialType: 'testApi',
+					activationParameters: {},
+				},
+			]);
+		});
+
+		it('skips the model check when this credential type has no entry in supportedModels', () => {
+			gatewayState.config = makeConfig({
+				nodes: ['n8n-nodes-base.test'],
+				credentialTypes: ['testApi'],
+				supportedModels: { otherApi: ['gpt-4o'] },
+			});
+			setUpModelNode();
+
+			const node = makeNode({ parameters: { model: 'gpt-3.5' } });
+
+			const { scanNodes } = useWorkflowGatewayScan();
+			const result = scanNodes([node]);
+
+			expect(result.opportunities).toEqual([
+				{
+					nodeName: 'Node1',
+					nodeType: 'n8n-nodes-base.test',
+					credentialType: 'testApi',
+					activationParameters: {},
+				},
+			]);
+		});
+	});
+
+	it('returns a blocked node with reason nodeNotCovered instead of an opportunity', () => {
+		gatewayState.config = makeConfig({
+			nodes: [],
+			credentialTypes: ['testApi'],
+		});
+		gatewayState.nodeTypesByType.set(
+			'n8n-nodes-base.test',
+			makeNodeType({ credentials: [{ name: 'testApi', required: true }] }),
+		);
+		gatewayState.supportedCredentialTypes = new Set(['testApi']);
+
+		const { scanNodes } = useWorkflowGatewayScan();
+		const result = scanNodes([makeNode()]);
 
 		expect(result.opportunities).toEqual([]);
 		expect(result.blocked).toEqual([
 			{
 				nodeName: 'Node1',
 				nodeType: 'n8n-nodes-base.test',
-				reason: 'unsupportedAction',
+				reason: 'nodeNotCovered',
 			},
 		]);
 	});

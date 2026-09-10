@@ -150,4 +150,49 @@ describe('maybeShowGatewayOpportunityNudge', () => {
 			data: { opportunities, workflowId: 'wf1' },
 		});
 	});
+
+	describe('caveated opportunities', () => {
+		it('counts only opportunities without a caveat for shouldShow, markShown and the toast, but still hands the modal the full list', async () => {
+			const mixed = [
+				{ nodeName: 'n1' },
+				{ nodeName: 'n2', caveat: 'unsupportedModel' },
+				{ nodeName: 'n3', caveat: 'unsupportedAction' },
+			];
+			scanNodes.mockReturnValue({ opportunities: mixed, blocked: [], alreadyManagedCount: 0 });
+
+			await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+			expect(nudgeStore.shouldShow).toHaveBeenCalledWith(1, 'wf1');
+			expect(nudgeStore.markShown).toHaveBeenCalledWith(1, 'wf1');
+			const [[{ message }]] = showMessage.mock.calls;
+			expect(message.props.opportunityCount).toBe(1);
+
+			message.props.onReviewAndSwitch();
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
+				data: { opportunities: mixed, workflowId: 'wf1' },
+			});
+		});
+
+		it('shows no toast when every opportunity is caveated, since none is safe to switch as-is', async () => {
+			const allCaveated = [
+				{ nodeName: 'n1', caveat: 'unsupportedModel' },
+				{ nodeName: 'n2', caveat: 'hiddenPropertySet' },
+			];
+			scanNodes.mockReturnValue({
+				opportunities: allCaveated,
+				blocked: [],
+				alreadyManagedCount: 0,
+			});
+			// Mirror the store's real rule (no toast when the clean count is 0)
+			// instead of the beforeEach's blanket true, so this test exercises it.
+			nudgeStore.shouldShow.mockImplementation((count: number) => count > 0);
+
+			await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+			expect(nudgeStore.shouldShow).toHaveBeenCalledWith(0, 'wf1');
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(nudgeStore.markShown).not.toHaveBeenCalled();
+		});
+	});
 });

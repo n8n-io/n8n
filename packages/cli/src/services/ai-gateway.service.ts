@@ -407,10 +407,13 @@ export class AiGatewayService {
 		const baseUrl = this.requireBaseUrl();
 
 		try {
+			const url = new URL(`${baseUrl}/v1/gateway/config`);
+			url.searchParams.set('includeModels', 'true');
+
 			const data = await this.gatewayRequest<unknown>(
 				{
 					method: 'GET',
-					url: `${baseUrl}/v1/gateway/config`,
+					url: url.toString(),
 				},
 				'Failed to fetch AI Gateway config',
 			);

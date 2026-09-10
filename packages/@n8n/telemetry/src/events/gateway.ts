@@ -52,6 +52,12 @@ export const GATEWAY_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.int()
 				.describe('Number of selected nodes that could not be switched'),
+			caveated_selected_count: z
+				.number()
+				.int()
+				.describe(
+					'Number of selected nodes that carried a caveat warning (unsupported model, unsupported action, or a hidden property) when the user confirmed the switch. selected_count minus this is how many were offered with no warning.',
+				),
 		}),
 	},
 });

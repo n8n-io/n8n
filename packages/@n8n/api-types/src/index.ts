@@ -746,6 +746,7 @@ export {
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 export {
 	checkAiGatewayEligibility,
+	getSelectedModel,
 	stripToolSuffix,
 	HTTP_NODE_TYPES,
 	type AiGatewayEligibility,

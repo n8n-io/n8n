@@ -110,6 +110,34 @@ export function checkAiGatewayEligibility(
 	return { eligible: true };
 }
 
+/**
+ * Reads the model a node has selected, or undefined when none is set.
+ * Sub-nodes (e.g. `LmChatOpenAi`) use the parameter `model`; vendor action
+ * nodes (e.g. `vendors/Moonshot`) use `modelId`. Check `model` first, then
+ * `modelId`. The value is a plain string, or a resource-locator object
+ * (`{ __rl: true, mode: 'id', value: '...' }`) whose `value` is unwrapped.
+ */
+export function getSelectedModel(
+	parameters: Record<string, unknown> | undefined,
+): string | undefined {
+	if (!parameters) return undefined;
+	return extractModelValue(parameters.model) ?? extractModelValue(parameters.modelId);
+}
+
+/** Unwraps a plain string or resource-locator value; returns undefined for anything else. */
+function extractModelValue(raw: unknown): string | undefined {
+	if (typeof raw === 'string') {
+		return raw.length > 0 ? raw : undefined;
+	}
+	if (raw !== null && typeof raw === 'object') {
+		const record = raw as Record<string, unknown>;
+		if (record.__rl !== true) return undefined;
+		const { value } = record;
+		return typeof value === 'string' && value.length > 0 ? value : undefined;
+	}
+	return undefined;
+}
+
 function resolveNodeKey(nodeType: string, nodes: string[]): string | null {
 	if (nodes.includes(nodeType)) return nodeType;
 	const stripped = stripToolSuffix(nodeType);
