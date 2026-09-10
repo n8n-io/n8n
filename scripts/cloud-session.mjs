@@ -135,7 +135,8 @@ if (launcher === 'opencode' && !args.includes('--legacy')) {
        pnpm session:opencode [name] --legacy [OpenCode flags]
 
 The local TUI requires the same OpenCode version as the server.
-Web mode needs a browser only. Use Ctrl-C to close the local connection.`);
+Web mode needs a browser only and uses local port 4096 by default.
+Use --port to override it. Use Ctrl-C to close the local connection.`);
 		} else {
 			await connectOpenCode(options, ensureCodespace);
 		}

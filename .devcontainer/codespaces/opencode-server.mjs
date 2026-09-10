@@ -194,9 +194,6 @@ export async function prepareOpenCode({
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });
 	execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	const server = await ensureServer({ stateDir, mainDirectory, workspaces });
-	// Register the main checkout even when the first conversation uses a worktree.
-	const project = await request(server, '/project/current', mainDirectory);
-	if (!project.ok) throw new Error(`Cannot register the n8n project (${project.status}).`);
 	const sessionID = await ensureSession({ name, fresh, directory, stateDir, server });
 	// Only the parent process reads stdout. Never send this record to terminal output.
 	return { ...server, directory, sessionID };

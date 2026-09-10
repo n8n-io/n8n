@@ -61,7 +61,7 @@ mode opens the remote web interface through a local connection.
 pnpm session:opencode fix-flaky              # resume the saved conversation
 pnpm session:opencode fix-flaky --web        # open that conversation in a browser
 pnpm session:opencode fix-flaky --new        # start a new conversation in that worktree
-pnpm session:opencode --web --port 4096      # use a fixed local browser port
+pnpm session:opencode --web --port 4100      # override the default browser port
 pnpm session:opencode --help
 ```
 
@@ -93,8 +93,9 @@ the ID saved for that workspace name.
 - **Reconnect** with the same command after a network interruption. After a
   Codespace stop, the command restarts the server and opens the saved conversation.
   A stop terminates running tools. It does not resume interrupted commands.
-- **Use a fixed local port** with `--port`. Without it, the launcher selects an
-  available port. A fixed browser port preserves the browser origin across runs.
+- **Browser mode uses local port 4096 by default.** Use `--port` to override it.
+  TUI mode selects an available port unless you specify one.
+  A fixed browser port preserves the browser origin across runs.
   An occupied fixed port causes an error. It does not stop the existing listener.
 - **Use model and permission controls in the client.** The new connection uses
   the remote OpenCode configuration. It does not force the legacy `--auto` mode.
@@ -109,11 +110,10 @@ your laptop can access the local browser proxy while it runs. Do not forward
 this proxy or the OpenCode server port to other machines.
 
 The server enables only OpenRouter. It reads `OPENROUTER_API_KEY` when it starts.
-The launcher registers `/workspaces/n8n` as a server project, even when you open
-a named worktree. Browser mode opens the selected conversation directly.
+Browser mode opens the selected conversation directly.
 The web UI stores opened projects in browser storage. If a new-session page
-shows **New project**, open `/workspaces/n8n` there once. Use a fixed `--port`
-to keep the same browser origin when you reconnect.
+shows **New project**, open `/workspaces/n8n` there once. Keep the same browser
+port when you reconnect to preserve this selection.
 
 The server runs in the detached tmux session `n8n-opencode-server`. Its log is
 `/workspaces/.n8n-opencode/server.log`. That directory also holds the server

@@ -115,6 +115,9 @@ async function waitFor(check) {
 }
 
 test('parses options before or after the workspace and rejects unsupported flags', () => {
+	assert.equal(parseOpenCodeArgs(['--web']).port, 4096);
+	assert.equal(parseOpenCodeArgs([]).port, 0);
+	assert.equal(parseOpenCodeArgs(['--port', '4100', '--web']).port, 4100);
 	assert.deepEqual(parseOpenCodeArgs(['--web', 'fix-flaky', '--new', '--port', '4100']), {
 		name: 'fix-flaky',
 		web: true,

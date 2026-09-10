@@ -27,6 +27,7 @@ export function parseOpenCodeArgs(args) {
 			);
 		}
 	}
+	if (options.web && !options.port) options.port = 4096;
 	return options;
 }
 

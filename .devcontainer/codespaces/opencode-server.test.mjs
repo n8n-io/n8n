@@ -68,11 +68,6 @@ const server = require('node:http').createServer(async (req, res) => {
   const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
   if (req.headers.authorization !== expected) { res.writeHead(401).end('{}'); return; }
   if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.18.30' })); return; }
-  if (req.url === '/project/current') {
-    const directory = decodeURIComponent(req.headers['x-opencode-directory']);
-    fs.writeFileSync(file('project.json'), JSON.stringify({ worktree: directory }));
-    res.end(JSON.stringify({ id:'n8n', worktree:directory })); return;
-  }
   if (req.method === 'POST' && req.url === '/session') {
     for await (const chunk of req) {}
     const id = 'ses_' + (Object.keys(sessions).length + 1);
@@ -130,9 +125,6 @@ test(
 		const f = fixture(t);
 		const first = await f.prepare({ name: 'fix-flaky' });
 		assert.equal(first.directory, join(f.dir, 'wt-fix-flaky'));
-		assert.deepEqual(JSON.parse(readFileSync(join(f.dir, 'project.json'), 'utf8')), {
-			worktree: join(f.dir, 'n8n'),
-		});
 		assert.deepEqual(await f.prepare({ name: 'fix-flaky' }), first);
 		const second = await f.prepare({ name: 'another-task' });
 		assert.equal(second.port, first.port);
