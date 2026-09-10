@@ -1,26 +1,92 @@
 import { DateTime } from 'luxon';
 import type { IDataObject, IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
+	buildTeamsPath,
 	getTeamsCredentialType,
 	microsoftApiRequest,
+	type MicrosoftGraphPathSegment,
+	rewriteForbiddenUnderSp,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../../transport';
 
-export const MEETING_HINT = "Check that the 'Meeting' parameter is correctly set";
+const ACCESS_POLICY_SETUP =
+	'Grant the app registration the OnlineMeetings.ReadWrite.All application permission (OnlineMeetings.Read.All is enough for Get) with admin consent, and create a Teams application access policy that includes this app and grant it to the organizer (New-CsApplicationAccessPolicy, then Grant-CsApplicationAccessPolicy). Policy changes can take up to 30 minutes to apply.';
 
-export const SERVICE_PRINCIPAL_UNSUPPORTED =
-	'Online meeting operations run on the signed-in user. Use an OAuth2 credential instead.';
+const ORGANIZER_HINT = "Check that the 'Organizer' parameter is a user in the tenant";
 
-export function throwIfOnlineMeetingUnsupported(this: IExecuteFunctions): void {
-	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+const GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
+function isServicePrincipal(this: IExecuteFunctions): boolean {
+	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
+}
+
+export function meetingHint(this: IExecuteFunctions): string {
+	return isServicePrincipal.call(this)
+		? "Check that the 'Meeting' and 'Organizer' parameters are correctly set"
+		: "Check that the 'Meeting' parameter is correctly set";
+}
+
+// Graph addresses app-only meetings by the organizer's object ID, not the principal name.
+async function resolveOrganizer(this: IExecuteFunctions, i: number): Promise<string> {
+	const raw = this.getNodeParameter('organizerId', i, '', { extractValue: true });
+	const organizer = typeof raw === 'string' ? raw.trim() : '';
+	if (!organizer) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'Online meetings are not available with the Service Principal credential',
-			{ description: SERVICE_PRINCIPAL_UNSUPPORTED },
+			'The Organizer is required with the Service Principal credential',
+			{
+				description:
+					'App-only Microsoft Graph has no signed-in user. Select the user whose meetings the node should act on.',
+				itemIndex: i,
+			},
 		);
 	}
+	if (GUID.test(organizer)) return organizer;
+
+	const endpoint = buildTeamsPath.call(this, ['/v1.0/users/', { id: organizer }]);
+	let user: IDataObject;
+	try {
+		user = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			endpoint,
+			{},
+			{ $select: 'id' },
+		)) as IDataObject;
+	} catch (error) {
+		if (error instanceof NodeApiError && error.httpCode === '404') {
+			throw new NodeOperationError(this.getNode(), 'Organizer not found', {
+				description: ORGANIZER_HINT,
+				itemIndex: i,
+			});
+		}
+		throw rewriteForbiddenUnderSp.call(
+			this,
+			error,
+			'Resolving the organizer needs the User.Read.All application permission',
+			"Grant User.Read.All to the app registration with admin consent, or enter the organizer's object ID instead.",
+		);
+	}
+	if (typeof user.id !== 'string' || user.id === '') {
+		throw new NodeOperationError(this.getNode(), 'Organizer not found', {
+			description: ORGANIZER_HINT,
+			itemIndex: i,
+		});
+	}
+	return user.id;
+}
+
+export async function meetingsPath(
+	this: IExecuteFunctions,
+	i: number,
+	segments: MicrosoftGraphPathSegment[] = [],
+): Promise<string> {
+	const root: MicrosoftGraphPathSegment[] = isServicePrincipal.call(this)
+		? ['/v1.0/users/', { id: await resolveOrganizer.call(this, i) }, '/onlineMeetings']
+		: ['/v1.0/me/onlineMeetings'];
+	return buildTeamsPath.call(this, [...root, ...segments]);
 }
 
 export function optionalText(this: IExecuteFunctions, value: unknown, label: string) {
@@ -56,6 +122,27 @@ export function toGraphUtc(this: IExecuteFunctions, value: unknown, label: strin
 	return parsed.toUTC().toISO({ suppressMilliseconds: true });
 }
 
+// A 404 on the meetings collection (POST, or the join-URL search) can only be the organizer.
+function rewriteAppOnlyError(
+	this: IExecuteFunctions,
+	error: unknown,
+	method: IHttpRequestMethods,
+	endpoint: string,
+): unknown {
+	if (!isServicePrincipal.call(this) || !(error instanceof NodeApiError)) return error;
+	if (error.httpCode === '404' && (method === 'POST' || endpoint.endsWith('/onlineMeetings'))) {
+		return new NodeOperationError(this.getNode(), 'Organizer not found', {
+			description: ORGANIZER_HINT,
+		});
+	}
+	return rewriteForbiddenUnderSp.call(
+		this,
+		error,
+		'Microsoft Graph refused the app-only meeting request',
+		ACCESS_POLICY_SETUP,
+	);
+}
+
 export async function meetingRequest(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
@@ -63,7 +150,11 @@ export async function meetingRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	return await microsoftApiRequest.call(this, method, endpoint, body, qs, undefined, {
-		Prefer: 'include-unknown-enum-members',
-	});
+	try {
+		return await microsoftApiRequest.call(this, method, endpoint, body, qs, undefined, {
+			Prefer: 'include-unknown-enum-members',
+		});
+	} catch (error) {
+		throw rewriteAppOnlyError.call(this, error, method, endpoint);
+	}
 }

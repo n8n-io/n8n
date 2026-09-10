@@ -94,31 +94,6 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 		},
 	);
 
-	it.each([
-		['create', { subject: 'Sync', startDateTime: '2026-09-01T10:00:00Z' }],
-		['get', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
-		['createOrGet', { externalId: 'order-4711', options: {} }],
-		['deleteMeeting', { meetingId: { __rl: true, mode: 'id', value: 'meeting-id' } }],
-		[
-			'update',
-			{
-				meetingId: { __rl: true, mode: 'id', value: 'meeting-id' },
-				updateFields: { subject: 'Renamed' },
-			},
-		],
-	])(
-		'onlineMeeting:%s throws a static error and issues no request under SP',
-		async (op, params) => {
-			selectSp({ resource: 'onlineMeeting', operation: op, ...params });
-
-			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'Online meetings are not available with the Service Principal credential',
-			);
-			expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
-			expect(transport.microsoftApiRequestAllItems).not.toHaveBeenCalled();
-		},
-	);
-
 	it('chatMessage:sendAndWait throws under SP and NEVER calls putExecutionToWait', async () => {
 		selectSp({
 			resource: 'chatMessage',

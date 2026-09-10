@@ -32,7 +32,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 		});
 	});
 
-	describe.each(['chatMessage', 'chatMember', 'onlineMeeting'])(
+	describe.each(['chatMessage', 'chatMember'])(
 		'%s - hidden under SP via the slash-prefixed field-level key',
 		(resource) => {
 			it('operation selector carries hide["/authentication"] = [SP]', () => {
@@ -66,6 +66,58 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			});
 		},
 	);
+
+	describe('onlineMeeting — available under SP with an organizer picker', () => {
+		const fields = actionProps.filter((p) =>
+			p.displayOptions?.show?.resource?.includes('onlineMeeting'),
+		);
+
+		it('operation selector is not hidden under SP', () => {
+			const op = fields.find((p) => p.name === 'operation');
+			expect(op).toBeDefined();
+			expect(isSpHidden(op)).toBe(false);
+		});
+
+		it('no operation field is hidden under SP', () => {
+			const gated = fields.filter((p) => p.type !== 'notice' && p.name !== 'operation');
+			expect(gated.length).toBeGreaterThan(0);
+			for (const field of gated) {
+				expect(isSpHidden(field)).toBe(false);
+			}
+		});
+
+		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
+			const organizer = fields.find((p) => p.name === 'organizerId');
+			expect(organizer).toBeDefined();
+			expect(organizer?.displayOptions).toEqual({
+				show: { resource: ['onlineMeeting'], '/authentication': [SERVICE_PRINCIPAL_AUTH] },
+			});
+			expect(organizer?.required).toBe(true);
+			expect(organizer?.modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			// no extractValue: an expression that resolves to a UPN must reach the node
+			expect(organizer?.modes?.every((m) => m.extractValue === undefined)).toBe(true);
+		});
+
+		it('shows an SP notice for the resource', () => {
+			const notice = fields.find(
+				(p) =>
+					p.type === 'notice' &&
+					p.displayOptions?.show?.authentication?.includes(SERVICE_PRINCIPAL_AUTH),
+			);
+			expect(notice?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		});
+
+		it('the Service Principal authentication option no longer lists online meetings as unavailable', () => {
+			const authentication = actionProps.find((p) => p.name === 'authentication');
+			const spOption = (authentication?.options ?? []).find(
+				(option) => 'value' in option && option.value === SERVICE_PRINCIPAL_AUTH,
+			);
+			expect(spOption).toBeDefined();
+			expect(
+				'description' in (spOption ?? {}) ? (spOption as { description?: string }).description : '',
+			).not.toContain('online meetings are unavailable');
+		});
+	});
 
 	describe('channelMessage — only the sending operations are hidden under SP', () => {
 		const fieldsFor = (operation: string) =>
