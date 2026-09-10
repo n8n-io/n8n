@@ -441,7 +441,7 @@ async function resolveManualCredentialSelection(
 ): Promise<InstanceAiConfirmRequest> {
 	const credentialType = request?.credentialType ?? decision.credentialType;
 
-	if (request && request.existingCredentials.length === 0) {
+	if (request?.existingCredentials.length === 0) {
 		const created = await tryCreateCredential(
 			createCredential,
 			request.credentialType,

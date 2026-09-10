@@ -454,7 +454,7 @@ export class RunStateRegistry<TUser = unknown> {
 		data: ConfirmationData,
 	): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
-		if (!pending || pending.userId !== requestingUserId) return false;
+		if (pending?.userId !== requestingUserId) return false;
 
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve(data);

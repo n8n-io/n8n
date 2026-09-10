@@ -292,7 +292,7 @@ describe('Instance AI runtime skills', () => {
 		// `n8n-docs` is always loaded, so the catalog must not ask the model to load it.
 		expect(skill?.description).not.toContain('load_tool');
 		expect(skill?.description).toContain(
-			'credential setup questions opened from the credential modal',
+			'credential setup questions — including which OAuth scopes or permissions a provider app needs',
 		);
 		expect(skill?.linkedFiles.references).toEqual([]);
 
@@ -370,7 +370,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
 		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
-		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in the n8n\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'never ask for\nsetup values before the first successful build',
 		);
@@ -454,7 +454,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
-		expect(loaded?.instructions).toMatch(/inline setup card in\s+the AI Assistant panel/);
+		expect(loaded?.instructions).toMatch(/inline setup card in\s+the n8n Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);

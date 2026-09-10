@@ -135,7 +135,7 @@ export class InstanceAiController {
 	private async requireModelConfigured(): Promise<void> {
 		if (!(await this.settingsService.isModelConfigured())) {
 			throw new BadRequestError(
-				'The AI Assistant has no model configured. An instance owner can add one in Settings > AI Assistant.',
+				'The n8n Assistant has no model configured. An instance owner can add one in Settings > n8n Assistant.',
 			);
 		}
 	}
@@ -855,7 +855,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeClearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}

@@ -33,6 +33,10 @@ export function buildHttpsGitConfig({ repositoryUrl }: { repositoryUrl: string }
 	// Git uses http.proxy for both HTTP and HTTPS URLs.
 	const proxyUrl = resolveProxyUrl(repositoryUrl);
 	if (proxyUrl) config.push(`http.proxy=${proxyUrl}`);
+	// Git runs with a replaced environment, so carry the CA settings over as config.
+	const { GIT_SSL_CAINFO, GIT_SSL_CAPATH } = process.env;
+	if (GIT_SSL_CAINFO) config.push(`http.sslCAInfo=${GIT_SSL_CAINFO}`);
+	if (GIT_SSL_CAPATH) config.push(`http.sslCAPath=${GIT_SSL_CAPATH}`);
 	return config;
 }
 

@@ -2,7 +2,6 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -1014,7 +1013,7 @@ async function collectValidationWarnings(
 			name: workflow.name,
 			nodes: workflow.nodes,
 			connections: workflow.connections,
-		} as unknown as WorkflowJSON);
+		});
 
 	const postUpdateWarnings = validate(updated);
 

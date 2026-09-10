@@ -481,7 +481,7 @@ export class UserProxyLlm {
 		const turns: Array<{ index: number; text: string }> = [];
 		for (let index = 0; index < this.script.length; index++) {
 			const turn = this.script[index];
-			if (!turn || turn.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
+			if (turn?.role !== 'user' || this.sentScriptUserTurnIndexes.has(index)) continue;
 			turns.push({ index, text: turn.text });
 		}
 		return turns;

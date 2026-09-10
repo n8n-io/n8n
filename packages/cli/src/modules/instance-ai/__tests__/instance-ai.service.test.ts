@@ -55,6 +55,13 @@ vi.mock('@n8n/instance-ai', async () => {
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
+		traceSandboxOperation: vi.fn(
+			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
+		),
+		withSandboxLifecycleTrace: vi.fn(
+			async <T>(_threadId: string, _operation: string, _inputs: unknown, fn: () => Promise<T>) =>
+				await fn(),
+		),
 		loadInstanceAiPromptSkills: vi.fn(() => ({
 			disabledTools: [],
 			source: {
@@ -1668,7 +1675,7 @@ function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
 }
 
 describe('InstanceAiService — revalidateActiveUser', () => {
-	it('returns the user when active and scoped for AI Assistant', async () => {
+	it('returns the user when active and scoped for n8n Assistant', async () => {
 		const service = createRevalidationService();
 		const fresh = userWithScopes(['instanceAi:message']);
 		service.userRepository.findOne.mockResolvedValue(fresh);
@@ -1983,7 +1990,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Rejecting confirmation: user no longer authorized for AI Assistant',
+			'Rejecting confirmation: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', requestId: 'req-1' }),
 		);
 	});
@@ -2151,7 +2158,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling run: user no longer authorized for AI Assistant',
+			'Cancelling run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a' }),
 		);
 	});
@@ -2440,7 +2447,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Cancelling suspended run: user no longer authorized for AI Assistant',
+			'Cancelling suspended run: user no longer authorized for n8n Assistant',
 			expect.objectContaining({ userId: 'user-1', threadId: 'thread-a', requestId: 'req-1' }),
 		);
 	});
@@ -5437,12 +5444,12 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 		it('routeClearThreadState clears locally and fans out in multi-main', async () => {
 			const service = buildTaskControlService(true);
 
-			await service.routeClearThreadState('thread-a');
+			await service.routeClearThreadState('thread-a', 'owner-a');
 
-			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', 'owner-a');
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'relay-instance-ai-task-control',
-				payload: { threadId: 'thread-a', action: 'clear-thread' },
+				payload: { threadId: 'thread-a', action: 'clear-thread', userId: 'owner-a' },
 			});
 		});
 	});
@@ -5474,22 +5481,29 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			expect(service.sendCorrectionToTask).not.toHaveBeenCalled();
 		});
 
-		it('routes cancel-task / cancel-thread / clear-thread to the local methods', async () => {
-			const service = buildTaskControlService(true);
+		it.each(['owner-a', undefined])(
+			'routes task controls with owner %s to the local methods',
+			async (userId) => {
+				const service = buildTaskControlService(true);
 
-			await service.handleRelayTaskControl({
-				threadId: 'thread-a',
-				taskId: 'task-1',
-				action: 'cancel-task',
-			});
-			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
-			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' });
+				await service.handleRelayTaskControl({
+					threadId: 'thread-a',
+					taskId: 'task-1',
+					action: 'cancel-task',
+				});
+				await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
+				await service.handleRelayTaskControl({
+					threadId: 'thread-a',
+					action: 'clear-thread',
+					userId,
+				});
 
-			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
-			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
-			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
-			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
-		});
+				expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+				expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+				expect(service.clearThreadState).toHaveBeenCalledWith('thread-a', userId);
+				expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+			},
+		);
 
 		it('swallows and logs errors from a local action (no unhandled rejection on the sibling main)', async () => {
 			const service = buildTaskControlService(true);

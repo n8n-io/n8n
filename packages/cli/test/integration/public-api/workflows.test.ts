@@ -424,7 +424,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
@@ -3748,7 +3748,7 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const workflow = await createWorkflowWithHistory({ tags }, member);
 
@@ -3823,7 +3823,7 @@ describe('PUT /workflows/:id/tags', () => {
 
 	test('should add the tags, workflow have not got tags previously', async () => {
 		const workflow = await createWorkflow({}, member);
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const payload = [
 			{
@@ -3881,7 +3881,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
@@ -3967,7 +3967,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
 

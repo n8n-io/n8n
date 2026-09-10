@@ -75,7 +75,7 @@ export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
-function scrubTelemetryText(value: string): string {
+export function scrubTelemetryText(value: string): string {
 	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
 }
 
@@ -1032,6 +1032,19 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
+	if (isRecord(span.status) && typeof span.status.message === 'string') {
+		span.status = {
+			...span.status,
+			message: truncateString(scrubTelemetryText(span.status.message)),
+		};
+	}
+	if (Array.isArray(span.events)) {
+		span.events = span.events.map((event: unknown) =>
+			isRecord(event) && isRecord(event.attributes)
+				? { ...event, attributes: redactTelemetryJsonValue(event.attributes) }
+				: event,
+		);
+	}
 	return span;
 }
 

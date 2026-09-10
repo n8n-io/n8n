@@ -106,7 +106,6 @@ import {
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
 	type ServiceProxyConfig,
-	type StreamableAgent,
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
@@ -496,7 +495,7 @@ export function isAttachmentRejectedByProviderError(error: unknown): boolean {
  * `quota_exhausted` error state; kept in sync with the FE i18n copy.
  */
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
-	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
+	"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.";
 
 const OPERATIONAL_ERROR_USER_MESSAGE =
 	'I hit an operational error before I could finish that response. Please try again.';
@@ -921,6 +920,12 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
+			resolveTracingConfig: async (threadId, userId) => {
+				const ownerId = userId ?? (await this.agentMemory.getThread(threadId))?.resourceId;
+				if (!ownerId) return { userId: 'system' };
+				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
+				return { userId: ownerId, proxyConfig: tracingProxyConfig };
+			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -969,7 +974,7 @@ export class InstanceAiService {
 		this.liveness.start();
 	}
 
-	private async createProxyRunConfig(user: User): Promise<{
+	private async createProxyRunConfig(user: Pick<User, 'id'>): Promise<{
 		searchProxyConfig?: ServiceProxyConfig;
 		tracingProxyConfig?: ServiceProxyConfig;
 		tokenManager?: ProxyTokenManager;
@@ -1638,6 +1643,7 @@ export class InstanceAiService {
 		taskId,
 		action,
 		correction,
+		userId,
 	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<boolean> {
 		switch (action) {
 			case 'correct':
@@ -1657,7 +1663,7 @@ export class InstanceAiService {
 				this.cancelRun(threadId);
 				return false;
 			case 'clear-thread':
-				await this.clearThreadState(threadId);
+				await this.clearThreadState(threadId, userId);
 				return false;
 		}
 	}
@@ -1696,8 +1702,12 @@ export class InstanceAiService {
 		}
 	}
 
-	async routeClearThreadState(threadId: string): Promise<void> {
-		await this.routeTaskControl({ threadId, action: 'clear-thread' });
+	async routeClearThreadState(threadId: string, userId?: string): Promise<void> {
+		await this.routeTaskControl({
+			threadId,
+			action: 'clear-thread',
+			...(userId ? { userId } : {}),
+		});
 	}
 
 	/** Apply a task-control action relayed from another main to this main's local
@@ -1886,7 +1896,7 @@ export class InstanceAiService {
 	 * Remove all in-memory state associated with a thread.
 	 * Must be called when a thread is deleted so the maps don't leak.
 	 */
-	async clearThreadState(threadId: string): Promise<void> {
+	async clearThreadState(threadId: string, userId?: string): Promise<void> {
 		this.liveness.clearThreadState(threadId);
 
 		// Clear run-state registry entries (active/suspended runs, confirmations,
@@ -1927,7 +1937,7 @@ export class InstanceAiService {
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.deleteAgentBuilderSessions(threadId);
-		await this.sandboxService.destroySandbox(threadId);
+		await this.sandboxService.destroySandbox(threadId, 'thread_cleanup', userId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
@@ -3544,7 +3554,7 @@ export class InstanceAiService {
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const revalidated = await this.revalidateActiveUser(user.id);
 		if (!revalidated) {
-			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+			this.logger.warn('Cancelling run: user no longer authorized for n8n Assistant', {
 				userId: user.id,
 				threadId,
 			});
@@ -4212,7 +4222,7 @@ export class InstanceAiService {
 
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
-						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+						return await streamAgentRun(agent, streamInput, streamOptions, {
 							threadId,
 							runId,
 							agentId: orchestratorAgentId(runId),
@@ -4223,7 +4233,7 @@ export class InstanceAiService {
 							stopSignal,
 						});
 					})
-				: await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
+				: await streamAgentRun(agent, streamInput, streamOptions, {
 						threadId,
 						runId,
 						agentId: orchestratorAgentId(runId),
@@ -4783,7 +4793,7 @@ export class InstanceAiService {
 			if (suspended?.user.id === requestingUserId) {
 				this.cancelRun(suspended.threadId);
 			}
-			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+			this.logger.warn('Rejecting confirmation: user no longer authorized for n8n Assistant', {
 				userId: requestingUserId,
 				requestId,
 			});
@@ -5222,7 +5232,7 @@ export class InstanceAiService {
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
-			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for n8n Assistant', {
 				userId: user.id,
 				threadId,
 				requestId,
