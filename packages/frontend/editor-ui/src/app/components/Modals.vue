@@ -35,6 +35,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
 	TRIAL_INTRO_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -128,6 +129,8 @@ import CredentialResolverEditModal from '@/features/resolvers/components/Credent
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
 import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUpModal.vue';
 import type { AiGatewayTopUpVariant } from '@/app/composables/useAiGatewayTopUp';
+import GatewayOpportunitySwitchModal from '@/features/ai/gateway/components/GatewayOpportunitySwitchModal.vue';
+import type { GatewayOpportunity } from '@/features/ai/gateway/composables/useWorkflowGatewayScan';
 import { defineAsyncComponent } from 'vue';
 
 const TrialIntroModal = defineAsyncComponent(
@@ -495,6 +498,20 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
 			<template #default="{ data }: { data: { variant: AiGatewayTopUpVariant } }">
 				<AiGatewayTopUpModal :variant="data.variant" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY">
+			<template
+				#default="{
+					modalName,
+					data,
+				}: {
+					modalName: string;
+					data: { opportunities: GatewayOpportunity[]; workflowId: string };
+				}"
+			>
+				<GatewayOpportunitySwitchModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

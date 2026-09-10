@@ -61,6 +61,7 @@ import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES } from '@/features/ai/gateway/constants';
+import { buildManagedCredentialValue } from '@/features/ai/gateway/utils/managedCredential';
 
 import {
 	N8nActionPill,
@@ -878,7 +879,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 			delete credentials[credentialType];
 		}
 		if (activation) applyActivationParameters(activation.parameters);
-		credentials[effectiveType] = { id: null, name: '', __aiGatewayManaged: true };
+		credentials[effectiveType] = buildManagedCredentialValue();
 		assignedKind = 'n8n_connect';
 	} else {
 		// Toggle OFF: restore the most recent available credential for THIS node only.

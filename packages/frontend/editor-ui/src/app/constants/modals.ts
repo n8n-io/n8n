@@ -31,6 +31,7 @@ export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
 export const AI_GATEWAY_TOP_UP_MODAL_KEY = 'aiGatewayTopUp';
+export const GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY = 'gatewayOpportunitySwitch';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';

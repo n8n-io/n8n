@@ -21,19 +21,20 @@ export const useGatewayOpportunityNudgeStore = defineStore(STORES.GATEWAY_OPPORT
 
 	const isOptedOut = computed(() => usersStore.isCalloutDismissed(GATEWAY_OPPORTUNITY_OPT_OUT_KEY));
 
-	// In-memory session flag, not persisted: caps the nudge at one showing
-	// per editor session regardless of how many workflows the user runs.
-	const shownThisSession = ref(false);
+	// In-memory and keyed by workflow, never persisted: the nudge shows at most
+	// once for each workflow in an editor session. A per-session cap would let
+	// the first workflow the user opens silence every other one.
+	const shownThisSession = ref(new Set<string>());
 
-	function shouldShow(opportunityCount: number): boolean {
+	function shouldShow(opportunityCount: number, workflowId: string): boolean {
 		if (isOptedOut.value) return false;
-		if (shownThisSession.value) return false;
+		if (shownThisSession.value.has(workflowId)) return false;
 		if (opportunityCount === 0) return false;
 		return true;
 	}
 
 	function markShown(opportunityCount: number, workflowId: string) {
-		shownThisSession.value = true;
+		shownThisSession.value.add(workflowId);
 		telemetry.track(TELEMETRY_EVENT.GATEWAY.OPPORTUNITY_NUDGE_SHOWN, {
 			workflow_id: workflowId,
 			opportunity_count: opportunityCount,
@@ -53,6 +54,19 @@ export const useGatewayOpportunityNudgeStore = defineStore(STORES.GATEWAY_OPPORT
 				...usersStore.currentUser?.settings?.dismissedCallouts,
 				[GATEWAY_OPPORTUNITY_CALLOUT_KEY]: true,
 			},
+		});
+	}
+
+	/**
+	 * Tracks the CTA that opens the switch modal. Unlike dismiss/neverShowAgain,
+	 * this does not persist a dismissed callout: the user engaged with the
+	 * nudge, so there is nothing to opt out of.
+	 */
+	function actionReviewAndSwitch(workflowId: string, offeredCount: number) {
+		telemetry.track(TELEMETRY_EVENT.GATEWAY.OPPORTUNITY_NUDGE_ACTIONED, {
+			workflow_id: workflowId,
+			method: 'review_and_switch',
+			offered_count: offeredCount,
 		});
 	}
 
@@ -77,5 +91,6 @@ export const useGatewayOpportunityNudgeStore = defineStore(STORES.GATEWAY_OPPORT
 		markShown,
 		dismiss,
 		neverShowAgain,
+		actionReviewAndSwitch,
 	};
 });

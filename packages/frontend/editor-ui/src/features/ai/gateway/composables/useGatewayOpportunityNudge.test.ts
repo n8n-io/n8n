@@ -5,6 +5,8 @@ import type { INode } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { mockedStore } from '@/__tests__/utils';
+import { GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useGatewayOpportunityNudgeStore } from '../stores/gatewayOpportunityNudge.store';
 import { maybeShowGatewayOpportunityNudge } from './useGatewayOpportunityNudge';
 
@@ -23,20 +25,29 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: () => ({ fetchConfig }),
 }));
 
+const canApply = { value: true };
+vi.mock('./useApplyGatewayCredential', () => ({
+	useApplyGatewayCredential: () => ({ canApply }),
+}));
+
 describe('maybeShowGatewayOpportunityNudge', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let nudgeStore: ReturnType<typeof mockedStore<typeof useGatewayOpportunityNudgeStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	const nodes: INode[] = [];
+	const opportunities = [{ nodeName: 'n1' }, { nodeName: 'n2' }];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		canApply.value = true;
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		settingsStore = mockedStore(useSettingsStore);
 		nudgeStore = mockedStore(useGatewayOpportunityNudgeStore);
+		uiStore = mockedStore(useUIStore);
 
 		settingsStore.isAiGatewayEnabled = true;
-		scanNodes.mockReturnValue({ opportunities: [{}, {}], blocked: [], alreadyManagedCount: 0 });
+		scanNodes.mockReturnValue({ opportunities, blocked: [], alreadyManagedCount: 0 });
 		nudgeStore.shouldShow.mockReturnValue(true);
 		showMessage.mockReturnValue({ close: vi.fn() });
 		fetchConfig.mockResolvedValue(undefined);
@@ -92,6 +103,14 @@ describe('maybeShowGatewayOpportunityNudge', () => {
 		expect(nudgeStore.markShown).toHaveBeenCalledWith(2, 'wf1');
 	});
 
+	it('passes canApply through to the toast message', async () => {
+		canApply.value = false;
+		await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+		const [[{ message }]] = showMessage.mock.calls;
+		expect(message.props.canApply).toBe(false);
+	});
+
 	it('closes the toast and defers to the store when the message emits dismiss', async () => {
 		const close = vi.fn();
 		showMessage.mockReturnValue({ close });
@@ -114,5 +133,21 @@ describe('maybeShowGatewayOpportunityNudge', () => {
 
 		expect(close).toHaveBeenCalled();
 		expect(nudgeStore.neverShowAgain).toHaveBeenCalledWith('wf1');
+	});
+
+	it('closes the toast, tracks the action, and opens the switch modal when the message emits reviewAndSwitch', async () => {
+		const close = vi.fn();
+		showMessage.mockReturnValue({ close });
+		await maybeShowGatewayOpportunityNudge(nodes, 'wf1');
+
+		const [[{ message }]] = showMessage.mock.calls;
+		message.props.onReviewAndSwitch();
+
+		expect(close).toHaveBeenCalled();
+		expect(nudgeStore.actionReviewAndSwitch).toHaveBeenCalledWith('wf1', 2);
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
+			data: { opportunities, workflowId: 'wf1' },
+		});
 	});
 });

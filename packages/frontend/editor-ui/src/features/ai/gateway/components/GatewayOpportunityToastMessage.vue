@@ -5,11 +5,13 @@ import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	opportunityCount: number;
+	canApply: boolean;
 }>();
 
 const emit = defineEmits<{
 	dismiss: [];
 	neverShowAgain: [];
+	reviewAndSwitch: [];
 }>();
 
 const i18n = useI18n();
@@ -23,7 +25,7 @@ const message = computed(() =>
 </script>
 
 <template>
-	<div data-test-id="gateway-opportunity-nudge">
+	<div :class="$style.container" data-test-id="gateway-opportunity-nudge">
 		<N8nText size="small" tag="p" color="text-base">
 			{{ message }}
 		</N8nText>
@@ -42,13 +44,32 @@ const message = computed(() =>
 				data-test-id="gateway-opportunity-nudge-dismiss"
 				@click="emit('dismiss')"
 			/>
+			<N8nButton
+				v-if="props.canApply"
+				variant="solid"
+				size="small"
+				:label="i18n.baseText('aiGateway.opportunityNudge.cta')"
+				data-test-id="gateway-opportunity-nudge-review-and-switch"
+				@click="emit('reviewAndSwitch')"
+			/>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+// The toast is a fixed 330px and clips what does not fit, so the content must
+// never be wider than the space it gets.
+.container {
+	max-width: 100%;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+// Three buttons do not fit on one line in the space the toast leaves. Let them
+// wrap so the primary action drops to its own line instead of being cut off.
 .actions {
 	display: flex;
+	flex-wrap: wrap;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--xs);

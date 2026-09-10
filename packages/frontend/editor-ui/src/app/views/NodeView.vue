@@ -23,6 +23,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { useGatewayOpportunityNudgeOnEdit } from '@/features/ai/gateway/composables/useGatewayOpportunityNudgeOnEdit';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
@@ -1930,6 +1931,9 @@ onBeforeRouteLeave(async (to, from, next) => {
 /**
  * Lifecycle
  */
+
+// Nudges the user about Gateway credits on the first edit of this workflow.
+useGatewayOpportunityNudgeOnEdit();
 
 onMounted(async () => {
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive

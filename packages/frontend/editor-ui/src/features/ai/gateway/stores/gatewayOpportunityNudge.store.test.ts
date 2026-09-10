@@ -40,24 +40,33 @@ describe('gatewayOpportunityNudge.store', () => {
 	describe('shouldShow', () => {
 		it('is false when there are no opportunities', () => {
 			const store = useGatewayOpportunityNudgeStore();
-			expect(store.shouldShow(0)).toBe(false);
+			expect(store.shouldShow(0, 'wf1')).toBe(false);
 		});
 
 		it('is true when there are opportunities and the user has not opted out', () => {
 			const store = useGatewayOpportunityNudgeStore();
-			expect(store.shouldShow(2)).toBe(true);
+			expect(store.shouldShow(2, 'wf1')).toBe(true);
 		});
 
 		it('is false once the user has opted out', () => {
 			dismissCallouts(GATEWAY_OPPORTUNITY_OPT_OUT_KEY);
 			const store = useGatewayOpportunityNudgeStore();
-			expect(store.shouldShow(2)).toBe(false);
+			expect(store.shouldShow(2, 'wf1')).toBe(false);
 		});
 
-		it('is false after the nudge already showed this session', () => {
+		it('is false after the nudge already showed for this workflow', () => {
 			const store = useGatewayOpportunityNudgeStore();
 			store.markShown(2, 'wf1');
-			expect(store.shouldShow(2)).toBe(false);
+			expect(store.shouldShow(2, 'wf1')).toBe(false);
+		});
+
+		it('still shows for a different workflow in the same session', () => {
+			const store = useGatewayOpportunityNudgeStore();
+			store.markShown(2, 'wf1');
+
+			// A cap for the whole session would let the first workflow the user
+			// opens silence every other one.
+			expect(store.shouldShow(2, 'wf2')).toBe(true);
 		});
 	});
 
@@ -117,6 +126,21 @@ describe('gatewayOpportunityNudge.store', () => {
 				'unrelated-callout-b': true,
 				[GATEWAY_OPPORTUNITY_CALLOUT_KEY]: true,
 			});
+		});
+	});
+
+	describe('actionReviewAndSwitch', () => {
+		it('tracks the action with the offered count, without persisting a dismissed callout', () => {
+			const store = useGatewayOpportunityNudgeStore();
+
+			store.actionReviewAndSwitch('wf1', 3);
+
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.GATEWAY.OPPORTUNITY_NUDGE_ACTIONED, {
+				workflow_id: 'wf1',
+				method: 'review_and_switch',
+				offered_count: 3,
+			});
+			expect(updateCurrentUserSettings).not.toHaveBeenCalled();
 		});
 	});
 

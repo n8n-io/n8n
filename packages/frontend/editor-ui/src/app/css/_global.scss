@@ -172,6 +172,13 @@
 	margin-bottom: var(--toast--offset, 0);
 	margin-right: var(--toast--right, 0);
 
+	// The Gateway credits nudge carries three actions. They need a little more
+	// room than the default toast width to stay on one line.
+	&.gateway-nudge-notification {
+		width: 380px;
+		max-width: calc(100vw - var(--spacing--lg));
+	}
+
 	&.whats-new-notification {
 		bottom: var(--spacing--xs) !important;
 		left: var(--spacing--sm) !important;

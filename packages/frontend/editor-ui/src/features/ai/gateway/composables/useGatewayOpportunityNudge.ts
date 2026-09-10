@@ -5,15 +5,23 @@ import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+import { GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY } from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useApplyGatewayCredential } from './useApplyGatewayCredential';
 import { useWorkflowGatewayScan } from './useWorkflowGatewayScan';
 import { useGatewayOpportunityNudgeStore } from '../stores/gatewayOpportunityNudge.store';
 import GatewayOpportunityToastMessage from '../components/GatewayOpportunityToastMessage.vue';
 
 /**
- * Shows a sticky toast, at most once per session, telling the user that some
- * nodes in the workflow they just ran manually could switch to Gateway
- * credits. Call this only after a manual run actually started: runWorkflow()
+ * Shows a sticky toast, at most once for each workflow in a session, telling
+ * the user that some nodes in this workflow could switch to Gateway credits.
+ *
+ * The scan runs here rather than when the workflow opens: the edit that brings
+ * up this nudge is often the one that adds the eligible node, and a result
+ * captured at open time would miss it.
+ *
+ * After a manual run, call this only once the run actually started: runWorkflow()
  * clears sticky notifications as it begins, which would wipe this toast.
  */
 export async function maybeShowGatewayOpportunityNudge(
@@ -34,8 +42,10 @@ export async function maybeShowGatewayOpportunityNudge(
 	const opportunityCount = result.opportunities.length;
 
 	const nudgeStore = useGatewayOpportunityNudgeStore();
-	if (!nudgeStore.shouldShow(opportunityCount)) return;
+	if (!nudgeStore.shouldShow(opportunityCount, workflowId)) return;
 
+	const { canApply } = useApplyGatewayCredential();
+	const uiStore = useUIStore();
 	const i18n = useI18n();
 	const toast = useToast();
 
@@ -45,6 +55,7 @@ export async function maybeShowGatewayOpportunityNudge(
 		title: i18n.baseText('aiGateway.opportunityNudge.title'),
 		message: h(GatewayOpportunityToastMessage, {
 			opportunityCount,
+			canApply: canApply.value,
 			onDismiss: () => {
 				handle?.close();
 				void nudgeStore.dismiss(workflowId);
@@ -53,9 +64,21 @@ export async function maybeShowGatewayOpportunityNudge(
 				handle?.close();
 				void nudgeStore.neverShowAgain(workflowId);
 			},
+			onReviewAndSwitch: () => {
+				handle?.close();
+				nudgeStore.actionReviewAndSwitch(workflowId, opportunityCount);
+				uiStore.openModalWithData({
+					name: GATEWAY_OPPORTUNITY_SWITCH_MODAL_KEY,
+					data: { opportunities: result.opportunities, workflowId },
+				});
+			},
 		}),
 		type: 'info',
 		duration: 0,
+		// Keep `content-toast`, which positions the toast: customClass replaces the
+		// default rather than merging. The second class widens this toast so the
+		// three actions fit on one line.
+		customClass: 'content-toast gateway-nudge-notification',
 	});
 
 	nudgeStore.markShown(opportunityCount, workflowId);

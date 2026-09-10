@@ -6,6 +6,7 @@ import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow'
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES } from '@/features/ai/gateway/constants';
+import { isNodeGatewayManaged } from '@/features/ai/gateway/utils/managedCredential';
 
 export interface GatewayOpportunity {
 	nodeName: string;
@@ -35,20 +36,6 @@ const emptyResult = (): GatewayScanResult => ({
 });
 
 /**
- * Plain-boolean wrapper around the store's `hasGatewayManagedCredential`. That
- * function is typed as a `node is INode` guard for its `INode | null` callers
- * elsewhere; called directly on our already-non-null `node`, TypeScript would
- * narrow the negative branch to `never` and break every later `node.*` access
- * in the scan loop. Losing the guard's return type here avoids that.
- */
-function isGatewayManaged(
-	hasGatewayManagedCredential: (node: INode | null) => node is INode,
-	node: INode,
-): boolean {
-	return hasGatewayManagedCredential(node);
-}
-
-/**
  * Scans a workflow's nodes for ones that could switch to a Gateway credits
  * (managed) credential. Pure and synchronous — the caller must ensure the
  * gateway config is already loaded; this composable never fetches.
@@ -74,7 +61,7 @@ export function useWorkflowGatewayScan(): {
 			// A disabled node does not run, so switching its credential changes nothing.
 			if (node.disabled) continue;
 
-			if (isGatewayManaged(aiGatewayStore.hasGatewayManagedCredential, node)) {
+			if (isNodeGatewayManaged(aiGatewayStore.hasGatewayManagedCredential, node)) {
 				alreadyManagedCount++;
 				continue;
 			}
