@@ -151,8 +151,9 @@ export class WorkflowRunner {
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
 		if (isQueueMode) {
-			const rechecks =
-				error instanceof MaxStalledCountError ? MAX_STALLED_COUNT_RECHECK_ATTEMPTS : 0;
+			const isStalled = error instanceof MaxStalledCountError;
+			const rechecks = isStalled ? MAX_STALLED_COUNT_RECHECK_ATTEMPTS : 0;
+			const recheckUntil = Date.now() + (isStalled ? MAX_STALLED_COUNT_GRACE_WINDOW_MS : 0);
 
 			for (let recheck = 0; recheck <= rechecks; recheck++) {
 				const executionWithoutData = await this.executionRepository.findSingleExecution(
@@ -243,7 +244,7 @@ export class WorkflowRunner {
 					return;
 				}
 
-				if (recheck === rechecks) break;
+				if (recheck === rechecks || Date.now() >= recheckUntil) break;
 
 				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS);
 			}
