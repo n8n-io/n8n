@@ -411,6 +411,7 @@ export class WorkflowPublicationOutboxConsumer {
 					// The terminal status is already written; keep the lock until the
 					// abandoned operations settle so the next record for this workflow
 					// can never run concurrently with them.
+					// The detached work has already been signaled to be aborted at this point.
 					if (detachedWork.length > 0) {
 						this.logger.warn(
 							'Keeping workflow publication lock held until abandoned trigger operations settle',
