@@ -11,7 +11,10 @@ export class InstanceAiPage extends BasePage {
 	readonly workflowSetup: InstanceAiWorkflowSetup;
 	readonly credentialModal: CredentialModal;
 
-	constructor(page: Page) {
+	constructor(
+		page: Page,
+		private readonly basePath: string = '',
+	) {
 		super(page);
 		this.sidebar = new InstanceAiSidebar(page.getByTestId('instance-ai-thread-list'));
 		this.workflowSetup = new InstanceAiWorkflowSetup(
@@ -24,8 +27,12 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-container');
 	}
 
+	private async gotoPath(path: string): Promise<void> {
+		await this.page.goto(this.basePath ? `${this.basePath}${path}` : path);
+	}
+
 	async goto(): Promise<void> {
-		await this.page.goto('/');
+		await this.gotoPath('/');
 		await this.enableInstanceAiIfPrompted();
 		await this.getChatInput()
 			.waitFor({ state: 'visible', timeout: 10_000 })
@@ -39,7 +46,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async gotoOnboarding(): Promise<void> {
-		await this.page.goto('/assistant');
+		await this.gotoPath('/assistant');
 		await expect(
 			this.container
 				.getByTestId('assistant-setup-intro')
@@ -101,7 +108,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
-		await this.page.goto(`/assistant/${threadId}`);
+		await this.gotoPath(`/assistant/${threadId}`);
 	}
 
 	/** Thread id of the conversation currently open, read from the URL. */

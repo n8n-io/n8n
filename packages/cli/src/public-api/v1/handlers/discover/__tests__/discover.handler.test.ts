@@ -27,9 +27,11 @@ describe('Discover Handler', () => {
 	function makeRequest(
 		query: { include?: string; resource?: string; operation?: string } = {},
 		apiKeyScopes?: string[],
+		baseUrl?: string,
 	) {
 		return {
 			query,
+			baseUrl,
 			tokenGrant: apiKeyScopes ? { apiKeyScopes } : undefined,
 		} as unknown as AuthenticatedRequest;
 	}
@@ -78,6 +80,30 @@ describe('Discover Handler', () => {
 			includeSchemas: false,
 			resource: undefined,
 			operation: undefined,
+			specUrl: '/api/v1/openapi.yml',
+		});
+	});
+
+	it('should pass the mounted spec URL when the public API has a base path', async () => {
+		const scopes = ['tag:list'];
+
+		vi.spyOn(discoverService, 'buildDiscoverResponse').mockResolvedValue({
+			scopes,
+			resources: {},
+			filters: {},
+			specUrl: '/my-n8n/api/v1/openapi.yml',
+		});
+
+		const req = makeRequest({}, scopes, '/my-n8n/api/v1');
+
+		const handlerFn = handler.getDiscover[0];
+		await handlerFn(req, mockResponse);
+
+		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
+			includeSchemas: false,
+			resource: undefined,
+			operation: undefined,
+			specUrl: '/my-n8n/api/v1/openapi.yml',
 		});
 	});
 
@@ -100,6 +126,7 @@ describe('Discover Handler', () => {
 			includeSchemas: true,
 			resource: undefined,
 			operation: undefined,
+			specUrl: '/api/v1/openapi.yml',
 		});
 	});
 
@@ -122,6 +149,7 @@ describe('Discover Handler', () => {
 			includeSchemas: false,
 			resource: 'workflow',
 			operation: 'create',
+			specUrl: '/api/v1/openapi.yml',
 		});
 	});
 });

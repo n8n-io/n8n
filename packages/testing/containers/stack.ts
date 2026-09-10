@@ -4,6 +4,7 @@ import { Network } from 'testcontainers';
 
 import {
 	createElapsedLogger,
+	normalizeStackBasePath,
 	pollContainerHttpEndpoint,
 	waitForContainerLogMessages,
 } from './helpers/utils';
@@ -114,6 +115,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const needsLoadBalancer = mains > 1 || webhooks > 0;
 	const usePostgres = usePostgresConfig || isQueueMode || enabledServices.includes('keycloak');
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
+	const basePath = normalizeStackBasePath(env.N8N_BASE_PATH);
+	const userEnvironment =
+		env.N8N_BASE_PATH === undefined ? env : { ...env, N8N_BASE_PATH: basePath };
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -147,7 +151,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	try {
 		const ctx: StartContext = {
-			config: { ...config, postgres: usePostgres },
+			config: { ...config, postgres: usePostgres, env: userEnvironment },
 			projectName: uniqueProjectName,
 			mains,
 			workers,
@@ -240,7 +244,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 		// Step 2: Start n8n (main 1 first for DB setup, then rest in parallel)
 		const lbResult = serviceResults.loadBalancer as LoadBalancerResult | undefined;
-		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`;
+		// When n8n is hosted under a base path, expose it as part of `baseUrl`
+		// so Playwright's `request.newContext({ baseURL })`, page navigations
+		// and helpers all resolve relative paths against the prefixed origin.
+		const baseUrl = (lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`) + basePath;
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
@@ -257,7 +264,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			projectName: uniqueProjectName,
 			network,
 			serviceEnvironment: environment,
-			userEnvironment: env,
+			userEnvironment,
 			usePostgres,
 			baseUrl: needsLoadBalancer ? undefined : baseUrl,
 			allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
@@ -311,8 +318,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const mainContainer = containers.find((c) => c.getName().endsWith(mainNameSuffix));
 			if (mainContainer) {
 				const mainPort = mainContainer.getMappedPort(5678);
-				mainUrls.push(`http://localhost:${mainPort}`);
-				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678`);
+				mainUrls.push(`http://localhost:${mainPort}${basePath}`);
+				internalMainUrls.push(`http://${uniqueProjectName}${mainNameSuffix}:5678${basePath}`);
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);

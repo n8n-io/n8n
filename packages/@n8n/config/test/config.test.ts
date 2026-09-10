@@ -50,6 +50,7 @@ describe('GlobalConfig', () => {
 
 	const defaultConfig = {
 		path: '/',
+		basePath: '',
 		host: 'localhost',
 		port: 5678,
 		listen_address: '::',

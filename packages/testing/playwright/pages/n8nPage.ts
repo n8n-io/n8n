@@ -161,9 +161,12 @@ export class n8nPage {
 	readonly breadcrumbs: Breadcrumbs;
 	readonly clipboard: ClipboardHelper;
 
-	constructor(page: Page, api?: ApiHelpers) {
+	readonly basePath: string;
+
+	constructor(page: Page, api?: ApiHelpers, basePath: string = '') {
 		this.page = page;
 		this.api = api ?? new ApiHelpers(page.context().request);
+		this.basePath = basePath;
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
@@ -176,7 +179,7 @@ export class n8nPage {
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
-		this.instanceAi = new InstanceAiPage(page);
+		this.instanceAi = new InstanceAiPage(page, basePath);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);
@@ -243,7 +246,7 @@ export class n8nPage {
 		this.dataTableComposer = new DataTableComposer(this);
 
 		// Helpers
-		this.navigate = new NavigationHelper(page);
+		this.navigate = new NavigationHelper(page, basePath);
 		this.breadcrumbs = new Breadcrumbs(page);
 		this.clipboard = new ClipboardHelper(page);
 	}
@@ -254,13 +257,13 @@ export class n8nPage {
 	 * module is active. Use {@link goToRoot} to exercise that root routing itself.
 	 */
 	async goHome() {
-		await this.page.goto('/home/workflows');
+		await this.page.goto(this.basePath ? `${this.basePath}/home/workflows` : '/home/workflows');
 	}
 
 	/**
 	 * Navigate to the app root and let it decide where the user lands.
 	 */
 	async goToRoot() {
-		await this.page.goto('/');
+		await this.page.goto(this.basePath ? `${this.basePath}/` : '/');
 	}
 }

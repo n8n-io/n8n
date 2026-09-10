@@ -17,6 +17,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import type { UrlService } from '@/services/url.service';
 
 describe('AuthService', () => {
@@ -48,6 +49,9 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+	});
 	const authService = new AuthService(
 		globalConfig,
 		logger,
@@ -57,6 +61,7 @@ describe('AuthService', () => {
 		userRepository,
 		invalidAuthTokenRepository,
 		mfaService,
+		pathResolvingService,
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
@@ -154,7 +159,7 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 		});
 
 		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
@@ -170,7 +175,7 @@ describe('AuthService', () => {
 			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 		});
 
 		it('should 401 but not clear the cookie if 2FA is enforced and not configured for the user', async () => {
@@ -206,6 +211,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -338,7 +344,7 @@ describe('AuthService', () => {
 				await middleware(req, res, next);
 
 				expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 				expect(next).toHaveBeenCalled(); // Should still call next() due to preview mode skip
 				expect(res.status).not.toHaveBeenCalled();
 			});
@@ -382,7 +388,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should clear the cookie if the token has been invalidated', async () => {
@@ -401,7 +407,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should not populate the user info if the token is invalid', async () => {
@@ -420,7 +426,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).not.toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should not populate the user info if the token is not set', async () => {
@@ -462,7 +468,7 @@ describe('AuthService', () => {
 				expect(userRepository.findOne).toHaveBeenCalled();
 				expect(req.user).toBeUndefined();
 				expect(next).toHaveBeenCalled();
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			});
 
 			it('should skip user when MFA enforced and user has no MFA', async () => {
@@ -527,6 +533,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -550,6 +557,7 @@ describe('AuthService', () => {
 				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 					httpOnly: true,
 					maxAge: 604800000,
+					path: '/',
 					sameSite: 'lax',
 					secure: true,
 				});
@@ -562,6 +570,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validTokenWithMfa, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -575,6 +584,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'none',
 				secure: false,
 			});
@@ -768,6 +778,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'lax',
 				secure: true,
 			});
@@ -813,6 +824,7 @@ describe('AuthService', () => {
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
+				path: '/',
 				sameSite: 'none',
 				secure: true,
 			});
@@ -967,10 +979,34 @@ describe('AuthService', () => {
 
 			authService.clearCookie(res);
 
-			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
 			// The form page cookies are not clearable from here: their names embed the
 			// workflow/execution they were minted for, unknown to this response.
 			expect(res.clearCookie).toHaveBeenCalledTimes(1);
+		});
+
+		it('should clear session cookies from the current and legacy root paths', () => {
+			const nonRootPathResolvingService = mock<PathResolvingService>({
+				getBasePath: () => '/custom-path',
+			});
+			const nonRootAuthService = new AuthService(
+				globalConfig,
+				logger,
+				license,
+				jwtService,
+				urlService,
+				userRepository,
+				invalidAuthTokenRepository,
+				mfaService,
+				nonRootPathResolvingService,
+			);
+			const res = mock<Response>();
+
+			nonRootAuthService.clearCookie(res);
+
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/custom-path' });
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, { path: '/' });
+			expect(res.clearCookie).toHaveBeenCalledTimes(2);
 		});
 	});
 
