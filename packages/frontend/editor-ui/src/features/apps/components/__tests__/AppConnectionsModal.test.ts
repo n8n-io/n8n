@@ -143,7 +143,7 @@ describe('AppConnectionsModal', () => {
 		expect(within(survey).getByTestId('tools-connection-row-main')).toBeDisabled();
 		expect(within(survey).getByTestId('tools-connection-row-disabled')).toHaveAttribute(
 			'aria-label',
-			expect.stringContaining("aren't supported"),
+			'Contains nodes an app cannot run (Wait, Form)',
 		);
 		expect(rows.indexOf(survey)).toBe(2);
 	});

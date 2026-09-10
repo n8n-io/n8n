@@ -70,7 +70,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 
 function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
 	if (reason.reason === 'incompatible_nodes') {
-		return i18n.baseText('agents.tools.workflow.disabled.incompatibleNodes');
+		return i18n.baseText('apps.connections.picker.incompatible');
 	}
 	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
 		interpolate: { trigger: workflowToolTriggerLabel() },
