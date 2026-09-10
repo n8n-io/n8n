@@ -1,3 +1,11 @@
+## [2.38.6](https://github.com/n8n-io/n8n/compare/n8n@2.38.5...n8n@2.38.6) (2026-09-10)
+
+
+### Performance Improvements
+
+* **core:** Bound peak memory during source control push ([#37975](https://github.com/n8n-io/n8n/issues/37975)) ([b3c32da](https://github.com/n8n-io/n8n/commit/b3c32da290a0ebbb8db66a0385d063e100ad08ba))
+
+
 ## [2.38.5](https://github.com/n8n-io/n8n/compare/n8n@2.38.4...n8n@2.38.5) (2026-09-09)
 
 
