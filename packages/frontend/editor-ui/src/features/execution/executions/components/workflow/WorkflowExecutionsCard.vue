@@ -10,6 +10,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import {
@@ -37,6 +38,7 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -61,6 +63,13 @@ const executionUIDetails = computed<IExecutionUIData>(() =>
 );
 const isActive = computed(() => props.execution.id === route.params.executionId);
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
+
+const startedByName = computed(() => {
+	const userId = props.execution.startedByUserId;
+	if (!userId) return '';
+	const user = usersStore.usersById[userId];
+	return user?.fullName ?? user?.email ?? locale.baseText('executionsList.startedBy.unknownUser');
+});
 
 onMounted(() => {
 	emit('mounted', props.execution.id);
@@ -147,6 +156,15 @@ function onRetryMenuItemSelect(action: string): void {
 				<div v-if="execution.mode === 'retry'">
 					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
+					</N8nText>
+				</div>
+				<div v-if="startedByName" data-test-id="execution-card-started-by">
+					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
+						{{
+							locale.baseText('executionDetails.startedBy', {
+								interpolate: { name: startedByName },
+							})
+						}}
 					</N8nText>
 				</div>
 				<div v-if="isAnnotationEnabled" :class="$style.annotation">

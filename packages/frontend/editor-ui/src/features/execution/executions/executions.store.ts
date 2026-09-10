@@ -27,6 +27,7 @@ import {
 } from './executions.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -182,6 +183,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 					addExecution(execution);
 				}
 			});
+
+			// Resolve starting users to names in one request per page (same approach as
+			// workflow history). `fetchUsers` no-ops for users who cannot list users.
+			const startedByIds = new Set(
+				data.results.map((e) => e.startedByUserId).filter((id): id is string => Boolean(id)),
+			);
+			if (startedByIds.size > 0) {
+				await useUsersStore().fetchUsers({ filter: { ids: Array.from(startedByIds) } });
+			}
 
 			const isLoadMore = !!lastId;
 			const isFullPage = data.results.length >= itemsPerPage.value;

@@ -4,6 +4,9 @@ import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@n8n/stores';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -18,6 +21,14 @@ vi.mock('vue-router', async () => {
 
 const globalExecutionsListItemQueuedTooltipRenderSpy = vi.fn();
 
+const initialState = {
+	[STORES.USERS]: {
+		usersById: {
+			'u-1': { id: 'u-1', fullName: 'Ada Lovelace', email: 'ada@example.com' },
+		},
+	},
+};
+
 const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 	global: {
 		stubs: {
@@ -31,6 +42,10 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 });
 
 describe('GlobalExecutionsListItem', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ initialState }));
+	});
+
 	it('should render the status text for an execution', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -214,5 +229,43 @@ describe('GlobalExecutionsListItem', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('30m 0s');
+	});
+
+	it('shows who started the execution', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 1,
+					startedByUserId: 'u-1',
+				} as unknown as ExecutionSummary,
+				workflowPermissions: {},
+			},
+		});
+		expect(getByTestId('execution-started-by')).toHaveTextContent('Ada Lovelace');
+	});
+
+	it('names an unknown user when the id cannot be resolved', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'success',
+					id: 1,
+					startedByUserId: 'gone',
+				} as unknown as ExecutionSummary,
+				workflowPermissions: {},
+			},
+		});
+		expect(getByTestId('execution-started-by')).toHaveTextContent('Unknown user');
+	});
+
+	it('renders an empty cell when no user started the execution', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: { status: 'success', id: 1 } as unknown as ExecutionSummary,
+				workflowPermissions: {},
+			},
+		});
+		expect(getByTestId('execution-started-by')).toHaveTextContent('');
 	});
 });

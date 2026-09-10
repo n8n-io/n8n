@@ -4,6 +4,7 @@ import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -53,6 +54,7 @@ const props = withDefaults(
 const style = useCssModule();
 const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
+const usersStore = useUsersStore();
 
 const isStopping = ref(false);
 
@@ -120,6 +122,13 @@ const classes = computed(() => {
 	return {
 		[style.dangerBg]: errorStatuses.includes(props.execution.status),
 	};
+});
+
+const startedByName = computed(() => {
+	const userId = props.execution.startedByUserId;
+	if (!userId) return '';
+	const user = usersStore.usersById[userId];
+	return user?.fullName ?? user?.email ?? locale.baseText('executionsList.startedBy.unknownUser');
 });
 
 const formattedStartedAtDate = computed(() => {
@@ -274,6 +283,9 @@ async function handleActionItemClick(commandData: Command) {
 					({{ locale.baseText('executionsList.successRetry') }} {{ execution.retrySuccessId }})
 				</small>
 			</span>
+		</td>
+		<td data-test-id="execution-started-by">
+			<N8nText v-if="startedByName" size="small" color="text-base">{{ startedByName }}</N8nText>
 		</td>
 		<td :class="$style.modeCell">
 			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">

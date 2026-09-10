@@ -32,6 +32,11 @@ const initialState = {
 			enterprise: {},
 		},
 	},
+	[STORES.USERS]: {
+		usersById: {
+			'u-1': { id: 'u-1', fullName: 'Ada Lovelace', email: 'ada@example.com' },
+		},
+	},
 };
 
 const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
@@ -178,6 +183,24 @@ describe('WorkflowExecutionsCard', () => {
 		const executionTimeElement = getByTestId('execution-time');
 		expect(executionTimeElement).toBeVisible();
 		expect(executionTimeElement.textContent).toBe('27 Sep - Starting soon');
+	});
+
+	test('shows who started the execution', () => {
+		const props: ComponentProps<typeof WorkflowExecutionsCard> = {
+			execution: {
+				id: '1',
+				mode: 'manual',
+				status: 'success',
+				startedByUserId: 'u-1',
+			} as unknown as ExecutionSummary,
+			workflowPermissions: {
+				execute: true,
+			},
+		};
+
+		const { getByTestId } = renderComponent({ props });
+
+		expect(getByTestId('execution-card-started-by')).toHaveTextContent('Started by Ada Lovelace');
 	});
 
 	afterEach(() => {

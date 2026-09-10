@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import type { ExecutionSummaryWithScopes, IExecutionsListResponse } from './executions.types';
 import { useExecutionsStore } from './executions.store';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -133,6 +134,40 @@ describe('executions.store', () => {
 
 			executionsStore.resetData();
 			expect(executionsStore.hasMoreExecutions).toBe(true);
+		});
+	});
+
+	describe('fetchExecutions', () => {
+		it('batch-loads the distinct starting users for a page', async () => {
+			const fetchUsersSpy = vi.spyOn(useUsersStore(), 'fetchUsers').mockResolvedValue(undefined);
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				count: 2,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [
+					{ id: '1', scopes: [], startedByUserId: 'u-1' },
+					{ id: '2', scopes: [], startedByUserId: 'u-1' },
+				] as unknown as ExecutionSummaryWithScopes[],
+			} satisfies IExecutionsListResponse);
+
+			await executionsStore.fetchExecutions({});
+
+			expect(fetchUsersSpy).toHaveBeenCalledTimes(1);
+			expect(fetchUsersSpy).toHaveBeenCalledWith({ filter: { ids: ['u-1'] } });
+		});
+
+		it('does not call fetchUsers when no execution has a starting user', async () => {
+			const fetchUsersSpy = vi.spyOn(useUsersStore(), 'fetchUsers').mockResolvedValue(undefined);
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				count: 1,
+				estimated: false,
+				concurrentExecutionsCount: 0,
+				results: [{ id: '1', scopes: [] }] as unknown as ExecutionSummaryWithScopes[],
+			} satisfies IExecutionsListResponse);
+
+			await executionsStore.fetchExecutions({});
+
+			expect(fetchUsersSpy).not.toHaveBeenCalled();
 		});
 	});
 
