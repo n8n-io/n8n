@@ -450,6 +450,40 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('readSealedSubject()', () => {
+		beforeEach(() => {
+			// Round-trip the cipher and the credential-context mapper through JSON, so
+			// builder output can be read back. Earlier tests leave a fixed return value
+			// on `toCredentialContext`; restore its real parsing behaviour here.
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+			toCredentialContext.mockImplementation((data: string) => JSON.parse(data));
+		});
+
+		it('returns the sealed subject of an n8n-oauth carrier', async () => {
+			const encrypted = await service.buildTriggerIdentityCredentials(
+				'token',
+				'https://n8n/webhook/x',
+				undefined,
+				'user-123',
+			);
+			await expect(service.readSealedSubject(encrypted)).resolves.toBe('user-123');
+		});
+
+		it('returns undefined for a carrier without a subject', async () => {
+			const encrypted = await service.buildTriggerIdentityCredentials(
+				'token',
+				'https://n8n/webhook/x',
+			);
+			await expect(service.readSealedSubject(encrypted)).resolves.toBeUndefined();
+		});
+
+		it('returns undefined for a manual-execution carrier', async () => {
+			const encrypted = await service.buildManualExecutionCredentials('cookie-jwt');
+			await expect(service.readSealedSubject(encrypted)).resolves.toBeUndefined();
+		});
+	});
+
 	describe('maybeBindExecutionId()', () => {
 		beforeEach(() => {
 			// Symmetric fakes: decrypt is identity, encrypt is JSON.stringify, so we can

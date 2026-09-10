@@ -237,6 +237,15 @@ const ExecutionContextSchemaV1 = z.object({
 	 * resolved, so those executions stay redacted for everyone.
 	 */
 	executedByUserId: z.string().optional(),
+
+	/**
+	 * The n8n user whose identity started this execution: the editor user for
+	 * manual, retry, cli and test-webhook runs, the caller for instance MCP runs,
+	 * and the sealed subject for triggers that authenticate with n8n user auth.
+	 * Inherited by sub-workflows and error workflows. Absent for schedule, poll
+	 * and third-party triggers. Not the same fact as `executedByUserId`.
+	 */
+	startedByUserId: z.string().optional(),
 });
 
 export type IExecutionContextV1 = z.output<typeof ExecutionContextSchemaV1>;

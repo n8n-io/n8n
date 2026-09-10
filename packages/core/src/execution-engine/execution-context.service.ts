@@ -163,6 +163,17 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
+	/**
+	 * Reads the n8n user id a trigger sealed into the identity carrier, if any.
+	 * Only `n8n-oauth` carriers with a `subject` carry one; manual and chat-hub
+	 * carriers hold a session token and yield `undefined`.
+	 */
+	async readSealedSubject(encryptedCredentials: string): Promise<string | undefined> {
+		const context = await this.decryptCredentialContext(encryptedCredentials);
+		const metadata = N8NOAuthMetadataSchema.safeParse(context.metadata);
+		return metadata.success ? metadata.data.subject : undefined;
+	}
+
 	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {
 		const { credentials, secureArtifacts, ...rest } = context;
 		const result: IExecutionContext = { ...rest };
