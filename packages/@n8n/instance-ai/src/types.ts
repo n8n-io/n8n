@@ -1905,6 +1905,11 @@ export interface WorkflowTaskService {
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
+	beginVerification(
+		outcome: WorkflowBuildOutcome,
+		state: WorkflowLoopState,
+		runId: string,
+	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
 

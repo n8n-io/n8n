@@ -10,6 +10,7 @@
 import type {
 	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
+	InstanceAiHandoffContext,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -148,6 +149,7 @@ interface MultiTurnDriverConfig {
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiWorkflowAttachment[];
+	openingHandoffContext?: InstanceAiHandoffContext;
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -207,6 +209,7 @@ async function driveMultiTurnConversation(
 		config.openingAttachments,
 		config.buildMode,
 		config.promptVersion,
+		config.openingHandoffContext,
 	);
 
 	await runMultiTurnConversation({
@@ -958,11 +961,19 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
 			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
 			: undefined;
+		const openingHandoffContext: InstanceAiHandoffContext | undefined =
+			conversation[0]?.attach?.source === 'setup-panel-execute' && restoredForAttach
+				? { source: 'setup-panel-execute', workflowId: restoredForAttach.id }
+				: undefined;
 		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
 		// prompt-aware checks read a text-less hand-off as a bare empty message — see
 		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
 		// sent-vs-recorded the other way.
-		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+		const recordedOpeningMessage = [
+			attachedWorkflowNote(restoredForAttach?.name),
+			openingHandoffContext ? '[The user clicked Execute in the setup panel.]' : '',
+			openingMessage,
+		]
 			.filter(Boolean)
 			.join(' ');
 
@@ -1017,6 +1028,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
 				openingAttachments,
+				openingHandoffContext,
 				recordedOpeningMessage,
 			});
 		} else {
@@ -1027,6 +1039,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingAttachments,
 				buildMode,
 				promptVersion,
+				openingHandoffContext,
 			);
 			await waitForAllActivity({
 				client,

@@ -4640,8 +4640,15 @@ function toWorkflowJSON(
 			notesInFlow: n.notesInFlow,
 			executeOnce: n.executeOnce,
 			retryOnFail: n.retryOnFail,
+			maxTries: n.maxTries,
+			waitBetweenTries: n.waitBetweenTries,
 			alwaysOutputData: n.alwaysOutputData,
-			onError: n.onError,
+			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
+			// read it the way the editor does. An agent save writes these nodes over the saved
+			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
+			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
+			extendsCredential: n.extendsCredential,
+			customTelemetryTags: n.customTelemetryTags,
 		})),
 		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],

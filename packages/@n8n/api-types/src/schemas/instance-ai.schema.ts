@@ -2476,6 +2476,10 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	name: z.string().min(1).max(255),
 	nodes: z.array(z.record(z.unknown())).max(500),
 	connections: z.record(z.unknown()),
+	/** Publish the workflow once restored, so a case starts from a live automation.
+	 *  Its node credentials must name credentials the thread's project holds, or
+	 *  activation refuses the workflow and the restore fails. */
+	published: z.boolean().optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
@@ -2569,7 +2573,8 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	messages: z.array(z.record(z.unknown())).max(1000),
 	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
-	/** Workflows the history references; recreated (node credentials stripped). */
+	/** Workflows the history references; recreated. A node credential is kept only
+	 *  when the thread's project holds one of the same type and name. */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
 	 *  bound to them so the next turn continues one instead of resolving it again. */
