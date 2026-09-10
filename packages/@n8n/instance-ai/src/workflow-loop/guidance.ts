@@ -87,7 +87,7 @@ export function formatWorkflowLoopGuidance(
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				if (options.setupPanelEnabled) {
 					return (
-						'Workflow verified successfully with temporary mock data. ' +
+						`${claimLead} It still uses temporary mock data. ` +
 						`Call \`workflows(action="setup")\` with workflowId "${action.workflowId ?? 'unknown'}" once: ` +
 						'it lists the remaining credentials and values in the setup panel next to the chat and returns them to you. ' +
 						'When the result has `announced: true`, summarize it, report any validation warnings, and end your turn. ' +

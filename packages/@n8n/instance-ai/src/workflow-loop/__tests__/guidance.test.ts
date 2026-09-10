@@ -118,6 +118,42 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Report completion');
 		});
 
+		it('should downgrade the setup-panel guidance too', () => {
+			// The setup-panel branch used to hardcode "Workflow verified
+			// successfully with temporary mock data", which restored the exact
+			// sentence the claim exists to withhold.
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				workflowId: 'wf-123',
+				mockedCredentialTypes: ['slackApi'],
+				claim: makeClaim({
+					level: 'partial',
+					nodesNotReached: ['Send Email'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('NOT fully verified');
+			expect(result).toContain('workflows(action="setup")');
+		});
+
+		it('should keep the setup-panel guidance honest about a stale live version', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Fixed',
+				workflowId: 'wf-123',
+				mockedCredentialTypes: ['slackApi'],
+				claim: makeClaim({ liveState: 'live-stale' }),
+			};
+			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Verified in the draft, NOT live');
+			expect(result).toContain('workflows(action="setup")');
+		});
+
 		it('should downgrade the mocked-credential guidance too', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',

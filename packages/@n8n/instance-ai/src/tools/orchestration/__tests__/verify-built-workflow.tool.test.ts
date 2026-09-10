@@ -1573,6 +1573,30 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(result.liveStateNote).toBeUndefined();
 	});
 
+	it('names the version that ran, not one saved while the run was in flight', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+		);
+		const head = vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead);
+		// A save landing during the run moves the head. The claim must still name
+		// the version the execution used.
+		vi.mocked(ctx.domainContext.executionService.run).mockImplementation(async () => {
+			head.mockResolvedValue({
+				versionId: 'draft-3',
+				activeVersionId: 'published-1',
+				updatedAt: 0,
+			});
+			await Promise.resolve();
+			return { executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } };
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+	});
+
 	it('leaves the claim without publish state when the lookup fails', async () => {
 		const { ctx } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',

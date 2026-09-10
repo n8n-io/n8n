@@ -78,6 +78,10 @@ export async function createStubServices(
 	const { searchableNodes, descriptionsByName } = await loadNodeCatalogue(options.nodesJsonPath);
 	const nodeDefinitionDirs = resolveEvalNodeDefinitionDirs();
 	const capturedWorkflows: WorkflowJSON[] = [];
+	// Published version of the stubbed workflow. Null until an eval publishes.
+	// The stub models one version, so a published workflow is always
+	// `live-current` — it cannot produce a stale live version.
+	let activeVersionId: string | null = null;
 
 	const workflowService: InstanceAiWorkflowService = {
 		async list(options) {
@@ -99,14 +103,14 @@ export async function createStubServices(
 			return { workflows: [], total: 0, totalInScope: 0 };
 		},
 		async get(workflowId: string) {
-			return emptyWorkflowDetail(workflowId);
+			return { ...emptyWorkflowDetail(workflowId), activeVersionId };
 		},
 		async getAsWorkflowJSON(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
 		async getWorkflowHead() {
-			return { versionId: EVAL_WORKFLOW_VERSION_ID, activeVersionId: null, updatedAt: 0 };
+			return { versionId: EVAL_WORKFLOW_VERSION_ID, activeVersionId, updatedAt: 0 };
 		},
 		async getWorkflowSnapshot(workflowId: string) {
 			const latest = capturedWorkflows[capturedWorkflows.length - 1];
@@ -137,9 +141,14 @@ export async function createStubServices(
 			return false;
 		},
 		async publish() {
-			return { activeVersionId: 'eval-version' };
+			// Track it: a verification claim after a publish must read
+			// `live-current`, not `unpublished`.
+			activeVersionId = EVAL_WORKFLOW_VERSION_ID;
+			return { activeVersionId };
 		},
-		async unpublish() {},
+		async unpublish() {
+			activeVersionId = null;
+		},
 	};
 
 	const credentialService: InstanceAiCredentialService = {

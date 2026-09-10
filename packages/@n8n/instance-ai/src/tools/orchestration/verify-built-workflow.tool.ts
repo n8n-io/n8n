@@ -226,6 +226,27 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				.catch(() => undefined);
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
 
+			// Verification runs the draft, so read the version pair BEFORE the run:
+			// the execution uses the workflow as it stands now, and a save landing
+			// mid-run would otherwise make the claim name a version this run never
+			// executed. A publish landing mid-run leaves the claim saying
+			// `live-stale` for a workflow that just went live — the safe direction,
+			// because it under-claims. A failed lookup leaves the publish state out
+			// of the claim rather than guessing at it.
+			const publishState = await target.domainContext.workflowService
+				.getWorkflowHead(workflowId)
+				.then((head) => ({
+					activeVersionId: head.activeVersionId,
+					draftVersionId: head.versionId,
+				}))
+				.catch((error: unknown) => {
+					context.logger.warn('Failed to read publish state for the verification claim', {
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					return undefined;
+				});
+
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
 			const { result, analysis } = prepared.gateScript
@@ -282,24 +303,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
-			// Verification runs the draft. Read the published version next to the
-			// run so the claim can say whether what passed is what production
-			// serves. A failed lookup leaves the publish state out of the claim
-			// rather than guessing at it.
-			const publishState = await target.domainContext.workflowService
-				.getWorkflowHead(workflowId)
-				.then((head) => ({
-					activeVersionId: head.activeVersionId,
-					draftVersionId: head.versionId,
-				}))
-				.catch((error: unknown) => {
-					context.logger.warn('Failed to read publish state for the verification claim', {
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-					return undefined;
-				});
-
 			const claim = deriveVerificationClaim({
 				analysis,
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,

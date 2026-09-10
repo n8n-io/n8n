@@ -27,9 +27,11 @@ const listAction = z.object({
 			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
 				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
 				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
-				'whether the LIVE workflow works: only a row whose `workflowVersionId` equals ' +
-				'`workflow.activeVersionId` ran the published code, and a draft version different from ' +
-				'the published one means the latest changes are not live yet.',
+				'whether the LIVE workflow works: a row ran the published code only when its ' +
+				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
+				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
+				'row can prove production works. A draft version different from the published one ' +
+				'means the latest changes are not live yet.',
 		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
