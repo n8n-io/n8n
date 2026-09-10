@@ -997,9 +997,9 @@ names what was invalid — a duplicate name, a member that does not exist, a bou
 reject: fix what the warning reports and build again. A `GROUPING_DECISION_MISSING` error means
 the build was refused: fix the source, or pass the opt-out with a reason. A
 `GROUP_DROPPED_OVER_CEILING` error also refuses the build: a declared group was invalid and the
-canvas is still too wide. Fix the boundary the message names — the opt-out does not apply. If
-the top level is still above {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining item and why
-it cannot join a group.
+canvas is still over the ceiling. Fix the boundary the message names — the opt-out does not
+apply. If the top level is still above {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining
+item and why it cannot join a group.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is

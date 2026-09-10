@@ -84,10 +84,10 @@ export function topLevelItemsWarning(
 }
 
 /**
- * The check that blocks a save: over the ceiling with no surviving group, the build
- * is refused until the agent groups or states why it cannot. A group the save
- * dropped does not count, and an opt-out never excuses a dropped group — the agent
- * had already decided to group, so the boundary is what needs fixing.
+ * The check that blocks a save. Over the ceiling, a dropped group refuses the build
+ * until its boundary is fixed — the agent had already decided to group, and an opt-out
+ * never excuses that. A canvas with no group refuses it until the agent groups or
+ * states why it cannot.
  */
 export function groupingDecisionBlocker(input: {
 	summary: TopLevelItemsSummary;
