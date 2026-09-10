@@ -7,6 +7,12 @@ const tableBinding = (key: string, permissions: string[] = ['read']) => ({
 	dataTableId: 'dt-1',
 	permissions,
 });
+const agentBinding = (key: string, permissions: string[] = ['chat']) => ({
+	key,
+	kind: 'agent',
+	agentId: 'ag-1',
+	permissions,
+});
 
 describe('app-binding.schema', () => {
 	describe('appBindingSchema', () => {
@@ -64,6 +70,37 @@ describe('app-binding.schema', () => {
 			).toBe(false);
 		});
 
+		it('accepts an agent binding with chat, history, or both permissions', () => {
+			expect(appBindingSchema.safeParse(agentBinding('support', ['chat'])).success).toBe(true);
+			expect(appBindingSchema.safeParse(agentBinding('support', ['history'])).success).toBe(true);
+			expect(appBindingSchema.safeParse(agentBinding('support', ['chat', 'history'])).success).toBe(
+				true,
+			);
+		});
+
+		it('requires at least one agent permission', () => {
+			expect(appBindingSchema.safeParse(agentBinding('support', [])).success).toBe(false);
+			const { permissions: _, ...withoutPermissions } = agentBinding('support');
+			expect(appBindingSchema.safeParse(withoutPermissions).success).toBe(false);
+		});
+
+		it('rejects an unknown agent permission', () => {
+			expect(appBindingSchema.safeParse(agentBinding('support', ['read'])).success).toBe(false);
+			expect(appBindingSchema.safeParse(agentBinding('support', ['chat', 'admin'])).success).toBe(
+				false,
+			);
+		});
+
+		it('rejects a missing or oversized agentId', () => {
+			expect(
+				appBindingSchema.safeParse({ key: 'support', kind: 'agent', permissions: ['chat'] })
+					.success,
+			).toBe(false);
+			expect(
+				appBindingSchema.safeParse({ ...agentBinding('support'), agentId: 'x'.repeat(37) }).success,
+			).toBe(false);
+		});
+
 		it('rejects a missing or oversized workflowId', () => {
 			expect(appBindingSchema.safeParse({ key: 'a', kind: 'workflow' }).success).toBe(false);
 			expect(
@@ -97,6 +134,19 @@ describe('app-binding.schema', () => {
 			expect(appBindingsSchema.safeParse([binding('tasks'), tableBinding('tasks')]).success).toBe(
 				false,
 			);
+		});
+
+		it('accepts an agent binding next to the other kinds when keys are unique', () => {
+			expect(
+				appBindingsSchema.safeParse([
+					binding('submit'),
+					tableBinding('tasks'),
+					agentBinding('support'),
+				]).success,
+			).toBe(true);
+			expect(
+				appBindingsSchema.safeParse([binding('support'), agentBinding('support')]).success,
+			).toBe(false);
 		});
 
 		it('accepts 50 bindings and rejects 51', () => {
@@ -150,6 +200,28 @@ describe('app-binding.schema', () => {
 				b.missing || b.kind !== 'dataTable' ? 0 : b.columns.length;
 			expect(columnCount(table)).toBe(1);
 			expect(columnCount(missing)).toBe(0);
+		});
+
+		it('carries the published flag of an agent binding, or marks it missing', () => {
+			const agent: DescribedBinding = {
+				key: 'support',
+				kind: 'agent',
+				agentId: 'ag-1',
+				name: 'Support',
+				permissions: ['chat', 'history'],
+				published: false,
+			};
+			const missing: DescribedBinding = {
+				key: 'support',
+				kind: 'agent',
+				name: 'support',
+				missing: true,
+			};
+			const canChat = (b: DescribedBinding) =>
+				!b.missing && b.kind === 'agent' && b.published && b.permissions.includes('chat');
+			expect(canChat(agent)).toBe(false);
+			expect(canChat({ ...agent, published: true })).toBe(true);
+			expect(canChat(missing)).toBe(false);
 		});
 	});
 });

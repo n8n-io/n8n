@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { dataTablePermissionSchema } from './app-binding.schema';
+import { agentPermissionSchema, dataTablePermissionSchema } from './app-binding.schema';
 import { appNameSchema, appNamespaceSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -296,6 +296,18 @@ export const appBindingMetaSchema = z.discriminatedUnion('kind', [
 		key: z.string(),
 		permissions: z.array(dataTablePermissionSchema).min(1).max(2),
 		// For the link to the data table in the approval card.
+		projectId: z.string(),
+	}),
+	z.object({
+		kind: z.literal('agent'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		agentId: z.string(),
+		agentName: z.string(),
+		key: z.string(),
+		permissions: z.array(agentPermissionSchema).min(1).max(2),
+		// For the link to the agent in the approval card.
 		projectId: z.string(),
 	}),
 ]);

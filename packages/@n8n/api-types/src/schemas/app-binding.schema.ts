@@ -27,11 +27,22 @@ export const dataTableBindingSchema = z.object({
 	permissions: z.array(dataTablePermissionSchema).min(1).max(2),
 });
 
+/** `chat` allows sending messages; `history` allows reading the visitor's own conversation back. */
+export const agentPermissionSchema = z.enum(['chat', 'history']);
+
+export const agentBindingSchema = z.object({
+	key: bindingKeySchema,
+	kind: z.literal('agent'),
+	agentId: z.string().min(1).max(36),
+	permissions: z.array(agentPermissionSchema).min(1).max(2),
+});
+
 // Discriminated on `kind` so later kinds (workflowList, executions) add a member here
 // instead of a column.
 export const appBindingSchema = z.discriminatedUnion('kind', [
 	workflowBindingSchema,
 	dataTableBindingSchema,
+	agentBindingSchema,
 ]);
 
 export const appBindingsSchema = z
@@ -44,6 +55,7 @@ export const appBindingsSchema = z
 
 export type AppBinding = z.infer<typeof appBindingSchema>;
 export type DataTablePermission = z.infer<typeof dataTablePermissionSchema>;
+export type AgentPermission = z.infer<typeof agentPermissionSchema>;
 
 /** Where the output fields come from: one successful execution, or nothing yet. */
 export type OutputSource =
@@ -76,10 +88,21 @@ export type DescribedDataTableBinding = {
 	missing?: false;
 };
 
+export type DescribedAgentBinding = {
+	key: string;
+	kind: 'agent';
+	agentId: string;
+	name: string;
+	permissions: AgentPermission[];
+	/** Only the published version answers visitors; `false` while the agent has no active version. */
+	published: boolean;
+	missing?: false;
+};
+
 /** The bound resource no longer exists; `name` falls back to the key so the row still renders. */
 export type DescribedMissingBinding = {
 	key: string;
-	kind: 'workflow' | 'dataTable';
+	kind: 'workflow' | 'dataTable' | 'agent';
 	name: string;
 	missing: true;
 };
@@ -87,4 +110,5 @@ export type DescribedMissingBinding = {
 export type DescribedBinding =
 	| DescribedWorkflowBinding
 	| DescribedDataTableBinding
+	| DescribedAgentBinding
 	| DescribedMissingBinding;
