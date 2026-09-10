@@ -70,6 +70,15 @@ test('starts a named OpenCode session in a worktree', () => {
 	assert.doesNotMatch(command, /claude plugin/);
 });
 
+test('forwards legacy flags without a workspace name to the main checkout', () => {
+	for (const flags of [['--help'], ['--model', 'test']]) {
+		const command = remoteCommand(['--opencode', '--legacy', ...flags]);
+		assert.match(command, /tmux new -As agent-opencode/);
+		assert.ok(command.includes(`cd /workspaces/n8n && opencode --auto ${flags.join(' ')}`));
+		assert.doesNotMatch(command, /git .*worktree add/);
+	}
+});
+
 test('keeps removed credentials out of the login shell', () => {
 	const command = remoteCommand(['--shell']);
 	const profile = readFileSync(new URL('./codespaces-secrets.sh', import.meta.url), 'utf8');

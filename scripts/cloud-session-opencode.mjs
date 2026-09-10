@@ -41,15 +41,19 @@ function localVersion() {
 	return version;
 }
 
-async function freePort() {
+export async function freePort(excludedPort) {
 	const server = createServer();
 	await new Promise((resolve, reject) => {
 		server.once('error', reject);
 		server.listen(0, '127.0.0.1', resolve);
 	});
 	const { port } = server.address();
-	await new Promise((resolve) => server.close(resolve));
-	return port;
+	try {
+		// Keep a conflicting port reserved while the OS selects another one.
+		return port === excludedPort ? await freePort() : port;
+	} finally {
+		await new Promise((resolve) => server.close(resolve));
+	}
 }
 
 function startChild(command, args, options = {}) {
@@ -192,13 +196,14 @@ export async function connectOpenCode(options, ensureCodespace) {
 	const interrupt = () => controller.abort();
 	process.on('SIGINT', interrupt);
 	process.on('SIGTERM', interrupt);
+	process.on('SIGHUP', interrupt);
 	let tunnel;
 	let client;
 	let proxy;
 	try {
 		const codespace = ensureCodespace();
 		const state = await bootstrap(codespace, options, controller.signal);
-		const port = !options.web && options.port ? options.port : await freePort();
+		const port = !options.web && options.port ? options.port : await freePort(options.port);
 		const url = `http://127.0.0.1:${port}`;
 		tunnel = startChild(
 			'gh',
@@ -277,5 +282,6 @@ export async function connectOpenCode(options, ensureCodespace) {
 		if (tunnel) await tunnel.stop();
 		process.removeListener('SIGINT', interrupt);
 		process.removeListener('SIGTERM', interrupt);
+		process.removeListener('SIGHUP', interrupt);
 	}
 }

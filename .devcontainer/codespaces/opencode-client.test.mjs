@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { Server } from 'node:net';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
+import { freePort, parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/cloud-session.mjs', import.meta.url));
 const secret = 'a'.repeat(64);
@@ -114,6 +115,17 @@ async function waitFor(check) {
 	throw new Error('Fixture did not become ready.');
 }
 
+test('selects another tunnel port when the first candidate is the browser port', async (t) => {
+	const address = Server.prototype.address;
+	let candidates = 0;
+	t.mock.method(Server.prototype, 'address', function () {
+		const result = address.call(this);
+		return ++candidates === 1 ? { ...result, port: 4096 } : result;
+	});
+	assert.notEqual(await freePort(4096), 4096);
+	assert.equal(candidates, 2);
+});
+
 test('parses options before or after the workspace and rejects unsupported flags', () => {
 	assert.equal(parseOpenCodeArgs(['--web']).port, 4096);
 	assert.equal(parseOpenCodeArgs([]).port, 0);
@@ -175,29 +187,31 @@ test(
 	},
 );
 
-test(
-	'opens the saved web conversation without a local client and cleans up on interruption',
-	{ timeout: 15000 },
-	async (t) => {
-		const f = fixture(t, { TEST_NO_CLIENT: '1' });
-		const run = f.start(['--web', 'fix-flaky']);
-		const browser = await waitFor(() => f.calls().find((call) => call.command === 'browser'));
-		const url = new URL(browser.args[0]);
-		assert.equal(
-			url.pathname,
-			`/${Buffer.from('/workspaces/wt-fix-flaky').toString('base64url')}/session/ses_saved`,
-		);
-		assert.equal(url.password, '');
-		const response = await fetch(`${url.origin}/global/health`);
-		assert.equal(response.status, 200);
-		await response.text();
-		run.child.kill('SIGINT');
-		const result = await run.done;
-		assert.equal(result.code, 0, result.output);
-		assert.ok(f.calls().some((call) => call.event === 'tunnel-stopped'));
-		await assert.rejects(fetch(url.origin));
-	},
-);
+for (const signal of ['SIGINT', 'SIGHUP']) {
+	test(
+		`opens the saved web conversation and cleans up on ${signal}`,
+		{ timeout: 15000 },
+		async (t) => {
+			const f = fixture(t, { TEST_NO_CLIENT: '1' });
+			const run = f.start(['--web', 'fix-flaky']);
+			const browser = await waitFor(() => f.calls().find((call) => call.command === 'browser'));
+			const url = new URL(browser.args[0]);
+			assert.equal(
+				url.pathname,
+				`/${Buffer.from('/workspaces/wt-fix-flaky').toString('base64url')}/session/ses_saved`,
+			);
+			assert.equal(url.password, '');
+			const response = await fetch(`${url.origin}/global/health`);
+			assert.equal(response.status, 200);
+			await response.text();
+			run.child.kill(signal);
+			const result = await run.done;
+			assert.equal(result.code, 0, result.output);
+			assert.ok(f.calls().some((call) => call.event === 'tunnel-stopped'));
+			await assert.rejects(fetch(url.origin));
+		},
+	);
+}
 
 for (const [label, env, message] of [
 	['a version mismatch', { TEST_SERVER_VERSION: '1.14.22' }, /versions differ/],

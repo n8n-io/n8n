@@ -147,7 +147,10 @@ Use --port to override it. Use Ctrl-C to close the local connection.`);
 	// Do not interpret OpenCode options as legacy session names.
 	process.exit(process.exitCode ?? 0);
 }
-if (launcher === 'opencode') args.splice(args.indexOf('--legacy'), 1);
+if (launcher === 'opencode') {
+	args.splice(args.indexOf('--legacy'), 1);
+	if (args[0]?.startsWith('-')) args.unshift('agent');
+}
 const [cmd = 'agent', ...rest] = args;
 
 switch (cmd) {

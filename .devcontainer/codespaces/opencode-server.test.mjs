@@ -32,8 +32,8 @@ log({command: path.basename(process.argv[1]), args});
 	bin(
 		'git',
 		`
-if (args.includes('show-ref')) process.exit(1);
-fs.mkdirSync(args.at(-1), { recursive: true });
+if (args.includes('show-ref')) process.exit(fs.existsSync(file('branch-exists')) ? 0 : 1);
+fs.mkdirSync(args.includes('-b') ? args.at(-1) : args.at(-2), { recursive: true });
 `,
 	);
 	bin(
@@ -147,6 +147,21 @@ test(
 		const restarted = await f.prepare({ name: 'fix-flaky' });
 		assert.equal(restarted.sessionID, fresh.sessionID);
 		assert.notEqual(restarted.password, first.password);
+		rmSync(first.directory, { recursive: true });
+		writeFileSync(join(f.dir, 'branch-exists'), '');
+		assert.equal((await f.prepare({ name: 'fix-flaky' })).sessionID, fresh.sessionID);
+		const worktree = f
+			.commands()
+			.filter((entry) => entry.command === 'git' && entry.args.includes('add'))
+			.at(-1);
+		assert.deepEqual(worktree.args, [
+			'-C',
+			join(f.dir, 'n8n'),
+			'worktree',
+			'add',
+			first.directory,
+			'session/fix-flaky',
+		]);
 	},
 );
 
