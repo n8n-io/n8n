@@ -98,6 +98,7 @@ describe('AgentPublishController revert to version', () => {
 			{
 				params: { projectId: 'project-1' },
 				user: { id: 'user-1' },
+				headers: { 'push-ref': 'push-ref-1' },
 			} as never,
 			undefined as never,
 			'agent-1',
@@ -110,6 +111,7 @@ describe('AgentPublishController revert to version', () => {
 			'v1',
 			{ id: 'user-1' },
 			'user',
+			'push-ref-1',
 		);
 		expect(result).toEqual(
 			expect.objectContaining({

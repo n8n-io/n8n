@@ -20,6 +20,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		// passing test with silently empty metadata.
 		threadProvenanceMetadata: vi.fn(() => ({ thread_source: 'evals' })),
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		isSetupPanelEnabled: (context: { setupItemsEmitter?: unknown }) =>
+			context.setupItemsEmitter !== undefined,
+		createSetupItemsEmitter: vi.fn(() => ({
+			emit: vi.fn(),
+			announce: vi.fn(),
+			merge: vi.fn(),
+			workflowIds: vi.fn(),
+			lastWorkflowId: vi.fn(),
+		})),
 		isQuotaExhaustedError: (error: unknown) =>
 			typeof error === 'object' &&
 			error !== null &&
@@ -213,6 +222,7 @@ import {
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
 	createOrchestratorRunControl,
+	createSetupItemsEmitter,
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
@@ -455,6 +465,7 @@ type TerminalGuardOrderServiceInternals = {
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {};
+	aiConfig: { modelStreamIdleTimeoutMs: number; modelStreamFirstOutputTimeoutMs: number };
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -563,6 +574,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {};
+	service.aiConfig = { modelStreamIdleTimeoutMs: 90_000, modelStreamFirstOutputTimeoutMs: 180_000 };
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -631,7 +643,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		}));
 	});
 
-	it('defers sandbox creation and setup until the lazy workspace is used', async () => {
+	const snapshotModes = ['off', 'seeded', 'read failure'];
+	it.each(snapshotModes)('starts with snapshots %s', async (snapshotMode) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -640,6 +653,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				abortSignal: AbortSignal,
 			) => Promise<{
 				orchestrationContext: {
+					setupPanelEnabled?: boolean;
 					workspace?: unknown;
 					runtimeSkills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
@@ -673,8 +687,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
+			eventLog: { getSetupItemsSnapshots: Mock };
 			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
@@ -703,7 +719,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			})),
 			isLocalGatewayDisabledForUser: vi.fn(async () => false),
 			getPermissions: vi.fn(() => ({})),
-			isInstanceAiSetupPanelEnabled: vi.fn(() => false),
+			isInstanceAiSetupPanelEnabled: vi.fn(() => snapshotMode !== 'off'),
 		};
 		service.gatewayService = { findGateway: vi.fn(() => undefined), applyToolPolicy: vi.fn() };
 		service.aiService = { isProxyEnabled: vi.fn(() => false) };
@@ -728,8 +744,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
+		const initialSnapshots = [{ workflowId: 'wf-old', items: [] }];
+		service.eventLog = { getSetupItemsSnapshots: vi.fn().mockResolvedValue(initialSnapshots) };
+		if (snapshotMode === 'read failure') {
+			service.eventLog.getSetupItemsSnapshots.mockRejectedValue(new Error('storage unavailable'));
+		}
 		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
@@ -782,6 +804,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'run-1',
 			new AbortController().signal,
 		);
+		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
+		if (snapshotMode === 'off') {
+			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
+			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
+		} else {
+			expect(createSetupItemsEmitter).toHaveBeenCalledWith(
+				expect.objectContaining({
+					initialSnapshots: snapshotMode === 'seeded' ? initialSnapshots : [],
+				}),
+			);
+		}
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
@@ -838,7 +871,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			error: 'claim failed',
 		});
 		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
-			service.logger.warn.mock.invocationCallOrder[0],
+			service.logger.warn.mock.invocationCallOrder.at(-1)!,
 		);
 
 		expect(createSandbox).not.toHaveBeenCalled();
@@ -949,6 +982,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
 			instanceAiConfig: Record<string, never>;
+			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: { warn: Mock };
@@ -1005,6 +1039,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
 		service.instanceAiConfig = {};
+		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = { warn: vi.fn() };
@@ -4687,6 +4722,7 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			threadId: string,
 			workflowId: string,
 			runId?: string,
+			options?: { requirePersisted?: boolean },
 		) => Promise<boolean>;
 		maybeStartWorkflowSetupFollowUp: (user: User, threadId: string) => Promise<boolean>;
 	};
@@ -4933,6 +4969,42 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			expect.objectContaining({ workflowId: 'wf-1', workItemId: 'wi-1' }),
 			'setup_completed_by_tool',
 		);
+	});
+
+	it.each(['rejected', 'not saved'])(
+		'releases a %s routing marker so the handoff can retry',
+		async (failure) => {
+			const records = { 'wi-1': makeRecord() };
+			const service = createSetupFollowUpService(records);
+			if (failure === 'rejected') {
+				service.markWorkItemSetupRouted.mockRejectedValueOnce(new Error('storage unavailable'));
+			} else {
+				service.markWorkItemSetupRouted.mockResolvedValueOnce(false);
+			}
+
+			await expect(
+				service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1', { requirePersisted: true }),
+			).rejects.toThrow();
+			expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+			await expect(service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1')).resolves.toBe(
+				true,
+			);
+			await expect(service.maybeStartWorkflowSetupFollowUp(fakeUser, 'thread-a')).resolves.toBe(
+				false,
+			);
+			expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps the legacy card result when its routing marker is not saved', async () => {
+		const records = { 'wi-1': makeRecord() };
+		const service = createSetupFollowUpService(records);
+		service.markWorkItemSetupRouted.mockResolvedValueOnce(false);
+
+		await expect(service.markWorkflowSetupHandled('thread-a', 'wf-1', 'run-1')).resolves.toBe(
+			false,
+		);
+		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
 	});
 
 	it('keeps setup for other workflows routable after one workflow setup completes', async () => {

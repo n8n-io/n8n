@@ -1095,89 +1095,7 @@ describe('Canvas', () => {
 		]);
 	});
 
-	it('snaps an agent drag by its measured center', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const canvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const { container, emitted } = renderComponent({ props: { nodes: [canvasNode] } });
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
-		const graphNode = useVueFlow({ id: canvasId }).findNode(agent.id)!;
-		graphNode.dimensions = { width: 320, height: 206 };
-
-		const node = container.querySelector(`[data-id="${agent.id}"]`) as Element;
-		await fireEvent.mouseDown(node, { view: window });
-		await fireEvent.mouseMove(node, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(node, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(node, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{
-						id: agent.id,
-						position: { x: 112, y: 105 },
-					},
-				],
-			],
-		]);
-	});
-
-	it('snaps a selected agent by its measured center when dragging a regular node', async () => {
-		const agent = createTestNode({
-			id: 'agent',
-			name: 'Agent',
-			position: [100, 100],
-			type: MESSAGE_AN_AGENT_NODE_TYPE,
-			typeVersion: 2,
-		});
-		workflowDocumentStore.addNode(agent);
-		const agentCanvasNode = createCanvasNodeElement({
-			id: agent.id,
-			position: { x: 100, y: 100 },
-			data: { type: agent.type, typeVersion: agent.typeVersion },
-		});
-		const regularCanvasNode = createCanvasNodeElement({
-			id: 'regular',
-			position: { x: 100, y: 100 },
-		});
-		const { container, emitted } = renderComponent({
-			props: { nodes: [agentCanvasNode, regularCanvasNode] },
-		});
-
-		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
-		const vueFlow = useVueFlow({ id: canvasId });
-		const agentGraphNode = vueFlow.findNode(agent.id)!;
-		agentGraphNode.dimensions = { width: 320, height: 206 };
-		vueFlow.addSelectedNodes([agentGraphNode, vueFlow.findNode(regularCanvasNode.id)!]);
-
-		const regularNode = container.querySelector(`[data-id="${regularCanvasNode.id}"]`) as Element;
-		await fireEvent.mouseDown(regularNode, { view: window });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 20, clientY: 20 });
-		await fireEvent.mouseMove(regularNode, { view: window, clientX: 40, clientY: 40 });
-		await fireEvent.mouseUp(regularNode, { view: window });
-
-		expect(emitted()['update:nodes:position']).toEqual([
-			[
-				[
-					{ id: agent.id, position: { x: 112, y: 105 } },
-					{ id: regularCanvasNode.id, position: { x: 112, y: 105 } },
-				],
-			],
-		]);
-	});
-
-	it('centers a newly added agent when its rendered height is first measured', async () => {
+	it('places a newly added agent by its handle when its rendered height is first measured', async () => {
 		const agent = createTestNode({
 			id: 'agent',
 			name: 'Agent',
@@ -1186,7 +1104,10 @@ describe('Canvas', () => {
 			typeVersion: 2,
 		});
 		workflowDocumentStore.addNode(agent);
-		useAgentNodeCanvasGeometryStore().setPendingCenterY(canvasId, agent.id, 176);
+		const geometryStore = useAgentNodeCanvasGeometryStore();
+		geometryStore.setPendingCenterY(canvasId, agent.id, 176);
+		// The card reports its content once loaded; only then does its size count.
+		geometryStore.setNodeContentKey(canvasId, agent.id, 'summary');
 
 		const { container } = renderComponent({
 			props: {

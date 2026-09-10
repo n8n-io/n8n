@@ -218,12 +218,12 @@ describe('ProjectExporter', () => {
 
 	it('suffixes duplicate project names and sorts by createdAt for stable targets', async () => {
 		const olderProject = makeProject({
-			id: 'project-older',
+			id: 'project_older',
 			name: 'Billing',
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		});
 		const newerProject = makeProject({
-			id: 'project-newer',
+			id: 'project_newer',
 			name: 'Billing',
 			createdAt: new Date('2024-02-01T00:00:00.000Z'),
 		});
@@ -245,12 +245,12 @@ describe('ProjectExporter', () => {
 			{
 				id: olderProject.id,
 				name: olderProject.name,
-				target: 'projects/billing-project-older',
+				target: 'projects/billing-project_older',
 			},
 			{
 				id: newerProject.id,
 				name: newerProject.name,
-				target: 'projects/billing-project-newer',
+				target: 'projects/billing-project_newer',
 			},
 		]);
 	});
@@ -394,7 +394,7 @@ describe('ProjectExporter', () => {
 	});
 
 	it('exports a personal project', async () => {
-		const project = makeProject({ id: 'personal-1', name: 'Personal', type: 'personal' });
+		const project = makeProject({ id: 'personal_1', name: 'Personal', type: 'personal' });
 		const { exporter } = makeExporter({ projects: [project] });
 		const writer = new CapturingWriter();
 
@@ -411,7 +411,7 @@ describe('ProjectExporter', () => {
 			{
 				id: project.id,
 				name: project.name,
-				target: 'projects/personal-personal-1',
+				target: 'projects/personal-personal_1',
 			},
 		]);
 	});

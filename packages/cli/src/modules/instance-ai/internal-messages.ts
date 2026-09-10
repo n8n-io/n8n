@@ -51,6 +51,9 @@ export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+/** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
+export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
+export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -59,7 +62,7 @@ export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;

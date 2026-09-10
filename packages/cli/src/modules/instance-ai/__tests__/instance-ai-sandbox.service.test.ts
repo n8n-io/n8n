@@ -406,6 +406,23 @@ describe('InstanceAiSandboxService', () => {
 				snapshot: 'n8n/instance-ai:2.27.3',
 			});
 		});
+
+		it('marks n8n-sandbox sandboxes ephemeral when the env flag is set', () => {
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+					sandboxEphemeral: true,
+				},
+			});
+
+			expect(service.getSandboxConfigFromEnv()).toMatchObject({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				ephemeral: true,
+			});
+		});
 	});
 
 	describe('workspace lifecycle', () => {
