@@ -688,3 +688,81 @@ describe('App pages', () => {
 			.expect(404);
 	});
 });
+
+describe('/:appId of another project', () => {
+	const appOfMember = async () => {
+		const memberProject = await getPersonalProject(member);
+		const workflow = await passthroughWorkflow(memberProject);
+		const created = await appRepository.createApp(memberProject.id, 'Theirs', 'theirs');
+		return await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+	};
+
+	test('answers the same 404 as an unknown id for GET /:appId', async () => {
+		const app = await appOfMember();
+
+		const mismatch = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(404);
+		const unknown = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/missing-id`)
+			.expect(404);
+
+		expect(unknown.body.message).toBe("Could not find the app: 'missing-id'");
+		expect(mismatch.body).toEqual({
+			...unknown.body,
+			message: `Could not find the app: '${app.id}'`,
+		});
+	});
+
+	test('answers 404 for GET /:appId/bindings', async () => {
+		const app = await appOfMember();
+
+		await authOwnerAgent.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`).expect(404);
+	});
+
+	test('answers 404 for POST /:appId/bindings and leaves the bindings unchanged', async () => {
+		const app = await appOfMember();
+		const workflow = await passthroughWorkflow();
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'notify', kind: 'workflow', workflowId: workflow.id })
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('answers 404 for DELETE /:appId/bindings/:key and leaves the bindings unchanged', async () => {
+		const app = await appOfMember();
+
+		await authOwnerAgent
+			.delete(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('answers 404 for POST /:appId/pages and creates no page', async () => {
+		const app = await appOfMember();
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'home' })
+			.expect(404);
+
+		expect(await pageRepository.findBy({ appId: app.id })).toEqual([]);
+	});
+
+	test('still resolves an app of the request project', async () => {
+		await appOfMember();
+		const app = await appRepository.createApp(ownerProject.id, 'Mine', 'mine');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({ id: app.id, projectId: ownerProject.id });
+	});
+});

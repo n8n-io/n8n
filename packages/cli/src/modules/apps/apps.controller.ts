@@ -10,6 +10,7 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	Body,
 	Delete,
@@ -39,6 +40,7 @@ import { AppSourceEditBuildService } from './app-source-edit-build.service';
 import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
+import { AppNotFoundError } from './errors/app-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { pathSegments } from './serving/path-segments';
 
@@ -115,6 +117,27 @@ export class AppsController {
 			next();
 		} catch {
 			res.status(404).send('Project not found');
+		}
+	}
+
+	/**
+	 * Runs after the project-scope check. An `:appId` of another project answers
+	 * the same 404 as an unknown id, so it does not reveal that the app exists.
+	 */
+	@Middleware()
+	async validateAppBelongsToProject(
+		req: AuthenticatedRequest<{ projectId: string; appId?: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		const { projectId, appId } = req.params;
+		if (appId === undefined) return next();
+		try {
+			const app = await this.appsService.getApp(appId);
+			if (app.projectId !== projectId) throw new AppNotFoundError(appId);
+			next();
+		} catch (error) {
+			sendErrorResponse(res, ensureError(error));
 		}
 	}
 
