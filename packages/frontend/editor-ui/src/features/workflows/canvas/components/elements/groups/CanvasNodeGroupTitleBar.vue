@@ -77,6 +77,7 @@ const titleText = useTemplateRef<HTMLElement>('titleText');
 const collapsedTitle = useTemplateRef<HTMLElement>('collapsedTitle');
 
 const group = computed(() => props.data.group);
+const isEmpty = computed(() => props.data.isEmpty === true);
 const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
@@ -105,7 +106,7 @@ const wrapperClasses = computed(() => [
 
 const frameStyle = computed(() => {
 	// Frame sits below the header, so exclude the header height
-	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	const expanded = props.data.emptyFrame ?? computeGroupFrameRects(props.data.nodesRect).expanded;
 	return {
 		top: `${HEADER_HEIGHT}px`,
 		height: `${expanded.height - HEADER_HEIGHT}px`,
@@ -115,7 +116,7 @@ const frameStyle = computed(() => {
 // An expanded selected group shows one ring around header + frame; the
 // title bar ring alone would read as only the header being selected.
 const selectionRingStyle = computed(() => {
-	const { expanded } = computeGroupFrameRects(props.data.nodesRect);
+	const expanded = props.data.emptyFrame ?? computeGroupFrameRects(props.data.nodesRect).expanded;
 	return { height: `${expanded.height}px` };
 });
 
@@ -405,7 +406,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 		:class="wrapperClasses"
 		:style="{
 			width: '100%',
-			height: `${HEADER_HEIGHT}px`,
+			height: isEmpty
+				? `${props.data.emptyFrame?.height ?? HEADER_HEIGHT}px`
+				: `${HEADER_HEIGHT}px`,
 			...nodeBorderOpacityStyle,
 		}"
 		data-test-id="canvas-node-group"
@@ -417,7 +420,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@mouseenter="onGroupMouseEnter"
 		@mouseleave="onGroupMouseLeave"
 	>
-		<div :class="$style.titleBar">
+		<div :class="$style.titleBar" :style="{ height: `${HEADER_HEIGHT}px` }">
 			<Handle
 				:id="CANVAS_NODE_GROUP_HANDLE_LEFT"
 				type="target"
@@ -434,7 +437,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 			/>
 
 			<div
-				v-if="!readOnly"
+				v-if="!readOnly && !isEmpty"
 				:class="['nodrag', $style.toolbar]"
 				data-test-id="canvas-node-group-toolbar"
 			>
@@ -561,6 +564,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 					</div>
 				</div>
 				<N8nIconButton
+					v-if="!isEmpty"
 					class="nodrag"
 					:class="$style.toggle"
 					variant="ghost"

@@ -62,6 +62,22 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 	};
 }
 
+function makeEmptyData(): CanvasGroupNodeData {
+	return {
+		group: {
+			id: 'empty',
+			name: 'Empty group',
+			nodeIds: [],
+			frame: { position: [100, 200], size: [240, 160] },
+			visualLinks: [],
+		},
+		nodesRect: { x: 0, y: 0, width: 0, height: 0 },
+		emptyFrame: { x: 100, y: 200, width: 240, height: 160 },
+		isEmpty: true,
+		isCollapsed: false,
+	};
+}
+
 describe('CanvasNodeGroupTitleBar', () => {
 	beforeEach(() => {
 		viewportRef.value = { x: 0, y: 0, zoom: 1 };
@@ -97,6 +113,25 @@ describe('CanvasNodeGroupTitleBar', () => {
 			},
 		});
 	}
+
+	describe('true-empty group', () => {
+		it('renders the full expanded frame without collapse or member-only controls', () => {
+			const wrapper = render({ data: makeEmptyData() });
+
+			expect(wrapper.getByTestId('canvas-node-group')).toHaveStyle({ height: '160px' });
+			expect(wrapper.getByTestId('canvas-node-group-frame')).toHaveStyle({ height: '64px' });
+			expect(wrapper.queryByTestId('canvas-node-group-toggle')).not.toBeInTheDocument();
+			expect(wrapper.queryByTestId('canvas-node-group-toolbar')).not.toBeInTheDocument();
+		});
+
+		it('uses the persisted frame for the selected outline', () => {
+			const wrapper = render({ data: makeEmptyData(), selected: true });
+
+			expect(wrapper.getByTestId('canvas-node-group-selection-ring')).toHaveStyle({
+				height: '160px',
+			});
+		});
+	});
 
 	describe('chevron caption and icon by state', () => {
 		it('renders chevron-down with Expand label when collapsed', () => {

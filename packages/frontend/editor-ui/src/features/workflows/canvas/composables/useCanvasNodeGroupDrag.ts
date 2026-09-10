@@ -1,6 +1,7 @@
 import type { GraphNode, NodeDragEvent } from '@vue-flow/core';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
+import type { IWorkflowGroup } from 'n8n-workflow';
 import type { CanvasGroupNodeData, CanvasNodeMoveEvent } from '../canvas.types';
 import {
 	createCanvasGroupNodeId,
@@ -17,18 +18,20 @@ import { applyOffset } from '../canvas.utils';
 export interface UseCanvasNodeGroupDragDeps {
 	canvasId?: string;
 	getNodeById: (id: string) => INodeUi | undefined;
-	getGroupById: (groupId: string) => { nodeIds: string[] } | undefined;
+	getGroupById: (groupId: string) => Pick<IWorkflowGroup, 'id' | 'nodeIds' | 'frame'> | undefined;
 	getGroupForNode: (nodeId: string) => { id: string; nodeIds: string[] } | undefined;
 	isNodeInGroup: (nodeId: string) => boolean;
 	getNodeVisualOffset?: (id: string) => { x: number; y: number };
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	onMovedExpandedGroups?: (groupIds: string[]) => void;
+	onMovedEmptyGroup?: (groupId: string, position: { x: number; y: number }) => void;
 }
 
 interface GroupDragSnapshot {
 	initialGroupPos: { x: number; y: number };
 	initialNodePositions: Map<string, { x: number; y: number }>;
 	initialNodeVisualOffsets: Map<string, { x: number; y: number }>;
+	emptyGroup?: { id: string; position: { x: number; y: number } };
 }
 
 /**
@@ -43,15 +46,13 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 	let isSelectionBoxDragInProgress = false;
 	let skipPairedNodeDragStop = false;
 
-	function getGroupNodeIds(groupVueFlowId: string): string[] {
-		const groupId = parseCanvasGroupNodeId(groupVueFlowId);
-		if (groupId === undefined) return [];
-		return deps.getGroupById(groupId)?.nodeIds ?? [];
-	}
-
 	function snapshotGroup(groupVueFlowNode: GraphNode) {
-		const nodeIds = getGroupNodeIds(groupVueFlowNode.id);
-		if (nodeIds.length === 0) return;
+		const groupId = parseCanvasGroupNodeId(groupVueFlowNode.id);
+		if (groupId === undefined) return;
+		const group = deps.getGroupById(groupId);
+		if (!group) return;
+		const nodeIds = group.nodeIds;
+		if (nodeIds.length === 0 && !group.frame) return;
 		const initialNodePositions = new Map<string, { x: number; y: number }>();
 		const initialNodeVisualOffsets = new Map<string, { x: number; y: number }>();
 		for (const id of nodeIds) {
@@ -65,6 +66,14 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			initialGroupPos: { x: groupVueFlowNode.position.x, y: groupVueFlowNode.position.y },
 			initialNodePositions,
 			initialNodeVisualOffsets,
+			...(nodeIds.length === 0 && group.frame
+				? {
+						emptyGroup: {
+							id: groupId,
+							position: { x: group.frame.position[0], y: group.frame.position[1] },
+						},
+					}
+				: {}),
 		});
 	}
 
@@ -93,8 +102,15 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			const dx = finalPos.x - snap.initialGroupPos.x;
 			const dy = finalPos.y - snap.initialGroupPos.y;
 			if (dx !== 0 || dy !== 0) {
-				const groupId = parseCanvasGroupNodeId(groupVueFlowId);
-				if (groupId !== undefined) movedGroupIds.add(groupId);
+				if (snap.emptyGroup) {
+					deps.onMovedEmptyGroup?.(snap.emptyGroup.id, {
+						x: snap.emptyGroup.position.x + dx,
+						y: snap.emptyGroup.position.y + dy,
+					});
+				} else {
+					const groupId = parseCanvasGroupNodeId(groupVueFlowId);
+					if (groupId !== undefined) movedGroupIds.add(groupId);
+				}
 			}
 			for (const [id, p] of snap.initialNodePositions) {
 				const offset = snap.initialNodeVisualOffsets.get(id) ?? { x: 0, y: 0 };

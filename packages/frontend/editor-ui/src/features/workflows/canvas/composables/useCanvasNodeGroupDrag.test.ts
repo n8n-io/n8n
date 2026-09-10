@@ -62,9 +62,14 @@ function makeSelectionEvent(...nodes: GraphNode[]): NodeDragEvent {
 
 describe('useCanvasNodeGroupDrag', () => {
 	function setup(opts?: {
-		groups?: Array<{ id: string; nodeIds: string[] }>;
+		groups?: Array<{
+			id: string;
+			nodeIds: string[];
+			frame?: { position: [number, number]; size: [number, number] };
+		}>;
 		getNodeDisplaySize?: (id: string) => { width: number; height: number } | undefined;
 		getNodeVisualOffset?: (id: string) => { x: number; y: number };
+		onMovedEmptyGroup?: (groupId: string, position: { x: number; y: number }) => void;
 	}) {
 		updateNodeMock.mockClear();
 		findNodeMock.mockReset();
@@ -87,6 +92,7 @@ describe('useCanvasNodeGroupDrag', () => {
 			isNodeInGroup,
 			getNodeDisplaySize: opts?.getNodeDisplaySize,
 			getNodeVisualOffset: opts?.getNodeVisualOffset,
+			onMovedEmptyGroup: opts?.onMovedEmptyGroup,
 		});
 		return { drag, getGroupForNode, isNodeInGroup };
 	}
@@ -128,6 +134,28 @@ describe('useCanvasNodeGroupDrag', () => {
 			{ id: 'a', position: { x: 150, y: 180 } },
 			{ id: 'b', position: { x: 350, y: 180 } },
 		]);
+	});
+
+	it('persists a true-empty group frame position when its canvas node is dragged', () => {
+		const onMovedEmptyGroup = vi.fn();
+		const { drag } = setup({
+			groups: [
+				{
+					id: 'empty',
+					nodeIds: [],
+					frame: { position: [120, 240], size: [240, 160] },
+				},
+			],
+			onMovedEmptyGroup,
+		});
+		const groupNode = makeGroupGraphNode('group:empty', 120, 240);
+
+		drag.onNodeDragStart(makeEvent(groupNode));
+		groupNode.position = { x: 168, y: 208 };
+		drag.processNodeDragStop(makeEvent(groupNode));
+
+		expect(onMovedEmptyGroup).toHaveBeenCalledOnce();
+		expect(onMovedEmptyGroup).toHaveBeenCalledWith('empty', { x: 168, y: 208 });
 	});
 
 	it('moves a sticky member with the title bar like any other member', () => {

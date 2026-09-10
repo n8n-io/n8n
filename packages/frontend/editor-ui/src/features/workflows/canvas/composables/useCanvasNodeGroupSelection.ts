@@ -206,7 +206,10 @@ export function useCanvasNodeGroupSelection(deps: UseCanvasNodeGroupSelectionDep
 			let { width, height } = node.dimensions;
 			if (isCanvasGroupNode(node)) {
 				const data = node.data as CanvasGroupNodeData;
-				if (!data.isCollapsed) {
+				if (data.isEmpty && data.emptyFrame) {
+					width = Math.max(width, data.emptyFrame.width);
+					height = Math.max(height, data.emptyFrame.height);
+				} else if (!data.isCollapsed) {
 					const { expanded } = computeGroupFrameRects(data.nodesRect);
 					width = Math.max(width, expanded.width);
 					height = Math.max(height, expanded.height);

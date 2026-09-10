@@ -86,6 +86,7 @@ import type {
 	IConnection,
 	INodeParameters,
 	IWorkflowGroup,
+	IWorkflowGroupFrame,
 } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -504,6 +505,39 @@ function onExtractWorkflow(nodeIds: string[]) {
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 	updateNodesPosition(events, { trackHistory: true });
+}
+
+function onAddEmptyGroup(frame: IWorkflowGroupFrame) {
+	const group: IWorkflowGroup = {
+		id: window.crypto.randomUUID(),
+		name: workflowDocumentStore.value.getNextDefaultName(
+			i18n.baseText('canvas.nodeGroup.defaultTitle'),
+		),
+		nodeIds: [],
+		frame,
+		visualLinks: [],
+	};
+
+	workflowDocumentStore.value.applyNodeGroupConnectionState([
+		...workflowDocumentStore.value.allGroups,
+		group,
+	]);
+}
+
+function onUpdateEmptyGroupPosition(id: string, position: VueFlowXYPosition) {
+	const group = workflowDocumentStore.value.getGroupById(id);
+	if (!group?.frame || group.nodeIds.length > 0) return;
+	if (group.frame.position[0] === position.x && group.frame.position[1] === position.y) return;
+	const nextFrame: IWorkflowGroupFrame = {
+		...group.frame,
+		position: [position.x, position.y],
+	};
+
+	workflowDocumentStore.value.applyNodeGroupConnectionState(
+		workflowDocumentStore.value.allGroups.map((candidate) =>
+			candidate.id === id ? { ...candidate, frame: nextFrame } : candidate,
+		),
+	);
 }
 
 function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
@@ -2045,6 +2079,7 @@ onBeforeUnmount(() => {
 			:hide-controls="hideCanvasControls"
 			:initial-viewport="workflowDocumentStore?.viewport"
 			@update:nodes:position="onUpdateNodesPosition"
+			@update:group:position="onUpdateEmptyGroupPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
 			@update:node:deactivated="onSetNodeDeactivated"
@@ -2180,6 +2215,7 @@ onBeforeUnmount(() => {
 					:focus-panel-active="focusPanelStore.focusPanelActive"
 					@toggle-node-creator="onToggleNodeCreator"
 					@add-nodes="onAddNodesAndConnections"
+					@add-empty-group="onAddEmptyGroup"
 					@close="onNodeCreatorClose"
 				/>
 			</Suspense>

@@ -204,6 +204,9 @@ export interface NodeExecutionSnapshot {
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
+	/** Persisted frame used only while the group has no members. */
+	emptyFrame?: BoundingBox;
+	isEmpty?: boolean;
 	isCollapsed: boolean;
 	executionStatus?: GroupExecutionStatus;
 	allNodesDisabled?: boolean;

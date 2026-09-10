@@ -36,6 +36,11 @@ import {
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { IWorkflowGroupFrame } from 'n8n-workflow';
+import {
+	EMPTY_GROUP_DEFAULT_HEIGHT,
+	EMPTY_GROUP_DEFAULT_WIDTH,
+} from '@/features/workflows/canvas/stores/canvasNodeGroups.constants';
 
 type Props = {
 	nodeViewScale: number;
@@ -54,6 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
+	addEmptyGroup: [frame: IWorkflowGroupFrame];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
@@ -97,6 +103,22 @@ function addStickyNote() {
 	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
 	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
+}
+
+function addEmptyGroup() {
+	if (document.activeElement) {
+		(document.activeElement as HTMLElement).blur();
+	}
+
+	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
+	const position = getMidCanvasPosition(props.nodeViewScale, offset);
+	position[0] -= EMPTY_GROUP_DEFAULT_WIDTH / 2;
+	position[1] -= EMPTY_GROUP_DEFAULT_HEIGHT / 2;
+
+	emit('addEmptyGroup', {
+		position,
+		size: [EMPTY_GROUP_DEFAULT_WIDTH, EMPTY_GROUP_DEFAULT_HEIGHT],
+	});
 }
 
 function closeNodeCreator(hasAddedNodes = false) {
@@ -199,6 +221,16 @@ function openCommandBar(event: MouseEvent) {
 				@click="openCommandBar"
 			/>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip :content="i18n.baseText('nodeView.addEmptyGroup')" placement="left">
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="group"
+				:aria-label="i18n.baseText('nodeView.addEmptyGroup')"
+				data-test-id="add-empty-group-button"
+				@click="addEmptyGroup"
+			/>
+		</N8nTooltip>
 		<KeyboardShortcutTooltip
 			:label="i18n.baseText('nodeView.addStickyHint')"
 			:shortcut="{ keys: ['s'], shiftKey: true }"

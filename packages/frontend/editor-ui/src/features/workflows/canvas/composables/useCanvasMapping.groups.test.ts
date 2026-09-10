@@ -393,6 +393,52 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out).toHaveLength(0);
 	});
 
+	it('maps a true-empty group from its persisted frame and keeps it expanded', () => {
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [
+				{
+					id: 'empty',
+					name: 'Empty',
+					nodeIds: [],
+					frame: { position: [120, 240], size: [240, 160] },
+					visualLinks: [],
+				},
+			],
+			getNodeById: nodeStore(),
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out).toHaveLength(1);
+		expect(out[0]).toMatchObject({
+			id: 'group:empty',
+			position: { x: 120, y: 240 },
+			width: 240,
+			height: 160,
+			draggable: true,
+			selectable: true,
+			connectable: false,
+			data: {
+				isEmpty: true,
+				isCollapsed: false,
+				emptyFrame: { x: 120, y: 240, width: 240, height: 160 },
+			},
+		});
+	});
+
+	it('does not render a true-empty group without a valid persisted frame', () => {
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'empty', name: 'Empty', nodeIds: [] }],
+			getNodeById: nodeStore(),
+			isGroupCollapsed: () => false,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+
+		expect(out).toHaveLength(0);
+	});
+
 	it('marks the node not draggable when readOnly', () => {
 		const getById = nodeStore(makeNode('a', 0, 0));
 		const out = mapGroupsToVueFlowNodes({

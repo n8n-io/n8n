@@ -1,4 +1,4 @@
-import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
+import { isValidWorkflowGroupFrame, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -224,6 +224,33 @@ export function mapGroupsToVueFlowNodes({
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
 	const out: CanvasGroupNode[] = [];
 	for (const group of allGroups) {
+		if (group.nodeIds.length === 0) {
+			if (!isValidWorkflowGroupFrame(group.frame)) continue;
+
+			const [x, y] = group.frame.position;
+			const [width, height] = group.frame.size;
+			const offset = getGroupVisualOffset?.(createCanvasGroupNodeId(group.id)) ?? { x: 0, y: 0 };
+			out.push({
+				id: createCanvasGroupNodeId(group.id),
+				type: CANVAS_NODE_GROUP_TYPE,
+				position: applyOffset({ x, y }, offset),
+				width,
+				height,
+				draggable: !readOnly,
+				selectable: true,
+				connectable: false,
+				zIndex: GROUP_NODE_Z_INDEX_EXPANDED,
+				data: {
+					group,
+					nodesRect: { x: 0, y: 0, width: 0, height: 0 },
+					emptyFrame: { x, y, width, height },
+					isEmpty: true,
+					isCollapsed: false,
+				},
+			});
+			continue;
+		}
+
 		// Skip until at least one node resolves — otherwise the rect collapses to
 		// (0, 0) and lands the title bar at canvas origin. Re-emits when nodes arrive.
 		const hasNode = group.nodeIds.some((id) => getNodeById(id) !== undefined);

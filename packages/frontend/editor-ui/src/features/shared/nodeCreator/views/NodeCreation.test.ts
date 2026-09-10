@@ -116,6 +116,18 @@ describe('NodeCreation', () => {
 		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
 	});
 
+	it('emits a default persisted frame from the empty-group toolbar button', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		getByTestId('add-empty-group-button').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		expect(emitted('addEmptyGroup')?.[0]?.[0]).toMatchObject({ size: [240, 160] });
+	});
+
 	it('hides the command bar button in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 

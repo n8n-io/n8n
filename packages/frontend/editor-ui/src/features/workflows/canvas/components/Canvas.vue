@@ -117,6 +117,7 @@ const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
+	'update:group:position': [id: string, position: XYPosition];
 	'update:node:activated': [id: string, event?: MouseEvent];
 	'update:node:deactivated': [id: string];
 	'update:node:enabled': [id: string];
@@ -754,6 +755,7 @@ const groupDrag = useCanvasNodeGroupDrag({
 	getNodeVisualOffset: (id) => injectedNodeGroupView?.getVisualOffsetForNode(id) ?? { x: 0, y: 0 },
 	getNodeDisplaySize: (id) => props.nodeDisplaySizeById?.[id],
 	onMovedExpandedGroups: commitPushedPositionsForSourceGroups,
+	onMovedEmptyGroup: (id, position) => emit('update:group:position', id, position),
 });
 
 // Groups select as one unit: title bar and member selection stay in sync,
@@ -806,6 +808,7 @@ function onCanvasGroupToggle(
 	groupId: string,
 	source: CanvasNodeGroupEventSource = 'group-toolbar',
 ) {
+	if (workflowDocumentStore.value.getGroupById(groupId)?.nodeIds.length === 0) return;
 	injectedNodeGroupView?.toggleCollapsed(groupId);
 
 	if (!injectedNodeGroupView) return;
@@ -1092,6 +1095,7 @@ function onNodeClick({ event, node }: NodeMouseEvent) {
 		// click with Space-to-rename, like nodes.
 		const groupId = parseCanvasGroupNodeId(node.id);
 		if (groupId) {
+			if (workflowDocumentStore.value.getGroupById(groupId)?.nodeIds.length === 0) return;
 			const isRepeatClick =
 				lastHeaderToggle?.groupId === groupId &&
 				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;
