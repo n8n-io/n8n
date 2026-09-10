@@ -101,7 +101,7 @@ describe('KeyManagerService', () => {
 	describe('getActiveKey() with rotation disabled', () => {
 		beforeEach(() => {
 			// The disabled path must not depend on the ambient environment.
-			delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
 		});
 
 		// Fresh instances: the legacy descriptor is memoized per service instance.
