@@ -22,14 +22,12 @@ import {
 } from '@/features/setupPanel/setupPanel.utils';
 
 /**
- * Whether a node's credential slot holds a binding. Legacy workflow JSON may
- * still carry a plain credential name, which `INodeCredentials`' value type
- * doesn't admit (`useNodeHelpers` hedges against the same case).
+ * A legacy credential name must be replaced with a stored credential reference.
  */
 function isBoundCredential(assigned: INodeCredentialsDetails | string | undefined): boolean {
-	return typeof assigned === 'string'
-		? assigned.length > 0
-		: Boolean(assigned?.id) || assigned?.__aiGatewayManaged === true;
+	return (
+		typeof assigned !== 'string' && (Boolean(assigned?.id) || assigned?.__aiGatewayManaged === true)
+	);
 }
 
 /**
@@ -301,19 +299,7 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
-	/**
-	 * Done-ness is always derived, never stored (see `setupItemSchema`): a
-	 * credential item is done once a usable credential of its type exists —
-	 * binding it to the node is the apply path's job — or when every bound
-	 * node already carries one (covers credentials shared with the workflow
-	 * but not usable by the current user). The type-level shortcut only counts
-	 * when the usable slice was fetched for this workflow (it is a single,
-	 * last-writer-wins scope slice) and never for generic auth types, where a
-	 * credential of the type says nothing about this service
-	 * (`shouldAutoResolveCredential` draws the same line). A parameters item
-	 * is done once none of its parameters raise issues on the current
-	 * workflow.
-	 */
+	/** Completion requires a binding on every node, not merely an available account. */
 	function isItemDone(item: InstanceAiSetupItem): boolean {
 		if (item.kind === 'credential') {
 			const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
@@ -326,17 +312,6 @@ export function useWorkflowSetupItems(
 				return credential?.isResolvable && credential.connectedByMe === false;
 			});
 			if (hasPendingPrivateConnection) return false;
-			const id = toValue(workflowId);
-			if (
-				!GENERIC_AUTH_CREDENTIAL_TYPES.has(item.credentialType) &&
-				id !== undefined &&
-				credentialsStore.hasUsableCredentialsForScope({ workflowId: id }) &&
-				credentialsStore
-					.getUsableCredentialByType(item.credentialType)
-					.some((credential) => !credential.isResolvable || credential.connectedByMe === true)
-			) {
-				return true;
-			}
 			return (
 				nodeNames.length > 0 &&
 				nodeNames.every((nodeName) =>

@@ -3,8 +3,6 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -33,12 +31,10 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 
 // useNodeHelpers injects the host's document store at init, which needs a
 // component setup context — stub the one getter the mirror uses.
-const { getNodeCredentialIssues, getNodeInputIssues, track } = vi.hoisted(() => ({
-	track: vi.fn(),
+const { getNodeCredentialIssues, getNodeInputIssues } = vi.hoisted(() => ({
 	getNodeCredentialIssues: vi.fn(),
 	getNodeInputIssues: vi.fn(),
 }));
-vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({ getNodeCredentialIssues, getNodeInputIssues }),
 }));
@@ -76,7 +72,6 @@ function createHarness(
 ) {
 	const building = ref(options.agentBuilding ?? false);
 	const workflowId = ref('workflowId' in options ? options.workflowId : WORKFLOW_ID);
-	const sendMessage = vi.fn().mockResolvedValue(true);
 
 	const updateWorkflow = vi
 		.fn()
@@ -87,17 +82,29 @@ function createHarness(
 	vi.mocked(getWorkflow).mockImplementation(async () => makeWorkflow());
 
 	const actions = useSetupPanelActions({
-		thread: { id: 'thread-1', sendMessage },
 		workflowId: () => workflowId.value,
 		isAgentBuilding: () => building.value,
 		onFlushResult: options.onFlushResult,
 	});
-	return { actions, building, workflowId, sendMessage, updateWorkflow };
+	return { actions, building, workflowId, updateWorkflow };
 }
 
 describe('useSetupPanelActions', () => {
+	it.each([false, true])('tracks a draining write until it settles, failed: %s', async (failed) => {
+		const { actions, building } = createHarness({ agentBuilding: true });
+		await actions.bindCredential(credentialItem, credential);
+		vi.mocked(getWorkflow).mockImplementation(async () => {
+			expect(actions.pendingApplyCount.value).toBe(0);
+			expect(actions.isApplying.value).toBe(true);
+			if (failed) throw new Error('Unavailable');
+			return makeWorkflow();
+		});
+		building.value = false;
+		await expect(actions.flushPendingApplies()).resolves.toBe(failed ? 'error' : 'applied');
+		expect(actions.isApplying.value).toBe(false);
+	});
+
 	beforeEach(() => {
-		track.mockClear();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		vi.mocked(getWorkflow).mockReset();
 		getNodeCredentialIssues.mockReset();
@@ -602,30 +609,5 @@ describe('useSetupPanelActions', () => {
 		expect(documentStore.allNodes[0].issues).toEqual({
 			input: { main: ['Input "main" is missing'] },
 		});
-	});
-
-	it('sends the Execute message through the normal send endpoint with the setup panel context', async () => {
-		const { actions, sendMessage } = createHarness();
-
-		await expect(actions.executeWorkflow()).resolves.toBe(true);
-		expect(track).toHaveBeenCalledExactlyOnceWith(
-			TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST,
-			{ workflow_id: WORKFLOW_ID, thread_id: 'thread-1', source: 'instance_ai_setup_panel' },
-		);
-
-		expect(sendMessage).toHaveBeenCalledExactlyOnceWith(
-			'Run a test execution of this workflow.',
-			undefined,
-			useRootStore().pushRef,
-			{ source: 'setup-panel-execute', workflowId: WORKFLOW_ID },
-		);
-	});
-
-	it('does not send Execute without an active artifact workflow', async () => {
-		const { actions, sendMessage } = createHarness({ workflowId: undefined });
-
-		await expect(actions.executeWorkflow()).resolves.toBe(false);
-		expect(sendMessage).not.toHaveBeenCalled();
-		expect(track).not.toHaveBeenCalled();
 	});
 });

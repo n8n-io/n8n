@@ -66,11 +66,17 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	SETUP_PANEL_DISMISSED: {
 		name: 'AI Assistant setup panel dismissed',
 		description:
-			'A visible setup panel closed. The reason separates navigation and removed requirements from execution success or an explicit dismissal.',
+			'A visible setup panel closed. The reason separates navigation and removed requirements from a finished execution or an explicit dismissal.',
 		properties: z.object({
 			workflow_id: z.string(),
 			thread_id: z.string(),
-			reason: z.enum(['navigation', 'items_removed', 'execution_succeeded', 'user_dismissed']),
+			reason: z.enum([
+				'navigation',
+				'items_removed',
+				'execution_succeeded',
+				'execution_finished',
+				'user_dismissed',
+			]),
 		}),
 	},
 	USER_CLICKED_AI_CREDIT_BALANCE: {

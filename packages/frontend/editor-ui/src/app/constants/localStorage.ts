@@ -32,6 +32,11 @@ export const LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS = (
 	threadId: string,
 	workflowId: string,
 ) => `N8N_INSTANCE_AI_SETUP_ITEMS:${userId}:${threadId}:${workflowId}`;
+export const LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED = (
+	userId: string,
+	threadId: string,
+	workflowId: string,
+) => `N8N_INSTANCE_AI_SETUP_DISMISSED:${userId}:${threadId}:${workflowId}`;
 export const LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO =
 	'N8N_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO';
 export const LOCAL_STORAGE_SIDEBAR_WIDTH = 'N8N_SIDEBAR_WIDTH';

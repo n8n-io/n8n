@@ -512,7 +512,7 @@ describe('useWorkflowSetupItems', () => {
 		expect(isItemDone(derivedItems.value[1])).toBe(true);
 	});
 
-	it('completes a credential item once a usable credential of its type exists, even without the workflow document', () => {
+	it('keeps an available account pending until it is bound to the workflow', () => {
 		const getUsable = vi.fn().mockReturnValue([{ id: 'cred-1' }]);
 		credentialsStore.getUsableCredentialByType = getUsable;
 
@@ -526,6 +526,15 @@ describe('useWorkflowSetupItems', () => {
 		expect(isItemDone(credentialItem())).toBe(false);
 
 		getUsable.mockReturnValue([{ id: 'cred-1' }]);
+		expect(isItemDone(credentialItem())).toBe(false);
+		hydrateWorkflow([createTestNode({ name: 'Slack' })]);
+		expect(isItemDone(credentialItem())).toBe(false);
+		hydrateWorkflow([
+			createTestNode({
+				name: 'Slack',
+				credentials: { slackApi: { id: 'cred-1', name: 'Saved account' } },
+			}),
+		]);
 		expect(isItemDone(credentialItem())).toBe(true);
 	});
 
@@ -544,6 +553,13 @@ describe('useWorkflowSetupItems', () => {
 				credentialItem({ nodeBindings: [{ nodeName: 'Slack' }, { nodeName: 'Unbound' }] }),
 			),
 		).toBe(false);
+	});
+
+	it('does not treat a legacy credential name as a saved binding', () => {
+		const node = createTestNode({ name: 'Slack' });
+		Object.assign(node, { credentials: { slackApi: 'Legacy account' } });
+		hydrateWorkflow([node]);
+		expect(useWorkflowSetupItems(() => WORKFLOW_ID).isItemDone(credentialItem())).toBe(false);
 	});
 
 	it('completes a parameters item once the workflow no longer raises its issues', () => {

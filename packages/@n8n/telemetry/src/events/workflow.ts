@@ -6,7 +6,7 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 	USER_REQUESTED_WORKFLOW_TEST: {
 		name: 'User requested workflow test',
 		description:
-			'The user selected Execute in the AI Assistant setup panel. The existing chat endpoint receives the test request; this event does not report execution success.',
+			'The user started a manual workflow test from the AI Assistant setup panel. This event does not report execution success.',
 		properties: z.object({
 			source: z.literal('instance_ai_setup_panel'),
 			workflow_id: z.string(),

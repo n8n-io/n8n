@@ -51,6 +51,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	bindCredential: [item: SetupCredentialItem, credentialId: string];
 	connectStarted: [method: SetupPanelConnectionMethod];
+	'update:busy': [value: boolean];
+	'update:hasChanges': [value: boolean];
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -68,6 +70,11 @@ const initializationFailed = ref(false);
 const busy = ref(false);
 const createNew = ref(false);
 const hasDraft = ref(false);
+watch(busy, (value) => emit('update:busy', value));
+watch(
+	() => hasDraft.value || createNew.value,
+	(value) => emit('update:hasChanges', value),
+);
 const chooseExisting = ref(false);
 const mode = ref<'credits' | 'own'>('credits');
 const modeChanged = ref(false);
@@ -466,6 +473,8 @@ onMounted(() => {
 });
 onScopeDispose(() => {
 	active = false;
+	emit('update:busy', false);
+	emit('update:hasChanges', false);
 	oauth.cancelAuthorize();
 	quickConnect.cancelConnect();
 });
@@ -488,6 +497,7 @@ onScopeDispose(() => {
 			/>
 			<CredentialsDropdown
 				v-else
+				teleported
 				:credential-options="
 					usableCredentials.map(({ id, name, homeProject }) => ({
 						id,

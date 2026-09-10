@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, shallowReactive, watch } from 'vue';
 import { useLocalStorage } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -14,7 +14,11 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeParameters } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS } from '@/app/constants';
+import {
+	LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS,
+	LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED,
+	ResourceLocatorDropdownTeleportedKey,
+} from '@/app/constants';
 import { getWorkflow } from '@/app/api/workflows';
 import { deriveHomeProject } from '@/app/stores/workflowDocument.store';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -29,6 +33,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useThread } from '../../instanceAi.store';
 import { useSetupPanelState } from '../../composables/useSetupPanelState';
+import { useSetupPanelExecution } from '../../composables/useSetupPanelExecution';
 import { groupSetupPanelRows, type SetupPanelGroup } from '../../setupPanelGroups';
 import { useSetupPanelTelemetry } from '../../composables/useSetupPanelTelemetry';
 import {
@@ -45,6 +50,9 @@ const props = defineProps<{
 	workflowId: string;
 	projectId?: string;
 }>();
+
+// Resource menus must escape the scrollable card and the composer beneath it.
+provide(ResourceLocatorDropdownTeleportedKey, true);
 
 const i18n = useI18n();
 const toast = useToast();
@@ -115,18 +123,31 @@ watch(
 );
 
 const actions = useSetupPanelActions({
-	thread,
 	workflowId: () => props.workflowId,
 	isAgentBuilding,
 	onFlushResult: notifyApplyResult,
 });
 
+const execution = useSetupPanelExecution({ thread, workflowId: () => props.workflowId });
+
 const selectedItemId = ref<string>();
+// Persist dismissal, not completion. New requirements reopen the panel.
+const setupDismissed = useLocalStorage(
+	() =>
+		LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED(
+			usersStore.currentUserId ?? '',
+			thread.id,
+			props.workflowId,
+		),
+	false,
+	{ writeDefaults: false },
+);
 watch(
 	() => props.workflowId,
 	() => {
 		selectedItemId.value = undefined;
 		oauth.cancelAuthorize();
+		dirtyParameters.clear();
 	},
 );
 
@@ -179,7 +200,10 @@ const panelTelemetry = useSetupPanelTelemetry({
 	rows,
 	groups,
 	shownItemIds,
-	ready: () => credentialsReady.value && (rowSource.value === 'derived' || rows.value.length > 0),
+	ready: () =>
+		!setupDismissed.value &&
+		credentialsReady.value &&
+		(rowSource.value === 'derived' || rows.value.length > 0),
 });
 const selectedGroup = computed(() =>
 	groups.value.find((group) => group.id === selectedItemId.value),
@@ -274,6 +298,70 @@ const parameterEditors = computed(() =>
 // --- Apply paths (T6 actions; row done-ness re-derives after each write) ---
 
 const isApplying = ref(false);
+const credentialBusy = ref(false);
+const credentialHasChanges = ref(false);
+const dirtyParameters = shallowReactive(new Set<string>());
+const requestingExecution = ref(false);
+const isChatBusy = computed(
+	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
+);
+const allRowsDone = computed(() => rows.value.length > 0 && rows.value.every((row) => row.isDone));
+const hasChanges = computed(() => credentialHasChanges.value || dirtyParameters.size > 0);
+const terminalStatus = computed(() => {
+	if (!allRowsDone.value || hasChanges.value) return 'incomplete';
+	if (requestingExecution.value) return 'executing';
+	if (isAgentBuilding.value) return 'incomplete';
+	if (
+		rowSource.value !== 'derived' ||
+		!credentialsReady.value ||
+		isApplying.value ||
+		actions.isApplying.value ||
+		actions.pendingApplyCount.value > 0 ||
+		credentialBusy.value ||
+		connectingItemId.value
+	)
+		return 'validating';
+	return 'complete';
+});
+
+watch(
+	[
+		() => rows.value.some((row) => !row.isDone),
+		hasChanges,
+		rowSource,
+		credentialsReady,
+		isAgentBuilding,
+	],
+	([pending, dirty, source, ready, building]) => {
+		if (dirty || (pending && ((source === 'derived' && ready) || building)))
+			setupDismissed.value = false;
+	},
+	{ immediate: true },
+);
+
+async function onExecute() {
+	if (terminalStatus.value !== 'complete' || isChatBusy.value || requestingExecution.value) return;
+	const workflowId = props.workflowId;
+	requestingExecution.value = true;
+	try {
+		const result = await execution.executeWorkflow();
+		if (
+			result?.notified &&
+			props.workflowId === workflowId &&
+			allRowsDone.value &&
+			!hasChanges.value &&
+			!actions.isApplying.value &&
+			actions.pendingApplyCount.value === 0
+		) {
+			setupDismissed.value = true;
+			panelTelemetry.trackDismissed('execution_finished');
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('instanceAi.setupPanel.executeError'));
+	} finally {
+		requestingExecution.value = false;
+	}
+}
 
 async function connectFromRow(id: string, advanced = false) {
 	const group = groupById(id);
@@ -303,7 +391,9 @@ async function connectFromRow(id: string, advanced = false) {
 				closeOnSave: true,
 				credentialSetupHint: item.setupHint,
 				workflowId,
-				onCredentialCreated: (credential) => void bind(credential.id),
+				onCredentialCreated: (credential) => {
+					void bind(credential.id);
+				},
 			},
 		);
 		return;
@@ -366,9 +456,13 @@ async function onApplyParameters(
 
 <template>
 	<N8nSetupPanel
+		v-if="!setupDismissed"
 		v-model:active-item-id="selectedItemId"
 		:items="panelItems"
+		:status="terminalStatus"
+		:execute-disabled="isChatBusy || requestingExecution"
 		data-test-id="instance-ai-setup-panel"
+		@execute="onExecute"
 	>
 		<template #action="{ item }">
 			<N8nSetupConnection
@@ -406,6 +500,8 @@ async function onApplyParameters(
 					:workflow-id="workflowId"
 					:project-id="credentialProjectId"
 					@bind-credential="onBindCredential"
+					@update:busy="credentialBusy = $event"
+					@update:has-changes="credentialHasChanges = $event"
 					@connect-started="
 						panelTelemetry.trackConnectionStarted(selectedGroup.credential.item, $event)
 					"
@@ -423,6 +519,11 @@ async function onApplyParameters(
 							:is-applying="isApplying"
 							:is-complete="editor.isComplete"
 							@apply-parameters="onApplyParameters"
+							@update:has-changes="
+								$event
+									? dirtyParameters.add(editor.item.id)
+									: dirtyParameters.delete(editor.item.id)
+							"
 						/>
 					</div>
 				</template>

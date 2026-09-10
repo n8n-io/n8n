@@ -42,6 +42,30 @@ export const Checklist: Story = {
 	}),
 };
 
+export const SetupComplete: Story = {
+	...Checklist,
+	args: {
+		items: [
+			{ id: 'slack', title: 'Slack', completed: true },
+			{ id: 'details', title: 'Details', completed: true },
+		],
+		status: 'complete',
+	},
+};
+
+export const Validating: Story = {
+	...SetupComplete,
+	args: { ...SetupComplete.args, status: 'validating' },
+};
+export const Executing: Story = {
+	...SetupComplete,
+	args: { ...SetupComplete.args, status: 'executing' },
+};
+export const ExecuteUnavailable: Story = {
+	...SetupComplete,
+	args: { ...SetupComplete.args, executeDisabled: true },
+};
+
 type Example = {
 	service: string;
 	method: 'oauth' | 'key' | 'selfHosted' | 'gateway' | 'details';

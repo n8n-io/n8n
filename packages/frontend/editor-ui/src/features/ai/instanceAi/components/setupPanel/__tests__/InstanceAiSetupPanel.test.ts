@@ -1,20 +1,25 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiSetupItem } from '@n8n/api-types';
+import type { InstanceAiMessage, InstanceAiSetupItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi } from '@/Interface';
 import type { SetupPanelRow } from '../../../composables/useSetupPanelState';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
+import ResourceLocatorDropdown from '@/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue';
+
+// The shared popover mock renders inline and cannot verify the portal boundary.
+vi.unmock('reka-ui');
 
 vi.mock('../../../composables/useSetupPanelTelemetry', () => ({
 	useSetupPanelTelemetry: () => ({
 		trackConnectionStarted: vi.fn(),
 		trackConnectionCompleted: vi.fn(),
+		trackDismissed: vi.fn(),
 	}),
 }));
 
@@ -58,17 +63,22 @@ const stateMock = reactive({
 	rows: [] as SetupPanelRow[],
 	nodesByName: {} as Record<string, INodeUi>,
 	credentialsAvailable: true,
+	isAgentBuilding: false,
+	isApplying: false,
+	pendingApplyCount: 0,
 	refreshWorkflow: vi.fn().mockResolvedValue(undefined),
 });
 
-vi.mock('../../../instanceAi.store', () => ({
-	useThread: () => ({
-		id: 'thread-1',
-		messages: [],
-		setupItemsByWorkflowId: {},
-		sendMessage: vi.fn(),
-	}),
-}));
+const threadMock = reactive({
+	id: 'thread-1',
+	messages: [] as InstanceAiMessage[],
+	isStreaming: false,
+	isSendingMessage: false,
+	isAwaitingConfirmation: false,
+	setupItemsByWorkflowId: {},
+	sendMessage: vi.fn(),
+});
+vi.mock('../../../instanceAi.store', () => ({ useThread: () => threadMock }));
 
 vi.mock('../../../composables/useSetupPanelState', async () => {
 	const { computed } = await import('vue');
@@ -78,17 +88,25 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 			rowSource: computed(() => 'derived'),
 			credentialsAvailable: computed(() => stateMock.credentialsAvailable),
 			workflowProjectId: computed(() => undefined),
-			isAgentBuilding: computed(() => false),
+			isAgentBuilding: computed(() => stateMock.isAgentBuilding),
 			getNodeByName: (name: string) => stateMock.nodesByName[name],
 			refreshWorkflow: stateMock.refreshWorkflow,
 		}),
 	};
 });
 
+vi.mock('../../../composables/useSetupPanelExecution', () => ({
+	useSetupPanelExecution: () => ({ executeWorkflow: actionsMock.executeWorkflow }),
+}));
+
 vi.mock('../../../composables/useSetupPanelActions', async () => {
 	const { computed } = await import('vue');
 	return {
-		useSetupPanelActions: () => ({ ...actionsMock, pendingApplyCount: computed(() => 0) }),
+		useSetupPanelActions: () => ({
+			...actionsMock,
+			isApplying: computed(() => stateMock.isApplying),
+			pendingApplyCount: computed(() => stateMock.pendingApplyCount),
+		}),
 	};
 });
 
@@ -156,16 +174,181 @@ const renderComponent = createComponentRenderer(InstanceAiSetupPanel, {
 });
 
 describe('InstanceAiSetupPanel', () => {
+	it.each(['select', 'dismiss'] as const)(
+		'opens resource menus outside the setup panel: %s',
+		async (action) => {
+			stateMock.rows = [{ item: parametersItem, isDone: false }];
+			stateMock.nodesByName = { 'Send Slack': slackNode };
+			const selected = vi.fn();
+			const view = renderComponent({
+				global: {
+					stubs: {
+						InstanceAiSetupPanelDetail: {
+							components: { ResourceLocatorDropdown },
+							setup: () => ({
+								selected,
+								open: ref(true),
+								resources: [{ name: 'Example spreadsheet', value: 'sheet-1' }],
+							}),
+							template:
+								'<ResourceLocatorDropdown v-model:show="open" filterable :resources="resources" @update:model-value="selected"><button>Document</button></ResourceLocatorDropdown>',
+						},
+					},
+				},
+			});
+			await userEvent.click(view.getByRole('button', { name: /Details/ }));
+			const option = await view.findByText('Example spreadsheet');
+			expect(view.container.contains(option)).toBe(false);
+			if (action === 'select') {
+				await userEvent.click(option);
+				expect(selected).toHaveBeenCalledWith('sheet-1');
+			} else {
+				await userEvent.click(view.getByPlaceholderText('Search...'));
+				await userEvent.keyboard('{Escape}');
+				await waitFor(() =>
+					expect(view.queryByText('Example spreadsheet')).not.toBeInTheDocument(),
+				);
+				expect(view.getByRole('button', { name: 'Back to setup checklist' })).toBeVisible();
+			}
+		},
+	);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
 		localStorage.clear();
 		stateMock.credentialsAvailable = true;
 		stateMock.rows = [];
+		stateMock.isAgentBuilding = false;
+		stateMock.isApplying = false;
+		stateMock.pendingApplyCount = 0;
+		threadMock.messages = [];
+		threadMock.isStreaming = false;
+		threadMock.isSendingMessage = false;
+		threadMock.isAwaitingConfirmation = false;
+		actionsMock.executeWorkflow.mockResolvedValue({
+			workflowId: 'wf1',
+			executionId: 'execution-1',
+			status: 'success',
+			notified: true,
+		});
 		stateMock.nodesByName = {};
 		oauthMock.isOAuthCredentialType.mockReturnValue(false);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(false);
 		credentialsMock.getUsableCredentialByType.mockReturnValue([]);
+	});
+
+	async function completeSetup() {
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const view = renderComponent();
+		stateMock.rows = [{ item: credentialItem, isDone: true }];
+		await flushPromises();
+		return view;
+	}
+
+	it('waits for queued and active saves before offering Execute', async () => {
+		stateMock.pendingApplyCount = 1;
+		const view = await completeSetup();
+		expect(view.getByRole('status')).toHaveTextContent('Validating');
+		stateMock.pendingApplyCount = 0;
+		stateMock.isApplying = true;
+		await flushPromises();
+		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
+		stateMock.isApplying = false;
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+		threadMock.isStreaming = true;
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Execute' })).toBeDisabled();
+	});
+
+	it('keeps the checklist open when the current requirements finish during a build', async () => {
+		stateMock.isAgentBuilding = true;
+		const view = await completeSetup();
+		expect(view.getByRole('button', { name: 'Notion Complete' })).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
+		stateMock.isAgentBuilding = false;
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+	});
+
+	it.each(['success', 'error', 'canceled'] as const)(
+		'waits for the execution and notification, then stays dismissed until setup is needed: %s',
+		async (status) => {
+			const view = await completeSetup();
+			const result = Promise.withResolvers<{
+				workflowId: string;
+				executionId: string;
+				status: string;
+				notified: boolean;
+			}>();
+			actionsMock.executeWorkflow.mockReturnValueOnce(result.promise);
+			const execute = view.getByRole('button', { name: 'Execute' });
+			await fireEvent.click(execute);
+			await fireEvent.click(execute);
+			expect(actionsMock.executeWorkflow).toHaveBeenCalledOnce();
+			expect(view.getByRole('status')).toHaveTextContent('Executing');
+			// The agent can already be reviewing the result when notification returns.
+			threadMock.isStreaming = true;
+			result.resolve({
+				workflowId: 'wf1',
+				executionId: 'execution-1',
+				status,
+				notified: true,
+			});
+			await flushPromises();
+			expect(view.queryByTestId('instance-ai-setup-panel')).toBeNull();
+			view.unmount();
+			const restored = renderComponent();
+			await flushPromises();
+			expect(restored.queryByTestId('instance-ai-setup-panel')).toBeNull();
+			stateMock.rows = [];
+			await flushPromises();
+			stateMock.rows = [
+				{ item: credentialItem, isDone: true },
+				{ item: parametersItem, isDone: true },
+			];
+			await flushPromises();
+			expect(restored.queryByTestId('instance-ai-setup-panel')).toBeNull();
+			stateMock.rows[1].isDone = false;
+			await flushPromises();
+			expect(restored.getByTestId('instance-ai-setup-panel')).toBeVisible();
+		},
+	);
+
+	it.each([
+		{ status: 'error', notified: false },
+		{ status: 'canceled', notified: false },
+		{ status: 'success', notified: false },
+	])('keeps setup available after $status, notified: $notified', async (result) => {
+		const view = await completeSetup();
+		actionsMock.executeWorkflow.mockResolvedValueOnce({
+			workflowId: 'wf1',
+			executionId: 'execution-1',
+			...result,
+		});
+		await userEvent.click(view.getByRole('button', { name: 'Execute' }));
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+	});
+
+	it('allows retry when no execution was started', async () => {
+		const view = await completeSetup();
+		actionsMock.executeWorkflow.mockResolvedValueOnce(undefined);
+		await userEvent.click(view.getByRole('button', { name: 'Execute' }));
+		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+	});
+
+	it('keeps new requirements visible after a successful execution', async () => {
+		const view = await completeSetup();
+		actionsMock.executeWorkflow.mockImplementationOnce(async () => {
+			stateMock.rows.push({ item: parametersItem, isDone: false });
+			return { workflowId: 'wf1', executionId: 'execution-1', status: 'success', notified: true };
+		});
+		await userEvent.click(view.getByRole('button', { name: 'Execute' }));
+		await flushPromises();
+		expect(view.getByRole('button', { name: /Details/ })).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
 	});
 
 	it('renders nothing when there are no rows', () => {
@@ -203,6 +386,7 @@ describe('InstanceAiSetupPanel', () => {
 		await Promise.resolve();
 		first.unmount();
 		const second = renderComponent();
+		await userEvent.click(second.getByRole('button', { name: 'Setup complete' }));
 		expect(second.getByRole('button', { name: 'Notion Complete' })).toBeVisible();
 		stateMock.rows = [{ item: parametersItem, isDone: false }];
 		await Promise.resolve();

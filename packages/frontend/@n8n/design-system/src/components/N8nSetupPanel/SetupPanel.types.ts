@@ -18,4 +18,8 @@ export interface SetupPanelProps {
 	items: SetupPanelItem[];
 	/** The item shown in the overlay, or undefined to show the checklist. */
 	activeItemId?: string;
+	/** Current setup or test-execution state. Defaults to the checklist. */
+	status?: 'incomplete' | 'validating' | 'complete' | 'executing';
+	/** Whether another operation prevents starting a workflow test. */
+	executeDisabled?: boolean;
 }

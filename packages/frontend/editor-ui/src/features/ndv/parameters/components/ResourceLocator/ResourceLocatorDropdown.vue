@@ -50,6 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	'update:modelValue': [value: INodeParameterResourceLocator['value']];
+	'update:show': [value: boolean];
 	loadMore: [];
 	filter: [filter: string];
 	addResourceClick: [];
@@ -148,7 +149,10 @@ function openUrl(event: MouseEvent, url: string) {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'ArrowDown') {
+	if (e.key === 'Escape') {
+		e.stopPropagation();
+		emit('update:show', false);
+	} else if (e.key === 'ArrowDown') {
 		// hoverIndex 0 is reserved for the "add new resource" item
 		if (hoverIndex.value < sortedResources.value.length) {
 			hoverIndex.value++;

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { N8nButton } from '@n8n/design-system';
 import type { InstanceAiSetupItem } from '@n8n/api-types';
@@ -30,6 +30,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	applyParameters: [nodeName: string, values: INodeParameters, baseline: INodeParameters];
+	'update:hasChanges': [value: boolean];
 }>();
 
 const i18n = useI18n();
@@ -40,6 +41,11 @@ const parametersItem = computed(() => props.item);
 // --- Parameter edits (buffered locally, applied on Confirm) ---
 
 const parameterChanges = ref<SetupParameterChange[]>([]);
+watch(
+	() => parameterChanges.value.length > 0,
+	(value) => emit('update:hasChanges', value),
+);
+onScopeDispose(() => emit('update:hasChanges', false));
 const displayParameters = computed(() =>
 	applySetupParameterChanges(props.node.parameters, parameterChanges.value),
 );

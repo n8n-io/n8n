@@ -38,7 +38,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SetupPanelThreadSource } from '../../../composables/useSetupPanelState';
-import type { SetupPanelThreadActions } from '../../../composables/useSetupPanelActions';
+import type { ThreadRuntime } from '../../../instanceAi.store';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 
 const { showMessage, testCredentialInBackground } = vi.hoisted(() => ({
@@ -66,7 +66,7 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 	};
 });
 
-let thread: SetupPanelThreadSource & SetupPanelThreadActions;
+let thread: SetupPanelThreadSource & Pick<ThreadRuntime, 'sendMessage'>;
 vi.mock('../../../instanceAi.store', () => ({ useThread: () => thread }));
 
 const accounts = [
@@ -464,6 +464,8 @@ describe('InstanceAiSetupPanel interactions', () => {
 			properties: { parameters: { ...saved.nodes[0].parameters, channel: 'external-value' } },
 		});
 		await flushPromises();
+		await fireEvent.click(getByRole('button', { name: 'Setup complete' }));
+		await fireEvent.click(getByRole('button', { name: 'Slack Complete' }));
 		expect(getByLabelText('Channel')).toHaveValue('external-value');
 		expect(getByRole('button', { name: 'Update' })).toBeDisabled();
 	});
@@ -677,6 +679,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 			} else {
 				expect(getByLabelText('Channel')).toHaveValue('user-value');
 				await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+				await fireEvent.click(getByRole('button', { name: 'Setup complete' }));
 				expect(getByRole('button', { name: 'Slack Complete' })).toBeInTheDocument();
 				expect(saved.nodes[0].parameters.channel).toBe('Saved elsewhere');
 				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));

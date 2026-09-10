@@ -1,14 +1,7 @@
-import { computed, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import isEqual from 'lodash/isEqual';
 
-import type {
-	InstanceAiAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiSetupItem,
-} from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
+import type { InstanceAiSetupItem } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { NodeHelpers } from 'n8n-workflow';
@@ -52,20 +45,6 @@ export type SetupPanelApplyResult =
 	| 'error'
 	/** Agent lock held — stashed, flushed when the build settles. */
 	| 'queued';
-
-/**
- * Thread surface the apply paths need. Structurally satisfied by
- * `useThread()`; kept narrow so tests can pass a plain stub.
- */
-export interface SetupPanelThreadActions {
-	readonly id?: string;
-	sendMessage: (
-		message: string,
-		attachments?: InstanceAiAttachment[],
-		pushRef?: string,
-		handoffContext?: InstanceAiHandoffContext,
-	) => Promise<boolean>;
-}
 
 interface CredentialBind {
 	item: SetupCredentialItem;
@@ -136,8 +115,7 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
 /**
  * Setup panel apply paths (T6 of setup panel v2): bind credentials and submit
  * parameter values through the normal versionId/checksum-guarded workflow
- * PATCH, and send the synthesized Execute message through the normal chat
- * send endpoint.
+ * PATCH.
  *
  * The agent lock rule: no user-initiated workflow write while the agent is
  * editing. Writes requested mid-build queue up (latest wins per item/node)
@@ -145,7 +123,6 @@ function applyDeltaToNodes(nodes: INodeUi[], delta: NodesDelta): 'changed' | 'no
  * dropped and done-ness re-derives from the saved workflow.
  */
 export function useSetupPanelActions(options: {
-	thread: SetupPanelThreadActions;
 	/** The thread's active artifact workflow — same source as `useSetupPanelState`. */
 	workflowId: MaybeRefOrGetter<string | undefined>;
 	isAgentBuilding: MaybeRefOrGetter<boolean>;
@@ -157,13 +134,13 @@ export function useSetupPanelActions(options: {
 	 */
 	onFlushResult?: (result: SetupPanelApplyResult) => void;
 }) {
-	const i18n = useI18n();
-	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 
+	const activeApplyCount = ref(0);
+	const isApplying = computed(() => activeApplyCount.value > 0);
 	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
 	const pendingParameterApplies = shallowReactive(new Map<string, SetupParameterChange[]>());
 	/**
@@ -309,85 +286,92 @@ export function useSetupPanelActions(options: {
 		workflowId: string,
 		delta: NodesDelta,
 	): Promise<SetupPanelApplyResult> {
-		for (let attempt = 0; attempt < 2; attempt++) {
-			let fresh: IWorkflowDb;
-			try {
-				fresh = await getWorkflow(rootStore.restApiContext, workflowId);
-			} catch {
-				return 'error';
-			}
-			// Never write unguarded: without the checksum the backend skips
-			// conflict detection and the PATCH could clobber a concurrent edit.
-			if (!fresh.checksum) return 'error';
-
-			const nodes = fresh.nodes;
-			// An early announcement can arrive before its workflow nodes exist.
-			if (delta.credentialBinds.some((bind) => !bind.item.nodeBindings?.length)) {
+		activeApplyCount.value++;
+		try {
+			for (let attempt = 0; attempt < 2; attempt++) {
+				let fresh: IWorkflowDb;
 				try {
-					await nodeTypesStore.loadNodeTypesIfNotLoaded();
+					fresh = await getWorkflow(rootStore.restApiContext, workflowId);
 				} catch {
 					return 'error';
 				}
-			}
-			const resolvedDelta: NodesDelta = {
-				...delta,
-				credentialBinds: delta.credentialBinds.map((bind) => {
-					if (
-						bind.item.nodeBindings?.length ||
-						GENERIC_AUTH_CREDENTIAL_TYPES.has(bind.item.credentialType)
-					)
-						return bind;
-					return {
-						...bind,
-						item: {
-							...bind.item,
-							nodeBindings: nodes
-								.filter(
-									(node) =>
-										!node.disabled &&
-										getNodeCredentialTypes(nodeTypesStore, node).includes(bind.item.credentialType),
-								)
-								.map((node) => ({ nodeName: node.name })),
-						},
-					};
-				}),
-			};
-			// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
-			// values first so the mirror can spot newer local edits.
-			const baseline: NodesBaseline = new Map(
-				nodes.map((node) => [
-					node.name,
-					{ credentials: { ...node.credentials }, parameters: { ...node.parameters } },
-				]),
-			);
-			const outcome = applyDeltaToNodes(nodes, resolvedDelta);
-			if (outcome !== 'changed') return outcome;
+				// Never write unguarded: without the checksum the backend skips
+				// conflict detection and the PATCH could clobber a concurrent edit.
+				if (!fresh.checksum) return 'error';
 
-			// The anchor and the agent lock can both move while the fetch was
-			// awaited. A re-anchored panel no longer owns this write — drop it
-			// (the same rule the queue watcher enforces). A re-acquired lock (a
-			// new build starting is also what a 409 usually means) requeues it
-			// instead: a user write must not land mid-build.
-			if (toValue(options.workflowId) !== workflowId) return 'dropped';
-			if (toValue(options.isAgentBuilding)) {
-				requeueDelta(workflowId, delta);
-				return 'queued';
-			}
+				const nodes = fresh.nodes;
+				// An early announcement can arrive before its workflow nodes exist.
+				if (delta.credentialBinds.some((bind) => !bind.item.nodeBindings?.length)) {
+					try {
+						await nodeTypesStore.loadNodeTypesIfNotLoaded();
+					} catch {
+						return 'error';
+					}
+				}
+				const resolvedDelta: NodesDelta = {
+					...delta,
+					credentialBinds: delta.credentialBinds.map((bind) => {
+						if (
+							bind.item.nodeBindings?.length ||
+							GENERIC_AUTH_CREDENTIAL_TYPES.has(bind.item.credentialType)
+						)
+							return bind;
+						return {
+							...bind,
+							item: {
+								...bind.item,
+								nodeBindings: nodes
+									.filter(
+										(node) =>
+											!node.disabled &&
+											getNodeCredentialTypes(nodeTypesStore, node).includes(
+												bind.item.credentialType,
+											),
+									)
+									.map((node) => ({ nodeName: node.name })),
+							},
+						};
+					}),
+				};
+				// applyDeltaToNodes mutates these nodes — snapshot the pre-PATCH
+				// values first so the mirror can spot newer local edits.
+				const baseline: NodesBaseline = new Map(
+					nodes.map((node) => [
+						node.name,
+						{ credentials: { ...node.credentials }, parameters: { ...node.parameters } },
+					]),
+				);
+				const outcome = applyDeltaToNodes(nodes, resolvedDelta);
+				if (outcome !== 'changed') return outcome;
 
-			try {
-				const updated = await workflowsStore.updateWorkflow(workflowId, {
-					nodes,
-					versionId: fresh.versionId,
-					expectedChecksum: fresh.checksum,
-				});
-				syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
-				return 'applied';
-			} catch (error) {
-				const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;
-				if (!isConflict) return 'error';
+				// The anchor and the agent lock can both move while the fetch was
+				// awaited. A re-anchored panel no longer owns this write — drop it
+				// (the same rule the queue watcher enforces). A re-acquired lock (a
+				// new build starting is also what a 409 usually means) requeues it
+				// instead: a user write must not land mid-build.
+				if (toValue(options.workflowId) !== workflowId) return 'dropped';
+				if (toValue(options.isAgentBuilding)) {
+					requeueDelta(workflowId, delta);
+					return 'queued';
+				}
+
+				try {
+					const updated = await workflowsStore.updateWorkflow(workflowId, {
+						nodes,
+						versionId: fresh.versionId,
+						expectedChecksum: fresh.checksum,
+					});
+					syncHydratedDocument(workflowId, resolvedDelta, baseline, updated);
+					return 'applied';
+				} catch (error) {
+					const isConflict = error instanceof ResponseError && error.httpStatusCode === 409;
+					if (!isConflict) return 'error';
+				}
 			}
+			return 'conflict';
+		} finally {
+			activeApplyCount.value--;
 		}
-		return 'conflict';
 	}
 
 	/**
@@ -484,33 +468,11 @@ export function useSetupPanelActions(options: {
 		},
 	);
 
-	/**
-	 * Sends the synthesized Execute message through the normal send endpoint.
-	 * The handoff context routes it to the agent's test execution once the
-	 * agent lane consumes it; until then the message text alone instructs the
-	 * agent.
-	 */
-	async function executeWorkflow(): Promise<boolean> {
-		const workflowId = toValue(options.workflowId);
-		if (!workflowId) return false;
-		telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
-			source: 'instance_ai_setup_panel',
-			workflow_id: workflowId,
-			thread_id: options.thread.id,
-		});
-		return await options.thread.sendMessage(
-			i18n.baseText('instanceAi.setupPanel.executeMessage'),
-			undefined,
-			rootStore.pushRef,
-			{ source: 'setup-panel-execute', workflowId },
-		);
-	}
-
 	return {
 		bindCredential,
 		applyParameterValues,
-		executeWorkflow,
 		flushPendingApplies,
 		pendingApplyCount,
+		isApplying,
 	};
 }

@@ -1080,8 +1080,8 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
+			v-model:show="resourceDropdownVisible"
 			:model-value="modelValue"
-			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"

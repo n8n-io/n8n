@@ -476,7 +476,9 @@ describe('InstanceAiSetupCredential', () => {
 		await flushPromises();
 		expect(rendered.queryByLabelText('API key')).toBeNull();
 		await userEvent.click(rendered.getByRole('combobox'));
-		await userEvent.click(rendered.getByRole('option', { name: /Service account/ }));
+		const option = rendered.getByRole('option', { name: /Service account/ });
+		expect(rendered.container.contains(option)).toBe(false);
+		await userEvent.click(option);
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(savedCredential.id);
 		expect(store.createNewCredential).not.toHaveBeenCalled();
 	});

@@ -5,6 +5,27 @@ import { ref } from 'vue';
 import SetupPanel from './SetupPanel.vue';
 
 describe('SetupPanel', () => {
+	it('shows a compact completion bar and lets users review completed items', async () => {
+		const { getByRole, queryByRole, emitted } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: true }], status: 'complete' },
+		});
+		expect(queryByRole('button', { name: 'Slack Complete' })).toBeNull();
+		await userEvent.click(getByRole('button', { name: 'Setup complete' }));
+		expect(getByRole('button', { name: 'Slack Complete' })).toBeVisible();
+		await userEvent.click(getByRole('button', { name: 'Execute' }));
+		expect(emitted('execute')).toHaveLength(1);
+	});
+
+	it.each(['validating', 'executing'] as const)('shows %s without an Execute action', (status) => {
+		const { getByRole, queryByRole } = render(SetupPanel, {
+			props: { items: [{ id: 'slack', title: 'Slack', completed: true }], status },
+		});
+		expect(getByRole('status')).toHaveTextContent(
+			status === 'validating' ? 'Validating…' : 'Executing…',
+		);
+		expect(queryByRole('button', { name: 'Execute' })).toBeNull();
+	});
+
 	it('opens the overlay by keyboard and returns focus to the selected row', async () => {
 		const activeItemId = ref<string>();
 		const { getByRole, getByText } = render({

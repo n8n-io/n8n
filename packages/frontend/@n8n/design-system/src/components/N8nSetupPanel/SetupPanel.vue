@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VisuallyHidden } from 'reka-ui';
-import { computed, nextTick, useId, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
@@ -10,6 +10,7 @@ import type { SetupPanelProps } from './SetupPanel.types';
 const props = defineProps<SetupPanelProps>();
 const emit = defineEmits<{
 	'update:activeItemId': [id: string | undefined];
+	execute: [];
 }>();
 const { t } = useI18n();
 const activeItem = computed(() =>
@@ -18,12 +19,30 @@ const activeItem = computed(() =>
 const panel = useTemplateRef<HTMLElement>('panel');
 const overlay = useTemplateRef<HTMLElement>('overlay');
 const titleId = useId();
+const expanded = ref(false);
+const showTerminal = computed(() => props.status && props.status !== 'incomplete');
+const showChecklist = computed(() => !showTerminal.value || expanded.value);
+const checklistId = useId();
+watch(
+	() => props.status,
+	(status) => {
+		if (status !== 'complete' && status !== 'executing') return;
+		expanded.value = false;
+		if (props.activeItemId) emit('update:activeItemId', undefined);
+	},
+);
 watch(
 	() => activeItem.value?.id,
 	async (id, previousId) => {
 		await nextTick();
 		if (id) overlay.value?.querySelector<HTMLButtonElement>('button')?.focus();
 		else if (previousId) {
+			if (!showChecklist.value) {
+				panel.value
+					?.querySelector<HTMLButtonElement>('[data-test-id="setup-panel-review"]')
+					?.focus();
+				return;
+			}
 			Array.from(
 				panel.value?.querySelectorAll<HTMLButtonElement>('button[data-setup-item-id]') ?? [],
 			)
@@ -42,7 +61,39 @@ watch(
 		:aria-label="t('setupPanel.label')"
 	>
 		<div
-			v-if="activeItem"
+			v-if="showTerminal"
+			:class="$style.terminal"
+			:inert="Boolean(activeItem && showChecklist)"
+			:aria-hidden="activeItem && showChecklist ? true : undefined"
+			data-test-id="setup-panel-terminal"
+		>
+			<span v-if="status !== 'complete'" :class="$style.status" role="status">
+				<N8nIcon icon="loader-circle" size="small" :class="$style.spinner" />
+				{{ t(status === 'executing' ? 'setupPanel.executing' : 'setupPanel.validating') }}
+			</span>
+			<template v-else>
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:class="$style.review"
+					data-test-id="setup-panel-review"
+					:aria-expanded="expanded"
+					:aria-controls="checklistId"
+					@click="
+						expanded = !expanded;
+						emit('update:activeItemId', undefined);
+					"
+				>
+					{{ t('setupPanel.setupComplete') }}
+					<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
+				</N8nButton>
+				<N8nButton size="small" :disabled="executeDisabled" @click="emit('execute')">
+					{{ t('setupPanel.execute') }}
+				</N8nButton>
+			</template>
+		</div>
+		<div
+			v-if="activeItem && showChecklist"
 			ref="overlay"
 			:class="$style.overlay"
 			role="dialog"
@@ -67,6 +118,8 @@ watch(
 			</div>
 		</div>
 		<ul
+			v-show="showChecklist"
+			:id="checklistId"
 			:class="[$style.rows, { [$style.hidden]: activeItem }]"
 			:inert="Boolean(activeItem)"
 			:aria-hidden="activeItem ? true : undefined"
@@ -118,14 +171,45 @@ watch(
 	min-width: 0;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .rows,
-.overlay {
+.overlay,
+.terminal {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: var(--background--surface);
 	box-shadow: var(--shadow--sm);
+}
+
+.terminal {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	min-height: var(--height--2xl);
+}
+
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding-inline: var(--spacing--2xs);
+}
+
+.review {
+	flex: 1;
+	justify-content: space-between;
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.spinner {
+	@include motion.spin;
 }
 
 .overlay {
