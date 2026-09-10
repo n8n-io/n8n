@@ -351,7 +351,10 @@ const outputSchema = {
 				reason: z.string(),
 			}),
 		)
-		.optional(),
+		.optional()
+		.describe(
+			'Existing groups this update made invalid and removed. Repair them before you report the workflow as done.',
+		),
 	settings: z
 		.record(z.string(), z.unknown())
 		.optional()

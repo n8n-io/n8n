@@ -173,7 +173,9 @@ const outputSchema = {
 			}),
 		)
 		.optional()
-		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
+		.describe(
+			'Node groups that were invalid and skipped instead of failing the whole creation. Repair them with update_workflow before you report the workflow as done.',
+		),
 	hint: z
 		.string()
 		.optional()
