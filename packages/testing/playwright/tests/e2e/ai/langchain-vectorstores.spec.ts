@@ -1,3 +1,8 @@
+import {
+	importWorkflowWithOpenAiCredential,
+	recordEmbeddingsExpectations,
+	setupEmbeddingsProxy,
+} from './openai-embeddings-proxy';
 import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
@@ -8,16 +13,24 @@ test.describe(
 	},
 	() => {
 		test.beforeEach(async ({ n8n, services }) => {
-			await services.proxy.clearAllExpectations();
-			await services.proxy.loadExpectations('langchain');
+			await setupEmbeddingsProxy(services.proxy);
 			await n8n.canvas.openNewWorkflow();
+		});
+
+		test.afterEach(async ({ services }) => {
+			await recordEmbeddingsExpectations(services.proxy);
 		});
 
 		test.describe('Advanced Workflow Features', () => {
 			test('should render runItems for sub-nodes and allow switching between them', async ({
 				n8n,
+				api,
 			}) => {
-				await n8n.start.fromImportedWorkflow('In_memory_vector_store_fake_embeddings.json');
+				const imported = await importWorkflowWithOpenAiCredential(
+					api,
+					'In_memory_vector_store.json',
+				);
+				await n8n.start.fromExistingWorkflow(imported.workflowId);
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.canvas.deselectAll();
 
