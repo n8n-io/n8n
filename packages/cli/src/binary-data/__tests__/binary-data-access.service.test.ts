@@ -117,6 +117,16 @@ describe('BinaryDataAccessService', () => {
 
 				expect(await service.hasReadAccess(user, tempId)).toBe(false);
 			});
+
+			test('denies a database row, which names no workflow to fall back on', async () => {
+				binaryDataRepository.findSourceByFileId.mockResolvedValue({
+					sourceType: 'execution',
+					sourceId: 'temp',
+				});
+
+				expect(await service.hasReadAccess(user, `database:${uuid}`)).toBe(false);
+				expect(executionRepository.existsForAccessibleWorkflows).not.toHaveBeenCalled();
+			});
 		});
 
 		test('denies a malformed id without a mode separator', async () => {
