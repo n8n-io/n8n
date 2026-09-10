@@ -229,7 +229,12 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				// Let the discovery tools recognize the always-available toolset, so a
+				// `load_tool` call for one of those answers `already_loaded`.
+				activeTools: config.tools,
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
