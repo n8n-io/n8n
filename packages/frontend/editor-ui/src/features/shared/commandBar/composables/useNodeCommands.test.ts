@@ -15,6 +15,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { createTestNode } from '@/__tests__/mocks';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -313,6 +314,65 @@ describe('useNodeCommands', () => {
 			if (addCommand) {
 				expect(commands.value.length).toBeLessThanOrEqual(3);
 			}
+		});
+	});
+
+	describe('workflow parameter search', () => {
+		beforeEach(() => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
+			store.setNodes([
+				createTestNode({
+					id: 'node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					parameters: { url: 'https://example.com/api', options: { timeout: 5000 } },
+				}),
+				createTestNode({
+					id: 'node-2',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+				}),
+			]);
+		});
+
+		it('should include nested parameter values in open node keywords', () => {
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			const openCommand = commands.value.find((cmd) => cmd.id === 'open-node');
+			const httpItem = openCommand?.children?.find((child) => child.id === 'node-1');
+			expect(httpItem?.keywords).toContain('https://example.com/api');
+			expect(httpItem?.keywords).toContain('5000');
+		});
+
+		it('should highlight nodes whose parameters match the query', () => {
+			const setupPanelStore = useSetupPanelStore();
+			const { handlers } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			handlers?.onCommandBarChange?.('example.com');
+
+			expect(setupPanelStore.setHighlightedNodes).toHaveBeenCalledWith(['node-1']);
+		});
+
+		it('should clear highlight when query is too short or matches nothing', () => {
+			const setupPanelStore = useSetupPanelStore();
+			const { handlers } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			handlers?.onCommandBarChange?.('ex');
+			handlers?.onCommandBarChange?.('no-match-here');
+
+			expect(setupPanelStore.setHighlightedNodes).not.toHaveBeenCalled();
+			expect(setupPanelStore.clearHighlightedNodes).toHaveBeenCalledTimes(2);
 		});
 	});
 

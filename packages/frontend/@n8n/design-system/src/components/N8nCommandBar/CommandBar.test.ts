@@ -63,6 +63,19 @@ describe('components', () => {
 			expect(wrapper.emitted()).toBeDefined();
 		});
 
+		it('opens and focuses the input when the open model is set externally', async () => {
+			const wrapper = render(N8nCommandBar, {
+				props: { items: createSampleItems(), open: false },
+			});
+
+			await wrapper.rerender({ open: true });
+
+			await waitFor(() =>
+				expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument(),
+			);
+			expect(screen.getByPlaceholderText('Type a command...')).toHaveFocus();
+		});
+
 		it('emits update:open when opened via Cmd+K and when closed via Escape', async () => {
 			const wrapper = render(N8nCommandBar, {
 				props: { items: createSampleItems() },
