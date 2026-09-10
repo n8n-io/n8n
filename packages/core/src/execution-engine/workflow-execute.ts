@@ -1462,7 +1462,11 @@ export class WorkflowExecute {
 			);
 		}
 
-		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
+		// A declarative webhook trigger may carry requestDefaults for its lifecycle
+		// requests without being a declarative (routing) action node.
+		const isDeclarativeNode =
+			nodeType.description.requestDefaults !== undefined &&
+			nodeType.description.trigger?.type !== 'webhook';
 		if (nodeType.webhook && !isDeclarativeNode) {
 			// Check if the node have requestDefaults(Declarative Node),
 			// else for webhook nodes always simply pass the data through

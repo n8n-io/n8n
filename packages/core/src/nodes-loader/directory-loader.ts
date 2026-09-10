@@ -23,6 +23,11 @@ import * as path from 'path';
 
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
+import { createDeclarativePoll } from '@/execution-engine/declarative-poll';
+import {
+	createDeclarativeWebhook,
+	createDeclarativeWebhookMethods,
+} from '@/execution-engine/declarative-webhook';
 
 import {
 	commonCORSParameters,
@@ -404,6 +409,29 @@ export abstract class DirectoryLoader implements NodeLoader {
 	}
 
 	private applySpecialNodeParameters(nodeType: INodeType): void {
+		const { trigger } = nodeType.description;
+		if (trigger?.type === 'polling' && !nodeType.poll) {
+			nodeType.description.polling = true;
+			nodeType.poll = createDeclarativePoll(nodeType, trigger);
+		}
+
+		if (trigger?.type === 'webhook') {
+			// Synthesized members fill only the slots the class leaves undefined.
+			const methods = createDeclarativeWebhookMethods(nodeType, trigger);
+			const existing = nodeType.webhookMethods?.default;
+			nodeType.webhookMethods = {
+				...nodeType.webhookMethods,
+				default: {
+					checkExists: existing?.checkExists ?? methods.checkExists,
+					create: existing?.create ?? methods.create,
+					delete: existing?.delete ?? methods.delete,
+				},
+			};
+			if (!nodeType.webhook) {
+				nodeType.webhook = createDeclarativeWebhook(trigger);
+			}
+		}
+
 		const { properties, polling, supportsCORS } = nodeType.description;
 		if (polling) {
 			properties.unshift(...commonPollingParameters);

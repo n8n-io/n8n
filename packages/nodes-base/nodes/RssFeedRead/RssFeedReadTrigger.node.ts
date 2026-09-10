@@ -1,20 +1,24 @@
-import moment from 'moment-timezone';
 import type {
-	IDataObject,
+	IExecuteSingleFunctions,
+	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type Parser from 'rss-parser';
+import { parseFeedXml } from './GenericFunctions';
 
-import { parseFeedUrl } from './GenericFunctions';
-
-interface PollData {
-	lastItemDate?: string;
-	lastTimeChecked?: string;
+/** Parses the feed XML into one item per entry, oldest first, so the newest is last. */
+export async function feedToItems(
+	this: IExecuteSingleFunctions,
+	_items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const feed = await parseFeedXml(String(response.body));
+	return (feed.items ?? [])
+		.sort((a, b) => Date.parse(String(a.isoDate ?? '')) - Date.parse(String(b.isoDate ?? '')))
+		.map((json) => ({ json }));
 }
 
 export class RssFeedReadTrigger implements INodeType {
@@ -30,7 +34,6 @@ export class RssFeedReadTrigger implements INodeType {
 		defaults: {
 			name: 'RSS Feed Trigger',
 		},
-		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
@@ -43,57 +46,19 @@ export class RssFeedReadTrigger implements INodeType {
 				description: 'URL of the RSS feed to poll',
 			},
 		],
+		trigger: {
+			type: 'polling',
+			routing: {
+				request: {
+					method: 'GET',
+					url: '={{ $parameter.feedUrl }}',
+					headers: { 'User-Agent': 'rss-parser', Accept: 'application/rss+xml' },
+					json: false,
+					encoding: 'text',
+				},
+				output: { postReceive: [feedToItems] },
+			},
+			cursor: { type: 'timestamp', field: 'isoDate' },
+		},
 	};
-
-	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const pollData = this.getWorkflowStaticData('node') as PollData;
-		const feedUrl = this.getNodeParameter('feedUrl') as string;
-
-		const dateToCheck = Date.parse(
-			pollData.lastItemDate ?? pollData.lastTimeChecked ?? moment().utc().format(),
-		);
-
-		if (!feedUrl) {
-			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
-		}
-
-		let feed: Parser.Output<IDataObject>;
-		try {
-			feed = await parseFeedUrl(this.helpers, feedUrl);
-		} catch (error) {
-			if (error.code === 'ECONNREFUSED') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
-				);
-			}
-
-			throw new NodeOperationError(this.getNode(), error as Error);
-		}
-
-		const returnData: IDataObject[] = [];
-
-		if (feed.items) {
-			if (this.getMode() === 'manual') {
-				return [this.helpers.returnJsonArray(feed.items[0])];
-			}
-			feed.items.forEach((item) => {
-				if (item.isoDate && Date.parse(item.isoDate) > dateToCheck) {
-					returnData.push(item);
-				}
-			});
-
-			if (feed.items.length) {
-				pollData.lastItemDate = feed.items.reduce((a, b) =>
-					new Date(a.isoDate!) > new Date(b.isoDate!) ? a : b,
-				).isoDate;
-			}
-		}
-
-		if (Array.isArray(returnData) && returnData.length !== 0) {
-			return [this.helpers.returnJsonArray(returnData)];
-		}
-
-		return null;
-	}
 }

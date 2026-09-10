@@ -42,12 +42,15 @@ import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
+import { runPostReceiveAction } from './post-receive';
 
 export class RoutingNode {
 	constructor(
 		private readonly context: ExecuteContext,
 		private readonly nodeType: INodeType,
 		private readonly credentialsDecrypted?: ICredentialsDecrypted,
+		/** Extra expression keys for request building, e.g. `$cursor` for declarative polling. */
+		private readonly extraAdditionalKeys: IWorkflowDataProxyAdditionalKeys = {},
 	) {}
 
 	// eslint-disable-next-line complexity
@@ -134,7 +137,10 @@ export class RoutingNode {
 				};
 			}
 
-			const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+			const additionalKeys = {
+				...getAdditionalKeys(additionalData, mode, runExecutionData),
+				...this.extraAdditionalKeys,
+			};
 
 			if (nodeType.description.requestDefaults) {
 				for (const key of Object.keys(nodeType.description.requestDefaults)) {
@@ -329,173 +335,22 @@ export class RoutingNode {
 		itemIndex: number,
 		runIndex: number,
 	): Promise<INodeExecutionData[]> {
-		if (typeof action === 'function') {
-			return await action.call(executeSingleFunctions, inputData, responseData);
-		}
-
-		const { node } = this.context;
-
-		if (action.type === 'rootProperty') {
-			try {
-				return inputData.flatMap((item) => {
-					let itemContent = get(item.json, action.properties.property);
-
-					if (!Array.isArray(itemContent)) {
-						itemContent = [itemContent];
-					}
-					return (itemContent as IDataObject[]).map((json) => {
-						return {
-							json,
-						};
-					});
-				});
-			} catch (error) {
-				throw new NodeOperationError(node, error as Error, {
-					runIndex,
-					itemIndex,
-					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
-				});
-			}
-		}
-
-		if (action.type === 'filter') {
-			const passValue = action.properties.pass;
-			const { credentials } = await this.prepareCredentials();
-
-			inputData = inputData.filter((item) => {
-				// If the value is an expression resolve it
-				return this.getParameterValue(
-					passValue,
-					itemIndex,
-					runIndex,
-					executeSingleFunctions.getExecuteData(),
-					{
-						$credentials: credentials,
-						$response: responseData,
-						$responseItem: item.json,
-						$value: parameterValue,
-						$version: node.typeVersion,
-					},
-					false,
-				) as boolean;
-			});
-
-			return inputData;
-		}
-
-		if (action.type === 'limit') {
-			const maxResults = this.getParameterValue(
-				action.properties.maxResults,
-				itemIndex,
-				runIndex,
-				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
-				false,
-			) as string;
-			return inputData.slice(0, parseInt(maxResults, 10));
-		}
-
-		if (action.type === 'set') {
-			const { value } = action.properties;
-			// If the value is an expression resolve it
-			return [
-				{
-					json: this.getParameterValue(
-						value,
-						itemIndex,
-						runIndex,
-						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
-						false,
-					) as IDataObject,
-				},
-			];
-		}
-
-		if (action.type === 'sort') {
-			// Sort the returned options
-			const sortKey = action.properties.key;
-			inputData.sort((a, b) => {
-				const aSortValue = a.json[sortKey]?.toString().toLowerCase() ?? '';
-				const bSortValue = b.json[sortKey]?.toString().toLowerCase() ?? '';
-				if (aSortValue < bSortValue) {
-					return -1;
-				}
-				if (aSortValue > bSortValue) {
-					return 1;
-				}
-				return 0;
-			});
-
-			return inputData;
-		}
-
-		if (action.type === 'setKeyValue') {
-			const returnData: INodeExecutionData[] = [];
-
-			inputData.forEach((item) => {
-				const returnItem: IDataObject = {};
-				for (const key of Object.keys(action.properties)) {
-					let propertyValue = (
-						action.properties as Record<
-							string,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							any
-						>
-					)[key];
-					// If the value is an expression resolve it
-					propertyValue = this.getParameterValue(
-						propertyValue,
-						itemIndex,
-						runIndex,
-						executeSingleFunctions.getExecuteData(),
-						{
-							$response: responseData,
-							$responseItem: item.json,
-							$value: parameterValue,
-							$version: node.typeVersion,
-						},
-						false,
-					) as string;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(returnItem as Record<string, any>)[key] = propertyValue;
-				}
-				returnData.push({ json: returnItem });
-			});
-
-			return returnData;
-		}
-
-		if (action.type === 'binaryData') {
-			const body = (responseData.body = Buffer.from(responseData.body as string));
-			let { destinationProperty } = action.properties;
-
-			destinationProperty = this.getParameterValue(
-				destinationProperty,
-				itemIndex,
-				runIndex,
-				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: node.typeVersion },
-				false,
-			) as string;
-
-			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(body);
-
-			return inputData.map((item) => {
-				if (typeof item.json === 'string') {
-					// By default is probably the binary data as string set, in this case remove it
-					item.json = {};
-				}
-
-				item.binary = {
-					[destinationProperty]: binaryData,
-				};
-
-				return item;
-			});
-		}
-
-		return [];
+		return await runPostReceiveAction(
+			executeSingleFunctions,
+			action,
+			inputData,
+			responseData,
+			parameterValue,
+			itemIndex,
+			runIndex,
+			{
+				node: this.context.node,
+				resolveValue: (value, i, r, executeData, additionalKeys) =>
+					this.getParameterValue(value, i, r, executeData, additionalKeys, false),
+				getCredentials: async () => (await this.prepareCredentials()).credentials,
+				extraKeys: this.extraAdditionalKeys,
+			},
+		);
 	}
 
 	private async postProcessResponseData(
@@ -631,6 +486,7 @@ export class RoutingNode {
 					let paginateRequestData: IHttpRequestOptions;
 
 					const additionalKeys = {
+						...this.extraAdditionalKeys,
 						$request: requestData.options,
 						$response: {} as IN8nHttpFullResponse,
 						$version: node.typeVersion,
