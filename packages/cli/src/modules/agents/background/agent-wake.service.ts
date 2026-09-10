@@ -107,7 +107,11 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
 		if (this.activeWakes.has(threadId)) return undefined;
 
-		const jobs = (await this.jobRepository.findWakeableUnconsumedSettled(threadId)).filter(
+		const [mail, parked] = await Promise.all([
+			this.jobRepository.findUnconsumedMail(threadId),
+			this.jobRepository.findParkedJobs(threadId),
+		]);
+		const jobs = [...new Map([...mail, ...parked].map((job) => [job.id, job])).values()].filter(
 			(job) => job.parentResourceId === resourceId,
 		);
 		if (jobs.length === 0) return undefined;
@@ -117,10 +121,11 @@ export class AgentWakeService {
 		const summaries = jobs
 			.map((job) => {
 				const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
-				return `${JSON.stringify(title)} (${job.status})`;
+				const status = job.suspension !== null ? 'waits for a human decision' : job.status;
+				return `${JSON.stringify(title)} (${status})`;
 			})
 			.join(', ');
-		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
+		return `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) need attention: ${summaries}. Call check_background_jobs once before you finish this turn, only if you have not already checked in this turn, and collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`;
 	}
 
 	private scheduleLocal(threadId: string): void {
@@ -149,7 +154,7 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumedSettled(threadId);
+		const pending = await this.jobRepository.findUnconsumedMail(threadId);
 		const first = pending[0];
 		if (!first || signal.aborted) return;
 

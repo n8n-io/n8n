@@ -4,7 +4,12 @@ import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import type {
+	AgentSandboxRuntime,
+	AgentSandboxRuntimeService,
+} from '../../agent-sandbox-runtime.service';
+import type { AgentWorkspaceService } from '../../agent-workspace.service';
 import type {
 	AgentBackgroundJob,
 	AgentBackgroundJobSuspension,
@@ -62,9 +67,13 @@ const request: BackgroundSpawnRequest = {
 	parentSandboxPrincipalHash: 'principal-hash',
 };
 
+const parentPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+
 function setup() {
 	const runner = mock<SubAgentRunner>();
 	const jobService = mock<AgentBackgroundJobService>();
+	const agentWorkspaceService = mock<AgentWorkspaceService>();
+	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 
@@ -77,15 +86,29 @@ function setup() {
 	jobService.settleSuspended.mockResolvedValue(true);
 	runner.run.mockResolvedValue(completedRunResult());
 	runner.resumeForeground.mockResolvedValue(completedRunResult());
+	agentSandboxRuntimeService.isEnabled.mockReturnValue(false);
 
-	const backgroundRunner = new SubAgentBackgroundRunner(runner, jobService, logger);
+	const backgroundRunner = new SubAgentBackgroundRunner(
+		runner,
+		jobService,
+		agentWorkspaceService,
+		agentSandboxRuntimeService,
+		logger,
+	);
 	const context = {
 		projectId: 'project-1',
 		parentAgentId: 'agent-1',
 		credentialProvider: mock<CredentialProvider>(),
 		runType: 'production' as const,
 	};
-	return { backgroundRunner, runner, jobService, context };
+	return {
+		backgroundRunner,
+		runner,
+		jobService,
+		agentWorkspaceService,
+		agentSandboxRuntimeService,
+		context,
+	};
 }
 
 async function flushDetachedRun() {
@@ -271,14 +294,15 @@ describe('spawn', () => {
 });
 
 describe('resume', () => {
-	const job = {
+	const job = mock<AgentBackgroundJob>({
 		id: 'job-1',
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
 		title: 'research',
 		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
-	} as AgentBackgroundJob;
+		parentPrincipalHash,
+	});
 	const suspension: AgentBackgroundJobSuspension = {
 		childRunId: 'run-1',
 		childToolCallId: 'c1',
@@ -290,18 +314,30 @@ describe('resume', () => {
 	};
 
 	it('continues the child from its checkpoint with the parent context and settles the answer', async () => {
-		const { backgroundRunner, runner, jobService, context } = setup();
+		const {
+			backgroundRunner,
+			runner,
+			jobService,
+			agentWorkspaceService,
+			agentSandboxRuntimeService,
+			context,
+		} = setup();
 		const user = { id: 'user-1' } as User;
 		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
+		agentSandboxRuntimeService.isEnabled.mockReturnValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: {} as never,
+			handle: parentWorkspaceHandle,
+		});
 
-		backgroundRunner.resume(
-			job,
-			suspension,
-			{ approved: true },
-			{ ...context, user, parentWorkspaceHandle },
-		);
+		backgroundRunner.resume(job, suspension, { approved: true }, { ...context, user });
 		await flushDetachedRun();
 
+		expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			parentPrincipalHash,
+		);
 		expect(runner.resumeForeground).toHaveBeenCalledWith(
 			expect.objectContaining({
 				childRunId: 'run-1',
@@ -322,6 +358,30 @@ describe('resume', () => {
 			status: 'completed',
 			result: 'the answer',
 		});
+	});
+
+	it('does not acquire a workspace when the sandbox is disabled', async () => {
+		const { backgroundRunner, runner, agentWorkspaceService, context } = setup();
+
+		backgroundRunner.resume(job, suspension, { approved: true }, context);
+		await flushDetachedRun();
+
+		expect(agentWorkspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(runner.resumeForeground).toHaveBeenCalled();
+		expect(runner.resumeForeground.mock.calls[0][1]).not.toHaveProperty('parentWorkspaceHandle');
+	});
+
+	it('continues without a parent workspace handle when acquisition fails', async () => {
+		const { backgroundRunner, runner, agentWorkspaceService, agentSandboxRuntimeService, context } =
+			setup();
+		agentSandboxRuntimeService.isEnabled.mockReturnValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockRejectedValue(new Error('sandbox unavailable'));
+
+		backgroundRunner.resume(job, suspension, { approved: true }, context);
+		await flushDetachedRun();
+
+		expect(runner.resumeForeground).toHaveBeenCalled();
+		expect(runner.resumeForeground.mock.calls[0][1]).not.toHaveProperty('parentWorkspaceHandle');
 	});
 
 	it('parks the child again when it suspends after resume', async () => {

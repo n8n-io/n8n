@@ -16,6 +16,13 @@ import {
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
+import { isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import {
+	AgentSandboxRuntimeService,
+	sanitizeSandboxErrorDetail,
+	type AgentSandboxRuntime,
+} from '../agent-sandbox-runtime.service';
+import { AgentWorkspaceService } from '../agent-workspace.service';
 import type {
 	AgentBackgroundJob,
 	AgentBackgroundJobSuspension,
@@ -74,6 +81,8 @@ export class SubAgentBackgroundRunner {
 	constructor(
 		private readonly runner: SubAgentRunner,
 		private readonly jobService: AgentBackgroundJobService,
+		private readonly agentWorkspaceService: AgentWorkspaceService,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -154,7 +163,7 @@ export class SubAgentBackgroundRunner {
 		job: AgentBackgroundJob,
 		suspension: AgentBackgroundJobSuspension,
 		resumeData: unknown,
-		context: BackgroundRunContext,
+		context: Omit<BackgroundRunContext, 'parentWorkspaceHandle'>,
 	): void {
 		if (!job.subAgentId || !job.childThreadId) {
 			throw new UnexpectedError('Background job is missing its sub-agent identity');
@@ -165,8 +174,32 @@ export class SubAgentBackgroundRunner {
 
 		this.dispatch(
 			job,
-			async (abortSignal) =>
-				await this.runner.resumeForeground(
+			async (abortSignal) => {
+				let parentWorkspaceHandle: AgentSandboxRuntime | undefined;
+				if (this.agentSandboxRuntimeService.isEnabled()) {
+					try {
+						if (!isAgentSandboxPrincipalHash(job.parentPrincipalHash)) {
+							throw new UnexpectedError('Background job parent sandbox principal is invalid');
+						}
+						parentWorkspaceHandle = (
+							await this.agentWorkspaceService.getAgentWorkspace(
+								context.projectId,
+								job.parentAgentId,
+								job.parentPrincipalHash,
+							)
+						).handle;
+					} catch (error) {
+						this.logger.warn('Failed to attach agent workspace', {
+							projectId: context.projectId,
+							agentId: job.parentAgentId,
+							error: sanitizeSandboxErrorDetail(
+								error instanceof Error ? error.message : String(error),
+							),
+						});
+					}
+				}
+
+				return await this.runner.resumeForeground(
 					{
 						subAgentId,
 						taskName: job.title,
@@ -193,11 +226,10 @@ export class SubAgentBackgroundRunner {
 						...(suspension.difficulty !== undefined
 							? { selfDelegationDifficulty: suspension.difficulty }
 							: {}),
-						...(context.parentWorkspaceHandle !== undefined
-							? { parentWorkspaceHandle: context.parentWorkspaceHandle }
-							: {}),
+						...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 					},
-				),
+				);
+			},
 			{ goal: suspension.goal, difficulty: suspension.difficulty },
 		);
 	}

@@ -257,13 +257,21 @@ describe('settle', () => {
 });
 
 describe('park', () => {
-	it('parks the job and drops the live abort handle', async () => {
-		const { service, jobRepository, executionRepository } = setup();
+	afterEach(() => Container.reset());
+
+	it('parks the job, requests a parent wake, and drops the live abort handle', async () => {
+		const { service, jobRepository, executionRepository } = setup({
+			backgroundTasksEnabled: true,
+		});
+		const wakeService = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wakeService);
 		jobRepository.parkIfRunning.mockResolvedValue(true);
+		jobRepository.findById.mockResolvedValue(makeJob({ timeoutAt: null, suspension }));
 		service.registerAbortController('job-1', new AbortController());
 
 		expect(await service.park('job-1', suspension)).toBe(true);
 		expect(jobRepository.parkIfRunning).toHaveBeenCalledWith('job-1', suspension);
+		expect(wakeService.requestWake).toHaveBeenCalledWith('thread-1');
 
 		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		await service.listForThread('thread-1');
@@ -271,11 +279,16 @@ describe('park', () => {
 	});
 
 	it('discards the child checkpoint when cancellation wins the race', async () => {
-		const { service, jobRepository, checkpointStorage } = setup();
+		const { service, jobRepository, checkpointStorage } = setup({
+			backgroundTasksEnabled: true,
+		});
+		const wakeService = mock<AgentWakeService>();
+		Container.set(AgentWakeService, wakeService);
 		jobRepository.parkIfRunning.mockResolvedValue(false);
 
 		expect(await service.park('job-1', suspension)).toBe(false);
 		expect(checkpointStorage.delete).toHaveBeenCalledWith('run-1', 'sub-1');
+		expect(wakeService.requestWake).not.toHaveBeenCalled();
 	});
 });
 

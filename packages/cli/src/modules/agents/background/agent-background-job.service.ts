@@ -245,7 +245,8 @@ export class AgentBackgroundJobService {
 	async park(jobId: string, suspension: AgentBackgroundJobSuspension): Promise<boolean> {
 		try {
 			const parked = await this.jobRepository.parkIfRunning(jobId, suspension);
-			if (!parked) await this.discardChildCheckpoint(jobId, suspension);
+			if (parked) await this.requestWakeSafely(jobId);
+			else await this.discardChildCheckpoint(jobId, suspension);
 			return parked;
 		} finally {
 			this.abortControllers.delete(jobId);
@@ -328,7 +329,7 @@ export class AgentBackgroundJobService {
 			const { AgentWakeService } = await import('./agent-wake.service.js');
 			await Container.get(AgentWakeService).requestWake(job.parentThreadId);
 		} catch (error) {
-			this.logger.warn('Failed to request a parent wake for a settled background job', {
+			this.logger.warn('Failed to request a parent wake for a background job', {
 				jobId,
 				error,
 			});
