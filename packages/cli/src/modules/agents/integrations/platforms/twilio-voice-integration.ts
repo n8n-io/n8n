@@ -72,6 +72,14 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		const settings = this.settings(ctx.integration);
+		const client = this.client(ctx.credential);
+		const phoneNumber = await client.getPhoneNumber(settings.phoneNumber);
+		if (!phoneNumber) {
+			throw new BadRequestError(
+				'This Twilio account does not contain the selected phone number. Check the number and try again.',
+			);
+		}
+
 		const claimed = await this.agentRepository.findByTwilioVoicePhoneNumber(
 			settings.phoneNumber,
 			ctx.projectId,
@@ -80,15 +88,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 		if (claimed.length > 0) {
 			throw new BadRequestError(
 				`This Twilio number is already connected to agent "${claimed[0].name}". Disconnect it there and try again.`,
-			);
-		}
-		if (settings.configurationMode === 'manual') return;
-
-		const client = this.client(ctx.credential);
-		const phoneNumber = await client.getPhoneNumber(settings.phoneNumber);
-		if (!phoneNumber) {
-			throw new BadRequestError(
-				'This Twilio account does not contain the selected phone number. Check the number and try again.',
 			);
 		}
 
@@ -114,7 +113,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		const settings = this.settings(ctx.integration);
-		if (settings.configurationMode === 'manual') return;
 		const client = this.client(ctx.credential);
 		const phoneNumber = await client.getPhoneNumber(settings.phoneNumber);
 		if (!phoneNumber) throw new Error('The configured Twilio phone number is no longer available.');
@@ -123,7 +121,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 
 	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		const settings = this.settings(ctx.integration);
-		if (settings.configurationMode === 'manual') return;
 		const state = await this.agentRepository.findIntegrationState(ctx.agentId);
 		const replacementIsActive =
 			state !== null &&
