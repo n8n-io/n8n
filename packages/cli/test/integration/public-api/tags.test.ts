@@ -102,6 +102,7 @@ describe('GET /tags/:id', () => {
 		const response = await authOwnerAgent.get('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
 	});
 
 	test('should retrieve tag', async () => {
@@ -118,6 +119,7 @@ describe('GET /tags/:id', () => {
 		expect(name).toEqual(tag.name);
 		expect(createdAt).toEqual(tag.createdAt.toISOString());
 		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
+		expect(Object.keys(response.body).sort()).toEqual(['createdAt', 'id', 'name', 'updatedAt']);
 	});
 });
 
@@ -191,6 +193,22 @@ describe('POST /tags', () => {
 		const response = await authOwnerAgent.post('/tags').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should reject a read-only field', async () => {
+		const response = await authOwnerAgent
+			.post('/tags')
+			.send({ name: 'Tag 1', id: 'gZqmqiGAuo1dHT7q' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/id is read-only');
+	});
+
+	test('should reject an unknown field', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 'Tag 1', unknown: 'value' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should create tag', async () => {
@@ -259,6 +277,18 @@ describe('PUT /tags/:id', () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should reject a read-only field', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name', updatedAt: new Date().toISOString() });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/updatedAt is read-only');
 	});
 
 	test('should update tag', async () => {

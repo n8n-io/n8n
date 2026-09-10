@@ -193,7 +193,13 @@ export {
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
 export { ListTagsQueryDto } from './tag/list-tags-query.dto';
-export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
+export {
+	TagPublicDto,
+	TagListPublicDto,
+	UpdatedTagPublicDto,
+	tagPublicSchema,
+} from './tag/tag-public.dto';
+export { CreateOrUpdateTagPublicDto } from './tag/create-or-update-tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';

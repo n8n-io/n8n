@@ -28,7 +28,6 @@ import type {
 	AuthenticatedRequest,
 	Folder,
 	SharedWorkflow,
-	TagEntity,
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowPublishHistory,
@@ -69,6 +68,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import { toPublicTag } from '@/public-api/v1/shared/tag.mapper';
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
@@ -101,15 +101,6 @@ function toPublicJson(value: unknown): Record<string, unknown> | null {
 
 function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
-}
-
-function toPublicTag(tag: TagEntity) {
-	return {
-		id: tag.id,
-		name: tag.name,
-		createdAt: tag.createdAt.toISOString(),
-		updatedAt: tag.updatedAt.toISOString(),
-	};
 }
 
 function toPublicFolder(folder: Folder) {
