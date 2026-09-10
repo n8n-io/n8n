@@ -1050,6 +1050,21 @@ describe('InstanceAiSandboxService', () => {
 			expect(resolveTracingConfig).not.toHaveBeenCalled();
 		});
 
+		it('traces uncached cleanup when required configuration is missing', async () => {
+			const { service, logger } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'n8n-sandbox', n8nSandboxServiceUrl: '' },
+			});
+			await service.destroySandbox('thread-1');
+			expect(withSandboxLifecycleTrace).toHaveBeenCalledTimes(1);
+			expect(createSandbox).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to destroy sandbox', {
+				threadId: 'thread-1',
+				reason: 'thread_cleanup',
+				error:
+					'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
+			});
+		});
+
 		it('swallows uncached destroy errors and logs a warning', async () => {
 			const { service, logger } = createSandboxService({
 				config: {

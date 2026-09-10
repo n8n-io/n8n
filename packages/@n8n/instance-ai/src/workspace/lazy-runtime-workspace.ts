@@ -412,7 +412,11 @@ class LazyRuntimeSandbox extends BaseSandbox {
 					},
 					processResult: sandboxCommandTraceResult,
 				},
-				async () => await executeCommand(command, args, options),
+				async () =>
+					await raceWithAbort(
+						async () => await executeCommand(command, args, options),
+						options?.abortSignal,
+					),
 			);
 		} finally {
 			this.syncStatus(sandbox);
