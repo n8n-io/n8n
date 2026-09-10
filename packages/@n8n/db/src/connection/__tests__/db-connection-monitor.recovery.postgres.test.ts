@@ -325,7 +325,8 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			});
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// Short bound: the frozen socket never self-drains, so the value only sets the wait.
+			const destroyTimeoutMs = 500;
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
@@ -385,7 +386,8 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			);
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// Short bound: the frozen socket never self-drains, so the value only sets the wait.
+			const destroyTimeoutMs = 500;
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
