@@ -55,7 +55,7 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
 	MAX_ATTACHMENT_BASE64_BYTES,
@@ -488,6 +488,77 @@ describe('InstanceAiController', () => {
 				.map(([frame]) => String(frame))
 				.filter((frame) => frame.includes('run-finish'));
 			expect(eventFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
+		});
+
+		it('should settle confirmation cards the server no longer holds before writing the run-sync frame', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventLog.getEventsAfter.mockResolvedValue([]);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			eventLog.getEventsForRuns.mockResolvedValue([
+				{ type: 'run-start', runId: 'run-1', agentId: 'a1', payload: { messageGroupId: 'mg-1' } },
+			] as never);
+			// The fold only knows the card was requested. The run has since resumed
+			// (the pending row is gone), which is what the flagging reports.
+			vi.mocked(buildAgentTreeFromEvents).mockReturnValueOnce({
+				agentId: 'a1',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: 'tc-1',
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: true,
+						confirmation: { requestId: 'req-1', severity: 'info', message: 'Create workflow?' },
+					},
+				],
+				children: [],
+				timeline: [],
+			} as never);
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async (messages) => {
+				for (const message of messages) {
+					for (const tc of message.agentTree?.toolCalls ?? []) {
+						if (tc.confirmation) tc.confirmation.expired = true;
+					}
+				}
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: vi.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncFrame = (sseRes.write as Mock).mock.calls
+				.map(([frame]) => String(frame))
+				.find((frame) => frame.startsWith('event: run-sync\n'));
+			expect(runSyncFrame).toBeDefined();
+			const { agentTree } = JSON.parse(runSyncFrame!.slice('event: run-sync\ndata: '.length)) as {
+				agentTree: {
+					toolCalls: Array<{ confirmation?: { requestId: string; expired?: boolean } }>;
+				};
+			};
+			expect(agentTree.toolCalls[0].confirmation).toEqual(
+				expect.objectContaining({ requestId: 'req-1', expired: true }),
+			);
 		});
 
 		it('should clean up the subscription when the client disconnects during bootstrap', async () => {
