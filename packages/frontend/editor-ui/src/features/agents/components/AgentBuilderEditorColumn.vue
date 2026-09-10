@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
@@ -16,7 +16,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
-import AgentChannelsSection from './AgentChannelsSection.vue';
+import AgentTriggersSection from './AgentTriggersSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
@@ -25,6 +25,7 @@ import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
+import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 
 const props = defineProps<{
@@ -83,6 +84,7 @@ const emit = defineEmits<{
 	'tasks-changed': [];
 	'agent-changed': [];
 	'generate-eval-cases': [];
+	'open-preview': [];
 }>();
 
 const i18n = useI18n();
@@ -116,62 +118,79 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentChannelsSection
-						:key="`${projectId}:${agentId}`"
-						:connected-triggers="connectedTriggers"
-						:disabled="childrenDisabled"
-						:agent-id="agentId"
-						:project-id="projectId"
-						:is-published="Boolean(agent?.activeVersionId)"
-						:validation-issues="configValidationIssues ?? []"
-						:simple-channel-setup="artifactMode"
-						:agent-unsaved="agentUnsaved"
-						:ensure-agent-persisted="ensureAgentPersisted"
-						@update:connected-triggers="emit('update:connected-triggers', $event)"
-						@trigger-added="emit('trigger-added', $event)"
-						@agent-changed="emit('agent-changed')"
-					/>
-
-					<AgentCapabilitiesSection
-						:config="localConfig"
-						:tools="localConfig?.tools ?? []"
-						:custom-tools="agent?.tools ?? {}"
-						:skills="appliedSkills"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:is-published="Boolean(agent?.activeVersionId)"
-						:task-refs="localConfig?.tasks ?? []"
-						:reload-key="tasksReloadKey"
-						:validation-issues="configValidationIssues ?? []"
-						:agent-unsaved="agentUnsaved"
-						@open-tool="emit('open-tool', $event)"
-						@open-skill="emit('open-skill', $event)"
-						@add-tool="emit('add-tool')"
-						@add-skill="emit('add-skill')"
-						@update:config="emit('update:config', $event)"
-						@remove-tool="emit('remove-tool', $event)"
-						@remove-skill="emit('remove-skill', $event)"
-						@toggle-task="emit('toggle-task', $event)"
-						@tasks-changed="emit('tasks-changed')"
-					/>
-
 					<AgentInfoPanel
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
-						:show-instructions="false"
-						embedded
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentInfoPanel
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.triggers.title')"
+						:description="i18n.baseText('agents.builder.triggers.description')"
+					>
+						<template #header-actions>
+							<N8nButton
+								variant="subtle"
+								icon="play"
+								size="medium"
+								:disabled="childrenDisabled"
+								:label="i18n.baseText('agents.builder.preview.button')"
+								data-testid="agent-triggers-preview-chat-button"
+								@click="emit('open-preview')"
+							/>
+						</template>
+						<AgentTriggersSection
+							:key="`${projectId}:${agentId}`"
+							:connected-triggers="connectedTriggers"
+							:disabled="childrenDisabled"
+							:agent-id="agentId"
+							:project-id="projectId"
+							:is-published="Boolean(agent?.activeVersionId)"
+							:validation-issues="configValidationIssues ?? []"
+							:simple-channel-setup="artifactMode"
+							:agent-unsaved="agentUnsaved"
+							:ensure-agent-persisted="ensureAgentPersisted"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
+							@update:connected-triggers="emit('update:connected-triggers', $event)"
+							@trigger-added="emit('trigger-added', $event)"
+							@agent-changed="emit('agent-changed')"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.capabilities.title')"
+						:description="i18n.baseText('agents.builder.capabilities.description')"
+					>
+						<AgentCapabilitiesSection
+							:config="localConfig"
+							:tools="localConfig?.tools ?? []"
+							:custom-tools="agent?.tools ?? {}"
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:is-published="Boolean(agent?.activeVersionId)"
+							:validation-issues="configValidationIssues ?? []"
+							:agent-unsaved="agentUnsaved"
+							@open-tool="emit('open-tool', $event)"
+							@open-skill="emit('open-skill', $event)"
+							@add-tool="emit('add-tool')"
+							@add-skill="emit('add-skill')"
+							@update:config="emit('update:config', $event)"
+							@remove-tool="emit('remove-tool', $event)"
+							@remove-skill="emit('remove-skill', $event)"
+						/>
+					</AgentPanel>
+
+					<AgentMemoryPanel
+						v-if="canEditAgent"
 						:config="localConfig"
 						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:show-model="false"
-						:show-instructions-toolbar="true"
-						instructions-max-height="none"
-						embedded
+						data-testid="agent-memory-panel"
 						@update:config="emit('update:config', $event)"
 					/>
 				</AgentBuilderTabPanel>
@@ -220,24 +239,13 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentSubAgentsPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								:project-id="projectId"
-								:agent-id="agentId"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentMemoryPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								embedded
-								data-testid="agent-memory-panel"
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
+						<AgentSubAgentsPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:config="emit('update:config', $event)"
+						/>
 						<N8nCard
 							v-if="isMcpAvailable"
 							:class="$style.settingsCard"
@@ -250,15 +258,12 @@ const i18n = useI18n();
 								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
 							/>
 						</N8nCard>
-						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
-							<AgentAdvancedPanel
-								:config="localConfig"
-								:disabled="childrenDisabled"
-								:project-id="projectId"
-								collapsible
-								@update:config="emit('update:config', $event)"
-							/>
-						</N8nCard>
+						<AgentAdvancedPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							@update:config="emit('update:config', $event)"
+						/>
 					</div>
 				</AgentBuilderTabPanel>
 

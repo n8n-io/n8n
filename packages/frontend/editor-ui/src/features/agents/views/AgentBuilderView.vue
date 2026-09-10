@@ -2152,6 +2152,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
 				/>
 
 				<AgentVersionHistoryPanel

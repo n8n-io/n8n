@@ -293,8 +293,6 @@ export class RuntimeContextBuilder {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
-			| Record<string, Record<string, unknown>>
-			| undefined;
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
 	}
 }

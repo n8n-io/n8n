@@ -1255,7 +1255,7 @@ async function handleSetupApply(
 			type: node.type,
 			typeVersion: node.typeVersion,
 			position: node.position,
-			parameters: node.parameters as Record<string, unknown> | undefined,
+			parameters: node.parameters,
 			credentials: node.credentials,
 			disabled: node.disabled,
 		}));
@@ -1404,11 +1404,8 @@ async function resolveUnverifiedPublishDisclosure(
 		const claim = verification?.claim;
 		if (claim) return claim.publishReady ? undefined : formatClaimDisclosure(claim);
 
-		// A record with no claim means verification ran and could not produce one
-		// — it was refused for want of a simulation plan, or it failed before it
-		// reached a verdict. That is a failed verification, not an unverified
-		// workflow, and it must not pass as an absent record.
-		if (verification?.attempted) {
+		// A running or attempted verification must not pass as an absent record.
+		if (verification?.attempted || verification?.status === 'running') {
 			const cause = verification.failureSignature ?? verification.evidence?.errorMessage;
 			return (
 				'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
