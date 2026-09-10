@@ -4,7 +4,11 @@ import nock from 'nock';
 
 import { CREDENTIALS_REPORT, INSTANCE_REPORT } from '@/security-audit/constants';
 
-import { simulateUpToDateInstance } from '../security-audit/utils';
+import {
+	MOCK_09990_N8N_VERSION,
+	simulateOutdatedInstanceOnce,
+	simulateUpToDateInstance,
+} from '../security-audit/utils';
 import { createCredentials } from '../shared/db/credentials';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -69,6 +73,24 @@ describe('POST /audit', () => {
 		expect(response.statusCode).toBe(200);
 		expect(Array.isArray(response.body)).toBe(false);
 		expect(response.body['Instance Risk Report'].risk).toBe(INSTANCE_REPORT.RISK);
+	});
+
+	test('should return the release list of an outdated instance unchanged', async () => {
+		nock.cleanAll();
+		simulateOutdatedInstanceOnce();
+
+		const response = await authOwnerAgent
+			.post('/audit')
+			.send({ additionalOptions: { categories: ['instance'] } });
+
+		expect(response.statusCode).toBe(200);
+
+		const section = response.body['Instance Risk Report'].sections.find(
+			(s: { title: string }) => s.title === INSTANCE_REPORT.SECTIONS.OUTDATED_INSTANCE,
+		);
+		// Deep equality, not a subset: the response DTO must relay the upstream release entries
+		// whole rather than strip fields it does not name.
+		expect(section.nextVersions).toEqual([MOCK_09990_N8N_VERSION]);
 	});
 
 	test('should limit the report to the requested categories', async () => {
