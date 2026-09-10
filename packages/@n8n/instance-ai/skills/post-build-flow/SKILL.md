@@ -92,7 +92,7 @@ verification.
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If the result has
+the n8n Assistant panel is the user-visible surface. If the result has
 `announced: true`, use the persistent panel instructions above and end the turn.
 If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
@@ -139,7 +139,7 @@ it has you fetch, never from memory:
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
+  it, and never a URL or domain: the user asks the n8n Assistant for that from
   the credential form. `type` is `password` unless clearly non-secret (at
   least one placeholder must stay `password`). Add `optional: true` only when
   the provider documents the value as optional (e.g. an org/region
@@ -147,7 +147,7 @@ it has you fetch, never from memory:
   omitted from the request.
 - `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
+  reference. Not shown in the form: the n8n Assistant help thread uses it to
   send the user to the exact page. Found via the `credential-recipe-research`
   procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with

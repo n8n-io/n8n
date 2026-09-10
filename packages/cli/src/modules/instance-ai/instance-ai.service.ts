@@ -490,7 +490,7 @@ export function isAttachmentRejectedByProviderError(error: unknown): boolean {
  * `quota_exhausted` error state; kept in sync with the FE i18n copy.
  */
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
-	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
+	"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.";
 
 const OPERATIONAL_ERROR_USER_MESSAGE =
 	'I hit an operational error before I could finish that response. Please try again.';
@@ -3480,7 +3480,7 @@ export class InstanceAiService {
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
 		const revalidated = await this.revalidateActiveUser(user.id);
 		if (!revalidated) {
-			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+			this.logger.warn('Cancelling run: user no longer authorized for n8n Assistant', {
 				userId: user.id,
 				threadId,
 			});
@@ -4710,7 +4710,7 @@ export class InstanceAiService {
 			if (suspended?.user.id === requestingUserId) {
 				this.cancelRun(suspended.threadId);
 			}
-			this.logger.warn('Rejecting confirmation: user no longer authorized for AI Assistant', {
+			this.logger.warn('Rejecting confirmation: user no longer authorized for n8n Assistant', {
 				userId: requestingUserId,
 				requestId,
 			});
@@ -5141,7 +5141,7 @@ export class InstanceAiService {
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
-			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for n8n Assistant', {
 				userId: user.id,
 				threadId,
 				requestId,

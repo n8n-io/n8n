@@ -18,7 +18,7 @@ import { Z } from '../zod-class';
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's AI Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
@@ -1421,7 +1421,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
  * Experiment cleanup: remove with openWorkflowInAssistant.
  * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
- * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
+ * - `workflow_list_button` — deliberate "Edit with n8n Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1995,7 +1995,7 @@ export interface InstanceAiSetupState {
 }
 
 /**
- * How each AI Assistant setup component is configured, derived from the admin
+ * How each n8n Assistant setup component is configured, derived from the admin
  * settings response. Single source of truth for the setup gate and the setup
  * telemetry snapshot, on both backend and frontend. The response already
  * resolves precedence (credential ids are null when env config wins), so env
@@ -2281,7 +2281,7 @@ export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections
 
 export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
 
-/** Enables adding selected canvas nodes as chat context in the AI Assistant */
+/** Enables adding selected canvas nodes as chat context in the n8n Assistant */
 export const CANVAS_NODE_CONTEXT_FLAG = '104_canvas_aia_node_context';
 
 /** Enables the conversation-history tool and the past-conversations first-turn hint */
