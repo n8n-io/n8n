@@ -1,21 +1,57 @@
 export type OutputFormat = 'table' | 'json' | 'id-only';
 
+/** Read a column, following dots into nested objects. */
+function readColumn(data: Record<string, unknown>, column: string): unknown {
+	let value: unknown = data;
+	for (const key of column.split('.')) {
+		if (typeof value !== 'object' || value === null) return undefined;
+		value = (value as Record<string, unknown>)[key];
+	}
+	return value;
+}
+
+/**
+ * Header label of each column: the last segment of a dotted path. Two paths can
+ * end in the same segment, and one `NAME` header beside another tells the reader
+ * nothing, so a segment that is not unique keeps its full path.
+ */
+function columnLabels(columns: string[]): Record<string, string> {
+	const leaf = (column: string) => column.slice(column.lastIndexOf('.') + 1);
+
+	const counts = new Map<string, number>();
+	for (const column of columns) {
+		const name = leaf(column);
+		counts.set(name, (counts.get(name) ?? 0) + 1);
+	}
+
+	const labels: Record<string, string> = {};
+	for (const column of columns) {
+		const name = leaf(column);
+		labels[column] = counts.get(name) === 1 ? name : column;
+	}
+	return labels;
+}
+
 /** Pick specific columns from a record for table display. */
 function pickColumns(data: Record<string, unknown>, columns: string[]): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	for (const col of columns) {
-		result[col] = data[col];
+		result[col] = readColumn(data, col);
 	}
 	return result;
 }
 
-/** Format a value for table display. */
-function formatValue(value: unknown): string {
+/**
+ * Format a value for table display. Long strings are shortened to keep the
+ * columns of a multi-row table aligned. A key-value view has nothing to align,
+ * so it asks for the full value.
+ */
+function formatValue(value: unknown, full = false): string {
 	if (value === null || value === undefined) return '-';
 	if (typeof value === 'boolean') return value ? 'true' : 'false';
 	if (typeof value === 'string') {
-		// Truncate long strings
-		return value.length > 60 ? value.slice(0, 57) + '...' : value;
+		if (full || value.length <= 60) return value;
+		return value.slice(0, 57) + '...';
 	}
 	if (typeof value === 'number') return String(value);
 	if (typeof value === 'object') return JSON.stringify(value);
@@ -32,11 +68,12 @@ function renderTable(
 
 	const cols = columns ?? Object.keys(data[0]);
 	const rows = data.map((row) => pickColumns(row, cols));
+	const labels = columnLabels(cols);
 
 	// Calculate column widths
 	const widths: Record<string, number> = {};
 	for (const col of cols) {
-		widths[col] = col.length;
+		widths[col] = labels[col].length;
 		for (const row of rows) {
 			const len = formatValue(row[col]).length;
 			if (len > widths[col]) widths[col] = len;
@@ -53,7 +90,7 @@ function renderTable(
 	}
 
 	// Header
-	const header = cols.map((c) => c.toUpperCase().padEnd(widths[c])).join('  ');
+	const header = cols.map((c) => labels[c].toUpperCase().padEnd(widths[c])).join('  ');
 	const separator = cols.map((c) => '-'.repeat(widths[c])).join('  ');
 
 	return [header, separator, ...lines].join('\n');
@@ -98,10 +135,12 @@ export function formatOutput(data: unknown, options: OutputOptions): string {
 			if (typeof data === 'object' && data !== null) {
 				const entries = Object.entries(data as Record<string, unknown>);
 				if (noHeader) {
-					return entries.map(([, v]) => formatValue(v)).join('\n');
+					return entries.map(([, v]) => formatValue(v, true)).join('\n');
 				}
 				const maxKeyLen = Math.max(...entries.map(([k]) => k.length));
-				return entries.map(([k, v]) => `${k.padEnd(maxKeyLen)}  ${formatValue(v)}`).join('\n');
+				return entries
+					.map(([k, v]) => `${k.padEnd(maxKeyLen)}  ${formatValue(v, true)}`)
+					.join('\n');
 			}
 			return String(data);
 		}
