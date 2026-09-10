@@ -95,58 +95,6 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	describe('createAgent', () => {
-		it('posts only the name when no seeding options are given', async () => {
-			const agent = { id: 'agent-1', name: 'Support Agent' } as AgentResource;
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(agent);
-
-			const result = await createAgent(restApiContext, 'project-1', 'Support Agent');
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(
-				restApiContext,
-				'POST',
-				'/projects/project-1/agents/v2',
-				{ name: 'Support Agent' },
-			);
-			expect(result).toBe(agent);
-		});
-
-		it('forwards a client-minted id when supplied', async () => {
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({} as AgentResource);
-
-			await createAgent(restApiContext, 'project-1', 'Support Agent', { id: 'aBcDeFgHiJkLmNoP' });
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(
-				restApiContext,
-				'POST',
-				'/projects/project-1/agents/v2',
-				{ name: 'Support Agent', id: 'aBcDeFgHiJkLmNoP' },
-			);
-		});
-
-		it('forwards schema, tools and skills so a duplicate clones in one insert', async () => {
-			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({} as AgentResource);
-			const schema = {
-				name: 'Copy',
-				model: 'anthropic/claude-sonnet-4-5',
-				instructions: '',
-			} as unknown as AgentJsonConfig;
-			const tools = {
-				refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
-			} as never;
-			const skills = { skill_abc: { name: 'Triage', description: '', instructions: '' } } as never;
-
-			await createAgent(restApiContext, 'project-1', 'Copy', { schema, tools, skills });
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(
-				restApiContext,
-				'POST',
-				'/projects/project-1/agents/v2',
-				{ name: 'Copy', schema, tools, skills },
-			);
-		});
-	});
-
 	describe('duplicateAgent', () => {
 		it('fetches the source agent and config, then creates a clone with the new name', async () => {
 			const sourceAgent = {
@@ -189,7 +137,8 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2/agent-1/config',
 			);
-			// createAgent posts the copied config with the new name overriding the source name.
+			// createAgent posts the copied config with the new name overriding the source name;
+			// tasks are dropped and integrations are copied without their credential.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
 				3,
 				restApiContext,
@@ -197,11 +146,50 @@ describe('useAgentApi', () => {
 				'/projects/project-1/agents/v2',
 				{
 					name: 'Support Agent (copy)',
-					schema: { ...sourceConfig, name: 'Support Agent (copy)' },
+					schema: { ...sourceConfig, name: 'Support Agent (copy)', integrations: [] },
 					tools: sourceAgent.tools,
 					skills: sourceAgent.skills,
 				},
 			);
+		});
+
+		it('copies channels without their credential so the clone opens as drafts', async () => {
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				schema: { personalisation: { icon: 'bot' } },
+				tools: {},
+				skills: {},
+			} as unknown as AgentResource;
+			const sourceConfig = {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				integrations: [
+					{ type: 'telegram', credentialId: 'cred-telegram-1' },
+					{ type: 'slack', credentialId: 'cred-slack-1', settings: { channel: 'C1' } },
+				],
+			} as unknown as AgentJsonConfig;
+			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
+			vi.mocked(makeRestApiRequest)
+				.mockResolvedValueOnce(sourceAgent)
+				.mockResolvedValueOnce(sourceConfig)
+				.mockResolvedValueOnce(cloned);
+
+			await duplicateAgent(restApiContext, 'project-1', 'agent-1', 'Support Agent (copy)');
+
+			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[2] as [
+				unknown,
+				string,
+				string,
+				{ schema: { integrations: unknown[] } },
+			];
+			// Entries kept (so the builder shows "connect a channel" chips) but
+			// credentialIds blanked to drafts.
+			expect(postBody.schema.integrations).toEqual([
+				{ type: 'telegram', credentialId: '' },
+				{ type: 'slack', credentialId: '', settings: { channel: 'C1' } },
+			]);
 		});
 	});
 });

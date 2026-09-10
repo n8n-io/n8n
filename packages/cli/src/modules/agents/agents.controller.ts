@@ -52,6 +52,12 @@ export class AgentsController {
 						schema: { ...payload.schema, name: payload.name },
 						skills: payload.skills,
 						tools: payload.tools,
+						// A REST duplicate is a user-driven write: the service sanitizes the
+						// config, blanks inaccessible credentials, copies channels as
+						// drafts, and emits `agent-saved` so the dependency index
+						// refreshes. The duplicate itself is reported by the frontend
+						// "User duplicated agent" event (carrying the source agent id).
+						user: req.user,
 					}
 				: {}),
 		});

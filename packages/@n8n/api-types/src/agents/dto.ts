@@ -128,7 +128,11 @@ export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
 	id: clientMintedAgentIdSchema.optional(),
 	schema: AgentJsonConfigSchema.optional(),
-	tools: z.record(z.unknown()).optional(),
+	tools: z
+		.record(
+			z.object({ code: z.string(), descriptor: z.object({ name: z.string() }).passthrough() }),
+		)
+		.optional(),
 	skills: z.record(agentSkillSchema).optional(),
 }) {}
 

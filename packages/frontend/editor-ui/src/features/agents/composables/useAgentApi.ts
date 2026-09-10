@@ -135,9 +135,17 @@ export const duplicateAgent = async (
 	]);
 	// Task bodies live in a separate table we don't copy, so drop the refs —
 	// otherwise the clone carries dangling task ids and cannot be published.
-	const { tasks: _tasks, ...configWithoutTasks } = config;
+	// Channels are copied without their credential: the claim check ignores
+	// publish state, so keeping the source's credentialId would 409 at publish
+	// time (and break the source's channel). Blank to drafts so the builder
+	// opens the copy with a "connect a channel" chip instead.
+	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = config;
+	const draftIntegrations = (sourceIntegrations ?? []).map((integration) => ({
+		...integration,
+		credentialId: '',
+	}));
 	return await createAgent(context, projectId, name, {
-		schema: { ...configWithoutTasks, name },
+		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
 		skills: agent.skills,
 	});

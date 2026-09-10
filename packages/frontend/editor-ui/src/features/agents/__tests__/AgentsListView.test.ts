@@ -5,7 +5,7 @@ import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { AGENT_BUILDER_VIEW, NEW_SESSION_PARAM } from '../constants';
+import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	setTitle: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
+	track: vi.fn(),
+	duplicateAgent: vi.fn(),
+	upsertProjectAgentsListCache: vi.fn(),
 	routeProjectId: undefined as string | undefined,
 	toastShowMessage: vi.fn(),
 	toastShowError: vi.fn(),
@@ -22,6 +25,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../composables/useAgentApi', () => ({
 	listAgentsPage: mocks.listAgentsPage,
 	listAgentsPageGlobal: mocks.listAgentsPageGlobal,
+	duplicateAgent: mocks.duplicateAgent,
+}));
+
+vi.mock('../composables/useProjectAgentsList', () => ({
+	upsertProjectAgentsListCache: mocks.upsertProjectAgentsListCache,
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -39,6 +47,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: mocks.toastShowMessage, showError: mocks.toastShowError }),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mocks.track }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -215,6 +227,64 @@ describe('AgentsListView — project page', () => {
 			expect.objectContaining({ title: 'agents.duplicate.modal.unconfigured' }),
 		);
 		expect(mocks.openModalWithData).not.toHaveBeenCalled();
+	});
+
+	it('duplicates a configured agent: opens the modal with existing names, then copies, caches, and navigates to the clone', async () => {
+		// A configured agent carries a `schema`, so it passes the guard.
+		const source = { ...agent('agent-1', 'Support Agent'), schema: { name: 'Support Agent' } };
+		const copy = { ...source, id: 'agent-2', name: 'Support Agent Copy' };
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 1, data: [source] });
+		mocks.duplicateAgent.mockResolvedValueOnce(copy);
+
+		const wrapper = await mountView();
+		wrapper.findComponent({ name: 'AgentCard' }).vm.$emit('duplicate', 'agent-1');
+		await flushPromises();
+
+		// The modal opens pre-filled with the source's project, id, name, and the
+		// names already in the list (so the modal can reject a duplicate name).
+		expect(mocks.openModalWithData).toHaveBeenCalledWith({
+			name: AGENT_DUPLICATE_MODAL_KEY,
+			data: {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				name: 'Support Agent',
+				existingNames: ['Support Agent'],
+				onConfirm: expect.any(Function),
+			},
+		});
+
+		// The modal invokes `onConfirm` with the chosen name; run it to exercise
+		// the duplicate path the user actually hits on confirm.
+		const modalData = (
+			mocks.openModalWithData.mock.calls[0] as [
+				{ data: { onConfirm: (n: string) => Promise<void> } },
+			]
+		)[0].data;
+		await modalData.onConfirm('Support Agent Copy');
+
+		expect(mocks.duplicateAgent).toHaveBeenCalledWith(
+			{ baseUrl: '/rest', pushRef: 'push-ref' },
+			'project-1',
+			'agent-1',
+			'Support Agent Copy',
+		);
+		// The clone is inserted into the list cache and the user is routed to it.
+		expect(mocks.upsertProjectAgentsListCache).toHaveBeenCalledWith('project-1', copy);
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: 'project-1', agentId: 'agent-2' },
+		});
+		expect(mocks.toastShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'agents.duplicate.modal.success', type: 'success' }),
+		);
+		// A duplicate is born configured, so the backend creation events never
+		// fire for it; the duplicate is tracked directly, mirroring
+		// "User duplicated workflow" — the source agent id distinguishes it.
+		expect(mocks.track).toHaveBeenCalledWith('User duplicated agent', {
+			source_agent_id: 'agent-1',
+			agent_id: 'agent-2',
+			project_id: 'project-1',
+		});
 	});
 
 	it('refetches with backend search, pagination, and sorting parameters', async () => {

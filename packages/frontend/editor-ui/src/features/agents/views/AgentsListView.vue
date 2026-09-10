@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -53,6 +54,7 @@ const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 const uiStore = useUIStore();
 const toast = useToast();
+const telemetry = useTelemetry();
 const agentTelemetry = useAgentTelemetry();
 const { callDebounced } = useDebounce();
 
@@ -153,6 +155,16 @@ function onAgentDuplicate(agentId: string) {
 						agent.id,
 						newName,
 					);
+					// A duplicate is born configured, so the backend creation events
+					// never fire for it (its first edit reports a modification).
+					// Track the duplicate directly, mirroring "User duplicated
+					// workflow" — the source agent id distinguishes it from an
+					// organic creation.
+					telemetry.track('User duplicated agent', {
+						source_agent_id: agent.id,
+						agent_id: duplicated.id,
+						project_id: agent.projectId,
+					});
 					upsertProjectAgentsListCache(agent.projectId, duplicated);
 					toast.showMessage({
 						title: locale.baseText('agents.duplicate.modal.success'),
