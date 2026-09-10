@@ -49,9 +49,6 @@
         "application/json"
       ]
     },
-    "cookies": {
-      "__cf_bm": "CACxvZVzRfn32q9hB.4mROcvYjQdhXB2LKlnaJeqZos-1789051936.8808246-1.0.1.1-lfyGzn1TB55fjYiDopmo.1ss6iT1KdvKD5ExQRg180puZu5eqxcEfKdEPP2mp..rYy5orpDi1NOOwFKue3q6qmnf23Fc.JGTn8jhk4LhJdGnfaMGisTJYqwKUekZ6PVG"
-    },
     "body": {
       "contentType": "application/json",
       "type": "JSON",
