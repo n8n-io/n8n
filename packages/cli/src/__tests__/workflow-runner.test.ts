@@ -137,14 +137,16 @@ describe('processError', () => {
 		vi.spyOn(Container.get(ExecutionRepository), 'findSingleExecution').mockResolvedValue(
 			mock<IExecutionBase>({ status: 'success', finished: true }),
 		);
-		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
-			mock<IExecutionResponse>({
-				status: 'success',
-				finished: true,
-				mode: 'webhook',
-				data: successData,
-			}),
-		);
+		const persistenceSpy = vi
+			.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+			.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status: 'success',
+					finished: true,
+					mode: 'webhook',
+					data: successData,
+				}),
+			);
 
 		globalConfig.executions.mode = 'queue';
 		await runner.processError(
@@ -159,6 +161,10 @@ describe('processError', () => {
 			expect.objectContaining({ status: 'success', finished: true, data: successData }),
 		);
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
+		expect(persistenceSpy).toHaveBeenCalledWith(execution.id, {
+			includeData: true,
+			unflattenData: true,
+		});
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
