@@ -9,6 +9,7 @@
 import type {
 	InstanceAiHandoffContext,
 	InstanceAiSendMessageRequest,
+	AgentConfigResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -540,8 +541,8 @@ export class N8nClient {
 	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
 		const result = (await this.fetch(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
-		)) as { data: AgentJsonConfig };
-		return result.data;
+		)) as { data: AgentConfigResponse };
+		return result.data.config;
 	}
 
 	/**

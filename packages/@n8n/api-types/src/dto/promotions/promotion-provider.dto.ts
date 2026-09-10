@@ -1,6 +1,9 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -129,17 +132,42 @@ export class CreatePromotionProviderDto extends Z.class(
  * mismatch. It also reads an omitted `keyType` from the provider's current key type,
  * so rotating an `rsa` key keeps it `rsa`.
  */
-export class UpdatePromotionProviderDto extends Z.class(
-	{
+const updatePromotionProviderSchema = z
+	.object({
 		name: promotionDisplayNameSchema.optional(),
 		auth: promotionProviderAuthUpdateSchema.optional(),
-	},
-	{ strict: true },
-) {}
+	})
+	.strict()
+	.refine(({ name, auth }) => name !== undefined || auth !== undefined, {
+		message: 'At least one field is required',
+	})
+	.openapi({ minProperties: 1 });
+
+type UpdatePromotionProvider = z.infer<typeof updatePromotionProviderSchema>;
+
+export class UpdatePromotionProviderDto implements UpdatePromotionProvider {
+	name?: string;
+
+	auth?: PromotionProviderAuthUpdate;
+
+	static schema = updatePromotionProviderSchema;
+
+	constructor(data: UpdatePromotionProvider) {
+		Object.assign(this, updatePromotionProviderSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updatePromotionProviderSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updatePromotionProviderSchema.parse(data);
+	}
+}
 
 /** Leaves out `auth`, which is never returned. */
 export const promotionProviderPublicSchema = z.object({
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	type: promotionProviderTypeSchema,
 	authType: promotionProviderAuthTypeSchema,

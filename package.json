@@ -88,7 +88,7 @@
     "worker": "./packages/cli/bin/n8n worker",
     "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
     "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'",
-    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir . --ignore-workspace"
+    "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir \"$PWD/.github/scripts\" --ignore-workspace"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
