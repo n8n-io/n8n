@@ -29,6 +29,9 @@ describe('establishExecutionContext', () => {
 		// No executionId at establishment time; the real (unmocked) maybeBindExecutionId
 		// is then a no-op and never tries to decrypt these tests' fake credentials.
 		executionId: undefined,
+		// Unset, so establishExecutionContext reads it as absent rather than as a
+		// truthy auto-mocked property.
+		userId: undefined,
 	});
 	const mockMode: WorkflowExecuteMode = 'manual';
 
@@ -140,6 +143,98 @@ describe('establishExecutionContext', () => {
 
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 			expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
+		});
+	});
+
+	describe('startedByUserId', () => {
+		let mockExecutionContextService: ReturnType<typeof mock<ExecutionContextService>>;
+
+		beforeEach(() => {
+			mockExecutionContextService = mock<ExecutionContextService>();
+			mockExecutionContextService.maybeBindExecutionId.mockImplementation(
+				async (context) => context,
+			);
+			mockExecutionContextService.augmentExecutionContextWithHooks.mockImplementation(
+				async (_workflow, _startItem, context) => ({ context, triggerItems: null }),
+			);
+			mockExecutionContextService.readSealedSubject.mockResolvedValue(undefined);
+			Container.set(ExecutionContextService, mockExecutionContextService);
+		});
+
+		afterEach(() => {
+			Container.reset();
+		});
+
+		const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' });
+		const freshRunData = () =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [{ node: startNode, data: { main: [[{ json: {} }]] }, source: null }],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+		it('takes the user id from additionalData for user-initiated runs', async () => {
+			const runExecutionData = freshRunData();
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				{ ...mockAdditionalData, userId: 'editor-user' },
+				'manual',
+			);
+			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('editor-user');
+		});
+
+		it('falls back to the sealed subject of the runner identity', async () => {
+			mockExecutionContextService.readSealedSubject.mockResolvedValue('caller-user');
+			const runExecutionData = freshRunData();
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				{ ...mockAdditionalData, userId: undefined, encryptedRunnerIdentity: 'enc' },
+				'webhook',
+			);
+			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('caller-user');
+		});
+
+		it('leaves the field absent for triggers without a user', async () => {
+			const runExecutionData = freshRunData();
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'trigger',
+			);
+			expect(runExecutionData.executionData?.runtimeData).not.toHaveProperty('startedByUserId');
+		});
+
+		it('keeps the parent value on an inherited sub-workflow context', async () => {
+			mockExecutionContextService.augmentSubExecutionContext.mockImplementation(
+				async (_w, _s, context) => context,
+			);
+			const runExecutionData = freshRunData();
+			runExecutionData.parentExecution = {
+				executionId: 'parent-1',
+				workflowId: 'wf-parent',
+				executionContext: {
+					version: 1,
+					establishedAt: 1,
+					source: 'manual',
+					startedByUserId: 'parent-user',
+				},
+			};
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+			expect(runExecutionData.executionData?.runtimeData?.startedByUserId).toBe('parent-user');
 		});
 	});
 

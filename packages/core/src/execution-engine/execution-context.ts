@@ -140,6 +140,20 @@ export const establishExecutionContext = async (
 		source: mode,
 	};
 
+	// Who started the run. User-initiated modes carry the editor user on
+	// additionalData; n8n-user-auth triggers seal the caller into the runner
+	// identity. Only set the key when known: an inherited context below must
+	// not have its parent's value overridden by `undefined`.
+	let startedByUserId = additionalData?.userId;
+	if (!startedByUserId && additionalData?.encryptedRunnerIdentity) {
+		startedByUserId = await executionContextService.readSealedSubject(
+			additionalData.encryptedRunnerIdentity,
+		);
+	}
+	if (startedByUserId) {
+		executionData.runtimeData.startedByUserId = startedByUserId;
+	}
+
 	if (additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
 		if (executionData.runtimeData.credentials) {
