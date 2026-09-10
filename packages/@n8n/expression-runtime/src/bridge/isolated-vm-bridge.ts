@@ -1,6 +1,5 @@
 import type ivm from 'isolated-vm';
 import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
@@ -102,22 +101,7 @@ function serializeError(err: unknown): ErrorSentinel {
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
  */
-async function readRuntimeBundle(): Promise<string> {
-	if (_runtimeBundle !== null) return _runtimeBundle;
-	let dir = __dirname;
-	while (dir !== path.dirname(dir)) {
-		try {
-			_runtimeBundle = await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
-			return _runtimeBundle;
-		} catch {}
-		dir = path.dirname(dir);
-	}
-	throw new Error(
-		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
-	);
-}
-
-function readRuntimeBundleSync(): string {
+function readRuntimeBundle(): string {
 	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
@@ -223,7 +207,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			// Load runtime bundle (includes vendor libraries + proxy system)
-			const runtimeBundle = await readRuntimeBundle();
+			const runtimeBundle = readRuntimeBundle();
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
@@ -344,13 +328,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			if (this.config.compileCache) {
 				const script = this.isolate.compileScriptSync(
-					readRuntimeBundleSync(),
+					readRuntimeBundle(),
 					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
 				);
 				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
 				script.runSync(this.context);
 			} else {
-				this.context.evalSync(readRuntimeBundleSync());
+				this.context.evalSync(readRuntimeBundle());
 			}
 
 			// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.

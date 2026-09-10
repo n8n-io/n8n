@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
@@ -250,12 +250,12 @@ function serializeError(err: unknown): ErrorSentinel {
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
  */
-async function readRuntimeBundle(): Promise<string> {
+function readRuntimeBundle(): string {
 	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
 		try {
-			_runtimeBundle = await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+			_runtimeBundle = readFileSync(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
 			return _runtimeBundle;
 		} catch {}
 		dir = path.dirname(dir);
@@ -511,7 +511,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		const QuickJS = await getQuickJS();
 		_quickjsWasm = QuickJS;
 
-		this.setupContext(QuickJS, await readRuntimeBundle());
+		this.setupContext(QuickJS, readRuntimeBundle());
 	}
 
 	/**
