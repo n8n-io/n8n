@@ -212,6 +212,7 @@ describe('Execution Lifecycle Hooks', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		executionsConfig.preExecuteErrorCreatesExecution = false;
+		executionsConfig.subworkflowProgressEnabled = false;
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
@@ -2153,6 +2154,7 @@ describe('Execution Lifecycle Hooks', () => {
 			}
 
 			beforeEach(() => {
+				executionsConfig.subworkflowProgressEnabled = true;
 				push.send.mockReset();
 				activeExecutions.has.mockReset();
 				activeExecutions.getExecutionOrFail.mockReset();
@@ -2250,6 +2252,19 @@ describe('Execution Lifecycle Hooks', () => {
 					},
 					rootPushRef,
 				);
+			});
+
+			it('does not register push hooks when the env feature flag is off', async () => {
+				executionsConfig.subworkflowProgressEnabled = false;
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+				await hooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+				expect(push.send).not.toHaveBeenCalled();
 			});
 
 			it('does not register push hooks when parent node is omitted', async () => {

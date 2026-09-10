@@ -1071,7 +1071,7 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsStatistics(hooks);
 	hookFunctionsPreExecute(hooks);
 	hookFunctionsPostExecute(hooks);
-	if (parentExecution && parentNode) {
+	if (parentExecution && parentNode && Container.get(ExecutionsConfig).subworkflowProgressEnabled) {
 		hookFunctionsPushSubExecution(hooks, workflowData, parentExecution, parentNode);
 	}
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
