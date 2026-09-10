@@ -14,7 +14,7 @@ import {
 
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
 export const GROUPING_DECISION_MISSING_CODE = 'GROUPING_DECISION_MISSING';
-export const ALL_GROUPS_DROPPED_CODE = 'ALL_GROUPS_DROPPED';
+export const GROUP_DROPPED_OVER_CEILING_CODE = 'GROUP_DROPPED_OVER_CEILING';
 
 export type GroupingDecision = 'grouped' | 'not_warranted';
 
@@ -96,19 +96,26 @@ export function groupingDecisionBlocker(input: {
 	groupingDecision?: GroupingDecision;
 }): ValidationWarning | undefined {
 	const { summary, declaredGroupCount, droppedGroupWarnings, groupingDecision } = input;
-	if (!summary.overCeiling || summary.groupCount > 0) {
+
+	if (!summary.overCeiling) {
 		return;
 	}
 
-	if (declaredGroupCount > 0) {
+	// Over the ceiling and the save dropped a group: the agent must repair it, not ship past it.
+	if (droppedGroupWarnings.length > 0) {
 		const reasons = droppedGroupWarnings.map((warning) => warning.message).join(' ');
 		return {
-			code: ALL_GROUPS_DROPPED_CODE,
+			code: GROUP_DROPPED_OVER_CEILING_CODE,
 			severity: 'warning',
 			message:
-				`Every declared node group was removed, so the canvas would have ${summary.total} boxes and no group. ` +
+				`${droppedGroupWarnings.length} of ${declaredGroupCount} declared node group(s) were removed, ` +
+				`so the canvas would have ${summary.total} boxes. ` +
 				`${reasons} Fix the boundary each message names and build again; do not remove the groups.`,
 		};
+	}
+
+	if (summary.groupCount > 0) {
+		return;
 	}
 
 	if (groupingDecision === 'not_warranted') {

@@ -203,8 +203,31 @@ describe('groupingDecisionBlocker', () => {
 			groupingDecision: 'not_warranted',
 		});
 
-		expect(blocker?.code).toBe('ALL_GROUPS_DROPPED');
+		expect(blocker?.code).toBe('GROUP_DROPPED_OVER_CEILING');
 		expect(blocker?.severity).toBe('warning');
 		expect(blocker?.message).toContain('Node group "Body" was removed: reason.');
+	});
+
+	it('blocks when one declared group was dropped and another survived, while still over the ceiling', () => {
+		const summary = summarizeWorkflowTopLevelItems(
+			workflow(10, { nodeGroups: [{ id: 'g1', name: 'Kept', nodeIds: ['n0', 'n1'] }] }),
+		);
+
+		const blocker = groupingDecisionBlocker({
+			summary,
+			declaredGroupCount: 2,
+			droppedGroupWarnings: dropped,
+		});
+
+		expect(blocker?.code).toBe('GROUP_DROPPED_OVER_CEILING');
+		expect(blocker?.message).toContain('1 of 2 declared node group(s) were removed');
+	});
+
+	it('does not block a dropped group when the canvas is within the ceiling', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(6));
+
+		expect(
+			groupingDecisionBlocker({ summary, declaredGroupCount: 1, droppedGroupWarnings: dropped }),
+		).toBeUndefined();
 	});
 });

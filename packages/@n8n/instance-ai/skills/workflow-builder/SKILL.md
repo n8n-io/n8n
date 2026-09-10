@@ -995,10 +995,11 @@ Do not report a build as done until you have made the grouping decision describe
 [Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
 names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
 reject: fix what the warning reports and build again. A `GROUPING_DECISION_MISSING` error means
-the build was refused: fix the source, or pass the opt-out with a reason. An `ALL_GROUPS_DROPPED`
-error also refuses the build: fix the boundaries the dropped-group warnings name — the opt-out
-does not apply. If the top level is still above {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each
-remaining item and why it cannot join a group.
+the build was refused: fix the source, or pass the opt-out with a reason. A
+`GROUP_DROPPED_OVER_CEILING` error also refuses the build: a declared group was invalid and the
+canvas is still too wide. Fix the boundary the message names — the opt-out does not apply. If
+the top level is still above {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items with groups in place, name each remaining item and why
+it cannot join a group.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is

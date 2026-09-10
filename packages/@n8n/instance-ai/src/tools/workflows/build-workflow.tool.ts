@@ -79,6 +79,7 @@ import {
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import {
+	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
@@ -1227,17 +1228,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					}),
 					...(groupingReason ? { reason: groupingReason } : {}),
 				};
+
 				// The check applies to canvases this run is responsible for: a new
 				// workflow, a rebuild of one it created, or an edit that pushed a small
 				// workflow over the ceiling. A small edit to a wide user workflow only warns.
 				const snapshotWasUnderCeiling =
 					savedWorkflowSnapshot !== undefined &&
 					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
-				const isOwnCanvas =
+
+				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes,
+				// so the agent must fix it; false when the user's workflow already exceeded it, so we only warn.
+				const agentExceededCeiling =
 					!targetWorkflowId ||
 					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
 					snapshotWasUnderCeiling;
-				const blocker = isOwnCanvas
+
+				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
+				const blocker = agentExceededCeiling
 					? groupingDecisionBlocker({
 							summary: topLevel,
 							declaredGroupCount: groupCountBeforeDrop,
@@ -1247,19 +1254,26 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					: undefined;
 
 				if (blocker) {
+					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
+
+					const reason = groupWasDropped
+						? 'workflow_group_dropped_over_ceiling'
+						: 'workflow_grouping_decision_missing';
+
+					const guidance =
+						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+						(groupWasDropped
+							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
+							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
+
 					return await handleValidationFailure({
 						context,
 						blocking: [blocker],
 						informational,
-						reason:
-							blocker.code === 'ALL_GROUPS_DROPPED'
-								? 'workflow_groups_all_dropped'
-								: 'workflow_grouping_decision_missing',
-						guidance:
-							'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
-							"If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.",
+						reason,
+						guidance,
 						summary:
-							'Workflow build stopped: the canvas is over the top-level ceiling with no node group.',
+							'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
 						binding,
 						sourceHash,
 						targetWorkflowId,

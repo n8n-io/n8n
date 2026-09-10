@@ -685,10 +685,46 @@ describe('createBuildWorkflowTool', () => {
 			});
 
 			expect(result.success).toBe(false);
-			expect(result.errors?.join('\n')).toContain('[ALL_GROUPS_DROPPED]');
+			expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
 			expect(result.errors?.join('\n')).toContain('Stage');
-			expect(result.remediation?.reason).toBe('workflow_groups_all_dropped');
+			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
 			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'grouped' });
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('refuses when one declared group was dropped and the canvas is still over the ceiling', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			const wide = wideWorkflow([
+				{ id: 'g1', name: 'Kept', nodeIds: ['node-0', 'node-1'] },
+				{ id: 'g2', name: 'Broken', nodeIds: ['missing-a', 'missing-b'] },
+			]);
+			// 10 nodes: 2 in the kept group + 8 loose = 9 boxes, still over the ceiling.
+			wide.nodes.push(
+				...[8, 9].map((i) => ({
+					id: `node-${i}`,
+					name: `Step ${i}`,
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				})),
+			);
+			compileTo(wide);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
+			expect(result.errors?.join('\n')).toContain('Broken');
+			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
+			expect(result.grouping).toMatchObject({
+				topLevelItemCount: 9,
+				groupCount: 1,
+				droppedGroupCount: 1,
+				decision: 'grouped',
+			});
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 		});
 
