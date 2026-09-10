@@ -94,7 +94,7 @@ export class WorkflowLoopStorage {
 		update: (record: WorkflowLoopWorkItemRecord) => WorkflowLoopWorkItemRecord | null,
 	): Promise<boolean> {
 		let updated = false;
-		await patchThread(this.memory, {
+		const thread = await patchThread(this.memory, {
 			threadId,
 			update: ({ metadata = {} }) => {
 				const all = this.parse(metadata[METADATA_KEY]);
@@ -109,7 +109,7 @@ export class WorkflowLoopStorage {
 				return { metadata: { ...metadata, [METADATA_KEY]: all } };
 			},
 		});
-		return updated;
+		return updated && thread !== null;
 	}
 
 	async getActiveWorkItem(threadId: string): Promise<WorkflowLoopWorkItemRecord | null> {
@@ -127,20 +127,14 @@ export class WorkflowLoopStorage {
 		workItemId: string,
 		update: (outcome: WorkflowBuildOutcome) => WorkflowBuildOutcome,
 	): Promise<void> {
-		const thread = await patchThread(this.memory, {
-			threadId,
-			update: ({ metadata = {} }) => {
-				const all = this.parse(metadata[METADATA_KEY]);
-				const record = all[workItemId];
-				if (!record?.lastBuildOutcome) {
-					throw new OperationalError('Verification state is unavailable. Rebuild the workflow.');
-				}
-				all[workItemId] = { ...record, lastBuildOutcome: update(record.lastBuildOutcome) };
-				return { metadata: { ...metadata, [METADATA_KEY]: all } };
-			},
+		const updated = await this.updateWorkItem(threadId, workItemId, (record) => {
+			if (!record.lastBuildOutcome) return null;
+			return { ...record, lastBuildOutcome: update(record.lastBuildOutcome) };
 		});
-		if (!thread) {
-			throw new OperationalError('Verification state could not be saved. Reopen the conversation.');
+		if (!updated) {
+			throw new OperationalError(
+				'Verification state is unavailable or could not be saved. Rebuild the workflow.',
+			);
 		}
 	}
 

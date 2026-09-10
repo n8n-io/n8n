@@ -203,8 +203,8 @@ old pass before execution. A successful result restores the combined coverage.
 If either write fails, the tool reports an error. The attempt limit still applies.
 
 The returned and saved `claim` use the same cumulative evidence. Pending triggers
-and nodes without real coverage prevent a `verified` claim. A running retry
-blocks publishing until verification completes.
+and nodes without real coverage prevent a `verified` claim. Publishing during a
+retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
 
 **Writes on success/failure**: the tool persists a structured `verification`
 record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
