@@ -73,6 +73,12 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import {
+	createGetInstanceContextTool,
+	INSTANCE_CONTEXT_RESOURCE_DESCRIPTION,
+	INSTANCE_CONTEXT_RESOURCE_URI,
+	readInstanceContext,
+} from './tools/get-instance-context.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
@@ -432,6 +438,8 @@ export class McpService {
 			},
 			{
 				instructions: getMcpInstructions({
+					isInstanceContextEnabled:
+						featureFlags.instanceContextEnabled && this.moduleRegistry.isActive('instance-ai'),
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
@@ -608,6 +616,28 @@ export class McpService {
 						credentialGranted,
 					}),
 				);
+
+				// The opening context, offered three ways because an MCP client has no turn to have
+				// it injected into. Same shape as the SDK reference below: a resource for clients
+				// that read resources, a tool for the rest, and a line in the server instructions
+				// naming both — which is what makes either get called.
+				registerResource({
+					name: 'instance-context',
+					uri: INSTANCE_CONTEXT_RESOURCE_URI,
+					config: { description: INSTANCE_CONTEXT_RESOURCE_DESCRIPTION },
+					read: async () => ({
+						contents: [
+							{
+								uri: INSTANCE_CONTEXT_RESOURCE_URI,
+								mimeType: 'text/plain',
+								text:
+									(await readInstanceContext(user, instanceContext)) ??
+									'Nothing has been built on this instance yet.',
+							},
+						],
+					}),
+				});
+				registerIfAllowed(createGetInstanceContextTool(user, instanceContext, this.telemetry));
 			}
 
 			// Node usage reads the dependency index, which is not part of any module and is always

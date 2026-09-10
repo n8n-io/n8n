@@ -230,7 +230,11 @@ export class InstanceContextService {
 	 */
 	async buildBlock(input: {
 		user: User;
-		projectId?: string;
+		/**
+		 * Instance AI passes its thread's own project; an MCP client passes the MCP scope, which
+		 * resolves the caller's own access instead. Both legs below are filtered accordingly.
+		 */
+		scope: InstanceContextScope;
 		cursor: InstanceContextCursor | null;
 		/**
 		 * The agent continuing its own task — a checkpoint or a planned build — rather than a
@@ -240,31 +244,36 @@ export class InstanceContextService {
 		isMachineFollowUp?: boolean;
 		now?: Date;
 	}): Promise<InstanceContextBlock | null> {
-		if (!this.enabled || input.isMachineFollowUp) return null;
+		// The flag gates Instance AI's own block. The MCP surface has its own flag, checked where
+		// its tools are registered, so it does not answer to this one.
+		if (input.scope.surface === 'conversation' && !this.enabled) return null;
+		if (input.isMachineFollowUp) return null;
 
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			// Conversation-bound: the per-turn block is Instance AI's, and its run and inventory legs
-			// have no MCP-visibility filter yet. The MCP surface reads through `list` and `expand`.
-			const resolved = await this.resolveScope(input.user, {
-				surface: 'conversation',
-				...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
-			});
+
+			const resolved = await this.resolveScope(input.user, input.scope);
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			// A conversation always resolves to a list, never the whole instance.
-			if (resolved?.surface !== 'conversation' || resolved.projectIds.length === 0) return null;
+			if (resolved === null) return null;
+
 			const projectIds = resolved.projectIds;
+			// Withheld and archived workflows are excluded inside each query, not after it. The
+			// inventory and run legs are aggregates, so filtering their rows afterwards would leave
+			// a total counting workflows the caller cannot see.
+			const mcpVisibleOnly = resolved.surface === 'mcp';
 
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now }),
-				this.readRuns({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ projectIds, cursor: input.cursor, now, scope: resolved }),
+				this.readRuns({ projectIds, cursor: input.cursor, now, mcpVisibleOnly }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
 				isUpdate
 					? Promise.resolve(undefined)
-					: this.workflowRepository.findRecentForProjects(projectIds, inventorySize),
+					: this.workflowRepository.findRecentForProjects(projectIds, inventorySize, {
+							mcpVisibleOnly,
+						}),
 			]);
 
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
@@ -274,6 +283,7 @@ export class InstanceContextService {
 
 			return {
 				block: renderBlock({
+					surface: resolved.surface,
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
 					entriesTruncated: entries.truncated,
 					runs,
@@ -431,9 +441,10 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
+		scope: ResolvedScope;
 	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
 		const cursor = input.cursor;
 
@@ -458,7 +469,13 @@ export class InstanceContextService {
 			: [];
 
 		// Both are newest-first and every arrival outranks every band row, so this stays ordered.
-		const rows = [...arrivals, ...band];
+		const read = [...arrivals, ...band];
+
+		// Entries are individual rows rather than an aggregate, so the same post-read filter the
+		// `list` tool uses applies here. The mark below still advances past what was filtered:
+		// those rows have been accounted for and will not become visible on a later turn.
+		const rows =
+			input.scope.surface === 'mcp' ? await this.withoutWithheldWorkflows(read, input.scope) : read;
 
 		const alreadyShown = new Set(cursor?.activitySeen ?? []);
 		const fresh = rows.filter(
@@ -467,7 +484,9 @@ export class InstanceContextService {
 		);
 
 		const shown = fresh.slice(0, windowSize);
-		const mark = rows.reduce(
+		// Over everything read, including rows the visibility filter dropped. They will not become
+		// visible later, so leaving the mark behind them would re-read them every turn.
+		const mark = read.reduce(
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
@@ -490,9 +509,10 @@ export class InstanceContextService {
 	}
 
 	private async readRuns(input: {
-		projectIds: string[];
+		projectIds: ActivityProjectScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
+		mcpVisibleOnly: boolean;
 	}): Promise<RunSummary[]> {
 		// Consecutive windows tile the timeline: half-open `[after, before)`, so a delta starts
 		// exactly where the last one ended and a run is summarised once. Re-reading a lag window
@@ -514,6 +534,7 @@ export class InstanceContextService {
 			stoppedAfter,
 			stoppedBefore: input.now,
 			workflowLimit: runWorkflowCap,
+			...(input.mcpVisibleOnly ? { mcpVisibleOnly: true } : {}),
 		});
 	}
 
@@ -680,15 +701,32 @@ function isCredentialVisible(row: ActivityEvent, scope: ResolvedScope): boolean 
 	return row.projectId !== null && scope.credentialProjectIds.includes(row.projectId);
 }
 
-const initialPreamble = [
+/**
+ * How to reach the tools named in the block. The two surfaces do not share tool names, so a reader
+ * told to call `activity(action="list")` over MCP is told to call something that is not there.
+ */
+const toolNames = {
+	conversation: {
+		expand: '`activity(action="expand", id=N)`',
+		list: '`activity(action="list")`',
+		workflows: '`workflows(action="list")`',
+	},
+	mcp: {
+		expand: '`expand_instance_activity(id=N)`',
+		list: '`get_instance_activity`',
+		workflows: '`search_workflows`',
+	},
+} as const;
+
+const initialPreamble = (tools: SurfaceToolNames) => [
 	'What is going on in this instance. This is work that already exists and that you can pick up:',
 	'when the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually',
 	'the most recent thing here, and often the most recent failure. Name what you think they mean',
 	'and act on it rather than asking them to choose from a list they can already see.',
 	'Do not narrate this back to them — unless they asked what has been happening, let it change',
 	'what you do rather than what you say.',
-	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
-	'everything else that happened to the same resource, or `activity(action="list")` to look',
+	`Call ${tools.expand} on a bracketed id to see that entry in full along with`,
+	`everything else that happened to the same resource, or ${tools.list} to look`,
 	'further back than this window. An entry may name a resource that no longer exists.',
 ];
 
@@ -696,15 +734,15 @@ const initialPreamble = [
  * An update says so explicitly. Without that, a two-entry delta reads as though nothing else ever
  * happened, and the agent would draw conclusions from a list it was never given in full.
  */
-const updatePreamble = [
+const updatePreamble = (tools: SurfaceToolNames) => [
 	'What has happened since the list earlier in this conversation. Those earlier entries still',
 	'stand — these are additions, not a replacement. Read them the same way: context on what the',
 	'user has been doing, not a task list or something to comment on unprompted.',
-	'`activity(action="expand", id=N)` and `activity(action="list")` work on these ids too.',
+	`${tools.expand} and ${tools.list} work on these ids too.`,
 ];
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
-function renderInventory(inventory: Inventory): string[] {
+function renderInventory(inventory: Inventory, tools: SurfaceToolNames): string[] {
 	if (inventory.total === 0) return ['Nothing has been built here yet.', ''];
 
 	const named = inventory.workflows.map(
@@ -718,7 +756,7 @@ function renderInventory(inventory: Inventory): string[] {
 	return [
 		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
 		...named,
-		...(more > 0 ? [`  ... and ${more} more — \`workflows(action="list")\` for the rest.`] : []),
+		...(more > 0 ? [`  ... and ${more} more — ${tools.workflows} for the rest.`] : []),
 		'',
 	];
 }
@@ -761,25 +799,35 @@ function renderBlock(input: {
 	isUpdate: boolean;
 	inventory?: Inventory;
 	now: Date;
+	surface: ResolvedScope['surface'];
 }): string {
+	const tools = toolNames[input.surface];
+
 	const prose = [
-		...(input.isUpdate ? updatePreamble : initialPreamble),
+		...(input.isUpdate ? updatePreamble(tools) : initialPreamble(tools)),
 		'',
-		...(input.inventory ? renderInventory(input.inventory) : []),
+		...(input.inventory ? renderInventory(input.inventory, tools) : []),
 		...renderRuns(input.runs, input.isUpdate, input.now),
 		...(input.entries.length > 0
 			? [
 					input.isUpdate ? 'Changes since then:' : 'What changed recently:',
 					...input.entries,
 					...(input.entriesTruncated
-						? ['  ... and more than these — `activity(action="list")` for the rest.']
+						? [`  ... and more than these — ${tools.list} for the rest.`]
 						: []),
 				]
 			: []),
 	].join('\n');
 
-	return `${INSTANCE_CONTEXT_OPEN_TAG}\n${prose}\n${INSTANCE_CONTEXT_CLOSE_TAG}`;
+	// The tags are Instance AI's transport: `cleanStoredUserMessage` strips them back out of the
+	// stored message. An MCP client is handed the text directly and has nothing to strip, so it
+	// would only be reading a stray tag.
+	return input.surface === 'mcp'
+		? prose
+		: `${INSTANCE_CONTEXT_OPEN_TAG}\n${prose}\n${INSTANCE_CONTEXT_CLOSE_TAG}`;
 }
+
+type SurfaceToolNames = (typeof toolNames)[keyof typeof toolNames];
 
 const knownCategories = new Set<string>(activityEventCategories);
 

@@ -248,6 +248,35 @@ describe('McpService scope enforcement', () => {
 		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
 	});
 
+	/** The resource is how a client that reads resources gets the opening context without asking. */
+	it('registers the instance-context resource alongside the tool', async () => {
+		mockInstance(InstanceContextService);
+		mockInstance(WorkflowDependencyQueryService);
+
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: true }),
+		);
+
+		const resources = Object.keys(
+			(server as unknown as { _registeredResources: Record<string, unknown> })._registeredResources,
+		);
+		expect(resources).toContain('n8n://instance/context');
+		expect(getRegisteredToolNames(server)).toContain('get_instance_context');
+	});
+
+	it('registers no instance-context resource with the flag off', async () => {
+		const server = await buildService({ instanceAiActive: true }).getServer(
+			user,
+			mcpFeatureFlags({ instanceContextEnabled: false }),
+		);
+
+		const resources = Object.keys(
+			(server as unknown as { _registeredResources: Record<string, unknown> })._registeredResources,
+		);
+		expect(resources).not.toContain('n8n://instance/context');
+	});
+
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
 		const withBuilder = getRegisteredToolNames(
 			await buildService().getServer(user, mcpFeatureFlags()),

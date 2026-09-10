@@ -61,7 +61,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: project.id,
+			scope: bound(project.id),
 			cursor: null,
 		});
 
@@ -77,7 +77,7 @@ describe('InstanceContextService', () => {
 		config.instanceAi.instanceContextEnabled = false;
 
 		try {
-			expect(await service.buildBlock({ user, projectId: project.id, cursor: null })).toBeNull();
+			expect(await service.buildBlock({ user, scope: bound(project.id), cursor: null })).toBeNull();
 		} finally {
 			config.instanceAi.instanceContextEnabled = true;
 		}
@@ -101,7 +101,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 
@@ -156,7 +156,7 @@ describe('InstanceContextService', () => {
 
 			const delta = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: {
 					activityMark: newest.id,
 					activitySeen: [newest.id],
@@ -183,7 +183,7 @@ describe('InstanceContextService', () => {
 
 			const first = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 			await record({
@@ -198,7 +198,7 @@ describe('InstanceContextService', () => {
 
 			const delta = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: first!.cursor,
 			});
 
@@ -212,14 +212,14 @@ describe('InstanceContextService', () => {
 
 			const first = await service.buildBlock({
 				user,
-				projectId: project.id,
+				scope: bound(project.id),
 				cursor: null,
 			});
 
 			expect(
 				await service.buildBlock({
 					user,
-					projectId: project.id,
+					scope: bound(project.id),
 					cursor: first!.cursor,
 				}),
 			).toBeNull();
@@ -236,7 +236,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: otherProject.id,
+			scope: bound(otherProject.id),
 			cursor: null,
 		});
 
@@ -249,7 +249,7 @@ describe('InstanceContextService', () => {
 
 		const built = await service.buildBlock({
 			user,
-			projectId: project.id,
+			scope: bound(project.id),
 			cursor: null,
 		});
 
@@ -286,7 +286,9 @@ describe('InstanceContextService', () => {
 			resourceId: 'wf-1',
 		});
 
-		expect(await service.buildBlock({ user, cursor: null })).toBeNull();
+		expect(
+			await service.buildBlock({ user, scope: { surface: 'conversation' }, cursor: null }),
+		).toBeNull();
 	});
 
 	/**
@@ -354,6 +356,36 @@ describe('InstanceContextService', () => {
 			const entries = await service.list({ user, scope: mcp(), limit: 20 });
 
 			expect(entries.map((entry) => entry.resourceId)).toEqual([visible.id]);
+		});
+
+		/**
+		 * The inventory and run legs are aggregates. Filtering their rows after the query would
+		 * leave a total that still counts what the caller cannot see, so the filter has to be in
+		 * the SQL — which only a real database can prove.
+		 */
+		it('counts only visible workflows in the opening block, not just lists them', async () => {
+			const visible = await createWorkflow(
+				{ name: 'Visible', settings: { availableInMCP: true } },
+				project,
+			);
+			await createWorkflow({ name: 'Withheld one' }, project);
+			await createWorkflow({ name: 'Withheld two' }, project);
+			await createExecution({ status: 'error', stoppedAt: recently() }, visible);
+
+			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+
+			expect(built?.block).toContain('Workflows that already exist here: 1');
+			expect(built?.block).toContain('Visible');
+			expect(built?.block).not.toContain('Withheld');
+		});
+
+		it('leaves a withheld workflow out of the run counts', async () => {
+			const withheld = await createWorkflow({ name: 'Nightly sync' }, project);
+			await createExecution({ status: 'error', stoppedAt: recently() }, withheld);
+
+			const built = await service.buildBlock({ user, scope: mcp(), cursor: null });
+
+			expect(built?.block ?? '').not.toContain('Nightly sync');
 		});
 
 		/**

@@ -3946,7 +3946,10 @@ export class InstanceAiService {
 			// block would be paid for unread.
 			const instanceContext = await this.instanceContext.buildBlock({
 				user,
-				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				scope: {
+					surface: 'conversation',
+					...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				},
 				cursor: readInstanceContextCursor(thread?.metadata),
 				isMachineFollowUp:
 					checkpoint?.isCheckpointFollowUp === true ||
