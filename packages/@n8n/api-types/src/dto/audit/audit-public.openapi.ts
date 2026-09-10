@@ -86,8 +86,10 @@ export const auditReportExamples: Record<
 			},
 		],
 	},
+	// The `risk` and `location` of the carried-over example named a category and a location kind
+	// that `InstanceRiskReporter` never emits; both now match what it flags.
 	instance: {
-		risk: 'execution',
+		risk: 'instance',
 		sections: [
 			{
 				title: 'Unprotected webhooks in instance',
@@ -97,9 +99,12 @@ export const auditReportExamples: Record<
 					'Consider setting the "Authentication" field to an option other than "None", or validating the payload with one of the following nodes.',
 				location: [
 					{
-						kind: 'community',
-						nodeType: 'n8n-nodes-test.test',
-						packageUrl: 'https://www.npmjs.com/package/n8n-nodes-test',
+						kind: 'node',
+						workflowId: '1',
+						workflowName: 'My Workflow',
+						nodeId: '51eb5852-ce0b-4806-b4ff-e41322a4041a',
+						nodeName: 'Webhook',
+						nodeType: 'n8n-nodes-base.webhook',
 					},
 				],
 			},
