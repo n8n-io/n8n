@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { N8nBadge } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
+
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
-import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import type { Version, VersionNode } from '@n8n/rest-api-client/api/versions';
-import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	version: Version;
@@ -33,16 +34,12 @@ const nodeName = (node: VersionNode): string => {
 				<WarningTooltip v-if="version.hasSecurityIssue">
 					<span v-n8n-html="i18n.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
-				<Badge
-					v-if="version.hasSecurityFix"
-					:text="i18n.baseText('versionCard.securityUpdate')"
-					type="danger"
-				/>
-				<Badge
-					v-if="version.hasBreakingChange"
-					:text="i18n.baseText('versionCard.breakingChanges')"
-					type="warning"
-				/>
+				<N8nBadge v-if="version.hasSecurityFix" variant="danger" size="xxsmall">
+					{{ i18n.baseText('versionCard.securityUpdate') }}
+				</N8nBadge>
+				<N8nBadge v-if="version.hasBreakingChange" variant="warning" size="xxsmall">
+					{{ i18n.baseText('versionCard.breakingChanges') }}
+				</N8nBadge>
 			</div>
 			<div :class="$style['release-date']">
 				{{ i18n.baseText('versionCard.released') }}&nbsp;<TimeAgo :date="version.createdAt" />
