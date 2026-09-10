@@ -37,7 +37,7 @@ export async function setupEmbeddingsProxy(proxy: ProxyServer): Promise<void> {
 	}
 }
 
-/** Response headers worth replaying; everything else (project id, CDN cookies, request ids) is dropped. */
+/** Response headers worth replaying; everything else (project id, request ids) is dropped. */
 const KEPT_RESPONSE_HEADERS = /^(content-type|x-ratelimit-)/i;
 
 /** Persists the embeddings responses captured during a recording run. */
@@ -48,12 +48,16 @@ export async function recordEmbeddingsExpectations(proxy: ProxyServer): Promise<
 		dedupe: true,
 		pathOrRequestDefinition: { method: 'POST', path: EMBEDDINGS_PATH },
 		transform: (expectation) => {
-			const response = expectation.httpResponse as { headers?: Record<string, string[]> };
+			const response = expectation.httpResponse as {
+				headers?: Record<string, string[]>;
+				cookies?: Record<string, string>;
+			};
 			if (response?.headers) {
 				response.headers = Object.fromEntries(
 					Object.entries(response.headers).filter(([name]) => KEPT_RESPONSE_HEADERS.test(name)),
 				);
 			}
+			delete response?.cookies;
 			return expectation;
 		},
 	});
