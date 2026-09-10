@@ -12,6 +12,7 @@ import type * as StructuredFileParserMod from './parsers/structured-file-parser'
 import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
 import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
 import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
+import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
 import type * as LivenessPolicyMod from './runtime/liveness-policy';
 import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-executor';
@@ -122,6 +123,9 @@ const loadUsageAccumulator = lazyModule(
 );
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
+);
+const loadPromptProfiles = lazyModule(
+	() => require('./prompts/prompt-profiles') as typeof PromptProfilesMod,
 );
 const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
@@ -291,6 +295,16 @@ export const loadInstanceAiRuntimeSkillSource: typeof RuntimeSkillsMod.loadInsta
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSource);
 export const loadInstanceAiRuntimeSkillSourceForBuildMode: typeof RuntimeSkillsMod.loadInstanceAiRuntimeSkillSourceForBuildMode =
 	lazyFunction(() => loadRuntimeSkills().loadInstanceAiRuntimeSkillSourceForBuildMode);
+export const loadInstanceAiPromptSkills: typeof RuntimeSkillsMod.loadInstanceAiPromptSkills =
+	lazyFunction(() => loadRuntimeSkills().loadInstanceAiPromptSkills);
+export const resolvePromptProfile: typeof PromptProfilesMod.resolvePromptProfile = lazyFunction(
+	() => loadPromptProfiles().resolvePromptProfile,
+);
+export const assertInstanceAiPromptVersion: typeof PromptProfilesMod.assertInstanceAiPromptVersion =
+	lazyFunction(() => loadPromptProfiles().assertInstanceAiPromptVersion);
+export const describePromptProfile: typeof PromptProfilesMod.describePromptProfile = lazyFunction(
+	() => loadPromptProfiles().describePromptProfile,
+);
 export const createLazyWorkspaceRuntimeSkillSource: typeof MaterializeRuntimeSkillsMod.createLazyWorkspaceRuntimeSkillSource =
 	lazyFunction(() => loadMaterializeRuntimeSkills().createLazyWorkspaceRuntimeSkillSource);
 export {

@@ -73,6 +73,7 @@ describe('InstanceAiService build mode recovery', () => {
 		async (mode) => {
 			const original = createService();
 			original.runState.setBuildMode(orphan.threadId, mode);
+			original.runState.setPromptVersion(orphan.threadId, `${mode}@1`);
 			const signal = new AbortController().signal;
 			const { persistence } = original.buildOrchestratorAgentStreamOptions(
 				user,
@@ -80,7 +81,7 @@ describe('InstanceAiService build mode recovery', () => {
 				orphan.runId,
 				signal,
 			);
-			expect(persistence.hostMetadata).toEqual({ buildMode: mode });
+			expect(persistence.hostMetadata).toEqual({ buildMode: mode, promptVersion: `${mode}@1` });
 
 			const checkpoint = mock<SerializableAgentState>({
 				persistence: structuredClone(persistence),
@@ -91,6 +92,7 @@ describe('InstanceAiService build mode recovery', () => {
 			if (result.kind !== 'ready') throw new Error('Expected a restored run');
 			expect(restored.runState.getBuildMode(orphan.threadId)).toBe(mode);
 			expect(restored.modeWhenEnvironmentBuilt).toBe(mode);
+			expect(restored.runState.getPromptVersion(orphan.threadId)).toBe(`${mode}@1`);
 
 			const resumed = restored.buildOrchestratorResumeAgentOptions(
 				user,
@@ -100,7 +102,10 @@ describe('InstanceAiService build mode recovery', () => {
 				orphan.toolCallId,
 				signal,
 			);
-			expect(resumed.persistence.hostMetadata).toEqual({ buildMode: mode });
+			expect(resumed.persistence.hostMetadata).toEqual({
+				buildMode: mode,
+				promptVersion: `${mode}@1`,
+			});
 		},
 	);
 

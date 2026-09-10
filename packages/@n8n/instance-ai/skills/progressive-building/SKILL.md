@@ -1,5 +1,11 @@
 ---
 name: progressive-building
+dependencies:
+  tools:
+    - build-workflow
+    - verify-built-workflow
+    - workflows
+    - executions
 description: >-
   Load before build-workflow and before scoping or planning new workflows and
   feature additions, including requests spanning multiple workflows. Implement

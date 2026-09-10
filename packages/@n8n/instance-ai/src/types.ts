@@ -18,7 +18,7 @@ import type {
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
-	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -1915,8 +1915,9 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
-	/** Progressive builds do not expose task planning. */
-	buildMode?: InstanceAiBuildMode;
+	/** The selected prompt profile owns its skill and tool exclusions. */
+	promptConfiguration?: InstanceAiPromptConfiguration;
+	disabledToolNames?: ReadonlySet<string>;
 	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;

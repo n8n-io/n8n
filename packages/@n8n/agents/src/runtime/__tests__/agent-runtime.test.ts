@@ -8,6 +8,9 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { createRuntimeSkillSource } from '../../skills/registry';
+import { createRuntimeSkillTools } from '../../skills/tools';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
@@ -6600,6 +6603,7 @@ describe('AgentRuntime — mid-run observation', () => {
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
 		extra?: {
+			skillSource?: RuntimeSkillSource;
 			tools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
@@ -6611,6 +6615,7 @@ describe('AgentRuntime — mid-run observation', () => {
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
+			...(extra?.skillSource ? { skillSource: extra.skillSource } : {}),
 			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
 			observationalMemory: {
 				observerThresholdTokens: 1,
@@ -6650,6 +6655,94 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('retains loaded skills through compaction and a new user turn', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const memory = new InMemoryMemory();
+		const options = { skillSource: source, tools: createRuntimeSkillTools(source) };
+		const runtime = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		expect(capturedCall(1).messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
+			'Wait for a real execution',
+		);
+		const next = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('The live test is still needed.'));
+		await next.generate('Continue', { persistence: PERSISTENCE });
+		await next.dispose();
+		expect(flattenInstructions(capturedCall(2).instructions)).toContain(
+			'Wait for a real execution',
+		);
+		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
+	});
+
+	it('restores active skills from a checkpoint with the newly selected content', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Old workflow policy.',
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const first = buildMidRunRuntime(memory, {
+			skillSource: source,
+			tools: [...createRuntimeSkillTools(source), makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Set up?' }),
+			);
+		const result = await first.generate('Build it', { persistence: PERSISTENCE });
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a setup confirmation');
+
+		const current = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Current workflow policy.',
+			},
+		]);
+		const resumed = buildMidRunRuntime(memory, {
+			skillSource: current,
+			tools: [...createRuntimeSkillTools(current), makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Ready.'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await first.dispose();
+		await resumed.dispose();
+		expect(flattenInstructions(capturedCall(2).instructions)).toContain('Current workflow policy.');
+		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {

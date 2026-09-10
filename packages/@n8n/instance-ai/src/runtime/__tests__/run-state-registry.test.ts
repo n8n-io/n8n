@@ -86,6 +86,24 @@ describe('RunStateRegistry', () => {
 		expect(registry.getBuildMode('thread-1')).toBeUndefined();
 	});
 
+	it('retains the selected prompt version and metadata until the next explicit selection', () => {
+		const metadata = {
+			version: 'progressive@1',
+			systemPromptVersion: 'instance-agent@1',
+			skillVariants: ['progressive-building@1'],
+			skillsHash: 'selected-skills',
+		};
+		registry.setPromptConfiguration('thread-1', metadata);
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getPromptVersion('thread-1')).toBe('progressive@1');
+		expect(registry.getPromptConfiguration('thread-1')).toEqual(metadata);
+		registry.setPromptVersion('thread-1', 'default@1');
+		expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+		expect(registry.getPromptVersion('thread-1')).toBe('default@1');
+		registry.clearThread('thread-1');
+		expect(registry.getPromptVersion('thread-1')).toBeUndefined();
+	});
+
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {

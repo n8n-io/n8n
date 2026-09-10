@@ -1,18 +1,16 @@
 import {
 	CONFIG_EVALS_SKILL_ID,
 	INSTANCE_AWARENESS_SKILL_ID,
-	PROGRESSIVE_BUILDING_SKILL_ID,
 	disabledInstanceAiSkillIds,
 } from '../skill-gates';
 
 describe('disabledInstanceAiSkillIds', () => {
-	it('keeps the policy fragment out of the catalog and retains planning', () => {
+	it('does not change prompt-profile capabilities', () => {
 		const disabled = disabledInstanceAiSkillIds({
 			configEvalsEnabled: true,
 			instanceContextEnabled: true,
 		});
-		expect(disabled).toContain(PROGRESSIVE_BUILDING_SKILL_ID);
-		expect(disabled).not.toContain('planning');
+		expect(disabled).toEqual([]);
 	});
 
 	it.each([true, false])('preserves the evaluation skill gate (enabled=%s)', (enabled) => {
@@ -29,15 +27,15 @@ describe('disabledInstanceAiSkillIds', () => {
 				configEvalsEnabled: true,
 				instanceContextEnabled: false,
 			}),
-		).toEqual([PROGRESSIVE_BUILDING_SKILL_ID, INSTANCE_AWARENESS_SKILL_ID]);
+		).toEqual([INSTANCE_AWARENESS_SKILL_ID]);
 	});
 
-	it('keeps only the policy fragment hidden when all flags are on', () => {
+	it('keeps all feature-gated skills when all flags are on', () => {
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
 			}),
-		).toEqual([PROGRESSIVE_BUILDING_SKILL_ID]);
+		).toEqual([]);
 	});
 });

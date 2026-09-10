@@ -24,7 +24,7 @@ describe('progressive workflow skill variants', () => {
 			const original = await source.loadSkill(entry.id);
 			const selected = await progressive.loadSkill(entry.id);
 			const selectedEntry = progressive.registry.skills.find(({ id }) => id === entry.id);
-			if (entry.id === 'planning') {
+			if (entry.id === 'planning' || entry.id === 'progressive-building') {
 				expect(original).not.toBeNull();
 				expect(selected).toBeNull();
 				expect(selectedEntry).toBeUndefined();
@@ -32,6 +32,9 @@ describe('progressive workflow skill variants', () => {
 				expect(selected?.instructions).toContain(original?.instructions);
 				expect(selected?.instructions).toContain(policy.instructions);
 				expect(selectedEntry?.hash).not.toBe(entry.hash);
+			} else if (entry.id === 'planned-task-runtime') {
+				expect(selected?.instructions).toBe(original?.instructions);
+				expect(selected?.recommendedTools).not.toContain('create-tasks');
 			} else {
 				expect(selected).toEqual(original);
 				expect(selectedEntry).toEqual(entry);
@@ -40,8 +43,11 @@ describe('progressive workflow skill variants', () => {
 
 		expect(progressive.registry.skillsHash).not.toBe(source.registry.skillsHash);
 		expect(source.registry).toEqual(originalRegistry);
-		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode('default')).resolves.toBe(source);
-		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(source);
+		const control = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
+		expect(control.registry).toEqual(
+			filterRuntimeSkillSource(source, ['progressive-building']).registry,
+		);
+		await expect(loadInstanceAiRuntimeSkillSourceForBuildMode(undefined)).resolves.toBe(control);
 	});
 
 	it('serves the selected skills through both workspace files and load_skill', async () => {
@@ -51,7 +57,10 @@ describe('progressive workflow skill variants', () => {
 			configEvalsEnabled: true,
 			instanceContextEnabled: true,
 		});
-		const control = filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), excluded);
+		const control = filterRuntimeSkillSource(
+			await loadInstanceAiRuntimeSkillSourceForBuildMode('default'),
+			excluded,
+		);
 		const progressive = filterRuntimeSkillSource(
 			await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive'),
 			excluded,

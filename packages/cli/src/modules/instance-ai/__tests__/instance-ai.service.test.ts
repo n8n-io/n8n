@@ -12,7 +12,11 @@ vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 
 vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
+	const profiles = await vi.importActual<typeof import('@n8n/instance-ai')>('@n8n/instance-ai');
 	return {
+		resolvePromptProfile: profiles.resolvePromptProfile,
+		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
+		describePromptProfile: profiles.describePromptProfile,
 		// Wiring-only stub: the real mapping has its own unit tests
 		// (instance-ai/src/tracing/__tests__/thread-provenance.test.ts). What the
 		// service tests pin is that its OUTPUT reaches the trace — spreading an
@@ -50,12 +54,15 @@ vi.mock('@n8n/instance-ai', async () => {
 		),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
-		loadInstanceAiRuntimeSkillSourceForBuildMode: vi.fn(() => ({
-			registry: {
-				skillsHash: 'runtime-skills-hash',
-				skills: [{ id: 'data-table-manager' }],
+		loadInstanceAiPromptSkills: vi.fn(() => ({
+			disabledTools: [],
+			source: {
+				registry: {
+					skillsHash: 'runtime-skills-hash',
+					skills: [{ id: 'data-table-manager' }],
+				},
+				loadSkill: vi.fn(),
 			},
-			loadSkill: vi.fn(),
 		})),
 		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
@@ -226,7 +233,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
+	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
@@ -270,6 +277,7 @@ type StartRunServiceInternals = {
 		>;
 		setTimeZone: MockedFunction<(threadId: string, timeZone: string) => void>;
 		setBuildMode: MockedFunction<(threadId: string, mode: string | undefined) => void>;
+		setPromptVersion: Mock;
 		activeRunCount: MockedFunction<() => number>;
 		activeRunCountForUser: MockedFunction<(userId: string) => number>;
 	};
@@ -294,6 +302,7 @@ function createStartRunService(): StartRunServiceInternals {
 		})),
 		setTimeZone: vi.fn(),
 		setBuildMode: vi.fn(),
+		setPromptVersion: vi.fn(),
 		activeRunCount: vi.fn(() => 0),
 		activeRunCountForUser: vi.fn(() => 0),
 	};
@@ -448,6 +457,9 @@ type TerminalGuardOrderServiceInternals = {
 	terminalOutcome: InstanceAiTerminalOutcomeService;
 	runState: {
 		getBuildMode: Mock;
+		getPromptVersion: Mock;
+		getPromptConfiguration: Mock;
+		setPromptConfiguration: Mock;
 		getRunIdsForMessageGroup: Mock;
 		cancelThread: Mock;
 		clearActiveRun: Mock;
@@ -552,6 +564,9 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	) as unknown as TerminalGuardOrderServiceInternals;
 	service.runState = {
 		getBuildMode: vi.fn(() => undefined),
+		getPromptVersion: vi.fn(),
+		getPromptConfiguration: vi.fn(),
+		setPromptConfiguration: vi.fn(),
 		getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
 		cancelThread: vi.fn(),
 		clearActiveRun: vi.fn(),
@@ -636,12 +651,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			}),
 		);
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockImplementation(({ source }) => source);
-		(loadInstanceAiRuntimeSkillSourceForBuildMode as Mock).mockImplementation(() => ({
-			registry: {
-				skillsHash: 'runtime-skills-hash',
-				skills: [{ id: 'data-table-manager' }],
+		(loadInstanceAiPromptSkills as Mock).mockImplementation(() => ({
+			disabledTools: [],
+			source: {
+				registry: {
+					skillsHash: 'runtime-skills-hash',
+					skills: [{ id: 'data-table-manager' }],
+				},
+				loadSkill: vi.fn(),
 			},
-			loadSkill: vi.fn(),
 		}));
 	});
 
@@ -701,7 +719,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
 				getBuildMode: Mock;
+				getPromptVersion: Mock;
+				getPromptConfiguration: Mock;
+				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setPromptVersion: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -766,7 +788,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
 			getBuildMode: vi.fn(() => undefined),
+			getPromptVersion: vi.fn(),
+			getPromptConfiguration: vi.fn(),
+			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setPromptVersion: vi.fn(),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -829,7 +855,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
 		);
 		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
-		expect(loadInstanceAiRuntimeSkillSourceForBuildMode).toHaveBeenCalledTimes(1);
+		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
@@ -918,7 +944,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
 		(createSandbox as Mock).mockClear();
 		(setupSandboxWorkspace as Mock).mockClear();
-		(loadInstanceAiRuntimeSkillSourceForBuildMode as Mock).mockClear();
+		(loadInstanceAiPromptSkills as Mock).mockClear();
 		service.settingsService.getSandboxStatus.mockReturnValue({
 			enabled: true,
 			provider: 'n8n-sandbox',
@@ -946,11 +972,14 @@ describe('InstanceAiService — runtime workspace setup', () => {
 	});
 
 	it.each([
-		[false, undefined, 'default'],
-		[true, undefined, 'progressive'],
-		[true, 'default', 'default'],
-		[false, 'progressive', 'progressive'],
-	] as const)('selects mode (%s, %s)', async (enabled, override, expected) => {
+		[false, undefined, 'default', undefined],
+		[true, undefined, 'progressive', undefined],
+		[true, 'default', 'default', undefined],
+		[false, 'progressive', 'progressive', undefined],
+		[true, 'progressive', 'default', 'default@1'],
+		[false, 'default', 'progressive', 'progressive@1'],
+		[true, 'progressive', 'default', 'retired@1'],
+	] as const)('selects mode (%s, %s, %s, %s)', async (enabled, override, expected, version) => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -1005,7 +1034,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
 				getBuildMode: Mock;
+				getPromptVersion: Mock;
+				getPromptConfiguration: Mock;
+				setPromptConfiguration: Mock;
 				setBuildMode: Mock;
+				setPromptVersion: Mock;
 			};
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
@@ -1067,7 +1100,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			touchActiveRun: vi.fn(),
 			registerPendingConfirmation: vi.fn(),
 			getBuildMode: vi.fn(() => override),
+			getPromptVersion: vi.fn(() => version),
+			getPromptConfiguration: vi.fn(),
+			setPromptConfiguration: vi.fn(),
 			setBuildMode: vi.fn(),
+			setPromptVersion: vi.fn(),
 		};
 		service.cancelBackgroundTask = vi.fn();
 		service.backgroundTasks = { touchTask: vi.fn() };
@@ -1113,8 +1150,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
 		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
-		expect(loadInstanceAiRuntimeSkillSourceForBuildMode).toHaveBeenCalledWith(expected);
-		expect(environment.orchestrationContext).toMatchObject({ buildMode: expected });
+		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: expected, version: `${expected}@1` }),
+		);
+		expect(environment.orchestrationContext).toMatchObject({
+			promptConfiguration: { version: `${expected}@1` },
+		});
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
@@ -1351,10 +1392,13 @@ describe('InstanceAiService — run start', () => {
 			'UTC',
 			undefined,
 			'progressive',
+			'progressive@1',
 		);
+		expect(service.runState.setPromptVersion).toHaveBeenLastCalledWith('thread-a', 'progressive@1');
 		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', 'progressive');
 		service.startRun(fakeUser, 'thread-a', 'continue');
 		expect(service.runState.setBuildMode).toHaveBeenLastCalledWith('thread-a', undefined);
+		expect(service.runState.setPromptVersion).toHaveBeenLastCalledWith('thread-a', undefined);
 	});
 
 	it('passes handoff context into executeRun', () => {
@@ -1382,6 +1426,24 @@ describe('InstanceAiService — run start', () => {
 			'group-1',
 			undefined,
 		);
+	});
+
+	it('rejects an unknown explicit prompt version before starting a run', () => {
+		const service = createStartRunService();
+		expect(() =>
+			service.startRun(
+				fakeUser,
+				'thread-a',
+				'build',
+				undefined,
+				undefined,
+				'UTC',
+				undefined,
+				undefined,
+				'missing@1',
+			),
+		).toThrow('Unknown Instance AI prompt version');
+		expect(service.runState.startRun).not.toHaveBeenCalled();
 	});
 
 	it('passes agent-preview handoff context into executeRun', () => {

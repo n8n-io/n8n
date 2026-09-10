@@ -238,8 +238,8 @@ describe('domain tool construction', () => {
 		);
 	});
 
-	it.each([undefined, 'default'] as const)('registers create-tasks in %s mode', (buildMode) => {
-		const context = mock<OrchestrationContext>({ buildMode });
+	it('constructs create-tasks for the agent to apply profile exclusions', () => {
+		const context = mock<OrchestrationContext>();
 
 		const orchestrationTools = createOrchestrationTools(context);
 
@@ -248,17 +248,6 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('delegate')).toBe(false);
 		expect(orchestrationTools.has('eval-setup-with-agent')).toBe(false);
 		expect(orchestrationTools.has('eval-data')).toBe(false);
-	});
-
-	it('omits create-tasks in progressive mode and retains task settlement tools', () => {
-		const context = mock<OrchestrationContext>({ buildMode: 'progressive' });
-
-		const orchestrationTools = createOrchestrationTools(context);
-
-		expect(orchestrationTools.has('create-tasks')).toBe(false);
-		expect(orchestrationTools.has('task-control')).toBe(true);
-		expect(orchestrationTools.has('complete-checkpoint')).toBe(true);
-		expect(orchestrationTools.has('verify-built-workflow')).toBe(true);
 	});
 
 	it('registers build-agent only when a builder delegate is present on the domain context', () => {

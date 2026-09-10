@@ -1501,6 +1501,22 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('Full skill instructions');
 	});
 
+	it('records the selected profile and system prompt hash in trace inputs', () => {
+		const inputs = buildAgentTraceInputs({
+			systemPrompt: 'Test instructions.',
+			promptConfiguration: {
+				version: 'default@1',
+				systemPromptVersion: 'instance-agent@1',
+				skillVariants: [],
+				skillsHash: 'selected-skills',
+				fallbackFrom: 'retired@1',
+			},
+		});
+		expect(inputs).toHaveProperty('prompt_configuration.version', 'default@1');
+		expect(inputs).toHaveProperty('prompt_configuration.fallbackFrom', 'retired@1');
+		expect(inputs.system_prompt_hash).toMatch(/^[a-f0-9]{64}$/);
+	});
+
 	it('redacts model secrets from trace metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',

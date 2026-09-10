@@ -2,7 +2,10 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
-import { loadInstanceAiRuntimeSkillSourceForBuildMode } from '../../../skills/runtime-skills';
+import {
+	loadInstanceAiRuntimeSkillSource,
+	loadInstanceAiRuntimeSkillSourceForBuildMode,
+} from '../../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -424,7 +427,7 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	it('uses the selected post-build instructions without sharing them across modes', async () => {
-		const source = await loadInstanceAiRuntimeSkillSourceForBuildMode('default');
+		const source = loadInstanceAiRuntimeSkillSource();
 		const policy = await source.loadSkill('progressive-building');
 		if (!policy) throw new Error('Expected the progressive policy');
 		for (const mode of ['default', 'progressive', 'default'] as const) {
@@ -449,6 +452,25 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
 			expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
 		}
+	});
+
+	it.each([
+		['reusable', 'post-build-flow'],
+		['one-off', 'one-off-operations'],
+	] as const)('activates the selected skill for a %s build', async (executionIntent, skillId) => {
+		const source = await loadInstanceAiRuntimeSkillSourceForBuildMode('progressive');
+		const loadSkill = vi.fn(source.loadSkill);
+		const { context, filePath } = makeContext({ source: 'workflow source' });
+		const result = await executeTool<BuildToolOutput>(
+			createBuildWorkflowTool(context),
+			{ filePath, name: 'Request tracker', executionIntent },
+			{ loadSkill },
+		);
+		expect(result.success).toBe(true);
+		expect(loadSkill).toHaveBeenCalledWith(skillId);
+		expect(result.postBuildFlow?.instructions).toBe(
+			`Follow the active ${skillId} skill instructions.`,
+		);
 	});
 
 	it.each(['default', 'progressive'] as const)(

@@ -205,6 +205,22 @@ describe('createInstanceAgent', () => {
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
+	it('applies the selected profile exclusions to domain and orchestration tools', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: { runLabel: 'profile' },
+			orchestrationContext: {
+				runId: 'profile',
+				disabledToolNames: new Set(['create-tasks', 'nodes']),
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
+		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
+		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
+	});
+
 	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
 		const baseOptions = (executeMcpTool?: string) =>
 			({

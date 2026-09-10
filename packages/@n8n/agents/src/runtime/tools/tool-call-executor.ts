@@ -16,6 +16,7 @@ import {
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
@@ -179,6 +180,7 @@ function getToolResumeJsonSchema(
 }
 
 export interface ToolCallExecutorDeps {
+	loadSkill?: RuntimeSkillLoader;
 	telemetry: RuntimeTelemetry;
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */
@@ -981,6 +983,7 @@ export class ToolCallExecutor {
 						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
+							...(this.deps.loadSkill ? { loadSkill: this.deps.loadSkill } : {}),
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,

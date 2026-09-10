@@ -1,5 +1,6 @@
 import type {
 	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -150,6 +151,10 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/** Build mode captured at user-run entry and reused by follow-up runs. */
 	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadPromptSelections = new Map<
+		string,
+		{ version: string; metadata?: InstanceAiPromptConfiguration }
+	>();
 	/**
 	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
 	 * Required rather than optional: per-user concurrency counting depends on it, and a
@@ -500,6 +505,23 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadBuildModes.get(threadId);
 	}
 
+	setPromptVersion(threadId: string, version: string | undefined): void {
+		if (version === undefined) this.threadPromptSelections.delete(threadId);
+		else this.threadPromptSelections.set(threadId, { version });
+	}
+
+	getPromptVersion(threadId: string): string | undefined {
+		return this.threadPromptSelections.get(threadId)?.version;
+	}
+
+	setPromptConfiguration(threadId: string, metadata: InstanceAiPromptConfiguration): void {
+		this.threadPromptSelections.set(threadId, { version: metadata.version, metadata });
+	}
+
+	getPromptConfiguration(threadId: string): InstanceAiPromptConfiguration | undefined {
+		return this.threadPromptSelections.get(threadId)?.metadata;
+	}
+
 	/**
 	 * Find active/suspended runs and pending confirmations that timed out under policy.
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
@@ -651,6 +673,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
 		this.threadBuildModes.delete(threadId);
+		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -696,6 +719,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
 		this.threadBuildModes.clear();
+		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 

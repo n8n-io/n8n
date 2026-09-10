@@ -12,8 +12,8 @@ import {
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
-import { getSystemPrompt } from './system-prompt';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
+import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
@@ -183,6 +183,8 @@ export async function createInstanceAgent(
 		safeLocalMcpTools,
 		safeMcpTools,
 	);
+	for (const name of orchestrationContext?.disabledToolNames ?? [])
+		allOrchestratorTools.delete(name);
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
 			agentRole: 'orchestrator',
@@ -195,25 +197,29 @@ export async function createInstanceAgent(
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const systemPrompt = getSystemPrompt({
-		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-		formBaseUrl: orchestrationContext?.formBaseUrl,
-		localGateway: context.localGatewayStatus,
-		toolSearchEnabled: hasDeferrableTools,
-		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
-		licenseHints: context.licenseHints,
-		browserAvailable: browserToolNames.size > 0,
-		branchReadOnly: context.branchReadOnly,
-		projectId: context.projectId,
-		// Presence of the service IS the experiment gate — the host only wires it
-		// for flagged-in users on project-bound runs.
-		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
-		setupPanelEnabled: isSetupPanelEnabled(context),
-		workspaceRoot:
-			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
-				? orchestrationContext.workspaceRoot
-				: undefined,
-	});
+	const systemPrompt = getVersionedSystemPrompt(
+		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
+			resolvePromptProfile({}).profile.systemPromptVersion,
+		{
+			webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
+			formBaseUrl: orchestrationContext?.formBaseUrl,
+			localGateway: context.localGatewayStatus,
+			toolSearchEnabled: hasDeferrableTools,
+			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
+			licenseHints: context.licenseHints,
+			browserAvailable: browserToolNames.size > 0,
+			branchReadOnly: context.branchReadOnly,
+			projectId: context.projectId,
+			// Presence of the service IS the experiment gate — the host only wires it
+			// for flagged-in users on project-bound runs.
+			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
+			setupPanelEnabled: isSetupPanelEnabled(context),
+			workspaceRoot:
+				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+					? orchestrationContext.workspaceRoot
+					: undefined,
+		},
+	);
 
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
@@ -277,6 +283,7 @@ export async function createInstanceAgent(
 		orchestrationContext?.tracing?.actorRun,
 		buildAgentTraceInputs({
 			systemPrompt,
+			promptConfiguration: orchestrationContext?.promptConfiguration,
 			tools: runtimeTools,
 			deferredTools: hasDeferrableTools ? deferredTools : undefined,
 			modelId,

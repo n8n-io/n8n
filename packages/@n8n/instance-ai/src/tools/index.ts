@@ -178,9 +178,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [];
-	if (context.buildMode !== 'progressive') {
-		tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
-	}
+	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
 	tools.push(
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[

@@ -40,7 +40,9 @@ import {
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-	loadInstanceAiRuntimeSkillSourceForBuildMode,
+	loadInstanceAiPromptSkills,
+	resolvePromptProfile,
+	describePromptProfile,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -124,6 +126,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
@@ -1194,7 +1197,12 @@ export class InstanceAiService {
 			this.backgroundTasks.getTaskSnapshots(threadId),
 		);
 		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
-		return { ...status, memoryTasks };
+		const selectedPrompt = this.runState.getPromptConfiguration(threadId);
+		return {
+			...status,
+			memoryTasks,
+			...(selectedPrompt ? { promptConfiguration: selectedPrompt } : {}),
+		};
 	}
 
 	private memoryTaskObserverFor(
@@ -1275,7 +1283,10 @@ export class InstanceAiService {
 				// Host run id, persisted with checkpoints so the interrupted-run
 				// sweep can match a crashed run's checkpoint exactly.
 				hostRunId: runId,
-				hostMetadata: { buildMode: this.runState.getBuildMode(threadId) ?? null },
+				hostMetadata: {
+					buildMode: this.runState.getBuildMode(threadId) ?? null,
+					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
+				},
 			},
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -1307,7 +1318,10 @@ export class InstanceAiService {
 				resourceId: user.id,
 				threadId,
 				hostRunId: runId,
-				hostMetadata: { buildMode: this.runState.getBuildMode(threadId) ?? null },
+				hostMetadata: {
+					buildMode: this.runState.getBuildMode(threadId) ?? null,
+					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
+				},
 			},
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
@@ -1418,7 +1432,14 @@ export class InstanceAiService {
 		timeZone?: string,
 		pushRef?: string,
 		mode?: InstanceAiBuildMode,
+		promptVersion?: string,
 	): string {
+		if (
+			promptVersion !== undefined &&
+			resolvePromptProfile({ version: promptVersion }).fallbackFrom
+		) {
+			throw new BadRequestError(`Unknown Instance AI prompt version "${promptVersion}"`);
+		}
 		this.assertRunAdmissible(user);
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1436,6 +1457,7 @@ export class InstanceAiService {
 		// A new user message resets selection. Explicit eval modes take precedence;
 		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
+		this.runState.setPromptVersion(threadId, promptVersion);
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -2414,9 +2436,13 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
-		const buildMode =
-			this.runState.getBuildMode(threadId) ??
-			(progressiveBuildingEnabled ? 'progressive' : 'default');
+		const selectedPrompt = resolvePromptProfile({
+			version: this.runState.getPromptVersion(threadId),
+			mode:
+				this.runState.getBuildMode(threadId) ??
+				(progressiveBuildingEnabled ? 'progressive' : 'default'),
+		});
+		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
@@ -2583,11 +2609,14 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
 		});
-		const selectedRuntimeSkills = await loadInstanceAiRuntimeSkillSourceForBuildMode(buildMode);
+		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
+		const selectedRuntimeSkills = selectedSkills.source;
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
 				: selectedRuntimeSkills;
+		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
+		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
@@ -2667,7 +2696,8 @@ export class InstanceAiService {
 			messageGroupId,
 			userId: user.id,
 			projectId: boundProjectId,
-			buildMode,
+			promptConfiguration: promptMetadata,
+			disabledToolNames: new Set(selectedSkills.disabledTools),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
@@ -4922,6 +4952,11 @@ export class InstanceAiService {
 			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
 			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
 			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
+			const version = state.persistence?.hostMetadata?.promptVersion;
+			this.runState.setPromptVersion(
+				orphan.threadId,
+				typeof version === 'string' ? version : undefined,
+			);
 		} catch (error: unknown) {
 			return { kind: 'no-checkpoint', error };
 		}

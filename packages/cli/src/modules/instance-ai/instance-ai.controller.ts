@@ -227,6 +227,7 @@ export class InstanceAiController {
 			payload.timeZone,
 			payload.pushRef,
 			payload.mode,
+			payload.promptVersion,
 		);
 		return { runId };
 	}

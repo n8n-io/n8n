@@ -1,4 +1,4 @@
-import { Tool, type RuntimeSkillSource } from '@n8n/agents';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -113,6 +113,7 @@ const confirmationSuspendSchema = z.object({
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
+	loadSkill?: RuntimeSkillLoader;
 	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
@@ -329,9 +330,11 @@ const INLINE_SKIPPED_SECTIONS = [
 async function getInlineSkillInstructions(
 	skillId: string,
 	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
+	activate?: RuntimeSkillLoader,
 ): Promise<string> {
-	const skill = await source.loadSkill(skillId);
+	const skill = await (activate ?? source.loadSkill)(skillId);
 	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
+	if (activate) return `Follow the active ${skillId} skill instructions.`;
 	return skill.instructions
 		.split(/\n(?=#{1,2} )/)
 		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
@@ -363,6 +366,7 @@ async function directPostBuildFlowHandoff(
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
 	skills?: RuntimeSkillSource,
+	activate?: RuntimeSkillLoader,
 ): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
 
@@ -376,7 +380,7 @@ async function directPostBuildFlowHandoff(
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
 			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
-			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills),
+			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};
 	}
 
@@ -385,7 +389,7 @@ async function directPostBuildFlowHandoff(
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills),
+		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
 	};
 }
 
@@ -1297,6 +1301,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isAuxiliarySupportingWorkflow,
 						outcome,
 						context.runtimeSkillCatalog,
+						ctx.loadSkill,
 					);
 
 					await promoteMainWorkflow(context, saved.id);
