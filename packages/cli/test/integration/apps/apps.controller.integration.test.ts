@@ -6,11 +6,12 @@ import { AppsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
 import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
+import { createDataTable } from '@test-integration/db/data-tables';
 import { createExecution } from '@test-integration/db/executions';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -24,7 +25,7 @@ let ownerProject: Project;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['apps'],
-	modules: ['apps'],
+	modules: ['apps', 'data-table'],
 });
 
 let appRepository: AppRepository;
@@ -132,6 +133,24 @@ describe('GET /projects/:projectId/apps/data-workflows', () => {
 		expect(response.body.data).toEqual([]);
 	});
 });
+
+const passthroughWorkflow = async (project: Project = ownerProject) =>
+	await createWorkflow(
+		{
+			name: 'Echo',
+			nodes: [
+				{
+					id: 'trigger',
+					name: 'When Executed by Another Workflow',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: { inputSource: 'passthrough' },
+				},
+			],
+		},
+		project,
+	);
 
 describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 	test('describes a bound workflow with its trigger fields and a not-published warning', async () => {
@@ -260,25 +279,136 @@ describe('GET /projects/:projectId/apps/:appId/bindings', () => {
 	});
 });
 
-describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
-	const passthroughWorkflow = async () =>
-		await createWorkflow(
+describe('POST /projects/:projectId/apps/:appId/bindings', () => {
+	test('adds a workflow binding and lists it afterwards', async () => {
+		const workflow = await passthroughWorkflow();
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'submit', kind: 'workflow', workflowId: workflow.id })
+			.expect(201);
+
+		expect(response.body.data.bindings).toEqual([
+			expect.objectContaining({ key: 'submit', kind: 'workflow', workflowId: workflow.id }),
+		]);
+		expect(response.body.data.warnings[0]).toContain('not published');
+
+		const listed = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.expect(200);
+		expect(listed.body.data.bindings.map((b: { key: string }) => b.key)).toEqual(['submit']);
+	});
+
+	test('adds a data table binding with its permissions', async () => {
+		const table = await createDataTable(ownerProject, {
+			name: 'Tasks',
+			columns: [{ name: 'title', type: 'string' }],
+		});
+		const app = await appRepository.createApp(ownerProject.id, 'Board', 'board');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'tasks', kind: 'dataTable', dataTableId: table.id, permissions: ['read'] })
+			.expect(201);
+
+		expect(response.body.data.bindings).toEqual([
+			expect.objectContaining({
+				key: 'tasks',
+				kind: 'dataTable',
+				dataTableId: table.id,
+				name: 'Tasks',
+				permissions: ['read'],
+				columns: [{ name: 'title', type: 'string' }],
+			}),
+		]);
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([
+			{ key: 'tasks', kind: 'dataTable', dataTableId: table.id, permissions: ['read'] },
+		]);
+	});
+
+	test('answers 400 for a key that is not a valid binding key', async () => {
+		const workflow = await passthroughWorkflow();
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'Not Valid', kind: 'workflow', workflowId: workflow.id })
+			.expect(400);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([]);
+	});
+
+	test('answers 400 for a key the app already uses', async () => {
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+		]);
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'submit', kind: 'workflow', workflowId: workflow.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('unique');
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toHaveLength(1);
+	});
+
+	test('answers 400 for a workflow owned by another project', async () => {
+		const memberProject = await getPersonalProject(member);
+		const workflow = await passthroughWorkflow(memberProject);
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'submit', kind: 'workflow', workflowId: workflow.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('belongs to another project');
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([]);
+	});
+
+	test('answers 400 for a workflow without a supported trigger', async () => {
+		const workflow = await createWorkflow(
 			{
-				name: 'Echo',
+				name: 'Manual',
 				nodes: [
 					{
 						id: 'trigger',
-						name: 'When Executed by Another Workflow',
-						type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-						typeVersion: 1.1,
+						name: 'When clicking Execute workflow',
+						type: MANUAL_TRIGGER_NODE_TYPE,
+						typeVersion: 1,
 						position: [0, 0],
-						parameters: { inputSource: 'passthrough' },
+						parameters: {},
 					},
 				],
 			},
 			ownerProject,
 		);
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
 
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'submit', kind: 'workflow', workflowId: workflow.id })
+			.expect(400);
+
+		expect(response.body.message).toContain('trigger');
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual([]);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const workflow = await passthroughWorkflow();
+		const app = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');
+
+		await authMemberAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
+			.send({ key: 'submit', kind: 'workflow', workflowId: workflow.id })
+			.expect(403);
+	});
+});
+
+describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
 	test('removes the binding by key and describes the remaining ones', async () => {
 		const workflow = await passthroughWorkflow();
 		const created = await appRepository.createApp(ownerProject.id, 'Runner', 'runner');

@@ -234,6 +234,12 @@ export class AppsService {
 		}
 	}
 
+	/** Appends one binding; the whole list goes through `setBindings`, so a duplicate key is a 400. */
+	async addBinding(appId: string, binding: AppBinding, user: User) {
+		const app = await this.getApp(appId);
+		return await this.setBindings(appId, [...app.bindings, binding], user);
+	}
+
 	/** Drops one binding by key; the others are not re-checked. Returns the remaining ones described. */
 	async removeBinding(appId: string, key: string) {
 		const app = await this.getApp(appId);

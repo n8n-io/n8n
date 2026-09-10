@@ -1,4 +1,5 @@
 import {
+	CreateAppBindingDto,
 	CreateAppDto,
 	CreatePageDto,
 	SetActiveAppVersionDto,
@@ -224,6 +225,22 @@ export class AppsController {
 	) {
 		const app = await this.appsService.getApp(appId);
 		return await this.appsService.describeBindings(app);
+	}
+
+	@Post('/:appId/bindings')
+	@ProjectScope('app:update')
+	async addBinding(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('appId') appId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		// Manual parse: `@Body` reflection cannot resolve a zod discriminated union.
+		const parsed = CreateAppBindingDto.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError(parsed.error.errors[0].message);
+		const described = await this.appsService.addBinding(appId, parsed.data, req.user);
+		res.status(201);
+		return described;
 	}
 
 	@Delete('/:appId/bindings/:key')
