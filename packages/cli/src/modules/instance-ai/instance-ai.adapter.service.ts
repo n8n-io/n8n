@@ -236,6 +236,16 @@ function resolveDisplayedDefaults(
 }
 
 /**
+ * A credential class's `documentationUrl` is normally a docs slug ("slack"), but a
+ * few declare a full URL. Normalizes both to a URL.
+ */
+function credentialDocsUrl(documentationUrl: string | undefined): string | undefined {
+	if (!documentationUrl) return undefined;
+	if (documentationUrl.startsWith('http')) return documentationUrl;
+	return `https://docs.n8n.io/integrations/builtin/credentials/${documentationUrl}/`;
+}
+
+/**
  * A credential type's own properties plus every property it inherits, with
  * hidden ones dropped and a child's override winning over its parent's.
  */
@@ -2368,10 +2378,7 @@ export class InstanceAiAdapterService {
 			async getDocumentationUrl(credentialType: string) {
 				try {
 					const credClass = loadNodesAndCredentials.getCredential(credentialType);
-					const slug = credClass.type.documentationUrl;
-					if (!slug) return null;
-					if (slug.startsWith('http')) return slug;
-					return `https://docs.n8n.io/integrations/builtin/credentials/${slug}/`;
+					return credentialDocsUrl(credClass.type.documentationUrl) ?? null;
 				} catch {
 					return null;
 				}
@@ -2443,9 +2450,11 @@ export class InstanceAiAdapterService {
 					if (typeName.toLowerCase().includes(q)) {
 						try {
 							const credClass = loadNodesAndCredentials.getCredential(typeName);
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						} catch {
 							// Type not loadable — include with type name as display name
@@ -2458,9 +2467,11 @@ export class InstanceAiAdapterService {
 					try {
 						const credClass = loadNodesAndCredentials.getCredential(typeName);
 						if (credClass.type.displayName.toLowerCase().includes(q)) {
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						}
 					} catch {
