@@ -30,6 +30,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationReconcileIntervalSeconds: RECONCILE_INTERVAL_SECONDS,
+			publicationOutboxLeaseSeconds: 120,
 		});
 		return new PublishedWorkflowTriggerDeactivator(
 			logger,
@@ -48,7 +49,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 		instanceSettings = { isLeader: false } as InstanceSettings;
 		lifecycleLock.isLocked.mockReturnValue(false);
 		lifecycleLock.runExclusive.mockImplementation(
-			async (_workflowId, fn) => await (fn as () => Promise<unknown>)(),
+			async ({ fn }) => await (fn as () => Promise<unknown>)(),
 		);
 		activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue([]);
 		activeWorkflowTriggers.remove.mockResolvedValue(true);
@@ -69,8 +70,16 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			await createDeactivator().deactivateAllNonWebhookTriggers();
 
 			expect(outboxConsumer.stopPolling).toHaveBeenCalledTimes(1);
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function));
-			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function));
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				fn: expect.any(Function),
+				signal: expect.any(AbortSignal),
+			});
+			expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+				workflowId: 'wf-2',
+				fn: expect.any(Function),
+				signal: expect.any(AbortSignal),
+			});
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 			expect(errorReporter.error).not.toHaveBeenCalled();
@@ -93,8 +102,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 			expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-free');
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalledWith('wf-locked');
 			expect(lifecycleLock.runExclusive).not.toHaveBeenCalledWith(
-				'wf-locked',
-				expect.any(Function),
+				expect.objectContaining({ workflowId: 'wf-locked' }),
 			);
 		});
 
@@ -130,7 +138,7 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 
 		test('aborts the remaining teardown when promoted back to leader mid-stepdown', async () => {
 			activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1', 'wf-2']);
-			lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => {
+			lifecycleLock.runExclusive.mockImplementation(async ({ fn }) => {
 				// Promotion lands while the teardown is waiting on the first lock —
 				// deactivating now would race the takeover's own re-activation.
 				instanceSettings = Object.assign(instanceSettings, { isLeader: true });
@@ -151,8 +159,16 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				const removed = await createDeactivator().sweepGhostTriggers();
 
 				expect(removed).toBe(2);
-				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-1', expect.any(Function));
-				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith('wf-2', expect.any(Function));
+				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+					workflowId: 'wf-1',
+					fn: expect.any(Function),
+					signal: expect.any(AbortSignal),
+				});
+				expect(lifecycleLock.runExclusive).toHaveBeenCalledWith({
+					workflowId: 'wf-2',
+					fn: expect.any(Function),
+					signal: expect.any(AbortSignal),
+				});
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-1');
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-2');
 				// A ghost on a follower is evidence of a zombie writer — loud, not debug.
@@ -185,14 +201,13 @@ describe('PublishedWorkflowTriggerDeactivator', () => {
 				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith('wf-free');
 				expect(activeWorkflowTriggers.remove).not.toHaveBeenCalledWith('wf-busy');
 				expect(lifecycleLock.runExclusive).not.toHaveBeenCalledWith(
-					'wf-busy',
-					expect.any(Function),
+					expect.objectContaining({ workflowId: 'wf-busy' }),
 				);
 			});
 
 			test('aborts inside the lock when promoted to leader mid-sweep', async () => {
 				activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds.mockReturnValue(['wf-1']);
-				lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => {
+				lifecycleLock.runExclusive.mockImplementation(async ({ fn }) => {
 					// Promotion lands while this sweep is waiting on the lock.
 					instanceSettings = Object.assign(instanceSettings, { isLeader: true });
 					return await (fn as () => Promise<unknown>)();

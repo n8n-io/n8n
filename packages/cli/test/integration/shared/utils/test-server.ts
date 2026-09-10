@@ -414,6 +414,12 @@ export const setupTestServer = ({
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
 						break;
+
+					case 'type-availability-policies':
+						await import(
+							'@/modules/type-availability-policies/type-availability-policies.module.js'
+						);
+						break;
 				}
 			}
 

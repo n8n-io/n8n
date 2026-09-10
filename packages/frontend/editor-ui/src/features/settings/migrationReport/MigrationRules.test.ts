@@ -130,10 +130,9 @@ describe('MigrationRules', () => {
 			});
 
 			// API called with correct context
-			expect(breakingChangesApi.getReport).toHaveBeenCalledWith(
-				rootStore.restApiContext,
-				undefined,
-			);
+			expect(breakingChangesApi.getReport).toHaveBeenCalledWith(rootStore.restApiContext, {
+				version: 'v3',
+			});
 
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
@@ -227,7 +226,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('No workflow issues detected')).toBeInTheDocument();
 				expect(
 					screen.getByText(
-						"Your workflows are fully compatible with version 2.0.0. You're good to go!",
+						"Your workflows are fully compatible with version 3.0.0. You're good to go!",
 					),
 				).toBeInTheDocument();
 			});
@@ -315,7 +314,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('No instance issues detected')).toBeInTheDocument();
 				expect(
 					screen.getByText(
-						"Your instance is fully compatible with version 2.0.0. You're good to go!",
+						"Your instance is fully compatible with version 3.0.0. You're good to go!",
 					),
 				).toBeInTheDocument();
 			});
@@ -403,10 +402,9 @@ describe('MigrationRules', () => {
 
 			// API called and data reloaded
 			await waitFor(() => {
-				expect(breakingChangesApi.refreshReport).toHaveBeenCalledWith(
-					rootStore.restApiContext,
-					undefined,
-				);
+				expect(breakingChangesApi.refreshReport).toHaveBeenCalledWith(rootStore.restApiContext, {
+					version: 'v3',
+				});
 				expect(screen.getByText('Updated Rule')).toBeInTheDocument();
 				expect(screen.getByText('10 Workflows')).toBeInTheDocument();
 			});

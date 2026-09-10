@@ -23,6 +23,7 @@ describe('McpToolResolver media output', () => {
 			],
 		};
 		const tool = resolveTool();
+		expect(tool.outputTrust).toBe('untrusted');
 
 		expect(tool.toModelOutput?.(result)).toEqual({
 			type: 'content',

@@ -7,10 +7,16 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import {
+	analyzeVerificationResult,
+	buildNodePreviews,
+	getTriggerMainFlowScope,
+} from './verification/analyze-result';
+import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -19,7 +25,10 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
-import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
+import {
+	executionNodeErrorSchema,
+	verificationClaimSchema,
+} from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
@@ -81,6 +90,16 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 			'Optional per-run output fixtures keyed by node name. Only nodes already classified as simulated in the build outcome may be overridden. Use this for alternate deterministic scenarios, not raw trigger input. ' +
 				'An empty array is rejected unless the node is also listed in `allowZeroItemFixtures`.',
 		),
+	fixTargetNodeNames: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Node names this change is about — the node the user reported as failing, or the node ' +
+				'you just repaired. The verdict shown to the user is downgraded to "changed but ' +
+				'unverified" when any of these was never reached or had simulated output, so a green ' +
+				'run elsewhere cannot pass as proof for them. Pass these whenever you are fixing a ' +
+				'specific node rather than building from scratch.',
+		),
 	allowZeroItemFixtures: z
 		.array(z.string())
 		.optional()
@@ -125,6 +144,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
 	remediation: remediationOutputSchema,
@@ -179,18 +199,42 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const chatModelRecovery = await target.domainContext.workflowService
+			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
-				.then(
-					async (workflow) =>
-						await collectChatModelRecoveryContext(
-							target.domainContext,
-							workflow.nodes ?? [],
-							workflow.connections,
-						),
-				)
 				.catch(() => undefined);
+			if (
+				resolvedInput.triggerNodeName !== undefined &&
+				!workflow?.nodes.some(
+					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+				)
+			) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
+				};
+			}
+			const chatModelRecovery = workflow
+				? await collectChatModelRecoveryContext(
+						target.domainContext,
+						workflow.nodes ?? [],
+						workflow.connections,
+					).catch(() => undefined)
+				: undefined;
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+			const selectedTriggerNodeName = buildOutcome.triggerNodes?.some(
+				(trigger) => trigger.nodeName === resolvedInput.triggerNodeName,
+			)
+				? resolvedInput.triggerNodeName
+				: undefined;
+			const verificationScope =
+				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
+					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
+					: undefined;
+			const previousProgress = await workflowTaskService.startVerification(
+				resolvedInput.workItemId,
+				verificationScope ? selectedTriggerNodeName : undefined,
+			);
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
@@ -209,6 +253,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						runId: context.runId,
 						chatModelRelatedNodeNames,
 						chatModelRecovery,
+						verificationScope,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -234,18 +279,42 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								runId: context.runId,
 								chatModelRelatedNodeNames,
 								chatModelRecovery,
+								verificationScope,
 							}),
 						};
 					})();
 
-			await persistVerificationOutcome({
+			// The repair target from an earlier verdict counts even when the model
+			// omits it here — that is exactly the turn where it stops mentioning it.
+			const fixTargetNodeNames = [
+				...new Set(
+					[
+						...(resolvedInput.fixTargetNodeNames ?? []),
+						target.stateBefore?.lastFailedNodeName,
+					].filter((name): name is string => name !== undefined),
+				),
+			];
+			const runClaim = deriveVerificationClaim({
+				analysis: {
+					...analysis,
+					nodesNotReached: buildOutcome.nodeSimulationPlan
+						.map((node) => node.nodeName)
+						.filter((name) => !analysis.reachedNames.has(name)),
+				},
+				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
+				fixTargetNodeNames,
+			});
+
+			const claim = await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
 				workflowTaskService,
 				workflowId,
 				result,
 				analysis,
-				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
+				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
+				previousProgress,
+				claim: runClaim,
 			});
 
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
@@ -254,6 +323,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				resolvedWorkItemId: resolvedInput.workItemId,
 				executionId: result.executionId || undefined,
 				success: analysis.success,
+				claim,
 				status: result.status,
 				nodesExecuted: analysis.nodesExecuted,
 				lastNodeExecuted: result.lastNodeExecuted,

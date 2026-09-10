@@ -5,6 +5,7 @@ import {
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentSkill, AgentSkillReference } from '../types';
 
@@ -170,10 +171,6 @@ function optionalStringArrayProperty<T extends string>(
 	return strings.length > 0
 		? ({ [field]: strings.map((item) => item.trim()) } as Partial<Record<T, string[]>>)
 		: {};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function normalizePath(path: string): string {

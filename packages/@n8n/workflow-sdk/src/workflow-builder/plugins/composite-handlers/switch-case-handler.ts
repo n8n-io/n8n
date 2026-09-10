@@ -6,7 +6,10 @@
 
 import {
 	collectFromTarget,
+	collectFromBuilderChains,
 	addBranchTargetNodes,
+	addBuilderChainsToGraph,
+	getPrefixChainHead,
 	processBranchForComposite,
 	processBranchForBuilder,
 	fixupBranchConnectionTargets,
@@ -42,18 +45,20 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	getHeadNodeName(input: SwitchCaseInput): { name: string; id: string } {
-		if (isSwitchCaseBuilder(input)) {
-			return { name: input.switchNode.name, id: input.switchNode.id };
+		// A builder created inline from a chain (a.to(b).to(switchNode).onCase(...)) enters
+		// at the chain head `a`. Everything else enters at the Switch node.
+		const prefixHead = getPrefixChainHead(input);
+		if (prefixHead) {
+			return { name: prefixHead.name, id: prefixHead.id };
 		}
-		const composite = input;
-		return { name: composite.switchNode.name, id: composite.switchNode.id };
+		return { name: input.switchNode.name, id: input.switchNode.id };
 	},
 
 	collectPinData(
 		input: SwitchCaseInput,
 		collector: (node: NodeInstance<string, string, unknown>) => void,
 	): void {
-		// Collect from Switch node
+		collectFromBuilderChains(input, collector);
 		collector(input.switchNode);
 
 		// Collect from cases
@@ -71,11 +76,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 	},
 
 	addNodes(input: SwitchCaseInput, ctx: MutablePluginContext): string {
-		// Handle sourceChain if present (for trigger.to(switch).onCase() pattern)
-		const builderWithChain = input as { sourceChain?: unknown };
-		if (builderWithChain.sourceChain) {
-			ctx.addBranchToGraph(builderWithChain.sourceChain);
-		}
+		addBuilderChainsToGraph(input, ctx);
 
 		// Build the switch node connections to its cases
 		const switchMainConns = new Map<number, ConnectionTarget[]>();
@@ -98,8 +99,11 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 
 			// Add the Switch node with connections to cases
 			// If the node already exists (e.g., added by merge handler via addBranchToGraph),
-			// merge the connections rather than overwriting
-			const existingNode = ctx.nodes.get(builder.switchNode.name);
+			// merge the connections rather than overwriting.
+			// Resolve through nameMapping first: addBranchToGraph may have added the Switch
+			// node under a deduped name, and the plain name can belong to a different node.
+			const switchNodeKey = ctx.nameMapping?.get(builder.switchNode.id) ?? builder.switchNode.name;
+			const existingNode = ctx.nodes.get(switchNodeKey);
 			if (existingNode) {
 				// Merge switchMainConns into existing connections
 				const existingMainConns =
@@ -122,7 +126,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 				// Node doesn't exist, add it fresh
 				const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 				switchConns.set('main', switchMainConns);
-				ctx.nodes.set(builder.switchNode.name, {
+				ctx.nodes.set(switchNodeKey, {
 					instance: builder.switchNode,
 					connections: switchConns,
 				});
@@ -139,7 +143,7 @@ export const switchCaseHandler: CompositeHandlerPlugin<SwitchCaseInput> = {
 				fixupBranchConnectionTargets(switchMainConns, targetNodeIds, ctx.nameMapping);
 			}
 
-			return builder.switchNode.name;
+			return switchNodeKey;
 		}
 
 		// SwitchCaseComposite: add cases first, then use results for connections

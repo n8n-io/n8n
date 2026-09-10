@@ -1,0 +1,38 @@
+{
+	"properties": {
+		"code": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner": {
+			"properties": {
+				"id": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"result_score": {
+			"type": "number"
+		},
+		"tax": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

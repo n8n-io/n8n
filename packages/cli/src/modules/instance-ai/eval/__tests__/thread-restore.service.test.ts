@@ -1,6 +1,15 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	CredentialsRepository,
+	Project,
+	SharedWorkflowRepository,
+	User,
+	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -11,6 +20,8 @@ import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -29,13 +40,21 @@ function makeNode(overrides: Record<string, unknown> = {}): Record<string, unkno
 describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
+	const credentialsRepo = mock<CredentialsRepository>();
+	const workflowPublishedVersionRepo = mock<WorkflowPublishedVersionRepository>();
 	const dataTableService = mock<DataTableService>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowService = mock<WorkflowService>();
 	const service = new EvalThreadRestoreService(
 		workflowRepo,
 		sharedWorkflowRepo,
+		credentialsRepo,
+		workflowPublishedVersionRepo,
 		dataTableService,
 		policyEnforcementService,
+		workflowHistoryService,
+		workflowService,
 	);
 	const transactionManager = mock<EntityManager>();
 	const cleared = mock<PolicyCleared<'workflowSave'>>();
@@ -47,6 +66,7 @@ describe('EvalThreadRestoreService', () => {
 			async (ctx, fn) => await fn(transactionManager, ctx),
 		);
 		workflowRepo.findByIds.mockResolvedValue([]);
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([]);
 		policyEnforcementService.enforceWorkflowSave.mockResolvedValue(cleared);
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
 	});
@@ -95,7 +115,7 @@ describe('EvalThreadRestoreService', () => {
 		expect(workflowRepo.save).not.toHaveBeenCalled();
 	});
 
-	it('strips pre-attached node credentials so they cannot bypass the credential pin', async () => {
+	it('strips a node credential the project does not hold, so a seed cannot bypass the credential pin', async () => {
 		const node = makeNode({
 			credentials: { slackApi: { id: 'cred-from-source-instance', name: 'Slack' } },
 		});
@@ -105,10 +125,200 @@ describe('EvalThreadRestoreService', () => {
 			'project-1',
 		);
 
+		expect(credentialsRepo.findByNameAndTypeInProject).toHaveBeenCalledExactlyOnceWith(
+			'Slack',
+			'slackApi',
+			'project-1',
+		);
 		const saved = workflowRepo.create.mock.calls[0][0];
 		expect(saved.nodes).toHaveLength(1);
 		expect(saved.nodes?.[0]).not.toHaveProperty('credentials');
 		expect(saved.nodes?.[0]).toMatchObject({ name: 'Slack', parameters: expect.any(Object) });
+	});
+
+	it('points a node credential at the project credential of the same type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockImplementation(async (name, type) =>
+			name === 'Slack' && type === 'slackApi'
+				? [mock<CredentialsEntity>({ id: 'cred-here', name: 'Slack' })]
+				: [],
+		);
+		const node = makeNode({
+			credentials: {
+				slackApi: { id: 'cred-from-source-instance', name: 'Slack' },
+				openAiApi: { id: 'cred-from-source-instance-2', name: 'OpenAI' },
+			},
+		});
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-here', name: 'Slack' },
+		});
+	});
+
+	it('prefers the credential the thread is allowed to see when several share type and name', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-other-thread', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-this-thread', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+			new Map(),
+			new Set(['cred-this-thread']),
+		);
+
+		const saved = workflowRepo.create.mock.calls[0][0];
+		expect(saved.nodes?.[0]?.credentials).toEqual({
+			slackApi: { id: 'cred-this-thread', name: 'Slack' },
+		});
+	});
+
+	it('strips a node credential when several project credentials share its type and name, like the product resolver', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-a', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-b', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+			'project-1',
+		);
+
+		expect(workflowRepo.create.mock.calls[0][0].nodes?.[0]).not.toHaveProperty('credentials');
+	});
+
+	it('refuses a published seed whose node credential does not resolve, naming it', async () => {
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slak' } } });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential "Slak" matched 0 project credentials (need exactly 1)',
+		);
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('refuses a published seed whose node credential matches several project credentials', async () => {
+		credentialsRepo.findByNameAndTypeInProject.mockResolvedValue([
+			mock<CredentialsEntity>({ id: 'cred-a', name: 'Slack' }),
+			mock<CredentialsEntity>({ id: 'cred-b', name: 'Slack' }),
+		]);
+		const node = makeNode({ credentials: { slackApi: { id: '', name: 'Slack' } } });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential "Slack" matched 2 project credentials (need exactly 1)',
+		);
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('refuses a published seed whose node credential reference has no name', async () => {
+		// The seed schema lets any object through as a node; this reference lost its name.
+		const node = makeNode({ credentials: { slackApi: { id: 'cred-1' } } as never });
+
+		await expect(
+			service.restoreWorkflows(
+				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
+				'project-1',
+			),
+		).rejects.toThrow(
+			'Seed workflow wf-live is published, but its slackApi credential reference has no name',
+		);
+		expect(credentialsRepo.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(workflowRepo.runInTransaction).not.toHaveBeenCalled();
+	});
+
+	it('publishes only the seeds flagged published, as the requesting user, with their history row in place', async () => {
+		const user = mock<User>();
+
+		const published = await service.publishSeedWorkflows(
+			[
+				{ id: 'wf-live', name: 'Live', nodes: [], connections: {}, published: true },
+				{ id: 'wf-draft', name: 'Draft', nodes: [], connections: {} },
+			],
+			user,
+		);
+
+		// The caller's rollback unpublishes these: a re-applied seed is not a created one.
+		expect(published).toEqual(['wf-live']);
+		expect(workflowHistoryService.snapshotCurrent).toHaveBeenCalledExactlyOnceWith('wf-live');
+		expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(user, 'wf-live');
+		// The row first: activation looks the version up in the history.
+		expect(workflowHistoryService.snapshotCurrent.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowService.activateWorkflow.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('unpublishes every seed it attempted when an activation fails, the failed one included', async () => {
+		const user = mock<User>();
+		workflowService.activateWorkflow
+			.mockResolvedValueOnce(mock<WorkflowEntity>())
+			.mockRejectedValueOnce(new Error('Workflow has no trigger'));
+
+		await expect(
+			service.publishSeedWorkflows(
+				[
+					{ id: 'wf-first', name: 'First', nodes: [], connections: {}, published: true },
+					{ id: 'wf-second', name: 'Second', nodes: [], connections: {}, published: true },
+				],
+				user,
+			),
+		).rejects.toThrow('Workflow has no trigger');
+
+		// The failed seed too: activation can throw after its triggers are registered.
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it('keeps unpublishing the other seeds when one deactivation fails', async () => {
+		workflowService.deactivateWorkflowAsSystem.mockRejectedValueOnce(new Error('already gone'));
+
+		await service.unpublishWorkflows(['wf-first', 'wf-second']);
+
+		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
+			['wf-first'],
+			['wf-second'],
+		]);
+	});
+
+	it('unpublishes a seed and waits for its publication teardown before the rollback deletes it', async () => {
+		workflowPublishedVersionRepo.getPublishedVersionId
+			.mockResolvedValueOnce('version-live')
+			.mockResolvedValueOnce(null);
+
+		await service.deleteWorkflows(['wf-live']);
+
+		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith('wf-live');
+		expect(workflowService.deactivateWorkflowAsSystem.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowPublishedVersionRepo.getPublishedVersionId.mock.invocationCallOrder[0],
+		);
+		expect(workflowPublishedVersionRepo.getPublishedVersionId).toHaveBeenCalledTimes(2);
+		expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-live' });
+	});
+
+	it('still deletes the seed when the publication lookup fails', async () => {
+		workflowPublishedVersionRepo.getPublishedVersionId.mockRejectedValueOnce(new Error('db down'));
+
+		await service.deleteWorkflows(['wf-live']);
+
+		expect(workflowRepo.delete).toHaveBeenCalledExactlyOnceWith({ id: 'wf-live' });
 	});
 
 	it('does not re-grant ownership when the workflow already exists in this project', async () => {
