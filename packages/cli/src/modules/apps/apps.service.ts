@@ -21,6 +21,7 @@ import { UnexpectedError, type DataTableColumnType, type INode } from 'n8n-workf
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { AgentsService } from '@/modules/agents/agents.service';
 import {
 	detectTriggerNode,
 	inferInputSchema,
@@ -38,6 +39,7 @@ import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
+import { BindingAgentNotFoundError } from './errors/binding-agent-not-found.error';
 import { BindingDataTableNotFoundError } from './errors/binding-data-table-not-found.error';
 import { BindingIncompatibleError } from './errors/binding-incompatible.error';
 import { BindingNotFoundError } from './errors/binding-not-found.error';
@@ -58,6 +60,7 @@ const PASSTHROUGH_INPUT_SCHEMA: JSONSchema7 = { type: 'object', additionalProper
 
 type WorkflowBinding = Extract<AppBinding, { kind: 'workflow' }>;
 type DataTableBinding = Extract<AppBinding, { kind: 'dataTable' }>;
+type AgentBinding = Extract<AppBinding, { kind: 'agent' }>;
 type Described = { binding: DescribedBinding; warnings: string[] };
 
 /** Dates leave the runtime as ISO strings (JSON); every user column may hold `null`. */
@@ -106,6 +109,7 @@ export class AppsService {
 		private readonly workflowLoader: WorkflowToolWorkflowLoader,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly dataTableService: DataTableService,
+		private readonly agentsService: AgentsService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -179,8 +183,8 @@ export class AppsService {
 	 * Replaces the whole binding list. Each resource is checked with the acting user's
 	 * scopes now (`workflow:execute`; `dataTable:readRow` plus `dataTable:writeRow` for a
 	 * `write` binding); at call time the app acts as its project, so the resource must also
-	 * be owned by that project. Unpublished workflows are accepted (reported as a warning)
-	 * so an agent can bind first and publish later.
+	 * be owned by that project. Unpublished workflows and agents are accepted (reported as a
+	 * warning) so an agent can bind first and publish later.
 	 */
 	async setBindings(appId: string, bindings: AppBinding[], user: User) {
 		const parsed = appBindingsSchema.safeParse(bindings);
@@ -192,6 +196,8 @@ export class AppsService {
 		for (const binding of parsed.data) {
 			if (binding.kind === 'dataTable') {
 				await this.checkDataTableBinding(binding, app.projectId, user);
+			} else if (binding.kind === 'agent') {
+				await this.checkAgentBinding(binding, app.projectId);
 			} else {
 				await this.checkWorkflowBinding(binding, app.projectId, user);
 			}
@@ -235,6 +241,12 @@ export class AppsService {
 		}
 	}
 
+	/** The visitor chats as the app's project, so the agent must live there; `app:update` on the project is the user's ticket. */
+	private async checkAgentBinding(binding: AgentBinding, projectId: string) {
+		const agent = await this.agentsService.findById(binding.agentId, projectId);
+		if (!agent) throw new BindingAgentNotFoundError(binding.key, binding.agentId);
+	}
+
 	/** Appends one binding; the whole list goes through `setBindings`, so a duplicate key is a 400. */
 	async addBinding(appId: string, binding: AppBinding, user: User) {
 		const app = await this.getApp(appId);
@@ -275,9 +287,10 @@ export class AppsService {
 	 * published; its trigger declares the input fields, so the generated types match what
 	 * the runtime validates, and the output schema comes from the latest successful
 	 * execution (open items with a warning without one). A data table binding resolves to
-	 * its columns. A binding whose resource left the project, or whose workflow lost its
-	 * trigger, since bind time stays in the list as `missing` with a warning, so the UI can
-	 * still show and remove it while the others stay usable.
+	 * its columns; an agent binding to its name and published state. A binding whose
+	 * resource left the project, or whose workflow lost its trigger, since bind time stays
+	 * in the list as `missing` with a warning, so the UI can still show and remove it while
+	 * the others stay usable.
 	 */
 	async describeBindings(
 		app: Pick<App, 'projectId' | 'bindings'>,
@@ -287,7 +300,9 @@ export class AppsService {
 			described.push(
 				binding.kind === 'dataTable'
 					? await this.describeDataTableBinding(app.projectId, binding)
-					: await this.describeWorkflowBinding(app.projectId, binding),
+					: binding.kind === 'agent'
+						? await this.describeAgentBinding(app.projectId, binding)
+						: await this.describeWorkflowBinding(app.projectId, binding),
 			);
 		}
 		return {
@@ -395,6 +410,35 @@ export class AppsService {
 				],
 			};
 		}
+	}
+
+	/** Only the published version answers visitors, so an unpublished agent binds with a warning, like a workflow. */
+	private async describeAgentBinding(projectId: string, binding: AgentBinding): Promise<Described> {
+		const agent = await this.agentsService.findById(binding.agentId, projectId);
+		if (!agent) {
+			return {
+				binding: { key: binding.key, kind: binding.kind, name: binding.key, missing: true },
+				warnings: [
+					`Binding '${binding.key}': agent '${binding.agentId}' no longer exists in the app's project.`,
+				],
+			};
+		}
+		const published = agent.activeVersionId !== null;
+		return {
+			binding: {
+				key: binding.key,
+				kind: binding.kind,
+				agentId: agent.id,
+				name: agent.name,
+				permissions: binding.permissions,
+				published,
+			},
+			warnings: published
+				? []
+				: [
+						`Binding '${binding.key}': agent "${agent.name}" is not published. The app gets an error until it is published.`,
+					],
+		};
 	}
 
 	/**
