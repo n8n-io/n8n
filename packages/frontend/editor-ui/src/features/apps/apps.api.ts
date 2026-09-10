@@ -65,3 +65,34 @@ export const fetchRoutesApi = async (
 		`/projects/${projectId}/apps/${appId}/routes`,
 	);
 };
+
+export const fetchAppVersionFilesApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+) => {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files`,
+	);
+};
+
+export const fetchAppVersionFileContentApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+	filePath: string,
+) => {
+	// Each segment is encoded on its own so a `/` inside the path keeps routing
+	// to the right file, not a `%2F` the server would reject.
+	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+	const { content } = await makeRestApiRequest<{ content: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+	);
+	return content;
+};

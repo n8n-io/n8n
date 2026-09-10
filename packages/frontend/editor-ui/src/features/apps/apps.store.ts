@@ -7,6 +7,8 @@ import {
 	createAppApi,
 	deleteAppApi,
 	fetchAppsApi,
+	fetchAppVersionFileContentApi,
+	fetchAppVersionFilesApi,
 	fetchRoutesApi,
 	getAppApi,
 	updateAppApi,
@@ -55,6 +57,25 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
+	const fetchAppVersionFiles = async (projectId: string, appId: string, versionId: string) => {
+		return await fetchAppVersionFilesApi(rootStore.restApiContext, projectId, appId, versionId);
+	};
+
+	const fetchAppVersionFileContent = async (
+		projectId: string,
+		appId: string,
+		versionId: string,
+		filePath: string,
+	) => {
+		return await fetchAppVersionFileContentApi(
+			rootStore.restApiContext,
+			projectId,
+			appId,
+			versionId,
+			filePath,
+		);
+	};
+
 	return {
 		apps,
 		pages,
@@ -65,5 +86,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		applyAppTheme,
 		deleteApp,
 		fetchPages,
+		fetchAppVersionFiles,
+		fetchAppVersionFileContent,
 	};
 });

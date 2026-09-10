@@ -359,6 +359,70 @@ describe('AppsService.getSourceTarball', () => {
 	});
 });
 
+describe('GET /projects/:projectId/apps/:appId/versions/:versionId/files', () => {
+	const list = (appId: string, versionId: string) =>
+		authOwnerAgent.get(`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files`);
+
+	const readFile = (appId: string, versionId: string, filePath: string) =>
+		authOwnerAgent.get(
+			`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files/${filePath}`,
+		);
+
+	test('lists the paths of every file in the source', async () => {
+		const app = await createApp();
+		const multiFile = tgz([
+			{ path: './src/main.ts', content: 'export {};' },
+			{ path: './src/App.vue', content: '<template />' },
+			{ path: './package.json', content: '{}' },
+		]);
+		const { body } = await upload(app.id, multiFile).expect(200);
+
+		const response = await list(app.id, body.data.id).expect(200);
+
+		expect(response.body.data.sort()).toEqual(['package.json', 'src/App.vue', 'src/main.ts']);
+	});
+
+	test("returns a file's content", async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		const response = await readFile(app.id, body.data.id, 'src/main.ts').expect(200);
+
+		expect(response.body.data).toEqual({ content: 'export {};' });
+	});
+
+	test('returns 404 for a file that does not exist', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await readFile(app.id, body.data.id, 'nope.txt').expect(404);
+	});
+
+	test('never resolves a file outside the source directory', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await readFile(app.id, body.data.id, '..%2F..%2F..%2Fconfig').expect(404);
+	});
+
+	test('returns 404 for a version belonging to a different app', async () => {
+		const app = await createApp();
+		const otherApp = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const { body } = await upload(otherApp.id).expect(200);
+
+		await list(app.id, body.data.id).expect(404);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files`)
+			.expect(403);
+	});
+});
+
 describe('GET /apps/:namespace with an active version', () => {
 	test('redirects the bare namespace to the trailing-slash URL', async () => {
 		const app = await createApp();
@@ -494,14 +558,21 @@ describe('DELETE /projects/:projectId/apps/:appId', () => {
 		const app = await createApp();
 		const response = await upload(app.id).expect(200);
 		await visitor.get('/apps/hello/').expect(200);
-		const distDir = path.join(cacheRoot, response.body.data.id);
+		const versionId = response.body.data.id;
+		await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${versionId}/files`)
+			.expect(200);
+		const distDir = path.join(cacheRoot, versionId);
+		const sourceDir = path.join(path.dirname(cacheRoot), 'apps-source', versionId);
 		expect(existsSync(distDir)).toBe(true);
+		expect(existsSync(sourceDir)).toBe(true);
 		const [version] = await appVersionRepository.listByAppId(app.id);
 
 		await authOwnerAgent.delete(`/projects/${ownerProject.id}/apps/${app.id}`).expect(200);
 
 		expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(0);
 		expect(existsSync(distDir)).toBe(false);
+		expect(existsSync(sourceDir)).toBe(false);
 		expect(await binaryDataRepository.findContentByFileId(version.sourceStorageKey)).toBeNull();
 		expect(await binaryDataRepository.findContentByFileId(version.distStorageKey!)).toBeNull();
 	});

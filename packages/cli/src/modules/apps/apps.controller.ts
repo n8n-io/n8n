@@ -34,6 +34,7 @@ import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+import { pathSegments } from './serving/path-segments';
 
 type TarballUploadRequest = AuthenticatedRequest<{ projectId: string }> & {
 	files?: Record<string, Express.Multer.File[]>;
@@ -220,6 +221,27 @@ export class AppsController {
 		@Param('appId') appId: string,
 	) {
 		return await this.appsService.listVersions(appId);
+	}
+
+	/**
+	 * Read-only browsing of a version's source: no path lists its files, a path
+	 * returns that one file's content. One route, like `AppServingController`,
+	 * since the wildcard already matches both shapes.
+	 */
+	@Get('/:appId/versions/:versionId/files{/*path}')
+	@ProjectScope('app:read')
+	async getVersionFiles(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+		@Param('path') wildcardPath: unknown,
+	) {
+		const segments = pathSegments(wildcardPath);
+		if (segments.length === 0) {
+			return await this.appsService.listVersionFiles(appId, versionId);
+		}
+		return await this.appsService.getVersionFileContent(appId, versionId, segments);
 	}
 
 	@Post('/:appId/pages')
