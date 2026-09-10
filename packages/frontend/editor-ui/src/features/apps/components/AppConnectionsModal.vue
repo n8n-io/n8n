@@ -66,7 +66,11 @@ const isOpen = computed({
 
 onMounted(() => {
 	void loadWorkflows(props.data.projectId);
-	void dataTableStore.fetchDataTables(props.data.projectId, 1, 250);
+	void dataTableStore
+		.fetchDataTables(props.data.projectId, 1, 250)
+		.catch((error) =>
+			toast.showError(error, i18n.baseText('apps.connections.picker.dataTables.error')),
+		);
 });
 
 const bindingByWorkflowId = computed(() => {
@@ -143,7 +147,11 @@ const items = computed<ToolConnectionItem[]>(() => [
 	...incompatibleWorkflows.value.map(({ workflow, reason }) =>
 		disabledWorkflowItem(workflow, reason),
 	),
-	...dataTableStore.dataTables.map(dataTableItem),
+	// The store is shared with the data table views, which load other projects
+	// into it; keep only this project's tables until our fetch lands.
+	...dataTableStore.dataTables
+		.filter((dataTable) => dataTable.projectId === props.data.projectId)
+		.map(dataTableItem),
 ]);
 
 function bindingKeyFor(title: string): string {

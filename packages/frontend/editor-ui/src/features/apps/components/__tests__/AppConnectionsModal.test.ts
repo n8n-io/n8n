@@ -88,8 +88,9 @@ const echoBinding: DescribedBinding = {
 };
 
 const dataTables = [
-	{ id: 'dt-1', name: 'Orders', columns: [] },
-	{ id: 'dt-2', name: 'Customer Notes', columns: [] },
+	{ id: 'dt-1', name: 'Orders', columns: [], projectId: 'proj-1' },
+	{ id: 'dt-2', name: 'Customer Notes', columns: [], projectId: 'proj-1' },
+	{ id: 'dt-9', name: 'Foreign Ledger', columns: [], projectId: 'proj-2' },
 ] as unknown as DataTable[];
 
 const ordersBinding: DescribedBinding = {
@@ -272,7 +273,7 @@ describe('AppConnectionsModal', () => {
 	});
 
 	it('loads the project data tables and lists them on the Data tab with their connection state', async () => {
-		const { getAllByTestId } = await renderOpen();
+		const { getAllByTestId, queryByText } = await renderOpen();
 
 		expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('proj-1', 1, 250);
 
@@ -280,6 +281,7 @@ describe('AppConnectionsModal', () => {
 
 		const rows = getAllByTestId('tools-connection-row');
 		expect(rows).toHaveLength(2);
+		expect(queryByText('Foreign Ledger')).not.toBeInTheDocument();
 
 		const orders = rowByTitle(rows, 'Orders');
 		expect(orders.querySelector('[data-icon="table"]')).not.toBeNull();
@@ -287,6 +289,15 @@ describe('AppConnectionsModal', () => {
 
 		const notes = rowByTitle(rows, 'Customer Notes');
 		expect(within(notes).queryByTestId('tools-connection-row-connected')).not.toBeInTheDocument();
+	});
+
+	it('shows an error toast when loading the data tables fails', async () => {
+		const failure = new Error('nope');
+		dataTableStore.fetchDataTables.mockRejectedValue(failure);
+
+		await renderOpen();
+
+		expect(showError).toHaveBeenCalledWith(failure, 'Error loading data tables');
 	});
 
 	it('narrows the data tables to the search query', async () => {
@@ -360,6 +371,18 @@ describe('AppConnectionsModal', () => {
 		expect(appsStore.addBinding).not.toHaveBeenCalled();
 		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
 		expect(getByTestId('tools-connection-modal')).toBeInTheDocument();
+	});
+
+	it('checks both access levels again when the dialog reopens', async () => {
+		const { getAllByTestId, getByRole } = await openAccessDialog();
+
+		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+		const notes = rowByTitle(getAllByTestId('tools-connection-row'), 'Customer Notes');
+		await userEvent.click(within(notes).getByTestId('tools-connection-row-main'));
+
+		expect(getByRole('checkbox', { name: 'Read' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'true');
 	});
 
 	it('disconnects a connected data table after confirmation', async () => {
