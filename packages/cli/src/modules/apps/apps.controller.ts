@@ -3,6 +3,7 @@ import {
 	CreateAppDto,
 	CreatePageDto,
 	UpdateAppDto,
+	UpdateAppVersionFileDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -16,6 +17,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Put,
 	RestController,
 } from '@n8n/decorators';
 import { NextFunction, RequestHandler, Response } from 'express';
@@ -29,11 +31,13 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 import { sendErrorResponse } from '@/response-helper';
 import { ProjectService } from '@/services/project.service.ee';
 
+import { AppSourceEditBuildService } from './app-source-edit-build.service';
 import { AppThemeBuildService } from './app-theme-build.service';
 import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+import { pathSegments } from './serving/path-segments';
 
 type TarballUploadRequest = AuthenticatedRequest<{ projectId: string }> & {
 	files?: Record<string, Express.Multer.File[]>;
@@ -82,6 +86,7 @@ export class AppsController {
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly appThemeBuildService: AppThemeBuildService,
+		private readonly appSourceEditBuildService: AppSourceEditBuildService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -220,6 +225,55 @@ export class AppsController {
 		@Param('appId') appId: string,
 	) {
 		return await this.appsService.listVersions(appId);
+	}
+
+	/**
+	 * Read-only browsing of a version's source: no path lists its files, a path
+	 * returns that one file's content. One route, like `AppServingController`,
+	 * since the wildcard already matches both shapes.
+	 */
+	@Get('/:appId/versions/:versionId/files{/*path}')
+	@ProjectScope('app:read')
+	async getVersionFiles(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+		@Param('path') wildcardPath: unknown,
+	) {
+		const segments = pathSegments(wildcardPath);
+		if (segments.length === 0) {
+			return await this.appsService.listVersionFiles(appId, versionId);
+		}
+		return await this.appsService.getVersionFileContent(appId, versionId, segments);
+	}
+
+	/**
+	 * Overwrites one existing source file and rebuilds the app, storing the
+	 * result as a new version. `versionId` is accepted for symmetry with the
+	 * read route above, but the edit always applies to the app's *active*
+	 * version, resolved server-side.
+	 */
+	@Put('/:appId/versions/:versionId/files{/*path}')
+	@ProjectScope('app:update')
+	async updateVersionFile(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('path') wildcardPath: unknown,
+		@Body dto: UpdateAppVersionFileDto,
+	) {
+		this.checkInstanceWriteAccess();
+		const segments = pathSegments(wildcardPath);
+		if (segments.length === 0) throw new BadRequestError('A file path is required');
+		const result = await this.appSourceEditBuildService.saveFile(
+			appId,
+			segments.join('/'),
+			dto.content,
+			req.user,
+		);
+		if ('error' in result) throw new BadRequestError(result.message);
+		return await this.appsService.getApp(appId);
 	}
 
 	@Post('/:appId/pages')

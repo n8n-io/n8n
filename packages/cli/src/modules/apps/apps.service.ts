@@ -10,6 +10,8 @@ import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
+import { AppVersionFileNotFoundError } from './errors/app-version-file-not-found.error';
+import { AppVersionNotFoundError } from './errors/app-version-not-found.error';
 import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
 import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
 import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
@@ -71,6 +73,25 @@ export class AppsService {
 		await this.getApp(appId);
 		const versions = await this.appVersionService.list(appId);
 		return versions.map((version) => this.appVersionService.toResponse(version));
+	}
+
+	/** Scoped to `appId` so a versionId from a different app is treated as not found. */
+	private async getVersion(appId: string, versionId: string) {
+		const version = await this.appVersionService.findById(versionId);
+		if (!version || version.appId !== appId) throw new AppVersionNotFoundError(versionId);
+		return version;
+	}
+
+	async listVersionFiles(appId: string, versionId: string) {
+		const version = await this.getVersion(appId, versionId);
+		return await this.appVersionService.listSourceFiles(version);
+	}
+
+	async getVersionFileContent(appId: string, versionId: string, segments: string[]) {
+		const version = await this.getVersion(appId, versionId);
+		const content = await this.appVersionService.readSourceFile(version, segments);
+		if (content === undefined) throw new AppVersionFileNotFoundError(segments.join('/'));
+		return { content };
 	}
 
 	async createPage(appId: string, dto: CreatePageDto) {
