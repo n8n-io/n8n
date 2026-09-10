@@ -5,6 +5,7 @@ import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types
 import { z } from 'zod';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
 import type { SubAgentBackgroundRunner } from './sub-agent-background-runner';
 import type { SubAgentRunContext } from '../sub-agents/sub-agent-runner';
@@ -102,6 +103,13 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					note: 'Background jobs need a persisted conversation thread; none is active.',
 				};
 			}
+			// Task sessions have no chat identity, so a wake cannot deliver their job results.
+			if (isTaskRunMemoryResourceId(parentResourceId)) {
+				return {
+					status: 'rejected',
+					note: 'Background jobs are unavailable in task sessions.',
+				};
+			}
 
 			// Self-delegation runs a copy of this agent: the parent's own id is the
 			// source, resolved to its draft or published version by run type.
@@ -118,6 +126,12 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 			}
 
 			const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+			if (!sandboxScope || sandboxScope.projectId !== options.projectId) {
+				return {
+					status: 'rejected',
+					note: 'Background jobs need a valid parent identity; none is active.',
+				};
+			}
 			const receipt = await options.backgroundRunner.spawn(
 				{
 					subAgentId: source.agentId,
@@ -131,9 +145,7 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 						: {}),
 					parentThreadId,
 					parentResourceId,
-					...(sandboxScope?.projectId === options.projectId
-						? { parentSandboxPrincipalHash: sandboxScope.principalHash }
-						: {}),
+					parentSandboxPrincipalHash: sandboxScope.principalHash,
 				},
 				{
 					projectId: options.projectId,
@@ -177,6 +189,10 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 			}
 
 			const jobs = await jobService.listForThread(parentThreadId, input.jobIds);
+			await jobService.markMailConsumed(
+				parentThreadId,
+				jobs.filter((job) => job.status !== 'running').map((job) => job.id),
+			);
 			return {
 				jobs: jobs.map((job) => ({
 					jobId: job.id,

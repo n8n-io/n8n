@@ -415,6 +415,16 @@ export class AgentChatBridge {
 		);
 	}
 
+	async deliverWakeResponse(threadId: string, chunks: StreamChunk[]): Promise<void> {
+		await this.streamConsumer.consume(
+			(async function* () {
+				yield* chunks;
+			})(),
+			this.chat.thread(threadId),
+			{ throwOnDeliveryError: true },
+		);
+	}
+
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
 	}
@@ -916,6 +926,7 @@ export class AgentChatBridge {
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
 		thread: Thread,
+		throwOnDeliveryError = false,
 	): Promise<boolean> {
 		const agentMessage: AgentMessage = chunk.message;
 
@@ -943,6 +954,7 @@ export class AgentChatBridge {
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			if (throwOnDeliveryError) throw error;
 			return false;
 		}
 	}
@@ -963,6 +975,7 @@ export class AgentChatBridge {
 	private async postErrorToThread(
 		thread: Thread<unknown, unknown> | null,
 		error: unknown,
+		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
@@ -995,6 +1008,7 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
+			if (throwOnDeliveryError) throw postError;
 		}
 	}
 }

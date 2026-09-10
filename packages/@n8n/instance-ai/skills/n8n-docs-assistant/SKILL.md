@@ -16,8 +16,6 @@ recommended_tools:
 Use this skill when the user asks how to configure, set up, troubleshoot, or
 understand n8n behavior and the answer should come from current n8n docs.
 
-`n8n-docs` is always loaded — call it directly, with no `load_tool` step.
-
 ## Default Procedure
 
 1. Call `n8n-docs(action="lookup")` first for credential setup and direct n8n

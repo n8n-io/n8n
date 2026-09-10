@@ -143,7 +143,10 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          # pnpm 11 and 12 resolve a relative lockfile directory from different locations.
+          # Use the checkout path because this workflow can run new workflow code against the old base.
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Evaluate required reviews
         env:

@@ -532,7 +532,7 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should start a new root span linked to the pre-wait origin and not overwrite the persisted origin', async () => {
+		it('should parent the resumed span on the pre-wait span and persist the new context', async () => {
 			traceContextService.get.mockResolvedValueOnce(prePauseContext);
 
 			await handler.onWorkflowResume({
@@ -547,15 +547,28 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({
 					executionId: 'exec-resume',
+					tracingContext: prePauseContext,
 					linkTo: prePauseContext,
 				}),
 			);
-			// The post-resume call should NOT carry a parent context — it's a new root.
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
+		});
+
+		it('should start a root span when no pre-wait context is persisted', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.not.objectContaining({ tracingContext: expect.anything() }),
+				expect.objectContaining({ tracingContext: undefined, linkTo: undefined }),
 			);
-			// Origin stays authoritative; subsequent resumes should link to it too.
-			expect(traceContextService.persist).not.toHaveBeenCalled();
+			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
 		});
 	});
 

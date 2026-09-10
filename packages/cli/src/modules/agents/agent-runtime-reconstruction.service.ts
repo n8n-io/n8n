@@ -237,6 +237,8 @@ export class AgentRuntimeReconstructionService {
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 		supportsHitl?: boolean,
+		/** Disable background jobs for task-triggered runtimes. */
+		allowBackgroundTasks = true,
 	): Promise<{
 		agent: RuntimeAgent;
 		toolRegistry: ToolRegistry;
@@ -293,6 +295,7 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 			unavailableTools,
+			allowBackgroundTasks,
 		});
 		return {
 			...runtime,
@@ -491,6 +494,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		allowBackgroundTasks?: boolean;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
@@ -515,8 +519,13 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 			parentWorkspace,
+			allowBackgroundTasks = true,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
+		const backgroundTasksEnabled =
+			runtimeProfile === 'top-level' &&
+			allowBackgroundTasks &&
+			Container.get(AgentsConfig).backgroundTasksEnabled;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		// Callers that cannot resume a suspended run (agents invoked as workflow
@@ -538,13 +547,11 @@ export class AgentRuntimeReconstructionService {
 				supportsHitl: canResume,
 				// Only an interactive top-level agent backgrounds waiting workflows: a
 				// child's job would nest under its own thread, where no check/cancel
-				// tools exist, and a top-level agent invoked as a workflow step
-				// (supportsHitl false) has no interactive turn to hand a receipt to.
-				// Everyone else handles waits the legacy way.
-				backgroundTasksEnabled:
-					runtimeProfile === 'top-level' &&
-					canResume &&
-					Container.get(AgentsConfig).backgroundTasksEnabled,
+				// tools exist; a top-level agent invoked as a workflow step
+				// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
+				// interactive turn to hand a receipt to. Everyone else handles waits
+				// the legacy way.
+				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
 			},
 			instrumentation,
 			unavailable,
@@ -628,6 +635,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			backgroundTasksEnabled,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -798,6 +806,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
+		backgroundTasksEnabled: boolean;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	}): Promise<void> {
 		const {
@@ -816,6 +825,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			sandboxPrincipalHash,
+			backgroundTasksEnabled,
 			parentWorkspace,
 		} = params;
 
@@ -948,7 +958,7 @@ export class AgentRuntimeReconstructionService {
 			});
 			this.attachWriteTodosTool(agent, agentId);
 
-			if (Container.get(AgentsConfig).backgroundTasksEnabled) {
+			if (backgroundTasksEnabled) {
 				await this.attachBackgroundJobTools({
 					agent,
 					parentAgentId: parentAgentIdForDelegation,
@@ -960,6 +970,15 @@ export class AgentRuntimeReconstructionService {
 					user,
 					instrumentation,
 					...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
+				});
+
+				agent.volatileInstructionsProvider(async ({ persistence }) => {
+					if (!persistence?.threadId) return undefined;
+					const { AgentWakeService } = await import('./background/agent-wake.service.js');
+					return await Container.get(AgentWakeService).getBackgroundUpdates(
+						persistence.threadId,
+						persistence.resourceId,
+					);
 				});
 			}
 		}

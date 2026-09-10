@@ -171,3 +171,23 @@ describe('PlanReviewPanel', () => {
 		expect(queryByText('Plan approved')).not.toBeInTheDocument();
 	});
 });
+
+describe('PlanReviewPanel — blank titles', () => {
+	it('labels a task whose title is blank', () => {
+		const { getByText } = renderComponent({
+			props: {
+				plannedTasks: [
+					{
+						id: 'table',
+						title: '  ',
+						kind: 'manage-data-tables',
+						spec: 'Create a table.',
+						deps: [],
+					},
+				],
+			},
+		});
+
+		expect(getByText('Untitled task')).toBeInTheDocument();
+	});
+});

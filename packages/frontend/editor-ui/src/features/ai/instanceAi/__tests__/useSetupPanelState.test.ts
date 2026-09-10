@@ -51,8 +51,14 @@ function createHarness(
 	vi.mocked(isAgentEditingWorkflow).mockImplementation(() => editing.value);
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
 		isWorkflowAvailable: computed(() => available.value),
+		workflowProjectId: computed(() => undefined),
 		derivedItems: computed(() => derived.value),
+		derivedCredentialItems: computed(() =>
+			derived.value.filter((item) => item.kind === 'credential'),
+		),
 		isItemDone: (item: InstanceAiSetupItem) => doneIds.value.has(item.id),
+		getNodeByName: vi.fn(),
+		refreshWorkflow: vi.fn().mockResolvedValue(undefined),
 	});
 
 	const thread: SetupPanelThreadSource = reactive({
@@ -61,7 +67,7 @@ function createHarness(
 	});
 
 	const state = useSetupPanelState({ thread, workflowId: () => workflowId });
-	return { state, editing, available, doneIds };
+	return { state, editing, available, doneIds, derived };
 }
 
 describe('useSetupPanelState', () => {
@@ -88,6 +94,85 @@ describe('useSetupPanelState', () => {
 
 		expect(state.rowSource.value).toBe('events');
 		expect(state.rows.value.map((row) => row.item)).toEqual([eventItem]);
+	});
+
+	it('resolves event bindings and keeps the recipe as saved rows change', () => {
+		const announcement: InstanceAiSetupItem = {
+			...eventItem,
+			reason: 'Send notifications',
+			setupHint: {
+				template: { headers: { Authorization: '{{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+		const savedItem: InstanceAiSetupItem = {
+			...eventItem,
+			nodeBindings: [{ nodeName: 'Slack' }],
+		};
+		const { state, editing, derived, doneIds } = createHarness({
+			agentEditing: true,
+			workflowAvailable: true,
+			eventItems: [announcement],
+			derivedItems: [savedItem],
+		});
+		expect(state.rows.value).toEqual([
+			{
+				item: { ...announcement, nodeBindings: [{ nodeName: 'Slack' }] },
+				isDone: false,
+			},
+		]);
+		expect(announcement.nodeBindings).toBeUndefined();
+
+		derived.value = [{ ...savedItem, nodeBindings: [{ nodeName: 'New Slack' }] }];
+		doneIds.value.add(savedItem.id);
+		editing.value = false;
+		expect(state.rows.value).toEqual([
+			{
+				item: { ...announcement, nodeBindings: [{ nodeName: 'New Slack' }] },
+				isDone: true,
+			},
+		]);
+
+		derived.value = [];
+		expect(state.rows.value).toEqual([]);
+	});
+
+	it('does not share a generic credential recipe or binding with another node', () => {
+		const announcement: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:First service`,
+			kind: 'credential',
+			credentialType: 'httpTemplatedCustomAuth',
+			setupHint: { template: {}, placeholders: [], suggestedName: 'First service' },
+		};
+		const otherService: InstanceAiSetupItem = {
+			id: `${WORKFLOW_ID}:credential:httpTemplatedCustomAuth:Second service`,
+			kind: 'credential',
+			credentialType: 'httpTemplatedCustomAuth',
+			nodeBindings: [{ nodeName: 'Second service' }],
+		};
+		const { state, editing } = createHarness({
+			agentEditing: true,
+			workflowAvailable: true,
+			eventItems: [announcement],
+			derivedItems: [otherService],
+		});
+		expect(state.rows.value[0].item).toEqual(announcement);
+		editing.value = false;
+		expect(state.rows.value[0].item).toEqual(otherService);
+	});
+
+	it('does not reuse a recipe when the credential type changes', () => {
+		const announcement: InstanceAiSetupItem = {
+			...eventItem,
+			setupHint: { template: {}, placeholders: [] },
+		};
+		const savedItem: InstanceAiSetupItem = { ...eventItem, credentialType: 'notionApi' };
+		const { state } = createHarness({
+			workflowAvailable: true,
+			eventItems: [announcement],
+			derivedItems: [savedItem],
+		});
+		expect(state.rows.value[0].item).toEqual(savedItem);
 	});
 
 	it('recomputes row done-ness when completion state changes', () => {

@@ -149,7 +149,9 @@ export class WorkflowPublicationApplier {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
-		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
+		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes, {
+			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
+		});
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
