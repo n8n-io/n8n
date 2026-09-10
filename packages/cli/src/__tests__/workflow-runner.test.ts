@@ -413,6 +413,14 @@ describe('processError', () => {
 		vi.spyOn(executionRepository, 'findSingleExecution')
 			.mockResolvedValueOnce(mock<IExecutionBase>({ status: 'running' }))
 			.mockResolvedValue(mock<IExecutionBase>({ status: 'success' }));
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				mode: 'webhook',
+				data: createRunExecutionData({ resultData: { runData: { Start: [] } } }),
+			}),
+		);
 
 		globalConfig.executions.mode = 'queue';
 		vi.useFakeTimers();
