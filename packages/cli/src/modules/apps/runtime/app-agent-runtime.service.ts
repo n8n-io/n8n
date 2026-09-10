@@ -6,6 +6,7 @@ import {
 	type AgentPermission,
 	type AppBinding,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
@@ -53,6 +54,7 @@ export class AppAgentRuntimeService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly messageContextService: IntegrationMessageContextService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async chat(namespace: string, key: string, body: unknown): Promise<AppAgentTurn> {
@@ -178,6 +180,11 @@ export class AppAgentRuntimeService {
 				'permission_denied',
 				`The binding "${key}" does not allow ${needed} access to its agent.`,
 			);
+		}
+
+		// The agents module is opt-in; without it there is no Agent table to query.
+		if (!this.moduleRegistry.isActive('agents')) {
+			throw new AppRuntimeError(404, 'agent_not_found', 'Agents are not enabled on this instance.');
 		}
 
 		const agent = await this.agentsService.findById(binding.agentId, app.projectId);

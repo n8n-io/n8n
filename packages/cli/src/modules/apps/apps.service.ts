@@ -11,6 +11,7 @@ import {
 	type UpdateAppDto,
 	type UpdatePageDto,
 } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,6 +21,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { UnexpectedError, type DataTableColumnType, type INode } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AgentsService } from '@/modules/agents/agents.service';
 import {
@@ -62,6 +64,8 @@ type WorkflowBinding = Extract<AppBinding, { kind: 'workflow' }>;
 type DataTableBinding = Extract<AppBinding, { kind: 'dataTable' }>;
 type AgentBinding = Extract<AppBinding, { kind: 'agent' }>;
 type Described = { binding: DescribedBinding; warnings: string[] };
+
+const AGENTS_DISABLED_MESSAGE = 'Agents are not enabled on this instance.';
 
 /** Dates leave the runtime as ISO strings (JSON); every user column may hold `null`. */
 function rowColumnSchema(type: DataTableColumnType): JSONSchema7 {
@@ -110,6 +114,7 @@ export class AppsService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly dataTableService: DataTableService,
 		private readonly agentsService: AgentsService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -243,6 +248,10 @@ export class AppsService {
 
 	/** The visitor chats as the app's project, so the agent must live there; `app:update` on the project is the user's ticket. */
 	private async checkAgentBinding(binding: AgentBinding, projectId: string) {
+		// The agents module is opt-in; without it there is no Agent table to query.
+		if (!this.moduleRegistry.isActive('agents')) {
+			throw new BadRequestError(AGENTS_DISABLED_MESSAGE);
+		}
 		const agent = await this.agentsService.findById(binding.agentId, projectId);
 		if (!agent) throw new BindingAgentNotFoundError(binding.key, binding.agentId);
 	}
@@ -414,6 +423,12 @@ export class AppsService {
 
 	/** Only the published version answers visitors, so an unpublished agent binds with a warning, like a workflow. */
 	private async describeAgentBinding(projectId: string, binding: AgentBinding): Promise<Described> {
+		if (!this.moduleRegistry.isActive('agents')) {
+			return {
+				binding: { key: binding.key, kind: binding.kind, name: binding.key, missing: true },
+				warnings: [`Binding '${binding.key}': ${AGENTS_DISABLED_MESSAGE}`],
+			};
+		}
 		const agent = await this.agentsService.findById(binding.agentId, projectId);
 		if (!agent) {
 			return {

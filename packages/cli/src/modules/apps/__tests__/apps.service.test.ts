@@ -1,9 +1,11 @@
 import type { AppBinding } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, User, WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type IDataObject, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { AgentsService } from '@/modules/agents/agents.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -51,6 +53,7 @@ describe('AppsService', () => {
 			mock<ExecutionPersistence>(),
 			mock<DataTableService>(),
 			mock<AgentsService>(),
+			mock<ModuleRegistry>(),
 		);
 	});
 
@@ -193,6 +196,7 @@ describe('AppsService bindings', () => {
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let dataTableService: ReturnType<typeof mock<DataTableService>>;
 	let agentsService: ReturnType<typeof mock<AgentsService>>;
+	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let service: AppsService;
 	let app: App;
 
@@ -203,6 +207,8 @@ describe('AppsService bindings', () => {
 		executionPersistence = mock<ExecutionPersistence>();
 		dataTableService = mock<DataTableService>();
 		agentsService = mock<AgentsService>();
+		moduleRegistry = mock<ModuleRegistry>();
+		moduleRegistry.isActive.mockReturnValue(true);
 		executionPersistence.findMultipleExecutions.mockResolvedValue([
 			successfulExecution([{ reply: 'hi' }]),
 		]);
@@ -216,6 +222,7 @@ describe('AppsService bindings', () => {
 			executionPersistence,
 			dataTableService,
 			agentsService,
+			moduleRegistry,
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);
@@ -379,6 +386,19 @@ describe('AppsService bindings', () => {
 			);
 			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'proj-1');
 			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('rejects an agent binding with 400 while the agents module is inactive', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			const error: unknown = await service
+				.setBindings('app-1', [agentBinding()], user)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toMatchObject({ message: 'Agents are not enabled on this instance.' });
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('agents');
+			expect(agentsService.findById).not.toHaveBeenCalled();
 		});
 
 		it('rejects an agent binding without permissions', async () => {
@@ -708,6 +728,21 @@ describe('AppsService bindings', () => {
 			]);
 			expect(result.warnings).toEqual([
 				"Binding 'support': agent 'agent-1' no longer exists in the app's project.",
+			]);
+		});
+
+		it('keeps an agent binding as missing and warns while the agents module is inactive', async () => {
+			app.bindings = [agentBinding()];
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			const result = await service.describeBindings(app);
+
+			expect(agentsService.findById).not.toHaveBeenCalled();
+			expect(result.bindings).toEqual([
+				{ key: 'support', kind: 'agent', name: 'support', missing: true },
+			]);
+			expect(result.warnings).toEqual([
+				"Binding 'support': Agents are not enabled on this instance.",
 			]);
 		});
 

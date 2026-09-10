@@ -1,5 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { SerializableAgentState } from '@n8n/agents';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
@@ -56,6 +57,7 @@ describe('AppAgentRuntimeService', () => {
 	let agentExecutionService: ReturnType<typeof mock<AgentExecutionService>>;
 	let checkpointStorage: ReturnType<typeof mock<N8NCheckpointStorage>>;
 	let messageContextService: ReturnType<typeof mock<IntegrationMessageContextService>>;
+	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let service: AppAgentRuntimeService;
 
 	beforeEach(() => {
@@ -65,6 +67,8 @@ describe('AppAgentRuntimeService', () => {
 		agentExecutionService = mock<AgentExecutionService>();
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		messageContextService = mock<IntegrationMessageContextService>();
+		moduleRegistry = mock<ModuleRegistry>();
+		moduleRegistry.isActive.mockReturnValue(true);
 		appRepository.findByNamespace.mockResolvedValue(app());
 		agentsService.findById.mockResolvedValue(agent());
 		agentExecutionService.hasSuspendedRun.mockResolvedValue(false);
@@ -77,6 +81,7 @@ describe('AppAgentRuntimeService', () => {
 			agentExecutionService,
 			checkpointStorage,
 			messageContextService,
+			moduleRegistry,
 		);
 	});
 
@@ -116,6 +121,17 @@ describe('AppAgentRuntimeService', () => {
 			expect(
 				await failure(service.messages('help', 'support', { sessionId: SESSION_ID })),
 			).toMatchObject({ status: 403, code: 'permission_denied' });
+		});
+
+		it('answers 404 agent_not_found while the agents module is inactive', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			expect(await failure(service.chat('help', 'support', chatBody))).toMatchObject({
+				status: 404,
+				code: 'agent_not_found',
+			});
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('agents');
+			expect(agentsService.findById).not.toHaveBeenCalled();
 		});
 
 		it('answers 404 agent_not_found when the agent left the project', async () => {
