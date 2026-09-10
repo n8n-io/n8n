@@ -1,0 +1,55 @@
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_2725a696667b9d::t_006d1ae7b01070 113-117
+  s_2725a696667b9d::t_46ab10c733df19 8-9,19,21,25,28,106-107,112,118-130,133-143,145-146
+packages/cli/src/executions/execution.service.ts
+  s_2725a696667b9d::t_2afd9a3416c7af 1
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_2725a696667b9d::t_e7268b70555f98 3-4,8,59-60
+packages/cli/src/modules/mcp/__tests__/search-executions.tool.test.ts
+  s_2725a696667b9d::t_94dee3ee592bf8 7,29,34-35,60,82,128,135,148,156,163,172,180,194,197,201,221
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_2725a696667b9d::t_0d1d9218ec8f44 28,212,472
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_2725a696667b9d::t_f82f7a934145bf 19
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_2725a696667b9d::t_e7268b70555f98 1-25
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_2725a696667b9d::t_77fec9b9fc6c69 11,127
+packages/cli/src/executions/execution-list.service.ts
+  s_2725a696667b9d::t_6b5e08c1d26e49 1-23,29,33-68
+  s_2725a696667b9d::t_bb3471a020a1fa 24-28,30-32
+packages/cli/src/executions/executions.controller.ts
+  s_2725a696667b9d::t_3b5a12cb694903 15,26,41,49,52
+packages/cli/src/executions/__tests__/execution-list-v1.service.test.ts
+  s_2725a696667b9d::t_bbc744b51c8006 1,3-6,8-49,55-61,67-99
+  s_2725a696667b9d::t_6c9c5e6599bc6a 2,50-54,62-66
+  s_2725a696667b9d::t_006d1ae7b01070 7
+packages/cli/src/executions/execution-list-v1.service.ts
+  s_2725a696667b9d::t_58cb54c20831ce 1-128
+packages/cli/src/modules/mcp/tools/search-executions.tool.ts
+  s_2725a696667b9d::t_0d1d9218ec8f44 6,73,120,140
+packages/cli/test/integration/execution.service.integration.test.ts
+  s_2725a696667b9d::t_7b8f672aea41c6 7,13,19-26,29,40-43,100,145,176,201,229,253,277,304,332,363,396,449,484,519,550,588-589,626-627,651,680,714,848,872,894,908,990,1039,1081,1126
+  s_2725a696667b9d::t_490f993bed7263 84,527,725,753-754,827
+  s_2725a696667b9d::t_006d1ae7b01070 933-935
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  s_2725a696667b9d::t_77fec9b9fc6c69 22,113,166,374,965,1020,1100
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_2725a696667b9d::t_791c2cd54e0202 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e3d77232c59e16b5bec8cfc03bdb343f924be2c",
+  "prompts": {},
+  "sessions": {
+    "s_2725a696667b9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1636a30-5e65-49b1-8820-7dfdb03b0e5e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
