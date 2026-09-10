@@ -1919,6 +1919,7 @@
 	"mcp.productionChecklist.workflow.description": "Allow MCP clients to access this workflow",
 	"mcp.productionChecklist.instance.description": "Enable instance-level MCP access to allow MCP clients to access workflows.",
 	"mcp.workflowDeactivated.message": "MCP Access has been disabled for this workflow because it is deactivated",
+	"menuActions.dependencies": "Dependencies",
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.exportJson": "Export JSON",
 	"menuActions.import": "Import",
