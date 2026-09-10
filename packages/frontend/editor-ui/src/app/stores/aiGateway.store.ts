@@ -14,6 +14,14 @@ import { TIME } from '@/app/constants';
 
 const OPERATION_ONLY = '__operation_only__';
 
+function hasNestedProperty(value: unknown, key: string): boolean {
+	if (Array.isArray(value)) return value.some((item) => hasNestedProperty(item, key));
+	if (value === null || typeof value !== 'object') return false;
+
+	if (Object.prototype.hasOwnProperty.call(value, key)) return true;
+	return Object.values(value).some((item) => hasNestedProperty(item, key));
+}
+
 // The balance is shown in passive spots (sidebar pill, model selectors, node
 // creator) that each fetch on mount, so it gets re-requested constantly during a
 // building session. Serve a recently fetched balance from cache; callers that need
@@ -144,7 +152,11 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	function isNodeSupported(nodeName: string): boolean {
-		return config.value?.nodes.includes(nodeName) ?? false;
+		if (!config.value) return false;
+		return (
+			config.value.nodes.includes(nodeName) ||
+			config.value.nodes.includes(stripToolSuffix(nodeName))
+		);
 	}
 
 	function isCredentialTypeSupported(credentialType: string): boolean {
@@ -197,6 +209,34 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			config.value?.minNodeTypeVersion?.[stripToolSuffix(nodeName)];
 		if (minVersion === undefined) return true;
 		return typeVersion >= minVersion;
+	}
+
+	function isNodeEligible(
+		node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
+		credentialType: string,
+		resolvedParameters: Record<string, unknown> = node.parameters,
+	): boolean {
+		if (!config.value || !isNodeSupported(node.type)) return false;
+		if (!isCredentialTypeSupported(credentialType)) return false;
+		if (!isNodeTypeVersionSupported(node.type, node.typeVersion)) return false;
+
+		const nodeKey = config.value.nodes.includes(node.type) ? node.type : stripToolSuffix(node.type);
+		const hiddenProperties = config.value.hiddenNodeProperties?.[nodeKey];
+		if (hiddenProperties?.some((property) => hasNestedProperty(node.parameters, property))) {
+			return false;
+		}
+
+		const supportedActions = config.value.supportedActions?.[nodeKey];
+		if (!supportedActions) return true;
+
+		const resource =
+			typeof resolvedParameters.resource === 'string'
+				? resolvedParameters.resource
+				: OPERATION_ONLY;
+		const operation =
+			typeof resolvedParameters.operation === 'string' ? resolvedParameters.operation : undefined;
+
+		return operation !== undefined && supportedActions[resource]?.includes(operation) === true;
 	}
 
 	function hasGatewayManagedCredential(node: INode | null): node is INode {
@@ -258,6 +298,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,
+		isNodeEligible,
 		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
 		canServeCredentialType,

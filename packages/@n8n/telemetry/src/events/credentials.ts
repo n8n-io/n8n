@@ -3,6 +3,26 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
+	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
+		name: 'User viewed Gateway credits credential error nudge',
+		description:
+			'The credential modal showed a Gateway credits suggestion after a failed credential test for an eligible workflow node.',
+		properties: z.object({
+			credential_type: z.string(),
+			node_type: z.string(),
+			workflow_id: z.string().optional(),
+		}),
+	},
+	USER_SWITCHED_TO_GATEWAY_CREDITS_FROM_CREDENTIAL_ERROR: {
+		name: 'User switched to Gateway credits from credential error',
+		description:
+			'The user selected Gateway credits from the suggestion shown after a failed credential test.',
+		properties: z.object({
+			credential_type: z.string(),
+			node_type: z.string(),
+			workflow_id: z.string().optional(),
+		}),
+	},
 	USER_PROBED_CREDENTIAL: {
 		name: 'User probed credential',
 		description:
