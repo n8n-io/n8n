@@ -82,15 +82,12 @@ const redactionInfo = computed(
 	() =>
 		useExecutionDataStore(createExecutionDataId(executionId.value)).execution?.data?.redactionInfo,
 );
-// Copying to the editor pins the fetched items. Without the permission to reveal,
-// the fetch returns empty placeholders, so pinning would erase real node data.
+// Copying to the editor pins the fetched items. Without a reveal, the fetch
+// returns empty placeholders, so pinning would erase real node data. The reason
+// is deliberately not named: end-user credential data is unrevealable to
+// everyone but the executing user, so no scope can unblock it.
 const pinBlockedByRedaction = computed(
 	() => redactionInfo.value?.isRedacted === true && redactionInfo.value.canReveal !== true,
-);
-const redactionTooltip = computed(() =>
-	redactionInfo.value?.reason === 'dynamic_credentials'
-		? locale.baseText('ndv.redacted.dynamicCredentials.description')
-		: locale.baseText('executionsList.debug.button.redacted.tooltip'),
 );
 
 const { isFeatureEnabled: isAddToDatasetFeatureEnabled } = useAddExecutionToDataset(workflowId);
@@ -408,7 +405,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 
 			<div :class="$style.actions">
-				<N8nTooltip :content="redactionTooltip" :disabled="!pinBlockedByRedaction">
+				<N8nTooltip
+					:content="locale.baseText('executionsList.debug.button.redacted.tooltip')"
+					:disabled="!pinBlockedByRedaction"
+				>
 					<RouterLink
 						:to="{
 							name: VIEWS.EXECUTION_DEBUG,

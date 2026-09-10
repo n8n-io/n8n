@@ -605,34 +605,25 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			await router.push(previewPath);
 		});
 
-		it('should block the debug button and explain why when the data cannot be revealed', async () => {
-			seedExecution({ isRedacted: true, reason: 'policy', canReveal: false });
+		// The copy never names the reason: end-user credential data is unrevealable to
+		// everyone but the executing user, so a permissions claim would be wrong there.
+		test.each(['workflow_redaction_policy', 'dynamic_credentials'])(
+			'should block the debug button and explain why for reason %s',
+			async (reason) => {
+				seedExecution({ isRedacted: true, reason, canReveal: false });
 
-			const { getByTestId } = renderComponent({ props: { execution: executionData } });
+				const { getByTestId } = renderComponent({ props: { execution: executionData } });
 
-			await userEvent.click(getByTestId('execution-debug-button'));
-			expect(router.currentRoute.value.path).toBe(previewPath);
+				await userEvent.click(getByTestId('execution-debug-button'));
+				expect(router.currentRoute.value.path).toBe(previewPath);
 
-			const tooltip = getByTestId('execution-debug-button').closest('[data-tooltip-content]');
-			expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
-			expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
-				'This execution data is redacted. You do not have permission to reveal it, so it cannot be pinned in the editor.',
-			);
-		});
-
-		it('should explain the end-user credentials case with its own copy', () => {
-			seedExecution({ isRedacted: true, reason: 'dynamic_credentials', canReveal: false });
-
-			const { getByTestId } = renderComponent({ props: { execution: executionData } });
-
-			expect(
-				getByTestId('execution-debug-button')
-					.closest('[data-tooltip-content]')
-					?.getAttribute('data-tooltip-content'),
-			).toBe(
-				'This execution used end-user credentials. Data from end-user credential executions cannot be revealed.',
-			);
-		});
+				const tooltip = getByTestId('execution-debug-button').closest('[data-tooltip-content]');
+				expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
+				expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
+					'This execution data is redacted and cannot be revealed, so it cannot be pinned in the editor.',
+				);
+			},
+		);
 
 		it('should allow debugging when the data can be revealed', async () => {
 			seedExecution({ isRedacted: true, reason: 'policy', canReveal: true });
