@@ -81,7 +81,10 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 					'<div data-test-id="app-theme-editor-stub" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
 			},
 			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
-			AppCodeViewer: { template: '<div data-test-id="app-code-viewer-stub" />' },
+			AppCodeViewer: {
+				props: ['projectId', 'appId', 'refreshKey'],
+				template: '<div data-test-id="app-code-viewer-stub" :data-refresh-key="refreshKey" />',
+			},
 		},
 	},
 });
@@ -831,14 +834,16 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
-	it('shows the code as its own builder mode, not a Build tab', async () => {
-		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+	it('shows the code as its own builder mode, not a Build tab, and hands it the refresh key', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }), {
+			refreshKey: 3,
+		});
 		expect(queryByTestId('app-code-viewer-stub')).not.toBeInTheDocument();
 
 		await userEvent.click(getByTestId('app-builder-mode-code'));
 
 		expect(getByTestId('app-builder-code')).toBeInTheDocument();
-		expect(getByTestId('app-code-viewer-stub')).toBeInTheDocument();
+		expect(getByTestId('app-code-viewer-stub')).toHaveAttribute('data-refresh-key', '3');
 		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
 

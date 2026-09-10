@@ -453,7 +453,8 @@ const onPublishMenuSelect = async (action: PublishMenuAction) => {
 	}
 };
 
-// Unlike a theme save, stay in Code: the user is likely still editing.
+// Only the live preview shows the draft; unlike a theme save, stay in Code:
+// the user is likely still editing.
 const onCodeSaved = async (updated: App) => {
 	setApp(updated);
 	await appsStore.fetchPages(props.projectId, props.appId);
@@ -796,7 +797,7 @@ watch(
 				<AppCodeViewer
 					:project-id="projectId"
 					:app-id="appId"
-					:version-id="versionId"
+					:refresh-key="props.refreshKey"
 					@saved="onCodeSaved"
 				/>
 			</div>

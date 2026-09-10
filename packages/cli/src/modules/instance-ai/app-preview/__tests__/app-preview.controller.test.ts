@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AppDraftService } from '@/modules/apps/app-draft.service';
 import type { AppPublishService } from '@/modules/apps/app-publish.service';
 import type { AppThemeService } from '@/modules/apps/app-theme.service';
 import type { App } from '@/modules/apps/app.entity';
@@ -24,6 +25,7 @@ describe('AppPreviewController', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const appPublishService = mock<AppPublishService>();
 	const appThemeService = mock<AppThemeService>();
+	const appDraftService = mock<AppDraftService>();
 	const instanceWriteAccess = mock<InstanceWriteAccessService>();
 	const controller = new AppPreviewController(
 		appPreviewService,
@@ -31,6 +33,7 @@ describe('AppPreviewController', () => {
 		instanceAiService,
 		appPublishService,
 		appThemeService,
+		appDraftService,
 		instanceWriteAccess,
 	);
 	const user = mock<User>({ id: 'user-1' });
@@ -59,6 +62,8 @@ describe('AppPreviewController', () => {
 			url: 'http://n8n/apps/greeter/',
 		});
 		appThemeService.applyTheme.mockResolvedValue({ versionId: 's-3' });
+		appDraftService.listFiles.mockResolvedValue({ versionId: 's-3', files: ['src/main.ts'] });
+		appDraftService.write.mockResolvedValue({ versionId: 's-4' });
 		appsService.toResponse.mockImplementation(
 			async (value) => await Promise.resolve({ ...value, hasUnpublishedChanges: true }),
 		);
@@ -181,6 +186,118 @@ describe('AppPreviewController', () => {
 				ForbiddenError,
 			);
 			expect(appsService.updateApp).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listDraftFiles', () => {
+		it('gates the route with a project-scoped app:read check', () => {
+			const route = routeMetadata('listDraftFiles');
+
+			expect(route?.method).toBe('get');
+			expect(route?.path).toBe('/:appId/draft/files');
+			expect(route?.accessScope).toEqual({ scope: 'app:read', globalOnly: false });
+		});
+
+		it('lists the newest source when the app has no sandbox yet', async () => {
+			await expect(controller.listDraftFiles(req, res, 'app-1')).resolves.toEqual({
+				versionId: 's-3',
+				files: ['src/main.ts'],
+			});
+
+			expect(instanceAiService.getCachedWorkspace).toHaveBeenCalledWith(APP_SANDBOX_KEY);
+			expect(appDraftService.listFiles).toHaveBeenCalledWith('app-1', user, undefined);
+		});
+
+		it("hands the app's sandbox over as the draft when it is cached", async () => {
+			const workspace = mock<Workspace>();
+			instanceAiService.getCachedWorkspace.mockReturnValue(workspace);
+
+			await controller.listDraftFiles(req, res, 'app-1');
+
+			expect(appDraftService.listFiles).toHaveBeenCalledWith('app-1', user, workspace);
+		});
+
+		it('answers 404 for an app in another project', async () => {
+			appsService.getApp.mockResolvedValue(mock<App>({ id: 'app-1', projectId: 'project-2' }));
+
+			await expect(controller.listDraftFiles(req, res, 'app-1')).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('saveDraftFile', () => {
+		it('gates the route with a project-scoped app:update check', () => {
+			const route = routeMetadata('saveDraftFile');
+
+			expect(route?.method).toBe('put');
+			expect(route?.path).toBe('/:appId/draft/files{/*path}');
+			expect(route?.accessScope).toEqual({ scope: 'app:update', globalOnly: false });
+		});
+
+		it("writes the file into the app's sandbox, creating it when needed, and answers the app", async () => {
+			const workspace = mock<Workspace>();
+			instanceAiService.getOrCreateWorkspace.mockResolvedValue(workspace);
+
+			const result = controller.saveDraftFile(req, res, 'app-1', ['src', 'main.ts'], {
+				content: 'export {};',
+			});
+
+			await expect(result).resolves.toMatchObject({ id: 'app-1', hasUnpublishedChanges: true });
+			expect(instanceAiService.getOrCreateWorkspace).toHaveBeenCalledWith(APP_SANDBOX_KEY, user);
+			const [appId, writer, filesFor, draft] = appDraftService.write.mock.calls[0];
+			expect([appId, writer, draft]).toEqual(['app-1', user, workspace]);
+			await expect(filesFor(async () => await Promise.resolve('old'))).resolves.toEqual({
+				'src/main.ts': 'export {};',
+			});
+		});
+
+		it('writes without a draft when the sandbox is disabled', async () => {
+			instanceAiService.getOrCreateWorkspace.mockResolvedValue(undefined);
+
+			await controller.saveDraftFile(req, res, 'app-1', 'main.ts', { content: 'x' });
+
+			expect(appDraftService.write).toHaveBeenCalledWith(
+				'app-1',
+				user,
+				expect.any(Function),
+				undefined,
+			);
+		});
+
+		it('refuses to create a file the draft does not have', async () => {
+			await controller.saveDraftFile(req, res, 'app-1', ['src', 'new.ts'], { content: 'x' });
+
+			const filesFor = appDraftService.write.mock.calls[0][2];
+			await expect(filesFor(async () => await Promise.resolve(undefined))).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it.each([[[]], [['..', 'etc', 'passwd']], [['src', '.']], [['a/b']], [['']]])(
+			'answers 400 for the path %j without writing',
+			async (segments) => {
+				await expect(
+					controller.saveDraftFile(req, res, 'app-1', segments, { content: 'x' }),
+				).rejects.toThrow(BadRequestError);
+				expect(appDraftService.write).not.toHaveBeenCalled();
+			},
+		);
+
+		it('answers 400 with the service message when the draft cannot be written', async () => {
+			appDraftService.write.mockResolvedValue({ error: true, message: 'no source yet' });
+
+			const attempt = controller.saveDraftFile(req, res, 'app-1', 'main.ts', { content: 'x' });
+
+			await expect(attempt).rejects.toThrow(BadRequestError);
+			await expect(attempt).rejects.toThrow('no source yet');
+		});
+
+		it('answers 403 on a read-only instance', async () => {
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(
+				controller.saveDraftFile(req, res, 'app-1', 'main.ts', { content: 'x' }),
+			).rejects.toThrow(ForbiddenError);
+			expect(appDraftService.write).not.toHaveBeenCalled();
 		});
 	});
 

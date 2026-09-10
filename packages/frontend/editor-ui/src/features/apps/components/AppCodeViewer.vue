@@ -14,7 +14,8 @@ import FileCodeViewer from '@/features/apps/components/FileCodeViewer.vue';
 const props = defineProps<{
 	projectId: string;
 	appId: string;
-	versionId: string | undefined;
+	/** Bumped when the draft may have changed elsewhere (a turn ended); reloads the file list. */
+	refreshKey?: number;
 }>();
 
 const emit = defineEmits<{ saved: [App] }>();
@@ -26,11 +27,13 @@ const appsStore = useAppsStore();
 
 const loading = ref(false);
 const saving = ref(false);
+/** The stored version the listed files come from; undefined while the app has no source. */
+const versionId = ref<string>();
 const files = ref<string[]>([]);
 const selectedPath = ref<string[]>([]);
 const fileContent = ref<string>();
 const editedContent = ref<string>();
-const buildError = ref<string>();
+const saveError = ref<string>();
 
 const tree = computed(() => buildFileTree(files.value));
 const dirty = computed(
@@ -52,12 +55,13 @@ let selectRequestId = 0;
 
 const selectFile = async (path: string) => {
 	const requestId = ++selectRequestId;
-	buildError.value = undefined;
+	saveError.value = undefined;
+	if (!versionId.value) return;
 	try {
 		const content = await appsStore.fetchAppVersionFileContent(
 			props.projectId,
 			props.appId,
-			props.versionId!,
+			versionId.value,
 			path,
 		);
 		if (requestId !== selectRequestId) return;
@@ -76,36 +80,30 @@ const selectFile = async (path: string) => {
 };
 
 // Guards against an older list request resolving after a newer one (e.g. two
-// rapid version changes), the same way `selectRequestId` guards file fetches.
+// rapid refreshes), the same way `selectRequestId` guards file fetches.
 let loadRequestId = 0;
 
 const loadFiles = async () => {
 	const requestId = ++loadRequestId;
-	if (!props.versionId) {
-		files.value = [];
-		clearSelection();
-		return;
-	}
 	loading.value = true;
 	try {
-		const fetched = await appsStore.fetchAppVersionFiles(
-			props.projectId,
-			props.appId,
-			props.versionId,
-		);
+		const draft = await appsStore.fetchAppDraftFiles(props.projectId, props.appId);
 		if (requestId !== loadRequestId) return;
-		files.value = fetched;
-		// Re-select the file that was open, so a version change from this tab's
-		// own save doesn't reset the view the user was just looking at.
+		versionId.value = draft?.versionId;
+		files.value = draft?.files ?? [];
+		// Re-select the file that was open, so a refresh doesn't reset the view
+		// the user was just looking at — unless it has unsaved edits, which a
+		// reload would silently discard.
 		const current = selectedPath.value[0];
 		if (current && files.value.includes(current)) {
-			await selectFile(current);
+			if (!dirty.value) await selectFile(current);
 		} else {
 			clearSelection();
 		}
 	} catch (error) {
 		if (requestId !== loadRequestId) return;
 		// A stale/broken list shouldn't stay on screen looking editable.
+		versionId.value = undefined;
 		files.value = [];
 		clearSelection();
 		toast.showError(error, i18n.baseText('apps.builder.code.error'));
@@ -134,7 +132,7 @@ const onSelect = async (selected: string[]) => {
 
 const onSave = async () => {
 	const path = selectedPath.value[0];
-	if (!path || !dirty.value || editedContent.value === undefined || !props.versionId) return;
+	if (!path || !dirty.value || editedContent.value === undefined) return;
 	// Snapshot everything the request needs and identifies: `props.appId`, the
 	// selection, and the buffer can all change while this request is in
 	// flight (switching apps/files, or just continuing to type), and neither
@@ -143,12 +141,11 @@ const onSave = async () => {
 	const contentToSave = editedContent.value;
 	const stillOnSameSelection = () => props.appId === requestAppId && selectedPath.value[0] === path;
 	saving.value = true;
-	buildError.value = undefined;
+	saveError.value = undefined;
 	try {
-		const updated = await appsStore.saveAppVersionFileContent(
+		const updated = await appsStore.saveAppDraftFile(
 			props.projectId,
 			requestAppId,
-			props.versionId,
 			path,
 			contentToSave,
 		);
@@ -162,7 +159,7 @@ const onSave = async () => {
 		if (stillOnSameSelection()) fileContent.value = contentToSave;
 	} catch (error) {
 		if (stillOnSameSelection()) {
-			buildError.value = error instanceof Error ? error.message : String(error);
+			saveError.value = error instanceof Error ? error.message : String(error);
 		}
 	} finally {
 		saving.value = false;
@@ -170,23 +167,26 @@ const onSave = async () => {
 };
 
 // Reused route component instance across an app switch: `appId` updates
-// synchronously, well before the parent's async re-fetch replaces `app`/
-// `versionId` — clear the buffer immediately so a save can't fire in that gap
-// with the previous app's content under the new app's id.
+// synchronously, well before the parent's async re-fetch replaces `app` —
+// clear the buffer immediately so a save can't fire in that gap with the
+// previous app's content under the new app's id.
 watch(
 	() => props.appId,
 	() => {
+		versionId.value = undefined;
 		files.value = [];
 		clearSelection();
 	},
 );
 
-watch(() => props.versionId, loadFiles, { immediate: true });
+watch([() => props.appId, () => props.refreshKey], loadFiles, {
+	immediate: true,
+});
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="app-code-viewer">
-		<N8nText v-if="!versionId" color="text-light">
+		<N8nText v-if="!versionId && !loading" color="text-light">
 			{{ i18n.baseText('apps.builder.code.empty') }}
 		</N8nText>
 		<template v-else>
@@ -215,8 +215,8 @@ watch(() => props.versionId, loadFiles, { immediate: true });
 						{{ i18n.baseText('apps.builder.code.save') }}
 					</N8nButton>
 				</div>
-				<N8nText v-if="buildError" color="danger" size="small" data-test-id="app-code-build-error">
-					{{ buildError }}
+				<N8nText v-if="saveError" color="danger" size="small" data-test-id="app-code-save-error">
+					{{ saveError }}
 				</N8nText>
 				<div :class="$style.viewer">
 					<FileCodeViewer

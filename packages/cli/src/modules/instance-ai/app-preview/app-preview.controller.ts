@@ -1,20 +1,26 @@
-import { ApplyAppThemeDto, type AppPreviewStatus } from '@n8n/api-types';
+import { ApplyAppThemeDto, SaveAppDraftFileDto, type AppPreviewStatus } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Get, Param, Post, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { AppPublishResult } from '@n8n/instance-ai';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AppDraftService } from '@/modules/apps/app-draft.service';
 import { AppPublishService } from '@/modules/apps/app-publish.service';
 import { AppThemeService } from '@/modules/apps/app-theme.service';
 import { AppsService } from '@/modules/apps/apps.service';
+import { AppVersionFileNotFoundError } from '@/modules/apps/errors/app-version-file-not-found.error';
+import { pathSegments } from '@/modules/apps/serving/path-segments';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import { AppPreviewService } from './app-preview.service';
 import { InstanceAiService } from '../instance-ai.service';
 import { appSandboxKey } from '../sandbox';
+
+/** One path segment: no `.`/`..`, separators or control characters. */
+const SAFE_SEGMENT = /^(?!\.{1,2}$)[^/\\\0]+$/;
 
 @RestController('/projects/:projectId/apps')
 export class AppPreviewController {
@@ -24,6 +30,7 @@ export class AppPreviewController {
 		private readonly instanceAiService: InstanceAiService,
 		private readonly appPublishService: AppPublishService,
 		private readonly appThemeService: AppThemeService,
+		private readonly appDraftService: AppDraftService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
@@ -116,6 +123,64 @@ export class AppPreviewController {
 		const result = await this.appThemeService.applyTheme(app.id, dto.theme, req.user, {
 			draft: this.instanceAiService.getCachedWorkspace(appSandboxKey(app.id)),
 		});
+		if ('error' in result) throw new BadRequestError(result.message);
+		return await this.appsService.toResponse(await this.appsService.getApp(app.id));
+	}
+
+	/**
+	 * Files of the app's draft: the newest stored source, after the app
+	 * sandbox's current edits are stored when it has one. Read a file's content
+	 * from `GET /:appId/versions/:versionId/files/*` with the returned id.
+	 */
+	@Get('/:appId/draft/files')
+	@ProjectScope('app:read')
+	async listDraftFiles(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+	): Promise<{ versionId: string; files: string[] } | null> {
+		const app = await this.getAppInProject(appId, req.params.projectId);
+		return await this.appDraftService.listFiles(
+			app.id,
+			req.user,
+			this.instanceAiService.getCachedWorkspace(appSandboxKey(app.id)),
+		);
+	}
+
+	/**
+	 * Overwrites one existing file of the draft in the app's sandbox (the dev
+	 * server reloads it), creating the sandbox and restoring the newest stored
+	 * source into it first when needed. Nothing is built; publishing stays
+	 * explicit.
+	 */
+	@Put('/:appId/draft/files{/*path}')
+	@ProjectScope('app:update')
+	async saveDraftFile(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('path') wildcardPath: unknown,
+		@Body dto: SaveAppDraftFileDto,
+	) {
+		this.checkInstanceWriteAccess();
+		const app = await this.getAppInProject(appId, req.params.projectId);
+		const segments = pathSegments(wildcardPath);
+		if (segments.length === 0) throw new BadRequestError('A file path is required');
+		// The path is joined into sandbox and temp-dir paths as-is, so every
+		// segment must be a plain file name; the file must also exist already.
+		if (!segments.every((segment) => SAFE_SEGMENT.test(segment))) {
+			throw new BadRequestError('Invalid file path');
+		}
+		const file = segments.join('/');
+		const result = await this.appDraftService.write(
+			app.id,
+			req.user,
+			async (read) => {
+				if ((await read(file)) === undefined) throw new AppVersionFileNotFoundError(file);
+				return { [file]: dto.content };
+			},
+			await this.instanceAiService.getOrCreateWorkspace(appSandboxKey(app.id), req.user),
+		);
 		if ('error' in result) throw new BadRequestError(result.message);
 		return await this.appsService.toResponse(await this.appsService.getApp(app.id));
 	}
