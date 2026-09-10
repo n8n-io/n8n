@@ -17,6 +17,7 @@ import {
 	N8nDropdownMenuItem,
 	N8nIcon,
 	N8nTooltip,
+	N8nToggle,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
