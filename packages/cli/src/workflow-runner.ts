@@ -30,6 +30,7 @@ import {
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -154,7 +155,7 @@ export class WorkflowRunner {
 					);
 				}
 
-				const successRunData: IRun = fullExecutionData
+				const successRunData: IRun = fullExecutionData?.data
 					? {
 							finished: fullExecutionData.finished,
 							mode: fullExecutionData.mode,
@@ -166,14 +167,20 @@ export class WorkflowRunner {
 							storedAt: fullExecutionData.storedAt,
 						}
 					: {
-							finished: executionWithoutData.finished,
-							mode: executionWithoutData.mode,
-							startedAt: executionWithoutData.startedAt,
-							stoppedAt: executionWithoutData.stoppedAt ?? new Date(),
-							status: executionWithoutData.status,
-							waitTill: executionWithoutData.waitTill,
-							data: createRunExecutionData({ resultData: { runData: {} } }),
-							storedAt: executionWithoutData.storedAt,
+							data: createRunExecutionData({
+								resultData: {
+									error: new WorkflowOperationError(
+										`Execution ${executionId} succeeded, but its result could not be read`,
+									),
+									runData: {},
+								},
+							}),
+							finished: false,
+							mode: executionMode,
+							startedAt,
+							stoppedAt: new Date(),
+							status: 'error',
+							storedAt: this.storageConfig.modeTag,
 						};
 
 				this.activeExecutions.resolveExecutionResponsePromise(executionId);
