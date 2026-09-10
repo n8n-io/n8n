@@ -1,7 +1,7 @@
-import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { policyRuleListSchema } from './policy-rule.schema';
+import { Z } from '../../zod-class';
 
 /** Request body for replacing a policy document's rules. */
 export class UpdatePolicyDocumentDto extends Z.class({
