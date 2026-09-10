@@ -8,6 +8,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentForegroundTurnService } from '../../agent-foreground-turn.service';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { ChatIntegrationRegistry } from '../../integrations/agent-chat-integration';
@@ -90,7 +91,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		checkpointStorage,
 		integrationRegistry,
 		orchestrator,
-		lockService,
+		new AgentForegroundTurnService(lockService, executionRepository, checkpointStorage),
 		publisher,
 		instanceSettings,
 		agentsConfig,
@@ -156,7 +157,7 @@ describe('AgentWakeService', () => {
 
 			expect(lockService.withLease).toHaveBeenCalledWith(
 				expect.anything(),
-				'agent-background-wake:thread-1',
+				'agent-foreground-turn:thread-1',
 				expect.any(Function),
 				expect.anything(),
 			);

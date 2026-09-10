@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, nextTick, effectScope } from 'vue';
+import { ref, reactive, nextTick, effectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
 
@@ -22,10 +22,14 @@ const cancelAgentChatRunMock = vi.fn();
 
 const pushListeners: Array<(event: unknown) => void> = [];
 const pushConnectMock = vi.fn();
+const connectionState = reactive({ isConnected: false });
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		pushConnect: pushConnectMock,
+		get isConnected() {
+			return connectionState.isConnected;
+		},
 		addEventListener: (handler: (event: unknown) => void) => {
 			pushListeners.push(handler);
 			return () => {
@@ -144,12 +148,21 @@ function makeControllableSseResponse(
 	};
 }
 
+const hookScopes: ReturnType<typeof effectScope>[] = [];
+afterEach(() => {
+	for (const scope of hookScopes.splice(0)) scope.stop();
+});
+
 function buildHook(continueSessionId?: string) {
-	return useAgentChatStream({
-		projectId: ref('p1'),
-		agentId: ref('a1'),
-		...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
-	});
+	const scope = effectScope();
+	hookScopes.push(scope);
+	return scope.run(() =>
+		useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
+		}),
+	)!;
 }
 
 describe('useAgentChatStream — SDK-aligned event handling', () => {
@@ -2082,10 +2095,7 @@ describe('useAgentChatStream — loadHistory', () => {
 		});
 
 		// loadHistory uses getTestChatMessages when no continue session id is set
-		const hook = useAgentChatStream({
-			projectId: ref('p1'),
-			agentId: ref('a1'),
-		});
+		const hook = buildHook();
 		await hook.loadHistory();
 
 		const msg = hook.messages.value.at(-1)!;
@@ -2118,11 +2128,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			openSuspensions: [{ toolCallId: 'tc-continued', runId: 'run-continued' }],
 		});
 
-		const hook = useAgentChatStream({
-			projectId: ref('p1'),
-			agentId: ref('a1'),
-			continueSessionId: ref('thread-1'),
-		});
+		const hook = buildHook('thread-1');
 		await hook.loadHistory();
 
 		expect(getChatMessagesMock).toHaveBeenCalledWith(
@@ -2428,6 +2434,165 @@ describe('useAgentChatStream — transcript push', () => {
 		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
 	});
 
+	function history(activeExecutionIds: string[] = []) {
+		return { messages: [], openSuspensions: [], activeExecutionIds };
+	}
+
+	it('locks from the initial snapshot even before the wake has output', async () => {
+		getChatMessagesMock.mockResolvedValue(history(['wake-1']));
+		const { hook, dispose } = scopedHook('thread-1');
+		await hook.loadHistory();
+		expect(hook.isForegroundBusy.value).toBe(true);
+		expect(await hook.sendMessage('keep as draft')).toBe('busy');
+		expect(hook.messages.value).toEqual([]);
+		dispose();
+	});
+
+	it('locks immediately on a running push and ignores a delayed running event after completion', async () => {
+		getChatMessagesMock.mockResolvedValue(history(['exec-1']));
+		const { hook, dispose } = scopedHook('thread-1');
+		emitPush(update({ status: 'running' }));
+		expect(hook.isForegroundBusy.value).toBe(true);
+		await flushPromises();
+		emitPush(update({ status: 'success' }));
+		expect(hook.isForegroundBusy.value).toBe(false);
+		emitPush(update({ status: 'running' }));
+		await flushPromises();
+		expect(hook.isForegroundBusy.value).toBe(false);
+		dispose();
+	});
+
+	it('does not unlock a new execution when an older execution completes', async () => {
+		getChatMessagesMock.mockResolvedValue(history(['new']));
+		const { hook, dispose } = scopedHook('thread-1');
+		emitPush(update({ executionId: 'new', status: 'running' }));
+		emitPush(update({ executionId: 'old', status: 'success' }));
+		await flushPromises();
+		expect(hook.isForegroundBusy.value).toBe(true);
+		dispose();
+	});
+
+	it('discards an idle snapshot if a running notification arrived during its request', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockResolvedValue(history(['exec-1']));
+		const { hook, dispose } = scopedHook('thread-1');
+		const initial = hook.loadHistory();
+		emitPush(update({ status: 'running' }));
+		await flushPromises();
+		stale.resolve(history());
+		await initial;
+		expect(hook.isForegroundBusy.value).toBe(true);
+		dispose();
+	});
+
+	it('removes only a rejected optimistic message and does not send it again', async () => {
+		const fetchMock = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(makeSseResponse([{ type: 'session-busy', sessionId: 'thread-1' }]));
+		fetchMock.mockClear();
+		getChatMessagesMock.mockResolvedValue(history(['wake-1']));
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			expect(await hook.sendMessage('keep my draft')).toBe('busy');
+			await flushPromises();
+			expect(hook.messages.value).toEqual([]);
+			expect(hook.isForegroundBusy.value).toBe(true);
+			getChatMessagesMock.mockResolvedValue(history());
+			emitPush(update({ executionId: 'wake-1', status: 'success' }));
+			await flushPromises();
+			expect(hook.isForegroundBusy.value).toBe(false);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		} finally {
+			dispose();
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('refreshes after a local stream ends when pushes arrived during the stream', async () => {
+		const stream = makeControllableSseResponse([], null);
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(stream.response);
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			const sending = hook.sendMessage('hello');
+			await flushPromises();
+			emitPush(update({ status: 'success' }));
+			await flushPromises();
+			expect(getChatMessagesMock).not.toHaveBeenCalled();
+			stream.close();
+			await sending;
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+		} finally {
+			dispose();
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('refreshes on reconnect and tab visibility without a recurring timer', async () => {
+		vi.useFakeTimers();
+		connectionState.isConnected = false;
+		const { dispose } = scopedHook('thread-1');
+		try {
+			connectionState.isConnected = true;
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+			const visibility = vi.spyOn(document, 'visibilityState', 'get');
+			visibility.mockReturnValue('hidden');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await nextTick();
+			visibility.mockReturnValue('visible');
+			document.dispatchEvent(new Event('visibilitychange'));
+			await flushPromises();
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(2);
+			visibility.mockRestore();
+		} finally {
+			dispose();
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the last state through bounded retries and recovers on the next push', async () => {
+		vi.useFakeTimers();
+		getChatMessagesMock
+			.mockResolvedValueOnce(history(['exec-1']))
+			.mockRejectedValue(new Error('offline'));
+		const { hook, dispose } = scopedHook('thread-1');
+		try {
+			await hook.loadHistory();
+			hook.refresh();
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(getChatMessagesMock).toHaveBeenCalledTimes(4);
+			expect(hook.isForegroundBusy.value).toBe(true);
+			getChatMessagesMock.mockResolvedValue(history());
+			emitPush(update({ status: 'success' }));
+			await flushPromises();
+			expect(hook.isForegroundBusy.value).toBe(false);
+		} finally {
+			dispose();
+			vi.useRealTimers();
+		}
+	});
+
+	it('discards a snapshot from a previous session', async () => {
+		const stale = Promise.withResolvers<ReturnType<typeof history>>();
+		getChatMessagesMock.mockReturnValueOnce(stale.promise).mockResolvedValue(history());
+		const scope = effectScope();
+		const threadId = ref('thread-1');
+		const hook = scope.run(() =>
+			useAgentChatStream({ projectId: ref('p1'), agentId: ref('a1'), continueSessionId: threadId }),
+		)!;
+		const loading = hook.loadHistory();
+		threadId.value = 'thread-2';
+		await flushPromises();
+		stale.resolve(history(['old-wake']));
+		await loading;
+		expect(hook.isForegroundBusy.value).toBe(false);
+		scope.stop();
+	});
+
 	// The turn was recorded server-side with no stream attached — re-reading the
 	// transcript is the only way the answer reaches the open chat.
 	it('re-reads the transcript when this agent’s thread is updated', async () => {
@@ -2517,6 +2682,14 @@ describe('useAgentChatStream — transcript push', () => {
 
 		expect(hook.messages.value).toEqual([{ role: 'user', content: 'live' }]);
 		dispose();
+	});
+
+	it('drops queued refreshes when the chat closes', async () => {
+		const { dispose } = scopedHook('thread-1');
+		emitPush(update());
+		dispose();
+		await flushPromises();
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
 	});
 
 	it('stops listening once the chat is torn down', () => {

@@ -19,6 +19,7 @@ import { z } from 'zod';
 
 import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentForegroundTurnService } from './agent-foreground-turn.service';
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -156,6 +157,7 @@ export class AgentTestRunService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
+		private readonly foregroundTurnService: AgentForegroundTurnService,
 	) {}
 
 	async prepareDraftRun({
@@ -212,16 +214,23 @@ export class AgentTestRunService {
 		const prepared = await this.prepareDraftRun(input);
 		if (prepared.status !== 'ready') return prepared;
 
-		let executionId: string | undefined;
-		const stream = this.streamDraftRun({
-			...input,
-			sessionId: prepared.sessionId,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-		});
+		return await this.foregroundTurnService.runForChat(
+			input.agentId,
+			prepared.sessionId,
+			async (signal) => {
+				let executionId: string | undefined;
+				const stream = this.streamDraftRun({
+					...input,
+					abortSignal: input.abortSignal ? AbortSignal.any([input.abortSignal, signal]) : signal,
+					sessionId: prepared.sessionId,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
+				});
 
-		return await this.collectDraftRun(stream, prepared.sessionId, '', () => executionId);
+				return await this.collectDraftRun(stream, prepared.sessionId, '', () => executionId);
+			},
+		);
 	}
 
 	async resumeDraftRun(input: ResumeDraftRunInput): Promise<AgentTestRunResult> {
@@ -230,28 +239,41 @@ export class AgentTestRunService {
 			return { status: 'session_not_found' };
 		}
 
-		let executionId: string | undefined;
-		const stream = this.agentExecutionOrchestratorService.resumeForChat({
-			agentId: input.agentId,
-			projectId: input.projectId,
-			runId: input.runId,
-			toolCallId: input.toolCallId,
-			resumeData: input.resumeData,
-			user: input.user,
-			usePublishedVersion: false,
-			integrationType: N8N_CHAT_INTEGRATION_TYPE,
-			expectedMemory: {
-				threadId: input.sessionId,
-				resourceId: draftChatMemoryResourceId(input.user.id),
-			},
-			source: input.source,
-			onExecutionRecorded: (id) => {
-				executionId = id;
-			},
-			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
-		});
+		// A workflow can finish before its parent releases the session.
+		return await this.foregroundTurnService.runForResume(
+			input.agentId,
+			input.runId,
+			async (signal) => {
+				let executionId: string | undefined;
+				const stream = this.agentExecutionOrchestratorService.resumeForChat({
+					agentId: input.agentId,
+					projectId: input.projectId,
+					runId: input.runId,
+					toolCallId: input.toolCallId,
+					resumeData: input.resumeData,
+					user: input.user,
+					usePublishedVersion: false,
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					expectedMemory: {
+						threadId: input.sessionId,
+						resourceId: draftChatMemoryResourceId(input.user.id),
+					},
+					source: input.source,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
+					abortSignal: input.abortSignal ? AbortSignal.any([input.abortSignal, signal]) : signal,
+				});
 
-		return await this.collectDraftRun(stream, input.sessionId, input.response, () => executionId);
+				return await this.collectDraftRun(
+					stream,
+					input.sessionId,
+					input.response,
+					() => executionId,
+				);
+			},
+			{ waitForLease: true },
+		);
 	}
 
 	async resumeDraftApproval(input: {

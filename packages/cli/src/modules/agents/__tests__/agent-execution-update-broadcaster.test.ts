@@ -1,3 +1,4 @@
+import type { PushPayload } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ProjectRelationRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -8,7 +9,8 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 
-const update = {
+const update: PushPayload<'agentExecutionUpdated'> = {
+	status: 'running',
 	projectId: 'project-1',
 	agentId: 'agent-1',
 	threadId: 'thread-1',
@@ -40,22 +42,25 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		);
 	});
 
-	it('sends project-scoped invalidations locally and relays them from workers', async () => {
-		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
+	it.each(['isWorker', 'isMultiMain'] as const)(
+		'relays foreground status with %s',
+		async (mode) => {
+			Object.defineProperty(instanceSettings, mode, { value: true, configurable: true });
 
-		broadcaster.notify(update);
+			broadcaster.notify(update);
 
-		await vi.waitFor(() =>
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'relay-agent-execution-update',
-				payload: { data: update, userIds: ['user-1', 'user-2'] },
-			}),
-		);
-		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentExecutionUpdated', data: update }, [
-			'user-1',
-			'user-2',
-		]);
-	});
+			await vi.waitFor(() =>
+				expect(publisher.publishCommand).toHaveBeenCalledWith({
+					command: 'relay-agent-execution-update',
+					payload: { data: update, userIds: ['user-1', 'user-2'] },
+				}),
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{ type: 'agentExecutionUpdated', data: update },
+				['user-1', 'user-2'],
+			);
+		},
+	);
 
 	it('delivers relayed invalidations locally without publishing them again', () => {
 		broadcaster.handleRelay({ data: update, userIds: ['user-2'] });

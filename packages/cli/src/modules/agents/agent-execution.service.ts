@@ -144,8 +144,13 @@ export class AgentExecutionService {
 			agentId: params.agentId,
 			threadId: params.threadId,
 			executionId: inserted.id,
+			status: 'running',
 		});
 		return inserted.id;
+	}
+
+	async getActiveExecutionIds(threadId: string): Promise<string[]> {
+		return await this.agentExecutionRepository.findRunningIdsByThread(threadId);
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
@@ -202,6 +207,7 @@ export class AgentExecutionService {
 				agentId: params.agentId,
 				threadId: params.threadId,
 				executionId,
+				status,
 			});
 			await this.completeRecordedExecution(params, executionId, status);
 			return executionId;
@@ -250,6 +256,7 @@ export class AgentExecutionService {
 				agentId: thread.agentId,
 				threadId: execution.threadId,
 				executionId: execution.id,
+				status: 'interrupted',
 			});
 		} catch (error) {
 			this.logger.warn('Failed to resolve an interrupted agent execution update', {
@@ -313,6 +320,7 @@ export class AgentExecutionService {
 					agentId: snapshot.agentId,
 					threadId: snapshot.threadId,
 					executionId,
+					status: 'running',
 				});
 			} catch (error) {
 				if (!this.pendingTimelineSnapshots.has(executionId)) {

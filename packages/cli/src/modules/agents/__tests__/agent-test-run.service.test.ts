@@ -1,3 +1,4 @@
+import type { AgentForegroundTurnService } from '../agent-foreground-turn.service';
 import {
 	type CredentialProvider,
 	type SerializableAgentState,
@@ -59,6 +60,13 @@ function makeService() {
 	const agentValidationService = mock<AgentValidationService>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+	const foregroundTurnService = mock<AgentForegroundTurnService>();
+	foregroundTurnService.runForChat.mockImplementation(
+		async (_agentId, _threadId, action) => await action(new AbortController().signal),
+	);
+	foregroundTurnService.runForResume.mockImplementation(
+		async (_agentId, _runId, action) => await action(new AbortController().signal),
+	);
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 
@@ -68,7 +76,9 @@ function makeService() {
 			agentValidationService,
 			agentExecutionOrchestratorService,
 			n8nCheckpointStorage,
+			foregroundTurnService,
 		),
+		foregroundTurnService,
 		agentExecutionService,
 		agentValidationService,
 		agentExecutionOrchestratorService,
@@ -78,7 +88,7 @@ function makeService() {
 
 describe('AgentTestRunService', () => {
 	it('runs a draft test and returns its response and execution identifiers', async () => {
-		const { service, agentExecutionOrchestratorService } = makeService();
+		const { service, agentExecutionOrchestratorService, foregroundTurnService } = makeService();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('execution-1');
 			yield { type: 'text-delta', id: 'text-1', delta: 'Hello ' };
@@ -101,6 +111,11 @@ describe('AgentTestRunService', () => {
 			executionId: 'execution-1',
 		});
 		if (result.status !== 'completed') throw new Error('Expected a completed test run');
+		expect(foregroundTurnService.runForChat).toHaveBeenCalledWith(
+			agentId,
+			result.sessionId,
+			expect.any(Function),
+		);
 		expect(agentExecutionOrchestratorService.executeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
@@ -171,7 +186,12 @@ describe('AgentTestRunService', () => {
 	});
 
 	it('resumes the same draft session and returns the next suspended segment', async () => {
-		const { service, agentExecutionOrchestratorService, n8nCheckpointStorage } = makeService();
+		const {
+			service,
+			agentExecutionOrchestratorService,
+			n8nCheckpointStorage,
+			foregroundTurnService,
+		} = makeService();
 		n8nCheckpointStorage.load.mockResolvedValue(suspendedApprovalCheckpoint());
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('execution-2');
@@ -221,6 +241,12 @@ describe('AgentTestRunService', () => {
 				},
 			],
 		});
+		expect(foregroundTurnService.runForResume).toHaveBeenCalledWith(
+			agentId,
+			'run-1',
+			expect.any(Function),
+			{ waitForLease: true },
+		);
 		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				runId: 'run-1',

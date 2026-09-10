@@ -9,6 +9,11 @@ import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
+export interface AgentChatDraft {
+	text: string;
+	files: File[];
+}
+
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
 	count: number;

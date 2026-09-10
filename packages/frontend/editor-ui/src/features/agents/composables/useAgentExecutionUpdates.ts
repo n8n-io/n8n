@@ -1,5 +1,5 @@
 import { onScopeDispose, type Ref } from 'vue';
-import type { PushMessage } from '@n8n/api-types';
+import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
@@ -20,7 +20,8 @@ interface AgentExecutionUpdatesTarget {
 export function useAgentExecutionUpdates(
 	target: AgentExecutionUpdatesTarget,
 	onUpdate: () => void | Promise<void>,
-): void {
+	onEvent?: (data: PushPayload<'agentExecutionUpdated'>) => void,
+): () => void {
 	const pushStore = usePushConnectionStore();
 
 	function matches(event: PushMessage): boolean {
@@ -36,16 +37,19 @@ export function useAgentExecutionUpdates(
 	// run instead of firing a fetch per message.
 	let inFlight: Promise<void> | undefined;
 	let queued = false;
+	let disposed = false;
 
 	function run(): void {
+		if (disposed) return;
 		if (inFlight) {
 			queued = true;
 			return;
 		}
-		// `.then(onUpdate)` rather than `Promise.resolve(onUpdate())` so a callback that
-		// throws synchronously is caught here instead of escaping into push dispatch.
+		// Run the callback in a promise so synchronous errors do not escape push dispatch.
 		inFlight = Promise.resolve()
-			.then(onUpdate)
+			.then(async () => {
+				if (!disposed) await onUpdate();
+			})
 			.catch(() => {})
 			.finally(() => {
 				inFlight = undefined;
@@ -56,10 +60,17 @@ export function useAgentExecutionUpdates(
 			});
 	}
 
-	pushStore.pushConnect();
 	const removeListener = pushStore.addEventListener((event) => {
-		if (matches(event)) run();
+		if (event.type === 'agentExecutionUpdated' && matches(event)) {
+			onEvent?.(event.data);
+			run();
+		}
 	});
+	pushStore.pushConnect();
 
-	onScopeDispose(() => removeListener());
+	onScopeDispose(() => {
+		disposed = true;
+		removeListener();
+	});
+	return run;
 }

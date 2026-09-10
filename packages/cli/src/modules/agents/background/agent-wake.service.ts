@@ -1,4 +1,4 @@
-import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -14,6 +14,10 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
+import {
+	AgentForegroundTurnService,
+	AgentSessionBusyError,
+} from '../agent-foreground-turn.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -33,8 +37,6 @@ import {
 export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
 
-const WAKE_LOCK_WAIT_MS = 250;
-const WAKE_LOCK_TTL_MS = 30_000;
 const HINT_TITLE_MAX_CHARS = 80;
 
 type FailureState = { generation: string; count: number };
@@ -56,7 +58,7 @@ export class AgentWakeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly lockService: LockService,
+		private readonly foregroundTurnService: AgentForegroundTurnService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
@@ -137,13 +139,12 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
-			await this.lockService.withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`agent-background-wake:${threadId}`,
+			await this.foregroundTurnService.run(
+				threadId,
 				async (signal) => await this.deliverInsideLease(threadId, signal),
-				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
+			if (error instanceof AgentSessionBusyError) return;
 			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
 		}
 	}
@@ -220,7 +221,8 @@ export class AgentWakeService {
 			);
 			this.failures.delete(threadId);
 
-			if (jobs.length < pending.length) this.scheduleLocal(threadId);
+			// Results can arrive while the wake is running. Drain them after this turn.
+			this.scheduleLocal(threadId);
 		} catch {
 			if (signal.aborted) return;
 			// Keep provider and tool error details in the execution record.

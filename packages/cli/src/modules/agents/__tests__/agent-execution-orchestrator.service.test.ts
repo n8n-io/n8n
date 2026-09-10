@@ -233,6 +233,26 @@ describe('AgentExecutionOrchestratorService', () => {
 		Container.reset();
 	});
 
+	it('does not start a preview model turn when its execution cannot be recorded', async () => {
+		const { service, executionService, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockRejectedValue(new Error('database unavailable'));
+		await expect(
+			collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				}),
+			),
+		).rejects.toThrow('database unavailable');
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+		expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledWith(runtime.agent);
+	});
+
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
 		executionService.startExecutionRecording.mockResolvedValue('execution-running');
@@ -259,6 +279,9 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
 			expect.any(Date),
+		);
+		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(runtime.agent.stream).mock.invocationCallOrder[0],
 		);
 		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
 			executionService.recordTimelineSnapshot.mock.invocationCallOrder[0],

@@ -18,6 +18,7 @@ import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/message
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
+	AgentChatDraft,
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
@@ -40,6 +41,8 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
+		inputFiles?: File[];
+		recoverDraft?: (sessionId: string | undefined, draft: AgentChatDraft) => void;
 	}>(),
 	{
 		visible: true,
@@ -49,12 +52,15 @@ const props = withDefaults(
 		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
+		inputFiles: undefined,
+		recoverDraft: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
+	'update:inputFiles': [value: File[]];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'initial-consumed': [];
 	back: [];
@@ -66,7 +72,14 @@ const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
-const attachedFiles = ref<File[]>([]);
+const internalAttachedFiles = ref<File[]>([]);
+const attachedFiles = computed({
+	get: () => props.inputFiles ?? internalAttachedFiles.value,
+	set: (value: File[]) => {
+		if (props.inputFiles !== undefined) emit('update:inputFiles', value);
+		else internalAttachedFiles.value = value;
+	},
+});
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 
 function focusInput(options?: FocusOptions) {
@@ -94,6 +107,7 @@ const acceptedMimeTypes = computed(() => {
 });
 
 function handleFilesSelected(files: File[]) {
+	if (inputDisabled.value) return;
 	for (const file of files) {
 		if (attachedFiles.value.length >= MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) {
 			toast.showMessage({
@@ -116,11 +130,12 @@ function handleFilesSelected(files: File[]) {
 			});
 			continue;
 		}
-		attachedFiles.value.push(file);
+		attachedFiles.value = [...attachedFiles.value, file];
 	}
 }
 
 function handleFileRemove(file: File) {
+	if (inputDisabled.value) return;
 	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
 }
 
@@ -141,6 +156,8 @@ let disposed = false;
 const {
 	messages,
 	isStreaming,
+	isForegroundBusy,
+	refresh,
 	isCancelling,
 	messagingState,
 	fatalError,
@@ -227,6 +244,14 @@ const inputBlockedBySuspension = computed(
 		hasOpenWaitCard.value ||
 		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
+const inputDisabled = computed(
+	() =>
+		inputBlockedBySuspension.value ||
+		isCancelling.value ||
+		isPreparingToSend.value ||
+		isStreaming.value ||
+		isForegroundBusy.value,
+);
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
 // the user clear the stale pulsing state without reloading the chat.
@@ -246,7 +271,7 @@ const showStopAsPrimaryAction = computed(
 		isStreaming.value ||
 		isCancelling.value ||
 		inputBlockedBySuspension.value ||
-		(!isStreaming.value && hasInFlightToolCalls.value),
+		(!isStreaming.value && !isForegroundBusy.value && hasInFlightToolCalls.value),
 );
 
 const chatPlaceholder = computed(() => {
@@ -269,15 +294,23 @@ const chatPlaceholder = computed(() => {
 });
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(
+	() => props.visible,
+	(active) => {
+		if (active) refresh();
+	},
+);
 
 async function onSubmit() {
-	const text = inputText.value.trim();
-	const files = attachedFiles.value;
+	const draftText = inputText.value;
+	const text = draftText.trim();
+	const files = [...attachedFiles.value];
 	if (
 		(!text && files.length === 0) ||
 		isStreaming.value ||
 		isCancelling.value ||
 		isPreparingToSend.value ||
+		isForegroundBusy.value ||
 		inputBlockedBySuspension.value
 	) {
 		return;
@@ -313,7 +346,7 @@ async function onSubmit() {
 			props.agentConfig,
 			props.connectedTriggers,
 		);
-		if (!isCurrentTarget()) return;
+		if (!isCurrentTarget() || isForegroundBusy.value) return;
 
 		inputText.value = '';
 		attachedFiles.value = [];
@@ -323,10 +356,19 @@ async function onSubmit() {
 			agentConfig: fingerprint,
 		});
 
-		if (files.length > 0) {
-			await sendMessage(text, files);
-		} else {
-			await sendMessage(text);
+		const outcome = files.length > 0 ? await sendMessage(text, files) : await sendMessage(text);
+		if (outcome === 'busy') {
+			const draft = { text: draftText, files };
+			if (props.recoverDraft) props.recoverDraft(target.continueSessionId, draft);
+			else if (isCurrentTarget()) {
+				inputText.value = draft.text;
+				attachedFiles.value = draft.files;
+			}
+			if (isCurrentTarget())
+				toast.showMessage({
+					type: 'info',
+					title: locale.baseText('agents.chat.draftRestored'),
+				});
 		}
 	} finally {
 		isPreparingToSend.value = false;
@@ -334,9 +376,8 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (inputBlockedBySuspension.value) return;
 	inputText.value = message;
-	void onSubmit();
+	if (!inputDisabled.value) void onSubmit();
 }
 
 function getConversationMarkdown(): string {
@@ -437,19 +478,8 @@ onBeforeUnmount(() => {
 				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
-				:can-submit="
-					!inputBlockedBySuspension &&
-					!isStreaming &&
-					!isCancelling &&
-					!isPreparingToSend &&
-					(inputText.trim().length > 0 || attachedFiles.length > 0)
-				"
-				:disabled="
-					inputBlockedBySuspension ||
-					isCancelling ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
-				"
+				:can-submit="!inputDisabled && (inputText.trim().length > 0 || attachedFiles.length > 0)"
+				:disabled="inputDisabled"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
@@ -461,7 +491,7 @@ onBeforeUnmount(() => {
 							v-for="(file, index) in attachedFiles"
 							:key="`${file.name}-${index}`"
 							:file="file"
-							is-removable
+							:is-removable="!inputDisabled"
 							@remove="handleFileRemove"
 						/>
 					</div>

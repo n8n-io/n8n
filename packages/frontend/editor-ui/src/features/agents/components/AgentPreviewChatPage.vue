@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, useTemplateRef } from 'vue';
+import { computed, reactive, useTemplateRef } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import type {
+	AgentChatDraft,
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
 	AgentJsonConfig,
@@ -10,8 +11,9 @@ import type {
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
+		active?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -33,7 +35,19 @@ const emit = defineEmits<{
 	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
-const inputDraft = ref('');
+const drafts = reactive(new Map<string, AgentChatDraft>());
+const draftKey = () => props.effectiveSessionId ?? '';
+const inputDraft = computed({
+	get: () => drafts.get(draftKey())?.text ?? '',
+	set: (text: string) => drafts.set(draftKey(), { text, files: inputFiles.value }),
+});
+const inputFiles = computed({
+	get: () => drafts.get(draftKey())?.files ?? [],
+	set: (files: File[]) => drafts.set(draftKey(), { text: inputDraft.value, files }),
+});
+function recoverDraft(sessionId: string | undefined, draft: AgentChatDraft) {
+	drafts.set(sessionId ?? '', draft);
+}
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
 
 function focusInput(options?: FocusOptions) {
@@ -59,8 +73,11 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:key="`preview-${effectiveSessionId}`"
 				ref="chatPanel"
 				v-model:input-draft="inputDraft"
+				v-model:input-files="inputFiles"
+				:recover-draft="recoverDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:visible="active !== false"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"

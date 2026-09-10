@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
@@ -57,6 +57,30 @@ describe('ChatInputBase', () => {
 		mockShowError.mockClear();
 		mockIsFinal.value = false;
 		vi.clearAllMocks();
+	});
+
+	it('stops voice input and preserves the draft when the composer locks', async () => {
+		const { rerender, emitted, getByRole } = renderComponent({
+			props: makeProps({ showVoice: true, modelValue: 'draft' }),
+		});
+		await rerender(
+			makeProps({ disabled: true, canSubmit: false, showVoice: true, modelValue: 'draft' }),
+		);
+		mockResult.value = 'late speech';
+		await nextTick();
+		expect(mockStop).toHaveBeenCalled();
+		expect(getByRole('textbox')).toBeDisabled();
+		expect(emitted()['update:modelValue']).toBeFalsy();
+	});
+
+	it('keeps Stop available while the composer is disabled for a local stream', () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: makeProps({ disabled: true, canSubmit: false, isStreaming: true }),
+		});
+		const stop = getByTestId('instance-ai-stop-button');
+		expect(stop).not.toBeDisabled();
+		stop.click();
+		expect(emitted().stop).toBeTruthy();
 	});
 
 	it('should show send button when not streaming', () => {
