@@ -1,11 +1,11 @@
 ---
 name: agent-builder
 description: >-
-  Load before calling build-agent for a new or existing n8n Agent. Governs
-  prerequisite creation, faithful handoff of the user's request, agent
-  targeting across turns, builder questions, testing, and publishing. Use
-  directly for routine follow-ups when the conversation already targets an
-  Agent; rerun intent-recognition only when the requested artifact is no
+  Load immediately after an Agent intent and before ask-user. Then call
+  build-agent with the user's request. Agent Builder owns setup and
+  implementation questions. Governs prerequisite creation, faithful handoff,
+  targeting, testing, and publishing. Use directly for routine Agent
+  follow-ups; rerun intent-recognition only when the requested artifact is no
   longer clear.
 recommended_tools:
   - build-agent
@@ -21,6 +21,12 @@ Use this skill after `intent-recognition` chooses an agent-anchored design, or
 when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
+
+For a new Agent request, make the first `build-agent` call with a faithful copy
+of the request before calling `ask-user`. Do not collect model, service, tool,
+topic, schedule, credential, or other implementation choices first. The
+embedded Agent Builder asks its own questions through the `build-agent` call.
+The unsupported-channel check below is the only pre-build exception.
 
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored

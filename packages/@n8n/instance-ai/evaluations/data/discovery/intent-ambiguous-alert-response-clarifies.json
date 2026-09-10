@@ -1,0 +1,17 @@
+{
+	"id": "intent-ambiguous-alert-response-clarifies",
+	"userMessage": "I need to ingest a cybersecurity alert, analyze it, and take actions depending on the finding.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["intent-recognition"]
+			},
+			{
+				"toolName": "ask-user"
+			}
+		]
+	},
+	"rationale": "The request does not say whether fixed rules or judgment choose each action. The assistant must clarify this anchor-defining choice before it selects an artifact.",
+	"timeoutMs": 120000
+}

@@ -10,8 +10,9 @@ description: >-
   including compound requests, independent automations introduced mid-build,
   one-off questions or reports that need external systems you cannot query
   directly, and requests that need clarification before an anchor can be
-  chosen. Do not load for routine edits or extensions when the conversation
-  already targets a workflow or Agent.
+  chosen. An explicit Agent request routes to agent-builder before ask-user.
+  Do not load for routine edits or extensions when the conversation already
+  targets a workflow or Agent.
 ---
 
 # Intent recognition
@@ -44,8 +45,10 @@ directly for out-of-scope.
   Context continuity and Existing-agent modification.
 - Any explicit constraints about determinism, auditability, latency, cost,
   compliance, reusability, or allowed tools.
-- If the request is underspecified on an anchor-deciding axis, ask for the
-  missing detail instead of guessing.
+- If the user did not explicitly select an Agent and the request is
+  underspecified on an anchor-deciding axis, ask for the missing detail instead
+  of guessing. An explicit Agent request already decides the anchor. Leave
+  missing setup and implementation details to the Agent Builder.
 
 ## Decisions
 
@@ -57,10 +60,10 @@ Two orthogonal decisions per request, or per part for compound requests:
   steps as bounded transformers (classify, extract, summarize, score, a
   single decision feeding fixed branches).
 - **agent-anchored**: an agent owns the flow; the LLM decides the next step
-  at runtime. n8n Agents are not chat-only: besides chat sessions, they run
-  recurring objectives on a cron schedule (**tasks**) and keep memory across
-  sessions and runs — so recurring or scheduled duties do not disqualify this
-  anchor.
+  at runtime or owns an ongoing role that requires judgment. n8n Agents are not
+  chat-only: besides chat sessions, they run recurring objectives on a cron
+  schedule (**tasks**) and keep memory across sessions and runs — so recurring
+  or scheduled duties do not disqualify this anchor.
 - **needs-clarification**: the request is under-specified on an
   anchor-deciding axis.
 - **out-of-scope**: not a build intent at all. Covers meta or product
@@ -128,16 +131,21 @@ builder.
 0. If the user is mid-build on an existing workflow or agent, apply context
    continuity (see Signals) before anything else — an incremental request
    normally extends the current primitive.
-1. **Explicit artifact requests.** When the user names the deliverable —
-   "build me an agent/assistant that…", "create a workflow that…" — the
-   named primitive is a routing instruction, not surface vocabulary.
-   Classify by it unless the described behavior is unambiguously the other
-   primitive's shape (e.g. "an agent" whose behavior is a fixed
-   schedule-fetch-notify pipeline). Even then, never switch silently:
-   propose the reclassified design and say you are deviating from the named
-   primitive, grounding the choice in the task's shape. The false-friends
-   rule applies to task descriptions, not to an explicitly requested
-   artifact.
+1. **Explicit artifact requests.** "Build me an Agent/assistant that…" selects
+   an Agent artifact and decides the anchor. Do not ask the user to reconsider
+   that choice during intent recognition. Do not silently substitute a workflow,
+   even when it could implement the same behavior. You may explain a simpler
+   workflow alternative, but switch only after the user chooses it. Route
+   missing setup and implementation choices to Agent Builder. The immediate
+   next routing action is to load `agent-builder`. Do not call `ask-user`
+   between classification and that handoff. Forward the request without
+   selecting services, tools, topics, schedules, or other implementation
+   details. Agent Builder owns those questions. An explicit
+   workflow request normally selects a workflow. If its required interaction is
+   unambiguously Agent-shaped, such as ongoing open-ended chat, explain why an
+   Agent fits and say that you are deviating from the named workflow. The
+   false-friends rule applies to task descriptions, not to an explicit Agent
+   request.
 2. If the request is not a build intent — a meta or product question, or a
    one-off content task with no trigger or reuse — classify **out-of-scope**
    and answer or do it directly.
@@ -148,11 +156,16 @@ builder.
    Do not split a single automation that merely enumerates many tools or
    steps. Run steps 4-9 on each part.
 4. Test the agent signals. If any one holds, classify **agent-anchored**.
-5. Otherwise, test the workflow conditions. If all of them hold, classify
+5. Before selecting a workflow, verify that the request supplies or clearly
+   entails every workflow condition. Do not invent a fixed sequence, decision
+   policy, or bounded LLM task from a generic outcome. If a missing
+   anchor-defining detail could make the work judgment-driven, classify
+   **needs-clarification** and ask only for that detail.
+6. Otherwise, test the workflow conditions. If all of them hold, classify
    **workflow-anchored**.
-6. Decide `embeds_other` in both directions: does an agent step appear inside
+7. Decide `embeds_other` in both directions: does an agent step appear inside
    this workflow, or does this agent invoke workflows as tools?
-7. **Degenerate-shell check.** If a workflow-anchored design reduces to a
+8. **Degenerate-shell check.** If a workflow-anchored design reduces to a
    trigger plus a single open-ended agent step that does all the work — no
    deterministic steps earning the shell — the anchor is wrong: reclassify
    **agent-anchored** and build an n8n Agent (an on-demand duty becomes the
@@ -160,9 +173,6 @@ builder.
    this check while building: when fixed nodes prove unusable and the work
    migrates into one embedded agent step, stop and re-anchor instead of
    finishing the degenerate workflow.
-8. If the request is under-specified on an anchor-deciding axis (rule-based
-   vs judgment-based, scope/autonomy, interaction mode), classify
-   **needs-clarification** and name the missing axis instead of guessing.
 9. If both anchors are genuinely defensible, apply the growth tiebreaker:
    prefer whichever primitive scales with likely complexity growth — usually
    agent-anchored when novel situations, longer horizons, or learning are
@@ -177,6 +187,11 @@ builder.
 **Agent-anchored** (any one is enough):
 
 - Reasoning dominates the flow: investigate, decide, act, iterate.
+- Persistent delegated role: the user gives an analyst, coordinator,
+  receptionist, researcher, or similar role continuing responsibility for a
+  changing domain. The role must require judgment such as choosing what
+  matters, selecting tools, following up, or adapting actions. A role noun by
+  itself is not enough.
 - On-demand question or report that requires judgment-driven navigation of
   external systems (which items matter, how they map to goals) and cannot be
   answered directly with your own tools — the user is in effect already
@@ -208,14 +223,15 @@ builder.
 
 **Scheduled judgment work** (recurring cadence + open-ended body): both
 primitives can own it — a workflow shell with an embedded agent step, or an
-agent with a scheduled task. Default to the workflow shell for a standalone,
-single-duty job: a deterministic trigger and delivery around one open-ended
-step keeps auditability and avoids unnecessary agency. Choose an agent with a
-task instead when the duty belongs to an agent the user also interacts with
-or that has other duties, when it needs memory across runs (tracking open
-threads, "what did I flag last time"), or when the user explicitly asked for
-an agent. A recurring duty added to an agent mid-build is always a task on
-that agent, never a spawned workflow.
+agent with a scheduled task. Default to an Agent task when the open-ended duty
+is the whole outcome and the workflow shell would only trigger the duty and
+deliver its result. Use a workflow shell when its deterministic collection,
+gating, transformation, branching, or delivery steps are independently
+meaningful and the agent owns only one bounded stage. Choose an Agent when the
+duty belongs to a persistent role, needs memory across runs, supports user
+interaction, or has other duties. An explicit Agent request remains binding.
+A recurring duty added to an agent mid-build is always a task on that agent,
+never a spawned workflow.
 
 **Embeds-other signals**:
 
@@ -271,16 +287,17 @@ that the agent cannot fully satisfy, not a workflow-anchored one.
 
 **Clarify triggers**: rule-based vs judgment-based (what defines "important"
 or "urgent"?), scope/autonomy (act on its own vs draft for review),
-interaction mode (one-shot vs chat). Do not clarify when the criterion could
-defensibly go either way — that is a genuine tie, name both readings
-instead.
+interaction mode (one-shot vs chat). Clarify when the missing answer changes
+the anchor. When the request supplies enough evidence and both designs remain
+valid, apply the growth tiebreaker instead of asking a theoretical preference.
 
-**False friends — not signals**:
+**False friends — not signals by themselves**:
 
 - Surface vocabulary: "agent", "assistant", "bot", "workflow", "automate"
-  in a *task description* carry no weight — classify the shape, not the
-  words. An explicit artifact request ("build me an agent that…") is not a
-  false friend; see Decision Step 1.
+  in a *task description* carries no weight — classify the shape, not the
+  words. A persistent delegated role combines the role with ongoing judgment,
+  so it is a real Agent signal. An explicit artifact request ("build me an
+  agent that…") is binding; see Decision Step 1.
 - Step count and tool count: long linear pipelines and high tool counts are
   not agentic. Seven deterministic steps with zero branches is still a
   workflow.
@@ -319,12 +336,18 @@ instead.
   vendors, follow up with each team lead, and send reminders through our
   existing reminder workflow when a task stalls." -> **agent-anchored**,
   `embeds_other: true`: long-running coordination invoking a workflow tool.
-- "Configure an AI agent to send me a nightly digest of new GitHub stars."
-  -> **workflow-anchored**, `embeds_other: false`: fixed schedule and action
-  despite the word "agent" — a false friend. When the user instead
-  explicitly asks to *build an agent* around a fixed pipeline like this,
-  keep the workflow classification but say so rather than switching
-  silently (step 1).
+- "Every night, fetch the day's new GitHub stars and send me a digest." ->
+  **workflow-anchored**, `embeds_other: false`: fixed schedule, source,
+  transform, and delivery, with no Agent artifact or judgment requirement.
+- "Build me an agent that fetches new GitHub stars each night and sends me a
+  digest." -> **agent-anchored**, `embeds_other: false`: the user selected an
+  Agent, and the recurring duty is a scheduled task on it. A workflow can be
+  offered as an alternative, but it cannot silently replace the requested
+  artifact.
+- "Set up a daily market analyst. It should research market changes, decide
+  which developments matter, and send me a briefing each morning." ->
+  **agent-anchored**, `embeds_other: false`: the analyst owns a persistent,
+  judgment-driven role; the morning cadence is a task on that Agent.
 - "Spin up a lightweight workflow that talks to shoppers on our storefront
   and handles their product questions." -> **agent-anchored**: chat-based
   Q&A means the LLM owns turn-by-turn control despite the word "workflow" —
@@ -363,6 +386,9 @@ instead.
 - "Tell me when something important happens with our shipments." ->
   **needs-clarification**: "important" is undefined; ask whether concrete
   rules exist or this needs judgment-based triage.
+- "Ingest each cybersecurity alert, analyze it, and take actions depending on
+  the finding." -> **needs-clarification**: ask whether fixed rules select the
+  actions or whether an investigator must choose and adapt them.
 - "Build me an agent my team can @mention on WhatsApp to triage customer
   messages." -> **agent-anchored** (explicit agent artifact + chat
   interaction), but call `list-agent-capabilities` first: WhatsApp is absent,
@@ -397,6 +423,9 @@ instead.
 - Unnecessary agency adds latency, cost, and compounding error risk — do not
   reach for an agent when a bounded workflow fully satisfies a task-shaped
   request. This is not a license to override an explicit agent request.
+- Unnecessary workflow shells hide Agent intent. Do not wrap an open-ended
+  delegated duty in a workflow when the shell only supplies a schedule and a
+  destination.
 - Never satisfy an **agent-anchored** classification with a workflow
   containing a Chat Trigger + AI Agent node. Agent-anchored requests
   produce an n8n Agent artifact via the agent build path; the AI Agent
@@ -413,7 +442,7 @@ instead.
   agent steps inside a pipeline the user described as a pipeline.
 - A workflow whose only real step is one embedded agent doing all the work
   is an agent wearing a workflow costume — the mirror image of the Chat
-  Trigger gotcha above. Apply the degenerate-shell check (step 7) and
+  Trigger gotcha above. Apply the degenerate-shell check (step 8) and
   re-anchor instead of shipping trigger + AI Agent node.
 - Do not treat a cron schedule as a workflow signal by itself — agents run
   scheduled tasks. Classify by the body of each run, and when a one-off
