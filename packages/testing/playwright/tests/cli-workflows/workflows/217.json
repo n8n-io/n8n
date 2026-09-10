@@ -2,7 +2,7 @@
 	"createdAt": "2021-06-15T18:44:19.942Z",
 	"updatedAt": "2021-06-15T19:09:29.328Z",
 	"id": "217",
-	"name": "ExecuteWorkflow: Database, URL, Local File, Parameter",
+	"name": "ExecuteWorkflow: Database, Parameter",
 	"active": false,
 	"nodes": [
 		{
@@ -26,50 +26,6 @@
 		},
 		{
 			"parameters": {
-				"source": "url",
-				"workflowUrl": "https://raw.githubusercontent.com/n8n-io/test-workflows/main/workflows/95.json"
-			},
-			"name": "Execute URL workflow",
-			"type": "n8n-nodes-base.executeWorkflow",
-			"typeVersion": 1,
-			"position": [500, 90],
-			"id": "e5232923-8233-42c7-98bf-ba473a56a788"
-		},
-		{
-			"parameters": {
-				"url": "https://raw.githubusercontent.com/n8n-io/test-workflows/main/workflows/93.json",
-				"responseFormat": "file",
-				"options": {}
-			},
-			"name": "HTTP Request",
-			"type": "n8n-nodes-base.httpRequest",
-			"typeVersion": 1,
-			"position": [500, 550],
-			"id": "d1e66066-2d60-48d5-bde2-003715d38e1b"
-		},
-		{
-			"parameters": {
-				"fileName": "/tmp/testworkflowfile.json"
-			},
-			"name": "Write Binary File",
-			"type": "n8n-nodes-base.writeBinaryFile",
-			"typeVersion": 1,
-			"position": [700, 550],
-			"id": "f82165ff-9ce4-4f80-8b9d-043bb98252bb"
-		},
-		{
-			"parameters": {
-				"source": "localFile",
-				"workflowPath": "/tmp/testworkflowfile.json"
-			},
-			"name": "Execute local file workflow",
-			"type": "n8n-nodes-base.executeWorkflow",
-			"typeVersion": 1,
-			"position": [900, 550],
-			"id": "af481068-77a8-4c83-8473-3f20d2fba53e"
-		},
-		{
-			"parameters": {
 				"workflowId": "94"
 			},
 			"name": "Execute Workflow ID 94",
@@ -90,38 +46,6 @@
 					},
 					{
 						"node": "Execute parameter - workflow",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Execute URL workflow",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "HTTP Request",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"HTTP Request": {
-			"main": [
-				[
-					{
-						"node": "Write Binary File",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Write Binary File": {
-			"main": [
-				[
-					{
-						"node": "Execute local file workflow",
 						"type": "main",
 						"index": 0
 					}
