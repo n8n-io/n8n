@@ -80,6 +80,12 @@ nothing to restore (no version yet) or the directory already has files; read
 
 - Static export only. No server code, no SSR, no API routes, no server
   functions. Everything runs in the browser.
+- Store data in an n8n data table. When the app keeps lists, records or
+  state that must survive a reload or be shared between visitors, create a
+  table with `data-tables(action="create")` if none fits, bind it with
+  `apps(action="bind")` and use `n8n.tables.<key>` (see "Data tables"
+  below). Do not use `localStorage` or in-memory arrays for data the user
+  expects to persist.
 - Never call `/rest` or other n8n internal endpoints from the app.
 - The app is served under a base path. Every asset and route URL is relative
   or built from the base: `APP_BASE` is set during the build (with a trailing
@@ -181,8 +187,9 @@ for approval with its own card.
 
 ### Data tables
 
-Use a data table when the app stores rows that must survive a reload (tasks,
-entries, settings).
+A data table is the storage of an app. Use one for every list, record or
+state that must survive a reload or be shared between visitors (tasks,
+entries, settings); `localStorage` and in-memory arrays lose that data.
 
 1. Find the table in the app's project with `data-tables(action="list",
    projectId)`. If it does not exist, create it first:
