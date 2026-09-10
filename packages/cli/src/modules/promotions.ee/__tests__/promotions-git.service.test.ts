@@ -363,7 +363,11 @@ describe('PromotionsGitService (git operations)', () => {
 		it('fetches and hard-resets to the remote tip, returning the new revision', async () => {
 			const result = await call();
 
-			expect(mockGit.fetch).toHaveBeenCalledWith('origin', 'main', ['--progress']);
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 			expect(result).toEqual({ commitSha: 'def456' });
 		});
