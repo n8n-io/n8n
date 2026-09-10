@@ -94,19 +94,21 @@ describe('PageContextFactory', () => {
 	});
 
 	describe('actionUrl', () => {
-		it('builds a URL scoped to the given block, with no query', () => {
+		it('builds a URL scoped to the given block that carries the rendered page path', () => {
 			const { factory } = buildFactory();
-			const ctx = factory.build(buildInput());
+			const ctx = factory.build(
+				buildInput({ page: { id: 'page-1', route: ':id', path: '/apps/my-app/clients/42' } }),
+			);
 			expect(ctx.actionUrl('submit')).toBe(
-				'https://n8n.example.com/apps/my-app/_actions/page-1/block-1/submit',
+				'https://n8n.example.com/apps/my-app/_actions/page-1/block-1/submit?_path=%2Fapps%2Fmy-app%2Fclients%2F42',
 			);
 		});
 
 		it('names the page that owns the block, not the page being rendered', () => {
 			const { factory } = buildFactory();
 			const ctx = factory.build(buildInput({ actionPageId: 'parent-page' }));
-			expect(ctx.actionUrl('go')).toBe(
-				'https://n8n.example.com/apps/my-app/_actions/parent-page/block-1/go',
+			expect(ctx.actionUrl('go')).toMatch(
+				/^https:\/\/n8n\.example\.com\/apps\/my-app\/_actions\/parent-page\/block-1\/go\?_path=/,
 			);
 		});
 	});

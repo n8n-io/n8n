@@ -67,6 +67,7 @@ async function publishApp(blocks: AppBlock[], auth: 'public' | 'n8n', namespace 
 	const snapshot: AppVersionSnapshot = {
 		pages: [{ id: page.id, route: '', parentPageId: null, content: blocks, layout: null }],
 		theme: null,
+		components: null,
 	};
 	const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
 	await appRepository.setActiveVersionId(app, version.id);
@@ -313,7 +314,9 @@ describe('GET /rest/projects/:projectId/apps/:appId/pages/:pageId/preview', () =
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
 			.expect(200);
 
-		expect(response.text).toMatch(new RegExp(`/apps/acme/_actions/${page.id}/block-1/go"`));
+		expect(response.text).toMatch(
+			new RegExp(`/apps/acme/_actions/${page.id}/block-1/go\\?_path=%2Fapps%2Facme"`),
+		);
 		expectNoToken(response.text);
 	});
 });

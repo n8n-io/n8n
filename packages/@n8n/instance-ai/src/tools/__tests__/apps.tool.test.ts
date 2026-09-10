@@ -446,6 +446,57 @@ describe('apps tool', () => {
 			expect(result).toHaveProperty('issues');
 			expect(context.appService?.createPage).not.toHaveBeenCalled();
 		});
+
+		it('validates, backfills ids and passes a layout', async () => {
+			const context = createMockContext();
+			(context.appService?.createPage as Mock).mockResolvedValue({
+				id: 'page-1',
+				route: 'clients',
+				parentPageId: null,
+				path: '/clients',
+				hasContent: false,
+			});
+			(context.appService?.getApp as Mock).mockResolvedValue(appSummary);
+
+			const tool = createAppsTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'create-page' as const,
+					appId: 'app-1',
+					route: 'clients',
+					layout: [
+						{ type: 'header', data: { text: 'Banner', level: 2 } },
+						{ id: 'slot', type: 'slot', data: {} },
+					],
+				},
+				noSuspendCtx(),
+			);
+
+			const call = (context.appService?.createPage as Mock).mock.calls[0][1];
+			expect(call.layout).toHaveLength(2);
+			expect(typeof call.layout[0].id).toBe('string');
+			expect(call.layout[1]).toEqual({ id: 'slot', type: 'slot', data: {} });
+		});
+
+		it('returns denied when the layout has no slot, without calling the adapter', async () => {
+			const context = createMockContext();
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'create-page' as const,
+					appId: 'app-1',
+					route: 'clients',
+					layout: [{ id: 'h', type: 'header', data: { text: 'Banner', level: 2 } }],
+				},
+				noSuspendCtx(),
+			);
+
+			expect(result).toMatchObject({ denied: true, reason: 'Invalid page layout' });
+			expect(context.appService?.createPage).not.toHaveBeenCalled();
+		});
 	});
 
 	// ── get-page ────────────────────────────────────────────────────────────

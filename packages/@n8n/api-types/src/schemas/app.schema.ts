@@ -42,11 +42,20 @@ export const appThemeSchema = z.object({
 		.optional(),
 	radius: z.enum(['none', 'sm', 'md', 'lg']).optional(),
 	fontFamily: z.string().trim().max(100).optional(),
+	/** Max width of `.app-container`, e.g. `72rem` or `1200px`. */
+	contentWidth: z
+		.string()
+		.trim()
+		.regex(/^\d{2,4}(px|rem)$/, 'Use a length in px or rem, e.g. 72rem')
+		.optional(),
 	/** Appended to every served page after the theme variables. */
 	customCss: z.string().max(20_000).optional(),
 });
 
 export type AppTheme = z.infer<typeof appThemeSchema>;
+
+/** TSX source of the App's shared components, imported by code blocks from `app/components`. */
+export const appComponentsSchema = z.string().max(50_000);
 
 /** Who may open the App: anyone, or only a signed-in user of this n8n instance. */
 export const appAuthSchema = z.enum(['public', 'n8n']);

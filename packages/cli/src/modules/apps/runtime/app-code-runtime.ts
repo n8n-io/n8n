@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { actionUrlParts } from './action-url';
 import { AppIsolatePool, type AppIsolateSlot } from './app-isolate-pool';
 import type { AppActionContext, AppPageContext, PageContextInput } from './page-context.factory';
 
@@ -181,8 +182,7 @@ function __buildCtx(staticData) {
 			get: function (name) { return __call('credentials.get', [name]); },
 		},
 		actionUrl: function (name) {
-			return staticData.baseUrl + '/apps/' + staticData.app.namespace + '/_actions/'
-				+ staticData.actionPageId + '/' + staticData.blockId + '/' + name;
+			return staticData.actionUrl.prefix + name + staticData.actionUrl.suffix;
 		},
 		fetch: async function (url, init) {
 			var res = await __call('fetch', [url, init || {}]);
@@ -424,11 +424,15 @@ export class AppCodeRuntime {
 				});
 
 				const value = (await Promise.race([
-					context.evalClosure(runScript, [staticData], {
-						timeout: CALL_TIMEOUT_MS,
-						arguments: { copy: true },
-						result: { promise: true, copy: true },
-					}),
+					context.evalClosure(
+						runScript,
+						[{ ...staticData, actionUrl: actionUrlParts(staticData) }],
+						{
+							timeout: CALL_TIMEOUT_MS,
+							arguments: { copy: true },
+							result: { promise: true, copy: true },
+						},
+					),
 					timeout,
 				])) as T;
 

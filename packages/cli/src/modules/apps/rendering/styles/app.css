@@ -18,6 +18,7 @@
 @import '@n8n/design-system/theme.css' layer(base);
 @import 'tailwindcss/theme' layer(theme);
 @import 'tailwindcss/utilities' layer(utilities);
+@import './app-chat.css';
 
 /* Scanned for utility classes; table/form/button partials belong to another workstream. */
 @source '../../../../../templates/app-page.handlebars';

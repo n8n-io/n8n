@@ -52,14 +52,33 @@ describe('AppTokenService', () => {
 				expiresIn: 600,
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
-				{ kind: 'app-access', appId: 'app-1', viewerId: 'user-1' },
+				{ kind: 'app-access', appId: 'app-1', viewerId: 'user-1', mode: 'published' },
 				{ expiresIn: 600 },
 			);
 			expect(service.verifyAccess(pair!.accessToken)).toEqual({
 				appId: 'app-1',
 				viewerId: 'user-1',
+				mode: 'published',
 			});
 			await expect(service.exchangeCode(code)).resolves.toBeNull();
+		});
+
+		test('carries a draft mode from the code record into the access token', async () => {
+			const code = await service.issueCode({ ...record, mode: 'draft' });
+
+			const pair = await service.exchangeCode(code);
+
+			expect(service.verifyAccess(pair!.accessToken)).toMatchObject({ mode: 'draft' });
+		});
+
+		test('treats an access token without a mode as published', () => {
+			const token = JSON.stringify({ kind: 'app-access', appId: 'app-1', viewerId: null });
+
+			expect(service.verifyAccess(token)).toEqual({
+				appId: 'app-1',
+				viewerId: null,
+				mode: 'published',
+			});
 		});
 
 		test('rejects an unknown code', async () => {

@@ -23,6 +23,10 @@ export class App extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, default: 'public' })
 	auth: AppAuth;
 
+	/** TSX source of the shared components code blocks import from `app/components`. */
+	@Column({ type: 'text', nullable: true })
+	components: string | null;
+
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
 	project: Project;

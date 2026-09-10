@@ -1,12 +1,12 @@
 import { Container } from '@n8n/di';
 
 import { blockStaticData } from '../block-context';
-import { interpolate } from '../interpolate';
 import { renderPartial } from '../templates';
 import type { BlockRenderContext, BlockRenderer } from '../types';
+import { visibleRows } from './table-rows';
 
 import { SYSTEM_COLUMNS, writableColumns } from '../../actions/table-actions';
-import type { AppDataTableColumn, AppDataTableFilter } from '../../runtime/page-context.factory';
+import type { AppDataTableColumn } from '../../runtime/page-context.factory';
 import { PageContextFactory } from '../../runtime/page-context.factory';
 
 const EDIT_QUERY_KEY = '_edit';
@@ -34,20 +34,6 @@ const formatCell = (value: unknown): string => {
 const formatInputValue = (value: unknown, type: AppDataTableColumn['type']): string =>
 	type === 'date' && value instanceof Date ? value.toISOString().slice(0, 16) : formatCell(value);
 
-const interpolateFilter = (
-	filter: AppDataTableFilter | undefined,
-	ctx: BlockRenderContext,
-): AppDataTableFilter | undefined => {
-	if (!filter) return undefined;
-	return {
-		...filter,
-		filters: filter.filters.map((f) => ({
-			...f,
-			value: typeof f.value === 'string' ? interpolate(f.value, ctx) : f.value,
-		})),
-	};
-};
-
 const ACTION_STATUS_KEYS = ['_form', '_status', '_message'];
 
 /** The page's own URL with `_edit` set (or removed when `edit` is undefined) and the last action's status dropped. */
@@ -69,11 +55,7 @@ export const tableBlockRenderer: BlockRenderer<'table'> = {
 		});
 
 		const handle = await pageContext.dataTables.get(block.data.source.dataTableId);
-		const { data: rows } = await handle.getManyRowsAndCount({
-			filter: interpolateFilter(block.data.filter, ctx),
-			sortBy: block.data.sortBy,
-			take: block.data.limit,
-		});
+		const rows = await visibleRows(handle, block, ctx);
 
 		const { editable = false, deletable = false } = block.data;
 		const editPrefix = `${block.id}:`;

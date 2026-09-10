@@ -1,4 +1,4 @@
-import { sanitizeHtml } from '../sanitize-html';
+import { sanitizeHtml, sanitizeLayoutPreviewHtml } from '../sanitize-html';
 
 describe('sanitizeHtml', () => {
 	test('keeps an allowed element with an allowed attribute', () => {
@@ -59,5 +59,31 @@ describe('sanitizeHtml', () => {
 
 	test('strips an unsupported element but keeps its text', () => {
 		expect(sanitizeHtml('<marquee>hi</marquee>')).toBe('hi');
+	});
+});
+
+describe('sanitizeLayoutPreviewHtml', () => {
+	test('keeps form controls without anything that could submit or run them', () => {
+		expect(
+			sanitizeLayoutPreviewHtml(
+				"<form method='POST' action='/x' onsubmit='evil()'><label for='a'>A</label><input id='a' name='a' type='text' required onfocus='evil()' /><select name='s' multiple><option value='1' selected>1</option></select><textarea name='t' rows='2'></textarea><button type='submit' formaction='/y'>Go</button></form>",
+			),
+		).toBe(
+			'<form><label for="a">A</label><input id="a" name="a" type="text" required /><select name="s" multiple><option value="1" selected>1</option></select><textarea name="t" rows="2"></textarea><button type="submit">Go</button></form>',
+		);
+	});
+
+	test('still strips script, style and iframe with their content', () => {
+		expect(
+			sanitizeLayoutPreviewHtml(
+				"<form><script>alert(1)</script><style>a{}</style><iframe src='https://x'></iframe><input name='a' /></form>",
+			),
+		).toBe('<form><input name="a" /></form>');
+	});
+
+	test('keeps the html-block rules for everything else', () => {
+		expect(sanitizeLayoutPreviewHtml("<a href='javascript:alert(1)' style='x'>x</a>")).toBe(
+			'<a>x</a>',
+		);
 	});
 });

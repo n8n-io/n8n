@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 import { appContentSchema, appLayoutSchema } from './app-content.schema';
-import { appThemeSchema, pageRouteSchema } from './app.schema';
+import { appComponentsSchema, appThemeSchema, pageRouteSchema } from './app.schema';
 
-/** A published version: the whole page tree and theme, frozen at publish time. */
+/** A published version: the whole page tree, theme and components, frozen at publish time. */
 export const appVersionSnapshotSchema = z.object({
 	pages: z.array(
 		z.object({
@@ -15,6 +15,7 @@ export const appVersionSnapshotSchema = z.object({
 		}),
 	),
 	theme: appThemeSchema.nullable(),
+	components: appComponentsSchema.nullable().default(null),
 });
 
 export type AppVersionSnapshot = z.infer<typeof appVersionSnapshotSchema>;

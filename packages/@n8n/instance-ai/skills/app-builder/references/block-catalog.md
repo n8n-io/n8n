@@ -96,10 +96,10 @@ per shown column. "Save" posts to the block's built-in `update` action. Set
 block's built-in `delete` action. Only the shown columns are writable;
 `id`, `createdAt` and `updatedAt` are never writable.
 
-Limitation: the `update` and `delete` actions cannot re-apply the block's
-`filter`. A visitor who may edit or delete can address any row of the Data
-Table by its `id`, not only the rows the block shows. Enable these flags
-only on pages for trusted viewers.
+The `update` and `delete` actions accept only rows the table shows on the
+page the visitor is on: the block's `filter` (with the page's params), `sortBy`
+and `limit` apply to them as they apply to the rendered rows. A row past the
+`limit` is not shown and therefore cannot be edited through this block.
 
 ### `form`
 

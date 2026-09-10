@@ -47,6 +47,11 @@ describe('appBlockSchema', () => {
 			type: 'code',
 			data: { source: 'export function render() { return "<p>hi</p>"; }' },
 		},
+		{
+			id: 'chat1',
+			type: 'agent-chat',
+			data: { agentId: 'agent-1', welcome: 'Hi, how can I help?', placeholder: 'Ask…' },
+		},
 	])('accepts a valid $type block', (block) => {
 		expect(appBlockSchema.safeParse(block).success).toBe(true);
 	});

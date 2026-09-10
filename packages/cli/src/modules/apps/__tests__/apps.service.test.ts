@@ -11,8 +11,14 @@ import { AppContentInvalidError } from '../errors/app-content-invalid.error';
 import type { Page } from '../page.entity';
 import type { PageRepository } from '../page.repository';
 import { registerStaticRenderers } from '../rendering/register-static-renderers';
+import { registerBlockRenderer } from '../rendering/renderer-registry';
 
 registerStaticRenderers();
+// Stands in for the real button renderer, which needs the DI container.
+registerBlockRenderer({
+	type: 'button',
+	render: async () => "<form action='/x' onsubmit='evil()'><input name='q' /></form>",
+});
 
 const app = mock<App>({
 	id: 'app-1',
@@ -20,6 +26,7 @@ const app = mock<App>({
 	namespace: 'acme',
 	projectId: 'project-1',
 	theme: null,
+	components: null,
 });
 
 const slot = { id: 'slot', type: 'slot', data: {} };
@@ -58,6 +65,19 @@ describe('AppsService', () => {
 
 			const [, snapshot] = appVersionRepository.createFromSnapshot.mock.calls[0];
 			expect(snapshot.pages[0].layout).toEqual([slot]);
+			expect(snapshot.components).toBeNull();
+		});
+
+		test("freezes the App's components in the snapshot", async () => {
+			appRepository.findOneBy.mockResolvedValue(
+				mock<App>({ ...app, components: 'export const Card = () => <div />;' }),
+			);
+			pageRepository.findManyByAppId.mockResolvedValue([page({ id: 'index', route: '' })]);
+
+			await service.publish('app-1', 'user-1');
+
+			const [, snapshot] = appVersionRepository.createFromSnapshot.mock.calls[0];
+			expect(snapshot.components).toContain('Card');
 		});
 
 		test('rejects a layout without a slot, naming the field in the issue path', async () => {
@@ -118,6 +138,27 @@ describe('AppsService', () => {
 			expect(result.html).not.toContain('onclick');
 			expect(result.html).not.toContain('<style');
 			expect(result.errors).toEqual({});
+		});
+
+		test('keeps the form controls of a layout block, inert', async () => {
+			const index = page({
+				id: 'index',
+				route: '',
+				layout: [
+					{
+						id: 'search',
+						type: 'button',
+						data: { label: 'Go', style: 'primary', target: { kind: 'workflow', workflowId: 'w' } },
+					},
+					slot,
+				],
+			});
+			pageRepository.findOneBy.mockResolvedValue(index);
+			pageRepository.findManyByAppId.mockResolvedValue([index]);
+
+			const result = await service.previewLayout('app-1', 'index');
+
+			expect(result.html).toContain('<form><input name="q" /></form>');
 		});
 
 		test('reports a layout block whose renderer throws, keyed by block id', async () => {

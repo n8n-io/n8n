@@ -766,7 +766,9 @@ export {
 	type AppTheme,
 	appAuthSchema,
 	type AppAuth,
+	appComponentsSchema,
 } from './schemas/app.schema';
+export { APP_LAYOUT_PRESETS, type AppLayoutPreset } from './schemas/app-layout-presets';
 export {
 	appBlockIdSchema,
 	appActionNameSchema,
@@ -791,6 +793,8 @@ export {
 	type ButtonBlock,
 	type HtmlBlock,
 	type CodeBlock,
+	agentChatBlockSchema,
+	type AgentChatBlock,
 } from './schemas/app-content.schema';
 export { appVersionSnapshotSchema, type AppVersionSnapshot } from './schemas/app-version.schema';
 export { appPageApiTypes, APP_PAGE_API_FILE_NAME } from './schemas/app-page-api';

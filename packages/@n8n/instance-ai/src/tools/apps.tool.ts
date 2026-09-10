@@ -149,6 +149,10 @@ const contentDescribe =
 	'ids are generated automatically. Rejected with `issues` (zod issues) when the blocks are invalid.';
 const routeDescribe =
 	"URL segment: '' for the index page of its level, a slug ('clients'), or a dynamic segment (':id')";
+const layoutDescribe =
+	'Layout blocks (see the `app-builder` skill, "Layouts"): any content block plus exactly one ' +
+	'`slot` block where the page content goes. Block `id` is optional. Pass null to inherit the ' +
+	"nearest ancestor's layout, or the built-in shell when no ancestor has one.";
 
 const listAction = z.object({
 	action: z.literal('list').describe('List apps in a project'),
@@ -192,6 +196,7 @@ const createPageAction = z.object({
 	route: pageRouteSchema.describe(routeDescribe),
 	parentPageId: z.string().optional().describe('Parent page ID; omit for a top-level page'),
 	content: z.array(rawBlockSchema).max(200).optional().describe(contentDescribe),
+	layout: z.array(rawBlockSchema).max(200).optional().describe(layoutDescribe),
 });
 
 const getPageAction = z.object({
@@ -215,15 +220,7 @@ const setLayoutAction = z.object({
 		),
 	appId: z.string().describe('App ID'),
 	pageId: z.string().describe('Page ID'),
-	layout: z
-		.array(rawBlockSchema)
-		.max(200)
-		.nullable()
-		.describe(
-			'Layout blocks (see the `app-builder` skill, "Layouts"): any content block plus exactly one ' +
-				'`slot` block where the page content goes. Block `id` is optional. Pass null to inherit the ' +
-				"nearest ancestor's layout, or the built-in shell when no ancestor has one.",
-		),
+	layout: z.array(rawBlockSchema).max(200).nullable().describe(layoutDescribe),
 });
 
 const updatePageAction = z.object({
@@ -384,12 +381,21 @@ async function handleCreatePage(
 		}
 		content = validated.data;
 	}
+	let layout: AppLayout | undefined;
+	if (input.layout) {
+		const validated = validateBlocks(appLayoutSchema, input.layout);
+		if ('issues' in validated) {
+			return { denied: true, reason: 'Invalid page layout', issues: validated.issues };
+		}
+		layout = validated.data;
+	}
 
 	return await callOrDeny(async () => {
 		const page = await appService.createPage(input.appId, {
 			route: input.route,
 			parentPageId: input.parentPageId,
 			content,
+			layout,
 		});
 		const app = await appService.getApp(input.appId);
 		return {

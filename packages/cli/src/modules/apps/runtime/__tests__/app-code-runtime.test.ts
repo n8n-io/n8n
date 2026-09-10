@@ -71,7 +71,7 @@ describe('AppCodeRuntime', () => {
 			actionPageId: 'parent-page',
 		});
 		expect(value).toBe(
-			'Home,clients* https://n8n.example.com/apps/my-app/_actions/parent-page/block-1/go',
+			'Home,clients* https://n8n.example.com/apps/my-app/_actions/parent-page/block-1/go?_path=%2Fapps%2Fmy-app',
 		);
 	});
 

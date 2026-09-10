@@ -54,6 +54,7 @@ const publish = async (app: Awaited<ReturnType<typeof createApp>>) => {
 				layout: page.layout as AppLayout | null,
 			})),
 			theme: null,
+			components: null,
 		},
 		owner.id,
 	);

@@ -89,11 +89,39 @@ const INLINE_TAGS: Record<string, string[]> = {
 	br: [],
 };
 
-const sanitize = (dirty: string, whiteList: Record<string, string[]>): string =>
+/**
+ * Form controls the layout preview keeps, inert: no `action`, `formaction`
+ * or handler attribute is listed, so nothing in the editor can submit or run.
+ */
+const LAYOUT_PREVIEW_TAGS: Record<string, string[]> = {
+	...ALLOWED_TAGS,
+	form: GLOBAL_ATTRS,
+	label: [...GLOBAL_ATTRS, 'for'],
+	input: [
+		...GLOBAL_ATTRS,
+		'type',
+		'name',
+		'value',
+		'placeholder',
+		'disabled',
+		'checked',
+		'required',
+		'step',
+	],
+	select: [...GLOBAL_ATTRS, 'name', 'disabled', 'required', 'multiple'],
+	option: [...GLOBAL_ATTRS, 'value', 'selected'],
+	textarea: [...GLOBAL_ATTRS, 'name', 'placeholder', 'disabled', 'required', 'rows'],
+};
+
+const sanitize = (
+	dirty: string,
+	whiteList: Record<string, string[]>,
+	stripBodyOf = ['script', 'style', 'iframe', 'form'],
+): string =>
 	xss(dirty, {
 		whiteList,
 		stripIgnoreTag: true,
-		stripIgnoreTagBody: ['script', 'style', 'iframe', 'form'],
+		stripIgnoreTagBody: stripBodyOf,
 		onTagAttr(_tag, name, value) {
 			if (name === 'href') return isAllowedHref(value) ? undefined : '';
 			if (name === 'src') return isAllowedSrc(value) ? undefined : '';
@@ -106,6 +134,13 @@ const sanitize = (dirty: string, whiteList: Record<string, string[]>): string =>
  * routed through here — it is inserted as-is, by design.
  */
 export const sanitizeHtml = (dirty: string): string => sanitize(dirty, ALLOWED_TAGS);
+
+/**
+ * Sanitizes a rendered layout for the editor's own origin, where it is inserted
+ * with `v-html`: everything the `html` block may keep plus inert form controls.
+ */
+export const sanitizeLayoutPreviewHtml = (dirty: string): string =>
+	sanitize(dirty, LAYOUT_PREVIEW_TAGS, ['script', 'style', 'iframe']);
 
 /** Sanitizes the text of a `paragraph`, `header` or `list` block down to inline formatting. */
 export const sanitizeInlineHtml = (dirty: string): string => sanitize(dirty, INLINE_TAGS);

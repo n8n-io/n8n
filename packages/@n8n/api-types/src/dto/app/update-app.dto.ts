@@ -1,5 +1,6 @@
 import {
 	appAuthSchema,
+	appComponentsSchema,
 	appNameSchema,
 	appNamespaceSchema,
 	appThemeSchema,
@@ -11,4 +12,5 @@ export class UpdateAppDto extends Z.class({
 	namespace: appNamespaceSchema.optional(),
 	theme: appThemeSchema.nullable().optional(),
 	auth: appAuthSchema.optional(),
+	components: appComponentsSchema.nullable().optional(),
 }) {}

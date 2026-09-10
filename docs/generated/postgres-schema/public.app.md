@@ -6,6 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | activeVersionId | varchar(36) |  | true |  | [public.app_version](public.app_version.md) | app_version served at /apps/\<namespace\>; null means unpublished |
 | auth | varchar(16) | 'public'::character varying | false |  |  | Who may open the App: anyone (public) or a signed-in user of this instance (n8n) |
+| components | text |  | true |  |  | TSX source of the shared components that code blocks import from app/components; null when the App has none |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.page](public.page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -50,6 +51,7 @@ erDiagram
 "public.app" {
   varchar_36_ activeVersionId FK
   varchar_16_ auth
+  text components
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name

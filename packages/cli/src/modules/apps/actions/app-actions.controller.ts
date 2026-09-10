@@ -7,20 +7,19 @@ import { posix } from 'node:path';
 
 import { applyCors } from '@/utils/cors.util';
 
-import { AppRepository } from '../app.repository';
-import { AppVersionRepository } from '../app-version.repository';
+import { blockStaticData } from '../rendering/block-context';
+import type { BlockRenderContext } from '../rendering/types';
+import { AppRequestAuth } from '../serving/app-request-auth';
 import { appBasePath, pagePath } from '../serving/page-menu';
-import { isDynamicRoute } from '../serving/resolve-page-path';
-import { AppTokenService, bearerToken } from '../serving/app-token.service';
-import { ViewerService, type Viewer } from '../serving/viewer.service';
+import { resolvePagePath } from '../serving/resolve-page-path';
 
 import { AppCodeRuntime } from '../runtime/app-code-runtime';
 import { PageContextFactory } from '../runtime/page-context.factory';
 import { runTableAction } from './table-actions';
 
-/** `_path` rides along in the POST body only to route the redirect; a workflow
- * or code action never sees it or the status keys as input. */
-const RESERVED_INPUT_KEYS = new Set(['_path', '_form', '_status', '_message']);
+/** Status keys ride along in the POST body only to route the redirect; a workflow
+ * or code action never sees them as input. */
+const RESERVED_INPUT_KEYS = new Set(['_form', '_status', '_message']);
 
 const stripReservedKeys = (input: Record<string, unknown>): Record<string, unknown> => {
 	const result: Record<string, unknown> = {};
@@ -37,23 +36,37 @@ const MAX_BODY_BYTES = 1024 * 1024;
 
 type ActionOutcome = { redirect?: string } | { data: unknown } | { error: string };
 
-/** Ancestor route segments only, so no `:param` value is required — used when
- * a request carries no `_path` (a `code` action called directly, not via a
- * rendered form). Falls back to the app root if an ancestor is dynamic. */
-function staticPagePath(
-	pages: AppVersionSnapshot['pages'],
-	pageId: string,
+type SnapshotPage = AppVersionSnapshot['pages'][number];
+
+/** The page the action was triggered from, with its route params and canonical path. */
+type RenderedPage = { page: SnapshotPage; params: Record<string, string>; path: string };
+
+/**
+ * Resolves the `_path` query of an action URL (the rendered page's path, put
+ * there by `ctx.actionUrl()`) to a page of the snapshot. A layout block's
+ * action page can differ from the rendered page, so the URL carries both.
+ */
+function resolveRenderedPage(
+	pages: SnapshotPage[],
 	namespace: string,
-): string {
-	const byId = new Map(pages.map((p) => [p.id, p]));
-	const segments: string[] = [];
-	let current = byId.get(pageId);
-	while (current) {
-		if (isDynamicRoute(current.route)) return appBasePath(namespace);
-		if (current.route !== '') segments.unshift(current.route);
-		current = current.parentPageId ? byId.get(current.parentPageId) : undefined;
+	rawPath: unknown,
+): RenderedPage | undefined {
+	const base = appBasePath(namespace);
+	if (typeof rawPath !== 'string' || (rawPath !== base && !rawPath.startsWith(`${base}/`))) {
+		return undefined;
 	}
-	return pagePath(namespace, segments);
+	let segments: string[];
+	try {
+		segments = rawPath
+			.slice(base.length)
+			.split('/')
+			.filter((segment) => segment !== '')
+			.map(decodeURIComponent);
+	} catch {
+		return undefined;
+	}
+	const resolved = resolvePagePath(pages, segments);
+	return resolved && { ...resolved, path: pagePath(namespace, segments) };
 }
 
 /** Normalized first, so `/apps/ns/../../x` does not pass on its prefix alone. */
@@ -72,19 +85,16 @@ function prefersHtml(req: Request): boolean {
 
 /**
  * Runs one App action: a `code` block's exported `actions[name]`, a `form`
- * block's `submit`, or a `button` block whose target is a workflow. Per
- * `serving-and-actions.md`, unauthenticated (`skipAuth`) — the access token
- * in the `Authorization` header is this endpoint's only credential.
+ * block's `submit`, a `button` block whose target is a workflow, or a `table`
+ * row action. Per `serving-and-actions.md`, unauthenticated (`skipAuth`) — the
+ * access token in the `Authorization` header is this endpoint's only credential.
  */
 @RootLevelController('/apps')
 export class AppActionsController {
 	constructor(
-		private readonly appTokenService: AppTokenService,
-		private readonly appRepository: AppRepository,
-		private readonly appVersionRepository: AppVersionRepository,
+		private readonly appRequestAuth: AppRequestAuth,
 		private readonly pageContextFactory: PageContextFactory,
 		private readonly appCodeRuntime: AppCodeRuntime,
-		private readonly viewerService: ViewerService,
 		private readonly logger: Logger,
 	) {}
 
@@ -111,60 +121,45 @@ export class AppActionsController {
 			return;
 		}
 
-		const token = bearerToken(req);
-		const payload = token === undefined ? null : this.appTokenService.verifyAccess(token);
-		const app = payload ? await this.appRepository.findByNamespace(namespace) : null;
-		if (!app || app.id !== payload?.appId) {
-			res.status(401).json({ error: 'Invalid access token' });
+		const authorized = await this.appRequestAuth.authorize(req, namespace);
+		if ('error' in authorized) {
+			res.status(authorized.status).json({ error: authorized.error });
 			return;
 		}
+		const { app, viewer, pages } = authorized;
 
-		const viewer = await this.viewerService.fromToken(payload);
-		if (app.auth === 'n8n' && !viewer) {
-			res.status(401).json({ error: 'Sign in required' });
-			return;
-		}
-
-		if (!app.activeVersionId) {
-			res.status(404).json({ error: 'This app has no published version' });
-			return;
-		}
-		const version = await this.appVersionRepository.findSnapshot(app.activeVersionId);
-		if (!version) {
-			res.status(404).json({ error: 'This app has no published version' });
-			return;
-		}
-		const { snapshot } = version;
-
-		const page = snapshot.pages.find((p) => p.id === pageId);
+		const actionPage = pages.find((p) => p.id === pageId);
 		// A layout block of this page runs from every page that inherits the layout;
 		// its action URL names the owner page, so the lookup covers `layout` too.
-		const block = page
-			? [...(page.content ?? []), ...(page.layout ?? [])].find((b) => b.id === blockId)
+		const block = actionPage
+			? [...(actionPage.content ?? []), ...(actionPage.layout ?? [])].find((b) => b.id === blockId)
 			: undefined;
-		if (!page || !block) {
+		if (!actionPage || !block) {
 			res.status(404).json({ error: 'Action not found' });
 			return;
 		}
 
+		const rendered = resolveRenderedPage(pages, namespace, req.query._path) ?? {
+			page: actionPage,
+			params: {},
+			path: appBasePath(namespace),
+		};
+		const ctx: BlockRenderContext = {
+			app: { id: app.id, name: app.name, namespace, projectId: app.projectId, theme: app.theme },
+			page: { id: rendered.page.id, route: rendered.page.route, path: rendered.path },
+			actionPageId: actionPage.id,
+			params: rendered.params,
+			query: {},
+			viewer,
+			menu: [],
+			baseUrl: `${req.protocol}://${req.get('host') ?? ''}`,
+			preview: false,
+		};
 		const input = stripReservedKeys((req.body as Record<string, unknown> | undefined) ?? {});
-		const rawPath = (req.body as Record<string, unknown> | undefined)?._path;
-		const pathForRedirect =
-			typeof rawPath === 'string' && isWithinApp(rawPath, namespace)
-				? rawPath
-				: staticPagePath(snapshot.pages, pageId, namespace);
 
 		let outcome: ActionOutcome;
 		try {
-			outcome = await this.dispatch({
-				app,
-				page,
-				block,
-				name,
-				input,
-				viewer,
-				baseUrl: `${req.protocol}://${req.get('host') ?? ''}`,
-			});
+			outcome = await this.dispatch(ctx, block, name, input);
 		} catch (error) {
 			outcome = { error: error instanceof Error ? error.message : String(error) };
 		}
@@ -177,38 +172,19 @@ export class AppActionsController {
 			outcome: 'error' in outcome ? 'error' : 'redirect' in outcome ? 'redirect' : 'data',
 		});
 
-		this.respond(res, outcome, namespace, pathForRedirect, blockId, req);
+		this.respond(res, outcome, namespace, rendered.path, blockId, req);
 	}
 
-	private async dispatch(input: {
-		app: { id: string; name: string; namespace: string; projectId: string };
-		page: AppVersionSnapshot['pages'][number];
-		block: AppLayoutBlock;
-		name: string;
-		input: Record<string, unknown>;
-		viewer: Viewer | null;
-		baseUrl: string;
-	}): Promise<ActionOutcome> {
-		const { app, page, block, name, viewer, baseUrl } = input;
-
-		const staticData = {
-			app,
-			page: { id: page.id, route: page.route, path: '' },
-			actionPageId: page.id,
-			blockId: block.id,
-			params: {},
-			query: {},
-			viewer,
-			menu: [],
-			baseUrl,
-		};
+	private async dispatch(
+		ctx: BlockRenderContext,
+		block: AppLayoutBlock,
+		name: string,
+		input: Record<string, unknown>,
+	): Promise<ActionOutcome> {
+		const staticData = blockStaticData(ctx, block.id);
 
 		if (block.type === 'code') {
-			const actionContext = this.pageContextFactory.buildAction({
-				...staticData,
-				logs: [],
-				input: input.input,
-			});
+			const actionContext = this.pageContextFactory.buildAction({ ...staticData, logs: [], input });
 			const { value } = await this.appCodeRuntime.runAction(
 				block.data.source,
 				name,
@@ -221,7 +197,7 @@ export class AppActionsController {
 		if (block.type === 'form' && name === 'submit') {
 			const pageContext = this.pageContextFactory.build({ ...staticData, logs: [] });
 			return this.toFormOutcome(
-				await pageContext.workflows.submitForm(block.data.workflowId, input.input),
+				await pageContext.workflows.submitForm(block.data.workflowId, input),
 				block.id,
 			);
 		}
@@ -229,7 +205,7 @@ export class AppActionsController {
 		if (block.type === 'button' && block.data.target.kind === 'workflow' && name === 'run') {
 			const pageContext = this.pageContextFactory.build({ ...staticData, logs: [] });
 			return this.toFormOutcome(
-				await pageContext.workflows.execute(block.data.target.workflowId, input.input),
+				await pageContext.workflows.execute(block.data.target.workflowId, input),
 				block.id,
 			);
 		}
@@ -237,7 +213,7 @@ export class AppActionsController {
 		if (block.type === 'table') {
 			const pageContext = this.pageContextFactory.build({ ...staticData, logs: [] });
 			const handle = await pageContext.dataTables.get(block.data.source.dataTableId);
-			return await runTableAction({ handle, block, name, input: input.input });
+			return await runTableAction({ handle, block, name, input, ctx });
 		}
 
 		return { error: 'Action not found' };

@@ -843,7 +843,7 @@ thread to the app without an extra read.
 | `create` | Create an app. Namespace is slugified from the name when omitted. HITL. |
 | `get` | Get an app and its pages |
 | `update-app` | Update an app's name or theme |
-| `create-page` | Create a page. Block ids missing from `content` are generated before validation. |
+| `create-page` | Create a page, optionally with `content` and a `layout`. Block ids missing from either are generated before validation. |
 | `get-page` | Read a page's route, path, and content |
 | `set-content` | Replace a page's content blocks (same id-generation + validation as `create-page`) |
 | `update-page` | Change a page's route |

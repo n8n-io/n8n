@@ -7,18 +7,24 @@ import { AuthService } from '@/auth/auth.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { JwtService } from '@/services/jwt.service';
 
+/** `published` serves the active version; `draft` (editor preview) the current Page rows. */
+const accessModeSchema = z.enum(['published', 'draft']);
+export type AppAccessMode = z.infer<typeof accessModeSchema>;
+
 /** Who a code or refresh token stands for. `sessionToken` is the raw n8n auth cookie
  * captured at navigation; a refresh re-validates it so an n8n logout ends the app session. */
 export type AppSessionRecord = {
 	appId: string;
 	viewerId: string | null;
 	sessionToken: string | null;
+	mode?: AppAccessMode;
 };
 
 const accessPayloadSchema = z.object({
 	kind: z.literal('app-access'),
 	appId: z.string().min(1),
 	viewerId: z.string().nullable(),
+	mode: accessModeSchema.default('published'),
 });
 
 export type AppAccessPayload = Omit<z.infer<typeof accessPayloadSchema>, 'kind'>;
@@ -81,15 +87,20 @@ export class AppTokenService {
 		}
 		const parsed = accessPayloadSchema.safeParse(decoded);
 		if (!parsed.success) return null;
-		const { appId, viewerId } = parsed.data;
-		return { appId, viewerId };
+		const { appId, viewerId, mode } = parsed.data;
+		return { appId, viewerId, mode };
 	}
 
 	private async issuePair(record: AppSessionRecord): Promise<AppTokenPair> {
 		const refreshToken = randomBytes(32).toString('hex');
 		await this.cacheService.set(`apps:refresh:${refreshToken}`, record, REFRESH_TTL_MS);
 		const accessToken = this.jwtService.sign(
-			{ kind: 'app-access', appId: record.appId, viewerId: record.viewerId },
+			{
+				kind: 'app-access',
+				appId: record.appId,
+				viewerId: record.viewerId,
+				mode: record.mode ?? 'published',
+			},
 			{ expiresIn: ACCESS_TTL_SECONDS },
 		);
 		return { accessToken, refreshToken, expiresIn: ACCESS_TTL_SECONDS };

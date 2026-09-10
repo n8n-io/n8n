@@ -101,6 +101,16 @@ export const htmlBlockSchema = block('html', z.object({ template: z.string().max
 
 export const codeBlockSchema = block('code', z.object({ source: z.string().max(100_000) }));
 
+/** A chat with a published agent of the App's project, rendered on the page. */
+export const agentChatBlockSchema = block(
+	'agent-chat',
+	z.object({
+		agentId: z.string().min(1).max(36),
+		welcome: z.string().max(500).optional(),
+		placeholder: z.string().max(100).optional(),
+	}),
+);
+
 export const appBlockSchema = z.discriminatedUnion('type', [
 	headerBlockSchema,
 	paragraphBlockSchema,
@@ -112,6 +122,7 @@ export const appBlockSchema = z.discriminatedUnion('type', [
 	buttonBlockSchema,
 	htmlBlockSchema,
 	codeBlockSchema,
+	agentChatBlockSchema,
 ]);
 
 const hasUniqueIds = (blocks: Array<{ id: string }>) =>
@@ -158,3 +169,4 @@ export type FormBlock = z.infer<typeof formBlockSchema>;
 export type ButtonBlock = z.infer<typeof buttonBlockSchema>;
 export type HtmlBlock = z.infer<typeof htmlBlockSchema>;
 export type CodeBlock = z.infer<typeof codeBlockSchema>;
+export type AgentChatBlock = z.infer<typeof agentChatBlockSchema>;

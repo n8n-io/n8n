@@ -27,6 +27,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { MenuItem } from '../serving/page-menu';
+import { buildActionUrl } from './action-url';
 import { DataTableProxyService } from '../../data-table/data-table-proxy.service';
 import { DataTableService } from '../../data-table/data-table.service';
 import {
@@ -264,8 +265,7 @@ export class PageContextFactory {
 			dataTables,
 			workflows,
 			credentials,
-			actionUrl: (name) =>
-				`${input.baseUrl}/apps/${app.namespace}/_actions/${input.actionPageId}/${input.blockId}/${name}`,
+			actionUrl: (name) => buildActionUrl(input, name),
 			fetch: async (url, init) => await this.fetch(url, init),
 			log: (...args) => {
 				input.logs.push(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '));

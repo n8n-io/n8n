@@ -1079,7 +1079,7 @@ export interface InstanceAiAppService {
 	): Promise<PageSummary & { content: AppContent | null; layout: AppLayout | null }>;
 	createPage(
 		appId: string,
-		input: { route: string; parentPageId?: string; content?: AppContent },
+		input: { route: string; parentPageId?: string; content?: AppContent; layout?: AppLayout },
 	): Promise<PageSummary>;
 	updatePage(
 		appId: string,

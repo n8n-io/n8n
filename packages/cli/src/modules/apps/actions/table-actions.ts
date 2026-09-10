@@ -1,5 +1,7 @@
 import type { TableBlock } from '@n8n/api-types';
 
+import { visibleRows } from '../rendering/blocks/table-rows';
+import type { BlockRenderContext } from '../rendering/types';
 import type {
 	AppDataTableColumn,
 	AppDataTableFilter,
@@ -55,11 +57,14 @@ export async function runTableAction({
 	block,
 	name,
 	input,
+	ctx,
 }: {
 	handle: AppDataTableHandle;
 	block: TableBlock;
 	name: string;
 	input: Record<string, unknown>;
+	/** The rendered page's context; its params decide which rows the block shows. */
+	ctx: BlockRenderContext;
 }): Promise<TableActionOutcome> {
 	const allowed =
 		(name === 'delete' && block.data.deletable === true) ||
@@ -68,6 +73,8 @@ export async function runTableAction({
 
 	const id = Number(input.id);
 	if (!Number.isInteger(id) || id <= 0) return { error: 'Invalid row id' };
+	const shown = await visibleRows(handle, block, ctx);
+	if (!shown.some((row) => row.id === id)) return { error: 'Row not found' };
 	const filter: AppDataTableFilter = {
 		type: 'and',
 		filters: [{ columnName: 'id', condition: 'eq', value: id }],

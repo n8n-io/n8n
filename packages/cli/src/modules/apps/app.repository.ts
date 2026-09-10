@@ -28,7 +28,10 @@ export class AppRepository extends Repository<App> {
 		return await this.findBy({ projectId });
 	}
 
-	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme' | 'auth'>>) {
+	async updateApp(
+		app: App,
+		updates: Partial<Pick<App, 'name' | 'namespace' | 'theme' | 'auth' | 'components'>>,
+	) {
 		if (
 			updates.namespace !== undefined &&
 			updates.namespace !== app.namespace &&

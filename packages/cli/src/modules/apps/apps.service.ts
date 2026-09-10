@@ -15,7 +15,7 @@ import {
 	type PageToRender,
 	type RenderErrors,
 } from './rendering/page-renderer';
-import { sanitizeHtml } from './rendering/sanitize-html';
+import { sanitizeLayoutPreviewHtml } from './rendering/sanitize-html';
 import type { InvalidPageContent } from './errors/app-content-invalid.error';
 
 import { UrlService } from '@/services/url.service';
@@ -183,7 +183,11 @@ export class AppsService {
 		}
 		if (invalidPages.length > 0) throw new AppContentInvalidError({ pages: invalidPages });
 
-		const snapshot: AppVersionSnapshot = { pages: snapshotPages, theme: app.theme ?? null };
+		const snapshot: AppVersionSnapshot = {
+			pages: snapshotPages,
+			theme: app.theme ?? null,
+			components: app.components ?? null,
+		};
 
 		const version = await this.appVersionRepository.createFromSnapshot(appId, snapshot, userId);
 		await this.appRepository.setActiveVersionId(app, version.id);
@@ -230,7 +234,11 @@ export class AppsService {
 		const input = await this.draftPageToRender(appId, pageId, undefined, {});
 		if (!input.layout) return { ownerPageId: null, html: null, errors: {} };
 		const { html, errors } = await renderLayout({ ...input, layout: input.layout });
-		return { ownerPageId: input.layout.ownerPageId, html: sanitizeHtml(html), errors };
+		return {
+			ownerPageId: input.layout.ownerPageId,
+			html: sanitizeLayoutPreviewHtml(html),
+			errors,
+		};
 	}
 
 	private async draftPageToRender(

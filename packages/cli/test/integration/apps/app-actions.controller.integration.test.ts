@@ -76,6 +76,7 @@ async function publishAppWithBlocks(blocks: AppBlock[], namespace = 'acme') {
 	const snapshot: AppVersionSnapshot = {
 		pages: [{ id: page.id, route: page.route, parentPageId: null, content: blocks, layout: null }],
 		theme: null,
+		components: null,
 	};
 	const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
 	await appRepository.setActiveVersionId(app, version.id);
@@ -110,11 +111,11 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 		expect(response.body).toEqual({ data: { hello: 'Ada' } });
 	});
 
-	test('builds ctx.actionUrl() without a query', async () => {
+	test('builds ctx.actionUrl() carrying the rendered page path, and falls back to the app root', async () => {
 		const { page, bearer } = await publishAppWithBlocks([
 			codeBlock(
 				'block-1',
-				"export function render() { return ''; } export const actions = { go: (ctx) => ({ data: ctx.actionUrl('go') }) };",
+				"export function render() { return ''; } export const actions = { go: (ctx) => ({ data: { url: ctx.actionUrl('go'), path: ctx.page.path } }) };",
 			),
 		]);
 
@@ -124,9 +125,56 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 			.send({})
 			.expect(200);
 
-		expect(response.body.data).toMatch(
-			new RegExp(`^http://[^/]+${actionUrl('acme', page.id, 'block-1', 'go')}$`),
+		expect(response.body.data).toEqual({
+			url: expect.stringMatching(
+				new RegExp(
+					`^http://[^/]+${actionUrl('acme', page.id, 'block-1', 'go')}\\?_path=%2Fapps%2Facme$`,
+				),
+			),
+			path: '/apps/acme',
+		});
+	});
+
+	test('resolves the rendered page from _path: route params and redirect target', async () => {
+		const { app, page, bearer } = await publishAppWithBlocks([]);
+		const clients = await pageRepository.createPage(app.id, null, 'clients');
+		const client = await pageRepository.createPage(app.id, clients.id, ':id');
+		const block = codeBlock(
+			'block-1',
+			"export function render() { return ''; } export const actions = { go: (ctx) => ({ data: { params: ctx.params, path: ctx.page.path } }), back: () => ({ redirect: '?_status=ok' }) };",
 		);
+		const snapshot: AppVersionSnapshot = {
+			pages: [
+				{ id: page.id, route: '', parentPageId: null, content: [], layout: null },
+				{ id: clients.id, route: 'clients', parentPageId: null, content: [], layout: null },
+				{ id: client.id, route: ':id', parentPageId: clients.id, content: [block], layout: null },
+			],
+			theme: null,
+			components: null,
+		};
+		const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
+		await appRepository.setActiveVersionId(app, version.id);
+
+		const response = await visitor
+			.post(`${actionUrl('acme', client.id, 'block-1', 'go')}?_path=%2Fapps%2Facme%2Fclients%2F42`)
+			.set('Authorization', bearer)
+			.send({})
+			.expect(200);
+		expect(response.body.data).toEqual({ params: { id: '42' }, path: '/apps/acme/clients/42' });
+
+		await visitor
+			.post(`${actionUrl('acme', client.id, 'block-1', 'back')}?_path=/apps/acme/clients/42`)
+			.set('Authorization', bearer)
+			.send({})
+			.expect(303)
+			.expect('Location', '/apps/acme/clients/42?_status=ok');
+
+		await visitor
+			.post(`${actionUrl('acme', client.id, 'block-1', 'back')}?_path=/apps/other/x`)
+			.set('Authorization', bearer)
+			.send({})
+			.expect(303)
+			.expect('Location', '/apps/acme?_status=ok');
 	});
 
 	test('redirects (303) when the action returns { redirect }', async () => {
@@ -244,6 +292,7 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 				{ id: child.id, route: 'child', parentPageId: page.id, content: null, layout: null },
 			],
 			theme: null,
+			components: null,
 		};
 		const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
 		await appRepository.setActiveVersionId(app, version.id);
@@ -256,7 +305,7 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 
 		expect(response.body.data.menu).toEqual([]);
 		expect(response.body.data.url).toMatch(
-			new RegExp(`${actionUrl('acme', page.id, 'layout-code', 'go')}$`),
+			new RegExp(`${actionUrl('acme', page.id, 'layout-code', 'go')}\\?_path=`),
 		);
 	});
 
@@ -316,6 +365,68 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 			.expect(303);
 
 		expect(await listRows()).toEqual([]);
+	});
+
+	test('refuses a row the table does not show on the rendered page', async () => {
+		const { app, page, bearer } = await publishAppWithBlocks([]);
+		const dataTable = await createDataTable(ownerProject, {
+			columns: [{ name: 'owner', type: 'string' }],
+			data: [{ owner: 'ada' }, { owner: 'grace' }],
+		});
+		const block: AppBlock = {
+			id: 'table-1',
+			type: 'table',
+			data: {
+				source: { dataTableId: dataTable.id },
+				limit: 50,
+				deletable: true,
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'owner', condition: 'eq', value: '{{ params.owner }}' }],
+				},
+			},
+		};
+		const owners = await pageRepository.createPage(app.id, null, 'owners');
+		const ownerPage = await pageRepository.createPage(app.id, owners.id, ':owner');
+		const snapshot: AppVersionSnapshot = {
+			pages: [
+				{ id: page.id, route: '', parentPageId: null, content: [], layout: null },
+				{ id: owners.id, route: 'owners', parentPageId: null, content: [], layout: null },
+				{
+					id: ownerPage.id,
+					route: ':owner',
+					parentPageId: owners.id,
+					content: [block],
+					layout: null,
+				},
+			],
+			theme: null,
+			components: null,
+		};
+		const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
+		await appRepository.setActiveVersionId(app, version.id);
+		const listRows = async () =>
+			(await Container.get(DataTableService).getManyRowsAndCount(dataTable.id, ownerProject.id, {}))
+				.data;
+		const [ada, grace] = await listRows();
+		const deleteUrl = `${actionUrl('acme', ownerPage.id, 'table-1', 'delete')}?_path=/apps/acme/owners/ada`;
+
+		const refused = await visitor
+			.post(deleteUrl)
+			.set('Authorization', bearer)
+			.send({ id: String(grace.id) })
+			.expect(400);
+		expect(refused.body).toEqual({ error: 'Row not found' });
+		expect(await listRows()).toHaveLength(2);
+
+		await visitor
+			.post(deleteUrl)
+			.set('Authorization', bearer)
+			.type('form')
+			.send({ id: String(ada.id) })
+			.expect(303)
+			.expect('Location', '/apps/acme/owners/ada?_form=table-1&_status=ok');
+		expect(await listRows()).toEqual([expect.objectContaining({ owner: 'grace' })]);
 	});
 
 	test('refuses a table action the block does not allow', async () => {

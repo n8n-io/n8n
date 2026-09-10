@@ -39,7 +39,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
-| [app](app.md) | 9 |  | table |
+| [app](app.md) | 10 |  | table |
 | [app_version](app_version.md) | 6 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
@@ -710,6 +710,7 @@ erDiagram
 "app" {
   varchar_36_ activeVersionId FK
   varchar_16_ auth
+  TEXT components
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_128_ name

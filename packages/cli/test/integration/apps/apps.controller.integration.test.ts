@@ -239,7 +239,8 @@ describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
 
 		const errors = JSON.parse(response.headers['x-n8n-app-render-errors']);
 		expect(Object.keys(errors)).toEqual(['broken']);
-		expect(errors.broken).toMatch(/Parse error[^]*\nat /);
+		expect(errors.broken).toMatch(/Parse error/);
+		expect(errors.broken).not.toMatch(/\nat /);
 		expect(response.text).toContain('Still here');
 		expect(response.text).not.toContain('Parse error');
 	});

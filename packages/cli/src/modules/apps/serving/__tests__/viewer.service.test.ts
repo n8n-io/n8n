@@ -10,7 +10,7 @@ import { ViewerService } from '../viewer.service';
 
 const user = mock<User>({ id: 'user-1', email: 'ada@example.com', firstName: 'Ada' });
 
-const payload = { appId: 'app-1', viewerId: 'user-1' };
+const payload = { appId: 'app-1', viewerId: 'user-1', mode: 'published' as const };
 
 const request = (overrides: { authorization?: string; cookie?: string } = {}) =>
 	mock<Request>({

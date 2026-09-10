@@ -39,7 +39,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
-| [public.app](public.app.md) | 9 |  | BASE TABLE |
+| [public.app](public.app.md) | 10 |  | BASE TABLE |
 | [public.app_version](public.app_version.md) | 6 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
@@ -723,6 +723,7 @@ erDiagram
 "public.app" {
   varchar_36_ activeVersionId FK
   varchar_16_ auth
+  text components
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
