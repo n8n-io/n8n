@@ -1,19 +1,24 @@
 import { UserError } from 'n8n-workflow';
+import { isDeepStrictEqual } from 'node:util';
 
-import { MAX_VERIFY_ATTEMPTS } from './remediation';
+import type { WorkflowTaskService } from '../types';
+import { MAX_VERIFY_ATTEMPTS, terminalRemediationFromState } from './remediation';
 import { WorkflowLoopRuntime } from './runtime';
+import {
+	isNeedsSetupRemediation,
+	stateForPendingSetupVerification,
+} from './setup-verification-policy';
 import { deriveWorkflowVerificationClaim } from './verification-progress';
 import type {
 	VerificationResult,
+	VerificationClaim,
+	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
-	WorkflowVerificationEvidence,
-	WorkflowTriggerVerificationProgress,
-	VerificationClaim,
 } from './workflow-loop-state';
 import type { WorkflowLoopStorage } from '../storage/workflow-loop-storage';
-import type { WorkflowTaskService } from '../types';
 
 function lastAttemptTimeMs(
 	item: NonNullable<Awaited<ReturnType<WorkflowLoopStorage['listWorkItems']>>>[number],
@@ -67,10 +72,50 @@ export class WorkflowTaskCoordinator implements WorkflowTaskService {
 		workItemId: string,
 		update: Partial<WorkflowBuildOutcome>,
 	): Promise<void> {
-		await this.storage.updateBuildOutcome(this.threadId, workItemId, (outcome) => ({
-			...outcome,
-			...update,
-		}));
+		await this.storage.updateWorkItem(this.threadId, workItemId, (item) => {
+			if (!item.lastBuildOutcome) return null;
+			return { ...item, lastBuildOutcome: { ...item.lastBuildOutcome, ...update } };
+		});
+	}
+
+	/** Bind verification and its later verdict to the build and state that the caller read. */
+	async beginVerification(
+		outcome: WorkflowBuildOutcome,
+		expectedState: WorkflowLoopState,
+		runId: string,
+	): Promise<boolean> {
+		return await this.storage.updateWorkItem(this.threadId, outcome.workItemId, (item) => {
+			if (
+				!item.lastBuildOutcome ||
+				!isDeepStrictEqual(item.lastBuildOutcome, outcome) ||
+				!isDeepStrictEqual(item.state, expectedState)
+			) {
+				return null;
+			}
+
+			const setupState = stateForPendingSetupVerification(item.state, outcome, runId);
+			if (outcome.verificationReadiness?.status === 'needs_setup' && !setupState) return null;
+			const state = setupState ?? item.state;
+			if (
+				(setupState || state.status === 'blocked' || state.lastRemediation?.shouldEdit === false) &&
+				terminalRemediationFromState(state)
+			)
+				return null;
+
+			return {
+				...item,
+				state: { ...state, runId, phase: 'verifying', status: 'active' },
+				lastBuildOutcome: setupState
+					? {
+							...outcome,
+							verificationReadiness: { status: 'ready' },
+							remediation: isNeedsSetupRemediation(outcome.remediation)
+								? undefined
+								: outcome.remediation,
+						}
+					: outcome,
+			};
+		});
 	}
 
 	/** Keep prior evidence outside storage until a successful retry restores it. */

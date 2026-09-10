@@ -1,5 +1,9 @@
 import { successfulVerification } from '../../__tests__/verification-fixtures';
-import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../remediation';
+import {
+	createRemediation,
+	MAX_VERIFY_ATTEMPTS,
+	MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+} from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
@@ -79,6 +83,88 @@ function makeMultiTriggerOutcome(
 }
 
 describe('deriveWorkflowVerificationObligation', () => {
+	it('keeps an exhausted setup verification budget blocked', () => {
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			guidance: 'Connect the account.',
+		});
+		const record = {
+			state: makeState({
+				status: 'blocked',
+				lastRemediation: remediation,
+				successfulSubmitSeen: true,
+				postSubmitRemediationSubmitsUsed: MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+			}),
+			attempts: [],
+			lastBuildOutcome: makeOutcome({
+				needsUserInput: true,
+				nodeSimulationPlan: [],
+				remediation,
+				verificationReadiness: {
+					status: 'needs_setup',
+					reason: 'workflow-needs-setup',
+					guidance: 'Connect the account.',
+				},
+			}),
+		};
+		const original = structuredClone(record);
+		const obligation = deriveWorkflowVerificationObligation('thread-1', record, {
+			setupPanelEnabled: true,
+		});
+		expect(obligation.status).toBe('blocked');
+		expect(obligation.blockingReason).toContain('repair budget is exhausted');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+		expect(record).toEqual(original);
+	});
+
+	it.each([
+		['first attempt', {}, 'ready_to_verify'],
+		['legacy attempt', { verifyAttempts: 1 }, 'needs_setup'],
+		[
+			'failed attempt',
+			{ verification: { attempted: true, success: false, status: 'error' } },
+			'needs_setup',
+		],
+		['one-off', { executionIntent: 'one-off' }, 'needs_setup'],
+		['trigger-only', { triggerType: 'trigger_only' }, 'needs_setup'],
+		['missing plan', { nodeSimulationPlan: undefined }, 'needs_setup'],
+	] satisfies Array<[string, Partial<WorkflowBuildOutcome>, string]>)(
+		'derives panel verification for %s without changing storage',
+		(_name, overrides, expected) => {
+			const remediation = createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				guidance: 'Connect the account.',
+			});
+			const record = {
+				state: makeState({ status: 'blocked', lastRemediation: remediation }),
+				attempts: [],
+				lastBuildOutcome: makeOutcome({
+					needsUserInput: true,
+					nodeSimulationPlan: [],
+					remediation,
+					verificationReadiness: {
+						status: 'needs_setup',
+						reason: 'workflow-needs-setup',
+						guidance: 'Connect the account.',
+					},
+					...overrides,
+				}),
+			};
+			const original = structuredClone(record);
+			expect(
+				deriveWorkflowVerificationObligation('thread-1', record, { setupPanelEnabled: true })
+					.status,
+			).toBe(expected);
+			expect(
+				deriveWorkflowVerificationObligation('thread-1', record, { setupPanelEnabled: false })
+					.status,
+			).toBe('needs_setup');
+			expect(record).toEqual(original);
+		},
+	);
+
 	it('marks ready build outcomes as ready to verify', () => {
 		const obligation = deriveWorkflowVerificationObligation('thread-1', {
 			state: makeState(),

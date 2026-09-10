@@ -1299,6 +1299,114 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 	});
 
+	describe('wake delivery', () => {
+		function makeWakeBridge() {
+			const { bot } = makeBot();
+			const thread = makeThread('slack:channel-1:1');
+			bot.thread.mockReturnValue(thread);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'slack', credentialId: 'cred-1' },
+			);
+			return { bridge, bot, thread };
+		}
+
+		const textChunks: StreamChunk[] = [
+			{ type: 'text-delta', id: 'text-1', delta: 'The job ' },
+			{ type: 'text-delta', id: 'text-1', delta: 'is done.' },
+			finishChunk,
+		];
+
+		it('posts wake text to the stored Slack thread before returning', async () => {
+			const { bridge, bot, thread } = makeWakeBridge();
+			let resolvePost!: () => void;
+			thread.post.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolvePost = resolve;
+				}),
+			);
+			let delivered = false;
+			const delivery = bridge.deliverWakeResponse(thread.id, textChunks).then(() => {
+				delivered = true;
+			});
+
+			await vi.waitFor(() => expect(thread.post).toHaveBeenCalled());
+			expect(delivered).toBe(false);
+			resolvePost();
+			await delivery;
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:channel-1:1');
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ markdown: 'The job is done.' });
+			expect(delivered).toBe(true);
+		});
+
+		it('reports a failed Slack post so the wake can retry', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockRejectedValueOnce(error);
+
+			await expect(bridge.deliverWakeResponse(thread.id, textChunks)).rejects.toBe(error);
+			expect(thread.post).toHaveBeenCalledTimes(1);
+
+			await bridge.deliverWakeResponse(thread.id, textChunks);
+			expect(thread.post).toHaveBeenLastCalledWith({ markdown: 'The job is done.' });
+		});
+
+		it('reports a failed message post after wake text', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [
+					...textChunks,
+					{
+						type: 'message',
+						message: { role: 'assistant', content: [{ type: 'text', text: 'More details.' }] },
+					},
+				]),
+			).rejects.toBe(error);
+
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'The job is done.' });
+			expect(thread.post).toHaveBeenNthCalledWith(2, 'More details.');
+		});
+
+		it('reports a failed error reply', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockRejectedValue(error);
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [erroredToolResult, finishChunk]),
+			).rejects.toBe(error);
+
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('reports a failed approval card post', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			componentMapper.toCard.mockResolvedValue({ type: 'card', children: [] });
+			thread.post.mockRejectedValue(new Error('Slack is unavailable'));
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'send_message',
+						suspendPayload: { type: 'approval', message: 'Send the message?' },
+					},
+				]),
+			).rejects.toThrow('Failed to post tool approval request');
+		});
+	});
+
 	describe('resumeInAgentThread', () => {
 		function makeResumeBridge(integration: AgentIntegrationConfig) {
 			const { bot } = makeBot();

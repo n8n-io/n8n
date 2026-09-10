@@ -71,12 +71,7 @@ const {
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
-	const first = executions.value[0];
-
-	/** Relabel InstanceAI to AI Assistant for the UI */
-	if (first.source === 'instance-ai') return 'AI Assistant';
-
-	return first.source ?? 'chat';
+	return executions.value[0].source ?? 'chat';
 });
 
 const triggerIcon = computed((): IconName => {
@@ -86,7 +81,7 @@ const triggerIcon = computed((): IconName => {
 	switch (source) {
 		case 'slack':
 			return 'slack';
-		case 'AI Assistant':
+		case 'instance-ai':
 			return 'sparkles';
 		default:
 			return 'bolt-filled';
@@ -98,6 +93,10 @@ const triggerLabel = computed((): string => {
 	if (!source) return '';
 	if (source === 'chat' || source === 'n8n_chat') {
 		return i18n.baseText('agentSessions.origin.preview');
+	}
+	// Instance AI runs are labelled with the product name, not the source id.
+	if (source === 'instance-ai') {
+		return i18n.baseText('agentSessions.origin.instanceAi');
 	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
@@ -264,6 +263,11 @@ function onSessionSelect(nextThreadId: string) {
 	});
 }
 
+function onSessionDeleted(sessionId: string) {
+	if (sessionId !== threadId.value) return;
+	void router.replace(agentExecutionsRoute.value);
+}
+
 function togglePreview() {
 	isPreviewOpen.value = !isPreviewOpen.value;
 }
@@ -319,6 +323,7 @@ function viewPreviewTrace() {
 				:effective-session-id="effectiveSessionId"
 				@view-trace="viewPreviewTrace"
 				@new-session="onNewChat"
+				@session-deleted="onSessionDeleted"
 				@session-select="onSessionPick"
 				@close="togglePreview"
 			/>

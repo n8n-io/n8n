@@ -228,6 +228,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: 'instance-deny',
+			optInAvailable: false,
 		});
 	});
 
@@ -239,6 +240,7 @@ describe('evaluateComposedType', () => {
 			action: 'allow',
 			scope: 'project',
 			matchedRuleId: 'project-allow',
+			optInAvailable: false,
 		});
 	});
 
@@ -250,6 +252,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: null,
+			optInAvailable: true,
 		});
 	});
 
@@ -261,6 +264,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: null,
+			optInAvailable: true,
 		});
 	});
 
@@ -272,6 +276,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: 'project-deny',
+			optInAvailable: true,
 		});
 	});
 
@@ -283,6 +288,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: null,
+			optInAvailable: true,
 		});
 	});
 
@@ -294,6 +300,7 @@ describe('evaluateComposedType', () => {
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: 'project-deny',
+			optInAvailable: false,
 		});
 	});
 
@@ -302,6 +309,7 @@ describe('evaluateComposedType', () => {
 			action: 'allow',
 			scope: 'instance',
 			matchedRuleId: null,
+			optInAvailable: false,
 		});
 	});
 
@@ -313,6 +321,7 @@ describe('evaluateComposedType', () => {
 			action: 'allow',
 			scope: 'project',
 			matchedRuleId: 'project-allow',
+			optInAvailable: false,
 		});
 	});
 });

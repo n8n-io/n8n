@@ -141,6 +141,23 @@ describe('WorkflowLoopStorage', () => {
 		).rejects.toThrow('state is unavailable');
 	});
 
+	it('rejects an update when saving its patch fails', async () => {
+		const state = makeState();
+		mockedPatchThread.mockImplementation((_memory, { update }) => {
+			update({
+				...baseThread,
+				metadata: { instanceAiWorkflowLoop: { 'wi-1': { state, attempts: [] } } },
+			});
+			throw new Error('Save failed');
+		});
+		await expect(
+			storage.updateWorkItem('thread-1', 'wi-1', (record) => ({
+				...record,
+				state: { ...record.state, phase: 'verifying' },
+			})),
+		).rejects.toThrow('Save failed');
+	});
+
 	describe('getWorkItem', () => {
 		it('returns work item from thread metadata', async () => {
 			const state = makeState();

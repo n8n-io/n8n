@@ -147,7 +147,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('workflows(action="setup")');
-			expect(result).toContain('inline setup card in the AI Assistant panel');
+			expect(result).toContain('inline setup card in the n8n Assistant panel');
 			expect(result).toContain('Do not call');
 			expect(result).not.toContain('setup UI');
 		});

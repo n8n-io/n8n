@@ -56,6 +56,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		reportVerificationVerdict: vi.fn(),
 		getBuildOutcome: vi.fn().mockResolvedValue(defaultBuildOutcome),
 		getLatestBuildOutcomeForWorkflow: vi.fn().mockResolvedValue(defaultBuildOutcome),
+		beginVerification: vi.fn(),
 		getWorkflowLoopState: vi.fn(),
 		updateBuildOutcome: vi.fn(),
 		startVerification: vi.fn(),
@@ -588,6 +589,7 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			beginVerification: vi.fn(),
 			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 			startVerification: vi.fn(coordinator.startVerification.bind(coordinator)),

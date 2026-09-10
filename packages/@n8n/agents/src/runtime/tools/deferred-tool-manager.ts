@@ -74,12 +74,22 @@ function scoreTool(tool: BuiltTool, query: string): number {
 
 export interface DeferredToolManagerOptions {
 	topK?: number;
+	/**
+	 * Tools that are already in the model's toolset. They are not loadable, but
+	 * `load_tool` and `search_tools` must still recognize them. An instruction
+	 * that tells the model to load an always-active tool otherwise dead-ends on
+	 * `not_found`, and the model spends a full round trip on the fallback search.
+	 */
+	activeTools?: BuiltTool[];
 }
 
 export class DeferredToolManager {
 	private readonly toolsByName = new Map<string, BuiltTool>();
 
 	private readonly loadedToolNames = new Set<string>();
+
+	/** Always-available tools, kept out of `toolsByName` so they stay unloadable. */
+	private readonly activeToolsByName = new Map<string, BuiltTool>();
 
 	private readonly topK: number;
 
@@ -96,6 +106,12 @@ export class DeferredToolManager {
 				throw new Error(`Duplicate deferred tool name "${tool.name}"`);
 			}
 			this.toolsByName.set(tool.name, tool);
+		}
+
+		for (const tool of options.activeTools ?? []) {
+			// A deferred tool of the same name owns the name, because that one is loadable.
+			if (this.toolsByName.has(tool.name)) continue;
+			this.activeToolsByName.set(tool.name, tool);
 		}
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
@@ -170,7 +186,9 @@ export class DeferredToolManager {
 	}
 
 	private search(query: string): SearchToolsOutput {
-		const scored = Array.from(this.toolsByName.values())
+		// Active tools are included so a search for one returns the real tool
+		// (marked `loaded`) instead of unrelated loadable ones.
+		const scored = [...this.toolsByName.values(), ...this.activeToolsByName.values()]
 			.map((tool) => ({
 				tool,
 				score: scoreTool(tool, query),
@@ -189,6 +207,16 @@ export class DeferredToolManager {
 	}
 
 	private load(toolName: string): LoadToolOutput {
+		const activeTool = this.activeToolsByName.get(toolName);
+		if (activeTool) {
+			return {
+				status: 'already_loaded',
+				toolName,
+				tool: this.summarizeTool(activeTool),
+				message: `Tool "${toolName}" is already available. Call it directly.`,
+			};
+		}
+
 		const tool = this.toolsByName.get(toolName);
 		if (!tool) {
 			return {
@@ -221,7 +249,7 @@ export class DeferredToolManager {
 		return {
 			name: tool.name,
 			description: tool.description,
-			loaded: this.loadedToolNames.has(tool.name),
+			loaded: this.activeToolsByName.has(tool.name) || this.loadedToolNames.has(tool.name),
 		};
 	}
 

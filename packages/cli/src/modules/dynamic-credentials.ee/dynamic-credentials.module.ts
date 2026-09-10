@@ -1,3 +1,4 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
@@ -9,7 +10,7 @@ import { Container } from '@n8n/di';
  * credentials" capability is always on once the module is licensed.
  */
 function isExternalResolversEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS === 'true';
+	return isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS');
 }
 
 @BackendModule({ name: 'dynamic-credentials', licenseFlag: LICENSE_FEATURES.DYNAMIC_CREDENTIALS })

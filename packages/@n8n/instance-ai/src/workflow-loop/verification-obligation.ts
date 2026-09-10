@@ -1,5 +1,8 @@
 import { MAX_VERIFY_ATTEMPTS } from './remediation';
-import { setupRemediationBlocksVerification } from './setup-verification-policy';
+import {
+	setupRemediationBlocksVerification,
+	stateForPendingSetupVerification,
+} from './setup-verification-policy';
 import { getMultiTriggerCoverage } from './verification-progress';
 import type {
 	AttemptRecord,
@@ -27,6 +30,7 @@ export interface DeriveWorkflowVerificationObligationOptions {
 	owner?: WorkflowBuildOwner;
 	plannedTaskId?: string;
 	updatedAt?: string;
+	setupPanelEnabled?: boolean;
 }
 
 /** Blocking-reason text for one-off builds whose verification is optional. */
@@ -223,9 +227,18 @@ export function deriveWorkflowVerificationObligation(
 	record: WorkflowVerificationObligationRecord,
 	options: DeriveWorkflowVerificationObligationOptions = {},
 ): WorkflowVerificationObligation {
-	const outcome = record.lastBuildOutcome;
+	const savedOutcome = record.lastBuildOutcome;
+	const setupVerificationState =
+		options.setupPanelEnabled === true && savedOutcome
+			? stateForPendingSetupVerification(record.state, savedOutcome)
+			: undefined;
+	const outcome: WorkflowBuildOutcome | undefined =
+		setupVerificationState && savedOutcome
+			? { ...savedOutcome, verificationReadiness: { status: 'ready' } }
+			: savedOutcome;
+	const state = setupVerificationState ?? record.state;
 	const coverage = getMultiTriggerCoverage(outcome);
-	const status = deriveStatus(record.state, outcome, coverage);
+	const status = deriveStatus(state, outcome, coverage);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
 	const owner = resolveWorkflowBuildOwner(options, record.state, outcome);
@@ -247,7 +260,7 @@ export function deriveWorkflowVerificationObligation(
 		setupRequirement: outcome?.setupRequirement,
 		evidence: outcome?.verification,
 		executionIntent: outcome?.executionIntent,
-		blockingReason: deriveBlockingReason(record.state, outcome, coverage, status),
+		blockingReason: deriveBlockingReason(state, outcome, coverage, status),
 		updatedAt,
 	};
 }
