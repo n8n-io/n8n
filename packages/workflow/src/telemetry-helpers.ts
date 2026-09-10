@@ -17,6 +17,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	LANGCHAIN_LM_NODE_TYPE_PREFIX,
 	MCP_CLIENT_NODE_TYPE,
 	MCP_CLIENT_TOOL_NODE_TYPE,
@@ -330,7 +331,11 @@ export function generateNodesGraph(
 	const evaluationTriggerNodeNames: string[] = [];
 
 	const nodes = (workflow.nodes ?? []).filter((node) => node.type === STICKY_NODE_TYPE);
-	const otherNodes = (workflow.nodes ?? []).filter((node) => node.type !== STICKY_NODE_TYPE);
+	// Group placeholders are hidden no-op stand-ins for empty groups, so they
+	// must not pollute the node-usage telemetry alongside stickies.
+	const otherNodes = (workflow.nodes ?? []).filter(
+		(node) => node.type !== STICKY_NODE_TYPE && node.type !== GROUP_PLACEHOLDER_NODE_TYPE,
+	);
 
 	nodes.forEach((stickyNote: INode, index: number) => {
 		const stickyType = nodeTypes.getByNameAndVersion(STICKY_NODE_TYPE, stickyNote.typeVersion);

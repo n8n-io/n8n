@@ -1,6 +1,6 @@
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
-import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { GROUP_PLACEHOLDER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -53,6 +53,7 @@ export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export { GROUP_PLACEHOLDER_NODE_TYPE };
 export const NOTION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.notionTrigger';
 export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
 export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';

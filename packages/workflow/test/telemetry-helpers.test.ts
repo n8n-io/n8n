@@ -233,6 +233,43 @@ describe('generateNodesGraph', () => {
 		});
 	});
 
+	test('should exclude group placeholder nodes from the node graph', () => {
+		const workflow: IWorkflowBase = {
+			createdAt: new Date('2024-01-05T13:49:14.244Z'),
+			updatedAt: new Date('2024-01-05T15:44:31.000Z'),
+			id: 'NfV4GV9aQTifSLc2',
+			name: 'My workflow 26',
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			nodes: [
+				{
+					parameters: {},
+					id: 'fa7d5628-5a47-4c8f-98ef-fb3532e5a9f5',
+					name: 'When clicking "Execute Workflow"',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [420, 420],
+				},
+				{
+					parameters: {},
+					id: 'aa7d5628-5a47-4c8f-98ef-fb3532e5a9f6',
+					name: 'Empty Group',
+					type: 'n8n-nodes-base.groupPlaceholder',
+					typeVersion: 1,
+					position: [640, 420],
+				},
+			],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+			pinData: {},
+			versionId: '70b92d94-0e9a-4b41-9976-a654df420af5',
+		};
+		const result = generateNodesGraph(workflow, nodeTypes);
+		expect(result.nodeGraph.node_types).toEqual(['n8n-nodes-base.manualTrigger']);
+		expect(result.nameIndices).toEqual({ 'When clicking "Execute Workflow"': '0' });
+	});
+
 	test('should return node graph when workflow keys are not set', () => {
 		const workflow: Partial<IWorkflowBase> = {};
 		expect(generateNodesGraph(workflow, nodeTypes)).toEqual({

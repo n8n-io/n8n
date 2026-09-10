@@ -15,6 +15,7 @@ import {
 	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
+	GROUP_EMPTY_BODY_HEIGHT,
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
@@ -63,18 +64,49 @@ function resolveNodeDimensions(
 }
 
 /**
- * Collapsed (chip) and expanded frame rects for a group, in unsnapped store
- * space. Expanded width is floored at the chip width so a tight cluster never
- * shrinks the frame below it.
+ * Height of the rendered group node — the single source of truth shared by the
+ * mapping (VueFlow node size) and the title bar component (wrapper size), so
+ * the side handles always sit at the middle of what is drawn.
+ *
+ * - expanded: the header only; the frame below it is an overflow child.
+ * - collapsed: the header (title + description).
+ * - empty: the header plus the add-node body. An empty group is always
+ *   rendered collapsed.
  */
-export function computeGroupFrameRects(nodesRect: NodesRect): {
+export function getGroupCardHeight({
+	isCollapsed,
+	isEmptyGroup,
+}: {
+	isCollapsed: boolean;
+	isEmptyGroup: boolean;
+}): number {
+	return isCollapsed && isEmptyGroup
+		? GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT
+		: GROUP_HEADER_HEIGHT;
+}
+
+/**
+ * Collapsed (card) and expanded frame rects for a group, in unsnapped store
+ * space. Expanded width is floored at the card width so a tight cluster never
+ * shrinks the frame below it. An empty group's collapsed card is taller: it
+ * carries the add-node body under the header.
+ */
+export function computeGroupFrameRects(
+	nodesRect: NodesRect,
+	{ isEmpty = false }: { isEmpty?: boolean } = {},
+): {
 	collapsed: BoundingBox;
 	expanded: BoundingBox;
 } {
 	const x = nodesRect.x - GROUP_PADDING_X;
 	const y = nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
 	return {
-		collapsed: { x, y, width: GROUP_HEADER_WIDTH_COLLAPSED, height: GROUP_HEADER_HEIGHT },
+		collapsed: {
+			x,
+			y,
+			width: GROUP_HEADER_WIDTH_COLLAPSED,
+			height: getGroupCardHeight({ isCollapsed: true, isEmptyGroup: isEmpty }),
+		},
 		expanded: {
 			x,
 			y,
@@ -85,23 +117,28 @@ export function computeGroupFrameRects(nodesRect: NodesRect): {
 }
 
 /**
- * Title bar layout (position + width) for the VueFlow group node. Snaps the
+ * Title bar layout (position + size) for the VueFlow group node. Snaps the
  * position to the canvas grid, otherwise VueFlow's `snap-to-grid`
  * would shift the title bar on the first drag.
  */
 export function titleBarFromNodesRect(
 	nodesRect: NodesRect,
 	collapsed: boolean,
+	isEmpty = false,
 ): {
 	position: { x: number; y: number };
 	width: number;
+	height: number;
 } {
 	const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
-	const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect);
+	const { collapsed: collapsedRect, expanded: expandedRect } = computeGroupFrameRects(nodesRect, {
+		isEmpty,
+	});
 	const rect = collapsed ? collapsedRect : expandedRect;
 	return {
 		position: { x: snap(rect.x), y: snap(rect.y) },
 		width: rect.width,
+		height: getGroupCardHeight({ isCollapsed: collapsed, isEmptyGroup: isEmpty }),
 	};
 }
 
@@ -205,6 +242,8 @@ export interface MapGroupsToVueFlowNodesInputs {
 	getNodeDisplaySize?: GetNodeDisplaySize;
 	getGroupVisualOffset?: (id: string) => { x: number; y: number };
 	isGroupCollapsed: (id: string) => boolean;
+	/** True when the group's only member is a placeholder node. */
+	isEmptyGroup?: (id: string) => boolean;
 	readOnly: boolean;
 	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot;
 }
@@ -219,6 +258,7 @@ export function mapGroupsToVueFlowNodes({
 	getNodeDisplaySize,
 	getGroupVisualOffset,
 	isGroupCollapsed,
+	isEmptyGroup = () => false,
 	readOnly,
 	getNodeExecutionSnapshot,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
@@ -230,7 +270,9 @@ export function mapGroupsToVueFlowNodes({
 		if (!hasNode) continue;
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
-		const collapsed = isGroupCollapsed(group.id);
+		const isEmpty = isEmptyGroup(group.id);
+		// An empty group always renders as the chip; its placeholder stays hidden.
+		const collapsed = isEmpty || isGroupCollapsed(group.id);
 		const memberNodes = group.nodeIds
 			.map(getNodeById)
 			.filter((node): node is INodeUi => node !== undefined);
@@ -243,20 +285,21 @@ export function mapGroupsToVueFlowNodes({
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			isEmptyGroup: isEmpty,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
 			allNodesDisabled:
 				connectableMembers.length > 0 && connectableMembers.every((node) => node.disabled === true),
 		};
 
 		const id = createCanvasGroupNodeId(group.id);
-		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
+		const titleBar = titleBarFromNodesRect(nodesRect, collapsed, isEmpty);
 		const offset = getGroupVisualOffset?.(id) ?? { x: 0, y: 0 };
 		out.push({
 			id,
 			type: CANVAS_NODE_GROUP_TYPE,
 			position: applyOffset(titleBar.position, offset),
 			width: titleBar.width,
-			height: GROUP_HEADER_HEIGHT,
+			height: titleBar.height,
 			draggable: !readOnly,
 			// The title bar stands in for the whole group: selecting it selects
 			// every member node (see useCanvasNodeGroupSelection).

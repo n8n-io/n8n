@@ -1,4 +1,4 @@
-import { STICKY_NODE_TYPE } from './constants';
+import { GROUP_PLACEHOLDER_NODE_TYPE, STICKY_NODE_TYPE } from './constants';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -22,8 +22,9 @@ import { isTriggerNode } from './node-helpers';
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
 
-/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
-export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
+// ponytail: raised for the POC so an objective fits; the collapsed panel
+// was designed for 145 characters and will overflow past three lines.
+export const GROUP_DESCRIPTION_MAX_LENGTH = 1000;
 
 /**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
@@ -182,6 +183,8 @@ export type WorkflowGroupViolationCode =
 	| 'empty-group'
 	| 'unknown-node-id'
 	| 'node-in-multiple-groups'
+	| 'placeholder-mixed-with-nodes'
+	| 'placeholder-without-group'
 	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
 
 export type WorkflowGroupViolation = {
@@ -287,7 +290,11 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 			valid: false;
 			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
 	  } {
-	if (!nodeGroups || nodeGroups.length === 0) return { valid: true };
+	// A placeholder is only valid inside a group, so an orphan one is invalid
+	// even when the workflow declares no groups at all.
+	if (!nodeGroups || nodeGroups.length === 0) {
+		return validateOrphanPlaceholders(nodes, new Set());
+	}
 
 	const violations: WorkflowGroupViolationWithGroup[] = [];
 	// Tracked by object identity: duplicate IDs/names make `group.id` ambiguous.
@@ -328,6 +335,20 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 
 		if (group.nodeIds.length === 0) {
 			addBasicViolation('empty-group', `Group "${group.name}" has no members.`);
+		}
+
+		// A placeholder stands in for an empty group, so it must be the only
+		// connectable member. Stickies ride along; any real node makes it invalid.
+		const groupMembers = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
+		const hasPlaceholder = groupMembers.some((node) => node.type === GROUP_PLACEHOLDER_NODE_TYPE);
+		const hasRealNode = groupMembers.some(
+			(node) => node.type !== GROUP_PLACEHOLDER_NODE_TYPE && node.type !== STICKY_NODE_TYPE,
+		);
+		if (hasPlaceholder && hasRealNode) {
+			addBasicViolation(
+				'placeholder-mixed-with-nodes',
+				`Group "${group.name}" mixes an empty-group placeholder with real nodes.`,
+			);
 		}
 
 		for (const nodeId of group.nodeIds) {
@@ -373,9 +394,48 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 		}
 	}
 
+	// A placeholder outside every group is invalid; report it without a group.
+	const groupedNodeIds = new Set(nodeGroups.flatMap((group) => group.nodeIds));
+	violations.push(...orphanPlaceholderViolations(nodes, groupedNodeIds));
+
 	const [firstViolation, ...restViolations] = violations;
 	if (!firstViolation) return { valid: true };
 	return { valid: false, violations: [firstViolation, ...restViolations] };
+}
+
+/**
+ * A placeholder is only valid inside a group. Reports one violation per
+ * placeholder node whose id is not in `groupedNodeIds`. The synthetic empty
+ * group keeps the shared violation shape without inventing a group name.
+ */
+function orphanPlaceholderViolations<TNode extends INode>(
+	nodes: TNode[],
+	groupedNodeIds: Set<string>,
+): WorkflowGroupViolationWithGroup[] {
+	const orphanGroup: IWorkflowGroup = { id: '', name: '', nodeIds: [] };
+	return nodes
+		.filter((node) => node.type === GROUP_PLACEHOLDER_NODE_TYPE && !groupedNodeIds.has(node.id))
+		.map((node) => ({
+			group: orphanGroup,
+			groupId: '',
+			groupName: '',
+			code: 'placeholder-without-group' as const,
+			message: `Node "${node.name}" is an empty-group placeholder that does not belong to any group.`,
+		}));
+}
+
+function validateOrphanPlaceholders<TNode extends INode>(
+	nodes: TNode[],
+	groupedNodeIds: Set<string>,
+):
+	| { valid: true }
+	| {
+			valid: false;
+			violations: [WorkflowGroupViolationWithGroup, ...WorkflowGroupViolationWithGroup[]];
+	  } {
+	const [first, ...rest] = orphanPlaceholderViolations(nodes, groupedNodeIds);
+	if (!first) return { valid: true };
+	return { valid: false, violations: [first, ...rest] };
 }
 
 function stripWorkflowGroupIdentity({

@@ -16,6 +16,7 @@ import type {
 	AddedNodesAndConnections,
 	NodeTypeSelectedPayload,
 	ToggleNodeCreatorOptions,
+	XYPosition,
 } from '@/Interface';
 import { useActions } from '../composables/useActions';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
@@ -54,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	addNodes: [value: AddedNodesAndConnections];
+	addEmptyGroup: [position: XYPosition];
 	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 	close: [];
 }>();
@@ -85,18 +87,28 @@ function openNodeCreator() {
 	});
 }
 
-function addStickyNote() {
+// Centre of the visible canvas, in canvas coordinates; the toolbar's insert
+// point for elements that are not connected to anything yet.
+function getMidCanvasInsertPosition(): XYPosition {
 	if (document.activeElement) {
 		(document.activeElement as HTMLElement).blur();
 	}
-
 	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
+	return getMidCanvasPosition(props.nodeViewScale, offset);
+}
 
-	const position = getMidCanvasPosition(props.nodeViewScale, offset);
+function addStickyNote() {
+	const position = getMidCanvasInsertPosition();
 	position[0] -= DEFAULT_STICKY_WIDTH / 2;
 	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
 	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
+}
+
+// The host owns group creation (placeholder node + group in one undo step),
+// so this only reports where the user wants it.
+function addEmptyGroup() {
+	emit('addEmptyGroup', getMidCanvasInsertPosition());
 }
 
 function closeNodeCreator(hasAddedNodes = false) {
@@ -199,6 +211,16 @@ function openCommandBar(event: MouseEvent) {
 				@click="openCommandBar"
 			/>
 		</KeyboardShortcutTooltip>
+		<N8nTooltip :content="i18n.baseText('nodeView.addEmptyGroupHint')" placement="left">
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="square"
+				:aria-label="i18n.baseText('nodeView.addEmptyGroupHint')"
+				data-test-id="add-empty-group-button"
+				@click="addEmptyGroup"
+			/>
+		</N8nTooltip>
 		<KeyboardShortcutTooltip
 			:label="i18n.baseText('nodeView.addStickyHint')"
 			:shortcut="{ keys: ['s'], shiftKey: true }"

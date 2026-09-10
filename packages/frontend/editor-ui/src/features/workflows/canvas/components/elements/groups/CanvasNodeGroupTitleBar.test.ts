@@ -17,9 +17,11 @@ vi.mock('@vue-flow/core', () => ({
 		name: 'Handle',
 		props: ['id', 'type', 'position', 'isConnectable'],
 		render() {
+			const self = this as unknown as { id: string; isConnectable: boolean };
 			return h('div', {
 				class: 'vue-flow__handle',
-				'data-handle-id': (this as unknown as { id: string }).id,
+				'data-handle-id': self.id,
+				'data-connectable': String(self.isConnectable),
 			});
 		},
 	},
@@ -42,9 +44,10 @@ vi.mock('@/features/ai/instanceAi/composables/useIsNodeContextEnabled', () => ({
 }));
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
-import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
-import { useCanvasNodeGroupDescriptionVisibility } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
-import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+import {
+	GROUP_EMPTY_BODY_HEIGHT,
+	GROUP_HEADER_HEIGHT,
+} from '../../../stores/canvasNodeGroups.constants';
 import type { CanvasGroupNodeData } from '../../../canvas.types';
 
 const baseGroup: IWorkflowGroup = {
@@ -58,14 +61,21 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
 		isCollapsed: true,
+		isEmptyGroup: false,
 		...overrides,
 	};
 }
 
+// An empty group is always rendered collapsed by the mapping.
+const emptyData = (overrides: Partial<CanvasGroupNodeData> = {}) =>
+	makeData({ isCollapsed: true, isEmptyGroup: true, ...overrides });
+
+const withDescription = (description: string, overrides: Partial<CanvasGroupNodeData> = {}) =>
+	makeData({ group: { ...baseGroup, description }, ...overrides });
+
 describe('CanvasNodeGroupTitleBar', () => {
 	beforeEach(() => {
 		viewportRef.value = { x: 0, y: 0, zoom: 1 };
-		localStorage.clear();
 		isNodeContextEnabled.value = false;
 	});
 
@@ -78,15 +88,9 @@ describe('CanvasNodeGroupTitleBar', () => {
 			selected: boolean;
 			canExtract: boolean;
 		}> = {},
-		descriptionVisibility?: ReturnType<typeof useCanvasNodeGroupDescriptionVisibility>,
 	) {
 		return renderComponent(CanvasNodeGroupTitleBar, {
 			pinia: createTestingPinia(),
-			global: {
-				provide: descriptionVisibility
-					? { [NodeGroupDescriptionVisibilityKey as symbol]: descriptionVisibility }
-					: {},
-			},
 			props: {
 				data: props.data ?? makeData(),
 				autofocusGroupId: props.autofocusGroupId ?? null,
@@ -171,6 +175,14 @@ describe('CanvasNodeGroupTitleBar', () => {
 
 			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
 		});
+
+		it('does not emit open:contextmenu while the description is being edited', async () => {
+			const wrapper = render();
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			await fireEvent.contextMenu(wrapper.getByTestId('canvas-node-group-description-input'));
+
+			expect(wrapper.emitted()['open:contextmenu']).toBeUndefined();
+		});
 	});
 
 	describe('double-click does nothing', () => {
@@ -224,19 +236,36 @@ describe('CanvasNodeGroupTitleBar', () => {
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-toggle'));
 			expect(outsideListener).not.toHaveBeenCalled();
 		});
+
+		// Clicking the description opens the editor; it must not also toggle the group.
+		it('stops clicks on the description', async () => {
+			const wrapper = render();
+			const outsideListener = vi.fn();
+			wrapper.container.addEventListener('click', outsideListener);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			expect(outsideListener).not.toHaveBeenCalled();
+		});
 	});
 
-	describe('height invariant; nodrag on interactive children', () => {
-		it('has the fixed header height when collapsed', () => {
+	describe('card height; nodrag on interactive children', () => {
+		it('has the header height when collapsed', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
 			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT}px`);
 		});
 
-		it('has the fixed header height when expanded', () => {
+		it('has the header height when expanded', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
 			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT}px`);
+		});
+
+		// The VueFlow node is sized the same way (getGroupCardHeight), so the side
+		// handles land at the middle of the whole card.
+		it('has the header plus add-node body height when empty', () => {
+			const wrapper = render({ data: emptyData() });
+			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
+			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT + GROUP_EMPTY_BODY_HEIGHT}px`);
 		});
 
 		it('chevron carries nodrag so VueFlow does not drag on click', () => {
@@ -262,6 +291,16 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const titleArea = wrapper.getByTestId('canvas-node-group-title');
 			expect(titleArea.querySelector('.nodrag')).toBeNull();
 		});
+
+		it('description and add-node button carry nodrag', () => {
+			const wrapper = render({ data: emptyData() });
+			expect(
+				wrapper.getByTestId('canvas-node-group-description').classList.contains('nodrag'),
+			).toBe(true);
+			expect(wrapper.getByTestId('canvas-node-group-add-node').classList.contains('nodrag')).toBe(
+				true,
+			);
+		});
 	});
 
 	describe('frame visibility', () => {
@@ -274,111 +313,83 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeNull();
 		});
+
+		it('never renders the frame for an empty group', () => {
+			const wrapper = render({ data: emptyData() });
+			expect(wrapper.queryByTestId('canvas-node-group-frame')).toBeNull();
+		});
 	});
 
+	// The description lives inside the card header in every state: under the
+	// title, clamped to one line when expanded and two when collapsed.
 	describe('description', () => {
-		it('shows the description under the title when expanded', () => {
-			const wrapper = render({ data: makeData({ isCollapsed: false }) });
-			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
-		});
-
-		it('hides the description when collapsed', () => {
-			const wrapper = render({ data: makeData({ isCollapsed: true }) });
-			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeNull();
-		});
-
-		it('shows the add-description placeholder when empty', () => {
-			const wrapper = render({ data: makeData({ isCollapsed: false }) });
-			const description = within(wrapper.getByTestId('canvas-node-group-description'));
-			expect(description.getByTestId('inline-edit-preview')).toHaveTextContent('Add description');
-		});
-
-		it('emits update:description when the description is edited', async () => {
-			const wrapper = render({ data: makeData({ isCollapsed: false }) });
-
-			const description = within(wrapper.getByTestId('canvas-node-group-description'));
-			await fireEvent.click(description.getByTestId('inline-edit-preview'));
-			const input = description.getByTestId('inline-edit-input') as HTMLInputElement;
-			await fireEvent.update(input, 'A helpful description');
-			await fireEvent.keyDown(input, { key: 'Enter' });
-
-			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'A helpful description']]);
-		});
-	});
-
-	describe('collapsed description', () => {
-		const withDescription = (description: string) =>
-			makeData({ isCollapsed: true, group: { ...baseGroup, description } });
-
-		it('shows the info icon when collapsed', () => {
-			const wrapper = render({ data: makeData({ isCollapsed: true }) });
-			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
-		});
-
-		it('hides the info icon and description below the zoom threshold', () => {
-			viewportRef.value = { x: 0, y: 0, zoom: 0.5 };
-			const collapsed = render({ data: makeData({ isCollapsed: true }) });
-			expect(collapsed.queryByTestId('canvas-node-group-info')).toBeNull();
-
-			const expanded = render({ data: makeData({ isCollapsed: false }) });
-			expect(expanded.queryByTestId('canvas-node-group-description')).toBeNull();
-		});
-
-		it('shows the pinned description panel with the description text', () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
-
-			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
-
-			expect(wrapper.getByTestId('canvas-node-group-description-panel')).toBeVisible();
-			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent(
-				'Pinned copy',
+		it.each([
+			{
+				label: 'expanded',
+				data: withDescription('Look up firmographic data', { isCollapsed: false }),
+			},
+			{
+				label: 'collapsed',
+				data: withDescription('Look up firmographic data', { isCollapsed: true }),
+			},
+			{
+				label: 'empty',
+				data: withDescription('Look up firmographic data', { isEmptyGroup: true }),
+			},
+		])('shows the description text inline in the header when $label', ({ data }) => {
+			const wrapper = render({ data });
+			const header = within(wrapper.getByTestId('canvas-node-group-header'));
+			expect(header.getByTestId('canvas-node-group-description-text')).toHaveTextContent(
+				'Look up firmographic data',
 			);
-			// Pinned → info icon is replaced by the panel, pin shows eye-off.
-			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeNull();
 		});
 
-		it('unpins the description when the pin button is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
-
-			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
-			await fireEvent.click(wrapper.getByTestId('canvas-node-group-pin-description'));
-
-			expect(visibility.isVisible('g1')).toBe(false);
+		it('shows the italic add-description placeholder when there is no description', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const text = wrapper.getByTestId('canvas-node-group-description-text');
+			expect(text).toHaveTextContent('Add a description...');
+			expect([...text.classList].some((c) => /descriptionEmpty/i.test(c))).toBe(true);
 		});
 
-		it('starts editing when the edit icon is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
+		it('clamps to one line when expanded and two lines when collapsed', () => {
+			const expanded = render({ data: withDescription('x', { isCollapsed: false }) });
+			const expandedText = expanded.getByTestId('canvas-node-group-description-text');
+			expect([...expandedText.classList].some((c) => /oneLine/i.test(c))).toBe(true);
+			expanded.unmount();
 
-			const wrapper = render({ data: withDescription('Before') }, visibility);
-			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
-
-			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
+			const collapsed = render({ data: withDescription('x', { isCollapsed: true }) });
+			const collapsedText = collapsed.getByTestId('canvas-node-group-description-text');
+			expect([...collapsedText.classList].some((c) => /twoLines/i.test(c))).toBe(true);
 		});
 
-		it('emits update:description when editing from the pinned panel', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
+		it('hides the description below the zoom threshold but keeps the header', () => {
+			viewportRef.value = { x: 0, y: 0, zoom: 0.5 };
+			const wrapper = render({ data: withDescription('x') });
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeNull();
+			expect(wrapper.getByTestId('canvas-node-group-header')).toBeInTheDocument();
+			const el = wrapper.getByTestId('canvas-node-group') as HTMLElement;
+			expect(el.style.height).toBe(`${GROUP_HEADER_HEIGHT}px`);
+		});
 
-			const wrapper = render({ data: withDescription('Before') }, visibility);
+		it('opens the editor with the current text when the description is clicked', async () => {
+			const wrapper = render({ data: withDescription('Before') });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+
+			const input = wrapper.getByTestId(
+				'canvas-node-group-description-input',
+			) as HTMLTextAreaElement;
+			expect(input.value).toBe('Before');
+		});
+
+		it('does not open the editor in read-only mode', async () => {
+			const wrapper = render({ data: withDescription('Before'), readOnly: true });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeNull();
+		});
+
+		it('emits update:description on blur', async () => {
+			const wrapper = render({ data: withDescription('Before') });
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
 			const input = wrapper.getByTestId('canvas-node-group-description-input');
 			await fireEvent.update(input, 'After');
@@ -387,15 +398,8 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
 		});
 
-		it('emits update:description when Enter is pressed', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
-
-			const wrapper = render({ data: withDescription('Before') }, visibility);
+		it('emits update:description and closes on Enter', async () => {
+			const wrapper = render({ data: withDescription('Before') });
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
 			const input = wrapper.getByTestId('canvas-node-group-description-input');
 			await fireEvent.update(input, 'After');
@@ -406,14 +410,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 
 		it('keeps editing and does not commit on Shift+Enter', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
-
-			const wrapper = render({ data: withDescription('Before') }, visibility);
+			const wrapper = render({ data: withDescription('Before') });
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
 			const input = wrapper.getByTestId('canvas-node-group-description-input');
 			await fireEvent.update(input, 'After');
@@ -423,22 +420,64 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
 		});
 
-		it('discards edits when cancel is clicked', async () => {
-			const visibility = useCanvasNodeGroupDescriptionVisibility({
-				workflowId: () => 'wf-1',
-				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
-				onNodeGroupsChange: () => ({ off: () => {} }),
-			});
-			visibility.setVisible('g1', true);
+		it('discards edits on Escape', async () => {
+			const wrapper = render({ data: withDescription('Before') });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Changed');
+			await fireEvent.keyDown(input, { key: 'Escape' });
 
-			const wrapper = render({ data: withDescription('Before') }, visibility);
-			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent('Before');
+		});
+
+		it('discards edits when cancel is clicked', async () => {
+			const wrapper = render({ data: withDescription('Before') });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
 			const input = wrapper.getByTestId('canvas-node-group-description-input');
 			await fireEvent.update(input, 'Changed');
 			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-cancel'));
 
 			expect(wrapper.emitted()['update:description']).toBeUndefined();
 			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent('Before');
+		});
+
+		it('does not emit when the text is unchanged', async () => {
+			const wrapper = render({ data: withDescription('Same') });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-save'));
+
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+		});
+
+		it('shows Build on an empty group and emits update:description then generate', async () => {
+			const wrapper = render({ data: emptyData() });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Pull CRM contacts');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-build'));
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'Pull CRM contacts']]);
+			expect(wrapper.emitted().generate).toEqual([['g1']]);
+		});
+
+		it('does not emit generate when Save is clicked', async () => {
+			const wrapper = render({ data: emptyData() });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Pull CRM contacts');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-save'));
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'Pull CRM contacts']]);
+			expect(wrapper.emitted().generate).toBeUndefined();
+		});
+
+		it('hides Build when the group is not empty', async () => {
+			const wrapper = render({ data: withDescription('x') });
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+
+			expect(wrapper.queryByTestId('canvas-node-group-description-build')).toBeNull();
+			expect(wrapper.getByTestId('canvas-node-group-description-save')).toBeInTheDocument();
 		});
 	});
 
@@ -653,11 +692,97 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	// The header's right slot shows the EMPTY badge on an empty group and the
+	// collapse chevron on a filled one; the add-node "+" fills the empty body.
+	describe('empty group card', () => {
+		it('shows the EMPTY badge instead of the chevron when the group is empty', () => {
+			const wrapper = render({ data: emptyData() });
+			expect(wrapper.getByTestId('canvas-node-group-empty-badge')).toBeInTheDocument();
+			expect(wrapper.queryByTestId('canvas-node-group-toggle')).toBeNull();
+		});
+
+		it('shows the chevron instead of the EMPTY badge when the group is filled', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-empty-badge')).toBeNull();
+			expect(wrapper.getByTestId('canvas-node-group-toggle')).toBeInTheDocument();
+		});
+
+		it('renders the add-node body with a "+" that emits add-node', async () => {
+			const wrapper = render({ data: emptyData() });
+			const body = within(wrapper.getByTestId('canvas-node-group-body'));
+			await fireEvent.click(body.getByTestId('canvas-node-group-add-node'));
+			expect(wrapper.emitted()['add-node']).toEqual([['g1']]);
+		});
+
+		it('has no body or "+" when the group is not empty', () => {
+			const wrapper = render({ data: makeData({ isEmptyGroup: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-body')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-add-node')).toBeNull();
+		});
+
+		it('hides the "+" in read-only mode', () => {
+			const wrapper = render({ data: emptyData(), readOnly: true });
+			expect(wrapper.queryByTestId('canvas-node-group-add-node')).toBeNull();
+		});
+
+		// An empty group holds only a hidden placeholder: ungrouping would strand it
+		// on the canvas and there is nothing to add to the chat.
+		it('hides the ungroup and add-to-chat buttons when the group is empty', () => {
+			isNodeContextEnabled.value = true;
+			const wrapper = render({ data: emptyData() });
+
+			expect(wrapper.queryByTestId('canvas-node-group-ungroup')).toBeNull();
+			expect(wrapper.queryByTestId('canvas-node-group-add-to-chat')).toBeNull();
+		});
+
+		it('does not show a standalone generate button', () => {
+			const wrapper = render({ data: emptyData() });
+			expect(wrapper.queryByTestId('canvas-node-group-generate')).toBeNull();
+		});
+	});
+
+	// Collapsed cards (empty or filled) show their handles as dots because edges
+	// re-anchor onto them; only an empty card accepts new connections.
 	describe('handles', () => {
-		it('renders left and right handles for re-anchored edges', () => {
+		function handles(wrapper: ReturnType<typeof render>) {
+			return [...wrapper.getByTestId('canvas-node-group').querySelectorAll('.vue-flow__handle')];
+		}
+
+		it('renders left and right handles', () => {
 			const wrapper = render();
-			const root = wrapper.getByTestId('canvas-node-group');
-			expect(root.querySelectorAll('.vue-flow__handle').length).toBeGreaterThanOrEqual(2);
+			expect(handles(wrapper).length).toBe(2);
+		});
+
+		it('shows the handle dots on a collapsed card and hides them when expanded', () => {
+			const collapsed = render({ data: makeData({ isCollapsed: true }) });
+			for (const handle of handles(collapsed)) {
+				expect([...handle.classList].some((c) => /handleVisible/i.test(c))).toBe(true);
+			}
+			collapsed.unmount();
+
+			const expanded = render({ data: makeData({ isCollapsed: false }) });
+			for (const handle of handles(expanded)) {
+				expect([...handle.classList].some((c) => /handleVisible/i.test(c))).toBe(false);
+			}
+		});
+
+		it('is connectable only on an empty card that is not read-only', () => {
+			const empty = render({ data: emptyData() });
+			for (const handle of handles(empty)) {
+				expect(handle.getAttribute('data-connectable')).toBe('true');
+			}
+			empty.unmount();
+
+			const filled = render({ data: makeData({ isCollapsed: true }) });
+			for (const handle of handles(filled)) {
+				expect(handle.getAttribute('data-connectable')).toBe('false');
+			}
+			filled.unmount();
+
+			const readOnly = render({ data: emptyData(), readOnly: true });
+			for (const handle of handles(readOnly)) {
+				expect(handle.getAttribute('data-connectable')).toBe('false');
+			}
 		});
 	});
 

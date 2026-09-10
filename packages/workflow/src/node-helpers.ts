@@ -8,6 +8,7 @@ import { v4 as uuid } from 'uuid';
 
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
@@ -1982,6 +1983,14 @@ const TRIGGER_NODE_TYPES = new Set([
 	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
 	'n8n-nodes-base.start', // Legacy trigger
 ]);
+
+/**
+ * Whether a node is the hidden no-op placeholder that stands in for an empty
+ * node group. Shared so backend and frontend gate on one source of truth.
+ */
+export function isGroupPlaceholderNode(node: Pick<INode, 'type'>): boolean {
+	return node.type === GROUP_PLACEHOLDER_NODE_TYPE;
+}
 
 /**
  * Check if a node type is a trigger

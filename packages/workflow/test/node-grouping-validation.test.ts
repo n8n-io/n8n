@@ -8,6 +8,7 @@ import {
 	validateWorkflowGroups,
 } from '../src/node-grouping-validation';
 import {
+	GROUP_PLACEHOLDER_NODE_TYPE,
 	NodeConnectionTypes,
 	STICKY_NODE_TYPE,
 	type IConnections,
@@ -1075,5 +1076,93 @@ describe('dropInvalidWorkflowGroups', () => {
 			).toEqual([]);
 			expect(workflow.nodeGroups).toHaveLength(2);
 		});
+	});
+});
+
+describe('validateWorkflowGroups - group placeholders', () => {
+	const nodeTypesByName: Record<string, INodeTypeDescription> = {
+		'n8n-nodes-base.set': makeNodeType(),
+		[GROUP_PLACEHOLDER_NODE_TYPE]: makeNodeType({ name: GROUP_PLACEHOLDER_NODE_TYPE }),
+	};
+	const getNodeType = (node: INode) => nodeTypesByName[node.type] ?? null;
+
+	const placeholder = (overrides: Partial<INode> = {}): INode =>
+		makeNode({
+			id: overrides.id ?? 'ph',
+			name: overrides.name ?? 'Empty Group',
+			type: GROUP_PLACEHOLDER_NODE_TYPE,
+			...overrides,
+		});
+
+	it('accepts a group whose only member is a placeholder', () => {
+		const result = validateWorkflowGroups({
+			nodes: [placeholder()],
+			nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['ph'] }],
+			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('accepts a placeholder alongside a sticky note', () => {
+		const result = validateWorkflowGroups({
+			nodes: [placeholder(), makeStickyNode()],
+			nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['ph', 'sticky'] }],
+			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('rejects a group that mixes a placeholder with a real node', () => {
+		const result = validateWorkflowGroups({
+			nodes: [placeholder(), makeNode({ id: 'a', name: 'A' })],
+			nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['ph', 'a'] }],
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations).toEqual([
+				expect.objectContaining({
+					code: 'placeholder-mixed-with-nodes',
+					message: 'Group "Empty Group" mixes an empty-group placeholder with real nodes.',
+				}),
+			]);
+		}
+	});
+
+	it('rejects a placeholder that is not inside any group', () => {
+		const result = validateWorkflowGroups({
+			nodes: [placeholder(), makeNode({ id: 'a', name: 'A' })],
+			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations).toEqual([
+				expect.objectContaining({
+					code: 'placeholder-without-group',
+					message:
+						'Node "Empty Group" is an empty-group placeholder that does not belong to any group.',
+				}),
+			]);
+		}
+	});
+
+	it('rejects an orphan placeholder even when the workflow declares no groups', () => {
+		const result = validateWorkflowGroups({
+			nodes: [placeholder()],
+			nodeGroups: [],
+			getNodeType,
+		});
+
+		expect(result.valid).toBe(false);
+		if (!result.valid) {
+			expect(result.violations).toEqual([
+				expect.objectContaining({ code: 'placeholder-without-group' }),
+			]);
+		}
 	});
 });
