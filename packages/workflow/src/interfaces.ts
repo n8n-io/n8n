@@ -4249,7 +4249,7 @@ export interface ExecutionSummary {
 	};
 	usedPrivateCredentials?: boolean;
 	annotation?: {
-		vote: AnnotationVote;
+		vote?: AnnotationVote;
 		tags: Array<{
 			id: string;
 			name: string;
