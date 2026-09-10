@@ -1,5 +1,6 @@
 import {
 	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 	type INodePropertyOptions,
@@ -43,9 +44,10 @@ export async function tableSearch(
 }
 
 export async function getDataTableColumns(this: ILoadOptionsFunctions) {
-	const returnData: Array<INodePropertyOptions & { type: string }> = Object.entries(
-		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
-	).map(([name, type]) => ({
+	const returnData: Array<INodePropertyOptions & { type: string }> = Object.entries({
+		...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+		...DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
+	}).map(([name, type]) => ({
 		name: `${name} (${type})`,
 		value: name,
 		type,
@@ -127,6 +129,7 @@ export async function getConditionsForColumn(this: ILoadOptionsFunctions) {
 	// Get column type to determine available conditions
 	const type =
 		DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP[keyName] ??
+		DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP[keyName] ??
 		(await proxy.getColumns()).find((col) => col.name === keyName)?.type;
 
 	if (!type) {

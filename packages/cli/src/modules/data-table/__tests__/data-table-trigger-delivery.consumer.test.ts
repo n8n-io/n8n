@@ -3,6 +3,7 @@ import { DataTableConfig } from '@n8n/config';
 import type {
 	DataTableMutationEvent,
 	DataTableMutationEventRepository,
+	DataTableRowAutomationRepository,
 	DataTableTriggerDelivery,
 	DataTableTriggerDeliveryRepository,
 	ExecutionRepository,
@@ -15,6 +16,7 @@ import { DataTableTriggerDeliveryConsumer } from '../data-table-trigger-delivery
 import type { DataTableTriggerSubscriptionReconciler } from '@/workflows/publication/data-table-trigger-subscription-reconciler';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { EventService } from '@/events/event.service';
 
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({ userId: 'user-id' }),
@@ -90,6 +92,8 @@ describe('DataTableTriggerDeliveryConsumer', () => {
 			triggerExecutionContextFactory,
 			workflowExecutionService,
 			reconciler,
+			mock<DataTableRowAutomationRepository>(),
+			mock<EventService>(),
 		);
 		await consumer.start();
 		await consumer.shutdown();

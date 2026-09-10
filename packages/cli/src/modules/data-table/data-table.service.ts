@@ -17,7 +17,13 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	DataTableRowAutomationRepository,
+	DataTableTriggerSubscriptionRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
@@ -34,8 +40,14 @@ import type {
 	DataTableInfoById,
 	DataTableColumnType,
 	DataTableRowReturnWithState,
+	DataTableAutomationStatus,
+	DataTableRowAutomation,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
+	validateFieldType,
+} from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
@@ -55,11 +67,19 @@ import { DataTableColumnNotFoundError } from './errors/data-table-column-not-fou
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
-import { normalizeRows } from './utils/sql-utils';
+import { normalizeRows, toTableName } from './utils/sql-utils';
 
 import { EventService } from '@/events/event.service';
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+
+/** Lower wins. Must match the CASE ranking in `DataTableRowsRepository.automationStatusSql`. */
+const AUTOMATION_STATUS_RANK: Record<DataTableAutomationStatus, number> = {
+	failed: 0,
+	running: 1,
+	waiting: 2,
+	finished: 3,
+};
 
 @Service()
 export class DataTableService {
@@ -77,6 +97,8 @@ export class DataTableService {
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly rowAutomationRepository: DataTableRowAutomationRepository,
+		private readonly triggerSubscriptionRepository: DataTableTriggerSubscriptionRepository,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -127,10 +149,15 @@ export class DataTableService {
 			table.columns,
 		);
 		return {
-			lanes: lanes.map((lane) => ({
-				...lane,
-				rows: resolveEnumRows(lane.rows, table.columns),
-			})),
+			lanes: await Promise.all(
+				lanes.map(async (lane) => ({
+					...lane,
+					rows: await this.attachAutomations(
+						dataTableId,
+						resolveEnumRows(lane.rows, table.columns),
+					),
+				})),
+			),
 			revision: table.updatedAt.toISOString(),
 		};
 	}
@@ -154,7 +181,10 @@ export class DataTableService {
 				table.updatedAt.toISOString(),
 				table.columns,
 			);
-			return { ...page, rows: resolveEnumRows(page.rows, table.columns) };
+			return {
+				...page,
+				rows: await this.attachAutomations(dataTableId, resolveEnumRows(page.rows, table.columns)),
+			};
 		} catch (error) {
 			if (error instanceof InvalidKanbanCursorError) {
 				throw new DataTableValidationError(error.message);
@@ -464,12 +494,7 @@ export class DataTableService {
 				await this.dataTableDDLService.replaceKanbanIndex(dataTableId, null, trx);
 				const metadata: DataTableMetadata = { ...table.metadata, view: 'table' };
 				delete metadata.kanban;
-				await this.dataTableRepository.updateProperties(
-					dataTableId,
-					projectId,
-					{ metadata },
-					trx,
-				);
+				await this.dataTableRepository.updateProperties(dataTableId, projectId, { metadata }, trx);
 			}
 			await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn, trx);
 			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
@@ -509,7 +534,20 @@ export class DataTableService {
 	}
 
 	async getManyAndCount(options: DataTableListOptions) {
-		return await this.dataTableRepository.getManyAndCount(options);
+		const { count, data } = await this.dataTableRepository.getManyAndCount(options);
+		const triggers = await this.triggerSubscriptionRepository.findByDataTableIds(
+			data.map((table) => table.id),
+		);
+		return {
+			count,
+			data: data.map((table) =>
+				Object.assign(table, {
+					triggers: triggers
+						.filter((trigger) => trigger.dataTableId === table.id)
+						.map(({ workflowId, workflowName, nodeId }) => ({ workflowId, workflowName, nodeId })),
+				}),
+			),
+		};
 	}
 
 	async getManyRowsAndCount(
@@ -532,8 +570,34 @@ export class DataTableService {
 			);
 			return {
 				count: result.count,
-				data: resolveEnumRows(normalizeRows(result.data, columns), columns),
+				data: await this.attachAutomations(
+					dataTableId,
+					resolveEnumRows(normalizeRows(result.data, columns), columns),
+				),
 			};
+		});
+	}
+
+	/** Adds the read-only `automationStatus` and `automations` fields to rows. */
+	private async attachAutomations<T extends DataTableRowReturn>(
+		dataTableId: string,
+		rows: T[],
+	): Promise<T[]> {
+		const found = await this.rowAutomationRepository.findForRows(
+			dataTableId,
+			rows.map((row) => row.id),
+		);
+		const byRow = new Map<number, DataTableRowAutomation[]>();
+		for (const { rowId, ...automation } of found) {
+			byRow.set(rowId, [...(byRow.get(rowId) ?? []), automation]);
+		}
+		return rows.map((row) => {
+			const automations = byRow.get(row.id) ?? [];
+			const automationStatus =
+				automations
+					.map((automation) => automation.status)
+					.sort((a, b) => AUTOMATION_STATUS_RANK[a] - AUTOMATION_STATUS_RANK[b])[0] ?? null;
+			return Object.assign(row, { automationStatus, automations });
 		});
 	}
 
@@ -686,15 +750,16 @@ export class DataTableService {
 				? columns.find((column) => column.id === table.metadata.kanban?.groupByColumnId)
 				: undefined;
 			const updatesGroupingColumn = groupingColumn ? groupingColumn.name in data : false;
-			const beforeRows = updateCapture.shouldCapture || updatesGroupingColumn
-				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
-						dataTableId,
-						filter,
-						columns,
-						false,
-						trx,
-					)
-				: [];
+			const beforeRows =
+				updateCapture.shouldCapture || updatesGroupingColumn
+					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+							dataTableId,
+							filter,
+							columns,
+							false,
+							trx,
+						)
+					: [];
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
@@ -708,15 +773,10 @@ export class DataTableService {
 				if (updatesGroupingColumn && groupingColumn) {
 					const changedRowIds = beforeRows
 						.filter(
-							(row) =>
-								!Object.is(row[groupingColumn.name] ?? null, data[groupingColumn.name]),
+							(row) => !Object.is(row[groupingColumn.name] ?? null, data[groupingColumn.name]),
 						)
 						.map((row) => row.id);
-					await this.dataTableRowsRepository.moveRowsToKanbanTop(
-						dataTableId,
-						changedRowIds,
-						trx,
-					);
+					await this.dataTableRowsRepository.moveRowsToKanbanTop(dataTableId, changedRowIds, trx);
 				}
 				if (updateCapture.shouldCapture) {
 					await this.mutationEventService.recordUpdated(
@@ -861,15 +921,16 @@ export class DataTableService {
 				? columns.find((column) => column.id === table.metadata.kanban?.groupByColumnId)
 				: undefined;
 			const updatesGroupingColumn = groupingColumn ? groupingColumn.name in data : false;
-			const beforeRows = capture.shouldCapture || updatesGroupingColumn
-				? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
-						dataTableId,
-						filter,
-						columns,
-						false,
-						trx,
-					)
-				: [];
+			const beforeRows =
+				capture.shouldCapture || updatesGroupingColumn
+					? await this.dataTableRowsRepository.getAffectedRowsForUpdate(
+							dataTableId,
+							filter,
+							columns,
+							false,
+							trx,
+						)
+					: [];
 			const updated = await this.dataTableRowsRepository.updateRows(
 				dataTableId,
 				data,
@@ -882,11 +943,7 @@ export class DataTableService {
 				const changedRowIds = beforeRows
 					.filter((row) => !Object.is(row[groupingColumn.name] ?? null, data[groupingColumn.name]))
 					.map((row) => row.id);
-				await this.dataTableRowsRepository.moveRowsToKanbanTop(
-					dataTableId,
-					changedRowIds,
-					trx,
-				);
+				await this.dataTableRowsRepository.moveRowsToKanbanTop(dataTableId, changedRowIds, trx);
 			}
 			if (capture.shouldCapture && Array.isArray(updated)) {
 				await this.mutationEventService.recordUpdated(
@@ -977,7 +1034,14 @@ export class DataTableService {
 					columns,
 				);
 			}
-			if (!dryRun) await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			if (!dryRun) {
+				await this.rowAutomationRepository.deleteOrphans(
+					dataTableId,
+					toTableName(dataTableId),
+					trx,
+				);
+				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			}
 			if (!returnData && !dryRun) return true;
 			if (!this.isReturnedRows(deleted)) {
 				throw new DataTableValidationError('Deleted rows were not returned');
@@ -1003,6 +1067,7 @@ export class DataTableService {
 				[],
 				trx,
 			);
+			await this.rowAutomationRepository.deleteForTable(dataTableId, trx);
 			if (!capture.shouldCapture) {
 				const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
 				await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
@@ -1066,10 +1131,10 @@ export class DataTableService {
 		// Include system columns like 'id' if requested
 		const allColumns = includeSystemColumns
 			? [
-					...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP).map(([name, type]) => ({
-						name,
-						type,
-					})),
+					...Object.entries({
+						...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+						...DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
+					}).map(([name, type]) => ({ name, type })),
 					...columns,
 				]
 			: columns;
@@ -1142,10 +1207,7 @@ export class DataTableService {
 		);
 	}
 
-	private getKanbanGroupingColumn(
-		columns: DataTableColumn[],
-		columnId: string,
-	): DataTableColumn {
+	private getKanbanGroupingColumn(columns: DataTableColumn[], columnId: string): DataTableColumn {
 		const column = columns.find((candidate) => candidate.id === columnId);
 		if (column?.type !== 'enum') {
 			throw new DataTableValidationError('Select an enum column from this table');

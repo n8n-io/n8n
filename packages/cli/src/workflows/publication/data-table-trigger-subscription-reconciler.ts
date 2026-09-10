@@ -1,4 +1,5 @@
 import {
+	DataTableRowAutomationRepository,
 	DataTableTriggerSubscriptionRepository,
 	TransactionRunner,
 	WorkflowPublishedVersionRepository,
@@ -33,6 +34,7 @@ export class DataTableTriggerSubscriptionReconciler {
 		private readonly subscriptionRepository: DataTableTriggerSubscriptionRepository,
 		private readonly publishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly rowAutomationRepository: DataTableRowAutomationRepository,
 	) {}
 
 	async reconcileAll(): Promise<void> {
@@ -101,6 +103,12 @@ export class DataTableTriggerSubscriptionReconciler {
 		ctx: OperationContext,
 	): Promise<void> {
 		await this.subscriptionRepository.replaceForWorkflow(workflowId, subscriptions, ctx);
+		// Row states belong to a published trigger node. Unpublishing or removing it clears them.
+		await this.rowAutomationRepository.deleteForWorkflowExcept(
+			workflowId,
+			subscriptions.map((subscription) => subscription.nodeId),
+			ctx,
+		);
 	}
 
 	private async resolveDataTableId(node: INode, projectId: string): Promise<string> {

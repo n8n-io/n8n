@@ -29,6 +29,7 @@ export {
 	DataTableMutationEventRepository,
 	type NewDataTableMutationEvent,
 } from './data-table-mutation-event.repository';
+export { DataTableRowAutomationRepository } from './data-table-row-automation.repository';
 export {
 	DataTableTriggerDeliveryRepository,
 	type DataTableTriggerDeliveryFence,

@@ -142,7 +142,7 @@ async function fetchDataTableRowsFunction() {
 
 const initialize = async (params: GridReadyEvent) => {
 	agGrid.onGridReady(params);
-	dataTableColumns.loadColumns(props.dataTable.columns);
+	dataTableColumns.loadColumns(props.dataTable.columns, props.dataTable.triggers);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
 	await dataTableOperations.fetchDataTableRows();
 };

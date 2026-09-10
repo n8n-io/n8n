@@ -33,6 +33,10 @@ vi.mock('@/features/core/dataTable/components/dataGrid/EnumSelectCellRenderer.vu
 	default: { name: 'EnumSelectCellRenderer' },
 }));
 
+vi.mock('@/features/core/dataTable/components/dataGrid/AutomationStatusCellRenderer.vue', () => ({
+	default: { name: 'AutomationStatusCellRenderer' },
+}));
+
 vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnButton.vue', () => ({
 	default: {},
 }));
@@ -171,17 +175,17 @@ describe('useDataTableColumns', () => {
 			});
 
 			expect(colDef.editable).toBe(false);
-			expect(colDef.cellRendererSelector?.({ data: { id: 1 }, value: 'todo' } as never)).toMatchObject(
-				{
-					component: { name: 'EnumSelectCellRenderer' },
-					params: {
-						options: [
-							{ id: 'todo', text: 'Todo', color: '#6366F1' },
-							{ id: 'done', text: 'Done', color: '#14B8A6' },
-						],
-					},
+			expect(
+				colDef.cellRendererSelector?.({ data: { id: 1 }, value: 'todo' } as never),
+			).toMatchObject({
+				component: { name: 'EnumSelectCellRenderer' },
+				params: {
+					options: [
+						{ id: 'todo', text: 'Todo', color: '#6366F1' },
+						{ id: 'done', text: 'Done', color: '#14B8A6' },
+					],
 				},
-			);
+			});
 		});
 
 		it('should merge extra props', () => {

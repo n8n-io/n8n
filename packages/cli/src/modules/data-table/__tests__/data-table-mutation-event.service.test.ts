@@ -1,5 +1,6 @@
 import type {
 	DataTableMutationEventRepository,
+	DataTableRowAutomationRepository,
 	DataTableTriggerSubscriptionRepository,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
@@ -12,7 +13,12 @@ describe('DataTableMutationEventService', () => {
 	const subscriptionRepository = mock<DataTableTriggerSubscriptionRepository>();
 	const eventRepository = mock<DataTableMutationEventRepository>();
 	const trx = mock<EntityManager>();
-	const service = new DataTableMutationEventRecorder(subscriptionRepository, eventRepository);
+	const rowAutomationRepository = mock<DataTableRowAutomationRepository>();
+	const service = new DataTableMutationEventRecorder(
+		subscriptionRepository,
+		eventRepository,
+		rowAutomationRepository,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();

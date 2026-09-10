@@ -22,6 +22,7 @@ import {
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
 import { DataTableMutationEvent } from './data-table-mutation-event';
+import { DataTableRowAutomation } from './data-table-row-automation';
 import {
 	DataTableTriggerDelivery,
 	DataTableTriggerDeliveryStatus,
@@ -141,6 +142,7 @@ export {
 	type CredentialDependencyType,
 	DeploymentKey,
 	DataTableMutationEvent,
+	DataTableRowAutomation,
 	DataTableTriggerDelivery,
 	DataTableTriggerDeliveryStatus,
 	type DataTableTriggerDeliveryStatusType,
@@ -230,6 +232,7 @@ export const entities = {
 	CredentialDependency,
 	DeploymentKey,
 	DataTableMutationEvent,
+	DataTableRowAutomation,
 	DataTableTriggerDelivery,
 	DataTableTriggerSubscription,
 	EvaluationCollection,

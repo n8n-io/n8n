@@ -1,4 +1,5 @@
 import type {
+	DataTableRowAutomationRepository,
 	DataTableTriggerSubscriptionRepository,
 	TransactionRunner,
 	WorkflowPublishedVersionRepository,
@@ -21,6 +22,7 @@ describe('DataTableTriggerSubscriptionReconciler', () => {
 		mock<DataTableTriggerSubscriptionRepository>(),
 		mock<WorkflowPublishedVersionRepository>(),
 		mock<TransactionRunner>(),
+		mock<DataTableRowAutomationRepository>(),
 	);
 
 	// A plain object, not `mock<INode>`: an auto-mocked `parameters` would make

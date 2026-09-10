@@ -2,15 +2,24 @@ import { Logger } from '@n8n/backend-common';
 import { DataTableConfig } from '@n8n/config';
 import {
 	DataTableMutationEventRepository,
+	DataTableRowAutomationRepository,
 	DataTableTriggerDeliveryRepository,
 	ExecutionRepository,
+	type DataTableMutationEvent,
 	type DataTableTriggerDelivery,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { DATA_TABLE_TRIGGER_NODE_TYPE, OperationalError, UserError } from 'n8n-workflow';
+import {
+	DATA_TABLE_TRIGGER_NODE_TYPE,
+	OperationalError,
+	UserError,
+	type DataTableAutomationStatus,
+	type ExecutionStatus,
+} from 'n8n-workflow';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
+import { EventService } from '@/events/event.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { DataTableTriggerSubscriptionReconciler } from '@/workflows/publication/data-table-trigger-subscription-reconciler';
@@ -37,11 +46,21 @@ export class DataTableTriggerDeliveryConsumer {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly subscriptionReconciler: DataTableTriggerSubscriptionReconciler,
+		private readonly rowAutomationRepository: DataTableRowAutomationRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
 
 	async start(): Promise<void> {
+		// Executions finish on workers in queue mode, so this listener is not main-only.
+		this.eventService.on('workflow-post-execute', async ({ executionId, runData }) => {
+			const status = finalAutomationStatus(runData?.status);
+			if (!status) return;
+			const error =
+				status === 'failed' ? (runData?.data.resultData.error?.message ?? 'failed') : null;
+			await this.rowAutomationRepository.finishExecution(executionId, status, error);
+		});
 		if (this.instanceSettings.instanceType !== 'main') return;
 		if (this.instanceSettings.isLeader) await this.subscriptionReconciler.reconcileAll();
 		this.isRunning = true;
@@ -153,6 +172,7 @@ export class DataTableTriggerDeliveryConsumer {
 				throw new OperationalError('Data Table trigger execution handoff returned no execution ID');
 			}
 			await this.deliveryRepository.markCompleted(fence, executionId);
+			await this.trackRow(event, delivery, { status: 'running', executionId });
 		} catch (error) {
 			if (error instanceof DuplicateExecutionError) {
 				const existing = await this.executionRepository.findOne({
@@ -161,6 +181,7 @@ export class DataTableTriggerDeliveryConsumer {
 				});
 				if (existing) {
 					await this.deliveryRepository.markCompleted(fence, existing.id);
+					await this.trackRow(event, delivery, { status: 'running', executionId: existing.id });
 					return;
 				}
 			}
@@ -168,6 +189,11 @@ export class DataTableTriggerDeliveryConsumer {
 			const message = error instanceof Error ? error.message : String(error);
 			if (error instanceof UserError || delivery.attempts >= this.config.triggerMaxAttempts) {
 				await this.deliveryRepository.markFailed(fence, message);
+				await this.trackRow(event, delivery, {
+					status: 'failed',
+					executionId: null,
+					error: message,
+				});
 				return;
 			}
 
@@ -183,4 +209,46 @@ export class DataTableTriggerDeliveryConsumer {
 			});
 		}
 	}
+
+	private async trackRow(
+		event: DataTableMutationEvent,
+		delivery: DataTableTriggerDelivery,
+		state: { status: 'running' | 'failed'; executionId: string | null; error?: string },
+	): Promise<void> {
+		if (event.event === 'rowDeleted') return;
+		const key = {
+			dataTableId: event.dataTableId,
+			rowId: event.rowId,
+			workflowId: delivery.workflowId,
+			nodeId: delivery.nodeId,
+		};
+		await this.rowAutomationRepository.setStatus([{ ...key, error: null, ...state }]);
+
+		// A short execution can finish before its id is stored here, so the
+		// post-execute listener found nothing to update. Catch up from the execution.
+		if (state.status !== 'running' || !state.executionId) return;
+		const execution = await this.executionRepository.findOne({
+			select: ['id', 'status'],
+			where: { id: state.executionId },
+		});
+		const status = finalAutomationStatus(execution?.status);
+		if (status) {
+			await this.rowAutomationRepository.setStatus([
+				{
+					...key,
+					...state,
+					status,
+					error: status === 'failed' ? (execution?.status ?? null) : null,
+				},
+			]);
+		}
+	}
+}
+
+function finalAutomationStatus(
+	status: ExecutionStatus | undefined,
+): Extract<DataTableAutomationStatus, 'finished' | 'failed'> | undefined {
+	if (status === 'success') return 'finished';
+	if (status === 'error' || status === 'crashed' || status === 'canceled') return 'failed';
+	return undefined;
 }

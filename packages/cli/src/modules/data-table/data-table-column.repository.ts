@@ -5,6 +5,7 @@ import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	DATA_TABLE_VIRTUAL_COLUMNS,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -36,6 +37,9 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		}
 		if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
 			throw new DataTableSystemColumnNameConflictError(columnName, 'testing');
+		}
+		if (DATA_TABLE_VIRTUAL_COLUMNS.some((vc) => vc.toLowerCase() === lowerName)) {
+			throw new DataTableSystemColumnNameConflictError(columnName);
 		}
 	}
 
@@ -123,12 +127,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 
 			await this.ddlService.addColumn(dataTableId, column, em.connection.options.type, em);
 			if (column.type === 'enum' && column.defaultValue !== null) {
-				await this.ddlService.fillColumn(
-					dataTableId,
-					column.name,
-					column.defaultValue,
-					em,
-				);
+				await this.ddlService.fillColumn(dataTableId, column.name, column.defaultValue, em);
 			}
 			return column;
 		});

@@ -7,7 +7,7 @@ import type {
 	DataTableColumnCreatePayload,
 	DataTableRow,
 } from '@/features/core/dataTable/dataTable.types';
-import { ref, type Ref } from 'vue';
+import { onScopeDispose, ref, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type {
 	CellKeyDownEvent,
@@ -328,23 +328,64 @@ export const useDataTableOperations = ({
 		}
 	};
 
+	const AUTOMATION_POLL_MS = 2000;
+	let automationPollTimer: ReturnType<typeof setTimeout> | undefined;
+	onScopeDispose(() => clearTimeout(automationPollTimer));
+
+	// ponytail: polls while a row's trigger execution is in flight; replace with a push message if it gets noisy.
+	function scheduleAutomationPoll() {
+		clearTimeout(automationPollTimer);
+		const inFlight = rowData.value.some((row) =>
+			['waiting', 'running'].includes(String(row.automationStatus)),
+		);
+		if (!inFlight) return;
+		automationPollTimer = setTimeout(() => void pollAutomations(), AUTOMATION_POLL_MS);
+	}
+
+	// Patches rows in place so selection, scroll and loading state stay untouched.
+	async function pollAutomations() {
+		try {
+			const { data } = await fetchCurrentPage();
+			const freshById = new Map(data.map((row) => [String(row.id), row]));
+			rowData.value = rowData.value.map((row) => {
+				const fresh = freshById.get(String(row.id));
+				if (!fresh || fresh.automationStatus === row.automationStatus) return row;
+				const patched = {
+					...row,
+					automationStatus: fresh.automationStatus,
+					automations: fresh.automations,
+				};
+				gridApi.value.getRowNode(String(row.id))?.setData(patched);
+				return patched;
+			});
+		} catch {
+			// Silent: the next poll retries.
+		}
+		scheduleAutomationPoll();
+	}
+
+	async function fetchCurrentPage() {
+		return await dataTableStore.fetchDataTableContent(
+			dataTableId,
+			projectId,
+			currentPage.value,
+			pageSize.value,
+			`${currentSortBy.value}:${currentSortOrder.value}`,
+			currentFilterJSON?.value,
+			searchQuery?.value,
+		);
+	}
+
 	async function fetchDataTableRows() {
 		try {
 			contentLoading.value = true;
 
-			const fetchedRows = await dataTableStore.fetchDataTableContent(
-				dataTableId,
-				projectId,
-				currentPage.value,
-				pageSize.value,
-				`${currentSortBy.value}:${currentSortOrder.value}`,
-				currentFilterJSON?.value,
-				searchQuery?.value,
-			);
+			const fetchedRows = await fetchCurrentPage();
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);
 			setGridData({ rowData: rowData.value });
 			handleClearSelection();
+			scheduleAutomationPoll();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('dataTable.fetchContent.error'));
 		} finally {

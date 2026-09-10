@@ -12,6 +12,7 @@ import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	DATA_TABLE_VIRTUAL_COLUMNS,
 	UnexpectedError,
 } from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
@@ -86,6 +87,9 @@ export class DataTableRepository extends Repository<DataTable> {
 				}
 				if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
 					throw new DataTableSystemColumnNameConflictError(col.name, 'testing');
+				}
+				if (DATA_TABLE_VIRTUAL_COLUMNS.some((vc) => vc.toLowerCase() === lowerName)) {
+					throw new DataTableSystemColumnNameConflictError(col.name);
 				}
 			}
 

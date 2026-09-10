@@ -1,4 +1,8 @@
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, NodeOperationError } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
+	NodeOperationError,
+} from 'n8n-workflow';
 import type {
 	DataTableFilter,
 	DataTableRowReturn,
@@ -146,7 +150,10 @@ export async function getSelectFilter(
 	}
 
 	// Validate filter conditions against current table schema
-	let allColumnsWithTypes: Record<string, DataTableColumnType> = DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP;
+	let allColumnsWithTypes: Record<string, DataTableColumnType> = {
+		...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+		...DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
+	};
 
 	if (fields.length > 0) {
 		const dataTableProxy = await getDataTableProxyExecute(ctx, index);
@@ -155,6 +162,7 @@ export async function getSelectFilter(
 		// Add system columns with their types
 		allColumnsWithTypes = {
 			...DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+			...DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
 			...Object.fromEntries(availableColumns.map((col) => [col.name, col.type])),
 		};
 

@@ -49,12 +49,13 @@ describe('dataTableOptions', () => {
 	});
 
 	const columns = ['id', 'createdAt', 'updatedAt', 'email', 'Sign Up Date'];
+	const rowFields = [...columns, 'automationStatus', 'automations'];
 
 	test('offers the columns of a row', async () => {
-		expect(await labels('$datatable.users.first')).toEqual(columns);
-		expect(await labels('$datatable.users.last')).toEqual(columns);
-		expect(await labels('$datatable.users.row[$json.id]')).toEqual(columns);
-		expect(await labels('$datatable.users.by.email[$json.email]')).toEqual(columns);
+		expect(await labels('$datatable.users.first')).toEqual(rowFields);
+		expect(await labels('$datatable.users.last')).toEqual(rowFields);
+		expect(await labels('$datatable.users.row[$json.id]')).toEqual(rowFields);
+		expect(await labels('$datatable.users.by.email[$json.email]')).toEqual(rowFields);
 	});
 
 	test('offers the columns to look a row up by', async () => {

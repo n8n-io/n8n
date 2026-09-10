@@ -4,6 +4,16 @@ import type {
 	DataTableEnumOptionInput,
 	DataTableMetadata,
 } from '@n8n/api-types';
+import type { DataTableAutomationStatus, DataTableRowAutomation } from 'n8n-workflow';
+
+export type { DataTableAutomationStatus, DataTableRowAutomation };
+
+/** A published Data Table Trigger node that listens to this table. */
+export type DataTableTrigger = {
+	workflowId: string;
+	workflowName: string | null;
+	nodeId: string;
+};
 
 export type DataTable = {
 	id: string;
@@ -11,6 +21,7 @@ export type DataTable = {
 	sizeBytes: number;
 	columns: DataTableColumn[];
 	metadata?: DataTableMetadata;
+	triggers?: DataTableTrigger[];
 	createdAt: string;
 	updatedAt: string;
 	projectId: string;
@@ -69,10 +80,7 @@ export type DataTableKanbanBoard = {
 	revision: string;
 };
 
-export type DataTableKanbanPage = Pick<
-	DataTableKanbanLane,
-	'rows' | 'nextCursor' | 'hasMore'
->;
+export type DataTableKanbanPage = Pick<DataTableKanbanLane, 'rows' | 'nextCursor' | 'hasMore'>;
 
 export type DataTableKanbanMove = {
 	groupByColumnId: string;

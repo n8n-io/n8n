@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BaseRepository } from './base-repository';
 import { DataTableTriggerSubscription } from '../entities/data-table-trigger-subscription';
+import { WorkflowEntity } from '../entities/workflow-entity';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type NewDataTableTriggerSubscription = {
@@ -58,6 +59,26 @@ export class DataTableTriggerSubscriptionRepository extends BaseRepository<DataT
 		}
 
 		return await query.getMany();
+	}
+
+	/** The trigger nodes that listen to each table, with the workflow name for display. */
+	async findByDataTableIds(
+		dataTableIds: string[],
+	): Promise<
+		Array<{ dataTableId: string; workflowId: string; workflowName: string | null; nodeId: string }>
+	> {
+		if (dataTableIds.length === 0) return [];
+		const { entities, raw } = await this.createQueryBuilder('subscription')
+			.leftJoin(WorkflowEntity, 'workflow', 'workflow.id = subscription.workflowId')
+			.addSelect('workflow.name', 'workflowName')
+			.where('subscription.dataTableId IN (:...dataTableIds)', { dataTableIds })
+			.getRawAndEntities<{ workflowName: string | null }>();
+		return entities.map(({ dataTableId, workflowId, nodeId }, index) => ({
+			dataTableId,
+			workflowId,
+			workflowName: raw[index].workflowName ?? null,
+			nodeId,
+		}));
 	}
 
 	async hasForColumn(dataTableId: string, columnId: string): Promise<boolean> {

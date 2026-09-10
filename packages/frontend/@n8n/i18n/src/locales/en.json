@@ -1,4 +1,11 @@
 {
+	"dataTable.automation.unknownWorkflow": "Deleted workflow",
+	"dataTable.automation.status.waiting": "Waiting to run",
+	"dataTable.automation.status.running": "Running",
+	"dataTable.automation.status.finished": "Finished",
+	"dataTable.automation.status.failed": "Failed",
+	"dataTable.automation.openExecution": "Open execution",
+	"dataTable.automation.openWorkflow": "Open workflow",
 	"dataTable.kanban.tableView": "Table",
 	"dataTable.kanban.view": "Kanban",
 	"dataTable.kanban.settings": "View settings",

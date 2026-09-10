@@ -1,5 +1,6 @@
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_VIRTUAL_COLUMNS,
 	type IDataObject,
 	type IDisplayOptions,
 	type IExecuteFunctions,
@@ -50,7 +51,7 @@ export function getAddRow(ctx: IExecuteFunctions, index: number) {
 		data = { ...items[index].json };
 		// We automatically remove our system columns for better UX when feeding data table outputs
 		// into another data table node
-		for (const systemColumn of DATA_TABLE_SYSTEM_COLUMNS) {
+		for (const systemColumn of [...DATA_TABLE_SYSTEM_COLUMNS, ...DATA_TABLE_VIRTUAL_COLUMNS]) {
 			delete data[systemColumn];
 		}
 	} else {

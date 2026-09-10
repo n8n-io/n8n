@@ -1,4 +1,5 @@
 import {
+	DATA_TABLE_AUTOMATION_STATUS_COLUMN,
 	DATA_TABLE_SYSTEM_COLUMNS,
 	NodeOperationError,
 	type IDisplayOptions,
@@ -116,7 +117,9 @@ export async function execute(
 		const column = this.getNodeParameter('orderByColumn', index, '') as string;
 		if (column) {
 			const availableColumns = await dataTableProxy.getColumns();
-			const isSystemColumn = DATA_TABLE_SYSTEM_COLUMNS.includes(column);
+			const isSystemColumn =
+				DATA_TABLE_SYSTEM_COLUMNS.includes(column) ||
+				column === DATA_TABLE_AUTOMATION_STATUS_COLUMN;
 			if (!isSystemColumn && !availableColumns.find((x) => x.name === column))
 				throw new NodeOperationError(this.getNode(), 'Specified column does not exist');
 

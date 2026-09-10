@@ -13,7 +13,9 @@ import { DateTime } from 'luxon';
 import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import {
 	DATA_TABLE_ACCESSORS,
+	DATA_TABLE_AUTOMATIONS_COLUMN,
 	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP,
 	describeDataTablePath,
 	Expression,
 	ExpressionExtensions,
@@ -1315,9 +1317,19 @@ export const dataTableOptions = async (
 			: 'codeNodeEditor.completer.$datatable.column',
 	);
 
+	// Virtual fields are read-only, so they are offered on a row but not as a lookup key.
+	const virtualColumns: Array<[string, string]> =
+		path.at === 'column'
+			? []
+			: [
+					...Object.entries(DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP),
+					[DATA_TABLE_AUTOMATIONS_COLUMN, 'Array'],
+				];
+
 	return [
 		...Object.entries(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP),
 		...table.columns.map((column): [string, string] => [column.name, column.type]),
+		...virtualColumns,
 	].map(([name, type]) => toOption(name, type, description));
 };
 

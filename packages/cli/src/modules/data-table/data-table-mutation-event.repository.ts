@@ -1,5 +1,6 @@
 import {
 	DataTableMutationEventRepository,
+	DataTableRowAutomationRepository,
 	DataTableTriggerSubscriptionRepository,
 	type DataTableTriggerSubscription,
 } from '@n8n/db';
@@ -29,6 +30,7 @@ export class DataTableMutationEventRecorder {
 	constructor(
 		private readonly subscriptionRepository: DataTableTriggerSubscriptionRepository,
 		private readonly eventRepository: DataTableMutationEventRepository,
+		private readonly rowAutomationRepository: DataTableRowAutomationRepository,
 	) {}
 
 	listen(
@@ -48,11 +50,7 @@ export class DataTableMutationEventRecorder {
 		};
 	}
 
-	hasListeners(
-		dataTableId: string,
-		event: DataTableTriggerEvent,
-		columnIds: string[],
-	): boolean {
+	hasListeners(dataTableId: string, event: DataTableTriggerEvent, columnIds: string[]): boolean {
 		return [...(this.listeners.get(dataTableId) ?? [])].some(
 			(listener) =>
 				listener.event === event &&
@@ -187,6 +185,22 @@ export class DataTableMutationEventRecorder {
 		const durableEvents = events.filter(({ recipients }) => recipients.length > 0);
 		if (durableEvents.length > 0) {
 			await this.eventRepository.createWithDeliveries(durableEvents, trx);
+			await this.rowAutomationRepository.setStatus(
+				durableEvents
+					// A deleted row has no cell left to show a status in.
+					.filter(({ payload }) => payload.event !== 'rowDeleted')
+					.flatMap(({ payload, recipients }) =>
+						recipients.map((recipient) => ({
+							dataTableId: payload.dataTableId,
+							rowId: payload.rowId,
+							...recipient,
+							status: 'waiting' as const,
+							executionId: null,
+							error: null,
+						})),
+					),
+				trx,
+			);
 		}
 
 		for (const { payload } of events) {

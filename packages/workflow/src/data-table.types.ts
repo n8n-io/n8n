@@ -143,6 +143,32 @@ export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnTy
 export const DATA_TABLE_SYSTEM_COLUMNS = Object.keys(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP);
 export const DATA_TABLE_SYSTEM_TESTING_COLUMN = 'dryRunState';
 
+export type DataTableAutomationStatus = 'waiting' | 'running' | 'finished' | 'failed';
+
+/** What one Data Table Trigger last did with one row. */
+export type DataTableRowAutomation = {
+	workflowId: string;
+	workflowName: string | null;
+	nodeId: string;
+	status: DataTableAutomationStatus;
+	executionId: string | null;
+	/** False once the execution was pruned, so links fall back to the workflow. */
+	executionExists: boolean;
+	error: string | null;
+	updatedAt: Date;
+};
+
+export const DATA_TABLE_AUTOMATION_STATUS_COLUMN = 'automationStatus';
+export const DATA_TABLE_AUTOMATIONS_COLUMN = 'automations';
+/** Read-only fields attached to rows on read. They are not stored in the user table. */
+export const DATA_TABLE_VIRTUAL_COLUMN_TYPE_MAP: Record<string, DataTableColumnType> = {
+	[DATA_TABLE_AUTOMATION_STATUS_COLUMN]: 'string',
+};
+export const DATA_TABLE_VIRTUAL_COLUMNS = [
+	DATA_TABLE_AUTOMATION_STATUS_COLUMN,
+	DATA_TABLE_AUTOMATIONS_COLUMN,
+];
+
 // Raw database result type (before normalization)
 export type DataTableRawRowReturnBase = {
 	id: number;

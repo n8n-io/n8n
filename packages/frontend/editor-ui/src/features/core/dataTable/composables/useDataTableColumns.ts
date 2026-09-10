@@ -5,6 +5,7 @@ import type {
 	DataTableColumn,
 	DataTableColumnCreatePayload,
 	DataTableRow,
+	DataTableTrigger,
 } from '@/features/core/dataTable/dataTable.types';
 import {
 	ADD_ROW_ROW_ID,
@@ -18,6 +19,7 @@ import ColumnHeader from '@/features/core/dataTable/components/dataGrid/ColumnHe
 import ElDatePickerCellEditor from '@/features/core/dataTable/components/dataGrid/ElDatePickerCellEditor.vue';
 import ElDatePickerFilter from '@/features/core/dataTable/components/dataGrid/ElDatePickerFilter.vue';
 import EnumSelectCellRenderer from '@/features/core/dataTable/components/dataGrid/EnumSelectCellRenderer.vue';
+import AutomationStatusCellRenderer from '@/features/core/dataTable/components/dataGrid/AutomationStatusCellRenderer.vue';
 import orderBy from 'lodash/orderBy';
 import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddColumnButton.vue';
 import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
@@ -151,7 +153,33 @@ export const useDataTableColumns = ({
 		};
 	};
 
-	const getColumnDefinitions = (dataTableColumns: DataTableColumn[]) => {
+	// One read-only column per trigger node. All of them sort by the row's worst status.
+	const createAutomationColumnDef = (trigger: DataTableTrigger): ColDef => ({
+		colId: `automation:${trigger.nodeId}`,
+		field: 'automationStatus',
+		headerName: trigger.workflowName ?? i18n.baseText('dataTable.automation.unknownWorkflow'),
+		sortable: true,
+		filter: false,
+		editable: false,
+		resizable: true,
+		suppressMovable: true,
+		lockPinned: true,
+		lockPosition: 'right',
+		headerComponent: ColumnHeader,
+		headerComponentParams: { allowMenuActions: false, showTypeIcon: false, readOnly: true },
+		headerClass: 'system-column',
+		cellClass: (params) => (params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'system-cell'),
+		cellRendererSelector: (params: ICellRendererParams) => {
+			if (params.data?.id === ADD_ROW_ROW_ID) return {};
+			return { component: AutomationStatusCellRenderer, params: { nodeId: trigger.nodeId } };
+		},
+		width: DEFAULT_COLUMN_WIDTH,
+	});
+
+	const getColumnDefinitions = (
+		dataTableColumns: DataTableColumn[],
+		triggers: DataTableTrigger[] = [],
+	) => {
 		const systemDateColumnOptions: Partial<ColDef> = {
 			editable: false,
 			suppressMovable: true,
@@ -220,6 +248,7 @@ export const useDataTableColumns = ({
 				},
 				systemDateColumnOptions,
 			),
+			...triggers.map(createAutomationColumnDef),
 			createColumnDef(
 				{
 					index: dataTableColumns.length + 3,
@@ -242,8 +271,8 @@ export const useDataTableColumns = ({
 		];
 	};
 
-	const loadColumns = (dataTableColumns: DataTableColumn[]) => {
-		colDefs.value = getColumnDefinitions(dataTableColumns);
+	const loadColumns = (dataTableColumns: DataTableColumn[], triggers: DataTableTrigger[] = []) => {
+		colDefs.value = getColumnDefinitions(dataTableColumns, triggers);
 	};
 
 	const deleteColumn = (columnId: string) => {

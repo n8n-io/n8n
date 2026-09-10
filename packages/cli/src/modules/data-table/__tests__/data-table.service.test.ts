@@ -1,7 +1,13 @@
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	DataTableRowAutomationRepository,
+	DataTableTriggerSubscriptionRepository,
+	ProjectRelationRepository,
+	ProjectRepository,
+	type User,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -82,6 +88,8 @@ describe('DataTableService', () => {
 			mockEventService,
 			mockProjectRepository,
 			mockProjectService,
+			mockInstance(DataTableRowAutomationRepository),
+			mockInstance(DataTableTriggerSubscriptionRepository),
 		);
 
 		vi.clearAllMocks();

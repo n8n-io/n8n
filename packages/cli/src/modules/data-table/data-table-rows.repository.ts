@@ -17,6 +17,7 @@ import {
 	DataTableRowReturn,
 	UnexpectedError,
 	DataTableRowsReturn,
+	DATA_TABLE_AUTOMATION_STATUS_COLUMN,
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
@@ -31,10 +32,7 @@ import {
 	decodeKanbanCursor,
 	encodeKanbanCursor,
 } from './data-table-kanban.utils';
-import {
-	DATA_TABLE_KANBAN_ORDER_COLUMN,
-	type DataTableUserTableName,
-} from './data-table.types';
+import { DATA_TABLE_KANBAN_ORDER_COLUMN, type DataTableUserTableName } from './data-table.types';
 import { DataTableKanbanConflictError } from './errors/data-table-kanban-conflict.error';
 import {
 	escapeLikeSpecials,
@@ -81,11 +79,14 @@ function getConditionAndParams(
 	index: number,
 	dbType: DataSourceOptions['type'],
 	tableReference?: string,
+	columnRefOverride?: string,
 ): [string, Record<string, unknown>] {
 	const paramName = `filter_${index}`;
-	const columnRef = tableReference
-		? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
-		: quoteIdentifier(filter.columnName, dbType);
+	const columnRef =
+		columnRefOverride ??
+		(tableReference
+			? `${quoteIdentifier(tableReference, dbType)}.${quoteIdentifier(filter.columnName, dbType)}`
+			: quoteIdentifier(filter.columnName, dbType));
 
 	if (filter.value === null) {
 		switch (filter.condition) {
@@ -356,7 +357,7 @@ export class DataTableRowsRepository {
 
 			const query = em.createQueryBuilder().update(table);
 			// Some DBs (like SQLite) don't allow using table aliases as column prefixes in UPDATE statements
-			this.applyFilters(query, filter, undefined);
+			this.applyFilters(query, filter, undefined, dataTableId);
 			query.set(setData);
 
 			if (useReturning && returnData) {
@@ -458,7 +459,7 @@ export class DataTableRowsRepository {
 				// Just delete and return true
 				const query = em.createQueryBuilder().delete().from(table, 'dataTable');
 				if (filter) {
-					this.applyFilters(query, filter, undefined);
+					this.applyFilters(query, filter, undefined, dataTableId);
 				}
 				await query.execute();
 
@@ -471,7 +472,7 @@ export class DataTableRowsRepository {
 				const selectQuery = em.createQueryBuilder().select('*').from(table, 'dataTable');
 
 				if (filter) {
-					this.applyFilters(selectQuery, filter, 'dataTable');
+					this.applyFilters(selectQuery, filter, 'dataTable', dataTableId);
 				}
 
 				selectQuery.select(this.publicSelectColumns('dataTable', columns));
@@ -496,7 +497,7 @@ export class DataTableRowsRepository {
 			}
 
 			if (filter) {
-				this.applyFilters(deleteQuery, filter, undefined);
+				this.applyFilters(deleteQuery, filter, undefined, dataTableId);
 			}
 
 			const result = await deleteQuery.execute();
@@ -532,7 +533,7 @@ export class DataTableRowsRepository {
 			} else {
 				selectQuery.select(this.publicSelectColumns('dataTable', columns));
 			}
-			this.applyFilters(selectQuery, filter, 'dataTable');
+			this.applyFilters(selectQuery, filter, 'dataTable', dataTableId);
 			const rawRows: DataTableRowsReturn = await selectQuery.getRawMany();
 
 			if (idsOnly) {
@@ -696,7 +697,10 @@ export class DataTableRowsRepository {
 				{ cursorOrder: decoded.order, cursorId: decoded.id },
 			);
 		}
-		query.orderBy(orderColumn, 'DESC').addOrderBy(idColumn, 'DESC').take(limit + 1);
+		query
+			.orderBy(orderColumn, 'DESC')
+			.addOrderBy(idColumn, 'DESC')
+			.take(limit + 1);
 		const rawRows = await query.getRawMany<DataTableRawRowReturn>();
 		const hasMore = rawRows.length > limit;
 		const pageRows = hasMore ? rawRows.slice(0, limit) : rawRows;
@@ -707,11 +711,7 @@ export class DataTableRowsRepository {
 			hasMore,
 			nextCursor:
 				hasMore && last
-					? encodeKanbanCursor(
-							String(last[DATA_TABLE_KANBAN_ORDER_COLUMN]),
-							last.id,
-							generation,
-						)
+					? encodeKanbanCursor(String(last[DATA_TABLE_KANBAN_ORDER_COLUMN]), last.id, generation)
 					: null,
 		};
 	}
@@ -863,7 +863,7 @@ export class DataTableRowsRepository {
 		const tableReference = 'dataTable';
 		query.from(toTableName(dataTableId), tableReference);
 		if (dto.filter) {
-			this.applyFilters(query, dto.filter, tableReference);
+			this.applyFilters(query, dto.filter, tableReference, dataTableId);
 		}
 
 		if (dto.search && dto.search.trim().length > 0) {
@@ -871,7 +871,7 @@ export class DataTableRowsRepository {
 		}
 
 		const countQuery = query.clone().select('COUNT(*)');
-		this.applySorting(query, dto);
+		this.applySorting(query, dto, dataTableId);
 		this.applyPagination(query, dto);
 
 		return [countQuery, query];
@@ -917,15 +917,27 @@ export class DataTableRowsRepository {
 	private applyFilters<T extends ObjectLiteral>(
 		query: SelectQueryBuilder<T> | UpdateQueryBuilder<T> | DeleteQueryBuilder<T>,
 		filter: DataTableFilter,
-		tableReference?: string,
+		tableReference: string | undefined,
+		dataTableId: string,
 	): void {
 		const filters = filter.filters ?? [];
 		const filterType = filter.type ?? 'and';
 
 		const dbType = this.dataSource.options.type;
-		const conditionsAndParams = filters.map((filter, i) =>
-			getConditionAndParams(filter, i, dbType, tableReference),
-		);
+		const conditionsAndParams = filters.map((filter, i): [string, Record<string, unknown>] => {
+			if (filter.columnName !== DATA_TABLE_AUTOMATION_STATUS_COLUMN) {
+				return getConditionAndParams(filter, i, dbType, tableReference);
+			}
+			const [sql, params] = this.automationStatusSql(dataTableId, tableReference);
+			const [condition, filterParams] = getConditionAndParams(
+				filter,
+				i,
+				dbType,
+				tableReference,
+				sql,
+			);
+			return [condition, { ...filterParams, ...params }];
+		});
 
 		if (conditionsAndParams.length === 1) {
 			// Always use AND for a single filter
@@ -942,10 +954,14 @@ export class DataTableRowsRepository {
 		}
 	}
 
-	private applySorting(query: QueryBuilder, dto: ListDataTableContentQueryDto): void {
+	private applySorting(
+		query: QueryBuilder,
+		dto: ListDataTableContentQueryDto,
+		dataTableId: string,
+	): void {
 		if (dto.sortBy) {
 			const [field, order] = dto.sortBy;
-			this.applySortingByField(query, field, order);
+			this.applySortingByField(query, field, order, dataTableId);
 		}
 
 		// Always append the unique `id` as a final tiebreaker so skip/take pagination
@@ -957,12 +973,42 @@ export class DataTableRowsRepository {
 		}
 	}
 
-	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
+	private applySortingByField(
+		query: QueryBuilder,
+		field: string,
+		direction: 'DESC' | 'ASC',
+		dataTableId: string,
+	): void {
 		const dbType = this.dataSource.options.type;
 		if (!isValidColumnName(field)) throw new UserError('Incorrect column format');
 
+		if (field === DATA_TABLE_AUTOMATION_STATUS_COLUMN) {
+			const [sql, params] = this.automationStatusSql(dataTableId, 'dataTable');
+			query.orderBy(sql, direction).setParameters(params);
+			return;
+		}
+
 		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
+	}
+
+	/**
+	 * The row's `automationStatus` as a scalar subquery: the worst status across its
+	 * trigger nodes, so a row counts as failed while any trigger failed.
+	 */
+	private automationStatusSql(
+		dataTableId: string,
+		tableReference: string | undefined,
+	): [string, Record<string, unknown>] {
+		const dbType = this.dataSource.options.type;
+		const q = (name: string) => quoteIdentifier(name, dbType);
+		const rowIdRef = `${q(tableReference ?? toTableName(dataTableId))}.${q('id')}`;
+		const rank = `CASE ${q('a')}.${q('status')} WHEN 'failed' THEN 0 WHEN 'running' THEN 1 WHEN 'waiting' THEN 2 ELSE 3 END`;
+		const status = `CASE MIN(${rank}) WHEN 0 THEN 'failed' WHEN 1 THEN 'running' WHEN 2 THEN 'waiting' WHEN 3 THEN 'finished' END`;
+		return [
+			`(SELECT ${status} FROM ${q('data_table_row_automation')} ${q('a')} WHERE ${q('a')}.${q('dataTableId')} = :automationDataTableId AND ${q('a')}.${q('rowId')} = ${rowIdRef})`,
+			{ automationDataTableId: dataTableId },
+		];
 	}
 
 	private publicSelectColumns(tableReference: string, columns: DataTableColumn[]): string[] {
@@ -1045,11 +1091,11 @@ export class DataTableRowsRepository {
 	): Promise<DataTableRawRowReturn | null> {
 		return (
 			(await em
-			.createQueryBuilder()
-			.select('*')
-			.from(toTableName(dataTableId), 'dataTable')
-			.where({ id: rowId })
-			.getRawOne<DataTableRawRowReturn>()) ?? null
+				.createQueryBuilder()
+				.select('*')
+				.from(toTableName(dataTableId), 'dataTable')
+				.where({ id: rowId })
+				.getRawOne<DataTableRawRowReturn>()) ?? null
 		);
 	}
 

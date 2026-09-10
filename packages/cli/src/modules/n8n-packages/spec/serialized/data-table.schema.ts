@@ -6,13 +6,19 @@ import {
 	dataTableMetadataSchema,
 	dataTableNameSchema,
 } from '@n8n/api-types';
-import { DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	DATA_TABLE_VIRTUAL_COLUMNS,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 const reservedColumnNames = new Set(
-	[...DATA_TABLE_SYSTEM_COLUMNS, DATA_TABLE_SYSTEM_TESTING_COLUMN].map((name) =>
-		name.toLowerCase(),
-	),
+	[
+		...DATA_TABLE_SYSTEM_COLUMNS,
+		DATA_TABLE_SYSTEM_TESTING_COLUMN,
+		...DATA_TABLE_VIRTUAL_COLUMNS,
+	].map((name) => name.toLowerCase()),
 );
 
 export const serializedDataTableColumnSchema = z
