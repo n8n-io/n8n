@@ -10,4 +10,3 @@ export type {
 	SystemTaskSchedule,
 } from './system-task';
 export { SystemTaskMetadata } from './system-task-metadata';
-export { wholeSeconds } from './whole-seconds';

@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
@@ -166,7 +167,7 @@ export class UpdatePromotionProviderDto implements UpdatePromotionProvider {
 
 /** Leaves out `auth`, which is never returned. */
 export const promotionProviderPublicSchema = z.object({
-	id: z.string(),
+	id: n8nIdSchema,
 	name: z.string(),
 	type: promotionProviderTypeSchema,
 	authType: promotionProviderAuthTypeSchema,

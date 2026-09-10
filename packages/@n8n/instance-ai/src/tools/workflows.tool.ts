@@ -24,6 +24,7 @@ import {
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { formatClaimDisclosure } from '../workflow-loop/render-claim';
 import { isSetupPanelEnabled } from './workflows/setup-items';
 import {
 	describeSetupItem,
@@ -310,6 +311,14 @@ const publishBaseAction = z.object({
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
+	acknowledgeUnverified: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set true only after you told the user the workflow is not fully verified and they still ' +
+				'asked to publish. Publishing is refused without this while the latest verification left ' +
+				'nodes unreached or simulated. Never set it to skip the disclosure.',
+		),
 });
 
 const publishExtendedAction = publishBaseAction.extend({
@@ -1377,6 +1386,49 @@ async function resolveSetupScopeNodeNames(
 	}
 }
 
+/**
+ * Coverage disclosure for the workflow's latest verification, or undefined when
+ * it was fully verified or no claim exists. Absent evidence never blocks: a
+ * workflow built before this record, or outside the assistant, is unknown
+ * rather than unverified.
+ */
+async function resolveUnverifiedPublishDisclosure(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string | undefined> {
+	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
+	if (!workflowTaskService) return undefined;
+	try {
+		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
+		const verification = outcome?.verification;
+		const claim = verification?.claim;
+		if (claim) return claim.publishReady ? undefined : formatClaimDisclosure(claim);
+
+		// A record with no claim means verification ran and could not produce one
+		// — it was refused for want of a simulation plan, or it failed before it
+		// reached a verdict. That is a failed verification, not an unverified
+		// workflow, and it must not pass as an absent record.
+		if (verification?.attempted) {
+			const cause = verification.failureSignature ?? verification.evidence?.errorMessage;
+			return (
+				'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
+				(cause ? ` It reported: ${cause}` : '')
+			);
+		}
+
+		// No record at all: the workflow is unknown, not unverified. Blocking here
+		// would stop publishing every workflow built before this record existed.
+		return undefined;
+	} catch (error) {
+		// Fail open: a storage hiccup must not block a publish the user asked for.
+		context.logger.warn('Failed to resolve the verification claim before publishing', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
 const SETUP_PANEL_ANNOUNCED_GUIDANCE =
 	'The setup panel next to the chat now lists what this workflow still needs (`open`); nothing is ' +
 	'waiting on you and no card is open. Finish your turn now: tell the user in one or two sentences ' +
@@ -1754,7 +1806,23 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
-	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
+	const unverifiedDisclosure = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+
+	const needsApproval =
+		context.permissions?.publishWorkflow !== 'always_allow' || unverifiedDisclosure !== undefined;
+
+	if (unverifiedDisclosure && input.acknowledgeUnverified !== true) {
+		return {
+			success: false,
+			denied: true,
+			reason: 'not_verified',
+			verificationDisclosure: unverifiedDisclosure,
+			guidance:
+				`This workflow is not fully verified. ${unverifiedDisclosure} ` +
+				'Tell the user exactly this, and offer a live end-to-end test. Publish only if they still ' +
+				'ask for it, by calling publish again with `acknowledgeUnverified: true`.',
+		};
+	}
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
@@ -1762,12 +1830,15 @@ async function handlePublish(
 			supportingWorkflowIds.length > 0
 				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
 				: '';
+		const target = input.versionId
+			? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
+			: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`;
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: input.versionId
-				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
-				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
+			// The user has to read this to approve, so the disclosure lands even if
+			// the assistant's own message left it out.
+			message: unverifiedDisclosure ? `${target}\n\n${unverifiedDisclosure}` : target,
 			severity: 'warning' as const,
 		});
 	}
