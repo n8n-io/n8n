@@ -1,7 +1,3 @@
-packages/cli/src/services/__tests__/auth.roles.service.test.ts
-  ai_agent 763,780,792,797,810
-packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
-  ai_agent 71-77,180-182
 ---
 {
   "schema_version": "authorship/3.0.0",
