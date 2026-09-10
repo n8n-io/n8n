@@ -368,7 +368,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	INSTANCE_CONTEXT_TURN: {
 		name: 'Instance AI instance-context turn',
 		description:
-			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id` — count turns by distinct `run_id`, not by rows.',
+			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`: count turns by distinct `run_id` and sum token counts over it, never by rows.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),
@@ -427,6 +427,27 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.boolean()
 				.describe('Whether the turn put a question back to the user rather than proceeding'),
 			tool_calls: z.number().int().describe('Total tool calls in the turn, as a denominator'),
+			turn_prompt_tokens: z
+				.number()
+				.int()
+				.optional()
+				.describe('Prompt tokens this segment spent. Sum over a `run_id` for the whole turn'),
+			turn_completion_tokens: z
+				.number()
+				.int()
+				.optional()
+				.describe('Completion tokens this segment spent. Sum over a `run_id` for the whole turn'),
+			turn_total_tokens: z
+				.number()
+				.int()
+				.optional()
+				.describe(
+					'Tokens this segment spent, measured rather than estimated. This is what the rollback threshold on turn cost reads, so sum it over a `run_id` and compare medians between the two arms — `block_tokens_estimated` is only the block, and a fraction of this',
+				),
+			turn_cost_usd: z
+				.number()
+				.optional()
+				.describe('Estimated cost of this segment in USD, from per-step model pricing'),
 			status: z.string().describe('How the run ended'),
 		}),
 	},

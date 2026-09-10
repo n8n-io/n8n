@@ -4203,6 +4203,7 @@ export class InstanceAiService {
 					injection: contextInjection,
 					reach: suspendedReach,
 					workSummary: result.workSummary,
+					usage: result.usage,
 					instanceContextEnabled,
 					nodeUsageEnabled,
 				});
@@ -4419,6 +4420,7 @@ export class InstanceAiService {
 				injection: contextInjection,
 				reach: contextReach,
 				workSummary: result.workSummary,
+				usage: result.usage,
 				instanceContextEnabled,
 				nodeUsageEnabled,
 			});
@@ -5489,6 +5491,7 @@ export class InstanceAiService {
 						injection: opts.instanceContext.injection,
 						reach: resumedSuspendedReach,
 						workSummary: result.workSummary,
+						usage: result.usage,
 						instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
 						nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
 					});
@@ -5711,6 +5714,7 @@ export class InstanceAiService {
 					injection: opts.instanceContext.injection,
 					reach: resumedContextReach,
 					workSummary: result.workSummary,
+					usage: result.usage,
 					instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
 					nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
 				});
@@ -6516,6 +6520,11 @@ export class InstanceAiService {
 		injection: InstanceContextInjection;
 		reach: InstanceContextReach;
 		workSummary?: WorkSummary;
+		/**
+		 * What this segment actually spent. Measured, unlike the block-size estimate — the
+		 * rollback threshold on turn cost is read from here.
+		 */
+		usage?: RunTokenUsage;
 		instanceContextEnabled: boolean;
 		nodeUsageEnabled: boolean;
 	}): void {
@@ -6552,6 +6561,16 @@ export class InstanceAiService {
 			context_surfaces: input.reach.surfaces,
 			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
 			tool_calls: input.workSummary?.totalToolCalls ?? 0,
+			// A suspended turn spends tokens in each segment, so these are per segment and
+			// sum over the shared `run_id`. Absent when the segment reported no usage.
+			...(input.usage
+				? {
+						turn_prompt_tokens: input.usage.promptTokens,
+						turn_completion_tokens: input.usage.completionTokens,
+						turn_total_tokens: input.usage.totalTokens,
+						turn_cost_usd: input.usage.costUsd,
+					}
+				: {}),
 			status: input.status,
 		});
 	}
