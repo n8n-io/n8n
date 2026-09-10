@@ -1150,7 +1150,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
-					.filter((n) => isTriggerNodeType(n.type))
+					.filter((n) => !n.disabled && isTriggerNodeType(n.type))
 					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
 					.filter(
 						(t): t is { nodeName: string; nodeType: string } =>
@@ -1289,6 +1289,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,
+						verificationProgress:
+							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

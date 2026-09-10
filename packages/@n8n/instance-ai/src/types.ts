@@ -61,10 +61,13 @@ import type {
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
+	VerificationClaim,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
@@ -1914,6 +1917,15 @@ export interface WorkflowTaskService {
 		runId: string,
 	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+	startVerification(
+		workItemId: string,
+		triggerNodeName?: string,
+	): Promise<WorkflowTriggerVerificationProgress | undefined>;
+	recordVerification(
+		workItemId: string,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
+	): Promise<VerificationClaim | undefined>;
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
