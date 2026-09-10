@@ -13,6 +13,8 @@ import {
 interface PackageSpec {
 	name: string;
 	deps?: string[];
+	/** Written to the package's `janitor.ignoreDepsForScoping` field. */
+	ignoreDeps?: string[];
 }
 
 interface TurboTaskSpec {
@@ -41,6 +43,9 @@ function makeFixture(opts: {
 		const pkg: Record<string, unknown> = { name: spec.name };
 		if (spec.deps && spec.deps.length > 0) {
 			pkg.dependencies = Object.fromEntries(spec.deps.map((d) => [d, 'workspace:*']));
+		}
+		if (spec.ignoreDeps) {
+			pkg.janitor = { ignoreDepsForScoping: spec.ignoreDeps };
 		}
 		writeFileSync(join(pkgDir, 'package.json'), JSON.stringify(pkg));
 	}
@@ -101,6 +106,33 @@ describe('affectedPackages', () => {
 			'lib',
 			'mid',
 		]);
+	});
+
+	it('does not mark a dependent as affected through an ignored dependency', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui', 'lib'], ignoreDeps: ['ui'] },
+				'packages/lib': { name: 'lib' },
+			},
+		});
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/ui/src/x.ts'] })).toEqual(['ui']);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/lib/src/x.ts'] })).toEqual([
+			'app',
+			'lib',
+		]);
+	});
+
+	it('still marks a package as affected when its own files change', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/ui': { name: 'ui' },
+				'packages/app': { name: 'app', deps: ['ui'], ignoreDeps: ['ui'] },
+			},
+		});
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/app/src/x.ts'] })).toEqual(['app']);
 	});
 
 	it('expands all packages when a universal sink (workflow/core) changes', () => {

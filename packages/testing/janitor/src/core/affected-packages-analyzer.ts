@@ -99,6 +99,12 @@ interface WorkspacePackage {
 	workspaceDeps: string[];
 }
 
+/** Optional `janitor` block in a workspace package.json. */
+interface JanitorPackageConfig {
+	/** Workspace deps whose changes never affect this package's tests, e.g. a served asset bundle. */
+	ignoreDepsForScoping?: string[];
+}
+
 export interface AnalyzeOptions {
 	rootDir?: string;
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
@@ -137,13 +143,21 @@ function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	}));
 }
 
+function readIgnoredDeps(pkg: Record<string, unknown>): Set<string> {
+	const config = pkg.janitor as JanitorPackageConfig | undefined;
+	const list = config?.ignoreDepsForScoping;
+	if (!Array.isArray(list)) return new Set();
+	return new Set(list.filter((name): name is string => typeof name === 'string'));
+}
+
 function collectWorkspaceDeps(pkg: Record<string, unknown>, known: Set<string>): string[] {
+	const ignored = readIgnoredDeps(pkg);
 	const deps = new Set<string>();
 	for (const field of ['dependencies', 'devDependencies'] as const) {
 		const block = pkg[field];
 		if (!block || typeof block !== 'object') continue;
 		for (const name of Object.keys(block)) {
-			if (known.has(name)) deps.add(name);
+			if (known.has(name) && !ignored.has(name)) deps.add(name);
 		}
 	}
 	return [...deps];
