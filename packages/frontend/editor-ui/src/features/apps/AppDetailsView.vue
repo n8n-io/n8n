@@ -27,6 +27,7 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
 import AppBasicsEditor from '@/features/apps/components/AppBasicsEditor.vue';
@@ -38,7 +39,11 @@ import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
-import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
+import {
+	APP_CONNECTIONS_MODAL_KEY,
+	APP_PAGE_DETAILS,
+	PROJECT_APPS,
+} from '@/features/apps/apps.constants';
 import type { App, AppTheme, AppVersion } from '@/features/apps/apps.types';
 import {
 	buildPageRows,
@@ -102,6 +107,7 @@ const { requestPageChange } = useAppPageAssistant();
 const { selectElement } = useAppElementSelection();
 
 const appsStore = useAppsStore();
+const uiStore = useUIStore();
 
 const app = ref<App | null>(null);
 const setApp = (next: App) => {
@@ -320,6 +326,13 @@ const onDeletePage = async (pageId: string) => {
 
 const onDeleteBinding = async (binding: DescribedBinding) => {
 	await confirmAndDeleteBinding(props.projectId, props.appId, binding);
+};
+
+const onAddConnection = () => {
+	uiStore.openModalWithData({
+		name: APP_CONNECTIONS_MODAL_KEY,
+		data: { projectId: props.projectId, appId: props.appId },
+	});
 };
 
 // A toggle group lets the pressed option be clicked again, which yields
@@ -807,7 +820,19 @@ watch(
 					<AppBasicsEditor :project-id="projectId" :app="app" @saved="setApp" />
 
 					<div :class="$style.connectCard" data-test-id="app-connections">
-						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+						<div :class="$style.connectHeader">
+							<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+							<N8nTooltip :content="i18n.baseText('apps.connections.add')">
+								<N8nIconButton
+									icon="plus"
+									variant="ghost"
+									size="small"
+									:aria-label="i18n.baseText('apps.connections.add')"
+									data-test-id="app-connection-add"
+									@click="onAddConnection"
+								/>
+							</N8nTooltip>
+						</div>
 
 						<N8nText
 							v-if="appsStore.bindings.length === 0"
@@ -1284,6 +1309,12 @@ watch(
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: var(--background--surface);
+}
+
+.connectHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .connectionRow {
