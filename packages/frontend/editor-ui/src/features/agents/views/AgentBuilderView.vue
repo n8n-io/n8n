@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useStorage } from '@vueuse/core';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
+import { N8nIcon, type ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
@@ -2048,6 +2048,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
+			:instance-ai-available="instanceAiAvailable"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
@@ -2055,6 +2056,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@open-instance-ai="onOpenInstanceAi"
 		/>
 		<div
 			ref="builderContainer"
@@ -2065,27 +2067,6 @@ function onSwitchAgent(nextAgentId: string) {
 				},
 			]"
 		>
-			<div
-				v-if="!isPreviewActive && !isArtifactMode && instanceAiAvailable"
-				:class="$style.aiButtonWrapper"
-			>
-				<N8nButton
-					variant="subtle"
-					icon-only
-					size="large"
-					:disabled="!agent"
-					:aria-label="locale.baseText('aiAssistant.tooltip')"
-					:class="$style.aiButtonIcon"
-					data-testid="agent-builder-instance-ai-btn"
-					@click="onOpenInstanceAi"
-				>
-					<template #default>
-						<div>
-							<N8nAssistantIcon size="large" />
-						</div>
-					</template>
-				</N8nButton>
-			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -2241,26 +2222,5 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 0;
-}
-
-.aiButtonWrapper {
-	position: absolute;
-	top: 0;
-	right: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
-	z-index: 1;
-}
-
-.aiButtonIcon {
-	display: inline-flex;
-	justify-content: center;
-	align-items: center;
-
-	svg {
-		display: block;
-	}
 }
 </style>

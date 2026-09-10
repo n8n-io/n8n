@@ -488,7 +488,7 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-instance-ai-available="String(instanceAiAvailable)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"></div>',
 		props: [
 			'agent',
 			'projectId',
@@ -498,6 +498,7 @@ const commonStubs = {
 			'beforeRevertToPublished',
 			'artifactMode',
 			'isPreviewOpen',
+			'instanceAiAvailable',
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
@@ -511,6 +512,7 @@ const commonStubs = {
 			'reverted',
 			'switch-agent',
 			'toggle-version-history',
+			'open-instance-ai',
 		],
 	},
 	AgentPreviewDock: {
@@ -2153,32 +2155,21 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
 	});
 
-	it('renders the floating Instance AI button in builder mode', async () => {
+	it('passes Instance AI availability to the header', async () => {
 		const wrapper = await renderView();
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
-	});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-	it('hides the floating Instance AI button in artifact mode', async () => {
-		const wrapper = await renderView({
-			props: {
-				artifactMode: true,
-				artifactProjectId: 'p2',
-				artifactAgentId: 'a2',
-			},
-		});
+		expect(header.props('instanceAiAvailable')).toBe(true);
 
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-	});
-
-	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
 		instanceAiAvailableRef.value = false;
-		const wrapper = await renderView();
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		await nextTick();
+
+		expect(header.props('instanceAiAvailable')).toBe(false);
 	});
 
-	it('opens the agent artifact without sending an opening message', async () => {
+	it('opens the agent artifact from the header without sending an opening message', async () => {
 		const wrapper = await renderView();
-		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-instance-ai');
 		await flushPromises();
 
 		expect(openAgentArtifactThread).toHaveBeenCalledWith(

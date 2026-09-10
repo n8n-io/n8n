@@ -10,12 +10,13 @@ import { computed, onMounted, useCssModule } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
+	N8nAssistantIcon,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
 	N8nDropdownMenuItem,
 	N8nIcon,
-	N8nToggle,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
@@ -39,6 +40,7 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	artifactMode?: boolean;
 	isPreviewOpen?: boolean;
+	instanceAiAvailable?: boolean;
 	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
 	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
@@ -55,6 +57,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'toggle-version-history': [];
+	'open-instance-ai': [];
 }>();
 
 const i18n = useI18n();
@@ -164,6 +167,23 @@ function onMenuSelect(id: string) {
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
+			<N8nTooltip
+				v-if="!props.isPreviewOpen && !props.artifactMode && props.instanceAiAvailable"
+				:content="i18n.baseText('agents.builder.header.editWithAi')"
+			>
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon-only
+					:disabled="!props.agent"
+					:aria-label="i18n.baseText('agents.builder.header.editWithAi')"
+					:class="$style.aiButton"
+					data-testid="agent-builder-instance-ai-btn"
+					@click="emit('open-instance-ai')"
+				>
+					<N8nAssistantIcon size="large" />
+				</N8nButton>
+			</N8nTooltip>
 			<N8nBreadcrumbs
 				v-if="!props.artifactMode"
 				:items="breadcrumbItems"
@@ -289,8 +309,8 @@ function onMenuSelect(id: string) {
 .left {
 	display: flex;
 	align-items: center;
-	flex: 0 0 auto;
-	min-width: max-content;
+	flex-shrink: 0;
+	min-width: 0;
 }
 
 .left :global(.n8n-breadcrumbs) {
@@ -319,6 +339,7 @@ function onMenuSelect(id: string) {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
+	min-width: 0;
 }
 
 .switcherLabel {
