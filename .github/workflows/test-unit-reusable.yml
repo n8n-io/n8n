@@ -77,7 +77,7 @@ jobs:
 
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}
-        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --maxWorkers=100%
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --maxWorkers=75%
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
