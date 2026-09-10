@@ -168,15 +168,8 @@ export class WorkflowRunner {
 						};
 					}
 
-					// The normal completion path never ran for this execution (Bull reported
-					// it stalled), so the retention decision that would have pruned it there
-					// never ran either. Make it here, for production and manual executions
-					// alike, against the same settings. Independent of whether the run data
-					// itself was readable above: a workflow configured not to keep successful
-					// executions still shouldn't keep one just because its data came back
-					// empty. Its own failure is logged and swallowed separately, so it can
-					// never turn an otherwise-readable success into the unreadable-result
-					// fallback below.
+					// No lifecycle hooks ran for this execution, so make the retention
+					// decision they would have made, regardless of data readability.
 					if (fullExecutionData) {
 						try {
 							const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
