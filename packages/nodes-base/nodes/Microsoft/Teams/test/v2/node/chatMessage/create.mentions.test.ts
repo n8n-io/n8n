@@ -7,13 +7,17 @@ import { credentials } from '../../../credentials';
 const ADA = '33333333-3333-3333-3333-333333333333';
 
 // The pinData in the fixture is Graph's normalised echo (`<br>\n<br>\n`, `&amp;`). The request
-// below is what the node actually sends, so the matcher pins `<br><br>` and a raw `&`. The href
-// itself is machine-derived under the harness and stays wildcarded.
+// below is what the node actually sends, so the matcher pins `<br><br>` and a raw `&` in the
+// footer href. The href itself is machine-derived under the harness and stays wildcarded.
+//
+// The mentioned user's name carries an `&` deliberately: `mentionText` has to reach Graph
+// escaped and byte-identical to the `<at>` inner text, or Graph mis-measures the token and
+// duplicates `</at>`'s tail into the message. Verified against a live tenant.
 describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 	nock('https://graph.microsoft.com')
 		.get(`/v1.0/users/${ADA}`)
 		.query({ $select: 'id,displayName,userPrincipalName' })
-		.reply(200, { id: ADA, displayName: 'Ada Byron', userPrincipalName: 'ada@example.com' });
+		.reply(200, { id: ADA, displayName: 'Ada & Byron', userPrincipalName: 'ada@example.com' });
 
 	nock('https://graph.microsoft.com')
 		.post('/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages', (body) => {
@@ -24,18 +28,21 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 			const mentions = (body as { mentions?: Array<Record<string, unknown>> }).mentions ?? [];
 			return (
 				contentType === 'html' &&
-				content.startsWith('<at id="0">Ada Byron</at> Hello!<br><br><em> Powered by <a href="') &&
+				content.startsWith(
+					'<at id="0">Ada &amp; Byron</at> Hello!<br><br><em> Powered by <a href="',
+				) &&
 				content.includes(
 					'utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams',
 				) &&
 				content.endsWith('">this n8n workflow</a> </em>') &&
 				mentions.length === 1 &&
 				mentions[0].id === 0 &&
-				mentions[0].mentionText === 'Ada Byron' &&
+				mentions[0].mentionText === 'Ada &amp; Byron' &&
 				// Key-order insensitive, so reordering the literal in `resolveMentions` stays a no-op.
 				isEqual((mentions[0].mentioned as { user: unknown }).user, {
 					id: ADA,
-					displayName: 'Ada Byron',
+					// Raw here on purpose: Graph measures `mentionText`, not this field.
+					displayName: 'Ada & Byron',
 					userIdentityType: 'aadUser',
 				})
 			);
@@ -50,17 +57,18 @@ describe('Test MicrosoftTeamsV2, chatMessage => create with mentions', () => {
 			body: {
 				contentType: 'html',
 				content:
-					'<at id="0">Ada Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href="http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams">this n8n workflow</a> </em>',
+					'<at id="0">Ada &amp; Byron</at> Hello!<br>\n<br>\n<em> Powered by <a href="http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams">this n8n workflow</a> </em>',
 			},
 			attachments: [],
 			mentions: [
 				{
 					id: 0,
-					mentionText: 'Ada Byron',
+					mentionText: 'Ada &amp; Byron',
 					mentioned: {
 						user: {
 							id: ADA,
-							displayName: 'Ada Byron',
+							// Graph escapes this in the echo even though the node sends it raw.
+							displayName: 'Ada &amp; Byron',
 							userIdentityType: 'aadUser',
 							tenantId: '23786ca6-7ff2-4672-87d0-5c649ee0a337',
 						},

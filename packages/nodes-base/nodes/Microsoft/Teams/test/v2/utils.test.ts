@@ -43,6 +43,11 @@ const userOf = (entry: Mention) => {
 	return entry.mentioned.user;
 };
 
+const tagOf = (entry: Mention) => {
+	if (!('tag' in entry.mentioned)) throw new Error('expected a team tag mention');
+	return entry.mentioned.tag;
+};
+
 // Byte-identical to a live 403, captured 2026-09-08 against `/beta/teams/{id}/tags`. The node
 // calls `/v1.0`: same permission check, but the v1.0 wording is not separately confirmed (D7).
 const TAG_SCOPE_TEXT =
@@ -181,16 +186,21 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 		expect((body.body as { contentType: string }).contentType).toBe('html');
 	});
 
-	it('escapes the display name inside the token but leaves the mention data raw', () => {
+	it('escapes the marker text identically in the token and in mentionText', () => {
 		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
 			mention('guid-1', 'A & B <Ops>'),
 		]);
 
-		expect((body.body as { content: string }).content).toBe(
-			'<at id="0">A &amp; B &lt;Ops&gt;</at> hi',
-		);
+		const content = (body.body as { content: string }).content;
+		expect(content).toBe('<at id="0">A &amp; B &lt;Ops&gt;</at> hi');
 		const emitted = body.mentions as Mention[];
-		expect(emitted[0].mentionText).toBe('A & B <Ops>');
+		// Graph finds the marker leniently but measures it with `mentionText.length`, so a raw
+		// name here against an escaped token makes it duplicate `</at>`'s tail into the message.
+		// The two must be the same string.
+		expect(emitted[0].mentionText).toBe('A &amp; B &lt;Ops&gt;');
+		expect(content).toContain(`<at id="0">${emitted[0].mentionText}</at>`);
+		// Metadata, not markup: Graph does not measure this one. Read through `userOf`, because
+		// `Mention.mentioned` is a two-arm union once team tags exist.
 		expect(userOf(emitted[0]).displayName).toBe('A & B <Ops>');
 	});
 
@@ -203,6 +213,21 @@ describe('Test MicrosoftTeamsV2, prepareMessage', () => {
 			body: { contentType: 'html', content: '<at id="0">Engineering</at> hi' },
 			mentions: [{ id: 0, ...tag }],
 		});
+	});
+
+	// The escaping fix lives in `prepareMessage`, which treats both arms alike, so the tag arm
+	// inherits it. A tag name is set by a team owner, so it is the same untrusted input class as
+	// a guest display name.
+	it('escapes the marker text of a team tag mention too', () => {
+		const body = prepareMessage.call(ctx, 'hi', 'html', false, undefined, [
+			tagMention('tag-1', 'R&D <core>'),
+		]);
+
+		const content = (body.body as { content: string }).content;
+		const emitted = body.mentions as Mention[];
+		expect(content).toBe('<at id="0">R&amp;D &lt;core&gt;</at> hi');
+		expect(emitted[0].mentionText).toBe('R&amp;D &lt;core&gt;');
+		expect(tagOf(emitted[0]).displayName).toBe('R&D <core>');
 	});
 });
 
@@ -292,8 +317,8 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		const [resolved] = await resolveMentions.call(ctx, 0);
 
-		// Only the `<at>` inner text is escaped, downstream in `prepareMessage`. Escaping here
-		// too renders `A &amp;amp; B`.
+		// `Mention.mentionText` stays the raw name; `prepareMessage` escapes it for both the
+		// token and the payload. Escaping here too renders `A &amp;amp; B`.
 		expect(resolved.mentionText).toBe('A & B <Ops>');
 		expect(userOf(resolved).displayName).toBe('A & B <Ops>');
 	});
@@ -413,6 +438,22 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 			'Could not find the user for mention 1',
 		);
 		expect(apiRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('stamps the item index when the mail fallback itself fails', async () => {
+		setRows('jane@example.com', 'alex@contoso.com');
+		apiRequest.mockResolvedValueOnce({ id: 'guid-1', displayName: 'Jane Smith' });
+		apiRequest.mockRejectedValueOnce(notFound());
+		// The fallback runs inside the 404 handler, so its own failure has no other stamping path.
+		const throttled = new NodeApiError(node, {
+			code: 'TooManyRequests',
+			message: 'Rate limit is exceeded.',
+			statusCode: 429,
+		});
+		apiRequest.mockRejectedValueOnce(throttled);
+
+		await expect(resolveMentions.call(ctx, 3)).rejects.toBe(throttled);
+		expect(throttled.context.itemIndex).toBe(3);
 	});
 
 	it('passes a permission failure through with the item index', async () => {
