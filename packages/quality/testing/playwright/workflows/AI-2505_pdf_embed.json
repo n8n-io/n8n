@@ -1,5 +1,5 @@
 {
-	"name": "AI-2505 PDF embed (fake embeddings)",
+	"name": "AI-2505 PDF embed",
 	"nodes": [
 		{
 			"parameters": {},
@@ -57,46 +57,84 @@
 		},
 		{
 			"parameters": {
-				"code": {
-					"supplyData": {
-						"code": "const { FakeEmbeddings } = require('@langchain/core/utils/testing');\n\nreturn new FakeEmbeddings();"
-					}
-				},
-				"outputs": {
-					"output": [{ "type": "ai_embedding" }]
+				"model": "text-embedding-3-small",
+				"options": {
+					"dimensions": 256
 				}
 			},
 			"id": "f3f2c2a0-2505-4000-8000-000000000005",
-			"name": "Fake Embeddings",
-			"type": "@n8n/n8n-nodes-langchain.code",
-			"typeVersion": 1,
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"typeVersion": 1.2,
 			"position": [580, 520]
 		}
 	],
 	"pinData": {},
 	"connections": {
 		"Manual Trigger": {
-			"main": [[{ "node": "Create PDF", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Create PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Create PDF": {
-			"main": [[{ "node": "Populate VS", "type": "main", "index": 0 }]]
+			"main": [
+				[
+					{
+						"node": "Populate VS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Default Data Loader": {
-			"ai_document": [[{ "node": "Populate VS", "type": "ai_document", "index": 0 }]]
+			"ai_document": [
+				[
+					{
+						"node": "Populate VS",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
 		},
 		"Character Text Splitter": {
 			"ai_textSplitter": [
-				[{ "node": "Default Data Loader", "type": "ai_textSplitter", "index": 0 }]
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
 			]
 		},
-		"Fake Embeddings": {
-			"ai_embedding": [[{ "node": "Populate VS", "type": "ai_embedding", "index": 0 }]]
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Populate VS",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
-	"settings": { "executionOrder": "v1" },
+	"settings": {
+		"executionOrder": "v1"
+	},
 	"versionId": "ai-2505-pdf-embed-v2",
-	"meta": { "instanceId": "ai-2505-regression-fixture" },
+	"meta": {
+		"instanceId": "ai-2505-regression-fixture"
+	},
 	"id": "AI2505PDFEmbed",
 	"tags": []
 }
