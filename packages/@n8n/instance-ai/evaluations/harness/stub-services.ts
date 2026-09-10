@@ -132,6 +132,7 @@ export async function createStubServices(
 			return {
 				...emptyWorkflowDetail(workflowId),
 				name: json.name,
+				activeVersionId,
 			};
 		},
 		async archive() {},

@@ -254,6 +254,65 @@ describe('createBuildWorkflowTool', () => {
 		expect(buildWorkflowInputSchema.shape.filePath.description).not.toContain('WorkflowJSON');
 	});
 
+	describe('publish state', () => {
+		it('warns that a save to a published workflow is not live', async () => {
+			// No verification runs here. Without this, a trigger-only workflow or a
+			// repair that skips verify-built-workflow has no deterministic signal
+			// that the fix is sitting in a draft.
+			const { context, filePath } = makeContext({});
+			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-next',
+				activeVersionId: 'v-published',
+				checksum: 'checksum-update',
+			} as never);
+
+			const result = await executeTool<
+				BuildToolOutput & {
+					publishState?: { live: string; activeVersionId: string; savedVersionId: string };
+					publishStateNote?: string;
+				}
+			>(createBuildWorkflowTool(context), { filePath, workflowId: 'wf-1' });
+
+			expect(result.publishState).toEqual({
+				live: 'stale',
+				activeVersionId: 'v-published',
+				savedVersionId: 'v-next',
+			});
+			expect(result.publishStateNote).toContain('this save is a draft');
+			expect(result.publishStateNote).toContain('Ask the user whether to publish it');
+		});
+
+		it('reports no publish state for an unpublished workflow', async () => {
+			const { context, filePath } = makeContext({});
+
+			const result = await executeTool<BuildToolOutput & { publishState?: unknown }>(
+				createBuildWorkflowTool(context),
+				{ filePath, name: 'Fresh workflow' },
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.publishState).toBeUndefined();
+		});
+
+		it('does not warn when the published version is the version just saved', async () => {
+			const { context, filePath } = makeContext({});
+			vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+				id: 'wf-1',
+				versionId: 'v-next',
+				activeVersionId: 'v-next',
+				checksum: 'checksum-update',
+			} as never);
+
+			const result = await executeTool<
+				BuildToolOutput & { publishState?: { live: string }; publishStateNote?: string }
+			>(createBuildWorkflowTool(context), { filePath, workflowId: 'wf-1' });
+
+			expect(result.publishState?.live).toBe('current');
+			expect(result.publishStateNote).toBeUndefined();
+		});
+	});
+
 	describe('folder placement', () => {
 		type SafeParseResult = { success: true; data: unknown } | { success: false; error: unknown };
 		const getInputSchema = (tool: unknown) =>

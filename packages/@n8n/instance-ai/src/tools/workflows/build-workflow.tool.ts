@@ -128,6 +128,36 @@ interface BuildCtx {
  * AI_InvalidToolInputError instead of a recoverable tool result. The handler
  * does the authoritative normalization against the workspace root.
  */
+/**
+ * Where this save landed relative to production. A save never republishes, so
+ * on a published workflow the change sits in the draft while the previous
+ * version keeps running. Verification reports the same fact through
+ * `claim.liveState`, but a trigger-only workflow and any repair that skips
+ * `verify-built-workflow` never produce a claim — this rides on every save
+ * instead, from data the save already returned.
+ */
+function describeSavedPublishState(saved: { versionId: string; activeVersionId?: string | null }): {
+	publishState?: { live: 'current' | 'stale'; activeVersionId: string; savedVersionId: string };
+	publishStateNote?: string;
+} {
+	const { activeVersionId, versionId } = saved;
+	if (!activeVersionId) return {};
+
+	const live = activeVersionId === versionId ? 'current' : 'stale';
+	return {
+		publishState: { live, activeVersionId, savedVersionId: versionId },
+		...(live === 'stale'
+			? {
+					publishStateNote:
+						'This workflow is published, and this save is a draft. The live version is still ' +
+						'the previous one, so nothing changed for production yet. Do NOT describe the ' +
+						'workflow as fixed, live, or working in production until it is published again. ' +
+						'Ask the user whether to publish it.',
+				}
+			: {}),
+	};
+}
+
 function isStructurallyValidWorkflowSourceFilePath(value: string): boolean {
 	try {
 		normalizeWorkflowSourceFilePath(value);
@@ -1173,7 +1203,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					(n) => isInSetupScope(n.name) && hasPlaceholderDeep(n.parameters),
 				);
 				const createSuccessResponse = async (
-					saved: { id: string; versionId: string; checksum?: string; folder?: WorkflowFolderRef },
+					saved: {
+						id: string;
+						versionId: string;
+						/** Published version, null while the workflow is unpublished. */
+						activeVersionId?: string | null;
+						checksum?: string;
+						folder?: WorkflowFolderRef;
+					},
 					operation: 'create' | 'update',
 				) => {
 					// The setup panel lists bound slots too (rendered as done), so its
@@ -1329,6 +1366,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					return {
 						success: true,
 						...sourceResponseBase(binding),
+						...describeSavedPublishState(saved),
 						workflowId: saved.id,
 						workflowName: json.name || undefined,
 						workItemId: resolvedWorkItemId,

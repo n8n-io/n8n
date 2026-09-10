@@ -103,7 +103,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Verified in the draft, NOT live');
 			expect(result).toContain('The live version is still the previous one');
 			expect(result).toContain('Do NOT call the workflow live');
-			expect(result).toContain('ask whether to publish it');
+			expect(result).toContain('ask whether to publish the fix');
 			expect(result).not.toContain('Report completion');
 		});
 
@@ -152,6 +152,9 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Workflow verified successfully');
 			expect(result).toContain('Verified in the draft, NOT live');
 			expect(result).toContain('workflows(action="setup")');
+			// Setup comes first. Asking to publish a workflow that still needs
+			// credentials contradicts the setup instruction in the same breath.
+			expect(result).not.toContain('publish');
 		});
 
 		it('should downgrade the mocked-credential guidance too', () => {

@@ -3,8 +3,7 @@
  *
  * Every surface that discloses coverage renders from here, so the guidance the
  * model reads and the publish approval the user clicks state the same facts.
- * A claim at `verified` needs no disclosure, unless the live version is still
- * the older one.
+ * A claim at `verified` needs no disclosure.
  */
 
 import type { VerificationClaim } from './workflow-loop-state';
@@ -39,12 +38,17 @@ export function formatClaimHeadline(claim: VerificationClaim): string {
  * The one publish fact worth a sentence. `unpublished` and `live-current` need
  * none: a new build is expected to be unpublished, and a current live version
  * is what a reader already assumes.
+ *
+ * Fact only, no call to action. This sentence renders inside the publish
+ * approval too, where "publish the workflow" would argue for the click the
+ * user is being asked to weigh. The prompt to publish belongs to the surfaces
+ * the model reads, not the card the user approves.
  */
 export function describeClaimLiveState(claim: VerificationClaim): string | undefined {
 	if (claim.liveState !== 'live-stale') return undefined;
 	return (
 		'This ran against the draft. The live version is still the previous one, ' +
-		'so nothing changed for production yet. Publish the workflow to make the change live.'
+		'so nothing changed for production yet.'
 	);
 }
 
@@ -76,8 +80,10 @@ export function describeClaimCoverage(claim: VerificationClaim): string[] {
 }
 
 export function formatClaimDisclosure(claim: VerificationClaim): string | undefined {
-	// A fully verified run still needs a disclosure while the live version is
-	// the older one — coverage is not the only way a success claim goes wrong.
-	if (claim.level === 'verified' && claim.liveState !== 'live-stale') return undefined;
+	// A stale live version needs no disclosure here: this text is read on the
+	// publish path, and publishing is what fixes a stale live version. The
+	// draft/live distinction is disclosed where it changes what the model may
+	// say — the verify result and the loop guidance.
+	if (claim.level === 'verified') return undefined;
 	return [formatClaimHeadline(claim), ...describeClaimCoverage(claim)].join(' ');
 }

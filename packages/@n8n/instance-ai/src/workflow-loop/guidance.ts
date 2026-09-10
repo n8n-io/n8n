@@ -18,10 +18,14 @@ function formatClaimLead(claim: VerificationClaim | undefined): string {
 		// "verified successfully" is the sentence a model turns into "it is live
 		// and working" — the workflow the user depends on is still the old one.
 		if (claim.liveState === 'live-stale') {
+			// No publish prompt here: this lead is also the opening of the
+			// setup branch below, where the workflow is not publish-ready yet.
+			// The prompt to publish belongs to the branch that has nothing left
+			// to configure.
 			return (
 				`${formatClaimHeadline(claim)} ${describeClaimLiveState(claim) ?? ''} ` +
 				'Do NOT call the workflow live, running, or working in production. ' +
-				'Say the fix is in the draft, and ask whether to publish it.'
+				'Say the fix is in the draft.'
 			);
 		}
 		return 'Workflow verified successfully.';
@@ -103,9 +107,12 @@ export function formatWorkflowLoopGuidance(
 					'Do not call `credentials(action="setup")` or `apply-workflow-credentials` — `workflows(action="setup")` handles everything.'
 				);
 			}
-			const closing = isVerifiedClaim(action.claim)
-				? 'Report completion to the user.'
-				: 'Report the outcome to the user.';
+			const closing =
+				action.claim?.liveState === 'live-stale'
+					? 'Report the outcome to the user, and ask whether to publish the fix.'
+					: isVerifiedClaim(action.claim)
+						? 'Report completion to the user.'
+						: 'Report the outcome to the user.';
 			return `${claimLead} ${closing}${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
 		}
 		case 'verify':

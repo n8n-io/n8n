@@ -30,8 +30,9 @@ const listAction = z.object({
 				'whether the LIVE workflow works: a row ran the published code only when its ' +
 				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
 				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
-				'row can prove production works. A draft version different from the published one ' +
-				'means the latest changes are not live yet.',
+				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
+				'unknown version, which is not the same as a draft. A draft version different from the ' +
+				'published one means the latest changes are not live yet.',
 		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
@@ -48,7 +49,13 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get execution status without blocking (poll running ones)'),
+	action: z
+		.literal('get')
+		.describe(
+			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
+				'version this run executed; it only tells you whether the run was live when compared ' +
+				"with the workflow's `activeVersionId`.",
+		),
 	executionId: z.string().describe('Execution ID'),
 });
 

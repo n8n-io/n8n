@@ -38,11 +38,11 @@ Two consequences when the user reports a live workflow failing:
 
 - **Read the version each execution ran.** `executions(action="list", workflowId)`
   returns `workflowVersionId` on every row, plus `workflow.activeVersionId`
-	(the published version) and `workflow.draftVersionId`. Only a row whose
-	`workflowVersionId` equals `workflow.activeVersionId` ran the published code.
-	A run of a draft proves nothing about production. A `workflow.draftVersionId`
-	different from `workflow.activeVersionId` means the latest changes, including
-	any fix you just made, are not live.
+  (the published version) and `workflow.draftVersionId`. Only a row whose
+  `workflowVersionId` equals `workflow.activeVersionId` ran the published code.
+  A run of a draft proves nothing about production. A `workflow.draftVersionId`
+  different from `workflow.activeVersionId` means the latest changes, including
+  any fix you just made, are not live.
 - **Name the version when you invite a retest.** Say whether the user tests the
   draft or the published version. "Try it again" after a draft-only fix sends
   the user to the broken published version, and the fix looks like it failed.

@@ -39,7 +39,10 @@ const DEFAULT_NODE_PREVIEW_CHARS = 600;
 function formatLiveStateNote(claim: VerificationClaim): string | undefined {
 	const liveState = describeClaimLiveState(claim);
 	if (liveState === undefined) return undefined;
-	return `${liveState} Do NOT describe the workflow as live, running, or working in production until it is published.`;
+	return (
+		`${liveState} Do NOT describe the workflow as live, running, or working in production ` +
+		'until it is published. Publishing is what makes this change live — ask the user whether to do it.'
+	);
 }
 
 /**
