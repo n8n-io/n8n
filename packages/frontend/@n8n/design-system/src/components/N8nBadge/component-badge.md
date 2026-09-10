@@ -22,6 +22,7 @@ A compact label that identifies a status, category, count, or other metadata. A 
   - `warning`: Yellow badge for states that need attention
   - `danger`: Red badge for failed or critical states
   - `success`: Green badge for positive or complete states
+  - `info`: Blue badge for informational states
 - `size?: BadgeSize` - Badge height, horizontal padding, text size, and icon size | `default: 'xsmall'`
 - `clickable?: boolean` - When `true`, renders the badge as a native `button` instead of a `span` and enables hover, active, focus, and disabled styles | `default: false`
 - `disabled?: boolean` - Disables the native button when `clickable` is `true`. Use this prop only with `clickable`
@@ -51,9 +52,10 @@ type BadgeVariant =
   | 'ghost'
   | 'warning'
   | 'danger'
-  | 'success';
+  | 'success'
+  | 'info';
 
-type BadgeSize = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
+type BadgeSize = 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 ```
 
 
@@ -64,8 +66,8 @@ type BadgeSize = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 - Clickable badges show a pointer cursor and distinct hover, active, focus-visible, and disabled states.
 - The label stays on one line. Overflowing label text is truncated with an ellipsis when a consumer limits the badge width.
 - Leading and trailing icons do not shrink.
-- `xsmall`, `small`, and `medium` badges use medium icons. `large` and `xlarge` badges use xlarge icons.
-- `xsmall` badges use `2xs` text. `small` and `medium` badges use `xs` text. `large` and `xlarge` badges use `sm` text.
+- `xxsmall`, `xsmall`, `small`, and `medium` badges use medium icons. `large` and `xlarge` badges use xlarge icons.
+- `xxsmall` and `xsmall` badges use `2xs` text. `small` and `medium` badges use `xs` text. `large` and `xlarge` badges use `sm` text.
 - The badge supports light and dark color modes through design tokens.
 
 
@@ -141,6 +143,7 @@ function removeFilter() {
 
 ```vue
 <template>
+  <N8nBadge size="xxsmall">Extra extra small</N8nBadge>
   <N8nBadge size="xsmall">Extra small</N8nBadge>
   <N8nBadge size="small">Small</N8nBadge>
   <N8nBadge size="medium">Medium</N8nBadge>

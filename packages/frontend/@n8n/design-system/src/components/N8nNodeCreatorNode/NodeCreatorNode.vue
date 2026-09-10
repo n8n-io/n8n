@@ -3,7 +3,6 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
@@ -52,12 +51,13 @@ const { t } = useI18n();
 					:class="$style.previewBadge"
 					:text="tag.text"
 				/>
-				<N8nActionPill
+				<N8nBadge
 					v-else-if="tag?.pill"
-					size="small"
-					:text="tag.text"
-					:type="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'default'"
-				/>
+					size="xxsmall"
+					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
+				>
+					{{ tag.text }}
+				</N8nBadge>
 				<ElTag
 					v-else-if="tag"
 					:class="$style.tag"

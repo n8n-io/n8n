@@ -3,7 +3,6 @@ import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { IMenuItem } from '../../types';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -137,10 +136,17 @@ const tooltipPlacement = computed(() => {
 						{{ item.label }}
 					</N8nText>
 					<PreviewBadge v-if="!compact && item.preview" />
-					<N8nBadge v-if="!compact && item.new" :class="$style.newBadge">
+					<N8nBadge
+						v-if="!compact && item.new"
+						size="xxsmall"
+						variant="filled"
+						:class="$style.newBadge"
+					>
 						{{ t('menuItem.new') }}
 					</N8nBadge>
-					<N8nActionPill v-if="!compact && item.creditsTag" size="small" :text="item.creditsTag" />
+					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
+						{{ item.creditsTag }}
+					</N8nBadge>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
@@ -255,10 +261,6 @@ const tooltipPlacement = computed(() => {
 }
 
 .menuItem .newBadge {
-	--n8n-badge--background: var(--color--foreground--shade-2);
-	--n8n-badge--text-color: var(--color--background);
-	--n8n-badge--border-color: var(--color--foreground--shade-2);
-
 	flex-shrink: 0;
 }
 </style>

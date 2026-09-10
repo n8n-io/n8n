@@ -30,6 +30,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 		case 'xlarge':
 			return 'sm';
 		case 'xsmall':
+		case 'xxsmall':
 			return '2xs';
 		default:
 			return 'xs';
@@ -127,6 +128,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	}
 }
 
+.xxsmall {
+	--n8n-badge--height: var(--height--2xs);
+	--n8n-badge--padding: var(--spacing--2xs);
+}
+
 .xsmall {
 	--n8n-badge--height: var(--height--xs);
 	--n8n-badge--padding: var(--spacing--2xs);
@@ -194,6 +200,11 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 .success {
 	--n8n-badge--background: var(--color--green-200);
 	--n8n-badge--text-color: var(--color--green-900);
+}
+
+.info {
+	--n8n-badge--background: var(--color--blue-200);
+	--n8n-badge--text-color: var(--color--blue-900);
 }
 
 .leadingIcon,

@@ -15,7 +15,7 @@ const props = withDefaults(
 );
 
 const sizeMapping = computed(() => {
-	return props.size === 'small' ? 'xsmall' : 'small';
+	return props.size === 'small' ? 'xxsmall' : 'xsmall';
 });
 
 const { t } = useI18n();
