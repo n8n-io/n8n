@@ -1547,7 +1547,12 @@ describe('verify-built-workflow tool — publish state', () => {
 	it('warns that the fix is not live when the published version is an older one', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(
 			makeBuildOutcome(),
-			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
 			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
 		);
 
@@ -1564,7 +1569,12 @@ describe('verify-built-workflow tool — publish state', () => {
 	it('says nothing about publishing when the published version is the verified one', async () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome(),
-			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
+			{
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			},
 			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
 		);
 
@@ -1595,6 +1605,8 @@ describe('verify-built-workflow tool — publish state', () => {
 	});
 
 	it('reads the published version after the run, so a publish mid-run is not called stale', async () => {
+		// Starts stale, and the user publishes the verified draft while the run
+		// is in flight. Only a lookup that happens after the run sees that.
 		const { ctx } = makeContext(
 			makeBuildOutcome(),
 			{
@@ -1603,9 +1615,23 @@ describe('verify-built-workflow tool — publish state', () => {
 				data: { 'Form Trigger': {} },
 				workflowVersionId: 'draft-2',
 			},
-			// The user published the verified draft while the run was in flight.
-			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'draft-2' } },
+			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
 		);
+		const head = vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead);
+		vi.mocked(ctx.domainContext.executionService.run).mockImplementation(async () => {
+			head.mockResolvedValue({
+				versionId: 'draft-2',
+				activeVersionId: 'draft-2',
+				updatedAt: 0,
+			});
+			await Promise.resolve();
+			return {
+				executionId: 'exec-1',
+				status: 'success',
+				data: { 'Form Trigger': {} },
+				workflowVersionId: 'draft-2',
+			};
+		});
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
@@ -1613,16 +1639,21 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(result.liveStateNote).toBeUndefined();
 	});
 
-	it('falls back to the workflow head when the run reported no version', async () => {
+	it('leaves publish state unknown when the run reported no version', async () => {
+		// The head is published and equals its own draft, so substituting it
+		// would report `live-current` — "production is proven" — for a run whose
+		// version nobody knows.
 		const { ctx } = makeContext(
 			makeBuildOutcome(),
 			{ executionId: 'exec-1', status: 'success', data: { 'Form Trigger': {} } },
-			{ workflowHead: { versionId: 'draft-2', activeVersionId: 'published-1' } },
+			{ workflowHead: { versionId: 'published-1', activeVersionId: 'published-1' } },
 		);
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
-		expect(result.claim?.verifiedVersionId).toBe('draft-2');
+		expect(result.success).toBe(true);
+		expect(result.claim?.liveState).toBeUndefined();
+		expect(result.claim?.verifiedVersionId).toBeUndefined();
 	});
 
 	it('leaves the claim without publish state when the lookup fails', async () => {
@@ -1630,6 +1661,7 @@ describe('verify-built-workflow tool — publish state', () => {
 			executionId: 'exec-1',
 			status: 'success',
 			data: { 'Form Trigger': {} },
+			workflowVersionId: 'draft-2',
 		});
 		vi.mocked(ctx.domainContext.workflowService!.getWorkflowHead).mockRejectedValue(
 			new Error('no access'),

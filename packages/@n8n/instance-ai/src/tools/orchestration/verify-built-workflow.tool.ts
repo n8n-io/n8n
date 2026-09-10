@@ -43,10 +43,11 @@ function formatLiveStateNote(claim: VerificationClaim): string | undefined {
 }
 
 /**
- * Version pair behind `claim.liveState`. The executed version wins over the
- * workflow head: the head moves when anybody saves, the execution record does
- * not. A failed lookup returns nothing, so an unknown publish state stays
- * unknown instead of becoming a claim about production.
+ * Version pair behind `claim.liveState`. The executed version has to come from
+ * the execution record: the workflow head moves when anybody saves, so
+ * substituting it would let the claim describe a version this run never ran.
+ * Without that record there is no publish state — an unknown run version must
+ * not become `live-current`, which reads as "production is proven".
  */
 async function resolvePublishState(args: {
 	workflowService: InstanceAiWorkflowService;
@@ -56,14 +57,11 @@ async function resolvePublishState(args: {
 }): Promise<VerificationPublishState | undefined> {
 	const { workflowService, workflowId, executedVersionId, logger } = args;
 
+	if (!executedVersionId) return undefined;
+
 	try {
 		const head = await workflowService.getWorkflowHead(workflowId);
-		return {
-			activeVersionId: head.activeVersionId,
-			// The head is the fallback for a run that reported no version — an
-			// unsaved workflow, or an execution record we could not read back.
-			draftVersionId: executedVersionId ?? head.versionId,
-		};
+		return { activeVersionId: head.activeVersionId, draftVersionId: executedVersionId };
 	} catch (error) {
 		logger.warn('Failed to read publish state for the verification claim', {
 			workflowId,

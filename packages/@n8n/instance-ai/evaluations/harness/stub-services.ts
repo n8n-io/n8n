@@ -240,6 +240,8 @@ export async function createStubServices(
 				executionId: 'eval-exec-' + nanoid(),
 				status: 'success' as const,
 				data: { __eval_synthetic_verify__: [{ workflowId }] },
+				// The verification claim reports no publish state without it.
+				workflowVersionId: EVAL_WORKFLOW_VERSION_ID,
 				startedAt: new Date().toISOString(),
 				finishedAt: new Date().toISOString(),
 			};
