@@ -11,6 +11,14 @@ function workerHash(test: TestCase): string {
 	return value;
 }
 
+function poolDigest(test: TestCase): string {
+	const value: unknown = Reflect.get(test, '_poolDigest');
+	if (typeof value !== 'string' || value.length === 0) {
+		throw new Error('Playwright did not expose a fixture-pool digest for a listed test');
+	}
+	return value;
+}
+
 function relativeSpec(file: string): string {
 	return relative(process.cwd(), file).split(sep).join('/');
 }
@@ -21,11 +29,15 @@ export default class DistributionCounterReporter implements Reporter {
 		if (!output) throw new Error('DISTRIBUTION_COUNTER_OUTPUT is required');
 
 		const tests = suite.allTests().filter((test) => test.expectedStatus !== 'skipped');
-		const profiles = new Map<string, { specs: Set<string>; tags: Set<string>; tests: number }>();
+		const profiles = new Map<
+			string,
+			{ poolDigest: string; specs: Set<string>; tags: Set<string>; tests: number }
+		>();
 
 		for (const test of tests) {
 			const hash = workerHash(test);
 			const profile = profiles.get(hash) ?? {
+				poolDigest: poolDigest(test),
 				specs: new Set<string>(),
 				tags: new Set<string>(),
 				tests: 0,
@@ -44,6 +56,7 @@ export default class DistributionCounterReporter implements Reporter {
 				profiles: [...profiles.entries()]
 					.map(([hash, profile]) => ({
 						workerHash: hash,
+						poolDigest: profile.poolDigest,
 						tests: profile.tests,
 						specs: [...profile.specs].sort(),
 						tags: [...profile.tags].sort(),

@@ -27,7 +27,8 @@
  */
 
 import { execFileSync } from 'child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,6 +38,8 @@ const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
 const SELECT_AFFECTED_E2E = path.resolve(__dirname, 'select-affected-e2e.mjs');
+const DISTRIBUTION_REPORTER = path.resolve(__dirname, 'distribution-counter-reporter.ts');
+const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve('@playwright/test/cli');
 const PLAYWRIGHT_PREFIX = path.relative(REPO_ROOT, PLAYWRIGHT_DIR) + path.sep;
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
@@ -196,12 +199,62 @@ function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['distribute', `--shards=${numShards}`];
 	const includeFile = options.includeSpecsFile;
 	if (includeFile) cliArgs.push(`--include-specs-file=${includeFile}`);
+	const groupsFile = options.groupsFile;
+	if (groupsFile) cliArgs.push(`--groups-file=${groupsFile}`);
 	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
 		cwd: PLAYWRIGHT_DIR,
 		encoding: 'utf-8',
 		stdio: ['pipe', 'pipe', 'inherit'],
 	});
 	return JSON.parse(output);
+}
+
+function generateDistributionGroups(project, grepInvert) {
+	const temp = mkdtempSync(path.join(tmpdir(), 'distribution-groups-'));
+	const reportPath = path.join(temp, 'playwright-profiles.json');
+	const groupsPath = path.join(temp, 'groups.json');
+	execFileSync(
+		process.execPath,
+		[
+			PLAYWRIGHT_CLI,
+			'test',
+			'--list',
+			`--project=${project}`,
+			'--workers=1',
+			`--reporter=${DISTRIBUTION_REPORTER}`,
+			...(grepInvert ? [`--grep-invert=${grepInvert}`] : []),
+		],
+		{
+			cwd: PLAYWRIGHT_DIR,
+			env: { ...process.env, DISTRIBUTION_COUNTER_OUTPUT: reportPath },
+			stdio: ['ignore', 'ignore', 'inherit'],
+		},
+	);
+	const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+	if (!Array.isArray(report.profiles)) throw new Error('Playwright returned invalid profile data');
+	const bySpec = new Map();
+	for (const profile of report.profiles) {
+		if (typeof profile.poolDigest !== 'string' || !Array.isArray(profile.specs)) {
+			throw new Error('Playwright returned an invalid fixture-pool profile');
+		}
+		for (const spec of profile.specs) {
+			if (typeof spec !== 'string') throw new Error('Playwright returned an invalid spec path');
+			const digests = bySpec.get(spec) ?? new Set();
+			digests.add(profile.poolDigest);
+			bySpec.set(spec, digests);
+		}
+	}
+	const groups = Object.fromEntries(
+		[...bySpec.entries()].map(([spec, digests]) => [spec, [...digests].sort()]),
+	);
+	writeFileSync(groupsPath, JSON.stringify(groups));
+	return { groupsPath, specs: [...bySpec.keys()], temp };
+}
+
+function writeRunnableSpecs(temp, specs) {
+	const includePath = path.join(temp, 'include-specs.txt');
+	writeFileSync(includePath, specs.filter((spec) => !QUARANTINE.has(spec)).join('\n'));
+	return includePath;
 }
 
 /**
@@ -245,6 +298,11 @@ const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
 const impactMode = args.includes('--impact');
 const includeMetadata = args.includes('--include-metadata');
+const project =
+	args.find((a) => a.startsWith('--project='))?.slice('--project='.length) ?? 'multi-main:e2e';
+const grepInvert =
+	args.find((a) => a.startsWith('--grep-invert='))?.slice('--grep-invert='.length) ??
+	process.env.PLAYWRIGHT_GREP_INVERT;
 const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
 const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
@@ -262,6 +320,17 @@ if (impactMode && filesArg) {
 	if (includeSpecsFile) cleanupPaths.push(path.dirname(includeSpecsFile));
 } else if (impactMode) {
 	console.error('Impact: no --files provided — running full suite');
+}
+
+let groupsFile;
+if (orchestrateMode || !matrixMode) {
+	const generated = generateDistributionGroups(project, grepInvert);
+	groupsFile = generated.groupsPath;
+	const selectedSpecs = includeSpecsFile
+		? readFileSync(includeSpecsFile, 'utf8').split('\n').filter(Boolean)
+		: generated.specs;
+	includeSpecsFile = writeRunnableSpecs(generated.temp, selectedSpecs);
+	cleanupPaths.push(generated.temp);
 }
 
 function cleanup() {
@@ -283,9 +352,9 @@ if (matrixMode) {
 		}));
 		console.log(JSON.stringify(matrix));
 	} else {
-		const result = getOrchestration(shards, { includeSpecsFile });
+		const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 
-		// Apply the quarantine BEFORE the empty check and drop any shard it
+		// Apply the quarantine again before the empty check and drop any shard it
 		// empties out. A shard whose only specs are quarantined must become the
 		// `skip` sentinel — not an empty spec list, which the e2e job would
 		// silently expand to `--shard=1/1` and run the entire suite (DEVP-671).
@@ -327,10 +396,11 @@ if (matrixMode) {
 				images: getRequiredImages(shard.capabilities).join(' '),
 				...(includeMetadata
 					? {
-						capabilities: shard.capabilities,
-						fixtureCount: shard.fixtureCount,
-						testTime: shard.testTime,
-					}
+							capabilities: shard.capabilities,
+							fixturePools: shard.fixturePools,
+							fixtureCount: shard.fixtureCount,
+							testTime: shard.testTime,
+						}
 					: {}),
 			}));
 			console.log(JSON.stringify(matrix));
@@ -343,7 +413,7 @@ if (matrixMode) {
 		cleanup();
 		process.exit(1);
 	}
-	const result = getOrchestration(shards, { includeSpecsFile });
+	const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 	const shard = result.shards[index];
 	if (shard) {
 		console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));

@@ -189,14 +189,15 @@ janitor orchestrate (generic)          distribute-tests.mjs (n8n CI adapter)
 ┌──────────────────────────┐          ┌──────────────────────────┐
 │ AST discovery            │          │ Calls janitor orchestrate│
 │ Metrics loading          │   JSON   │ Maps capabilities →      │
-│ Capability grouping      │ ──────→  │   Docker images          │
+│ Fixture-pool grouping    │ ──────→  │   Docker images          │
 │ Group splitting          │          │ Adds container overhead  │
 │ Greedy bin-packing       │          │ Outputs GH Actions matrix│
 └──────────────────────────┘          └──────────────────────────┘
 ```
 
-The janitor handles generic orchestration (works for any Playwright project).
-`distribute-tests.mjs` is n8n's CI adapter that maps capabilities to Docker images.
+The janitor handles generic orchestration. `distribute-tests.mjs` asks Playwright to resolve
+each spec's worker fixture pool. It passes those generated groups to the janitor. It uses
+capabilities only to select the Docker images for each shard.
 
 ## Scripts
 

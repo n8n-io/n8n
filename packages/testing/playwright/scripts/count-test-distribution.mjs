@@ -70,6 +70,7 @@ function parseMatrix(output) {
 			specs: words(entry.specs),
 			images: words(entry.images),
 			capabilities: Array.isArray(entry.capabilities) ? entry.capabilities : [],
+			fixturePools: Array.isArray(entry.fixturePools) ? entry.fixturePools : [],
 			fixtureCount: typeof entry.fixtureCount === 'number' ? entry.fixtureCount : 0,
 			testTime: typeof entry.testTime === 'number' ? entry.testTime : 0,
 		};
@@ -115,6 +116,7 @@ function resolvePullRequest(pr, repo) {
 
 const shards = Number.parseInt(option('shards', '16'), 10);
 const project = option('project', 'multi-main:e2e');
+const grepInvert = option('grep-invert', '');
 const pr = option('pr', '');
 const repo = option('repo', 'n8n-io/n8n');
 const files = changedFiles(option('files', ''));
@@ -134,7 +136,9 @@ const distributorArgs = [
 	String(shards),
 	'--orchestrate',
 	'--include-metadata',
+	`--project=${project}`,
 ];
+if (grepInvert) distributorArgs.push(`--grep-invert=${grepInvert}`);
 if (selection.files.length > 0) {
 	distributorArgs.push('--impact', `--files=${selection.files.join(',')}`);
 	if (selection.base) distributorArgs.push(`--base=${selection.base}`);
@@ -156,6 +160,7 @@ try {
 				`--project=${project}`,
 				'--workers=1',
 				`--reporter=${REPORTER}`,
+				...(grepInvert ? [`--grep-invert=${grepInvert}`] : []),
 				...entry.specs,
 			],
 			{ ...process.env, DISTRIBUTION_COUNTER_OUTPUT: output },
@@ -167,6 +172,7 @@ try {
 			runnableSpecs: listed.runnableSpecs,
 			runnableTests: listed.runnableTests,
 			modeledStackStarts: entry.fixtureCount,
+			modeledProfiles: entry.fixturePools,
 			stackStarts: listed.profiles.length,
 			extraStackStarts: listed.profiles.length - entry.fixtureCount,
 			testTime: entry.testTime,
