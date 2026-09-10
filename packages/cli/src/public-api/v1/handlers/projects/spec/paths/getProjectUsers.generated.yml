@@ -10,6 +10,7 @@ parameters:
   - schema:
       type: string
     required: true
+    description: The ID of the project.
     name: projectId
     in: path
 x-eov-operation-id: unreachable

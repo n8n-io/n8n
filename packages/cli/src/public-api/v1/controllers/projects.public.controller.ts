@@ -12,6 +12,7 @@ import {
 	ProjectPublicDto,
 	UpdateProjectPublicDto,
 	projectIdParamSchema,
+	userIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Project, ProjectRelation } from '@n8n/db';
@@ -175,7 +176,7 @@ export class ProjectsPublicController {
 	async getProjectUsers(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Query query: ListProjectMembersQueryPublicDto,
 	): Promise<ProjectMemberListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination(query);
@@ -210,7 +211,7 @@ export class ProjectsPublicController {
 	async addUsersToProject(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body body: AddUsersToProjectDto,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
@@ -230,8 +231,8 @@ export class ProjectsPublicController {
 	async changeUserRoleInProject(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
-		@Param('userId') userId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('userId', userIdParamSchema) userId: string,
 		@Body body: ChangeUserRoleInProject,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
@@ -250,8 +251,8 @@ export class ProjectsPublicController {
 	async deleteUserFromProject(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('projectId') projectId: string,
-		@Param('userId') userId: string,
+		@Param('projectId', projectIdParamSchema) projectId: string,
+		@Param('userId', userIdParamSchema) userId: string,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 
