@@ -215,7 +215,7 @@ jobs:
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
           FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 

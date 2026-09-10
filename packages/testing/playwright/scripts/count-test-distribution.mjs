@@ -114,7 +114,7 @@ function resolvePullRequest(pr, repo) {
 	};
 }
 
-const shards = Number.parseInt(option('shards', '16'), 10);
+const shards = Number.parseInt(option('shards', '20'), 10);
 const project = option('project', 'multi-main:e2e');
 const grepInvert = option('grep-invert', '');
 const pr = option('pr', '');

@@ -46,8 +46,8 @@ setup. Capability groups therefore stay on separate shards.
 The packer applies the limits before it fills the buckets. Bin-packing still
 balances the shards. This is not a merge step after the packer runs.
 
-Full-suite selections do not change: about 196 minutes of test time still fills
-all 16 shards. Over 7 days of PR CI, the limit removed about 9% of the E2E shard
+Full-suite selections do not collapse: about 196 minutes of test time still fills
+all 20 shards. Over 7 days of PR CI, the limit removed about 9% of the E2E shard
 jobs, and the average wall-clock time did not increase.
 
 Configure both values under `orchestration` in `janitor.config.mjs`.
