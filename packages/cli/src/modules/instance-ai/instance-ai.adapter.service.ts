@@ -103,7 +103,6 @@ import {
 	type IConnections,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
-	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
@@ -234,6 +233,16 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * A credential class's `documentationUrl` is normally a docs slug ("slack"), but a
+ * few declare a full URL. Normalizes both to a URL.
+ */
+function credentialDocsUrl(documentationUrl: string | undefined): string | undefined {
+	if (!documentationUrl) return undefined;
+	if (documentationUrl.startsWith('http')) return documentationUrl;
+	return `https://docs.n8n.io/integrations/builtin/credentials/${documentationUrl}/`;
 }
 
 /**
@@ -1439,7 +1448,7 @@ export class InstanceAiAdapterService {
 				const newWorkflow = workflowRepository.create({
 					name: json.name,
 					nodes: [] as INode[],
-					connections: {} as IConnections,
+					connections: {},
 					settings,
 					active: false,
 					versionId: randomUUID(),
@@ -1855,9 +1864,7 @@ export class InstanceAiAdapterService {
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode: triggerNode
-						? getExecutionModeForTrigger(triggerNode)
-						: ('manual' as WorkflowExecuteMode),
+					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						connections,
@@ -2369,10 +2376,7 @@ export class InstanceAiAdapterService {
 			async getDocumentationUrl(credentialType: string) {
 				try {
 					const credClass = loadNodesAndCredentials.getCredential(credentialType);
-					const slug = credClass.type.documentationUrl;
-					if (!slug) return null;
-					if (slug.startsWith('http')) return slug;
-					return `https://docs.n8n.io/integrations/builtin/credentials/${slug}/`;
+					return credentialDocsUrl(credClass.type.documentationUrl) ?? null;
 				} catch {
 					return null;
 				}
@@ -2444,9 +2448,11 @@ export class InstanceAiAdapterService {
 					if (typeName.toLowerCase().includes(q)) {
 						try {
 							const credClass = loadNodesAndCredentials.getCredential(typeName);
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						} catch {
 							// Type not loadable — include with type name as display name
@@ -2459,9 +2465,11 @@ export class InstanceAiAdapterService {
 					try {
 						const credClass = loadNodesAndCredentials.getCredential(typeName);
 						if (credClass.type.displayName.toLowerCase().includes(q)) {
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						}
 					} catch {
@@ -2882,7 +2890,7 @@ export class InstanceAiAdapterService {
 				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
-					filter: options?.filter as DataTableFilter | undefined,
+					filter: options?.filter,
 				});
 			},
 
@@ -2917,7 +2925,7 @@ export class InstanceAiAdapterService {
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
-					{ filter: filter as DataTableFilter, data: data as DataTableRow },
+					{ filter, data: data as DataTableRow },
 					true,
 				);
 				return {
@@ -2935,12 +2943,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
-				const result = await dataTableService.deleteRows(
-					resolvedId,
-					projectId,
-					{ filter: filter as DataTableFilter },
-					true,
-				);
+				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
 					dataTableId: resolvedId,
@@ -3325,7 +3328,7 @@ export class InstanceAiAdapterService {
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
-					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
+					...(desc.webhooks ? { webhooks: desc.webhooks } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 					...(meta ? { aiGateway: meta } : {}),
@@ -3369,7 +3372,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 
 				const minimalNode: INode = {
@@ -3381,11 +3384,7 @@ export class InstanceAiAdapterService {
 					position: [0, 0],
 				};
 
-				const issues = NodeHelpers.getNodeParametersIssues(
-					nodeProperties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(nodeProperties, minimalNode, desc);
 				const allIssues = issues?.parameters ?? {};
 
 				// Filter to top-level visible parameters only (mirrors setupPanel.utils.ts logic)
@@ -3408,12 +3407,7 @@ export class InstanceAiAdapterService {
 						if (prop.type === 'hidden') return false;
 						if (
 							prop.displayOptions &&
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								prop,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
+							!NodeHelpers.displayParameter(paramsWithDefaults, prop, minimalNode, desc)
 						) {
 							return false;
 						}
@@ -3438,7 +3432,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 				const minimalNode: INode = {
 					id: '',
@@ -3454,14 +3448,7 @@ export class InstanceAiAdapterService {
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
-						if (
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								cred,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
-						) {
+						if (!NodeHelpers.displayParameter(paramsWithDefaults, cred, minimalNode, desc)) {
 							continue;
 						}
 					}
@@ -3469,11 +3456,7 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const issues = NodeHelpers.getNodeParametersIssues(
-					desc.properties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(desc.properties, minimalNode, desc);
 				const credentialIssues = issues?.credentials ?? {};
 				for (const credType of Object.keys(credentialIssues)) {
 					credentialTypes.add(credType);
@@ -4634,10 +4617,17 @@ function toWorkflowJSON(
 			notesInFlow: n.notesInFlow,
 			executeOnce: n.executeOnce,
 			retryOnFail: n.retryOnFail,
+			maxTries: n.maxTries,
+			waitBetweenTries: n.waitBetweenTries,
 			alwaysOutputData: n.alwaysOutputData,
-			onError: n.onError,
+			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
+			// read it the way the editor does. An agent save writes these nodes over the saved
+			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
+			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
+			extendsCredential: n.extendsCredential,
+			customTelemetryTags: n.customTelemetryTags,
 		})),
-		connections: source.connections as WorkflowJSON['connections'],
+		connections: source.connections,
 		settings: workflow.settings as WorkflowJSON['settings'],
 		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
@@ -4666,7 +4656,7 @@ function toWorkflowDetail(
 				webhookId: n.webhookId,
 			}),
 		),
-		connections: workflow.connections as Record<string, unknown>,
+		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
 }

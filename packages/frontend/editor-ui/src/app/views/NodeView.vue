@@ -122,6 +122,7 @@ import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { usePostMessageControls } from '@/app/composables/usePostMessageHandler';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useMcpJsonNudgeTrigger } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useWorkflowExtraction } from '@/app/composables/useWorkflowExtraction';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -209,6 +210,7 @@ const evaluationsWizardSidepanelStore = useEvaluationsWizardSidepanelStore();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
 const builderStore = useBuilderStore();
+const mcpJsonNudgeTrigger = useMcpJsonNudgeTrigger();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
@@ -593,10 +595,27 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-async function onCopyNodes(ids: string[]) {
-	await copyNodes(ids);
+// The MCP nudge modal lives at the app root and outlives this view. If the user navigates
+// away while it is open, a deferred copy, paste, or import must not run against whatever
+// workflow is shown by then.
+let isUnmounted = false;
+function isStillOnWorkflow(originWorkflowId: string) {
+	return !isUnmounted && workflowId.value === originWorkflowId;
+}
 
-	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+async function onCopyNodes(ids: string[]) {
+	const originWorkflowId = workflowId.value;
+	const copy = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
+
+		await copyNodes(ids);
+
+		toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
+	};
+
+	await mcpJsonNudgeTrigger.gate('copy', copy);
 }
 
 async function onClipboardPaste(plainTextData: string): Promise<void> {
@@ -643,13 +662,22 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	const result = await importWorkflowData(workflowData, 'paste', {
-		importTags: false,
-		viewport: viewportBoundaries.value,
-	});
-	const ids = result.nodes?.map((node) => node.id) ?? [];
+	const originWorkflowId = workflowId.value;
+	const paste = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
 
-	canvasRef.value?.ensureNodesAreVisible(ids);
+		const result = await importWorkflowData(workflowData, 'paste', {
+			importTags: false,
+			viewport: viewportBoundaries.value,
+		});
+		const ids = result.nodes?.map((node) => node.id) ?? [];
+
+		canvasRef.value?.ensureNodesAreVisible(ids);
+	};
+
+	await mcpJsonNudgeTrigger.gate('paste', paste);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -924,11 +952,20 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		return;
 	}
 
-	await importWorkflowData(workflowData, 'url', {
-		viewport: viewportBoundaries.value,
-	});
+	const originWorkflowId = workflowId.value;
+	const importUrl = async () => {
+		if (!isStillOnWorkflow(originWorkflowId)) {
+			return;
+		}
 
-	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+		await importWorkflowData(workflowData, 'url', {
+			viewport: viewportBoundaries.value,
+		});
+
+		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+	};
+
+	await mcpJsonNudgeTrigger.gate('import_url', importUrl);
 }
 
 function addImportEventBindings() {
@@ -1972,6 +2009,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	isUnmounted = true;
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	toast.clearAllStickyNotifications();
 	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
