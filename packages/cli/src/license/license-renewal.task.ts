@@ -9,6 +9,8 @@ import { License } from '@/license';
  * Renews the license before it expires. Each pass asks the license SDK
  * whether a renewal is due, close to expiry or to the end of an entitlement,
  * and renews against the license server when it is.
+ * The SDK reports an entitlement-end renewal as due only inside a 15-minute
+ * window, so a longer interval misses those renewals.
  */
 @SystemTask()
 export class LicenseRenewalTask implements SystemTask {

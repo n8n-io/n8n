@@ -4440,8 +4440,8 @@ importers:
         specifier: 'catalog:'
         version: 1.27.0
       '@n8n_io/license-sdk':
-        specifier: 3.0.0
-        version: 3.0.0
+        specifier: 3.1.0
+        version: 3.1.0
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -11249,8 +11249,8 @@ packages:
     resolution: {integrity: sha512-xCELByG49K24I1rVx6o3FueAH1+cu66d7ojoQepkbfsphIK0HLZisTCZ3/MmgtZUjvXMUI0Ekg46NWHvMMcJtQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@3.0.0':
-    resolution: {integrity: sha512-JJjpbzFfWHfZ2aOIEWd/s23xU4ZKcPYxXd1ByGXmFz7SHXSqk+h11zUoEU9wR1AsN3SY308eQRoJ5RAKLjpH2Q==}
+  '@n8n_io/license-sdk@3.1.0':
+    resolution: {integrity: sha512-29+JEuXwoGCflBpVgT6ZzcWOeTNum2DcU57fnmUv9RPBuG1xo2Xrnx/1T+oL7XmztI3m1C0OnECZ842TImcxPg==}
     engines: {node: '>=20'}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
@@ -30591,7 +30591,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.27.0': {}
 
-  '@n8n_io/license-sdk@3.0.0':
+  '@n8n_io/license-sdk@3.1.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

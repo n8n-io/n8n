@@ -179,7 +179,7 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
-    "@n8n_io/license-sdk": "3.0.0",
+    "@n8n_io/license-sdk": "3.1.0",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/core": "2.10.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
