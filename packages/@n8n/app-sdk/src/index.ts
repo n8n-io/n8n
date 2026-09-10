@@ -197,7 +197,7 @@ export interface AgentChatOptions {
 
 /** One turn of the agent. The request starts on the first read; a second pass yields nothing. */
 export interface AgentChat extends AsyncIterable<AgentSseEvent> {
-	/** Drains the stream and returns the `text-delta` deltas joined. */
+	/** Drains the stream and returns the `text-delta` deltas joined; an `error` event throws `N8nAppError`. */
 	text(): Promise<string>;
 }
 
@@ -208,7 +208,7 @@ export interface AgentClient {
 		opts?: AgentChatOptions,
 	): AgentChat;
 	messages(sessionId?: string, opts?: { signal?: AbortSignal }): Promise<AgentChatMessagesResponse>;
-	/** The visitor's session for this agent, minted once and kept in `localStorage`. */
+	/** The visitor's session for this agent, minted once; it survives a reload in the same tab. */
 	sessionId(): string;
 }
 
@@ -377,7 +377,8 @@ async function* readSseEvents(response: Response): AsyncGenerator<AgentSseEvent>
 			}
 		}
 	} finally {
-		reader.releaseLock();
+		// A consumer that stops early must also close the HTTP body, not only the reader.
+		await reader.cancel().catch(() => undefined);
 	}
 }
 
@@ -392,6 +393,10 @@ function agentChat(start: () => Promise<Response>): AgentChat {
 			let text = '';
 			for await (const event of chat) {
 				if (event.type === 'text-delta') text += event.delta;
+				// The run's own failures arrive as an event on a 200 stream.
+				if (event.type === 'error') {
+					throw new N8nAppError(200, event.errorCode ?? 'execution_failed', event.message);
+				}
 			}
 			return text;
 		},
@@ -458,6 +463,60 @@ function tableClient<K extends TableKey>(key: K, baseUrl: string | undefined): T
 	};
 }
 
+/** A v4 uuid. `crypto.randomUUID` exists only in secure contexts. */
+function uuid(): string {
+	if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+		return crypto.randomUUID();
+	}
+	const bytes = new Uint8Array(16);
+	if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+		crypto.getRandomValues(bytes);
+	} else {
+		for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+	}
+	bytes[6] = (bytes[6] & 0x0f) | 0x40;
+	bytes[8] = (bytes[8] & 0x3f) | 0x80;
+	const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+interface SessionStore {
+	get(key: string): string | null;
+	set(key: string, value: string): void;
+}
+
+// `window.name` is shared with whatever else the page stores there, so the sessions
+// live in a JSON object under their own keys. Any other content is left untouched.
+function windowNameState(): Record<string, unknown> | undefined {
+	if (window.name === '') return {};
+	try {
+		const parsed: unknown = JSON.parse(window.name);
+		return isRecord(parsed) ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+// The served page runs on an opaque origin (CSP sandbox), where `localStorage` throws;
+// `window.name` still survives a reload of the tab. Each store throws to pass on the next.
+const sessionStores: SessionStore[] = [
+	{
+		get: (key) => localStorage.getItem(key),
+		set: (key, value) => localStorage.setItem(key, value),
+	},
+	{
+		get: (key) => {
+			const value = windowNameState()?.[key];
+			return typeof value === 'string' ? value : null;
+		},
+		set: (key, value) => {
+			const state = windowNameState();
+			if (!state) throw new Error('window.name holds other content');
+			window.name = JSON.stringify({ ...state, [key]: value });
+		},
+	},
+];
+
 function agentClient(key: string, baseUrl: string | undefined): AgentClient {
 	const routes = {
 		chat: `/agents/${encodeURIComponent(key)}/chat`,
@@ -465,24 +524,26 @@ function agentClient(key: string, baseUrl: string | undefined): AgentClient {
 		messages: (sessionId: string) =>
 			`/agents/${encodeURIComponent(key)}/messages?sessionId=${encodeURIComponent(sessionId)}`,
 	};
-	// A visitor blocked from localStorage (privacy mode, sandboxed iframe) keeps one
-	// session for the page's lifetime.
+	// A visitor without any store keeps one session for the page's lifetime.
 	let unstoredSessionId: string | undefined;
 	const sessionId = () => {
 		// The base URL always ends in `/apps/<namespace>/api`.
 		const segments = resolveBaseUrl(baseUrl).split('/').filter(Boolean);
 		const namespace = segments[segments.length - 2] ?? '';
 		const storageKey = `n8n-app:${namespace}:agent:${key}:session`;
-		try {
-			const stored = localStorage.getItem(storageKey);
-			if (stored) return stored;
-			const minted = crypto.randomUUID();
-			localStorage.setItem(storageKey, minted);
-			return minted;
-		} catch {
-			unstoredSessionId ??= crypto.randomUUID();
-			return unstoredSessionId;
+		for (const store of sessionStores) {
+			try {
+				const stored = store.get(storageKey);
+				if (stored) return stored;
+				const minted = uuid();
+				store.set(storageKey, minted);
+				return minted;
+			} catch {
+				continue;
+			}
 		}
+		unstoredSessionId ??= uuid();
+		return unstoredSessionId;
 	};
 	return {
 		chat: (message, opts) =>

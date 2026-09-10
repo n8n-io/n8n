@@ -104,6 +104,45 @@ describe('agents', () => {
 		await expect(client().agents.support.chat('hi').text()).resolves.toBe('Hello, world');
 	});
 
+	it('text() throws N8nAppError with the event code on an error event', async () => {
+		fetchMock.mockResolvedValue(
+			sseResponse([
+				dataLine({ type: 'text-delta', id: 't', delta: 'partial' }),
+				dataLine({ type: 'error', message: 'Checkpoint run-1 does not belong to this chat' }),
+			]),
+		);
+
+		const error = await client()
+			.agents.support.chat('hi')
+			.text()
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(N8nAppError);
+		expect(error).toMatchObject({
+			status: 200,
+			code: 'execution_failed',
+			message: 'Checkpoint run-1 does not belong to this chat',
+		});
+	});
+
+	it('cancels the response body when the consumer stops before the stream ends', async () => {
+		const cancel = vi.fn();
+		const encoder = new TextEncoder();
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(encoder.encode(dataLine({ type: 'start-step' })));
+			},
+			cancel,
+		});
+		fetchMock.mockResolvedValue(new Response(stream, { status: 200 }));
+
+		for await (const event of client().agents.support.chat('hi')) {
+			if (event.type === 'start-step') break;
+		}
+
+		expect(cancel).toHaveBeenCalledTimes(1);
+	});
+
 	it('skips a data line that is not JSON', async () => {
 		fetchMock.mockResolvedValue(sseResponse(['data: {not json\n\n', dataLine({ type: 'done' })]));
 
@@ -184,21 +223,55 @@ describe('agents', () => {
 		);
 	});
 
-	it('keeps one in-memory session when localStorage throws', () => {
-		vi.stubGlobal('localStorage', {
-			getItem: () => {
-				throw new DOMException('denied', 'SecurityError');
-			},
-			setItem: () => {
-				throw new DOMException('denied', 'SecurityError');
-			},
-		});
+	const deniedStorage = {
+		getItem: () => {
+			throw new DOMException('denied', 'SecurityError');
+		},
+		setItem: () => {
+			throw new DOMException('denied', 'SecurityError');
+		},
+	};
+
+	it('keeps the session in window.name when localStorage throws and reads it back', () => {
+		vi.stubGlobal('localStorage', deniedStorage);
+		const window = { name: JSON.stringify({ other: 'kept' }) };
+		vi.stubGlobal('window', window);
+
+		const first = client().agents.support.sessionId();
+
+		expect(first).toMatch(UUID);
+		expect(window.name).toBe(`{"other":"kept","n8n-app:help:agent:support:session":"${first}"}`);
+		expect(client().agents.support.sessionId()).toBe(first);
+	});
+
+	it('keeps one in-memory session when localStorage throws and window.name holds other text', () => {
+		vi.stubGlobal('localStorage', deniedStorage);
+		const window = { name: 'not json' };
+		vi.stubGlobal('window', window);
 		const { agents } = client();
 
 		const first = agents.support.sessionId();
 
 		expect(first).toMatch(UUID);
 		expect(agents.support.sessionId()).toBe(first);
+		expect(window.name).toBe('not json');
+	});
+
+	it('mints a v4 uuid without crypto.randomUUID', () => {
+		vi.stubGlobal('crypto', {
+			getRandomValues: (bytes: Uint8Array) => bytes.fill(0xff),
+		});
+
+		const first = client().agents.support.sessionId();
+
+		expect(first).toMatch(UUID);
+		expect(first).toBe('ffffffff-ffff-4fff-bfff-ffffffffffff');
+	});
+
+	it('mints a v4 uuid without crypto', () => {
+		vi.stubGlobal('crypto', undefined);
+
+		expect(client().agents.support.sessionId()).toMatch(UUID);
 	});
 
 	it('rethrows the abort error of the caller unchanged', async () => {
