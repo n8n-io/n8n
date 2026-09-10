@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { AppsConfig } from '@n8n/config';
 import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -13,6 +13,7 @@ import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { Header, type types } from 'tar';
 
+import { AppSourceEditBuildService } from '@/modules/apps/app-source-edit-build.service';
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
@@ -42,6 +43,12 @@ let appVersionRepository: AppVersionRepository;
 let pageRepository: PageRepository;
 let binaryDataRepository: BinaryDataRepository;
 let cacheRoot: string;
+
+// Mocked at module scope, before `setupTestServer`'s own `beforeAll` constructs
+// `AppsController` — a later `Container.set` wouldn't reach an already-injected
+// instance. The build pipeline itself (sandbox, restore, rebuild) is covered by
+// `app-source-edit-build.service.test.ts`; this only exercises the route.
+const appSourceEditBuildService = mockInstance(AppSourceEditBuildService);
 
 type TarEntry = {
 	path: string;
@@ -425,6 +432,152 @@ describe('AppsService.getSourceTarball', () => {
 	});
 });
 
+describe('GET /projects/:projectId/apps/:appId/versions/:versionId/files', () => {
+	const list = (appId: string, versionId: string) =>
+		authOwnerAgent.get(`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files`);
+
+	const readFile = (appId: string, versionId: string, filePath: string) =>
+		authOwnerAgent.get(
+			`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files/${filePath}`,
+		);
+
+	test('lists the paths of every file in the source', async () => {
+		const app = await createApp();
+		const multiFile = tgz([
+			{ path: './src/main.ts', content: 'export {};' },
+			{ path: './src/App.vue', content: '<template />' },
+			{ path: './package.json', content: '{}' },
+		]);
+		const { body } = await upload(app.id, multiFile).expect(200);
+
+		const response = await list(app.id, body.data.id).expect(200);
+
+		expect(response.body.data.sort()).toEqual(['package.json', 'src/App.vue', 'src/main.ts']);
+	});
+
+	test("returns a file's content", async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		const response = await readFile(app.id, body.data.id, 'src/main.ts').expect(200);
+
+		expect(response.body.data).toEqual({ content: 'export {};' });
+	});
+
+	test('returns 404 for a file that does not exist', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await readFile(app.id, body.data.id, 'nope.txt').expect(404);
+	});
+
+	test('never resolves a file outside the source directory', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await readFile(app.id, body.data.id, '..%2F..%2F..%2Fconfig').expect(404);
+	});
+
+	test('returns 404 for a version belonging to a different app', async () => {
+		const app = await createApp();
+		const otherApp = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const { body } = await upload(otherApp.id).expect(200);
+
+		await list(app.id, body.data.id).expect(404);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files`)
+			.expect(403);
+	});
+});
+
+describe('PUT /projects/:projectId/apps/:appId/versions/:versionId/files', () => {
+	beforeEach(() => appSourceEditBuildService.saveFile.mockReset());
+
+	const saveFile = (appId: string, versionId: string, filePath: string, content: string) =>
+		authOwnerAgent
+			.put(`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/files/${filePath}`)
+			.send({ content });
+
+	test('saves a file and returns the app', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		appSourceEditBuildService.saveFile.mockResolvedValue({
+			versionId: 'v-new',
+			url: 'http://localhost:5678/apps/hello/',
+		});
+
+		const response = await saveFile(
+			app.id,
+			body.data.id,
+			'src/main.ts',
+			'export const x = 1;',
+		).expect(200);
+
+		expect(appSourceEditBuildService.saveFile).toHaveBeenCalledWith(
+			app.id,
+			'src/main.ts',
+			'export const x = 1;',
+			expect.objectContaining({ id: owner.id }),
+		);
+		expect(response.body.data).toMatchObject({ id: app.id });
+	});
+
+	test('rejects a non-member with 403, without calling the build pipeline', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authMemberAgent
+			.put(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files/src/main.ts`)
+			.send({ content: 'x' })
+			.expect(403);
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('rejects the save on a protected instance with 403, without calling the build pipeline', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		const writeAccess = Container.get(InstanceWriteAccessService);
+		writeAccess.setReadOnly(true);
+
+		try {
+			await saveFile(app.id, body.data.id, 'src/main.ts', 'x').expect(403);
+		} finally {
+			writeAccess.setReadOnly(false);
+		}
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('rejects a save with no file path with 400', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+
+		await authOwnerAgent
+			.put(`/projects/${ownerProject.id}/apps/${app.id}/versions/${body.data.id}/files`)
+			.send({ content: 'x' })
+			.expect(400);
+		expect(appSourceEditBuildService.saveFile).not.toHaveBeenCalled();
+	});
+
+	test('surfaces a build failure as 400', async () => {
+		const app = await createApp();
+		const { body } = await upload(app.id).expect(200);
+		appSourceEditBuildService.saveFile.mockResolvedValue({
+			error: true,
+			message: 'Build failed: syntax error',
+		});
+
+		const response = await saveFile(app.id, body.data.id, 'src/main.ts', 'not valid(').expect(400);
+
+		expect(response.body.message).toContain('Build failed: syntax error');
+	});
+});
+
 describe('GET /apps/:namespace with an active version', () => {
 	test('redirects the bare namespace to the trailing-slash URL', async () => {
 		const app = await createApp();
@@ -560,14 +713,21 @@ describe('DELETE /projects/:projectId/apps/:appId', () => {
 		const app = await createApp();
 		const response = await upload(app.id).expect(200);
 		await visitor.get('/apps/hello/').expect(200);
-		const distDir = path.join(cacheRoot, response.body.data.id);
+		const versionId = response.body.data.id;
+		await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${versionId}/files`)
+			.expect(200);
+		const distDir = path.join(cacheRoot, versionId);
+		const sourceDir = path.join(path.dirname(cacheRoot), 'apps-source', versionId);
 		expect(existsSync(distDir)).toBe(true);
+		expect(existsSync(sourceDir)).toBe(true);
 		const [version] = await appVersionRepository.listByAppId(app.id);
 
 		await authOwnerAgent.delete(`/projects/${ownerProject.id}/apps/${app.id}`).expect(200);
 
 		expect(await appVersionRepository.listByAppId(app.id)).toHaveLength(0);
 		expect(existsSync(distDir)).toBe(false);
+		expect(existsSync(sourceDir)).toBe(false);
 		expect(await binaryDataRepository.findContentByFileId(version.sourceStorageKey)).toBeNull();
 		expect(await binaryDataRepository.findContentByFileId(version.distStorageKey!)).toBeNull();
 	});

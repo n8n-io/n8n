@@ -74,6 +74,7 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 					'<div data-test-id="app-theme-editor-stub" :data-thread-id="threadId" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
 			},
 			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
+			AppCodeViewer: { template: '<div data-test-id="app-code-viewer-stub" />' },
 		},
 	},
 });
@@ -695,6 +696,20 @@ describe('AppDetailsView', () => {
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
 
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+	});
+
+	it('shows the Code tab, enabled, and renders AppCodeViewer with the active version', async () => {
+		const { getByRole, getByTestId, queryByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7' }),
+		);
+		await userEvent.click(getByTestId('radio-button-build'));
+		const codeTab = getByRole('tab', { name: 'Code' });
+		expect(codeTab).not.toHaveAttribute('aria-disabled', 'true');
+		expect(queryByTestId('app-code-viewer-stub')).not.toBeInTheDocument();
+
+		await userEvent.click(codeTab);
+
+		expect(getByTestId('app-code-viewer-stub')).toBeInTheDocument();
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {

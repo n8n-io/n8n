@@ -26,6 +26,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import AppCodeViewer from '@/features/apps/components/AppCodeViewer.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import type { InspectedElement } from '@/features/apps/components/AppPreviewFrame.vue';
 import AppThemeEditor from '@/features/apps/components/AppThemeEditor.vue';
@@ -189,12 +190,7 @@ const buildTabOptions = computed(() => [
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
 	{ value: 'versions' as const, label: i18n.baseText('apps.builder.versions') },
-	{
-		value: 'code' as const,
-		label: i18n.baseText('apps.builder.code'),
-		disabled: true,
-		tooltip: i18n.baseText('apps.builder.codeComingSoon'),
-	},
+	{ value: 'code' as const, label: i18n.baseText('apps.builder.code') },
 ]);
 
 const showErrorAndGoBack = async (error: unknown) => {
@@ -392,6 +388,11 @@ const onPublishMenuSelect = async (action: PublishMenuAction) => {
 	} else {
 		await onUnpublish();
 	}
+};
+
+// Unlike a theme save, stay on the Code tab: the user is likely still editing.
+const onCodeSaved = (updated: App) => {
+	setApp(updated);
 };
 
 const onOpenInAssistant = async () => {
@@ -735,6 +736,15 @@ watch(
 						</N8nButton>
 					</div>
 				</div>
+
+				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
+					<AppCodeViewer
+						:project-id="projectId"
+						:app-id="appId"
+						:version-id="versionId"
+						@saved="onCodeSaved"
+					/>
+				</div>
 			</div>
 		</div>
 	</component>
@@ -879,6 +889,14 @@ watch(
 	gap: var(--spacing--sm);
 	width: 100%;
 	padding-bottom: var(--spacing--lg);
+}
+
+// Unlike the flowing Pages/Theme content, the tree + viewer need a bounded
+// height to fill so each can scroll on its own, the same way `.preview` does.
+.codeContainer {
+	flex: 1;
+	min-height: 0;
+	padding-bottom: var(--spacing--2xs);
 }
 
 .header {
