@@ -17,8 +17,7 @@ The build machine has 512 MiB of memory; exit code 134 (heap out of memory)
 or 137 (killed) means you exceeded it. For every framework:
 
 - The build script bundles only. Keep type checking out of it: no `vue-tsc`,
-  `tsc`, `svelte-check` or `astro check` in `build`. Put them in a separate
-  `typecheck` script and run it after you changed TypeScript.
+  `tsc`, `svelte-check` or `astro check` in `build`.
 - Do not import `@n8n/design-system` components (`N8n*`). Avoid other large
   component libraries (element-plus, MUI, Ant Design) for the same reason.
   Tailwind v4 (`tailwindcss` + `@tailwindcss/vite`, Rust engine) and `reka-ui`

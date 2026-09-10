@@ -54,12 +54,11 @@ also publish with the Publish button above the preview, without you.
    work: the live preview updates on its own. Never run a build to check your
    work. Tell the user what changed and stop; the preview shows it.
 3. Preview errors (compile errors, uncaught exceptions) arrive as context on
-   the user's next message. Fix them before anything else. Run
-   `npm run typecheck` in the app directory when you changed TypeScript. A
-   type error on `n8n.workflows.run` means the key or a field is not in
-   `src/n8n-bindings.d.ts`: read the `bind` result or call
-   `apps(action="bindings", appId)`, then fix the call or re-bind.
-   You cannot see the page: do not claim visual results.
+   the user's next message. Fix them before anything else. A
+   `binding_not_found` or `invalid_input` error from `n8n.workflows.run`
+   means the key or a field is not in `src/n8n-bindings.d.ts`: read the
+   `bind` result or call `apps(action="bindings", appId)`, then fix the call
+   or re-bind. You cannot see the page: do not claim visual results.
 4. Publish only when the user asks to publish, deploy, share or go live:
    `apps(action="publish", appId)`. The user sees a confirmation card first
    ("Publish <name> to /apps/<namespace>/") and can approve, decline, or
@@ -113,8 +112,7 @@ files; read `reason`.
   base-path settings. Publishing always runs `npm run build` and serves
   `dist/`, so the `build` script must write the static site there.
 - The build sandbox has 512 MiB of memory. Keep type checking out of the
-  build script (`npm run typecheck` is separate; run it after you changed
-  TypeScript).
+  build script.
 - Look: build UI from this skill's own catalog components (`Button`, `Input`,
   `Card`, `Dialog`, `Select`, `Tabs`, `Badge`, `Switch`, `Checkbox`, `Tooltip`,
   `DropdownMenu` — see `references/design-system.md` for the full catalog and

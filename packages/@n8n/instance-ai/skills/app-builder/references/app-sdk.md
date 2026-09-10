@@ -21,9 +21,8 @@ change, if ever needed, ships under a new path next to the existing one.
 A key is callable only after `apps(action="bind")`, which asks the user for
 approval: it exposes the workflow to everyone who can open the app. Bind also writes
 `src/n8n-bindings.d.ts`, a module augmentation of the SDK's `Bindings`
-interface. With it, `n8n.workflows.run` accepts only bound keys and checks the
-input fields when you run `npm run typecheck`; publishing bundles only and
-does not type-check.
+interface. With it, `n8n.workflows.run` accepts only bound keys and types the
+input fields, so read that file to see what each key expects.
 
 Generated file, for one workflow with declared fields and a typed output, and
 one passthrough workflow that has not run yet:
@@ -71,8 +70,8 @@ input (`executions(action="run", workflowId, inputData)`), then call
 regenerate the file. The shape reflects that one run; re-run `bindings` after
 changing the workflow.
 
-Before the first bind the file declares `workflows: {}`, so any `run` call
-fails `npm run typecheck`. That is the intended signal to bind first.
+Before the first bind the file declares `workflows: {}`: there is nothing to
+call yet, so bind first.
 
 ## API
 
@@ -137,7 +136,7 @@ class N8nAppError extends Error {
 | `code`                   | HTTP | Meaning and fix                                                                             |
 | ------------------------ | ---- | ------------------------------------------------------------------------------------------- |
 | `app_not_found`          | 404  | No app at this namespace. The base URL is wrong.                                            |
-| `binding_not_found`      | 404  | The key is not bound. Run `apps(action="bind")` (`npm run typecheck` would have caught this). |
+| `binding_not_found`      | 404  | The key is not bound. Run `apps(action="bind")` first. |
 | `workflow_not_found`     | 404  | The bound workflow was deleted or moved out of the project. Re-bind another one.            |
 | `workflow_not_published` | 409  | The workflow has no published version. Publish it in n8n; no app change needed.             |
 | `workflow_incompatible`  | 409  | The workflow lost its "When Executed by Another Workflow" trigger or gained a Form node.     |
