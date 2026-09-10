@@ -19,6 +19,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	ExecutionStatus,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -27,6 +28,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
@@ -81,8 +83,20 @@ const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30 * Time.seconds.toMilliseconds;
 const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1 * Time.seconds.toMilliseconds;
 
 /** Rechecks that fit in the grace window, on top of the first read */
-const MAX_STALLED_COUNT_RECHECK_ATTEMPTS =
-	MAX_STALLED_COUNT_GRACE_WINDOW_MS / MAX_STALLED_COUNT_RECHECK_INTERVAL_MS;
+const MAX_STALLED_COUNT_RECHECK_ATTEMPTS = Math.floor(
+	MAX_STALLED_COUNT_GRACE_WINDOW_MS / MAX_STALLED_COUNT_RECHECK_INTERVAL_MS,
+);
+
+/**
+ * Symmetric spread applied to each recheck delay (0.2 = plus or minus 20%). Correlated stalls
+ * put every affected execution on the same recheck cadence, so the delay is spread to keep
+ * them off a single lockstep read against an already unhealthy instance. Same convention as
+ * the scheduler timeline.
+ */
+const MAX_STALLED_COUNT_RECHECK_JITTER_RATIO = 0.2;
+
+/** Statuses a stored execution can still leave for `success` while the recheck loop runs */
+const RECHECKABLE_EXECUTION_STATUSES: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES;
 
 /**
  * Flush the response through the compression middleware.
@@ -141,9 +155,6 @@ export class WorkflowRunner {
 		) {
 			return;
 		}
-
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
 
 		const isQueueMode = this.executionsConfig.mode === 'queue';
 
@@ -244,11 +255,24 @@ export class WorkflowRunner {
 					return;
 				}
 
-				if (recheck === rechecks || Date.now() >= recheckUntil) break;
+				// Only an execution that is still in progress can still reach `success`. Every
+				// other status keeps its value, so stop rechecking and fail the run now.
+				const status = executionWithoutData?.status;
+				if (status === undefined || !RECHECKABLE_EXECUTION_STATUSES.includes(status)) break;
 
-				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS);
+				if (recheck >= rechecks || Date.now() >= recheckUntil) break;
+
+				const jitter =
+					MAX_STALLED_COUNT_RECHECK_INTERVAL_MS *
+					MAX_STALLED_COUNT_RECHECK_JITTER_RATIO *
+					(2 * Math.random() - 1);
+
+				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS + jitter);
 			}
 		}
+
+		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+		this.errorReporter.error(error, { executionId });
 
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
