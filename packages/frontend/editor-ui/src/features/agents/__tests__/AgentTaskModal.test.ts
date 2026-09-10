@@ -257,6 +257,63 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
+	it('waits for persistence before creating a task', async function waitForPersistence() {
+		let resolvePersistence!: () => void;
+		const persistence = new Promise<void>(function capturePersistenceResolver(resolve) {
+			resolvePersistence = resolve;
+		});
+		const ensureAgentPersisted = vi.fn().mockReturnValue(persistence);
+		createAgentTaskSpy.mockResolvedValue({});
+		const { getByTestId, onSaved } = renderModal({
+			isPublished: false,
+			ensureAgentPersisted,
+		});
+
+		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
+		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('agent-task-save')).toBeDisabled();
+
+		resolvePersistence();
+
+		await waitFor(function expectTaskSaved() {
+			expect(onSaved).toHaveBeenCalledOnce();
+		});
+		expect(createAgentTaskSpy).toHaveBeenCalledExactlyOnceWith(
+			{},
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'My Task', objective: 'Do the thing', enabled: true }),
+		);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	it('does not create a task when persistence fails', async function rejectFailedPersistence() {
+		const ensureAgentPersisted = vi.fn().mockRejectedValue(new Error('Agent could not be saved'));
+		const { getByTestId, getByText, onSaved } = renderModal({
+			isPublished: false,
+			ensureAgentPersisted,
+		});
+
+		await fireEvent.update(getByTestId('agent-task-name-input'), 'My Task');
+		await fireEvent.update(getByTestId('agent-task-objective-input'), 'Do the thing');
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		await waitFor(function expectPersistenceError() {
+			expect(getByText('Agent could not be saved')).toBeInTheDocument();
+		});
+		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
+		expect(createAgentTaskSpy).not.toHaveBeenCalled();
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getByTestId('agent-task-save')).toBeEnabled();
+	});
+
 	it('does not save when required fields are empty', async () => {
 		const { getByTestId } = renderModal();
 

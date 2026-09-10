@@ -272,6 +272,7 @@ describe('GlobalConfig', () => {
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
 				includeSsrfMetrics: false,
+				includeEncryptionMetrics: false,
 				includeDnsCacheMetrics: false,
 				includeWebhookMetrics: false,
 				includeFormMetrics: false,

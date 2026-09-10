@@ -142,7 +142,7 @@ function collectWorkspaceDeps(pkg: Record<string, unknown>, known: Set<string>):
 	for (const field of ['dependencies', 'devDependencies'] as const) {
 		const block = pkg[field];
 		if (!block || typeof block !== 'object') continue;
-		for (const name of Object.keys(block as Record<string, string>)) {
+		for (const name of Object.keys(block)) {
 			if (known.has(name)) deps.add(name);
 		}
 	}

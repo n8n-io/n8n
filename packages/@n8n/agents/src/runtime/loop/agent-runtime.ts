@@ -52,7 +52,6 @@ import type {
 	ResumeOptions,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
 import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
@@ -218,7 +217,12 @@ export class AgentRuntime {
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
-			this.deferredToolManager = new DeferredToolManager(config.deferredTools, config.toolSearch);
+			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
+				...config.toolSearch,
+				// Let the discovery tools recognize the always-available toolset, so a
+				// `load_tool` call for one of those answers `already_loaded`.
+				activeTools: config.tools,
+			});
 		}
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
@@ -403,7 +407,7 @@ export class AgentRuntime {
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
-			resumeData = parseResult.data as JSONValue;
+			resumeData = parseResult.data;
 		}
 
 		try {

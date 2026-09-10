@@ -29,7 +29,11 @@ mcpServerMiddlewareService.getEnabledMiddleware.mockReturnValue(mockEnabledMiddl
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
-import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import {
+	MCP_CLIENT_INFO_META_KEY,
+	MCP_DISCOVER_METHOD,
+	MCP_PROTOCOL_VERSION_META_KEY,
+} from '../mcp.constants';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
@@ -406,6 +410,49 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: true },
+		);
+	});
+
+	// The 2026-07-28 revision drops `initialize`, so a modern client opens with
+	// `server/discover`. It is the other branch of `isConnectionHandshake`, and the
+	// one that has to reach `getServer` for the handshake-only reads to happen.
+	test('forwards server/discover to getServer as the connection handshake', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
+			aiPreferencesEnabled: true,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					id: 1,
+					method: MCP_DISCOVER_METHOD,
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '1.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			expect.objectContaining({ aiPreferencesEnabled: true }),
+			{ name: 'Claude', version: '1.0.0' },
+			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: true },
 		);
 	});
 
@@ -439,6 +486,7 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: false },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -472,6 +520,7 @@ describe('McpController', () => {
 				caller: { authType: 'oauth', clientId: 'client-abc' },
 				grantedScopes: ['workflow:read'],
 			},
+			{ isConnectionHandshake: false },
 		);
 	});
 

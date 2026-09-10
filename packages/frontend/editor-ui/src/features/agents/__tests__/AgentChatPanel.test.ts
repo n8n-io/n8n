@@ -80,6 +80,26 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useMessage', function mockUseMessage() {
+	return {
+		useMessage: function useMessage() {
+			return { confirm: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { deleteThread: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+	return { default: { template: '<button />' } };
+});
+
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
 		isEnabled: false,
@@ -181,6 +201,36 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: '  Hello  ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '\n**Welcome**\n', status: 'success' },
+			{ id: 'assistant-2', role: 'assistant', content: ' \n ', status: 'success' },
+			{ id: 'user-2', role: 'user', content: 'Next question', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe(
+			'**User:**\n\nHello\n\n---\n\n**Agent:**\n\n**Welcome**\n\n---\n\n**User:**\n\nNext question',
+		);
+	});
+
+	it('returns empty markdown without messages', function formatsEmptyConversation() {
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
+
+	it('returns empty markdown when messages contain only whitespace', function skipsBlankMessages() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: ' \n\t ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
 
 	it('uses the live agent name in the normal chat placeholder', async () => {
 		const wrapper = mountPanel();

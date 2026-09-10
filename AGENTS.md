@@ -41,6 +41,13 @@ frontend, and extensible node-based workflow engine.
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
+  PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
+  parsing, …), you MUST check the shared packages for an existing
+  implementation and use it: `@n8n/utils` (generic helpers, redaction),
+  `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
+  (workflow graph and traversal). A new shared helper usually belongs in one of
+  these packages too; domain logic stays in the package that owns the domain.
 
 ## Agent Skills and Claude Code Plugin
 
@@ -153,7 +160,7 @@ The monorepo is organized into these key packages:
 - **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
-- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
+- **`packages/@n8n/instance-ai`**: "n8n Assistant" in the UI, "Instance AI" in code — n8n Assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 

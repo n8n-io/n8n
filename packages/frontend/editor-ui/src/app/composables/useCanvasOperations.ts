@@ -945,7 +945,7 @@ export function useCanvasOperations() {
 		);
 
 		// Pinning copies the displayed output; when that output was simulated by
-		// the AI Assistant during verification it is fabricated sample data, so
+		// the n8n Assistant during verification it is fabricated sample data, so
 		// adopting it needs the same explicit opt-in as the NDV pin button.
 		if (nextStatePinned) {
 			const displayedExecutionId = useWorkflowExecutionStateStore(

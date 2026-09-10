@@ -289,7 +289,7 @@ export class AgentMessageList {
 		const host = this.findToolCallHost(toolCallId);
 		if (!host) return;
 		const block = this.findToolCallBlock(host, toolCallId);
-		if (!block || block.state !== 'pending') return;
+		if (block?.state !== 'pending') return;
 		block.suspension = suspension;
 	}
 
