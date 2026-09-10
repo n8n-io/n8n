@@ -291,6 +291,7 @@ describe('AppDetailsView', () => {
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
 			initialDraft: 'Update the page at "/clients/:id" in this app.',
 		});
+	});
 
 	it('shows the Code tab, enabled, and renders AppCodeViewer with the active version', async () => {
 		const { getByRole, getByTestId, queryByTestId } = await renderApp(
