@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
@@ -15,6 +16,8 @@ export interface ToolSuspendOptions {
 }
 
 export interface ToolExecutionContext {
+	/** Load and retain instructions from this run's selected skill catalog. */
+	loadSkill?: RuntimeSkillLoader;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/**
@@ -52,6 +55,7 @@ export interface ToolExecutionContext {
 }
 
 export interface ToolContext {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Exact model-facing name of the tool being executed. */
@@ -71,6 +75,7 @@ export interface ToolContext {
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals

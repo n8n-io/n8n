@@ -310,14 +310,17 @@ what catch a clean-up that kept the shape but lost the point.
 
 You don't need to do these by hand:
 
-- **Credential references on nodes are dropped as the seed loads.** The case's own
-  `credentials[]` decides what the assistant can see, and a credential's display name
-  goes with the reference.
+- **Credential references on nodes resolve against the case's `credentials[]` as the
+  seed loads.** A reference is kept only when exactly one seeded credential has that
+  type and display name; any other reference is dropped. On a `published: true`
+  workflow an unresolved reference fails the restore instead.
 - **Data tables are columns only.** The seed format has no place for rows, and a
   `rows` key is rejected rather than quietly removed — so table contents can't come
   along by accident.
-- **A seed workflow is only `id`, `name`, `nodes` and `connections`.** Pinned example
-  data, instance metadata and settings never travel.
+- **A seed workflow is only `id`, `name`, `nodes`, `connections` and an optional
+  `published` flag.** `published: true` activates the workflow on restore, the way the
+  user's publish left it. Pinned example data, instance metadata and settings never
+  travel.
 - **Ids and workflow names are per run.** Ids are replaced with fresh ones and names
   get a `[seed <8hex>]` suffix, with mentions updated in the prose — though not inside
   node definitions or recorded tool calls.

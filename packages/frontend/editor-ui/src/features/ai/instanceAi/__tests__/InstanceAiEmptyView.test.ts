@@ -493,7 +493,7 @@ describe('InstanceAiEmptyView', () => {
 
 		renderView();
 
-		expect(document.title).toBe('AI Assistant - n8n');
+		expect(document.title).toBe('n8n Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {

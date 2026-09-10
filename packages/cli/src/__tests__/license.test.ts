@@ -54,6 +54,7 @@ describe('License', () => {
 			expect.objectContaining({
 				autoRenewEnabled: true,
 				autoRenewOffset: MOCK_RENEW_OFFSET,
+				autoRenewTimer: false,
 				offlineMode: false,
 				renewOnInit: true,
 				deviceFingerprint: expect.any(Function),
@@ -83,8 +84,9 @@ describe('License', () => {
 		await license.init();
 		expect(LicenseManager).toHaveBeenCalledWith(
 			expect.objectContaining({
-				autoRenewEnabled: false,
+				autoRenewEnabled: true,
 				autoRenewOffset: MOCK_RENEW_OFFSET,
+				autoRenewTimer: false,
 				offlineMode: true,
 				renewOnInit: false,
 				deviceFingerprint: expect.any(Function),
@@ -125,6 +127,12 @@ describe('License', () => {
 		await license.renew();
 
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
+	});
+
+	test('runs one auto-renewal pass through the SDK', async () => {
+		await license.renewIfDue();
+
+		expect(LicenseManager.prototype.renewIfDue).toHaveBeenCalledTimes(1);
 	});
 
 	test('check if feature is enabled', () => {
@@ -462,26 +470,29 @@ describe('License', () => {
 				isLeader: false,
 				autoRenewalEnabled: false,
 			},
-		])('$scenario, should disable renewal', async ({ isLeader, autoRenewalEnabled }) => {
-			const globalConfig = mock<GlobalConfig>({
-				license: { ...licenseConfig, autoRenewalEnabled },
-			});
+		])(
+			'$scenario, should renew on init only as leader with auto-renewal on',
+			async ({ isLeader, autoRenewalEnabled }) => {
+				const globalConfig = mock<GlobalConfig>({
+					license: { ...licenseConfig, autoRenewalEnabled },
+				});
 
-			await new License(
-				mockLogger(),
-				mock<InstanceSettings>({ instanceType: 'main', isLeader }),
-				mock(),
-				mock(),
-				globalConfig,
-			).init();
+				await new License(
+					mockLogger(),
+					mock<InstanceSettings>({ instanceType: 'main', isLeader }),
+					mock(),
+					mock(),
+					globalConfig,
+				).init();
 
-			const expectedRenewalSettings =
-				isLeader && autoRenewalEnabled
-					? { autoRenewEnabled: true, renewOnInit: true }
-					: { autoRenewEnabled: false, renewOnInit: false };
-
-			expect(LicenseManager).toHaveBeenCalledWith(expect.objectContaining(expectedRenewalSettings));
-		});
+				expect(LicenseManager).toHaveBeenCalledWith(
+					expect.objectContaining({
+						autoRenewEnabled: autoRenewalEnabled,
+						renewOnInit: isLeader && autoRenewalEnabled,
+					}),
+				);
+			},
+		);
 
 		it('when CLI command with N8N_LICENSE_AUTO_RENEW_ENABLED=true, should enable renewal', async () => {
 			const globalConfig = mock<GlobalConfig>({

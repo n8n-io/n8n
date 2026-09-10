@@ -218,7 +218,7 @@ export const keycloak: Service<KeycloakResult> = {
 
 	getOptions(ctx) {
 		const port = ctx.allocatedPorts.loadBalancer ?? ctx.allocatedPorts.main;
-		return { n8nCallbackUrl: `http://localhost:${port}/rest/sso/oidc/callback` } as KeycloakConfig;
+		return { n8nCallbackUrl: `http://localhost:${port}/rest/sso/oidc/callback` };
 	},
 
 	async verifyFromN8n(result, n8nContainers) {

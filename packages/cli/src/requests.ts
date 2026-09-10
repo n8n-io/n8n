@@ -243,19 +243,6 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			lastId?: string;
-			projectId?: string;
-			state?: 'empty';
-		}
-	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;

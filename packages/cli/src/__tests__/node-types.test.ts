@@ -478,11 +478,18 @@ describe('NodeTypes', () => {
 	});
 
 	describe('getWithSourcePath', () => {
-		it('should return description and source path for existing node', () => {
+		it('should return description and the resolved source path for existing node', () => {
+			const resolvedPath = '/nodes-base/dist/nodes/NonVersioned/NonVersioned.node.js';
+			loadNodesAndCredentials.resolveNodeSourcePath.mockReturnValueOnce(resolvedPath);
+
 			const result = nodeTypes.getWithSourcePath('n8n-nodes-base.nonVersioned', 1);
+
 			expect(result).toHaveProperty('description');
-			expect(result).toHaveProperty('sourcePath');
-			expect(result.sourcePath).toBe(nonVersionedNode.sourcePath);
+			expect(result.sourcePath).toBe(resolvedPath);
+			expect(loadNodesAndCredentials.resolveNodeSourcePath).toHaveBeenCalledWith(
+				'n8n-nodes-base.nonVersioned',
+				nonVersionedNode.sourcePath,
+			);
 		});
 
 		it('should throw error for non-existent node', () => {

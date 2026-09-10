@@ -108,6 +108,10 @@ describe('EngineControlPlaneServer', () => {
 			'a token signed with a different secret',
 			mintActionToken('b'.repeat(32), 'lifecycle-events:write'),
 		],
+		[
+			'an action token minted for credential reads',
+			mintActionToken(authSecret, 'credentials:read'),
+		],
 	])('rejects %s', async (_label, token) => {
 		const response = await post({ events }, token);
 

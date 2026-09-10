@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The ID of the promotion connection.
-    name: id
+    name: promotionConnectionId
     in: path
 requestBody:
   required: true
@@ -40,8 +40,12 @@ responses:
           properties:
             connectionId:
               type: string
+              minLength: 1
+              maxLength: 36
             configId:
               type: string
+              minLength: 1
+              maxLength: 36
             counts:
               type: object
               properties:

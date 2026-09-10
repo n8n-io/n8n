@@ -1,10 +1,4 @@
-import {
-	AddUsersToProjectDto,
-	ChangeUserRoleInProject,
-	CreateProjectDto,
-	DeleteProjectDto,
-	UpdateProjectWithRelationsDto,
-} from '@n8n/api-types';
+import { AddUsersToProjectDto, ChangeUserRoleInProject } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
@@ -24,14 +18,9 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
 
-type GetAll = PaginatedRequest;
-type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;
+type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & PaginatedRequest;
 
 type ProjectHandlers = {
-	createProject: PublicAPIEndpoint<AuthenticatedRequest>;
-	updateProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	deleteProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
-	getProjects: PublicAPIEndpoint<GetAll>;
 	getProjectUsers: PublicAPIEndpoint<GetProjectUsersRequest>;
 	addUsersToProject: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	changeUserRoleInProject: PublicAPIEndpoint<
@@ -52,79 +41,6 @@ async function assertProjectRolesNotManaged() {
 }
 
 const projectHandlers: ProjectHandlers = {
-	createProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:create' }),
-		async (req, res) => {
-			const payload = CreateProjectDto.safeParse(req.body);
-			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
-			}
-
-			const projectService = Container.get(ProjectService);
-
-			const project = await projectService.createTeamProject(req.user, payload.data);
-
-			const scopes = await projectService.getProjectScopesForUser(req.user, project.id);
-
-			return res.status(201).json({ ...project, role: 'project:admin', scopes });
-		},
-	],
-	updateProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
-		async (req, res) => {
-			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
-			if (payload.error) {
-				throw new BadRequestError(payload.error.errors[0].message);
-			}
-
-			const { projectId } = req.params;
-			await Container.get(ProjectService).updateProject(req.user, projectId, payload.data);
-
-			return res.status(204).send();
-		},
-	],
-	deleteProject: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:delete' }),
-		async (req, res) => {
-			const query = DeleteProjectDto.safeParse(req.query);
-			if (query.error) {
-				throw new BadRequestError(query.error.errors[0].message);
-			}
-
-			const { projectId } = req.params;
-			const { transferId } = query.data;
-			await Container.get(ProjectService).deleteProject(req.user, projectId, {
-				migrateToProject: transferId,
-			});
-
-			return res.status(204).send();
-		},
-	],
-	getProjects: [
-		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:list' }),
-		validCursor,
-		async (req, res) => {
-			const { offset = 0, limit = 100 } = req.query;
-
-			const { projects, count } = await Container.get(ProjectService).getProjectsAndCount({
-				offset,
-				limit,
-			});
-
-			return res.json({
-				data: projects,
-				nextCursor: encodeNextCursor({
-					offset,
-					limit,
-					numberOfTotalRecords: count,
-				}),
-			});
-		},
-	],
 	getProjectUsers: [
 		isLicensed('feat:projectRole:admin'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
