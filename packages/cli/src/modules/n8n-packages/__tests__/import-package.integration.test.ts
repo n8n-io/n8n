@@ -1105,7 +1105,7 @@ describe('Package import rejection cases', () => {
 		).rejects.toThrow(BadRequestError);
 	});
 
-	it('rejects a workflow without its lifecycle file', async () => {
+	it('rejects a workflow without its metadata file', async () => {
 		const owner = await createOwner();
 
 		await expect(
@@ -1113,13 +1113,13 @@ describe('Package import rejection cases', () => {
 				user: owner,
 				packageBuffer: await buildImportPackageBuffer(
 					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
-					{ workflowLifecycle: 'omit' },
+					{ workflowMetadata: 'omit' },
 				),
 			}),
-		).rejects.toThrow(/lifecycle file is missing at workflows\/wf-0\/workflow-lifecycle\.json/);
+		).rejects.toThrow(/metadata file is missing at workflows\/wf-0\/workflow-metadata\.json/);
 	});
 
-	it('rejects a workflow whose lifecycle file does not match the schema', async () => {
+	it('rejects a workflow whose metadata file does not match the schema', async () => {
 		const owner = await createOwner();
 
 		await expect(
@@ -1127,10 +1127,10 @@ describe('Package import rejection cases', () => {
 				user: owner,
 				packageBuffer: await buildImportPackageBuffer(
 					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
-					{ workflowLifecycle: { isArchived: false } },
+					{ workflowMetadata: { publishedVersionId: '' } },
 				),
 			}),
-		).rejects.toThrow(/lifecycle file at workflows\/wf-0\/workflow-lifecycle\.json failed schema/);
+		).rejects.toThrow(/metadata file at workflows\/wf-0\/workflow-metadata\.json failed schema/);
 	});
 
 	it('rejects when the requested projectId does not exist', async () => {
