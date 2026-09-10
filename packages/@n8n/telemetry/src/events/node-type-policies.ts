@@ -31,7 +31,7 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 	USER_SAVED_NODE_TYPE_POLICY: {
 		name: 'User saved node type policy',
 		description:
-			'A node type availability policy was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately.',
+			'A node type availability policy was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy.',
 		properties: z.object({
 			user_id: userId,
 			source,
@@ -50,6 +50,25 @@ export const NODE_TYPE_POLICIES_TELEMETRY = defineTelemetryEvents({
 			...ruleCounts,
 			name_selector_count: z.number().describe('Rules that target one exact node type name'),
 			package_selector_count: z.number().describe('Rules that target a whole node package'),
+			evaluated_type_count: z
+				.number()
+				.describe('Node types this instance knows, and so the denominator for the counts below'),
+			blocked_type_count: z.number(),
+			allowed_type_count: z.number(),
+			delegated_type_count: z
+				.number()
+				.describe('Types a project can opt into; always 0 at project scope'),
+			listed_types: z
+				.array(z.string())
+				.describe(
+					'The named node types on whichever side listed_types_side reports, capped at 100. Node type names, not user data',
+				),
+			listed_types_side: z
+				.enum(['blocked', 'allowed'])
+				.describe(
+					'Which side listed_types names. The shorter side is sent: blocked under an allow-by-default policy, allowed under a deny-by-default one',
+				),
+			listed_types_truncated: z.boolean().describe('Whether the cap dropped names from the list'),
 			previous_rule_count: z.number().nullable().describe('Null on the first write to this scope'),
 			shadow_warning_count: z
 				.number()

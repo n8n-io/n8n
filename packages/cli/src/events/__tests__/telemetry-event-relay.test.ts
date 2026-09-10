@@ -679,6 +679,19 @@ describe('TelemetryEventRelay', () => {
 			selector: { kind: 'name', value: 'n8n-nodes-base.code' },
 		};
 
+		const knownTypes = (...names: string[]) =>
+			Object.fromEntries(names.map((name) => [name, {}])) as ReturnType<NodeTypes['getKnownTypes']>;
+
+		beforeEach(() => {
+			nodeTypes.getKnownTypes.mockReturnValue(
+				knownTypes(
+					'n8n-nodes-base.code',
+					'n8n-nodes-base.executeCommand',
+					'@acme/n8n-nodes-acme.thing',
+				),
+			);
+		});
+
 		it('should track a first instance-scope save', () => {
 			const event: RelayEventMap['node-type-policy-saved'] = {
 				updatedBy: 'user123',
@@ -709,6 +722,13 @@ describe('TelemetryEventRelay', () => {
 					delegate_rule_count: 1,
 					name_selector_count: 2,
 					package_selector_count: 1,
+					evaluated_type_count: 3,
+					blocked_type_count: 2,
+					allowed_type_count: 1,
+					delegated_type_count: 0,
+					listed_types: ['n8n-nodes-base.code'],
+					listed_types_side: 'allowed',
+					listed_types_truncated: false,
 					previous_rule_count: null,
 					shadow_warning_count: 2,
 					version: 1,
@@ -832,6 +852,109 @@ describe('TelemetryEventRelay', () => {
 					rule_count: 0,
 					deny_rule_count: 0,
 					previous_rule_count: 2,
+				}),
+			);
+		});
+
+		it('should list the blocked types when the policy allows by default', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [denyRule],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					blocked_type_count: 1,
+					allowed_type_count: 2,
+					listed_types: ['n8n-nodes-base.executeCommand'],
+					listed_types_side: 'blocked',
+				}),
+			);
+		});
+
+		it('should expand a package rule into the types it actually blocks', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [{ ...allowPackageRule, action: 'deny' }],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					rule_count: 1,
+					blocked_type_count: 2,
+					allowed_type_count: 1,
+				}),
+			);
+		});
+
+		it('should cap the listed types and flag that it did', () => {
+			const names = Array.from({ length: 250 }, (_, i) => `n8n-nodes-base.node${i}`);
+			nodeTypes.getKnownTypes.mockReturnValue(knownTypes(...names));
+
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: names.slice(0, 120).map((name, i) => ({
+					id: `allow-${i}`,
+					action: 'allow' as const,
+					selector: { kind: 'name' as const, value: name },
+				})),
+				warningCount: 0,
+			});
+
+			const properties = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1];
+			expect(properties).toMatchObject({
+				evaluated_type_count: 250,
+				allowed_type_count: 120,
+				blocked_type_count: 130,
+				listed_types_side: 'allowed',
+				listed_types_truncated: true,
+			});
+			expect(properties?.listed_types).toHaveLength(100);
+		});
+
+		it('should report an empty list when nothing is on the shorter side', () => {
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'node-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'deny', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.NODE_TYPE_POLICIES.USER_SAVED_NODE_TYPE_POLICY,
+				expect.objectContaining({
+					blocked_type_count: 3,
+					allowed_type_count: 0,
+					listed_types: [],
+					listed_types_side: 'allowed',
+					listed_types_truncated: false,
 				}),
 			);
 		});

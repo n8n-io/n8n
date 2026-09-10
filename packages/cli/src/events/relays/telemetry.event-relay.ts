@@ -39,7 +39,11 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import { partitionTypesByAction } from '@/modules/type-availability-policies/policy-evaluator';
+import type {
+	PolicyAction,
+	PolicyRule,
+} from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
 
 import { EventRelay } from './event-relay';
@@ -83,6 +87,40 @@ function countRuleActions(rules: readonly PolicyRule[]) {
 		allow_rule_count: rules.filter((rule) => rule.action === 'allow').length,
 		deny_rule_count: rules.filter((rule) => rule.action === 'deny').length,
 		delegate_rule_count: rules.filter((rule) => rule.action === 'delegate').length,
+	};
+}
+
+/**
+ * Node type names are cheap to send but a default-deny policy blocks nearly every known type,
+ * so the full list would blow the 32 KB payload cap and say nothing. Cap it.
+ */
+const MAX_LISTED_POLICY_TYPES = 100;
+
+/**
+ * What a saved policy makes of every node type this instance knows. Runs the same evaluation
+ * the node panel runs, once per save rather than once per workflow open.
+ */
+function summarizeTypeAvailability(
+	rules: readonly PolicyRule[],
+	defaultAction: PolicyAction,
+	typeNames: readonly string[],
+) {
+	const partition = partitionTypesByAction(rules, defaultAction, typeNames);
+
+	// Report whichever side is shorter: under allow-by-default the blocked types are the
+	// signal, under deny-by-default the handful of allowed ones are.
+	const side: 'blocked' | 'allowed' =
+		partition.deny.length <= partition.allow.length ? 'blocked' : 'allowed';
+	const listed = side === 'blocked' ? partition.deny : partition.allow;
+
+	return {
+		evaluated_type_count: typeNames.length,
+		blocked_type_count: partition.deny.length,
+		allowed_type_count: partition.allow.length,
+		delegated_type_count: partition.delegate.length,
+		listed_types: listed.slice(0, MAX_LISTED_POLICY_TYPES),
+		listed_types_side: side,
+		listed_types_truncated: listed.length > MAX_LISTED_POLICY_TYPES,
 	};
 }
 
@@ -512,6 +550,11 @@ export class TelemetryEventRelay extends EventRelay {
 			is_first_write: before === null,
 			...countRuleActions(rulesAfter),
 			...countSelectorKinds(rulesAfter),
+			...summarizeTypeAvailability(
+				rulesAfter,
+				after.defaultAction,
+				Object.keys(this.nodeTypes.getKnownTypes()),
+			),
 			previous_rule_count: rulesBefore?.length ?? null,
 			shadow_warning_count: warningCount,
 			version: after.version,
