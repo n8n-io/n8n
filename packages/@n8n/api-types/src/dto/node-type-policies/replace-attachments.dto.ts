@@ -1,5 +1,6 @@
-import { Z } from '@n8n/api-types';
 import { z } from 'zod';
+
+import { Z } from '../../zod-class';
 
 const policyAttachmentInputSchema = z.object({
 	policyId: z.string().min(1),

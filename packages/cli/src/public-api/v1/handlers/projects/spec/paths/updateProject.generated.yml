@@ -1,0 +1,50 @@
+operationId: updateProject
+tags:
+  - Projects
+summary: Update a project
+description: Update a project on your instance.
+x-required-scope: project:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 255
+            example: Marketing
+          id:
+            type: string
+            readOnly: true
+          type:
+            type: string
+            readOnly: true
+        required:
+          - name
+        additionalProperties: false
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

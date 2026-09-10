@@ -31,12 +31,22 @@ paths:
   /executions/{executionId}/retry:
     post:
       $ref: ./handlers/executions/spec/paths/retryExecution.generated.yml
+  /projects:
+    get:
+      $ref: ./handlers/projects/spec/paths/getProjects.generated.yml
+    post:
+      $ref: ./handlers/projects/spec/paths/createProject.generated.yml
+  /projects/{projectId}:
+    put:
+      $ref: ./handlers/projects/spec/paths/updateProject.generated.yml
+    delete:
+      $ref: ./handlers/projects/spec/paths/deleteProject.generated.yml
   /promotions/providers:
     post:
       $ref: ./handlers/promotions/spec/paths/createPromotionProvider.generated.yml
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionProviders.generated.yml
-  /promotions/providers/{id}:
+  /promotions/providers/{promotionProviderId}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionProvider.generated.yml
     put:
@@ -48,40 +58,40 @@ paths:
       $ref: ./handlers/promotions/spec/paths/createPromotionConnection.generated.yml
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionConnections.generated.yml
-  /promotions/connections/{id}:
+  /promotions/connections/{promotionConnectionId}:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionConnection.generated.yml
     put:
       $ref: ./handlers/promotions/spec/paths/updatePromotionConnection.generated.yml
     delete:
       $ref: ./handlers/promotions/spec/paths/deletePromotionConnection.generated.yml
-  /promotions/connections/{id}/configs/apply:
+  /promotions/connections/{promotionConnectionId}/configs/apply:
     put:
       $ref: ./handlers/promotions/spec/paths/upsertPromotionApplyConfig.generated.yml
-  /promotions/connections/{id}/configs/promote:
+  /promotions/connections/{promotionConnectionId}/configs/promote:
     put:
       $ref: ./handlers/promotions/spec/paths/upsertPromotionPromoteConfig.generated.yml
-  /promotions/connections/{id}/configs/{direction}:
+  /promotions/connections/{promotionConnectionId}/configs/{direction}:
     delete:
       $ref: ./handlers/promotions/spec/paths/deletePromotionConfig.generated.yml
-  /promotions/connections/{id}/{direction}/clone:
+  /promotions/connections/{promotionConnectionId}/{direction}/clone:
     post:
       $ref: ./handlers/promotions/spec/paths/clonePromotionCheckout.generated.yml
-  /promotions/connections/{id}/{direction}/disconnect:
+  /promotions/connections/{promotionConnectionId}/{direction}/disconnect:
     post:
       $ref: ./handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
-  /promotions/connections/{id}/projects:
+  /promotions/connections/{promotionConnectionId}/projects:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionConnectionProjects.generated.yml
-  /promotions/connections/{id}/projects/{projectId}:
+  /promotions/connections/{promotionConnectionId}/projects/{projectId}:
     post:
       $ref: ./handlers/promotions/spec/paths/addProjectToPromotionConnection.generated.yml
     delete:
       $ref: ./handlers/promotions/spec/paths/removeProjectFromPromotionConnection.generated.yml
-  /promotions/connections/{id}/promote:
+  /promotions/connections/{promotionConnectionId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promotePackage.generated.yml
-  /promotions/connections/{id}/apply:
+  /promotions/connections/{promotionConnectionId}/apply:
     post:
       $ref: ./handlers/promotions/spec/paths/applyPackage.generated.yml
   /role-mapping-rules:

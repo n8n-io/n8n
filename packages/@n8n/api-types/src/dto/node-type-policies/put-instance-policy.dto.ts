@@ -1,7 +1,7 @@
-import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { policyActionSchema, policyRuleListSchema } from './policy-rule.schema';
+import { Z } from '../../zod-class';
 
 /** Request body for setting the composed instance policy. */
 export class PutInstancePolicyDto extends Z.class({

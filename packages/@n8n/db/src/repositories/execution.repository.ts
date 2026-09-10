@@ -524,8 +524,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
-				if (conditions?.requireNotCanceled)
-					whereCondition.status = Not('canceled') as FindOperator<ExecutionStatus>;
+				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;
