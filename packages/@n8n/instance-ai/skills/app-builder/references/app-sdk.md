@@ -21,8 +21,8 @@ change, if ever needed, ships under a new path next to the existing one.
 A key is callable only after `apps(action="bind")`, which asks the user for
 approval: it exposes the workflow to everyone who can open the app. Bind also writes
 `src/n8n-bindings.d.ts`, a module augmentation of the SDK's `Bindings`
-interface. With it, `n8n.workflows.run` accepts only bound keys and types the
-input fields, so read that file to see what each key expects.
+interface, so `n8n.workflows.run` is typed for the bound keys and their
+input fields.
 
 Generated file, for one workflow with declared fields and a typed output, and
 one passthrough workflow that has not run yet:
