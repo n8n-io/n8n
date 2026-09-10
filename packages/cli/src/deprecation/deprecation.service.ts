@@ -128,10 +128,8 @@ export class DeprecationService {
 		},
 		{
 			envVar: 'N8N_WORKFLOW_TAGS_DISABLED',
-			message:
-				'Disabling workflow tags is deprecated. Tags will always be enabled in a future version and this environment variable will be removed, so the tags feature will become visible again after upgrading.',
-			checkValue: (value?: string) =>
-				value !== undefined && ['true', '1'].includes(value.toLowerCase()),
+			message: SAFE_TO_REMOVE,
+			checkValue: (value?: string) => value !== undefined,
 		},
 		{
 			envVar: 'N8N_OUTBOUND_PROXY_MODE',

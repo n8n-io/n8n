@@ -8,10 +8,9 @@ import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
+const makeGlobalConfig = ({ builderEnabled = true } = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
-		tags: { disabled: tagsDisabled },
 	}) as unknown as GlobalConfig;
 
 describe('McpProtectedResource', () => {
@@ -53,7 +52,7 @@ describe('McpProtectedResource', () => {
 				urlService,
 				mcpSettingsService,
 				mcpConfig,
-				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
+				makeGlobalConfig({ builderEnabled: false }),
 				moduleRegistry,
 				licenseState,
 			);
@@ -69,8 +68,6 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:read']).toEqual([]);
 			expect(scopeTools['agent:read']).toBeUndefined();
 			expect(scopeTools['agent:write']).toBeUndefined();
-			// list_workflow_tags is hidden when tags are disabled
-			expect(scopeTools['tag:read']).toEqual([]);
 		});
 
 		it('should drop folder tools when folders are not licensed', () => {
