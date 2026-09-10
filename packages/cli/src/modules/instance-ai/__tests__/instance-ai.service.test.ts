@@ -4003,6 +4003,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 
 	it('does not acquire local ownership when checkpoint claiming returns an error stream', async () => {
 		const service = createTerminalGuardOrderService();
+		service.runState.getPromptConfiguration.mockReturnValue({ version: 'progressive@1' });
 		const abortController = new AbortController();
 		const suspendedTracing = { id: 'suspended-trace' };
 		const resumeTracing = {
@@ -4058,6 +4059,21 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			errorCode: undefined,
 		});
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'error',
+			user_id: 'user-1',
+			prompt_version: 'progressive@1',
+		});
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			error_message: 'checkpoint unavailable',
+			error_source: 'stream',
+			user_id: 'user-1',
+			prompt_version: 'progressive@1',
+		});
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalled();
 		expect(service.tracing.finalizeMessageTraceRoot).not.toHaveBeenCalled();
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();

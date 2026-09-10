@@ -5489,7 +5489,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				await this.settleUnclaimedResume(opts, claimError, 'stream');
+				await this.settleUnclaimedResume(opts, claimError, 'stream', promptVersion);
 				return;
 			}
 			if (result.status === 'suspended') {
