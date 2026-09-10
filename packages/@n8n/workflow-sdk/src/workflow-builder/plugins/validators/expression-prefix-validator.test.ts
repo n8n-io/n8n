@@ -112,6 +112,57 @@ function createDuplicateNameProvider(): NodeTypesProvider {
 	};
 }
 
+// Provider where the declarations of one name branch on a sibling that is
+// itself hidden, so the sibling only exists as a default.
+function createHiddenSiblingProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						default: 'db',
+						options: [
+							{ name: 'Database', value: 'db' },
+							{ name: 'Other', value: 'other' },
+						],
+					},
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						default: 'legacy',
+						// Hidden while resource is 'db', so it never reaches a
+						// display-filtered parameter set.
+						displayOptions: { show: { resource: ['other'] } },
+						options: [
+							{ name: 'Legacy', value: 'legacy' },
+							{ name: 'Modern', value: 'modern' },
+						],
+					},
+					{
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						displayOptions: { show: { mode: ['legacy'] } },
+					},
+					{
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['modern'] } },
+					},
+				],
+			},
+		}),
+	};
+}
+
 describe('expressionPrefixValidator', () => {
 	describe('metadata', () => {
 		it('has correct id', () => {
@@ -410,6 +461,21 @@ describe('expressionPrefixValidator', () => {
 			expect(issues).toHaveLength(1);
 			expect(issues[0]?.message).toContain("Drop the leading '='.");
 			expect(issues[0]?.message).not.toContain('Keep the {{ }} inline');
+		});
+
+		it('resolves visibility against hidden siblings, as getNodeParameters does', () => {
+			// `mode` is hidden behind `resource`, so it exists only as a default. The
+			// declaration it selects is still the one that decides.
+			const node = createMockNode('n8n-nodes-base.someDb', {
+				parameters: { resource: 'db', query: '=SELECT 1' },
+			});
+			const ctx = createMockPluginContext(createHiddenSiblingProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('query');
 		});
 
 		it('leaves the = prefix alone on a parameter that supports expressions', () => {

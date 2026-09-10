@@ -68,11 +68,17 @@ function parametersWithoutExpressionSupport(
 	}
 
 	const nodeStub = { typeVersion: parseVersion(node.version) };
-	// `displayOptions` read sibling values, so a parameter left at its default
-	// has to carry that default here or its declaration reads as hidden.
+	// `displayOptions` read sibling values, so the visibility check needs every
+	// parameter carrying its default, hidden ones included. A declaration can
+	// branch on a sibling that is itself hidden, and a display-filtered set drops
+	// that sibling, which makes both declarations of a duplicated name read as
+	// hidden. These arguments are the ones `getNodeParameters` uses to build its
+	// own display-check set, so this pass resolves visibility the same way.
 	const values =
-		NodeHelpers.getNodeParameters(properties, params, true, false, nodeStub, description ?? null) ??
-		params;
+		NodeHelpers.getNodeParameters(properties, params, true, true, nodeStub, description ?? null, {
+			onlySimpleTypes: true,
+			dataIsResolved: true,
+		}) ?? params;
 
 	const withoutSupport = new Map<string, boolean>();
 	const withSupport = new Set<string>();
