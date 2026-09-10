@@ -126,7 +126,7 @@ export function getMappedSamlAttributesFromFlowResult(
 
 	if (flowResult?.extract?.attributes) {
 		const attributes = flowResult.extract.attributes as { [key: string]: string | string[] };
-		result.rawAttributes = attributes as Record<string, unknown>;
+		result.rawAttributes = attributes;
 		// TODO:SAML: fetch mapped attributes from flowResult.extract.attributes and create or login user
 		const email = attributes[attributeMapping.email] as string;
 		const firstName = attributes[attributeMapping.firstName] as string;

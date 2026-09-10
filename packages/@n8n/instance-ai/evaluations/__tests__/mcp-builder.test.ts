@@ -112,6 +112,22 @@ describe('uniqueProjectScopes', () => {
 });
 
 describe('unsupportedMcpBuildSetupFields', () => {
+	it.each([undefined, false])('allows user execution setting %s', (allowUserExecution) => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ allowUserExecution }))).toEqual([]);
+	});
+
+	it('rejects cases that enable user execution', () => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ allowUserExecution: true }))).toEqual([
+			'allowUserExecution',
+		]);
+	});
+
+	it.each(['default', 'progressive'] as const)(
+		'keeps explicit mode %s unsupported',
+		(buildMode) => {
+			expect(unsupportedMcpBuildSetupFields(testCase({ buildMode }))).toEqual(['buildMode']);
+		},
+	);
 	it('classifies every test-case schema key, so adding a field forces a decision', () => {
 		// MCP_BUILD_KEY_SUPPORT must stay in lockstep with the case schema: a new
 		// build-side setup field left unclassified would let --build-via-mcp build

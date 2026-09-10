@@ -6,6 +6,7 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -17,7 +18,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { CHAT_MODEL_USER_AGENT, databricksAuthHeaders } from './constants';
+import { databricksAuthHeaders } from './constants';
 import { makeDatabricksFailedAttemptHandler } from './error-handling';
 import type { DatabricksOAuth2Credential } from './token-provider';
 import { getDatabricksTokenProvider } from './token-provider';
@@ -57,7 +58,7 @@ async function searchModels(
 		{
 			method: 'GET',
 			url: `${host}/api/2.0/serving-endpoints`,
-			headers: { Accept: 'application/json', 'User-Agent': CHAT_MODEL_USER_AGENT },
+			headers: { Accept: 'application/json', 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 			json: true,
 		},
 	);

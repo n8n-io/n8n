@@ -164,7 +164,7 @@ function runInventory(options: CliOptions): void {
 	}
 
 	// File filter - detailed info for single file
-	if (options.files && options.files.length === 1) {
+	if (options.files?.length === 1) {
 		const result = filterByFile(report, options.files[0]);
 		if (result) {
 			console.log(JSON.stringify(result, null, 2));

@@ -275,10 +275,7 @@ export async function resolveCredentials(
 			const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
 			for (const existingNode of existing.nodes ?? []) {
 				if (existingNode.credentials && existingNode.name) {
-					existingCredsByNode.set(
-						existingNode.name,
-						existingNode.credentials as Record<string, unknown>,
-					);
+					existingCredsByNode.set(existingNode.name, existingNode.credentials);
 				}
 			}
 		} catch {

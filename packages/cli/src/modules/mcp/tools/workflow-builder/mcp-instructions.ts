@@ -44,6 +44,12 @@ export type McpInstructionsOptions = {
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
 	isAgentsEnabled?: boolean;
+
+	/**
+	 * The caller's saved AI preferences, already rendered as a tagged block by
+	 * `AiPreferenceService`. Appended as the last section when set.
+	 */
+	aiPreferences?: string;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -51,6 +57,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
+		aiPreferences,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -121,6 +128,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

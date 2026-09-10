@@ -1,4 +1,4 @@
-import { Tool } from '@n8n/agents';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -9,10 +9,8 @@ import {
 	SDK_IMPORTABLE_FUNCTIONS,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
+import { makeGetNodeTypeForGrouping, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { z } from 'zod';
 
 import { computeChatModelValidationIssues } from './chat-model-validation';
@@ -86,7 +84,7 @@ import {
 } from './workflow-validation-warnings';
 import { FolderResolutionError } from '../../errors/folder-resolution.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
-import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
+import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import type { FolderResolutionFailure, InstanceAiContext, WorkflowFolderRef } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
@@ -115,6 +113,7 @@ const confirmationSuspendSchema = z.object({
 const confirmationResumeSchema = instanceAiApprovalResumeSchema;
 
 interface BuildCtx {
+	loadSkill?: RuntimeSkillLoader;
 	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
@@ -321,9 +320,6 @@ const ONE_OFF_OPERATIONS_GUIDANCE =
 const POST_BUILD_FLOW_GUIDANCE =
 	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after `executions(action="list")` and `executions(action="get")` confirm that it succeeded and ran the required path; the user\'s statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
-// Inlined into successful build results; the skills stay registered for tag-driven follow-up turns.
-const inlineSkillInstructionsCache = new Map<string, string>();
-
 /** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
 const INLINE_SKIPPED_SECTIONS = [
 	'## Verification follow-up',
@@ -331,20 +327,19 @@ const INLINE_SKIPPED_SECTIONS = [
 	'## Credentials before build',
 ];
 
-function getInlineSkillInstructions(skillId: string): string {
-	let instructions = inlineSkillInstructionsCache.get(skillId);
-	if (instructions === undefined) {
-		const raw = readFileSync(join(INSTANCE_AI_SKILLS_DIR, skillId, 'SKILL.md'), 'utf-8');
-		// Strip the YAML front-matter; catalog metadata is noise in a tool result.
-		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
-		instructions = body
-			.split(/\n(?=## )/)
-			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
-			.join('\n')
-			.trim();
-		inlineSkillInstructionsCache.set(skillId, instructions);
-	}
-	return instructions;
+async function getInlineSkillInstructions(
+	skillId: string,
+	source: RuntimeSkillSource = loadInstanceAiRuntimeSkillSource(),
+	activate?: RuntimeSkillLoader,
+): Promise<string> {
+	const skill = await (activate ?? source.loadSkill)(skillId);
+	if (!skill) throw new UnexpectedError(`Runtime skill "${skillId}" is missing`);
+	if (activate) return `Follow the active ${skillId} skill instructions.`;
+	return skill.instructions
+		.split(/\n(?=#{1,2} )/)
+		.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
+		.join('\n')
+		.trim();
 }
 
 // Discriminated on skillId so a mismatched skillId/reason pair cannot validate.
@@ -366,11 +361,13 @@ const postBuildFlowOutputSchema = z.discriminatedUnion('skillId', [
 	}),
 ]);
 
-function directPostBuildFlowHandoff(
+async function directPostBuildFlowHandoff(
 	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
 	isAuxiliarySupportingWorkflow: boolean,
 	outcome: WorkflowBuildOutcome,
-): z.infer<typeof postBuildFlowOutputSchema> | undefined {
+	skills?: RuntimeSkillSource,
+	activate?: RuntimeSkillLoader,
+): Promise<z.infer<typeof postBuildFlowOutputSchema> | undefined> {
 	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
 
 	// One-off instructions only apply when the workflow can actually run — their
@@ -383,7 +380,7 @@ function directPostBuildFlowHandoff(
 			skillId: ONE_OFF_OPERATIONS_SKILL_ID,
 			reason: 'direct-one-off-build-succeeded',
 			guidance: ONE_OFF_OPERATIONS_GUIDANCE,
-			instructions: getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID),
+			instructions: await getInlineSkillInstructions(ONE_OFF_OPERATIONS_SKILL_ID, skills, activate),
 		};
 	}
 
@@ -392,7 +389,7 @@ function directPostBuildFlowHandoff(
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
-		instructions: getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID),
+		instructions: await getInlineSkillInstructions(POST_BUILD_FLOW_SKILL_ID, skills, activate),
 	};
 }
 
@@ -1153,7 +1150,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const heldForNewCredentialTypes = mockResult.heldForNewCredentialTypes;
 				const referencedWorkflowIds = getReferencedWorkflowIds(json);
 				const triggerNodes = (json.nodes ?? [])
-					.filter((n) => isTriggerNodeType(n.type))
+					.filter((n) => !n.disabled && isTriggerNodeType(n.type))
 					.map((n) => ({ nodeName: n.name, nodeType: n.type }))
 					.filter(
 						(t): t is { nodeName: string; nodeType: string } =>
@@ -1292,6 +1289,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						nodeSimulationPlan,
 						simulationFixtures,
 						waitGateScripts,
+						verificationProgress:
+							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
@@ -1299,10 +1298,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						executionIntent,
 						summary,
 					});
-					const postBuildFlow = directPostBuildFlowHandoff(
+					const postBuildFlow = await directPostBuildFlowHandoff(
 						owner,
 						isAuxiliarySupportingWorkflow,
 						outcome,
+						context.runtimeSkillCatalog,
+						ctx.loadSkill,
 					);
 
 					await promoteMainWorkflow(context, saved.id);
