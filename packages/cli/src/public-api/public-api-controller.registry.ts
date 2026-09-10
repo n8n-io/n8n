@@ -25,25 +25,12 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
-<<<<<<< HEAD
-=======
-function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
-	const output = z.object({ [key]: schema }).safeParse(params);
-
-	if (!output.success) {
-		throw new BadRequestError(formatValidationError('params', output.error));
-	}
-
-	return output.data[key];
-}
-
 // Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
 function routePath(prefix: string, req: Request): string {
 	const path = (prefix === '/' ? '' : prefix) + req.path;
 	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 }
 
->>>>>>> 3d18cca0 (fix(API): Report the full route path in public API usage telemetry (no-changelog) (#38152))
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(

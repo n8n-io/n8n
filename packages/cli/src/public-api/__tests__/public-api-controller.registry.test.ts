@@ -166,61 +166,6 @@ describe('PublicApiControllerRegistry', () => {
 		});
 	});
 
-<<<<<<< HEAD
-=======
-	describe('path parameter validation', () => {
-		const widgetIdSchema = z.string().regex(/^(?!0+$)\d+$/, 'must be a positive integer');
-
-		function registerValidatedRoute() {
-			@Service()
-			class WidgetsPublicController {
-				@Get('/:widgetId')
-				@ApiResponse(200)
-				get(
-					_req: express.Request,
-					_res: express.Response,
-					@Param('widgetId', widgetIdSchema) widgetId: string,
-				) {
-					return { widgetId };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-		}
-
-		it('rejects a value that fails its schema with a 400 naming the parameter', async () => {
-			registerValidatedRoute();
-
-			const response = await request(activate()).get('/api/v1/widgets/abc').expect(400);
-
-			expect(response.body.message).toBe('request/params/widgetId must be a positive integer');
-		});
-
-		it('hands a passing value to the handler as a string', async () => {
-			registerValidatedRoute();
-
-			const response = await request(activate()).get('/api/v1/widgets/12').expect(200);
-
-			expect(response.body).toEqual({ widgetId: '12' });
-		});
-
-		it('hands the raw value through when the @Param declares no schema', async () => {
-			@Service()
-			class WidgetsPublicController {
-				@Get('/:widgetId')
-				@ApiResponse(200)
-				get(_req: express.Request, _res: express.Response, @Param('widgetId') widgetId: string) {
-					return { widgetId };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			const response = await request(activate()).get('/api/v1/widgets/abc').expect(200);
-
-			expect(response.body).toEqual({ widgetId: 'abc' });
-		});
-	});
-
->>>>>>> 3d18cca0 (fix(API): Report the full route path in public API usage telemetry (no-changelog) (#38152))
 	describe('request media type', () => {
 		function registerOptionalBodyRoute() {
 			@Service()
