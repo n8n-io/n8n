@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(255) NOT NULL, "resourceId" varchar(255) NOT NULL, "role" varchar(36) NOT NULL, "type" varchar(36), "content" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_0a8057a61afabd2999608ffd0d9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE)
+CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "resourceId" varchar(255) NOT NULL, "role" varchar(36) NOT NULL, "type" varchar(36), "content" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_0a8057a61afabd2999608ffd0d9" FOREIGN KEY ("threadId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -20,7 +20,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | id | varchar(36) |  | false |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
-| threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| threadId | varchar(128) |  | false |  | [agents_threads](agents_threads.md) |  |
 | type | varchar(36) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -53,7 +53,7 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }

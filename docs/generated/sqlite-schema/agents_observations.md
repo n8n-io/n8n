@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_observations" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "marker" varchar(16) NOT NULL, "text" text NOT NULL, "parentId" varchar(36), "tokenCount" integer NOT NULL DEFAULT (0), "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_observations_marker" CHECK ("marker" IN ('critical', 'important', 'info', 'completion')), CONSTRAINT "CHK_agents_observations_status" CHECK ("status" IN ('active', 'superseded', 'dropped')), CONSTRAINT "FK_d206432be97b7ed88d187479b1b" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4cfd8a70ebb0a5b0cf047dca3cf" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_501e2d1701a10e24fb69ab5fc5f" FOREIGN KEY ("parentId") REFERENCES "agents_observations" ("id"), CONSTRAINT "FK_127ee1078ffa952bb37b511efad" FOREIGN KEY ("supersededBy") REFERENCES "agents_observations" ("id"))
+CREATE TABLE "agents_observations" ("id" varchar(36) PRIMARY KEY NOT NULL, "agentId" varchar(36) NOT NULL, "observationScopeId" varchar(128) NOT NULL, "marker" varchar(16) NOT NULL, "text" text NOT NULL, "parentId" varchar(36), "tokenCount" integer NOT NULL DEFAULT (0), "status" varchar(16) NOT NULL, "supersededBy" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agents_observations_marker" CHECK ("marker" IN ('critical', 'important', 'info', 'completion')), CONSTRAINT "CHK_agents_observations_status" CHECK ("status" IN ('active', 'superseded', 'dropped')), CONSTRAINT "FK_d206432be97b7ed88d187479b1b" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4cfd8a70ebb0a5b0cf047dca3cf" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, CONSTRAINT "FK_501e2d1701a10e24fb69ab5fc5f" FOREIGN KEY ("parentId") REFERENCES "agents_observations" ("id"), CONSTRAINT "FK_127ee1078ffa952bb37b511efad" FOREIGN KEY ("supersededBy") REFERENCES "agents_observations" ("id"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "agents_observations" ("id" varchar(36) PRIMARY KEY NOT NULL, "agen
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(36) |  | false | [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observations](agents_observations.md) |  |  |
 | marker | varchar(16) |  | false |  |  |  |
-| observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| observationScopeId | varchar(128) |  | false |  | [agents_threads](agents_threads.md) |  |
 | parentId | varchar(36) |  | true |  | [agents_observations](agents_observations.md) |  |
 | status | varchar(16) |  | false |  |  |  |
 | supersededBy | varchar(36) |  | true |  | [agents_observations](agents_observations.md) |  |
@@ -66,7 +66,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
@@ -81,7 +81,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
@@ -98,7 +98,7 @@ erDiagram
   varchar_36_ id PK
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   datetime_3_ updatedAt
 }
 "agents_threads" {

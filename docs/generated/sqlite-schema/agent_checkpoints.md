@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "agentId" varchar(255), "state" text, "expired" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5e31c210f896d539964bf99fe32" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "agentId" varchar(36), "state" text, "expired" boolean NOT NULL DEFAULT (false), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5e31c210f896d539964bf99fe32" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -15,7 +15,7 @@ CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "ag
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(255) |  | true |  | [agents](agents.md) |  |
+| agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expired | boolean | false | false |  |  |  |
 | runId | varchar(255) |  | false |  |  |  |
@@ -45,7 +45,7 @@ erDiagram
 "agent_checkpoints" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_checkpoints" {
-  varchar_255_ agentId FK
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   boolean expired
   varchar_255_ runId PK
@@ -59,7 +59,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt

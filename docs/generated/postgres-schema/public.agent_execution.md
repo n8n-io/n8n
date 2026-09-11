@@ -89,7 +89,7 @@ erDiagram
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK

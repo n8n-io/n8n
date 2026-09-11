@@ -26,7 +26,7 @@ export class AgentChatSubscription extends WithTimestamps {
 
 	@PrimaryColumn({
 		type: 'varchar',
-		length: 255,
+		length: 36,
 		comment: 'Credential connection that owns this subscription',
 	})
 	credentialId: string;

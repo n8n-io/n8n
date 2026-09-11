@@ -10,7 +10,7 @@
 | id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_channel_status](public.agent_channel_status.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) [public.agent_checkpoints](public.agent_checkpoints.md) [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.agent_eval_dataset](public.agent_eval_dataset.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_files](public.agent_files.md) [public.agent_history](public.agent_history.md) [public.agent_task_definition](public.agent_task_definition.md) [public.agent_task_run_lock](public.agent_task_run_lock.md) [public.agent_workflow_dependency](public.agent_workflow_dependency.md) [public.agents_memory_entries](public.agents_memory_entries.md) [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observation_cursors](public.agents_observation_cursors.md) [public.agents_observation_locks](public.agents_observation_locks.md) [public.agents_observations](public.agents_observations.md) |  |  |
 | integrations | json | '[]'::json | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | revision | integer | 0 | false |  |  |  |
 | schema | json |  | true |  |  |  |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
@@ -80,7 +80,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -151,13 +151,13 @@ erDiagram
 "public.agent_chat_subscriptions" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_255_ credentialId
+  varchar_36_ credentialId
   varchar_64_ integrationType
   varchar_255_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_checkpoints" {
-  varchar_255_ agentId FK
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   boolean expired
   varchar_255_ runId
@@ -189,7 +189,7 @@ erDiagram
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK
@@ -255,7 +255,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastIndexedObservationCreatedAt
   varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_locks" {
@@ -274,7 +274,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_cursors" {
@@ -282,7 +282,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -290,7 +290,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_20_ taskKind
   timestamp_3__with_time_zone updatedAt
 }
@@ -299,7 +299,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK

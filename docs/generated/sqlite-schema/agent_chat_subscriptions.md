@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_chat_subscriptions" ("agentId" varchar(36) NOT NULL, "integrationType" varchar(64) NOT NULL, "credentialId" varchar(255) NOT NULL, "threadId" varchar(255) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_chat_subscriptions_integrationType" CHECK ("integrationType" IN ('telegram', 'slack', 'linear', 'discord')), CONSTRAINT "FK_e79153bd179c011e779d5016796" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("agentId", "integrationType", "credentialId", "threadId"))
+CREATE TABLE "agent_chat_subscriptions" ("agentId" varchar(36) NOT NULL, "integrationType" varchar(64) NOT NULL, "credentialId" varchar(36) NOT NULL, "threadId" varchar(255) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_chat_subscriptions_integrationType" CHECK ("integrationType" IN ('telegram', 'slack', 'linear', 'discord')), CONSTRAINT "FK_e79153bd179c011e779d5016796" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("agentId", "integrationType", "credentialId", "threadId"))
 ```
 
 </details>
@@ -17,7 +17,7 @@ CREATE TABLE "agent_chat_subscriptions" ("agentId" varchar(36) NOT NULL, "integr
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| credentialId | varchar(255) |  | false |  |  |  |
+| credentialId | varchar(36) |  | false |  |  |  |
 | integrationType | varchar(64) |  | false |  |  |  |
 | threadId | varchar(255) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -50,7 +50,7 @@ erDiagram
 "agent_chat_subscriptions" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
-  varchar_255_ credentialId PK
+  varchar_36_ credentialId PK
   varchar_64_ integrationType PK
   varchar_255_ threadId PK
   datetime_3_ updatedAt
@@ -62,7 +62,7 @@ erDiagram
   varchar_36_ id PK
   TEXT integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt

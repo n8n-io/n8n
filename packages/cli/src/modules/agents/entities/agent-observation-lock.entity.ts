@@ -9,7 +9,7 @@ export class AgentObservationLockEntity extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 255 })
+	@PrimaryColumn({ type: 'varchar', length: 128 })
 	observationScopeId: string;
 
 	@PrimaryColumn({ type: 'varchar', length: 20 })

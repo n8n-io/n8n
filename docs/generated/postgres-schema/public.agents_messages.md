@@ -9,7 +9,7 @@
 | id | varchar(36) |  | false |  |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
-| threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) |  |
+| threadId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) |  |
 | type | varchar(36) |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -48,7 +48,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }

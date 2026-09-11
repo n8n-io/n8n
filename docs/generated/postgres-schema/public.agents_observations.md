@@ -8,7 +8,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) [public.agents_observations](public.agents_observations.md) |  | Application-generated n8n string ID, not a database UUID |
 | marker | varchar(16) |  | false |  |  |  |
-| observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream for this observation log |
+| observationScopeId | varchar(128) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream for this observation log |
 | parentId | varchar(36) |  | true |  | [public.agents_observations](public.agents_observations.md) |  |
 | status | varchar(16) |  | false |  |  |  |
 | supersededBy | varchar(36) |  | true |  | [public.agents_observations](public.agents_observations.md) |  |
@@ -63,7 +63,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
@@ -78,7 +78,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -95,7 +95,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_threads" {

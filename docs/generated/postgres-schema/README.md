@@ -435,13 +435,13 @@ erDiagram
 "public.agent_chat_subscriptions" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
-  varchar_255_ credentialId
+  varchar_36_ credentialId
   varchar_64_ integrationType
   varchar_255_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_checkpoints" {
-  varchar_255_ agentId FK
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   boolean expired
   varchar_255_ runId
@@ -539,7 +539,7 @@ erDiagram
   varchar_128_ id
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
   varchar_36_ taskVersionId FK
@@ -614,7 +614,7 @@ erDiagram
   varchar_36_ id
   json integrations
   varchar_128_ name
-  varchar_255_ projectId FK
+  varchar_36_ projectId FK
   integer revision
   json schema
   timestamp_3__with_time_zone setupCompletedAt
@@ -643,7 +643,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastIndexedObservationCreatedAt
   varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_memory_entry_locks" {
@@ -662,7 +662,7 @@ erDiagram
   varchar_36_ id
   varchar_36_ memoryEntryId FK
   varchar_36_ observationId FK
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_messages" {
@@ -671,7 +671,7 @@ erDiagram
   varchar_36_ id
   varchar_255_ resourceId
   varchar_36_ role
-  varchar_255_ threadId FK
+  varchar_128_ threadId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -680,7 +680,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {
@@ -688,7 +688,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone heldUntil
   varchar_64_ holderId
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_20_ taskKind
   timestamp_3__with_time_zone updatedAt
 }
@@ -697,7 +697,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_16_ marker
-  varchar_255_ observationScopeId FK
+  varchar_128_ observationScopeId FK
   varchar_36_ parentId FK
   varchar_16_ status
   varchar_36_ supersededBy FK
