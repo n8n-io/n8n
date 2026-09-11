@@ -141,6 +141,8 @@ paths:
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml
+    post:
+      $ref: ./handlers/tags/spec/paths/createTag.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml
