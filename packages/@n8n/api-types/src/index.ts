@@ -121,6 +121,14 @@ export type {
 	InstanceAiBrowserRecordingResponse,
 } from './schemas/browser-recording.schema';
 
+export {
+	browserAutomationIdeaSchema,
+	MAX_BROWSER_AUTOMATION_IDEAS,
+	MAX_BROWSER_AUTOMATION_IDEA_TITLE_LENGTH,
+	MAX_BROWSER_AUTOMATION_IDEA_DESCRIPTION_LENGTH,
+} from './schemas/browser-recommendation.schema';
+export type { BrowserAutomationIdea } from './schemas/browser-recommendation.schema';
+
 export type {
 	ChatHubPushMessage,
 	ChatHubStreamEvent,

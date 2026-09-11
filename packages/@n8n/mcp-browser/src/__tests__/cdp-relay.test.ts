@@ -517,4 +517,163 @@ describe('CDPRelayServer', () => {
 			ext.close();
 		});
 	});
+
+	describe('recommendations', () => {
+		async function nextFrame(ws: WebSocket, method: string): Promise<{ params?: unknown }> {
+			return await new Promise((resolve) => {
+				const handler = (data: unknown) => {
+					try {
+						const msg = JSON.parse(parseWsData(data)) as { method?: string; params?: unknown };
+						if (msg.method === method) {
+							ws.off('message', handler);
+							resolve(msg);
+						}
+					} catch {
+						// ignore malformed
+					}
+				};
+				ws.on('message', handler);
+			});
+		}
+
+		it('answers recommendationsRequested with the ideas from onRecommendationsRequested', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const idea = { id: 'i1', title: 'Triage issues', description: 'Label new issues' };
+			relay.onRecommendationsRequested = async (url, pageText) => {
+				expect(url).toBe('https://github.com/org/repo/pull/1');
+				expect(pageText).toBe('Pull request title');
+				return await Promise.resolve([idea]);
+			};
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationsReady'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationsRequested',
+							params: {
+								requestId: 'req-1',
+								url: 'https://github.com/org/repo/pull/1',
+								pageText: 'Pull request title',
+							},
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-1', ideas: [idea] });
+			ext.close();
+		});
+
+		it('answers recommendationsRequested with no ideas when onRecommendationsRequested rejects', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			relay.onRecommendationsRequested = async () => await Promise.reject(new Error('boom'));
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationsReady'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationsRequested',
+							params: { requestId: 'req-2', url: 'https://example.com', pageText: 'text' },
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-2', ideas: [] });
+			ext.close();
+		});
+
+		it('answers recommendationsRequested with no ideas when no handler is wired', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationsReady'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationsRequested',
+							params: { requestId: 'req-3', url: 'https://example.com', pageText: 'text' },
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-3', ideas: [] });
+			ext.close();
+		});
+
+		it('answers recommendationAccepted with the thread from onRecommendationAccepted', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			relay.onRecommendationAccepted = async (idea) => {
+				expect(idea).toEqual({ title: 'Triage issues', description: 'Label new issues' });
+				return await Promise.resolve({ threadUrl: 'https://n8n.example.com/assistant/t1' });
+			};
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationAcceptedResult'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationAccepted',
+							params: {
+								requestId: 'req-4',
+								title: 'Triage issues',
+								description: 'Label new issues',
+							},
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({
+				requestId: 'req-4',
+				accepted: true,
+				threadUrl: 'https://n8n.example.com/assistant/t1',
+			});
+			ext.close();
+		});
+
+		it('answers recommendationAccepted as not accepted when no handler is wired', async () => {
+			const ext = connectExtension();
+			await waitForOpen(ext);
+			createFakeExtension(ext);
+			await relay.waitForExtension();
+
+			const [frame] = await Promise.all([
+				nextFrame(ext, 'recommendationAcceptedResult'),
+				Promise.resolve(
+					ext.send(
+						JSON.stringify({
+							method: 'recommendationAccepted',
+							params: {
+								requestId: 'req-5',
+								title: 'Triage issues',
+								description: 'Label new issues',
+							},
+						}),
+					),
+				),
+			]);
+
+			expect(frame.params).toEqual({ requestId: 'req-5', accepted: false });
+			ext.close();
+		});
+	});
 });

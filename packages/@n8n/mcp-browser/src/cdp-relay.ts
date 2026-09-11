@@ -12,6 +12,7 @@ import {
 	browserRecordingActionSchema,
 	browserRecordingScreenshotSchema,
 	browserRecordingSchema,
+	type BrowserAutomationIdea,
 	type BrowserRecording,
 	type BrowserRecordingAction,
 	type BrowserRecordingScreenshot,
@@ -120,6 +121,16 @@ export class CDPRelayServer {
 		recordingId: string,
 		screenshot: BrowserRecordingScreenshot,
 	) => void;
+
+	/** Called when the extension asks for automation ideas for its current page. */
+	onRecommendationsRequested?: (url: string, pageText: string) => Promise<BrowserAutomationIdea[]>;
+
+	/** Called after the user picks one of the offered ideas to build. */
+	onRecommendationAccepted?: (idea: {
+		title: string;
+		description: string;
+		url?: string;
+	}) => Promise<{ threadUrl?: string }>;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -934,6 +945,48 @@ export class CDPRelayServer {
 				const parsed = browserRecordingScreenshotSchema.safeParse(eventParams.screenshot);
 				if (!parsed.success) return;
 				this.onRecordingScreenshotCaptured?.(eventParams.recordingId, parsed.data);
+			} else if (method === 'recommendationsRequested') {
+				const { requestId, url, pageText } =
+					params as ExtensionEvents['recommendationsRequested']['params'];
+				const connection = this.extensionConn;
+				if (!this.onRecommendationsRequested) {
+					void connection?.send('recommendationsReady', { requestId, ideas: [] }).catch(() => {});
+					return;
+				}
+				void this.onRecommendationsRequested(url, pageText)
+					.then(async (ideas) => {
+						await connection?.send('recommendationsReady', { requestId, ideas });
+					})
+					.catch(async () => {
+						log.error('Could not generate automation ideas');
+						await connection
+							?.send('recommendationsReady', { requestId, ideas: [] })
+							.catch(() => {});
+					});
+			} else if (method === 'recommendationAccepted') {
+				const { requestId, ...idea } =
+					params as ExtensionEvents['recommendationAccepted']['params'];
+				const connection = this.extensionConn;
+				if (!this.onRecommendationAccepted) {
+					void connection
+						?.send('recommendationAcceptedResult', { requestId, accepted: false })
+						.catch(() => {});
+					return;
+				}
+				void this.onRecommendationAccepted(idea)
+					.then(async ({ threadUrl }) => {
+						await connection?.send('recommendationAcceptedResult', {
+							requestId,
+							accepted: true,
+							threadUrl,
+						});
+					})
+					.catch(async () => {
+						log.error('Could not start a conversation from the accepted idea');
+						await connection
+							?.send('recommendationAcceptedResult', { requestId, accepted: false })
+							.catch(() => {});
+					});
 			}
 		};
 	}

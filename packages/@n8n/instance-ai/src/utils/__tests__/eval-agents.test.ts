@@ -84,6 +84,18 @@ describe('eval agent model config', () => {
 		});
 	});
 
+	it('skips thinking when the caller opts out for a latency-sensitive call', () => {
+		process.env.OPENAI_API_KEY = 'openai-key';
+
+		createEvalAgent('test-agent', {
+			model: 'openai/gpt-5.6-sol',
+			instructions: 'Do the task.',
+			thinking: false,
+		});
+
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
 	it('throws without env keys or a fallback model config', () => {
 		expect(() => createEvalAgent('test-agent', { instructions: 'Do the task.' })).toThrow(
 			/Missing API key/,

@@ -5,7 +5,11 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
-import type { BrowserRecordingAction, BrowserRecordingScreenshot } from '@n8n/api-types';
+import type {
+	BrowserAutomationIdea,
+	BrowserRecordingAction,
+	BrowserRecordingScreenshot,
+} from '@n8n/api-types';
 
 import { isHostApproved, listApprovedOrigins } from './approvedHosts';
 import { createLogger } from './logger';
@@ -19,6 +23,7 @@ import type {
 	ExternalConnectResponse,
 	ExternalConnectResultResponse,
 	RecordingDestination,
+	RecommendationsStatus,
 } from './types';
 import { isExternalMessage } from './types';
 
@@ -246,6 +251,12 @@ async function handleMessage(
 
 		case 'recordingHeartbeat':
 			return { keepAlive: recording !== null };
+
+		case 'getRecommendations':
+			return await requestRecommendations();
+
+		case 'sendRecommendation':
+			return await sendRecommendation(message.idea);
 
 		default:
 			return { error: 'Unknown message type' };
@@ -854,6 +865,149 @@ function sanitizeContextText(value: string | undefined, limit: number): string |
 }
 
 // ---------------------------------------------------------------------------
+// Automation recommendations
+// ---------------------------------------------------------------------------
+
+const MAX_PAGE_TEXT_LENGTH = 4000;
+const RECOMMENDATIONS_TIMEOUT_MS = 20_000;
+
+/** URL the currently shown ideas were generated for, so picking one can tell Instance AI
+ *  which page it came from without it having to ask. */
+let lastRecommendationsUrl: string | undefined;
+
+// Keyed by a per-request id (not a single shared slot) — the drawer popup and a connect
+// window can both be open and both ask for/accept recommendations, so more than one of each
+// can be genuinely in flight at once.
+const pendingRecommendationsResolvers = new Map<string, (ideas: BrowserAutomationIdea[]) => void>();
+const pendingRecommendationAcceptedResolvers = new Map<
+	string,
+	(result: { accepted: boolean; threadUrl?: string }) => void
+>();
+
+function resetRecommendationsState(): void {
+	for (const resolve of pendingRecommendationsResolvers.values()) resolve([]);
+	pendingRecommendationsResolvers.clear();
+	for (const resolve of pendingRecommendationAcceptedResolvers.values()) {
+		resolve({ accepted: false });
+	}
+	pendingRecommendationAcceptedResolvers.clear();
+	lastRecommendationsUrl = undefined;
+	broadcastRecommendationsChange('unavailable');
+}
+
+function broadcastRecommendationsChange(
+	status: RecommendationsStatus,
+	ideas?: BrowserAutomationIdea[],
+): void {
+	chrome.runtime.sendMessage({ type: 'recommendationsChanged', status, ideas }).catch(() => {
+		// No receivers — this is fine if the popup is not open
+	});
+}
+
+/** Pull the active tab's URL and a short text extract via `chrome.scripting` — no debugger
+ *  attach needed, so this works on any tab, not just ones the user shared for recording. The
+ *  cap is applied inside the injected function so a huge page's full text is never computed
+ *  and transferred just to be immediately truncated. */
+async function extractPageContext(
+	tabId: number,
+): Promise<{ url: string; pageText: string } | undefined> {
+	const [tab, [injection]] = await Promise.all([
+		chrome.tabs.get(tabId),
+		chrome.scripting.executeScript({
+			target: { tabId },
+			func: (limit: number) =>
+				`${document.title}\n${document.body?.innerText ?? ''}`.slice(0, limit),
+			args: [MAX_PAGE_TEXT_LENGTH],
+		}),
+	]);
+	if (!tab.url || typeof injection.result !== 'string') return undefined;
+	return { url: tab.url, pageText: injection.result };
+}
+
+async function requestRecommendations(): Promise<{ success: boolean; error?: string }> {
+	const relay = activeConnection?.relay;
+	if (!relay || recording) {
+		log.debug('recommendations skipped: not connected or a recording is in progress');
+		broadcastRecommendationsChange('unavailable');
+		return { success: false, error: 'No automation ideas are available right now.' };
+	}
+
+	const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+	if (activeTab?.id === undefined || !isEligibleTab(activeTab)) {
+		log.debug('recommendations skipped: active tab is not eligible', activeTab?.url);
+		broadcastRecommendationsChange('unavailable');
+		return { success: false, error: 'No automation ideas are available for this page.' };
+	}
+
+	broadcastRecommendationsChange('loading');
+	let context: { url: string; pageText: string } | undefined;
+	try {
+		context = await extractPageContext(activeTab.id);
+	} catch (error) {
+		log.warn('recommendations unavailable: failed to extract page context:', error);
+		context = undefined;
+	}
+	const requestId = crypto.randomUUID();
+	if (!context || !relay.requestRecommendations(context.url, context.pageText, requestId)) {
+		log.warn('recommendations unavailable: could not send the request to the relay');
+		broadcastRecommendationsChange('unavailable');
+		return { success: false, error: 'No automation ideas are available for this page.' };
+	}
+
+	const ideas = await Promise.race([
+		new Promise<BrowserAutomationIdea[]>((resolve) => {
+			pendingRecommendationsResolvers.set(requestId, resolve);
+		}),
+		new Promise<BrowserAutomationIdea[]>((resolve) => {
+			setTimeout(() => resolve([]), RECOMMENDATIONS_TIMEOUT_MS);
+		}),
+	]);
+	pendingRecommendationsResolvers.delete(requestId);
+
+	if (ideas.length === 0) {
+		log.warn('recommendations unavailable: no ideas came back before the timeout');
+		broadcastRecommendationsChange('unavailable');
+		return { success: false, error: 'No automation ideas are available for this page.' };
+	}
+	lastRecommendationsUrl = context.url;
+	broadcastRecommendationsChange('ready', ideas);
+	return { success: true };
+}
+
+async function sendRecommendation(idea: BrowserAutomationIdea): Promise<{
+	success: boolean;
+	error?: string;
+}> {
+	const relay = activeConnection?.relay;
+	const requestId = crypto.randomUUID();
+	if (
+		!relay?.sendRecommendationAccepted(
+			{ title: idea.title, description: idea.description, url: lastRecommendationsUrl },
+			requestId,
+		)
+	) {
+		return { success: false, error: 'The idea could not be sent. Try again.' };
+	}
+
+	const result = await Promise.race([
+		new Promise<{ accepted: boolean; threadUrl?: string }>((resolve) => {
+			pendingRecommendationAcceptedResolvers.set(requestId, resolve);
+		}),
+		new Promise<{ accepted: boolean; threadUrl?: string }>((resolve) => {
+			setTimeout(() => resolve({ accepted: false }), RECOMMENDATIONS_TIMEOUT_MS);
+		}),
+	]);
+	pendingRecommendationAcceptedResolvers.delete(requestId);
+
+	if (!result.accepted) {
+		return { success: false, error: 'n8n did not confirm the idea. Try again.' };
+	}
+	if (result.threadUrl) void openRecordingThread(result.threadUrl);
+	broadcastRecommendationsChange('sent');
+	return { success: true };
+}
+
+// ---------------------------------------------------------------------------
 // Tab enumeration
 // ---------------------------------------------------------------------------
 
@@ -1341,6 +1495,7 @@ async function connectToRelay(
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
+			resetRecommendationsState();
 		};
 
 		relay.ontabcreated = () => {
@@ -1383,6 +1538,16 @@ async function connectToRelay(
 			broadcastRecordingChange(
 				accepted ? undefined : 'The recording could not be processed. Try again.',
 			);
+		};
+
+		relay.onrecommendationsready = (requestId, ideas) => {
+			pendingRecommendationsResolvers.get(requestId)?.(ideas);
+			pendingRecommendationsResolvers.delete(requestId);
+		};
+
+		relay.onrecommendationacceptedresult = (requestId, accepted, threadUrl) => {
+			pendingRecommendationAcceptedResolvers.get(requestId)?.({ accepted, threadUrl });
+			pendingRecommendationAcceptedResolvers.delete(requestId);
 		};
 
 		const tabCount = relay.getControlledIds().length;

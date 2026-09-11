@@ -1,4 +1,5 @@
 import type {
+	BrowserAutomationIdea,
 	BrowserRecording as BrowserRecordingData,
 	BrowserRecordingActionType,
 	BrowserRecordingTarget,
@@ -127,6 +128,15 @@ export interface RecordingHeartbeatMessage {
 	type: 'recordingHeartbeat';
 }
 
+export interface GetRecommendationsMessage {
+	type: 'getRecommendations';
+}
+
+export interface SendRecommendationMessage {
+	type: 'sendRecommendation';
+	idea: BrowserAutomationIdea;
+}
+
 export type ExtensionMessage =
 	| GetTabsMessage
 	| ConnectMessage
@@ -145,7 +155,9 @@ export type ExtensionMessage =
 	| RemoveRecordingScreenshotMessage
 	| RemoveRecordingNetworkRequestMessage
 	| RecordingHeartbeatMessage
-	| RecordingActionMessage;
+	| RecordingActionMessage
+	| GetRecommendationsMessage
+	| SendRecommendationMessage;
 
 // ---------------------------------------------------------------------------
 // External messages (web page → background, via externally_connectable)
@@ -214,10 +226,19 @@ export interface RecordingChangedMessage {
 	error?: string;
 }
 
+export type RecommendationsStatus = 'loading' | 'ready' | 'unavailable' | 'sent';
+
+export interface RecommendationsChangedMessage {
+	type: 'recommendationsChanged';
+	status: RecommendationsStatus;
+	ideas?: BrowserAutomationIdea[];
+}
+
 export type BackgroundPushMessage =
 	| RelayUrlReadyMessage
 	| StatusChangedMessage
-	| RecordingChangedMessage;
+	| RecordingChangedMessage
+	| RecommendationsChangedMessage;
 
 // ---------------------------------------------------------------------------
 // Type guards
