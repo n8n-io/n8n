@@ -181,7 +181,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration (cli, scoped)
-        run: pnpm turbo test:integration:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50%
+        run: pnpm turbo test:integration:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
