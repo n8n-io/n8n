@@ -12,10 +12,18 @@ import {
 	type WorkflowGroupViolation,
 } from 'n8n-workflow';
 
+/** Informational: a declared group was invalid and the save removed it. */
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
+/** Refusal: the canvas is over the ceiling, has no group, and the agent gave no reason. */
 export const GROUPING_DECISION_MISSING_CODE = 'GROUPING_DECISION_MISSING';
+/** Refusal: the canvas is over the ceiling and the save dropped a group the agent declared. */
 export const GROUP_DROPPED_OVER_CEILING_CODE = 'GROUP_DROPPED_OVER_CEILING';
 
+/**
+ * What the agent tells build-workflow about groups.
+ * `grouped`: the source declares groups.
+ * `not_warranted`: no group is needed, and a reason is given.
+ */
 export type GroupingDecision = 'grouped' | 'not_warranted';
 
 export interface ValidationWarning {

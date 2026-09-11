@@ -1236,22 +1236,28 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					savedWorkflowSnapshot !== undefined &&
 					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
 
-				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes,
-				// so the agent must fix it; false when the user's workflow already exceeded it, so we only warn.
+				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
+				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.
 				const agentExceededCeiling =
 					!targetWorkflowId ||
 					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
 					snapshotWasUnderCeiling;
 
+				const refusalReason = groupingDecisionBlocker({
+					summary: topLevel,
+					declaredGroupCount: groupCountBeforeDrop,
+					droppedGroupWarnings,
+					groupingDecision,
+				});
+
 				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
-				const blocker = agentExceededCeiling
-					? groupingDecisionBlocker({
-							summary: topLevel,
-							declaredGroupCount: groupCountBeforeDrop,
-							droppedGroupWarnings,
-							groupingDecision,
-						})
-					: undefined;
+				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
+				// is refused only when the agent made the canvas exceed the ceiling; on the user's
+				// pre-existing layout it stays a warning.
+				const blocker =
+					agentExceededCeiling || refusalReason?.code === GROUP_DROPPED_OVER_CEILING_CODE
+						? refusalReason
+						: undefined;
 
 				if (blocker) {
 					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
