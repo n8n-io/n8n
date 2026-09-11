@@ -1,0 +1,24 @@
+diff --git a/es/hooks/use-lockscreen/index.mjs b/es/hooks/use-lockscreen/index.mjs
+--- a/es/hooks/use-lockscreen/index.mjs
++++ b/es/hooks/use-lockscreen/index.mjs
+@@ -21,6 +21,8 @@ const useLockscreen = (trigger, options = {}) => {
+   let bodyWidth = "0";
+   const cleanup = () => {
+     setTimeout(() => {
++      // Cherry-pick from https://github.com/element-plus/element-plus/pull/18445
++      if (typeof document === 'undefined') return;
+       removeClass(document == null ? void 0 : document.body, hiddenCls.value);
+       if (withoutHiddenClass && document) {
+         document.body.style.width = bodyWidth;
+diff --git a/lib/hooks/use-lockscreen/index.js b/lib/hooks/use-lockscreen/index.js
+--- a/lib/hooks/use-lockscreen/index.js
++++ b/lib/hooks/use-lockscreen/index.js
+@@ -25,6 +25,8 @@ const useLockscreen = (trigger, options = {}) => {
+   let bodyWidth = "0";
+   const cleanup = () => {
+     setTimeout(() => {
++      // Cherry-pick from https://github.com/element-plus/element-plus/pull/18445
++      if (typeof document === 'undefined') return;
+       style.removeClass(document == null ? void 0 : document.body, hiddenCls.value);
+       if (withoutHiddenClass && document) {
+         document.body.style.width = bodyWidth;
