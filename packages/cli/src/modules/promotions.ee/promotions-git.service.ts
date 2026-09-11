@@ -89,8 +89,9 @@ export class PromotionsGitService {
 
 	// Accept only SSH remotes; Git transport helpers and local paths can execute or expose host data.
 	private validateSshRemoteUrl(remoteUrl: string) {
+		// Git uses the default SSH user when the remote omits one.
 		const error = new BadRequestError(
-			'SSH key providers require an ssh:// or user@host:path remote URL',
+			'SSH key providers require an ssh:// or [user@]host:path remote URL',
 		);
 
 		if (remoteUrl.startsWith('-') || remoteUrl.includes('::')) throw error;
