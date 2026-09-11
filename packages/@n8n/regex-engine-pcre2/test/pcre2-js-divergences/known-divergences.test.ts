@@ -3,6 +3,7 @@ import {
 	createPcre2RegexEngine,
 	initPcre2Engine,
 	Pcre2CompileError,
+	Pcre2MatchError,
 	type RegexEngine,
 } from '../../src/pcre2-engine.js';
 
@@ -61,10 +62,17 @@ describe('known divergence: lookbehind length cap', () => {
 });
 
 describe('known divergence: unpaired surrogates and "."', () => {
-	it('is matched natively by "." without the u flag, but behaves differently under PCRE2', () => {
-		const input = 'a\uD800b';
+	const input = 'a\uD800b';
 
+	it('matches a lone surrogate with "." without the u flag, same as native RegExp', () => {
 		expect(/^a.b$/.test(input)).toBe(true);
-		expect(() => engine.test('a.b', input)).toThrow(/UTF-8 error/);
+		expect(engine.test('a.b', input)).toBe(true);
+	});
+
+	it('rejects a lone surrogate under the u flag, where native RegExp still matches it', () => {
+		const unicodeEngine = createPcre2RegexEngine({ jsFlags: ['u'] });
+
+		expect(/^a.b$/u.test(input)).toBe(true);
+		expect(() => unicodeEngine.test('a.b', input, 'u')).toThrow(Pcre2MatchError);
 	});
 });

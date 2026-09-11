@@ -7,7 +7,7 @@ import { execFileSync, execSync } from 'node:child_process';
 import { encodePcre2TestSubject } from './decode-pcre2test-string.mjs';
 import { parseTestOutput } from './parse-pcre2-testoutput.mjs';
 
-const FLAG_TO_MODIFIER = { i: 'i', m: 'm', s: 's', x: 'x' }; // 'u' has no pcre2test modifier -- see runBatch
+const FLAG_TO_MODIFIER = { i: 'i', m: 'm', s: 's', x: 'x', u: 'utf' };
 
 // Picking a delimiter that never appears in the pattern avoids an escaping ambiguity:
 // a pattern already containing a real `\/` would otherwise be indistinguishable from a
@@ -61,9 +61,10 @@ export function buildPcre2TestOracle(root) {
 
   function flagsToModifiers(flags) {
     const modifiers = [...flags].filter((f) => f in FLAG_TO_MODIFIER).map((f) => FLAG_TO_MODIFIER[f]);
-    // Must mirror native/pcre2_wrapper.cpp's always-on compile options exactly, or the
-    // oracle isn't testing what our shim actually does.
-    modifiers.push('utf', 'alt_bsux', 'extra_alt_bsux', 'match_unset_backref');
+    // Must mirror native/pcre2_wrapper.cpp's compile options exactly, or the oracle
+    // isn't testing what our shim actually does. `utf` is not in this list: it comes
+    // from the `u` flag alone (FLAG_TO_MODIFIER), same as in the wrapper.
+    modifiers.push('alt_bsux', 'extra_alt_bsux', 'match_unset_backref');
     return modifiers;
   }
 

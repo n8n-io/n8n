@@ -1,7 +1,7 @@
 @n8n/regex-engine-pcre2
 
 This package compiles PCRE2 to WebAssembly and ships the resulting binary
-(src/generated/pcre2_budget.wasm). PCRE2 is distributed under the following
+(src/generated/pcre2_wrapper.wasm). PCRE2 is distributed under the following
 license, reproduced here per its binary-redistribution requirement:
 
 ---

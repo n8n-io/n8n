@@ -29,15 +29,15 @@ endif()
 # Build PCRE2 as a static library baked into the single wasm module: no
 # shared libs, no JIT (match_limit/depth_limit/heap_limit only apply to the
 # interpreted matcher), Unicode on (needed for PCRE2_UTF), and no extra
-# binaries/tests we don't use.
+# binaries/tests we don't use. 16-bit: its offsets line up with JS's UTF-16 strings.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(PCRE2_STATIC_PIC ON CACHE BOOL "" FORCE)
 set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
 set(PCRE2_SUPPORT_UNICODE ON CACHE BOOL "" FORCE)
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "" FORCE)
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
-set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_8 OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_16 ON CACHE BOOL "" FORCE)
 set(PCRE2_BUILD_PCRE2_32 OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(vendor/pcre2 pcre2-build)
@@ -47,7 +47,7 @@ add_executable(pcre2_wrapper
   native/pcre2_wrapper_bindings.cpp
 )
 
-target_link_libraries(pcre2_wrapper PRIVATE pcre2-8)
+target_link_libraries(pcre2_wrapper PRIVATE pcre2-16)
 target_include_directories(pcre2_wrapper PRIVATE
   ${CMAKE_SOURCE_DIR}/vendor/pcre2/src
   ${CMAKE_BINARY_DIR}/pcre2-build

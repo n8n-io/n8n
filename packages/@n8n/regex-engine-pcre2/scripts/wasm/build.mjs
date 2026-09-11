@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(import.meta.url), '../../..');
 const EMSDK_VERSION = readFileSync(path.join(PACKAGE_ROOT, '.emsdk-version'), 'utf8').trim();
+// Pins the digest too, so a re-pushed tag can't silently swap the image; re-resolve
+// .emsdk-digest deliberately whenever .emsdk-version is bumped.
+const EMSDK_DIGEST = readFileSync(path.join(PACKAGE_ROOT, '.emsdk-digest'), 'utf8').trim();
+const EMSDK_IMAGE = `emscripten/emsdk:${EMSDK_VERSION}@${EMSDK_DIGEST}`;
 
 function commandExists(cmd) {
   try {
@@ -26,7 +30,7 @@ function run(cmd, args) {
 }
 
 if (commandExists('docker')) {
-  console.log(`==> Building via Docker (emscripten/emsdk:${EMSDK_VERSION})`);
+  console.log(`==> Building via Docker (${EMSDK_IMAGE})`);
   run('docker', [
     'run',
     '--rm',
@@ -34,7 +38,7 @@ if (commandExists('docker')) {
     `${PACKAGE_ROOT}:/src`,
     '-w',
     '/src',
-    `emscripten/emsdk:${EMSDK_VERSION}`,
+    EMSDK_IMAGE,
     'bash',
     'scripts/wasm/build-wasm.sh',
   ]);

@@ -16,6 +16,7 @@ export interface MatchStatusEnum {
 	HeapLimitExceeded: EnumValue;
 	CompileError: EnumValue;
 	OtherError: EnumValue;
+	WallClockExceeded: EnumValue;
 }
 
 /**
@@ -58,9 +59,8 @@ export interface NamedGroupVector {
 export interface MatchResult {
 	status: EnumValue;
 	groups: StringVector;
-	// Optional: this feature isn't exposed by the current wasm build yet --
-	// feature-detected in src/pcre2-engine.ts's runMatch() rather than assumed
-	// present, so an unrebuilt wasm binary keeps working exactly as before.
+	// Optional only so an older, unrebuilt wasm binary keeps working: the current
+	// build always emits it, and src/pcre2-engine.ts's runMatch() feature-detects it.
 	groupParticipated?: IntVector;
 	errorCode: number;
 	errorMessage: string;
@@ -75,13 +75,16 @@ export declare class Pcre2Wrapper {
 		matchLimit: number,
 		depthLimit: number,
 		heapLimitKb: number,
+		wallClockLimitMs: number,
 		extraOptions: number,
 		compileExtraOptions: number,
 		newlineConvention: number,
 	);
 	compileStatus(): CompileResult;
 	namedGroups(): NamedGroupVector;
-	match(subject: string, startOffset: number, anchored: boolean): MatchResult;
+	/** Marshals `subject` into wasm memory once; matchAt() reuses it until the next call. */
+	setSubject(subject: string): void;
+	matchAt(startOffset: number, anchored: boolean): MatchResult;
 	/** Frees the underlying wasm-heap C++ object. Must be called once the handle is no longer needed. */
 	delete(): void;
 }
@@ -89,6 +92,8 @@ export declare class Pcre2Wrapper {
 export interface Pcre2WrapperModule {
 	Pcre2Wrapper: typeof Pcre2Wrapper;
 	MatchStatus: MatchStatusEnum;
+	/** The flag characters the native constructor's flag-parsing loop understands. */
+	nativeFlagChars(): string;
 	/** Real PCRE2 option values, exposed as embind constants -- see native/pcre2_wrapper_bindings.cpp. */
 	PCRE2_ALT_BSUX: number;
 	PCRE2_MATCH_UNSET_BACKREF: number;

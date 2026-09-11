@@ -25,7 +25,8 @@ engine.split(',', 'a,b,c'); // ['a', 'b', 'c']
 ```
 
 - `initPcre2Engine()` must resolve before `createPcre2RegexEngine()` is called.
-- Compiled patterns are cached internally by pattern + flags.
+- Compiled patterns are cached internally by pattern + flags, bounded and evicted least-recently-used first. Call `engine.dispose()` to free everything the engine holds.
+- Offsets (`.index`, `split` slice points) are UTF-16 code-unit indices, the same units a native `RegExp` reports: PCRE2 is built as the 16-bit library, so no offset conversion happens at the boundary.
 - `replace` delegates to `RegExp.prototype[Symbol.replace]`: `$&`, `$$`, `$1`-`$99`, `` $` ``, `$'`, `$<name>` all work.
 
 ### API
@@ -37,6 +38,7 @@ interface RegexEngine {
   replace(pattern: string, input: string, flags: string | undefined, replacement: string): string;
   matchAll(pattern: string, input: string, flags?: string): Pcre2ExecArray[];
   split(pattern: string, input: string, flags?: string): (string | undefined)[];
+  dispose(): void;
 }
 ```
 
@@ -46,15 +48,25 @@ interface RegexEngine {
 interface Pcre2EngineOptions {
   compileOptions?: Pcre2CompileOption[]; // default: none
   jsFlags?: Pcre2JsFlag[];               // default: none
+  operationTimeoutMs?: number;           // default: 1000
+  maxMatchesPerOperation?: number;       // default: 1_000_000
+  maxCachedPatterns?: number;            // default: 1000
 }
 ```
+
+`match_limit`/`depth_limit`/`heap_limit` bound one native match. `operationTimeoutMs` and
+`maxMatchesPerOperation` bound a whole `matchAll`/`replace`/`split` call, which runs one
+native match per match found.
 
 ### Errors
 
 | Error | Thrown when |
 | --- | --- |
 | `Pcre2CompileError` | Pattern is invalid, or uses an unsupported flag. Mirrors `new RegExp(pattern)` throwing `SyntaxError`. |
-| `Pcre2BudgetExceededError` | Matching exceeds `match_limit` (1,000,000), `depth_limit` (1,000,000), or `heap_limit` (20,000 KB). `.kind` says which. |
+| `Pcre2BudgetExceededError` | Matching exceeds `match_limit` (1,000,000), `depth_limit` (1,000,000), `heap_limit` (20,000 KB), or a looping operation's own time/match-count budget. `.kind` says which. |
+| `Pcre2MatchError` | PCRE2 reported an error that is neither a compile failure nor a budget hit (for example a malformed UTF-16 subject under the `u` flag). |
+| `Pcre2InternalError` | The wasm module trapped while matching. The module is reloaded and every cached handle is dropped. |
+| `Pcre2NotInitializedError` | The synchronous API was used before `initPcre2Engine()` resolved. |
 
 ## Flags and options
 
@@ -67,7 +79,7 @@ Pattern flags string:
 | `s` | `.` matches newline | always accepted |
 | `x` | extended (whitespace/comments ignored) | always accepted |
 | `g` | global | `jsFlags: ['g']` |
-| `u` | unicode mode | `jsFlags: ['u']` |
+| `u` | turns on `PCRE2_UTF`: a surrogate pair is one code point. Without it, every UTF-16 code unit (lone surrogates included) is one character, as a native `RegExp` without `u` treats it. | `jsFlags: ['u']` |
 
 Any other flag character (e.g. `y`, `d`) always throws `Pcre2CompileError`.
 
@@ -80,10 +92,8 @@ Any other flag character (e.g. `y`, `d`) always throws `Pcre2CompileError`.
 | `ucp` | `\w`/`\d`/`\s`/`\b` become Unicode-aware |
 | `dollarEndonly` | `$` (without `m`) never matches before a trailing `\n` |
 | `newlineAnyCrlf` | `\r`, `\n`, `\r\n` all count as a line ending for `.`/`^`/`$`/`\R` |
-| `g` | Enables `g` (global, custom) |
-| `u` | Enables `u` (Unicode mode) |
 
-`PCRE2_UTF` is always on regardless of options (subjects are always UTF-8).
+`PCRE2_UTF` comes from the `u` flag alone; no compile option turns it on.
 
 ## Architecture
 
@@ -91,7 +101,7 @@ Any other flag character (e.g. `y`, `d`) always throws `Pcre2CompileError`.
 native/pcre2_wrapper.cpp   C++ shim: compile, match, report named groups and budget exhaustion
 native/pcre2_wrapper.h
 native/*_bindings.cpp      Embind bindings exposed to JS
-vendor/pcre2/              PCRE2 C library, vendored as a pinned git submodule
+vendor/pcre2/              PCRE2 C library (16-bit build), vendored as a pinned git submodule
 vendor/rust-regex/         rust-regex's TOML test corpus, vendored as a pinned git submodule (test-only)
 src/generated/             Prebuilt wasm binary and Emscripten JS glue (committed, see below)
 src/pcre2-engine.ts        Public TS API: caching, flag handling, RegexEngine implementation

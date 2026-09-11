@@ -38,9 +38,13 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify vendored PCRE2 tag signature
+        run: pnpm pcre2:verify-tag
+
       - name: Verify committed wasm matches native/*.cpp + the pinned PCRE2 submodule
         run: |
           EMSDK_VERSION="$(cat .emsdk-version)"
+          EMSDK_DIGEST="$(cat .emsdk-digest)"
           docker run --rm -v "$(pwd):/src" -w /src \
-            "emscripten/emsdk:${EMSDK_VERSION}" \
+            "emscripten/emsdk:${EMSDK_VERSION}@${EMSDK_DIGEST}" \
             node scripts/wasm/verify.mjs
