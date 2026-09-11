@@ -286,6 +286,7 @@ export { UpdateAppDto } from './app/update-app.dto';
 export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
 export { UpdateAppVersionFileDto } from './app/update-app-version-file.dto';
 export { CreateAppBindingDto } from './app/create-app-binding.dto';
+export { UpdateAppBindingDto } from './app/update-app-binding.dto';
 export { CreatePageDto } from './app/create-page.dto';
 export { UpdatePageDto } from './app/update-page.dto';
 export { SetActiveAppVersionDto } from './app/set-active-app-version.dto';
