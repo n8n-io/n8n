@@ -7,81 +7,21 @@
  * from outside. That makes "was not told" indistinguishable from "was told and ignored
  * it" — which is the failure mode this feature actually has.
  */
-import type { InstanceAiTimelineEntry } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { computed } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 
-type ContextEntry = Extract<InstanceAiTimelineEntry, { type: 'instance-context' }>;
+import { useInstanceContextLabel, type InstanceContextEntry } from '../instanceContextLabels';
 
-const props = defineProps<{ entry: ContextEntry }>();
+const props = defineProps<{ entry: InstanceContextEntry }>();
 
 const i18n = useI18n();
+const { getInstanceContextLabel } = useInstanceContextLabel();
 
 const injection = computed(() => props.entry.injection);
 
-/** Only the legs that carried something, so an empty leg does not read as a zero result. */
-const legSummary = computed<string>(() => {
-	if (injection.value.state !== 'injected') return '';
-	const { legs } = injection.value;
-	const parts: string[] = [];
-
-	if (legs.inventory > 0) {
-		parts.push(
-			i18n.baseText('aiAssistant.instanceContext.trace.workflows', {
-				adjustToNumber: legs.inventory,
-			}),
-		);
-	}
-	if (legs.events > 0) {
-		parts.push(
-			i18n.baseText('aiAssistant.instanceContext.trace.changes', { adjustToNumber: legs.events }),
-		);
-	}
-	if (legs.runs > 0) {
-		parts.push(
-			i18n.baseText('aiAssistant.instanceContext.trace.runs', { adjustToNumber: legs.runs }),
-		);
-	}
-
-	return parts.join(', ');
-});
-
-/**
- * Named rather than counted. "Went 2 deep" tells a reader nothing without the rung
- * table in front of them, whereas "opened an entry" is the thing that happened.
- */
-const reachSummary = computed<string>(() => {
-	const surfaces = props.entry.reach?.surfaces ?? [];
-	return surfaces
-		.map((surface) => i18n.baseText(`aiAssistant.instanceContext.trace.surface.${surface}`))
-		.join(', ');
-});
-
-const label = computed<string>(() => {
-	// An empty block does not stop the agent reading further — the `activity` tool is
-	// gated by the flag, not by whether a block was built. So a turn told nothing can
-	// still have gone looking, and the row has to say so.
-	if (injection.value.state === 'absent') {
-		// A broken read is not the same as a quiet instance, and it is the one a reader is
-		// most likely hunting for, so it says so rather than blending into the empty case.
-		const head =
-			injection.value.reason === 'failed'
-				? i18n.baseText('aiAssistant.instanceContext.trace.failed')
-				: i18n.baseText('aiAssistant.instanceContext.trace.none');
-
-		return [head, reachSummary.value].filter(Boolean).join(' — ');
-	}
-
-	const head = injection.value.isUpdate
-		? i18n.baseText('aiAssistant.instanceContext.trace.readUpdate')
-		: i18n.baseText('aiAssistant.instanceContext.trace.read');
-
-	// Em-dash separated so the label reads as one sentence at a glance, which is all it
-	// gets before the reader decides whether to expand it.
-	return [head, legSummary.value, reachSummary.value].filter(Boolean).join(' — ');
-});
+const label = computed<string>(() => getInstanceContextLabel(props.entry));
 
 /**
  * Gated on the state, not just on presence. The block rides beside the injection rather

@@ -280,7 +280,6 @@
 	"aiAssistant.builder.planMode.questions.clarifyPlaceholder": "Clarify here...",
 	"aiAssistant.builder.planMode.questions.paginationOf": "of",
 	"aiAssistant.instanceContext.trace.read": "Read instance context",
-	"aiAssistant.instanceContext.trace.reading": "Reading instance context",
 	"aiAssistant.instanceContext.trace.readUpdate": "Read new instance activity",
 	"aiAssistant.instanceContext.trace.none": "No instance context to read",
 	"aiAssistant.instanceContext.trace.failed": "Instance context could not be read",
