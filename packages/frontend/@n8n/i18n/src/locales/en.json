@@ -8196,6 +8196,7 @@
 	"agents.channels.twilioVoice.phoneNumber.label": "Twilio phone number",
 	"agents.channels.twilioVoice.phoneNumber.placeholder": "+14155550123",
 	"agents.channels.twilioVoice.phoneNumber.hint": "n8n will configure this number to send incoming calls to your agent.",
+	"agents.channels.twilioVoice.allowedCallers.toggle": "Accept calls only from certain numbers",
 	"agents.channels.twilioVoice.allowedCallers.label": "Allowed callers",
 	"agents.channels.twilioVoice.allowedCallers.placeholder": "+14155550123, +442071838750",
 	"agents.channels.twilioVoice.allowedCallers.hint": "Enter phone numbers in E.164 format. Separate multiple numbers with commas or spaces.",

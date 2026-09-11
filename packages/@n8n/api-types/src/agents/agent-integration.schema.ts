@@ -91,8 +91,8 @@ export const AgentTwilioVoiceSettingsSchema = z
 		phoneNumber: e164PhoneNumber,
 		allowedCallers: z
 			.array(e164PhoneNumber)
-			.min(1)
-			.transform((items) => [...new Set(items)]),
+			.transform((items) => [...new Set(items)])
+			.default([]),
 	})
 	.strict();
 export type AgentTwilioVoiceIntegrationSettings = z.infer<typeof AgentTwilioVoiceSettingsSchema>;

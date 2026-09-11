@@ -556,7 +556,10 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		) {
 			return new Response('Invalid Twilio request', { status: 400 });
 		}
-		if (!this.options.allowedCallers.includes(payload.From)) {
+		if (
+			this.options.allowedCallers.length > 0 &&
+			!this.options.allowedCallers.includes(payload.From)
+		) {
 			return twiml('<Say>This phone number is not allowed to call this agent.</Say><Hangup/>');
 		}
 

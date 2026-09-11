@@ -4,7 +4,7 @@ import type {
 	AgentTwilioVoiceIntegrationSettings,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -49,6 +49,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const phoneNumber = ref('');
 const allowedCallersText = ref('');
+const restrictCallers = ref(false);
 
 function twilioSettings(
 	settings: AgentIntegrationSettings,
@@ -73,6 +74,7 @@ watch(
 		if (!saved) return;
 		phoneNumber.value = saved.phoneNumber;
 		allowedCallersText.value = saved.allowedCallers.join(', ');
+		restrictCallers.value = saved.allowedCallers.length > 0;
 	},
 	{ immediate: true },
 );
@@ -90,10 +92,13 @@ const validationError = computed<string | null>(() => {
 	if (!E164_PHONE_NUMBER.test(phoneNumber.value.trim())) {
 		return i18n.baseText('agents.channels.twilioVoice.validation.phoneNumber');
 	}
-	if (allowedCallers.value.length === 0) {
+	if (restrictCallers.value && allowedCallers.value.length === 0) {
 		return i18n.baseText('agents.channels.twilioVoice.validation.allowedCallersRequired');
 	}
-	if (allowedCallers.value.some((value) => !E164_PHONE_NUMBER.test(value))) {
+	if (
+		restrictCallers.value &&
+		allowedCallers.value.some((value) => !E164_PHONE_NUMBER.test(value))
+	) {
 		return i18n.baseText('agents.channels.twilioVoice.validation.allowedCallersInvalid');
 	}
 	return null;
@@ -101,7 +106,7 @@ const validationError = computed<string | null>(() => {
 
 const currentSettings = computed<AgentTwilioVoiceIntegrationSettings>(() => ({
 	phoneNumber: phoneNumber.value.trim(),
-	allowedCallers: allowedCallers.value,
+	allowedCallers: restrictCallers.value ? allowedCallers.value : [],
 }));
 
 defineExpose({ credentialId, currentSettings, validationError });
@@ -144,7 +149,14 @@ defineExpose({ credentialId, currentSettings, validationError });
 			</N8nText>
 		</div>
 
-		<div :class="$style.field">
+		<N8nSwitch2
+			v-model="restrictCallers"
+			:disabled="loading"
+			:label="i18n.baseText('agents.channels.twilioVoice.allowedCallers.toggle')"
+			data-testid="twilio-voice-allowed-callers-toggle"
+		/>
+
+		<div v-if="restrictCallers" :class="$style.field">
 			<label for="twilio-voice-allowed-callers">
 				<N8nText size="small" bold>
 					{{ i18n.baseText('agents.channels.twilioVoice.allowedCallers.label') }}
