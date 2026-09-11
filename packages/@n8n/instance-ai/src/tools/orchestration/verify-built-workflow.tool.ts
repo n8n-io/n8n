@@ -141,6 +141,15 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 			z.object({
 				nodeName: z.string(),
 				itemCount: z.number().optional(),
+				outputs: z
+					.array(
+						z.object({
+							index: z.number(),
+							name: z.string().optional(),
+							itemCount: z.number().optional(),
+						}),
+					)
+					.optional(),
 				preview: z.string(),
 				truncated: z.boolean(),
 				chars: z.number(),

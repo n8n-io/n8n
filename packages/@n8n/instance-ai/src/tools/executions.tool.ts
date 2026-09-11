@@ -90,7 +90,9 @@ const debugAction = z.object({
 const getNodeOutputAction = z.object({
 	action: z
 		.literal('get-node-output')
-		.describe('Retrieve raw output of a specific node from an execution'),
+		.describe(
+			"Retrieve raw output of a specific node from an execution, grouped per output (e.g. a Filter's Kept and Discarded). All outputs are listed, including outputs with no downstream connection; only items on a connected output continue through the workflow.",
+		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
