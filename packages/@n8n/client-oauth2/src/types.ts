@@ -34,7 +34,7 @@ export interface OAuth2CredentialData {
 	/** Whether authorization-code flows should use PKCE in addition to client authentication. */
 	usePkce?: boolean;
 	ignoreSSLIssues?: boolean;
-	tokenExpiredStatusCode?: number;
+	tokenExpiredStatusCode?: number | number[];
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;

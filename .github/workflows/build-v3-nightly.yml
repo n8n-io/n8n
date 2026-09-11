@@ -56,6 +56,7 @@ jobs:
       release_type: 'nightly'
       date_tag: ${{ needs.prepare.outputs.date_tag }}
       push_enabled: true
+      create_attestations: true
     secrets: inherit
 
   # On Mondays (or on demand via force_rc), promote the whole set (n8n + both runners

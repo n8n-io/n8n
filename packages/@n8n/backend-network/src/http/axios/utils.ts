@@ -260,7 +260,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
 		(typeof data === 'object' &&
 			data !== null &&
 			'getHeaders' in data &&
-			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			typeof data.getHeaders === 'function' &&
 			'append' in data &&
 			typeof (data as { append: unknown }).append === 'function')
 	);

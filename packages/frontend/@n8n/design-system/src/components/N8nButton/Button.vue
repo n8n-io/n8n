@@ -37,7 +37,7 @@ const effectiveVariant = computed(() => {
 const computedIconSize = computed((): IconSize | undefined => {
 	if (props.iconSize) return props.iconSize;
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
-	return effectiveSize.value as IconSize;
+	return effectiveSize.value;
 });
 
 const componentTag = computed(() => {

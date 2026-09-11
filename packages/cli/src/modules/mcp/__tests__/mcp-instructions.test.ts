@@ -83,4 +83,31 @@ describe('getMcpInstructions', () => {
 			});
 		});
 	});
+
+	describe('aiPreferences', () => {
+		const block =
+			'<ai-preferences>\nPersonal preferences:\n- Keep replies short.\n</ai-preferences>';
+
+		test('appends the block as the last section', () => {
+			const instructions = getMcpInstructions({ isBuilderEnabled: true, aiPreferences: block });
+			expect(instructions.endsWith(block)).toBe(true);
+			expect(instructions.indexOf(block)).toBeGreaterThan(
+				instructions.indexOf('official MCP server for n8n'),
+			);
+		});
+
+		test('appends the block even when the builder is disabled', () => {
+			const instructions = getMcpInstructions({ isBuilderEnabled: false, aiPreferences: block });
+			expect(instructions).toBe(
+				`This is the official MCP server for n8n, a workflow automation platform.\n\n${block}`,
+			);
+		});
+
+		test('leaves the instructions unchanged when there is no block', () => {
+			expect(getMcpInstructions({ isBuilderEnabled: true, aiPreferences: undefined })).toBe(
+				getMcpInstructions({ isBuilderEnabled: true }),
+			);
+			expect(getMcpInstructions({ isBuilderEnabled: true })).not.toContain('<ai-preferences>');
+		});
+	});
 });

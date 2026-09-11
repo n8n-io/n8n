@@ -43,15 +43,16 @@ defineSlots<{
 	>
 		<div ref="userBubble" :class="role === 'user' ? $style.userBubble : $style.assistantContent">
 			<slot />
-			<div v-if="$slots.actions" :class="$style.actions">
-				<slot name="actions" />
-			</div>
+		</div>
+		<div v-if="$slots.actions" :class="$style.actions">
+			<slot name="actions" />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .message {
+	display: block;
 	width: 100%;
 }
 
@@ -80,18 +81,21 @@ defineSlots<{
 	flex-direction: column;
 	gap: var(--spacing--xs);
 
-	&:hover .actions,
-	&:focus-within .actions {
+	&:hover ~ .actions,
+	&:focus-within ~ .actions {
 		opacity: 1;
 	}
 }
 
 .actions {
-	position: absolute;
-	top: 0;
-	right: 0;
+	margin-top: var(--spacing--xs);
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+	&:hover,
+	&:focus-within {
+		opacity: 1;
+	}
 
 	@media (hover: none) {
 		opacity: 1;

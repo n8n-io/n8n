@@ -8,6 +8,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import type { Folder, Project } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -51,6 +52,7 @@ import {
 	PACKAGE_GITHUB_CREDENTIAL_TYPE,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	WIRE_VERSION_ID,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
@@ -105,9 +107,13 @@ const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
 
 // Reactivating an active workflow on new-version import calls into the active
 // workflow manager; mock it so trigger registration succeeds without real infra.
+// The assertions below target that legacy path, so the publication service is off.
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
 
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
 	// Register node types so the reactivation path's webhook-conflict check can
@@ -122,6 +128,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 	await testDb.terminate();
 });
 
@@ -901,7 +908,7 @@ describe('Package import workflow conflict policy', () => {
 					id: 'wf-active',
 					name: 'Active updated',
 					// Published in the package and in the target project so preserve-published-state should publish the new version.
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'schedule-trigger',
@@ -1096,6 +1103,34 @@ describe('Package import rejection cases', () => {
 				packageBuffer: tarBuffer,
 			}),
 		).rejects.toThrow(BadRequestError);
+	});
+
+	it('rejects a workflow without its metadata file', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ workflowMetadata: 'omit' },
+				),
+			}),
+		).rejects.toThrow(/metadata file is missing at workflows\/wf-0\/workflow-metadata\.json/);
+	});
+
+	it('rejects a workflow whose metadata file does not match the schema', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer(
+					[serializedWorkflow({ id: 'wf-x', name: 'X' })],
+					{ workflowMetadata: { publishedVersionId: '' } },
+				),
+			}),
+		).rejects.toThrow(/metadata file at workflows\/wf-0\/workflow-metadata\.json failed schema/);
 	});
 
 	it('rejects when the requested projectId does not exist', async () => {
@@ -2241,13 +2276,13 @@ describe('credential-missing-mode: create-stub', () => {
 					serializedWorkflow({
 						id: 'wf-no-stub',
 						name: 'No stub',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: scheduleTriggerNodes(),
 					}),
 					serializedWorkflow({
 						id: 'wf-with-stub',
 						name: 'With stub',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [
 							...scheduleTriggerNodes(),
 							{
@@ -2313,7 +2348,7 @@ describe('credential-missing-mode: create-stub', () => {
 							credentialId: 'missing-cred',
 							credentialName: 'Missing GitHub',
 						}),
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 					},
 				],
 				{ sourceId: 'stub-update-published' },
@@ -2368,7 +2403,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-fresh',
 					name: 'Fresh workflow',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2396,7 +2431,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-fresh',
 					name: 'Fresh workflow',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2424,7 +2459,7 @@ describe('Package import workflow publishing policy', () => {
 					id: 'STILTON',
 					name: 'Stilton',
 					isArchived: true,
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2454,13 +2489,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-published',
 					name: 'Published in package',
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: scheduleTriggerNodes(),
 				}),
 				serializedWorkflow({
 					id: 'wf-unpublished',
 					name: 'Unpublished in package',
-					isPublished: false,
+					publishedVersionId: null,
 				}),
 			]),
 			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
@@ -2478,6 +2513,41 @@ describe('Package import workflow publishing policy', () => {
 		expect(unpublishedSummary?.activeVersionId).toBeNull();
 	});
 
+	it('"match-source" leaves a published target alone when the package carries a draft', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					nodes: scheduleTriggerNodes(),
+					// The source publishes a version this package does not carry.
+					publishedVersionId: 'live-elsewhere',
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+
+		// The package content lands as a draft, but the version that was live stays live.
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+		expect(stored.versionId).not.toBe(originalActiveVersionId);
+	});
+
 	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -2492,7 +2562,7 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-active',
 					name: 'Active updated',
-					isPublished: true,
+					publishedVersionId: WIRE_VERSION_ID,
 					nodes: [
 						{
 							id: 'schedule-trigger',
@@ -2533,7 +2603,7 @@ describe('Package import workflow publishing policy', () => {
 		const baseWorkflow = serializedWorkflow({
 			id: 'wf-active',
 			name: 'Active workflow',
-			isPublished: true,
+			publishedVersionId: WIRE_VERSION_ID,
 			settings: { executionOrder: 'v1' },
 		});
 
@@ -2569,13 +2639,13 @@ describe('Package import workflow publishing policy', () => {
 
 		const result = await importPackage({
 			user: owner,
-			// New content marked as a draft in the package (isPublished: false) → saves a
+			// New content marked as a draft in the package (publishedVersionId: null) → saves a
 			// new version that preserve-published-state should not bring live.
 			packageBuffer: await buildImportPackageBuffer([
 				serializedWorkflow({
 					id: 'wf-active',
 					name: 'Active updated',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
@@ -2619,13 +2689,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-webhook-a',
 					name: 'Webhook A',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-a', '/test'),
 				}),
 				serializedWorkflow({
 					id: 'wf-webhook-b',
 					name: 'Webhook B',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-b', '/test'),
 				}),
 			]),
@@ -2665,13 +2735,13 @@ describe('Package import workflow publishing policy', () => {
 				serializedWorkflow({
 					id: 'wf-webhook-get',
 					name: 'Webhook GET',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-get', '/test'),
 				}),
 				serializedWorkflow({
 					id: 'wf-webhook-post',
 					name: 'Webhook POST',
-					isPublished: false,
+					publishedVersionId: null,
 					nodes: webhookNodes('wh-post', '/test', 'POST'),
 				}),
 			]),
@@ -2792,13 +2862,13 @@ describe('Package import missing node type mode', () => {
 						serializedWorkflow({
 							id: 'wf-ok',
 							name: 'Publishable',
-							isPublished: true,
+							publishedVersionId: WIRE_VERSION_ID,
 							nodes: [scheduleTriggerNode()],
 						}),
 						serializedWorkflow({
 							id: 'wf-broken',
 							name: 'Missing node type',
-							isPublished: true,
+							publishedVersionId: WIRE_VERSION_ID,
 							nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
 						}),
 					],
@@ -2863,7 +2933,7 @@ describe('Package import missing node type mode', () => {
 					serializedWorkflow({
 						id: 'wf-broken-update',
 						name: 'Published workflow updated',
-						isPublished: true,
+						publishedVersionId: WIRE_VERSION_ID,
 						nodes: [scheduleTriggerNode(), unknownNode()],
 					}),
 				],

@@ -101,6 +101,7 @@ describe('GET /executions/:id', () => {
 			const response = await authOwnerAgent.get(`/executions/${executionId}`);
 
 			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe('request/params/executionId must be a positive integer');
 		},
 	);
 

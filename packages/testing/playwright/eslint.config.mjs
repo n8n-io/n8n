@@ -1,12 +1,8 @@
-import { baseConfig } from '@n8n/eslint-config/base';
-import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
+import { backendConfig } from '@n8n/eslint-config/backend';
 import playwrightPlugin from 'eslint-plugin-playwright';
 
 export default [
-	...baseConfig,
-	// Depends on n8n-core and @n8n/db, so the encryption guardrails must run
-	// here even though it is not on nodeConfig.
-	...encryptionBoundaryConfig,
+	...backendConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
 		ignores: [
@@ -22,15 +18,9 @@ export default [
 	},
 	{
 		rules: {
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-call': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-			'@typescript-eslint/no-unsafe-return': 'off',
 			'@typescript-eslint/no-unused-expressions': 'off',
 			'@typescript-eslint/no-use-before-define': 'off',
 			'@typescript-eslint/promise-function-async': 'off',
-			'n8n-local-rules/no-uncaught-json-parse': 'off',
 			'playwright/expect-expect': 'warn',
 			'playwright/max-nested-describe': 'warn',
 			'playwright/no-conditional-in-test': 'error',
@@ -79,6 +69,13 @@ export default [
 					optionalDependencies: false,
 				},
 			],
+		},
+	},
+	{
+		// Debt: the base layer enforces kebab-case filenames and this package has
+		// 124 files that predate it. Rename them, then delete this block.
+		rules: {
+			'unicorn/filename-case': 'off',
 		},
 	},
 ];
