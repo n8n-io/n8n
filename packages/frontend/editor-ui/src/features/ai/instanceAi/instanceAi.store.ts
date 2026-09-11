@@ -59,7 +59,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
-			void loadThreads();
+			void loadThreads({ limit: 5, refresh: true });
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
@@ -203,19 +203,24 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	let pendingThreadsLoad: Promise<boolean> | undefined;
 	let pendingThreadsLimit = 0;
 	let loadedThreadsLimit = 0;
+	let threadsRefreshVersion = 0;
 
 	async function loadThreads({
-		limit = 5,
+		limit = 100,
 		once = false,
-	}: { limit?: number; once?: boolean } = {}): Promise<boolean> {
-		if (once && loadedThreadsLimit >= limit) return true;
+		refresh = false,
+	}: { limit?: number; once?: boolean; refresh?: boolean } = {}): Promise<boolean> {
+		// Activity refreshes must follow any older request, not reuse its snapshot.
+		if (refresh) threadsRefreshVersion++;
+		if (once && !refresh && loadedThreadsLimit >= limit) return true;
 		if (pendingThreadsLoad) {
-			if (pendingThreadsLimit >= limit) return await pendingThreadsLoad;
+			if (!refresh && pendingThreadsLimit >= limit) return await pendingThreadsLoad;
+			const nextLimit = refresh ? Math.max(limit, pendingThreadsLimit) : limit;
 			await pendingThreadsLoad;
-			return await loadThreads({ limit, once });
+			return await loadThreads({ limit: nextLimit, once: once && !refresh });
 		}
 		pendingThreadsLimit = limit;
-		pendingThreadsLoad = fetchRecentThreads(limit);
+		pendingThreadsLoad = fetchRecentThreads(limit, threadsRefreshVersion);
 		try {
 			return await pendingThreadsLoad;
 		} finally {
@@ -223,9 +228,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function fetchRecentThreads(limit: number): Promise<boolean> {
+	async function fetchRecentThreads(limit: number, refreshVersion: number): Promise<boolean> {
 		try {
 			const result = await fetchThreadHistory(rootStore.restApiContext, { limit });
+			if (refreshVersion !== threadsRefreshVersion) return false;
 			mergeThreads(result.threads);
 			loadedThreadsLimit = Math.max(loadedThreadsLimit, limit);
 			return true;

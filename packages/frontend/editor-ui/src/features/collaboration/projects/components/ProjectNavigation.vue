@@ -79,9 +79,9 @@ const instanceAiChatsCollapsed = ref(
 );
 
 watch(
-	[isInstanceAiNavVisible, () => props.collapsed, instanceAiChatsCollapsed],
-	([visible, collapsed, chatsCollapsed]) => {
-		if (visible && !collapsed && !chatsCollapsed) {
+	[isInstanceAiNavVisible, () => props.collapsed],
+	([visible, collapsed]) => {
+		if (visible && !collapsed) {
 			void instanceAiStore.loadThreads({ limit: 5, once: true });
 		}
 	},
