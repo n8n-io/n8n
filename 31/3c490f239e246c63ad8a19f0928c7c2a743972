@@ -1,0 +1,58 @@
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting-scheduler.service.test.ts
+  s_40618d0b6e113f::t_f0f75253990469 66-74,82,90,101-102
+  s_40618d0b6e113f::t_e41a5bd426683a 242-256
+  s_40618d0b6e113f::t_fdafc8c607c028 9-10
+  s_40618d0b6e113f::t_4347057b9fd090 75-81
+  s_40618d0b6e113f::t_db5cb3b88d297c 32-34,41-44
+  s_40618d0b6e113f::t_994e198f268670 168-183
+packages/cli/src/events/maps/relay.event-map.ts
+  s_40618d0b6e113f::t_0bcab63096ba4c 96-101
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/logStreaming.store.test.ts
+  s_40618d0b6e113f::t_03cae76e5526cd 101-128
+packages/cli/src/modules/instance-reporting/__tests__/instance-reporting.service.test.ts
+  s_40618d0b6e113f::t_3faf862d870ef0 335-337,340-341,344-347,350-351
+  s_40618d0b6e113f::t_9efbe733fbb4bb 333-334,338-339,342-343,348-349
+  s_40618d0b6e113f::t_dda88ca6c0bf95 129,139,143
+  s_40618d0b6e113f::t_2ffc1c19eecafb 14
+  s_40618d0b6e113f::t_e9cc17d89d3108 130
+  s_40618d0b6e113f::t_48549df493c794 95
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_40618d0b6e113f::t_b1ed8ac972ba7d 3361-3378
+packages/cli/src/modules/instance-reporting/instance-reporting.service.ts
+  s_40618d0b6e113f::t_752c83532d769b 11
+  s_40618d0b6e113f::t_a115568a242b05 59
+packages/cli/src/modules/instance-reporting/instance-reporting-scheduler.service.ts
+  s_40618d0b6e113f::t_57dad67e5f0200 82-86
+  s_40618d0b6e113f::t_2aa3a58483903d 44
+  s_40618d0b6e113f::t_be8352a4ade1d6 52
+  s_40618d0b6e113f::t_62197483e0fcac 114
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_40618d0b6e113f::t_5157785a6a5063 69-72
+  s_40618d0b6e113f::t_ecefb2c0860006 210
+  s_40618d0b6e113f::t_66aeff842ff1ef 198
+  s_40618d0b6e113f::t_b2006f3dcf7894 190
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_40618d0b6e113f::t_d654f1cfe2f584 3807-3808
+packages/frontend/editor-ui/src/features/integrations/logStreaming.ee/logStreaming.store.ts
+  s_40618d0b6e113f::t_9c85c551c136a8 81
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_40618d0b6e113f::t_b75f39c6a46033 228-239
+  s_40618d0b6e113f::t_c2c12cffe089f4 191-192
+  s_40618d0b6e113f::t_8d22e47bcb01c8 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "313c490f239e246c63ad8a19f0928c7c2a743972",
+  "prompts": {},
+  "sessions": {
+    "s_40618d0b6e113f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a711523c-b8db-4d2d-aa16-f03f6ec56162",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

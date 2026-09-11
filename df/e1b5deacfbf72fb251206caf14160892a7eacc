@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_583f31bceceb3e::t_bdda846654d936 487-488,496-497,513-518,529
+packages/cli/test/integration/instance-context.service.test.ts
+  ai_agent 81,123,223
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_583f31bceceb3e::t_0e7fc3c15607e0 215,220-246,378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfe1b5deacfbf72fb251206caf14160892a7eacc",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
