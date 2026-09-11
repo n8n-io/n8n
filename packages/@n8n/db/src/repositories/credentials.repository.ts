@@ -59,6 +59,25 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		});
 	}
 
+	/** Filters `ids` down to the global credentials, which every project can use. */
+	async findGlobalProjectCredentialIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const rows = await this.find({
+			where: { id: In(ids), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+
+		return rows.map((row) => row.id);
+	}
+
+	/** True when any of the given credentials is a private (resolvable) credential. */
+	async hasResolvableCredential(ids: string[]): Promise<boolean> {
+		if (ids.length === 0) return false;
+		const count = await this.count({ where: { id: In(ids), isResolvable: true } });
+		return count > 0;
+	}
+
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
 		return await this.createQueryBuilder('credentials')
 			.leftJoinAndSelect('credentials.shared', 'shared')

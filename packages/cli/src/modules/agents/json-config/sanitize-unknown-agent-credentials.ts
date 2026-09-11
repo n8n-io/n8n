@@ -38,7 +38,6 @@ const AI_GATEWAY_MODEL_CREDENTIAL_PATHS: ReadonlySet<string> = new Set([
 	),
 	'memory.observationalMemory.observerModel.credential',
 	'memory.observationalMemory.reflectorModel.credential',
-	'memory.episodicMemory.extractorModel.credential',
 	'memory.episodicMemory.reflectorModel.credential',
 ]);
 
