@@ -1,7 +1,6 @@
 {
   "name": "@n8n/regex-engine-pcre2",
   "version": "0.1.0",
-  "private": true,
   "description": "PCRE2 regex engine compiled to WebAssembly",
   "license": "MIT",
   "type": "module",
@@ -10,7 +9,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     }
   },
   "files": [
