@@ -201,7 +201,7 @@ record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) ont
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
-**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks? }`
+**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
 
 **Simulated-node parameter check**: a simulated node's preview is fixture data, so
 an expression that resolved to empty leaves no trace in the run. After the run the
@@ -215,6 +215,9 @@ Expressions that need live-only context (`$secrets`, `$response`, …) are exclu
 The check is advisory and does not change execution success. Suppressed parameter
 values, replay failures, and missing executions produce `skippedParameterChecks`
 entries (`{ nodeName, executionId?, reason }`) and a note in `simulationNote`.
+The list contains at most 20 entries across all passes. `skippedParameterCheckCount`
+reports the total. When entries are omitted, the note states how many are shown.
+Omitted checks also leave dynamic fields unverified.
 The reasons are `parameter-values-disabled`, `replay-failed`, and
 `execution-unavailable`. Skipped checks expose no parameter values or replay
 error details. Their dynamic fields remain unverified.

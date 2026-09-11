@@ -147,6 +147,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	simulationNote: z.string().optional(),
 	resolvedParameterWarnings: z.array(resolvedParameterWarningSchema).optional(),
 	skippedParameterChecks: z.array(skippedParameterCheckSchema).optional(),
+	skippedParameterCheckCount: z.number().int().nonnegative().optional(),
 	lastNodeExecuted: z.string().optional(),
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
@@ -302,15 +303,22 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// A simulated node's preview is fixture data, so an expression that resolved
 			// to empty (e.g. `$json.query.x` on a body-only input) leaves no trace in the
 			// run. Replay the parameters of every reached simulated node and surface it.
-			const { warnings: resolvedParameterWarnings, skipped: skippedParameterChecks } =
-				await collectResolvedParameterWarnings({
-					executionService: target.domainContext.executionService,
-					runs: parameterCheckRuns,
-					logger: context.logger,
-				});
+			const {
+				warnings: resolvedParameterWarnings,
+				skipped: skippedParameterChecks,
+				skippedCount: skippedParameterCheckCount,
+			} = await collectResolvedParameterWarnings({
+				executionService: target.domainContext.executionService,
+				runs: parameterCheckRuns,
+				logger: context.logger,
+			});
 			const simulationNote = [
 				analysis.simulationNote,
-				buildResolvedParameterNote(resolvedParameterWarnings, skippedParameterChecks),
+				buildResolvedParameterNote(
+					resolvedParameterWarnings,
+					skippedParameterChecks,
+					skippedParameterCheckCount,
+				),
 			]
 				.filter((note): note is string => note !== undefined)
 				.join(' ');
@@ -333,6 +341,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					resolvedParameterWarnings.length > 0 ? resolvedParameterWarnings : undefined,
 				skippedParameterChecks:
 					skippedParameterChecks.length > 0 ? skippedParameterChecks : undefined,
+				skippedParameterCheckCount:
+					skippedParameterCheckCount > 0 ? skippedParameterCheckCount : undefined,
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,

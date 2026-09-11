@@ -394,6 +394,8 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      checked. Use that ID with `executions(action="get-resolved-node-parameters")`
      to inspect the same input.
    - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
+     The list shows at most 20 checks. `skippedParameterCheckCount` includes
+     omitted checks, which also leave dynamic fields unverified.
      State that limitation even if the run succeeded and no parameter warnings
      were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and

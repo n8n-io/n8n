@@ -35,6 +35,7 @@ export interface ParameterCheckRun {
 
 /** Keep the tool output compact when a node has many empty leaves. */
 const MAX_WARNINGS = 20;
+const MAX_SKIPPED_CHECKS = 20;
 
 type WarningLogger = { debug(message: string, meta?: Record<string, unknown>): void };
 
@@ -68,14 +69,23 @@ export async function collectResolvedParameterWarnings(args: {
 	executionService: Pick<InstanceAiExecutionService, 'getResolvedNodeParameters'>;
 	runs: readonly ParameterCheckRun[];
 	logger?: WarningLogger;
-}): Promise<{ warnings: ResolvedParameterWarning[]; skipped: SkippedParameterCheck[] }> {
+}): Promise<{
+	warnings: ResolvedParameterWarning[];
+	skipped: SkippedParameterCheck[];
+	skippedCount: number;
+}> {
 	const { executionService, runs, logger } = args;
 	const warnings: ResolvedParameterWarning[] = [];
 	const skipped: SkippedParameterCheck[] = [];
+	let skippedCount = 0;
+	const recordSkippedCheck = (check: SkippedParameterCheck) => {
+		skippedCount++;
+		if (skipped.length < MAX_SKIPPED_CHECKS) skipped.push(check);
+	};
 	for (const { executionId, nodeNames } of runs) {
 		if (!executionId) {
 			for (const nodeName of nodeNames) {
-				skipped.push({ nodeName, reason: 'execution-unavailable' });
+				recordSkippedCheck({ nodeName, reason: 'execution-unavailable' });
 			}
 			continue;
 		}
@@ -89,7 +99,7 @@ export async function collectResolvedParameterWarnings(args: {
 			const nodeName = nodeNames[index];
 			if (outcome.status === 'fulfilled') {
 				if (outcome.value.suppressed) {
-					skipped.push({ nodeName, executionId, reason: outcome.value.suppressed });
+					recordSkippedCheck({ nodeName, executionId, reason: outcome.value.suppressed });
 				} else {
 					warnings.push(
 						...warningsFromResolution(outcome.value).map((warning) => ({
@@ -101,7 +111,7 @@ export async function collectResolvedParameterWarnings(args: {
 				return;
 			}
 			// Keep the run result, but disclose that its parameters were not checked.
-			skipped.push({ nodeName, executionId, reason: 'replay-failed' });
+			recordSkippedCheck({ nodeName, executionId, reason: 'replay-failed' });
 			logger?.debug('Resolved-parameter check skipped for simulated node', {
 				executionId,
 				nodeName,
@@ -109,12 +119,13 @@ export async function collectResolvedParameterWarnings(args: {
 			});
 		});
 	}
-	return { warnings: warnings.slice(0, MAX_WARNINGS), skipped };
+	return { warnings: warnings.slice(0, MAX_WARNINGS), skipped, skippedCount };
 }
 
 export function buildResolvedParameterNote(
 	warnings: readonly ResolvedParameterWarning[],
 	skipped: readonly SkippedParameterCheck[] = [],
+	skippedCount = skipped.length,
 ): string | undefined {
 	const skipReasons = {
 		'parameter-values-disabled': 'parameter values are disabled',
@@ -130,7 +141,10 @@ export function buildResolvedParameterNote(
 							`${nodeName}${executionId ? ` (execution ${executionId})` : ''}: ${skipReasons[reason]}`,
 					)
 					.join('; ') +
-				'. These nodes have unchecked dynamic fields. Do not report those fields as verified.'
+				(skippedCount > skipped.length
+					? `. Showing ${skipped.length} of ${skippedCount} skipped checks`
+					: '') +
+				'. All nodes with skipped checks have unchecked dynamic fields. Do not report those fields as verified.'
 			: undefined;
 	if (warnings.length === 0) return skippedNote;
 

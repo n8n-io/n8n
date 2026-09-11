@@ -94,7 +94,7 @@ describe('collectResolvedParameterWarnings', () => {
 		});
 		const logger = { debug: vi.fn() };
 
-		const { warnings, skipped } = await collectResolvedParameterWarnings({
+		const { warnings, skipped, skippedCount } = await collectResolvedParameterWarnings({
 			executionService: { getResolvedNodeParameters },
 			runs: [{ executionId: 'exec_1', nodeNames: ['Send SMS', 'Broken'] }],
 			logger,
@@ -114,6 +114,7 @@ describe('collectResolvedParameterWarnings', () => {
 		expect(skipped).toEqual([
 			{ nodeName: 'Broken', executionId: 'exec_1', reason: 'replay-failed' },
 		]);
+		expect(skippedCount).toBe(1);
 		expect(logger.debug).toHaveBeenCalledWith(
 			'Resolved-parameter check skipped for simulated node',
 			expect.objectContaining({ nodeName: 'Broken', error: 'no run data' }),
@@ -128,7 +129,7 @@ describe('collectResolvedParameterWarnings', () => {
 			runs: [{ executionId: 'exec_1', nodeNames: [] }],
 		});
 
-		expect(result).toEqual({ warnings: [], skipped: [] });
+		expect(result).toEqual({ warnings: [], skipped: [], skippedCount: 0 });
 		expect(getResolvedNodeParameters).not.toHaveBeenCalled();
 	});
 });

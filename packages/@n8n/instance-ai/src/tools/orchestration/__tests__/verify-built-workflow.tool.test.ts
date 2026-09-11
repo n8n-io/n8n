@@ -42,6 +42,7 @@ type VerifyBuiltWorkflowOutput = {
 		executionId?: string;
 		reason: string;
 	}>;
+	skippedParameterCheckCount?: number;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
@@ -1252,6 +1253,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.skippedParameterChecks).toEqual([
 			{ nodeName: 'Send Slack', executionId: 'exec-sim', reason: 'replay-failed' },
 		]);
+		expect(result.skippedParameterCheckCount).toBe(1);
 		expect(result.simulationNote).toContain('no real external writes');
 		expect(result.simulationNote).toContain('Parameter check skipped');
 		expect(result.simulationNote).toContain('unchecked dynamic fields');
