@@ -77,6 +77,16 @@ Pcre2Wrapper::Pcre2Wrapper(const std::u16string& pattern,
     // PCRE2_AUTO_CALLOUT inserts a callout before every item so checkDeadline() gets
     // called regardless of the pattern's own content -- match_limit/depth_limit alone
     // don't bound wall-clock (see WallClockExceeded).
+    //
+    // PCRE2's own start-of-match optimizations (required-literal prescan, auto-anchoring)
+    // can skip past a stretch of a non-matching subject without invoking a single callout,
+    // so the deadline check can't fire during that scan -- PCRE2_NO_START_OPTIMIZE would
+    // close that gap, but it's not applied here: it's documented to change match *results*
+    // for patterns using (*COMMIT)/(*PRUNE)/(*SKIP)/(*ACCEPT) control verbs (confirmed:
+    // enabling it breaks two real corpus cases, e.g. `(*COMMIT)ABC` against `DEFABC`).
+    // That's a correctness regression, not just a performance one, so it can't be a blanket
+    // compile option here -- would need per-pattern detection of control-verb usage to be
+    // safe, which is real follow-up work, not a one-line fix.
     uint32_t options = extraOptions | optionsForFlags(flags) | PCRE2_AUTO_CALLOUT;
     utfEnabled_ = (options & PCRE2_UTF) != 0;
 
@@ -154,6 +164,14 @@ bool Pcre2Wrapper::checkDeadline() const {
 
 void Pcre2Wrapper::setSubject(const std::u16string& subject) {
     subject_ = subject;
+    subjectValidated_ = false;
+}
+
+void Pcre2Wrapper::clearSubject() {
+    // swap-with-empty, not clear(): std::string::clear() doesn't reliably release
+    // capacity, which is the whole point here (a large subject's storage must not
+    // linger for as long as this handle stays in the LRU cache).
+    std::u16string().swap(subject_);
     subjectValidated_ = false;
 }
 

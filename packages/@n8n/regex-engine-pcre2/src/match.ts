@@ -40,6 +40,18 @@ function ensureSubjectSet(handle: Pcre2Wrapper, input: string): void {
 	lastSubjectByHandle.set(handle, input);
 }
 
+// Call once a whole engine-level operation (one test/exec, or a whole matchAll/replace/split
+// loop) is done with `handle`. Without this, a handle sitting in the LRU pattern cache keeps
+// a full copy of the last subject it matched for as long as it stays cached -- unbounded by
+// anything but cache size, since a cached handle can outlive the operation that populated it
+// by a long margin. Must drop the WeakMap entry in the same call as the native clear, or a
+// later ensureSubjectSet() would wrongly believe the native side still has it set.
+export function releaseSubject(handle: Pcre2Wrapper): void {
+	if (!lastSubjectByHandle.has(handle)) return;
+	handle.clearSubject();
+	lastSubjectByHandle.delete(handle);
+}
+
 // Budget exhaustion or an unexpected PCRE2 error throws, so callers don't re-check status codes.
 export function runMatch(
 	handle: Pcre2Wrapper,

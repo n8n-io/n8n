@@ -33,7 +33,8 @@ OUT_DIR="src/generated"
 
 if [[ ! -f "vendor/pcre2/CMakeLists.txt" ]]; then
   echo "==> Initializing vendor/pcre2 submodule"
-  git submodule update --init --recursive
+  # Pathspec-scoped: the wasm build only needs pcre2, not the test-only rust-regex corpus.
+  git submodule update --init --recursive -- vendor/pcre2
 fi
 
 echo "==> Configuring (emcmake cmake -B ${BUILD_DIR})"

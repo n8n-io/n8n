@@ -5,7 +5,7 @@ import type { CompiledPattern } from './handle-cache.js';
 import { getHandle } from './handle-cache.js';
 import { replacePattern, splitPattern } from './js-regexp-emulation.js';
 import type { Pcre2ExecArray } from './match.js';
-import { runMatch, toExecArray, nextOffset } from './match.js';
+import { runMatch, toExecArray, nextOffset, releaseSubject } from './match.js';
 import type { Pcre2CompileOption, ResolvedNativeOptions } from './native-options.js';
 import { resolveNativeOptions } from './native-options.js';
 import { getModule, liveCaches } from './wasm-module.js';
@@ -51,7 +51,11 @@ function requirePositiveInteger(value: number, name: string): number {
 
 function testPattern(config: EngineConfig, pattern: string, input: string, flags = ''): boolean {
 	const { handle } = getHandle(config, pattern, flags);
-	return runMatch(handle, pattern, flags, input, 0, isSticky(flags)).matched;
+	try {
+		return runMatch(handle, pattern, flags, input, 0, isSticky(flags)).matched;
+	} finally {
+		releaseSubject(handle);
+	}
 }
 
 function execPattern(
@@ -61,9 +65,13 @@ function execPattern(
 	flags = '',
 ): Pcre2ExecArray | null {
 	const { handle, nameToIndex } = getHandle(config, pattern, flags);
-	const outcome = runMatch(handle, pattern, flags, input, 0, isSticky(flags));
-	if (!outcome.matched) return null;
-	return toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex);
+	try {
+		const outcome = runMatch(handle, pattern, flags, input, 0, isSticky(flags));
+		if (!outcome.matched) return null;
+		return toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex);
+	} finally {
+		releaseSubject(handle);
+	}
 }
 
 function matchAllPattern(
@@ -73,21 +81,25 @@ function matchAllPattern(
 	flags = '',
 ): Pcre2ExecArray[] {
 	const { handle, nameToIndex } = getHandle(config, pattern, flags);
-	const results: Pcre2ExecArray[] = [];
-	const budget = createOperationBudget(config, pattern, flags);
-	const sticky = isSticky(flags);
-	const unicode = isUnicode(flags);
-	let offset = 0;
-	while (offset <= input.length) {
-		budget.checkTime();
-		const outcome = runMatch(handle, pattern, flags, input, offset, sticky);
-		budget.checkTime();
-		if (!outcome.matched) break;
-		budget.recordMatch();
-		results.push(toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex));
-		offset = nextOffset(outcome.matchEnd, outcome.matchStart, input, unicode);
+	try {
+		const results: Pcre2ExecArray[] = [];
+		const budget = createOperationBudget(config, pattern, flags);
+		const sticky = isSticky(flags);
+		const unicode = isUnicode(flags);
+		let offset = 0;
+		while (offset <= input.length) {
+			budget.checkTime();
+			const outcome = runMatch(handle, pattern, flags, input, offset, sticky);
+			budget.checkTime();
+			if (!outcome.matched) break;
+			budget.recordMatch();
+			results.push(toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex));
+			offset = nextOffset(outcome.matchEnd, outcome.matchStart, input, unicode);
+		}
+		return results;
+	} finally {
+		releaseSubject(handle);
 	}
-	return results;
 }
 
 export interface RegexEngine {

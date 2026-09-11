@@ -4,8 +4,10 @@ A [PCRE2](https://github.com/PCRE2Project/pcre2) regular expression engine, comp
 
 ## Install
 
+This package is private and unpublished, consumed only from inside the n8n monorepo. Add it as a workspace dependency (`"@n8n/regex-engine-pcre2": "workspace:*"`) in a sibling package's `package.json`, or run commands against it directly with:
+
 ```bash
-npm install @n8n/regex-engine-pcre2
+pnpm --filter @n8n/regex-engine-pcre2 <script>
 ```
 
 ## Usage
@@ -63,7 +65,7 @@ native match per match found.
 | Error | Thrown when |
 | --- | --- |
 | `Pcre2CompileError` | Pattern is invalid, or uses an unsupported flag. Mirrors `new RegExp(pattern)` throwing `SyntaxError`. |
-| `Pcre2BudgetExceededError` | Matching exceeds `match_limit` (1,000,000), `depth_limit` (1,000,000), `heap_limit` (20,000 KB), or a looping operation's own time/match-count budget. `.kind` says which. |
+| `Pcre2BudgetExceededError` | Matching exceeds `match_limit` (100,000), `depth_limit` (1,000,000), `heap_limit` (20,000 KB) or a single match's wall-clock budget (300 ms), or a looping operation's own time/match-count budget. `.kind` says which (`match-limit`, `depth-limit`, `heap-limit`, `wall-clock-limit`, or `operation-limit`). |
 | `Pcre2MatchError` | PCRE2 reported an error that is neither a compile failure nor a budget hit (for example a malformed UTF-16 subject under the `u` flag). |
 | `Pcre2InternalError` | The wasm module trapped while matching. The module is reloaded and every cached handle is dropped. |
 | `Pcre2NotInitializedError` | The synchronous API was used before `initPcre2Engine()` resolved. |

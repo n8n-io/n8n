@@ -19,7 +19,8 @@ function git(args, options = {}) {
 }
 
 function parseVersion(tag) {
-  const match = /^pcre2-(\d+)\.(\d+)/.exec(tag);
+  // Fully anchored: a suffix like "-local" must not parse as a plain release tag.
+  const match = /^pcre2-(\d+)\.(\d+)(?:\.(\d+))?$/.exec(tag);
   if (!match) return null;
   return [Number(match[1]), Number(match[2])];
 }
@@ -101,23 +102,25 @@ function main() {
     const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
     const fingerprints = extractSignerFingerprints(combined);
 
+    // Returned, not process.exit()'d, so the gnupgHome cleanup below always runs.
     if (!fingerprints.has(EXPECTED_FINGERPRINT)) {
       console.error(
         `error: ${tag} was NOT signed by the expected PCRE2 release-signing key (${EXPECTED_FINGERPRINT}). ` +
           `Signer(s) found: ${[...fingerprints].join(', ') || '<none>'}\n${combined}`,
       );
-      process.exit(1);
+      return 1;
     }
     if (result.status !== 0) {
       // Right key, but git still errored (e.g. untrusted/expired) -- don't accept on fingerprint alone.
       console.error(`error: signature verification failed for ${tag}:\n${combined}`);
-      process.exit(1);
+      return 1;
     }
 
     console.log(`OK: ${tag} has a valid signature from the expected PCRE2 release-signing key (${EXPECTED_FINGERPRINT}).`);
+    return 0;
   } finally {
     rmSync(gnupgHome, { recursive: true, force: true });
   }
 }
 
-main();
+process.exit(main());
