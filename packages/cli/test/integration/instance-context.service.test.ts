@@ -33,6 +33,11 @@ describe('InstanceContextService', () => {
 		return result.block;
 	}
 
+	/** The bracketed entry ids a block rendered, newest first — the ids every tool takes. */
+	function shownIds(block: string): number[] {
+		return [...block.matchAll(/^\[(\d+)\]/gm)].map((match) => Number(match[1]));
+	}
+
 	function cursorOf(result: InstanceContextResult): InstanceContextCursor {
 		expect(result.state).toBe('injected');
 		if (result.state !== 'injected') throw new Error('expected an injected block');
@@ -171,6 +176,8 @@ describe('InstanceContextService', () => {
 				projectId: project.id,
 				cursor: {
 					activityMark: newest.id,
+					// No turn has cut anything yet, so every id below the mark is still offerable.
+					activityFloor: 0,
 					activitySeen: [newest.id],
 					runsThrough: new Date().toISOString(),
 				},
@@ -181,6 +188,102 @@ describe('InstanceContextService', () => {
 			expect(blockOf(delta)).toContain('Also late');
 			// The one the mark accounted for is not repeated.
 			expect(blockOf(delta)).not.toContain('Seen already');
+		});
+
+		/**
+		 * A backlog deeper than one window used to drain a window per turn: the delta re-read a fixed
+		 * span below the mark, which holds the rows the window trimmed as well as the late commits it
+		 * is there for. Each turn then presented forty entries older than the last batch under a
+		 * preamble that calls them additions, and it did so whatever the conversation was about.
+		 */
+		it('does not re-offer the entries a full window already cut', async () => {
+			const backlog = 90;
+			for (let i = 1; i <= backlog; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+
+			const opening = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: null,
+				enabled: true,
+			});
+			// The window's worth, newest first, and it says there is more behind it.
+			expect(shownIds(blockOf(opening))).toHaveLength(40);
+			expect(blockOf(opening)).toContain('and more than these');
+
+			const next = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: cursorOf(opening),
+				enabled: true,
+			});
+
+			// Nothing happened in between, so there is nothing to add — not the next forty down.
+			expect(next).toMatchObject({ state: 'absent', reason: 'empty' });
+		});
+
+		/** The late commit the span exists for still arrives, as long as it lands above the cut. */
+		it('still recovers a late commit that lands above the cut', async () => {
+			for (let i = 1; i <= 46; i++) {
+				await record({
+					category: 'workflow',
+					action: 'created',
+					projectId: project.id,
+					resourceType: 'workflow',
+					resourceId: `wf-${i}`,
+					resourceName: `Workflow ${i}`,
+				});
+			}
+
+			// One id near the top is freed up, so a row can later commit into it — which is what an
+			// out-of-order sequence value looks like from here. Near the top, so it is above whatever
+			// the first window cuts.
+			const seeded = await activity.findFeed({ projectIds: [project.id], limit: 50 });
+			const hole = seeded[5].id;
+			await activity.delete({ id: hole });
+
+			const opening = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor: null,
+				enabled: true,
+			});
+			const cursor = cursorOf(opening);
+			expect(shownIds(blockOf(opening))).not.toContain(hole);
+			expect(hole).toBeGreaterThan(cursor.activityFloor);
+
+			await activity.insert({
+				id: hole,
+				category: 'workflow',
+				action: 'deleted',
+				typeVersion: 1,
+				userId: user.id,
+				projectId: project.id,
+				resourceType: 'workflow',
+				// A name only renders beside an id, so the row needs both to be readable.
+				resourceId: 'wf-late',
+				resourceName: 'Committed out of order',
+				createdAt: new Date(),
+			});
+
+			const delta = await service.buildBlock({
+				user,
+				projectId: project.id,
+				cursor,
+				enabled: true,
+			});
+
+			expect(blockOf(delta)).toContain('Committed out of order');
+			// Only the late commit, not the rows the window cut beneath it.
+			expect(shownIds(blockOf(delta))).toEqual([hole]);
 		});
 
 		it('leaves the inventory out of a delta and says it is an addition', async () => {

@@ -49,36 +49,37 @@ const inventorySize = 8;
 const resourceHistoryLimit = 20;
 
 /**
- * How far below the high-water mark a delta re-reads.
+ * Why a delta re-reads below its own high-water mark at all.
  *
  * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
  * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
- * worth surfacing are deletions, written by whichever request happens to be committing.
+ * cursor that asks only for "everything above the highest id seen" skips 100 for good. The
+ * entries most worth surfacing are deletions, written by whichever request happens to be
+ * committing.
  *
- * So a delta re-reads this far below the mark and drops what it has already shown.
+ * So a delta re-reads the span between the cursor's floor and its mark, and drops what it has
+ * already shown. The floor is the highest id a turn deliberately cut — everything at or below it
+ * has been decided against, and a later turn must never offer it again. Without that floor a
+ * delta re-offers whatever the window trimmed, which is not a late commit but an ordinary older
+ * row, and a backlog then drains a window per turn no matter what the conversation is about.
  *
- * What this does and does not promise. The read below is newest-first and capped, so when more
- * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
- * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
- * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
- * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". What makes even that much true is
- * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
+ * What this does and does not promise. A straggler is recovered only while it sits above the
+ * floor, so one that commits below a turn's cut is lost. That row was already further down than a
+ * window's worth of newer ones, which is the same reason the window cut its neighbours.
  */
-const activityLagIds = 200;
 
 /**
- * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
- * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
- * show it again, and a larger one would store ids the floor already excludes.
+ * Ids remembered so a delta cannot show one twice. Only ids above the floor can come back, so
+ * this needs to hold no more than a turn's shown rows plus those earlier turns left above it —
+ * the cap is a backstop for a long-lived thread on a busy project, where the oldest forgotten id
+ * could reappear once before the age filter takes it.
  */
-const seenIdsCap = activityLagIds;
+const seenIdsCap = 200;
 
 /**
- * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
- * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
- * leaves room for the age filter to discard rows and still fill a window.
+ * Rows one delta reads. Derived from `windowSize` rather than set by hand: it has to stay above
+ * the window so a turn can tell "this is all there is" from "this is the first page", and the
+ * multiple leaves room for the age filter to discard rows and still fill a window.
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
@@ -86,9 +87,11 @@ const entryFetchLimit = windowSize * fetchMultiplier;
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
 export type InstanceContextCursor = {
-	/** Highest activity entry id shown. */
+	/** Highest activity entry id read. */
 	activityMark: number;
-	/** Entry ids already shown that still sit inside the lag band. */
+	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
+	activityFloor: number;
+	/** Entry ids already shown that still sit above the floor. */
 	activitySeen: number[];
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
@@ -104,12 +107,14 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
+	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
+		activityFloor,
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
@@ -280,6 +285,7 @@ export class InstanceContextService {
 				}),
 				cursor: {
 					activityMark: entries.mark,
+					activityFloor: entries.floor,
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
 				},
@@ -374,7 +380,13 @@ export class InstanceContextService {
 		projectIds: string[];
 		cursor: InstanceContextCursor | null;
 		now: Date;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
+	}): Promise<{
+		rows: ActivityEvent[];
+		mark: number;
+		floor: number;
+		seen: number[];
+		truncated: boolean;
+	}> {
 		const cursor = input.cursor;
 
 		// Newest first, and on a delta only what arrived above the mark.
@@ -384,15 +396,15 @@ export class InstanceContextService {
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
 
-		// The band below the mark is read separately, not folded into the query above. One capped
-		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
-		// fill the page and push the band out — losing exactly the late commit the band exists for.
-		// Alone it is bounded by its own width, since it spans that many ids at most.
+		// The span between the floor and the mark is read separately, not folded into the query
+		// above. One capped read cannot cover both: arrivals are unbounded and come back first, so
+		// a busy turn would fill the page and push this out — losing exactly the late commit it
+		// exists for.
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: activityLagIds,
+					limit: entryFetchLimit,
 					projectIds: input.projectIds,
-					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					afterId: cursor.activityFloor,
 					beforeId: cursor.activityMark,
 				})
 			: [];
@@ -411,17 +423,26 @@ export class InstanceContextService {
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// What was shown, not what was read: an entry the window cut is still unseen, and the band
-		// gives it another turn to appear rather than burying it under a mark it never reached.
-		// Only ids inside the band need remembering — below it, the floor already excludes them.
+		// The highest row this turn cut, which is what the next delta must not read back down to.
+		// The list is newest-first, so the first row past the window is that one. A turn that cut
+		// nothing keeps the floor it inherited: nothing was decided against, so the span a
+		// straggler can still surface in must not shrink.
+		const cut = fresh[windowSize];
+		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
+
+		// What was shown, not what was read: an entry the window cut is still unseen, and the span
+		// above the floor gives it another turn to appear rather than burying it under a mark it
+		// never reached. Only ids above the floor need remembering — at or below it, the floor
+		// already excludes them.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > mark - activityLagIds)
+			.filter((id) => id > floor)
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
 		return {
 			rows: shown,
 			mark,
+			floor,
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.

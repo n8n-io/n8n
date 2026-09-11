@@ -358,6 +358,8 @@ describe('InstanceContextService', () => {
 		describe('deltas', () => {
 			const cursor: InstanceContextCursor = {
 				activityMark: 500,
+				// An earlier turn cut at 400, so a delta reads down to there and no further.
+				activityFloor: 400,
 				activitySeen: [500, 499],
 				runsThrough: new Date(NOW.getTime() - 10 * 60_000).toISOString(),
 			};
@@ -405,10 +407,11 @@ describe('InstanceContextService', () => {
 					1,
 					expect.objectContaining({ afterId: 500 }),
 				);
-				// The band is bounded by its own width and closed at the mark.
+				// Floored on what an earlier turn cut and closed at the mark, so the span holds only
+				// what could still legitimately appear.
 				expect(activityEventRepository.findFeed).toHaveBeenNthCalledWith(
 					2,
-					expect.objectContaining({ afterId: 300, beforeId: 500, limit: 200 }),
+					expect.objectContaining({ afterId: 400, beforeId: 500, limit: 160 }),
 				);
 				expect(blockOf(built)).toContain('[498]');
 				// The band deliberately re-reads what the mark already covered, so de-duplicating
@@ -461,11 +464,13 @@ describe('InstanceContextService', () => {
 				expect(stoppedBefore).toEqual(NOW);
 			});
 
-			it('advances the mark past every entry it saw, and remembers only ids inside the band', async () => {
+			it('advances the mark past every entry it saw, and remembers only ids above the floor', async () => {
 				const service = serviceWith();
 				activityEventRepository.findFeed
 					.mockResolvedValueOnce([entry({ id: 600 })])
-					.mockResolvedValueOnce([entry({ id: 350 })]);
+					// 450 sits above the floor, so it is still offerable; the repository would never
+					// return 350, which is below it.
+					.mockResolvedValueOnce([entry({ id: 450 })]);
 
 				const built = await service.buildBlock({
 					user: USER,
@@ -476,8 +481,33 @@ describe('InstanceContextService', () => {
 				});
 
 				expect(cursorOf(built).activityMark).toBe(600);
-				// 350 is below 600 − 200, so the floor already excludes it next time.
-				expect(cursorOf(built).activitySeen).toEqual([600, 500, 499]);
+				// Nothing was cut, so the inherited floor stands and everything above it is kept.
+				expect(cursorOf(built).activityFloor).toBe(400);
+				expect(cursorOf(built).activitySeen).toEqual([600, 500, 499, 450]);
+			});
+
+			/**
+			 * The floor is what stops a backlog draining a window per turn: rows the window trimmed
+			 * are decided against, and a later delta must not read back down to them.
+			 */
+			it('floors the next delta at the highest entry this turn cut', async () => {
+				const service = serviceWith();
+				activityEventRepository.findFeed.mockResolvedValueOnce(
+					// One more than a window's worth (40), newest first.
+					Array.from({ length: 41 }, (_, index) => entry({ id: 900 - index })),
+				);
+
+				const built = await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+					enabled: true,
+				});
+
+				// 900 down to 861 were shown; 860 was cut, and is the boundary from now on.
+				expect(cursorOf(built).activityFloor).toBe(860);
+				expect(cursorOf(built).activitySeen).not.toContain(860);
 			});
 
 			it('builds nothing when the delta is empty', async () => {
@@ -665,7 +695,12 @@ describe('InstanceContextService', () => {
 
 describe('readInstanceContextCursor', () => {
 	it('reads a stored cursor', () => {
-		const stored = { activityMark: 12, activitySeen: [12, 11], runsThrough: NOW.toISOString() };
+		const stored = {
+			activityMark: 12,
+			activityFloor: 4,
+			activitySeen: [12, 11],
+			runsThrough: NOW.toISOString(),
+		};
 
 		expect(readInstanceContextCursor({ instanceContext: stored })).toEqual(stored);
 	});
@@ -674,7 +709,14 @@ describe('readInstanceContextCursor', () => {
 		['no metadata', undefined],
 		['no cursor', {}],
 		['a cursor of the wrong shape', { instanceContext: { activityMark: 'nope' } }],
-		['an unparseable timestamp', { instanceContext: { activityMark: 1, runsThrough: 'soon' } }],
+		[
+			'an unparseable timestamp',
+			{ instanceContext: { activityMark: 1, activityFloor: 0, runsThrough: 'soon' } },
+		],
+		[
+			'a cursor written before the floor existed',
+			{ instanceContext: { activityMark: 12, runsThrough: NOW.toISOString() } },
+		],
 	])('starts over on %s', (_case, metadata) => {
 		expect(readInstanceContextCursor(metadata)).toBeNull();
 	});
@@ -683,6 +725,7 @@ describe('readInstanceContextCursor', () => {
 		const cursor = readInstanceContextCursor({
 			instanceContext: {
 				activityMark: 5,
+				activityFloor: 0,
 				activitySeen: [5, 'four', null],
 				runsThrough: NOW.toISOString(),
 			},
@@ -700,7 +743,12 @@ describe('toContextInjection', () => {
 				block: '0123456789',
 				isUpdate: true,
 				legs: { inventory: 2, events: 3, runs: 1 },
-				cursor: { activityMark: 7, activitySeen: [7], runsThrough: NOW.toISOString() },
+				cursor: {
+					activityMark: 7,
+					activityFloor: 0,
+					activitySeen: [7],
+					runsThrough: NOW.toISOString(),
+				},
 			}),
 		).toEqual({
 			state: 'injected',
