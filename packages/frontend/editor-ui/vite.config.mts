@@ -53,11 +53,15 @@ const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
  * plugin to run config() ends up first in the array; `enforce: 'post'` puts this
  * one last. A regex find keeps it to `node:fs` exactly: a string find is a
  * prefix match and would also rewrite `node:fs/promises`.
+ *
+ * Not in test mode: `vitest.config.mts` merges this config, and unit tests run
+ * on Node, where `node:fs` is real and several of them use it.
  */
 const nodeFsShimPlugin = (): UserConfig['plugins'][number] => ({
 	name: 'node-fs-shim',
 	enforce: 'post',
-	config() {
+	config(_config, env) {
+		if (env.mode === 'test') return {};
 		return {
 			resolve: {
 				alias: [
