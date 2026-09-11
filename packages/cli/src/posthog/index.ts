@@ -5,6 +5,7 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
@@ -228,7 +229,7 @@ export class PostHogClient {
 		}
 
 		// `088_config_evaluations` is multivariate — the enabled arm is the
-		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
+		// `variant` string, not a boolean (`resolveExperimentGates` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
 		}
@@ -247,6 +248,10 @@ export class PostHogClient {
 
 		if (this.globalConfig.instanceAi.nodeUsageEnabled) {
 			overrides[INSTANCE_AI_NODE_USAGE_FLAG] = true;
+		}
+
+		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
+			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

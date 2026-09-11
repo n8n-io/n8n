@@ -335,12 +335,14 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowUpdates,
 		workflowConflicts,
 		credConflicts,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-pull-ui']) {
 		this.telemetry.track('User started pull via UI', {
 			user_id: userId,
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
+			public_api: publicApi,
 		});
 	}
 
@@ -371,6 +373,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credsEligible,
 		credsEligibleWithConflicts,
 		variablesEligible,
+		publicApi,
 	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
 			user_id: userId,
@@ -379,6 +382,7 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_eligible: credsEligible,
 			creds_eligible_with_conflicts: credsEligibleWithConflicts,
 			variables_eligible: variablesEligible,
+			public_api: publicApi,
 		});
 	}
 
@@ -388,6 +392,7 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowsPushed,
 		credsPushed,
 		variablesPushed,
+		publicApi,
 	}: RelayEventMap['source-control-user-finished-push-ui']) {
 		this.telemetry.track('User finished push via UI', {
 			user_id: userId,
@@ -395,6 +400,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
+			public_api: publicApi,
 		});
 	}
 
@@ -1118,6 +1124,7 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
+		includeArchivedWorkflows,
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
@@ -1128,6 +1135,7 @@ export class TelemetryEventRelay extends EventRelay {
 			variable_count: counts.variables,
 			tag_count: counts.tags,
 			credential_export_policy: credentialExportPolicy,
+			include_archived_workflows: includeArchivedWorkflows,
 		});
 	}
 
@@ -1213,7 +1221,7 @@ export class TelemetryEventRelay extends EventRelay {
 			// Emit the effective resolver id: the override if set, otherwise the system
 			// resolver (so cleared overrides report the implicit fallback rather than null).
 			credentialResolverId =
-				(settingsChanged.credentialResolverId.to as JsonValue | undefined) ??
+				settingsChanged.credentialResolverId.to ??
 				this.dynamicCredentialsProxy.getSystemResolverId() ??
 				undefined;
 		}
@@ -1388,10 +1396,10 @@ export class TelemetryEventRelay extends EventRelay {
 					workflow_id: workflow.id,
 					status: executionStatus,
 					executionStatus: runData?.status ?? 'unknown',
-					error_message: telemetryProperties.error_message as string,
+					error_message: telemetryProperties.error_message,
 					error_node_type: telemetryProperties.error_node_type,
-					node_graph_string: telemetryProperties.node_graph_string as string,
-					error_node_id: telemetryProperties.error_node_id as string,
+					node_graph_string: telemetryProperties.node_graph_string,
+					error_node_id: telemetryProperties.error_node_id,
 					webhook_domain: null,
 					sharing_role: userRole,
 					credential_type: null,
@@ -1858,7 +1866,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.identify(
 			{
 				user_role: user?.role?.slug,
-				user_email: user.email,
+				...(this.globalConfig.deployment.type === 'cloud' && { user_email: user.email }),
 			},
 			user.id,
 		);

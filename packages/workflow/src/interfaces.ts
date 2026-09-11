@@ -49,6 +49,12 @@ export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './executi
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
 	credentialsDecrypted?: ICredentialsDecrypted;
+	/**
+	 * Status code(s) that trigger the generic preAuthentication refresh-and-resend in
+	 * `httpRequestWithAuthentication` (non-OAuth1/OAuth2 credentials only). Defaults to 401;
+	 * override when a gateway signals an expired token with a different status.
+	 */
+	preAuthenticationRetryStatusCode?: number | number[];
 }
 
 export type IAllExecuteFunctions =
@@ -86,7 +92,14 @@ export interface IOAuth2Options {
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
-	tokenExpiredStatusCode?: number;
+	tokenExpiredStatusCode?: number | number[];
+	/**
+	 * Whether a `tokenExpiredStatusCode` other than 401 only forces a refresh when the stored
+	 * token is at or past its expiry. Set this when the status is ambiguous, e.g. a gateway that
+	 * answers 404 both for an expired token and for a resource that does not exist, so a batch of
+	 * missing resources does not cost one refresh each. A 401 and an unknown expiry still refresh.
+	 */
+	skipRefreshWhileTokenIsFresh?: boolean;
 	keyToIncludeInAccessTokenHeader?: string;
 }
 
@@ -537,7 +550,18 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
-export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+export type IHttpRequestMethods =
+	| 'DELETE'
+	| 'GET'
+	| 'PATCH'
+	| 'POST'
+	| 'PUT'
+	| 'PROPFIND'
+	| 'MKCOL'
+	| 'MOVE'
+	| 'COPY'
+	| 'REPORT'
+	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
 	ignore: true;
@@ -1205,12 +1229,30 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The authoritative root-workflow nodes to check, taken from the SAME workflow snapshot
+ * that is executing — the published version on a live webhook, the execution snapshot on a
+ * waiting form, the draft on a test webhook. Passing the node objects (rather than a
+ * persisted workflow id alone) fixes two things at once: it restricts the check to the
+ * nodes that can actually run on this trigger (disjoint branches and other triggers' chains
+ * are simply not in the list), AND it pins the check to the running snapshot, so a node
+ * renamed or re-wired in a draft that differs from the running version can't make the
+ * resolver silently skip a credential.
+ *
+ * When omitted, every enabled node of the persisted workflow is checked (the safe default,
+ * used by callers that only have a workflow id — e.g. the form connect panel).
+ */
+export type CredentialCheckOptions = {
+	rootNodes?: INode[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1221,6 +1263,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -3389,6 +3432,12 @@ export interface RelatedAgentRun {
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
+	 * The run started in the in-app preview chat. `integrationType` cannot say
+	 * this: MCP and AI Assistant test runs use `n8n_chat` too, and they must
+	 * resume on the runtime they started on.
+	 */
+	previewChat?: boolean;
+	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
 	 */
@@ -4375,6 +4424,9 @@ export interface IUserSettings {
 		credentialId?: string | null;
 		modelName?: string;
 		localGatewayDisabled?: boolean;
+	};
+	mcpJsonNudge?: {
+		impressions: number;
 	};
 }
 

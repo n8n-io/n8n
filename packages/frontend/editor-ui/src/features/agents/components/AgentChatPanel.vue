@@ -19,7 +19,7 @@ import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type {
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -59,7 +59,7 @@ const emit = defineEmits<{
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
+	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 }>();
 
 const locale = useI18n();
@@ -339,7 +339,17 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ focusInput, sendMessageFromOutside });
+function getConversationMarkdown(): string {
+	return messages.value
+		.filter((message) => message.content.trim().length > 0)
+		.map((message) => {
+			const speaker = message.role === 'user' ? 'User' : 'Agent';
+			return `**${speaker}:**\n\n${message.content.trim()}`;
+		})
+		.join('\n\n---\n\n');
+}
+
+defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();

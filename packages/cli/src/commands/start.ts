@@ -31,7 +31,6 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
@@ -306,12 +305,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
-
-			// Catches leadership already taken over before this instance had a
-			// takeover listener subscribed, whose one-shot event would otherwise
-			// be lost for the process lifetime.
-			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
-				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
@@ -424,10 +417,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
-		Container.get(N8NCheckpointStorage).init();
 
 		const systemTaskMetadata = Container.get(SystemTaskMetadata);
-		for (const taskClass of mainSystemTasks()) {
+		for (const taskClass of await mainSystemTasks(this.globalConfig)) {
 			systemTaskMetadata.register(taskClass);
 		}
 
@@ -447,9 +439,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { WorkflowPublicationOutboxConsumer } = await import(
 				'@/workflows/publication/workflow-publication-outbox-consumer.js'
-			);
-			const { WorkflowPublicationOutboxCleanupService } = await import(
-				'@/workflows/publication/workflow-publication-outbox-cleanup.service.js'
 			);
 			const { WorkflowPublicationReconciler } = await import(
 				'@/workflows/publication/workflow-publication-reconciler.service.js'
@@ -472,7 +461,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				});
 
-			Container.get(WorkflowPublicationOutboxCleanupService).init();
 			Container.get(WorkflowPublicationReconciler).init();
 		} else {
 			await this.activeWorkflowManager.init();

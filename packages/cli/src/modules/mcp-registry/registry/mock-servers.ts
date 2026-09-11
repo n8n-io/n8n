@@ -1,6 +1,6 @@
 import type { McpRegistryServer } from './mcp-registry.types';
 
-export const notionMockServer: McpRegistryServer = {
+export const notionMockServer = {
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
@@ -37,9 +37,9 @@ export const notionMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['productivity', 'docs', 'knowledge-base'],
-};
+} satisfies McpRegistryServer;
 
-export const slackExtendingMockServer: McpRegistryServer = {
+export const slackExtendingMockServer = {
 	name: 'com.slack/mcp',
 	slug: 'slack',
 	title: 'Slack',
@@ -62,9 +62,9 @@ export const slackExtendingMockServer: McpRegistryServer = {
 		scope: 'channels:read chat:write',
 		authQueryParameters: '',
 	},
-};
+} satisfies McpRegistryServer;
 
-export const gmailDirectExtendMockServer: McpRegistryServer = {
+export const gmailDirectExtendMockServer = {
 	name: 'com.google/gmail-mcp',
 	slug: 'gmail',
 	title: 'Gmail',
@@ -83,7 +83,29 @@ export const gmailDirectExtendMockServer: McpRegistryServer = {
 	extendsCredential: {
 		extends: 'gmailOAuth2',
 	},
-};
+} satisfies McpRegistryServer;
+
+export const githubUsesCredentialsMockServer = {
+	name: 'custom/GitHub',
+	slug: 'git-hub',
+	title: 'GitHub',
+	description: 'MCP server for GitHub development workflows.',
+	tagline: 'Connect to the GitHub MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-08-25T10:00:00.000Z',
+	icons: [{ src: 'https://github.com/icon.svg', mimeType: 'image/svg+xml' }],
+	websiteUrl: 'https://github.com',
+	authType: 'usesCredentials',
+	usesCredentials: [
+		{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+		{ credentialType: 'githubApi', name: 'Access Token', value: 'accessToken' },
+	],
+	remotes: [{ type: 'streamable-http', url: 'https://api.githubcopilot.com/mcp/' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+} satisfies McpRegistryServer;
 
 export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 	name: 'com.databricks/genie-mcp',
@@ -107,6 +129,8 @@ export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 			// Trailing slash stripped in case the customer pastes the host straight
 			// from the browser, matching DatabricksOAuth2Api's own accessTokenUrl/authUrl.
 			url: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+			// Mirrors DATABRICKS_PARTNER_USER_AGENT in nodes-base, which cli does not import
+			headers: { 'User-Agent': 'n8n_DatabricksNode' },
 		},
 	],
 	tools: [],
@@ -163,4 +187,4 @@ export const linearMockServer: McpRegistryServer = {
 	origin: 'registry',
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
-};
+} satisfies McpRegistryServer;

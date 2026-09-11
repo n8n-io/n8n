@@ -5,7 +5,7 @@ autoInstallPeers: true
 linkWorkspacePackages: deep
 hoist: true
 hoistWorkspacePackages: false
-# pnpm 11 hoists TS7 into node_modules/.pnpm/node_modules, where it shadows the root's real
+# pnpm hoists TS7 into node_modules/.pnpm/node_modules, where it shadows the root's real
 # TS6 and breaks vue-tsc — it needs `typescript/lib/_tsc`, which TS7 and the
 # `@typescript/typescript6` alias both lack — in packages on the typescript-tooling catalog.
 hoistPattern:
@@ -13,7 +13,7 @@ hoistPattern:
   - '!typescript'
 allowUnusedPatches: true
 # The docker build trims frontend manifests and deploys with --prod before later
-# scripts run; pnpm 11's pre-run install would reinstall production-only and prune
+# scripts run; pnpm's pre-run install would reinstall production-only and prune
 # the devDependencies those scripts import.
 verifyDepsBeforeRun: false
 
@@ -116,12 +116,15 @@ catalog:
   '@modelcontextprotocol/sdk': 1.26.0
   '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
-  '@n8n_io/ai-assistant-sdk': 1.26.0
+  '@n8n_io/ai-assistant-sdk': 1.27.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
-  '@qdrant/js-client-rest': ^1.16.2
+  '@qdrant/js-client-rest': ^1.19.0
   '@rudderstack/rudder-sdk-node': 3.0.5
+  # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
+  # context, which splits @langchain/core into two physical copies.
+  '@smithy/signature-v4': 5.7.2
   '@stryker-mutator/core': 10.0.0
   '@stryker-mutator/vitest-runner': 10.0.0
   '@supabase/supabase-js': 2.112.3
@@ -170,6 +173,14 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
+  # Pinned exactly and kept together: these packages cross types with each other
+  # (`rule-tester` pins `utils` exactly), so a caret that lets one float breaks the
+  # other. Must match the `typescript-eslint` meta-package version below.
+  '@typescript-eslint/eslint-plugin': 8.70.0
+  '@typescript-eslint/parser': 8.70.0
+  '@typescript-eslint/rule-tester': 8.70.0
+  '@typescript-eslint/typescript-estree': 8.70.0
+  '@typescript-eslint/utils': 8.70.0
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
@@ -207,7 +218,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^7.0.0
+  isolated-vm: ^7.0.1
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   json-schema: 0.4.0
@@ -262,9 +273,10 @@ catalog:
   tsx: ^4.19.3
   turndown: ^7.2.4
   typescript: 6.0.2
+  typescript-eslint: 8.70.0
   uuid: 11.1.1
   vite: ^8.0.2
-  vite-plugin-dts: ^4.5.4
+  unplugin-dts: ^1.1.0
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
@@ -293,6 +305,7 @@ catalogs:
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vitejs/plugin-vue': ^6.0.8
+    '@vue/language-core': ^3.3.11
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^14.3.0
@@ -354,6 +367,7 @@ overrides:
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^1.10.0
   '@n8n/typeorm>@sentry/node': catalog:sentry
+  'mssql@12.7.0>tedious': 20.0.5
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0
   '@opentelemetry/propagator-jaeger': 2.10.0
@@ -380,7 +394,7 @@ overrides:
   nodemailer: 8.0.10
   validator: 13.15.26
   zod: 3.25.76
-  js-yaml: 4.3.1
+  js-yaml: 4.3.2
   katex: 0.18.2
   body-parser: 2.3.0
   glob@10: 10.5.0
@@ -462,12 +476,12 @@ overrides:
 patchedDependencies:
   axios: patches/axios.patch
   bull@4.16.4: patches/bull@4.16.4.patch
+  element-plus@2.4.3: patches/element-plus@2.4.3.patch
   pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
   '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
   '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
   vue-tsc@2.2.8: patches/vue-tsc@2.2.8.patch
-  element-plus@2.4.3: patches/element-plus@2.4.3.patch
   ics: patches/ics.patch
   minifaker: patches/minifaker.patch
   z-vue-scan: patches/z-vue-scan.patch

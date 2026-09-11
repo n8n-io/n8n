@@ -1,4 +1,4 @@
-import { DeleteExecutionsDto } from '@n8n/api-types';
+import { DeleteExecutionsDto, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
 import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
 import type { Scope } from '@n8n/permissions';
@@ -132,7 +132,17 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.retry(req, workflowIds);
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+
+		return await this.executionService.retry({
+			executionId: req.params.id,
+			options: {
+				loadWorkflow: req.body.loadWorkflow,
+				redactExecutionData: redactQuery.success ? redactQuery.data.redactExecutionData : undefined,
+			},
+			sharedWorkflowIds: workflowIds,
+			user: req.user,
+		});
 	}
 
 	@Post('/delete')

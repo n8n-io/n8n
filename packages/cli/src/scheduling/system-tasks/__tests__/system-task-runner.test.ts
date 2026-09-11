@@ -81,6 +81,22 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('fires a task whose interval is not a whole number of seconds on the rounded cadence', async () => {
+			const { runner, metadata, logger } = setup({ isLeader: true });
+			dummy.schedule = { kind: 'interval', intervalSeconds: 59.99999999999999 };
+			metadata.register(DummySystemTask);
+
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(dummy.runCount).toBe(1);
+			expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('in-memory timer'), {
+				name: 'dummy',
+				schedule: { kind: 'interval', intervalSeconds: 60 },
+			});
+		});
+
 		it('fires a task registered after it took over the registry', async () => {
 			const { runner, metadata } = setup({ isLeader: true });
 			await runner.init();

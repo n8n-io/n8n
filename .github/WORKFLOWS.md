@@ -231,10 +231,11 @@ parallelism). See the `--build-via-mcp` section in
 
 ### On PR Close/Merge
 
-| Event                      | Workflow                    |
-|----------------------------|-----------------------------|
-| PR closed (any)            | `util-notify-pr-status.yml` |
-| PR merged to `release/*`   | `release-publish.yml`       |
+| Event                              | Workflow                       |
+|------------------------------------|--------------------------------|
+| PR closed (any)                    | `util-notify-pr-status.yml`    |
+| PR merged to `release/*`           | `release-publish.yml`          |
+| PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
 ### Manual Triggers (PR Comments)
 
@@ -244,10 +245,126 @@ parallelism). See the `--build-via-mcp` section in
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
 
+### Label Triggers
+
+| Label                 | Workflow                     | Effect                                             |
+|-----------------------|------------------------------|----------------------------------------------------|
+| `codespace-preview`   | `util-codespace-preview.yml` | Runs the PR in a Codespace, comments the URL        |
+| `preview:enterprise`  | `util-codespace-preview.yml` | Re-serves the instance with an enterprise licence   |
+| `preview:debug`       | `util-codespace-preview.yml` | Re-serves the instance with `N8N_LOG_LEVEL=debug`   |
+
+**Why:** A reviewer gets a running instance of the PR without a Docker build or a
+cloud deploy. The workflow calls `scripts/preview.mjs`, which keeps one codespace
+for each PR (display name `preview/pr-<number>`) and shares port 5678 with the
+organization. A later push serves the new head in the same box. Removing the
+label, or closing the PR, deletes the box.
+
+Only a PR from a branch in this repository is eligible: a codespace token is
+scoped to `n8n-io/n8n` and cannot check out a fork head.
+
+#### Running it by hand
+
+A box sleeps after 2 hours of no use, and GitHub makes every forwarded port
+private again at each start. So a preview that slept reaches nobody until
+something shares port 5678 again, and its backend is gone with the container.
+**Actions → Util: Codespace Preview → Run workflow** does both without a commit
+and without a label toggle:
+
+| Input | Meaning |
+|---|---|
+| `pr_number` | The pull request to act on. |
+| `operation` | `up` (default) creates the box if it is gone, starts it if it sleeps, serves the head and shares the port again. `refresh` re-serves the head in a box that already exists. `down` deletes the box. |
+
+Prefer `up` unless you mean to delete: it covers create, wake and re-share.
+
+The button needs write access, and it appears only once the trigger is on
+`master` — GitHub lists dispatchable workflows from the default branch. A manual
+run takes the branch picked in the dropdown, which is the branch GitHub read the
+workflow from, so a branch can test a change to the preview scripts. A fork head
+is still refused, by `preview.mjs` rather than by the job's `if`. There is no
+`ls` operation: it needs no PR and posts no comment — run `pnpm preview ls`
+locally.
+
+#### Preview toggles
+
+A `preview:*` label configures an instance that already exists, so adding or
+removing one re-serves the box instead of creating or deleting it. It does
+nothing on a PR without `codespace-preview`.
+
+The vocabulary lives in `scripts/preview-labels.mjs`, which both ends import:
+`preview.mjs` turns the PR's labels into slugs, and `preview-serve.mjs` turns
+those slugs into environment inside the box. Add a toggle there, in one place.
+
+Only slugs cross the gap. The `gh codespace ssh` command is a shell string that
+appears in the box's process list, so a value is never passed through it —
+`preview:enterprise` resolves to a licence key inside the box, not on the runner.
+
+`preview:enterprise` needs a **Codespaces** secret named
+`N8N_LICENSE_ACTIVATION_KEY`, scoped to `n8n-io/n8n`. That is a Codespaces
+secret, not an Actions secret, and it is unrelated to `CODESPACE_PREVIEW_TOKEN`.
+Use the sandbox key: the preview sets tenant `1001` to match, and the default
+tenant (`1`) rejects it. Without the secret the preview still serves, unlicensed,
+and says so in the log.
+
+Note what the label does and does not control. Codespaces injects the secret into
+**every** preview box, so the label decides whether the licence reaches n8n, not
+whether the key reaches the box. Anyone who can run PR-head code can read
+`/workspaces/.codespaces/shared/.env-secrets`. Previews are limited to branches
+in this repository, so that is the set of people who already have write access.
+
+#### The `CODESPACE_PREVIEW_TOKEN` secret
+
+The job needs `CODESPACE_PREVIEW_TOKEN`, a **fine-grained** personal access token,
+held in the `codespaces` environment. Set the resource owner to `n8n-io` and limit
+repository access to `n8n-io/n8n`. Grant these repository permissions:
+
+| Permission | Level | What it unlocks |
+|---|---|---|
+| Metadata | Read | Mandatory, selected for you |
+| Codespaces | Read and write | Create, list and delete a box |
+| Codespaces metadata | Read | `GET .../codespaces/machines`, which resolves the machine type |
+| Codespaces lifecycle admin | Read and write | Start a stopped box, which is what `gh codespace ssh` does |
+| Contents | Read | Read the repository |
+| Pull requests | Read | `gh pr view`, to resolve the head ref and SHA |
+
+`Codespaces metadata` is a **different permission** from `Codespaces`. Without it
+the run fails with `HTTP 403: Resource not accessible by personal access token` on
+the `machines` endpoint, after the org billing check has already printed a tick —
+so the failure looks unrelated to permissions.
+
+An organization owner may have to approve the token. It stays pending until then.
+
+No other credential can do this:
+
+- `GITHUB_TOKEN` has no Codespaces access.
+- A GitHub App **installation** token cannot create a codespace at all. The
+  Codespaces API belongs to a user, not to an installation.
+- A **classic** token is refused by org policy:
+  `` `n8n-io` forbids access via a personal access token (classic) ``. So no
+  combination of classic scopes works, whatever the API reference says about the
+  `codespace` scope.
+
+The environment keeps the token away from every other workflow: only a job that
+names `codespaces` can read it. **The environment must allow every branch.** A
+`pull_request` run has the ref `refs/pull/<n>/merge`, which no deployment branch
+policy matches, so a branch rule would block every preview. Add required
+reviewers only if a click for each preview is acceptable.
+
+The codespace belongs to whoever owns the token, and shows up in that account's
+codespace list. Billing still goes to the organization, because the repository is
+organization-owned and has a Codespaces budget. A service account is therefore
+better than a person's account for quota attribution, though the token is scoped
+to one repository either way.
+
+The job checks out the base branch, never the PR head, so a PR cannot supply the
+script that reads that token. A manual run checks out the branch chosen in the
+Run-workflow dropdown, which only a user with write access can pick.
+
 ### Other Manual Workflows
 
 | Workflow                    | Purpose                                                 |
 |-----------------------------|---------------------------------------------------------|
+| `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
@@ -277,6 +394,9 @@ release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
+
+test-sbom-nightly.yml
+    └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
@@ -430,6 +550,7 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -482,11 +603,27 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.18.1'
+  node-version:        # default: '26.5.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   docker-cache-key:    # required when enable-docker-cache is true
   build-command:       # default: 'pnpm build'
 ```
+
+The pnpm version comes from the `packageManager` field in the root
+`package.json`, through `resolve-pnpm-version.mjs`. There is no version input to
+keep in sync: a bump in `package.json` moves the setup step, the cache key and
+the version check together.
+
+The action caches the pnpm executable in `~/setup-pnpm` by OS, architecture and
+version. A cache miss runs `pnpm/setup` and retries once if the registry request
+fails. The action verifies the version and saves the cache before the rest of
+the job can fail.
+
+Concurrent jobs can all miss a new key before the first save completes. Jobs
+that start after the save use the cached executable. Windows keeps the standard
+`pnpm/setup` path because its runner cannot activate the cached POSIX home path.
+The existing `actions/setup-node` cache continues to store the pnpm package
+store.
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
@@ -532,8 +669,10 @@ Workflows with `workflow_call` trigger:
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
+| `sec-sync-retarget-prs.yml`        | none                                          | Move bundle PRs back onto `bundle/*` |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
+| `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
@@ -561,6 +700,7 @@ Scripts in `.github/scripts/`:
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
+| `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts
 
@@ -568,9 +708,22 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+| `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
+| `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
+
+### Preview Scripts
+
+| Script                          | Purpose                                                                 | Called By                      |
+|---------------------------------|-------------------------------------------------------------------------|--------------------------------|
+| `codespace-preview.mjs`         | Map a `pull_request` event or a manual operation onto a preview operation, comment the result | `util-codespace-preview.yml` |
+| `../../scripts/preview.mjs`     | One codespace for each PR: `up`, `refresh`, `down`, `ls`. `--json` for CI | `codespace-preview.mjs`, developers |
+
+`scripts/preview.mjs` is also the developer entry point (`pnpm preview up <pr>`).
+In `--json` mode it prints one object on stdout and sends all progress to stderr,
+so a workflow can read the URL from a run that also streams an in-box build log.
 
 ### Branch Replay Scripts
 
@@ -582,7 +735,7 @@ rewrite safe.
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
 | `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
 | `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
-| `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
+| `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; skips while the base is unpublished; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
 
 ### Slack Scripts
 
@@ -646,7 +799,10 @@ An entry with the `required` option makes team approval mandatory: when a PR
 changes a file whose winning entry carries `required`, a member of each listed
 team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
-named **Required Reviews** on the head SHA. The ruleset for `master` must list
+named **Required Reviews** on the head SHA. A missing approval reports
+`pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
+does not show red CI; any non-success state blocks the merge equally. The
+ruleset for `master` must list
 that status as a required check for the block to take effect. Merge-queue runs
 report success on the queue head without re-evaluating: a PR cannot enter the
 queue unless the status is green on its head, and the queue does not change
@@ -786,6 +942,13 @@ Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
 
+`test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
+Docker build to complete. It builds the production deployment closure at that run's SHA and
+validates the release SBOM. It also resolves the four immutable SHA image tags from that
+build and validates each image SBOM. The validation uses the same enrichment and SPDX gates
+as a release. It does not publish, attest, or upload an artifact. A failure reports to the
+Developer Platform Slack channel.
+
 ### SLSA L3 Provenance
 
 SLSA (Supply-chain Levels for Software Artifacts) Level 3 provides cryptographic proof of build integrity.
@@ -879,6 +1042,35 @@ merged into one (and on `workflow_dispatch`). It **merges the base into** the bu
 via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without
 forcing. Every push is verified to carry exactly the tree a merge of the two sides would
 produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
+
+**A bundle branch is only ever built on published history.** Before it creates or merges
+anything, the sync fetches the same-named branch from `https://github.com/n8n-io/n8n.git`
+(anonymously — its token is scoped to the private repo) and checks that the private base tip is
+contained in it. This matters because the `chore: Bundle/*` squash on private `master` is
+*private-only*: the mirror above discards it in favour of the public cherry-pick of the same
+changes. A sync in that window would root the branch on a commit that is about to disappear,
+leaving it carrying two commits for one set of fixes — and every fix PR cut from it inherits the
+dead one. The window is real: this workflow's daily cron and the mirror's hourly cron both fire
+at `:00` with nothing ordering them, which is why the check lives in the script rather than in
+step ordering.
+
+An unpublished cut is a **skip**, not a failure: the mirror discards that commit every hour
+regardless, so the run exits green with the reason in the log and the next one proceeds. A
+missing branch also self-heals, because the mirror re-dispatches this workflow while one is
+absent. A base ahead of public for **any other reason** fails the run — the mirror is stuck and
+will not clear it on its own, so fix that first (remove the commit, or dispatch **Security: Sync
+from Public** with `force`) and re-run. To sync a bundle branch immediately, dispatch the mirror
+and then this workflow. The blocking commits are listed in the run log; the failure annotation
+carries only a count, since a subject hints at the fix.
+
+Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
+branch's own base, and re-creating the branch does not move them back. So the sync then calls
+[`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
+on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
+branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
+`chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
+own. `sec-sync-public-to-private.yml` only *dispatches* the bundle sync when it finds a branch
+missing; the retarget runs inside that dispatched run, once the branch exists.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open

@@ -10,14 +10,13 @@ import { ChatIntegrationRegistry, type AgentChatIntegration } from '../../agent-
 import type { ChatIntegrationService, ChatInstance } from '../../chat-integration.service';
 import type { ComponentMapper } from '../../component-mapper';
 import { ChatIntegrationActionExecutor } from '../../integration-action-executor';
+import { ChannelRateLimitGuard } from '../../channel-rate-limit.guard';
 import type { IntegrationMessageContextService } from '../../integration-message-context.service';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
 } from '../../integration-tools';
 import { getIntegrationToolConnectionDescriptors } from '../../integration-tools';
-
-type AgentExecutorLike = ConstructorParameters<typeof AgentChatBridge>[2];
 
 export type ReplayWebhookOptions = { waitUntil?: (task: Promise<unknown>) => void };
 
@@ -225,7 +224,7 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	new AgentChatBridge(
 		params.chat as never,
 		'agent-1',
-		agentExecutor as AgentExecutorLike,
+		agentExecutor,
 		params.componentMapper ?? mock<ComponentMapper>(),
 		mock<Logger>(),
 		'project-1',
@@ -235,7 +234,11 @@ export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	chatIntegrationService.getChatInstance.mockReturnValue(params.chat);
-	const actionExecutor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+	const actionExecutor = new ChatIntegrationActionExecutor(
+		chatIntegrationService,
+		registry,
+		new ChannelRateLimitGuard(),
+	);
 	const descriptor = getIntegrationToolConnectionDescriptors([params.integration], 'agent-1')[0];
 
 	return {

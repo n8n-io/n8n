@@ -1165,6 +1165,7 @@ describe('ExternalSecretsManager', () => {
 				return {
 					manager,
 					providerRegistry,
+					retryManager,
 				};
 			};
 
@@ -1177,7 +1178,17 @@ describe('ExternalSecretsManager', () => {
 				await existingProvider.init({ connected: true, connectedAt: null, settings: {} });
 				await existingProvider.connect();
 				existingProvider.secrets = secrets;
+				// A refresh of this provider re-fetches the same secrets, so callers can tell a
+				// preserved predecessor apart from a replacement that took over the slot.
+				existingProvider._updateSecrets = secrets;
 				providerRegistry.set(providerKey, existingProvider);
+			};
+
+			// vi.waitFor is unusable in these tests: it advances the fake clock between polls and
+			// would fire the very retry timer a test is proving has not fired yet.
+			const flushPromises = async () => {
+				await Promise.resolve();
+				await Promise.resolve();
 			};
 
 			it('should keep serving existing secrets while provider connection reload is in progress', async () => {
@@ -1338,6 +1349,72 @@ describe('ExternalSecretsManager', () => {
 
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 					expect(providerRegistry.get('my-vault')?.state).toBe('connected');
+				} finally {
+					manager.shutdown();
+				}
+			});
+
+			it('should keep serving secrets from the connected provider until a failed replacement hydration heals', async () => {
+				const firstHydrationFailed = createDeferred();
+
+				class FlakyHydrationProvider extends DummyProvider {
+					override _updateSecrets: Record<string, string> = { test1: 'new-value' };
+
+					private remainingFailures = 2;
+
+					override async update(): Promise<void> {
+						if (this.remainingFailures-- > 0) {
+							firstHydrationFailed.resolve();
+							throw new Error('Hydration failed');
+						}
+
+						await super.update();
+					}
+				}
+
+				const { manager, providerRegistry, retryManager } = createProviderReloadTestManager({
+					providerClass: FlakyHydrationProvider,
+					connections: [
+						{
+							providerKey: 'my-vault',
+							type: 'dummy',
+							encryptedSettings: 'encrypted-data',
+							isEnabled: true,
+						},
+					],
+				});
+
+				await addConnectedProviderWithSecrets(providerRegistry, 'my-vault', {
+					test1: 'old-value',
+				});
+				const predecessor = providerRegistry.get('my-vault');
+
+				try {
+					await manager.reloadAllProviders();
+					await firstHydrationFailed.promise;
+					await flushPromises();
+
+					expect(providerRegistry.get('my-vault')).toBe(predecessor);
+					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
+					expect(retryManager.isRetrying('my-vault')).toBe(true);
+
+					await manager.updateSecrets();
+					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
+
+					await vi.advanceTimersToNextTimerAsync();
+					await vi.advanceTimersToNextTimerAsync();
+					await flushPromises();
+
+					const healed = providerRegistry.get('my-vault') as FlakyHydrationProvider;
+					expect(healed).not.toBe(predecessor);
+					expect(healed.state).toBe('connected');
+					expect(manager.getSecret('my-vault', 'test1')).toBe('new-value');
+
+					// The healed slot must take part in the refresh loop again, which only holds if
+					// its connected state was restored.
+					healed._updateSecrets = { test1: 'newest-value' };
+					await manager.updateSecrets();
+					expect(manager.getSecret('my-vault', 'test1')).toBe('newest-value');
 				} finally {
 					manager.shutdown();
 				}

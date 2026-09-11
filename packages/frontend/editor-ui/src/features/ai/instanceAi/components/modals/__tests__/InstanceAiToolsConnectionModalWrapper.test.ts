@@ -61,7 +61,11 @@ const { mockConnect, mockUpdateConnection, mcpStoreMock } = vi.hoisted(() => {
 				title: string;
 				tagline: string;
 				description: string;
-				credentialType: string;
+				credentials: Array<{
+					credentialType: string;
+					name: string;
+					value: string;
+				}>;
 				tools: never[];
 				icons: never[];
 				isOfficial: boolean;
@@ -271,7 +275,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 				title: 'Linear',
 				tagline: 'Linear MCP',
 				description: 'Linear MCP',
-				credentialType: 'mcpOAuth2Api',
+				credentials: [{ credentialType: 'mcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 				tools: [],
 				icons: [],
 				isOfficial: true,

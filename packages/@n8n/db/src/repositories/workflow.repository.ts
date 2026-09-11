@@ -36,6 +36,7 @@ import type {
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
+import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -71,6 +72,26 @@ type WorkflowListResult = {
 	count: number;
 };
 
+/**
+ * The workflows an agent's workflow tools refer to: refs by id, legacy refs by
+ * name, both inside the agent's project. Shared by the runtime lookup and the
+ * agent dependency index, so the two cannot resolve a reference differently.
+ */
+export function agentToolReferenceWhere(
+	projectId: string,
+	workflowIds: string[],
+	legacyWorkflowNames: string[],
+): Array<FindOptionsWhere<WorkflowEntity>> {
+	const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+	if (workflowIds.length > 0) {
+		where.push({ id: In(workflowIds), shared: { projectId } });
+	}
+	if (legacyWorkflowNames.length > 0) {
+		where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+	}
+	return where;
+}
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -82,6 +103,56 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		transactionRunner: TransactionRunner,
 	) {
 		super(WorkflowEntity, dataSource.manager, transactionRunner);
+	}
+
+	/**
+	 * The most recently worked-on non-archived workflows in these projects, newest first, with the
+	 * total in scope.
+	 *
+	 * For telling an agent what already exists here. An event log cannot answer that: a workflow
+	 * nobody has run or edited lately produces no events at all, so it is invisible to a feed while
+	 * being exactly the work somebody might want picked up.
+	 */
+	async findRecentForProjects(
+		projectIds: string[],
+		limit: number,
+	): Promise<{ total: number; workflows: Array<{ id: string; name: string; active: boolean }> }> {
+		if (projectIds.length === 0) return { total: 0, workflows: [] };
+		if (!Number.isInteger(limit) || limit <= 0) return { total: 0, workflows: [] };
+
+		// A workflow can be shared into several projects, so the join multiplies rows when more than
+		// one of them is in scope. Both the count and the page are made distinct on the workflow.
+		const base = () =>
+			this.createQueryBuilder('workflow')
+				.innerJoin(SharedWorkflow, 'shared', 'shared.workflowId = workflow.id')
+				.where('shared.projectId IN (:...projectIds)', { projectIds })
+				.andWhere('workflow.isArchived = :archived', { archived: false });
+
+		const totalRow = await base()
+			.select('COUNT(DISTINCT workflow.id)', 'total')
+			.getRawOne<{ total: number | string }>();
+
+		const rows = await base()
+			.select('workflow.id', 'id')
+			.addSelect('MAX(workflow.name)', 'name')
+			// Published state is `activeVersionId`, not the deprecated `active` column, so this
+			// agrees with every other reader here. Aggregated as an integer because Postgres has no
+			// `max(boolean)`, which would fail there while passing on sqlite.
+			.addSelect('MAX(CASE WHEN workflow.activeVersionId IS NOT NULL THEN 1 ELSE 0 END)', 'active')
+			.groupBy('workflow.id')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit)
+			.getRawMany<{ id: string; name: string; active: number | string | boolean }>();
+
+		return {
+			// Postgres returns COUNT as a bigint string.
+			total: Number(totalRow?.total ?? 0),
+			workflows: rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				active: Boolean(Number(row.active)),
+			})),
+		};
 	}
 
 	async get(
@@ -322,13 +393,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	) {
-		const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
-		if (workflowIds.length > 0) {
-			where.push({ id: In(workflowIds), shared: { projectId } });
-		}
-		if (legacyWorkflowNames.length > 0) {
-			where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
-		}
+		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return [];
 
 		return await this.find({
@@ -337,7 +402,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			// scope its check to nodes reachable from a supported trigger; without
 			// it the backend falls back to scanning every enabled node and
 			// disagrees with the frontend picker, which fetches connections.
-			select: ['id', 'name', 'nodes', 'connections'],
+			// `activeVersionId` tells the publish check whether the workflow is published.
+			select: ['id', 'name', 'nodes', 'connections', 'activeVersionId'],
 		});
 	}
 
@@ -1071,7 +1137,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		const conditions: string[] = [];
 		const params: Record<string, string> = {
 			cpParentWorkflowId: parentWorkflowId,
-			cpCallerIdMembership: `%,${this.escapeLike(parentWorkflowId)},%`,
+			cpCallerIdMembership: `%,${escapeLike(parentWorkflowId)},%`,
 		};
 
 		// Branch 1: callerPolicy = 'any'
@@ -1079,7 +1145,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Branch 2: callerPolicy = 'workflowsFromAList' and the allowlist contains parentWorkflowId as a whole ID.
 		conditions.push(
-			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ESCAPE '\\')`,
+			`(${callerPolicy} = 'workflowsFromAList' AND (',' || REPLACE(${callerIds}, ' ', '') || ',') LIKE :cpCallerIdMembership ${LIKE_ESCAPE_CLAUSE})`,
 		);
 
 		// Branch 3: callerPolicy = 'workflowsFromSameOwner' (or NULL when default is 'workflowsFromSameOwner').
@@ -1103,11 +1169,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.globalConfig.database.type === 'postgresdb'
 			? `${field} ->> '${key}'`
 			: `JSON_EXTRACT(${field}, '$.${key}')`;
-	}
-
-	/** Escape LIKE metacharacters (`\`, `%`, `_`) so the value matches literally. */
-	private escapeLike(value: string): string {
-		return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 	}
 
 	/**

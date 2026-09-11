@@ -117,7 +117,7 @@ export class RoutingNode {
 					preSend: [],
 					postReceive: [],
 					requestOperations: {},
-				} as DeclarativeRestApiSettings.ResultOptions,
+				},
 			});
 
 			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
@@ -290,7 +290,7 @@ export class RoutingNode {
 
 			if (itemContext[itemIndex].requestData.maxResults) {
 				// Remove not needed items in case APIs return to many
-				responseData.value.splice(itemContext[itemIndex].requestData.maxResults as number);
+				responseData.value.splice(itemContext[itemIndex].requestData.maxResults);
 			}
 
 			returnData.push(...responseData.value);
@@ -377,7 +377,7 @@ export class RoutingNode {
 						$version: node.typeVersion,
 					},
 					false,
-				) as boolean;
+				);
 			});
 
 			return inputData;
@@ -533,7 +533,7 @@ export class RoutingNode {
 				returnData = responseData.body.map((json) => {
 					return {
 						json,
-					} as INodeExecutionData;
+					};
 				});
 			} else {
 				returnData[0].json = responseData.body as IDataObject;
@@ -968,7 +968,7 @@ export class RoutingNode {
 								executeSingleFunctions.getExecuteData(),
 								{ ...additionalKeys, $value: parameterValue },
 								true,
-							) as boolean;
+							);
 						}
 
 						return action.enabled !== false;
@@ -992,7 +992,8 @@ export class RoutingNode {
 			return returnData;
 		}
 
-		// Everything after this point can only be of type INodeProperties
+		// The assignment narrows the union for everything below; the cast is load-bearing.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- removing it widens nodeProperties back to the union
 		nodeProperties = nodeProperties as INodeProperties;
 
 		// Check the child parameters

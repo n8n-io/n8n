@@ -73,8 +73,8 @@ describe('workflow package export — with tags', () => {
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.tags).toEqual([
-				{ id: alpha.id, name: 'alpha', target: 'tags/alpha' },
-				{ id: beta.id, name: 'beta', target: 'tags/beta' },
+				{ id: alpha.id, name: 'alpha', target: `tags/alpha-${alpha.id}` },
+				{ id: beta.id, name: 'beta', target: `tags/beta-${beta.id}` },
 			]);
 			expect(manifest.requirements!.tags).toEqual([
 				{ id: alpha.id, name: 'alpha', usedByWorkflows: [workflow.id] },
@@ -112,7 +112,9 @@ describe('workflow package export — with tags', () => {
 		const { stream } = await service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id] });
 		const { manifest, entries } = await readExport(stream);
 
-		expect(manifest.tags).toEqual([{ id: tag.id, name: 'shared', target: 'tags/shared' }]);
+		expect(manifest.tags).toEqual([
+			{ id: tag.id, name: 'shared', target: `tags/shared-${tag.id}` },
+		]);
 		expect(tagFiles(entries)).toHaveLength(1);
 		expect(manifest.requirements!.tags).toEqual([
 			{ id: tag.id, name: 'shared', usedByWorkflows: [wfA.id, wfB.id] },
@@ -168,8 +170,8 @@ describe('workflow package export — with tags', () => {
 		const { stream } = await service.exportPackage({ user: owner, projectIds: [project.id] });
 		const { manifest, entries } = await readExport(stream);
 
-		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: 'tags/prod' }]);
-		expect(entries.find((e) => e.name === 'tags/prod/tag.json')).toBeDefined();
+		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: `tags/prod-${tag.id}` }]);
+		expect(entries.find((e) => e.name === `tags/prod-${tag.id}/tag.json`)).toBeDefined();
 
 		const workflowEntry = manifest.workflows!.find((entry) => entry.id === workflow.id)!;
 		expect(workflowEntry.target).toMatch(/^projects\//);
@@ -194,7 +196,7 @@ describe('workflow package export — with tags', () => {
 		});
 		const { manifest, entries } = await readExport(stream);
 
-		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: 'tags/prod' }]);
+		expect(manifest.tags).toEqual([{ id: tag.id, name: 'prod', target: `tags/prod-${tag.id}` }]);
 		expect(manifest.requirements!.tags).toEqual([
 			{ id: tag.id, name: 'prod', usedByWorkflows: [sub.id] },
 		]);

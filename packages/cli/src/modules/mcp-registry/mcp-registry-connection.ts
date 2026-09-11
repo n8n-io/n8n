@@ -2,13 +2,15 @@ import { camelCase } from 'change-case';
 import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
+	type ICredentialTypes,
+	isMcpOAuth2Authentication,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
 
 export { getConfiguredEndpointUrl };
 
@@ -23,6 +25,36 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+export function getMcpRegistryCredentialOptions(
+	server: McpRegistryServer,
+): McpRegistryUsesCredential[] {
+	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
+	return [
+		{
+			credentialType: getMcpRegistryCredentialTypeName(server),
+			name: 'OAuth2',
+			value: 'oAuth2',
+		},
+	];
+}
+
+export function isSupportedMcpRegistryCredentialType(
+	credentialTypes: ICredentialTypes,
+	name: string,
+): name is McpOAuth2CredentialType {
+	if (!credentialTypes.recognizes(name) || !isMcpOAuth2Authentication(name)) return false;
+	try {
+		const credentialType = credentialTypes.getByName(name);
+		return (
+			credentialType.authenticate === undefined &&
+			credentialType.preAuthentication === undefined &&
+			(name === 'oAuth2Api' || credentialTypes.getParentTypes(name).includes('oAuth2Api'))
+		);
+	} catch {
+		return false;
+	}
+}
+
 export function resolveMcpRegistryConnection(
 	server: McpRegistryServer,
 ): McpRegistryConnection | null {
@@ -33,7 +65,10 @@ export function resolveMcpRegistryConnection(
 	if (!remote) return null;
 
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
-	const credentialType = getMcpRegistryCredentialTypeName(server);
+	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
+		({ credentialType, value }) =>
+			isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+	);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a
 	// literal URL, resolves per-credential once `prepareMcpRegistryConnection`
@@ -41,10 +76,11 @@ export function resolveMcpRegistryConnection(
 	if (remote.type === 'streamable-http-templated') {
 		return {
 			nodeTypeName,
-			credentialType,
+			credentialBindings,
 			urlTemplate: remote.url,
 			transport: 'httpStreamable',
 			isTemplated: true,
+			headers: remote.headers,
 		};
 	}
 
@@ -52,11 +88,12 @@ export function resolveMcpRegistryConnection(
 		const endpoint = new URL(remote.url);
 		return {
 			nodeTypeName,
-			credentialType,
 			endpointUrl: endpoint.toString(),
 			endpointHostname: endpoint.hostname,
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
+			credentialBindings,
 			isTemplated: false,
+			headers: remote.headers,
 		};
 	} catch {
 		return null;
@@ -65,10 +102,21 @@ export function resolveMcpRegistryConnection(
 
 export function prepareMcpRegistryConnection({
 	connection,
+	credentialType,
 	credentialData,
 	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	const headers = preparedHeaders ?? getMcpAuthHeaders(connection.credentialType, credentialData);
+	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
+		return {
+			ok: false,
+			error: {
+				code: 'unsupported_credential',
+				message: `Credential type "${credentialType}" is not supported by this MCP registry server`,
+			},
+		};
+	}
+
+	const headers = preparedHeaders ?? getMcpAuthHeaders(credentialType, credentialData);
 	const authorization = new Headers(headers).get('authorization')?.trim();
 	const [scheme, accessToken] = authorization?.split(/\s+/, 2) ?? [];
 	if (scheme?.toLowerCase() !== 'bearer' || !accessToken) {
@@ -76,12 +124,14 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${connection.credentialType}" does not contain an OAuth2 access token`,
+				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}
 
-	const { nodeTypeName, credentialType, transport } = connection;
+	const { nodeTypeName, transport } = connection;
+	// Credential headers win over registry-configured ones on a name clash
+	const mergedHeaders = { ...connection.headers, ...headers };
 
 	if (connection.isTemplated) {
 		const serverUrl = credentialData.serverUrl;
@@ -94,7 +144,7 @@ export function prepareMcpRegistryConnection({
 				ok: false,
 				error: {
 					code: 'unresolved_server_url',
-					message: `Credential type "${connection.credentialType}" did not resolve a server URL`,
+					message: `Credential type "${credentialType}" did not resolve a server URL`,
 				},
 			};
 		}
@@ -105,7 +155,7 @@ export function prepareMcpRegistryConnection({
 				credentialType,
 				transport,
 				endpointUrl: endpoint.toString(),
-				headers,
+				headers: mergedHeaders,
 				// Pinned to the host actually being called, so the restriction can
 				// never guard a different host than the request goes to.
 				allowedDomains: endpoint.hostname,
@@ -120,7 +170,7 @@ export function prepareMcpRegistryConnection({
 			credentialType,
 			transport,
 			endpointUrl: connection.endpointUrl,
-			headers,
+			headers: mergedHeaders,
 			allowedDomains: connection.endpointHostname,
 		},
 	};

@@ -50,7 +50,9 @@ const runAction = z.object({
 		.describe(
 			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
 				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, inputData is the request body (do NOT wrap in { body: ... }). ' +
+				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
+				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
+				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
 		),
@@ -345,6 +347,9 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
+				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
+				'do not treat such a request as a request to build something. ' +
 				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
 				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)

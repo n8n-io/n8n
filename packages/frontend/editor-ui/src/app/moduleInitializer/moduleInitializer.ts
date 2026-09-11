@@ -5,6 +5,7 @@ import {
 	registerResource,
 	pushHandlerRegistry,
 	commandRegistry,
+	parameterInputRegistry,
 } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
@@ -123,6 +124,23 @@ export const registerModuleCommands = () => {
 	modules.forEach((module) => {
 		module.commands?.forEach((command) => {
 			commandRegistry.register(command);
+		});
+	});
+};
+
+/**
+ * Initialize module parameter inputs, done in init.ts. `ParameterInput` resolves
+ * them by `parameter.type` at render time.
+ *
+ * Deliberately NOT gated on `isModuleActive`: a parameter input is a render
+ * primitive, not a feature. A gated renderer leaves a parameter with nothing to
+ * render it, which is a broken field rather than a hidden feature. Availability
+ * is enforced backend-side.
+ */
+export const registerModuleParameterInputs = () => {
+	modules.forEach((module) => {
+		module.parameterInputs?.forEach((contribution) => {
+			parameterInputRegistry.register(contribution);
 		});
 	});
 };

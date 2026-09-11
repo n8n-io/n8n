@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.37.0",
+  "version": "1.39.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -66,7 +66,6 @@
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-network": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
@@ -81,7 +80,6 @@
     "picocolors": "catalog:",
     "p-limit": "catalog:",
     "turndown": "catalog:",
-    "undici": "catalog:undici-v6",
     "uuid": "catalog:",
     "zod": "catalog:"
   },
@@ -97,7 +95,6 @@
     "cli-progress": "^3.12.0",
     "cli-table3": "^0.6.3",
     "madge": "^8.0.0",
-    "n8n-core": "workspace:*",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",

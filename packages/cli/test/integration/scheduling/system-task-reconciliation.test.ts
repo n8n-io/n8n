@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { ReconciliationHooks, ScheduledJobOwnerRegistry } from '@n8n/scheduler';
 import { reconcile } from '@n8n/scheduler';
 
+import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { createScheduledJobOwnerRegistry } from '@/scheduling/scheduled-job-owner-registry';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
@@ -58,6 +59,7 @@ describe('system task reconciliation', () => {
 		createJob = createDueJobFactory(jobRepo, TASK_TYPE, 'system:reconciliation');
 		registry = createScheduledJobOwnerRegistry(
 			Container.get(WorkflowScheduledJobOwner),
+			Container.get(AgentScheduledJobOwner),
 			Container.get(SystemTaskScheduledJobOwner),
 		);
 	});
