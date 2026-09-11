@@ -31,75 +31,69 @@ export class CredentialListPublicDto extends Z.class({
 	nextCursor: z.string().nullable(),
 }) {}
 
-export class CreateCredentialPublicDto extends Z.class(
-	{
-		id: readOnlyPublicSchema({ type: 'string', readOnly: true, example: 'R2DjclaysHbqn778' }),
-		name: z.string().openapi({ example: "Joe's Github Credentials" }),
-		type: z.string().openapi({ example: 'githubApi' }),
-		data: z.record(z.string(), z.unknown()).openapi({
-			writeOnly: true,
-			example: { accessToken: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' },
-		}),
-		isResolvable: z
-			.boolean()
-			.optional()
-			.openapi({ example: false, description: 'Whether this credential has resolvable fields' }),
-		createdAt: readOnlyPublicSchema({
-			type: 'string',
-			format: 'date-time',
-			readOnly: true,
-			example: '2022-04-29T11:02:29.842Z',
-		}),
-		updatedAt: readOnlyPublicSchema({
-			type: 'string',
-			format: 'date-time',
-			readOnly: true,
-			example: '2022-04-29T11:02:29.842Z',
-		}),
-		projectId: z.string().optional().openapi({
-			description: "Project to create the credential in. Defaults to the user's personal project.",
-			example: 'VmwOO9HeTEj20kxM',
-		}),
-	},
-	{ strict: true },
-) {}
+export class CreateCredentialPublicDto extends Z.class({
+	id: readOnlyPublicSchema({ type: 'string', readOnly: true, example: 'R2DjclaysHbqn778' }),
+	name: z.string().openapi({ example: "Joe's Github Credentials" }),
+	type: z.string().openapi({ example: 'githubApi' }),
+	data: z.record(z.string(), z.unknown()).openapi({
+		writeOnly: true,
+		example: { accessToken: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' },
+	}),
+	isResolvable: z
+		.boolean()
+		.optional()
+		.openapi({ example: false, description: 'Whether this credential has resolvable fields' }),
+	createdAt: readOnlyPublicSchema({
+		type: 'string',
+		format: 'date-time',
+		readOnly: true,
+		example: '2022-04-29T11:02:29.842Z',
+	}),
+	updatedAt: readOnlyPublicSchema({
+		type: 'string',
+		format: 'date-time',
+		readOnly: true,
+		example: '2022-04-29T11:02:29.842Z',
+	}),
+	projectId: z.string().optional().openapi({
+		description: "Project to create the credential in. Defaults to the user's personal project.",
+		example: 'VmwOO9HeTEj20kxM',
+	}),
+}) {}
 
-export class UpdateCredentialPublicDto extends Z.class(
-	{
-		name: z.string().optional().openapi({
-			example: 'Updated Credential Name',
-			description: 'The name of the credential',
+export class UpdateCredentialPublicDto extends Z.class({
+	name: z.string().optional().openapi({
+		example: 'Updated Credential Name',
+		description: 'The name of the credential',
+	}),
+	type: z.string().optional().openapi({
+		example: 'githubApi',
+		description: 'The credential type. If changing type, data must also be provided.',
+	}),
+	data: z
+		.record(z.string(), z.unknown())
+		.optional()
+		.openapi({
+			writeOnly: true,
+			example: { accessToken: 'new_token_value' },
+			description: 'The credential data. Required when changing credential type.',
 		}),
-		type: z.string().optional().openapi({
-			example: 'githubApi',
-			description: 'The credential type. If changing type, data must also be provided.',
-		}),
-		data: z
-			.record(z.string(), z.unknown())
-			.optional()
-			.openapi({
-				writeOnly: true,
-				example: { accessToken: 'new_token_value' },
-				description: 'The credential data. Required when changing credential type.',
-			}),
-		isGlobal: z.boolean().optional().openapi({
+	isGlobal: z.boolean().optional().openapi({
+		example: false,
+		description: 'Whether this credential is available globally',
+	}),
+	isResolvable: z
+		.boolean()
+		.optional()
+		.openapi({ example: false, description: 'Whether this credential has resolvable fields' }),
+	isPartialData: z
+		.boolean()
+		.optional()
+		.openapi({
 			example: false,
-			description: 'Whether this credential is available globally',
+			default: false,
+			description:
+				'If true, unredacts and merges existing credential data with the provided data. ' +
+				'If false, replaces the entire data object.',
 		}),
-		isResolvable: z
-			.boolean()
-			.optional()
-			.openapi({ example: false, description: 'Whether this credential has resolvable fields' }),
-		isPartialData: z
-			.boolean()
-			.optional()
-			.openapi({
-				example: false,
-				default: false,
-				description:
-					'If true, unredacts and merges existing credential data with the provided data. ' +
-					'If false, replaces the entire data object.',
-			}),
-	},
-	{ strict: true },
-) {}
+}) {}

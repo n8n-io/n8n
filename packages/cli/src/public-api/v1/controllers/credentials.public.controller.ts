@@ -217,7 +217,7 @@ export class CredentialsPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('credentialId', credentialIdParamSchema) credentialId: string,
-		@Body body: UpdateCredentialPublicDto,
+		@Body({ required: true }) body: UpdateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
 		if (body.type !== undefined) {
 			this.assertKnownCredentialType(body.type);
