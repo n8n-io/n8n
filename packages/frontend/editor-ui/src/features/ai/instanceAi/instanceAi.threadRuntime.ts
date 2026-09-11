@@ -503,7 +503,7 @@ function setupThreadRuntime(
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
-	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceIndex, linkableResourceIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
@@ -1485,8 +1485,8 @@ function setupThreadRuntime(
 		hasMessages,
 		isHydratingThread,
 		producedArtifacts,
-		resourceNameIndex,
-		linkableResourceNameIndex,
+		resourceIndex,
+		linkableResourceIndex,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,

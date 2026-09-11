@@ -56,7 +56,7 @@ function createMockThread() {
 	const isStreaming = ref(false);
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
-	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const resourceIndex = ref(new Map<string, ResourceEntry>());
 
 	return reactive({
 		id: 'thread-1',
@@ -64,7 +64,7 @@ function createMockThread() {
 		isStreaming,
 		isHydratingThread,
 		producedArtifacts,
-		resourceNameIndex,
+		resourceIndex,
 	});
 }
 
@@ -80,9 +80,9 @@ function registerWorkflow(thread: MockThread, id: string, name = `Workflow ${id}
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 function registerDataTable(
@@ -95,9 +95,9 @@ function registerDataTable(
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 function registerApp(thread: MockThread, id: string, name = `App ${id}`, projectId?: string) {
@@ -105,9 +105,9 @@ function registerApp(thread: MockThread, id: string, name = `App ${id}`, project
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, projectId?: string) {
@@ -115,9 +115,9 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
-	const nextByName = new Map(thread.resourceNameIndex);
+	const nextByName = new Map(thread.resourceIndex);
 	nextByName.set(name.toLowerCase(), entry);
-	thread.resourceNameIndex = nextByName;
+	thread.resourceIndex = nextByName;
 }
 
 // ---------------------------------------------------------------------------
@@ -419,7 +419,7 @@ describe('useCanvasPreview', () => {
 		test('opens an agent that is not a produced artifact', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
-			ctx.thread.resourceNameIndex = new Map([
+			ctx.thread.resourceIndex = new Map([
 				[
 					'support agent',
 					{

@@ -124,7 +124,7 @@ export function useCanvasPreview({
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
-			const indexedAgent = [...thread.resourceNameIndex.values()].find(
+			const indexedAgent = [...thread.resourceIndex.values()].find(
 				(entry) => entry.type === 'agent' && entry.id === linkedAgent.agentId,
 			);
 			result.push({

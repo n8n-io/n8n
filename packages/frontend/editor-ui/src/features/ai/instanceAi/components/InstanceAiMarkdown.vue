@@ -173,7 +173,7 @@ function replaceUnprotectedMarkdownText(
 }
 
 function decorateResourceNames(content: string): string {
-	const registry = thread.linkableResourceNameIndex;
+	const registry = thread.linkableResourceIndex;
 	if (registry.size === 0) return content;
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
@@ -332,7 +332,7 @@ function enhanceResourceLinks(): void {
 			// Search the name index because it contains both produced and listed
 			// resources — a user may click through to a resource the agent
 			// only referenced via a list call.
-			const registryEntry = [...thread.resourceNameIndex.values()].find(
+			const registryEntry = [...thread.resourceIndex.values()].find(
 				(r) => r.type === type && r.id === id,
 			);
 
@@ -412,21 +412,21 @@ function handleLinkClick(event: MouseEvent): void {
 	if (type === 'workflow') {
 		switched = openWorkflowPreview?.(id);
 	} else if (type === 'data-table') {
-		const registryEntry = [...thread.resourceNameIndex.values()].find(
+		const registryEntry = [...thread.resourceIndex.values()].find(
 			(r) => r.type === type && r.id === id,
 		);
 		if (registryEntry?.projectId) {
 			switched = openDataTablePreview?.(id, registryEntry.projectId);
 		}
 	} else if (type === 'agent') {
-		const registryEntry = [...thread.resourceNameIndex.values()].find(
+		const registryEntry = [...thread.resourceIndex.values()].find(
 			(r) => r.type === type && r.id === id,
 		);
 		if (registryEntry?.projectId) {
 			switched = openAgentPreview?.(id, registryEntry.projectId);
 		}
 	} else if (type === 'app') {
-		const registryEntry = [...thread.resourceNameIndex.values()].find(
+		const registryEntry = [...thread.resourceIndex.values()].find(
 			(r) => r.type === type && r.id === id,
 		);
 		if (registryEntry?.projectId) {

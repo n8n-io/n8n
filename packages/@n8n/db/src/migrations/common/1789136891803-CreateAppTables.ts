@@ -92,6 +92,18 @@ export class CreateAppTables1789136891803 implements ReversibleMigration {
 				});
 		}
 
+		if (!app?.findColumnByName('bindings')) {
+			await addColumns(
+				APP_TABLE,
+				[
+					column('bindings')
+						.json.notNull.default("'[]'")
+						.comment('Resources the served app may call through its runtime API'),
+				],
+				{ recreatesOnSqlite: true },
+			);
+		}
+
 		if (!app?.findColumnByName('activeVersionId')) {
 			await addColumns(
 				APP_TABLE,
