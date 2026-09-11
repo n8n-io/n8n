@@ -39,6 +39,16 @@ export interface EngineConfig {
 	maxCachedPatterns: number;
 }
 
+// A NaN/negative/non-finite value would silently disable the budget check it's meant to
+// drive (e.g. `matches > NaN` is always false), so validate every numeric option up front
+// rather than let a bad value reach the hot loop.
+function requirePositiveInteger(value: number, name: string): number {
+	if (!Number.isInteger(value) || value < 1) {
+		throw new Error(`${name} must be a positive integer, got ${value}`);
+	}
+	return value;
+}
+
 function testPattern(config: EngineConfig, pattern: string, input: string, flags = ''): boolean {
 	const { handle } = getHandle(config, pattern, flags);
 	return runMatch(handle, pattern, flags, input, 0, isSticky(flags)).matched;
@@ -64,14 +74,15 @@ function matchAllPattern(
 ): Pcre2ExecArray[] {
 	const { handle, nameToIndex } = getHandle(config, pattern, flags);
 	const results: Pcre2ExecArray[] = [];
-	const checkBudget = createOperationBudget(config, pattern, flags);
+	const budget = createOperationBudget(config, pattern, flags);
 	const sticky = isSticky(flags);
 	const unicode = isUnicode(flags);
 	let offset = 0;
 	while (offset <= input.length) {
-		checkBudget();
+		budget.checkTime();
 		const outcome = runMatch(handle, pattern, flags, input, offset, sticky);
 		if (!outcome.matched) break;
+		budget.recordMatch();
 		results.push(toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex));
 		offset = nextOffset(outcome.matchEnd, outcome.matchStart, input, unicode);
 	}
@@ -100,23 +111,52 @@ export function createPcre2RegexEngine(options?: Pcre2EngineOptions): RegexEngin
 		allowedFlags: new Set<Pcre2Flag | Pcre2JsFlag>([...nativeFlagsFrom(module), ...jsFlags]),
 		native: resolveNativeOptions(options?.compileOptions ?? [], module),
 		handleCache: new Map(),
-		operationTimeoutMs: options?.operationTimeoutMs ?? DEFAULT_OPERATION_TIMEOUT_MS,
-		maxMatchesPerOperation: options?.maxMatchesPerOperation ?? DEFAULT_MAX_MATCHES,
-		maxCachedPatterns: options?.maxCachedPatterns ?? DEFAULT_MAX_CACHED_PATTERNS,
+		operationTimeoutMs: requirePositiveInteger(
+			options?.operationTimeoutMs ?? DEFAULT_OPERATION_TIMEOUT_MS,
+			'operationTimeoutMs',
+		),
+		maxMatchesPerOperation: requirePositiveInteger(
+			options?.maxMatchesPerOperation ?? DEFAULT_MAX_MATCHES,
+			'maxMatchesPerOperation',
+		),
+		maxCachedPatterns: requirePositiveInteger(
+			options?.maxCachedPatterns ?? DEFAULT_MAX_CACHED_PATTERNS,
+			'maxCachedPatterns',
+		),
 	};
 	liveCaches.add(config.handleCache);
+	let disposed = false;
+
+	function checkNotDisposed(): void {
+		if (disposed) throw new Error('This RegexEngine has been disposed and can no longer be used.');
+	}
 
 	return {
-		test: (pattern, input, flags) => testPattern(config, pattern, input, flags ?? ''),
-		exec: (pattern, input, flags) => execPattern(config, pattern, input, flags ?? ''),
-		replace: (pattern, input, flags, replacement) =>
-			replacePattern(config, pattern, input, flags ?? '', replacement),
-		matchAll: (pattern, input, flags) => matchAllPattern(config, pattern, input, flags ?? ''),
-		split: (pattern, input, flags) => splitPattern(config, pattern, input, flags ?? ''),
+		test: (pattern, input, flags) => {
+			checkNotDisposed();
+			return testPattern(config, pattern, input, flags ?? '');
+		},
+		exec: (pattern, input, flags) => {
+			checkNotDisposed();
+			return execPattern(config, pattern, input, flags ?? '');
+		},
+		replace: (pattern, input, flags, replacement) => {
+			checkNotDisposed();
+			return replacePattern(config, pattern, input, flags ?? '', replacement);
+		},
+		matchAll: (pattern, input, flags) => {
+			checkNotDisposed();
+			return matchAllPattern(config, pattern, input, flags ?? '');
+		},
+		split: (pattern, input, flags) => {
+			checkNotDisposed();
+			return splitPattern(config, pattern, input, flags ?? '');
+		},
 		dispose: () => {
 			for (const compiled of config.handleCache.values()) compiled.handle.delete();
 			config.handleCache.clear();
 			liveCaches.delete(config.handleCache);
+			disposed = true;
 		},
 	};
 }

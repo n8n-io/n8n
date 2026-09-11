@@ -219,20 +219,28 @@ MatchResult Pcre2Wrapper::matchAt(size_t startOffset, bool anchored) const {
         code_,
         reinterpret_cast<PCRE2_SPTR>(subject_.c_str()), subject_.size(),
         startOffset, runtimeOptions, matchData_, matchContext_);
-    subjectValidated_ = true;
 
     if (rc == PCRE2_ERROR_NOMATCH) {
+        // PCRE2 validates the whole subject before searching, so reaching NoMatch (or any
+        // of the budget/callout outcomes below) means validation already passed -- safe to
+        // skip it on the next call. A genuine UTF error falls through to OtherError instead,
+        // where subjectValidated_ is deliberately left false.
+        subjectValidated_ = true;
         result.status = MatchStatus::NoMatch;
     } else if (rc == PCRE2_ERROR_MATCHLIMIT) {
+        subjectValidated_ = true;
         result.status = MatchStatus::MatchLimitExceeded;
         result.errorCode = rc;
     } else if (rc == PCRE2_ERROR_DEPTHLIMIT) {
+        subjectValidated_ = true;
         result.status = MatchStatus::DepthLimitExceeded;
         result.errorCode = rc;
     } else if (rc == PCRE2_ERROR_HEAPLIMIT) {
+        subjectValidated_ = true;
         result.status = MatchStatus::HeapLimitExceeded;
         result.errorCode = rc;
     } else if (rc == PCRE2_ERROR_CALLOUT) {
+        subjectValidated_ = true;
         result.status = MatchStatus::WallClockExceeded;
         result.errorCode = rc;
     } else if (rc < 0) {
@@ -240,6 +248,7 @@ MatchResult Pcre2Wrapper::matchAt(size_t startOffset, bool anchored) const {
         result.errorCode = rc;
         result.errorMessage = errorMessageFor(rc);
     } else {
+        subjectValidated_ = true;
         result.status = MatchStatus::Match;
         PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(matchData_);
         // rc is the highest captured pair + 1, so pad to the pattern's real arity

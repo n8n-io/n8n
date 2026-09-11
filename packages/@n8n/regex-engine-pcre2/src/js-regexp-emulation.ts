@@ -1,4 +1,5 @@
 import { createOperationBudget } from './budget.js';
+import type { OperationBudget } from './budget.js';
 import type { EngineConfig } from './engine.js';
 import { isSticky, isUnicode } from './flags.js';
 import { getHandle } from './handle-cache.js';
@@ -12,7 +13,7 @@ class Pcre2RegExpLike {
 	readonly flags: string;
 	lastIndex = 0;
 	// Per-instance, so a global Symbol.replace's repeated exec() calls share one operation budget.
-	private readonly checkBudget: () => void;
+	private readonly budget: OperationBudget;
 
 	constructor(
 		private readonly config: EngineConfig,
@@ -21,7 +22,7 @@ class Pcre2RegExpLike {
 	) {
 		this.source = source;
 		this.flags = flags ?? '';
-		this.checkBudget = createOperationBudget(config, source, this.flags);
+		this.budget = createOperationBudget(config, source, this.flags);
 	}
 
 	get global(): boolean {
@@ -37,7 +38,7 @@ class Pcre2RegExpLike {
 			this.lastIndex = 0;
 			return null;
 		}
-		this.checkBudget();
+		this.budget.checkTime();
 		const { handle, nameToIndex } = getHandle(this.config, this.source, this.flags);
 		const outcome = runMatch(
 			handle,
@@ -51,6 +52,7 @@ class Pcre2RegExpLike {
 			this.lastIndex = 0;
 			return null;
 		}
+		this.budget.recordMatch();
 		// No manual +1 for a zero-length match: Symbol.replace applies that itself via
 		// AdvanceStringIndex; doing it here too would skip a character.
 		this.lastIndex = outcome.matchEnd;
@@ -83,13 +85,13 @@ export function splitPattern(
 	// Splits on every match regardless of `g` (implicitly global, per spec),
 	// splicing capture groups from each separator match into the result.
 	const { handle } = getHandle(config, pattern, flags);
-	const checkBudget = createOperationBudget(config, pattern, flags);
+	const budget = createOperationBudget(config, pattern, flags);
 	const unicode = isUnicode(flags);
 
 	// Native split special-cases an empty subject: a match at offset 0 yields [], anything
 	// else yields [input] -- the general loop below never runs (offset < 0 is never true).
 	if (input.length === 0) {
-		checkBudget();
+		budget.checkTime();
 		return runMatch(handle, pattern, flags, input, 0).matched ? [] : [input];
 	}
 
@@ -101,9 +103,14 @@ export function splitPattern(
 	// never searches at offset === input.length -- so a match (empty or not) starting exactly
 	// at the end of the string is never attempted, and can't produce a spurious trailing part.
 	while (offset < input.length) {
-		checkBudget();
+		budget.checkTime();
 		const outcome = runMatch(handle, pattern, flags, input, offset);
-		if (!outcome.matched) break;
+		// The search starting offset is bounded above (< input.length), but an unanchored
+		// scan from it can still land a zero-length match (e.g. `$`) exactly at the end of
+		// the string -- native split's per-position search never considers that position,
+		// so treat it the same as no match, not a genuine trailing separator.
+		if (!outcome.matched || outcome.matchStart === input.length) break;
+		budget.recordMatch();
 
 		// A zero-length match sitting exactly where the previous segment ended
 		// doesn't split anything (matches native split's edge-case skip).

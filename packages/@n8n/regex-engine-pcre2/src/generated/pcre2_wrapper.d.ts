@@ -28,6 +28,8 @@ export interface StringVector {
 	size(): number;
 	get(index: number): string | undefined;
 	[Symbol.iterator](): IterableIterator<string>;
+	/** Frees the underlying wasm-heap vector. Must be called once the vector is no longer needed. */
+	delete(): void;
 }
 
 /** An Embind `register_vector<int>` instance -- same shape as StringVector, over numbers. */
@@ -35,6 +37,8 @@ export interface IntVector {
 	size(): number;
 	get(index: number): number | undefined;
 	[Symbol.iterator](): IterableIterator<number>;
+	/** Frees the underlying wasm-heap vector. Must be called once the vector is no longer needed. */
+	delete(): void;
 }
 
 export interface CompileResult {
@@ -54,6 +58,8 @@ export interface NamedGroupVector {
 	size(): number;
 	get(index: number): NamedGroup | undefined;
 	[Symbol.iterator](): IterableIterator<NamedGroup>;
+	/** Frees the underlying wasm-heap vector. Must be called once the vector is no longer needed. */
+	delete(): void;
 }
 
 export interface MatchResult {

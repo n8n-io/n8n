@@ -67,45 +67,59 @@ export function runMatch(
 		throw error;
 	}
 
-	if (isStatus(result.status, MatchStatus.Match)) {
-		const groups = Array.from(result.groups) as Array<string | undefined>;
-		// Feature-detected: older wasm builds report every unset group as "" instead.
-		if (result.groupParticipated) {
-			const participated = Array.from(result.groupParticipated);
-			for (let i = 0; i < groups.length; i++) {
-				if (!participated[i]) groups[i] = undefined;
+	// matchAt() allocates a fresh StringVector/IntVector in wasm memory on every call,
+	// regardless of status -- embind's vector bindings aren't JS-GC'd, so every exit path
+	// (including the throwing ones below) must free them or this leaks per match, forever,
+	// unbounded by anything (unlike the LRU-capped compiled-pattern cache).
+	try {
+		if (isStatus(result.status, MatchStatus.Match)) {
+			const groups = Array.from(result.groups) as Array<string | undefined>;
+			// Feature-detected: older wasm builds report every unset group as "" instead.
+			if (result.groupParticipated) {
+				const participated = Array.from(result.groupParticipated);
+				for (let i = 0; i < groups.length; i++) {
+					if (!participated[i]) groups[i] = undefined;
+				}
+			}
+			return { matched: true, groups, matchStart: result.matchStart, matchEnd: result.matchEnd };
+		}
+		if (isStatus(result.status, MatchStatus.NoMatch)) {
+			return { matched: false, groups: [], matchStart: -1, matchEnd: -1 };
+		}
+
+		const budgets: Array<[EnumValue, Pcre2BudgetKind, string, number]> = [
+			[MatchStatus.MatchLimitExceeded, 'match-limit', 'match_limit', MATCH_LIMIT],
+			[MatchStatus.DepthLimitExceeded, 'depth-limit', 'depth_limit', DEPTH_LIMIT],
+			[MatchStatus.HeapLimitExceeded, 'heap-limit', 'heap_limit_kb', HEAP_LIMIT_KB],
+			[
+				MatchStatus.WallClockExceeded,
+				'wall-clock-limit',
+				'wall_clock_limit_ms',
+				WALL_CLOCK_LIMIT_MS,
+			],
+		];
+		for (const [status, kind, param, value] of budgets) {
+			if (isStatus(result.status, status)) {
+				throw new Pcre2BudgetExceededError(
+					`Pattern exceeded its ${kind} budget (${param}=${value}) while matching`,
+					kind,
+					pattern,
+					flags,
+				);
 			}
 		}
-		return { matched: true, groups, matchStart: result.matchStart, matchEnd: result.matchEnd };
-	}
-	if (isStatus(result.status, MatchStatus.NoMatch)) {
-		return { matched: false, groups: [], matchStart: -1, matchEnd: -1 };
-	}
 
-	const budgets: Array<[EnumValue, Pcre2BudgetKind, string, number]> = [
-		[MatchStatus.MatchLimitExceeded, 'match-limit', 'match_limit', MATCH_LIMIT],
-		[MatchStatus.DepthLimitExceeded, 'depth-limit', 'depth_limit', DEPTH_LIMIT],
-		[MatchStatus.HeapLimitExceeded, 'heap-limit', 'heap_limit_kb', HEAP_LIMIT_KB],
-		[MatchStatus.WallClockExceeded, 'wall-clock-limit', 'wall_clock_limit_ms', WALL_CLOCK_LIMIT_MS],
-	];
-	for (const [status, kind, param, value] of budgets) {
-		if (isStatus(result.status, status)) {
-			throw new Pcre2BudgetExceededError(
-				`Pattern exceeded its ${kind} budget (${param}=${value}) while matching`,
-				kind,
-				pattern,
-				flags,
-			);
-		}
+		// CompileError can't happen here: getHandle() already rejected uncompilable patterns.
+		throw new Pcre2MatchError(
+			`Unexpected PCRE2 match error${result.errorMessage ? `: ${result.errorMessage}` : ''} (code ${result.errorCode})`,
+			result.errorCode,
+			pattern,
+			flags,
+		);
+	} finally {
+		result.groups.delete();
+		result.groupParticipated?.delete();
 	}
-
-	// CompileError can't happen here: getHandle() already rejected uncompilable patterns.
-	throw new Pcre2MatchError(
-		`Unexpected PCRE2 match error${result.errorMessage ? `: ${result.errorMessage}` : ''} (code ${result.errorCode})`,
-		result.errorCode,
-		pattern,
-		flags,
-	);
 }
 
 function buildNamedGroups(

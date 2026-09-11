@@ -12,7 +12,12 @@ let loadedModule: Pcre2WrapperModule | undefined;
 /** Idempotent. Must resolve before createPcre2RegexEngine()'s functions run -- they're synchronous. */
 export async function initPcre2Engine(): Promise<void> {
 	loadPromise ??= createPcre2WrapperModule();
-	loadedModule = await loadPromise;
+	// Captured so a trap mid-await (which replaces loadPromise with a fresh reload, see
+	// reinitModuleAfterTrap) can't have this call publish its now-stale resolved module
+	// over the reload's -- only publish if nothing replaced loadPromise while awaiting.
+	const awaited = loadPromise;
+	const module = await awaited;
+	if (loadPromise === awaited) loadedModule = module;
 }
 
 export function getModule(): Pcre2WrapperModule {
@@ -42,4 +47,8 @@ export function reinitModuleAfterTrap(): void {
 		loadedModule = module;
 		return module;
 	});
+	// A reload failure here would otherwise be an unobserved rejection until (if ever)
+	// something calls initPcre2Engine() again; this keeps it observed without swallowing
+	// it -- initPcre2Engine() still awaits and surfaces the real rejection to its caller.
+	loadPromise.catch(() => {});
 }

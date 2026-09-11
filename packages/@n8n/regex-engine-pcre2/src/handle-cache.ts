@@ -81,9 +81,11 @@ export function getHandle(config: EngineConfig, pattern: string, flags: string):
 	}
 
 	const nameToIndex = new Map<string, number>();
-	for (const namedGroup of Array.from(handle.namedGroups())) {
+	const namedGroupVector = handle.namedGroups();
+	for (const namedGroup of Array.from(namedGroupVector)) {
 		nameToIndex.set(namedGroup.name, namedGroup.index);
 	}
+	namedGroupVector.delete();
 
 	const compiled: CompiledPattern = { handle, nameToIndex };
 	config.handleCache.set(key, compiled);
