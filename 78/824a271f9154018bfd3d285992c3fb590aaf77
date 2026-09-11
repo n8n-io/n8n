@@ -1,0 +1,35 @@
+packages/cli/src/posthog/index.ts
+  s_583f31bceceb3e::t_a0dd42862fb2c2 169-172
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_583f31bceceb3e::t_bf9154237fd827 2481-2482
+  s_583f31bceceb3e::t_c02c1c2d1f54d2 2465-2467
+packages/cli/test/integration/activity-event-relay.test.ts
+  s_583f31bceceb3e::t_69eac816fee8e8 1,3,6,13,39-40,55,118-148
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_583f31bceceb3e::t_bdd80a5f19f388 127-128
+  s_583f31bceceb3e::t_7a6038ed243806 76
+  s_583f31bceceb3e::t_239751d187f4f4 152-158,163-165
+  s_583f31bceceb3e::t_2ea1e1658f8fb6 10
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_583f31bceceb3e::t_e2019232aae70b 60-67
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_583f31bceceb3e::t_eb813d9797be79 563-573,576-577,579-584,586-587
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_583f31bceceb3e::t_bdd80a5f19f388 174-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78824a271f9154018bfd3d285992c3fb590aaf77",
+  "prompts": {},
+  "sessions": {
+    "s_583f31bceceb3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9264794a-277b-4041-ba69-ba6dee92fbf7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
