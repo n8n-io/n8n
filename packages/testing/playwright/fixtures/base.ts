@@ -6,7 +6,11 @@ import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import { CAPABILITIES, type Capability } from './capabilities';
+import {
+	CAPABILITIES,
+	shouldSkipContainerRequirement,
+	type CapabilityOption,
+} from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
@@ -60,7 +64,6 @@ type WorkerFixtures = {
 	capability?: CapabilityOption;
 };
 
-type CapabilityOption = Capability | N8NConfig;
 type ProjectUse = { containerConfig?: N8NConfig };
 
 function parseGlobalTestEnv(): Record<string, string> {
@@ -80,12 +83,6 @@ function logKeepalive(container: N8NStack): void {
 	console.log(`    Project: ${container.projectName}`);
 	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
 	console.log('=========================================================\n');
-}
-
-function requiresContainerServices(capability: CapabilityOption | undefined): boolean {
-	if (!capability) return false;
-	const config = typeof capability === 'string' ? CAPABILITIES[capability] : capability;
-	return (config.services?.length ?? 0) > 0;
 }
 
 export const test = base.extend<
@@ -112,7 +109,7 @@ export const test = base.extend<
 	containerRequirement: [
 		async ({ capability }, use, testInfo) => {
 			testInfo.skip(
-				!!getBackendUrl() && requiresContainerServices(capability),
+				shouldSkipContainerRequirement(capability, !!getBackendUrl()),
 				'This test requires container services',
 			);
 			await use(undefined);

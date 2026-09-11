@@ -77,6 +77,10 @@ test.use({
 | `'source-control'` | Git server |
 | `'oidc'` | OIDC provider |
 | `'observability'` | VictoriaLogs + VictoriaMetrics + Vector |
+| `'kafka'` | Kafka |
+| `'external-secrets'` | LocalStack |
+| `'kent'` | Sentry mock server |
+| `'dynamic-credentials'` | Keycloak + dynamic credentials config |
 
 ## Modes vs Capabilities
 

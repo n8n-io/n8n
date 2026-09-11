@@ -39,6 +39,16 @@ export const PROXY_WITHOUT_COMMUNITY_PACKAGES = {
 } as const satisfies Partial<N8NConfig>;
 
 export type Capability = keyof typeof CAPABILITIES;
+export type CapabilityOption = Capability | N8NConfig;
+
+export function shouldSkipContainerRequirement(
+	capability: CapabilityOption | undefined,
+	isLocal: boolean,
+): boolean {
+	if (!isLocal || !capability) return false;
+	const config = typeof capability === 'string' ? CAPABILITIES[capability] : capability;
+	return (config.services?.length ?? 0) > 0;
+}
 
 export const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
