@@ -76,7 +76,10 @@ describe('AppCodeViewer', () => {
 	});
 
 	it('lists the files in a tree and shows a placeholder before any file is selected', async () => {
-		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts', 'index.html'] });
+		appsStore.fetchAppDraftFiles.mockResolvedValue({
+			versionId: 'v-1',
+			files: ['main.ts', 'index.html'],
+		});
 		const { getByText, queryByTestId } = renderViewer({
 			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
@@ -209,7 +212,9 @@ describe('AppCodeViewer', () => {
 		await userEvent.click(getByTestId('app-code-save'));
 		await waitAllPromises();
 
-		expect(getByTestId('app-code-save-error')).toHaveTextContent("Could not find the file: 'main.ts'");
+		expect(getByTestId('app-code-save-error')).toHaveTextContent(
+			"Could not find the file: 'main.ts'",
+		);
 		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};!');
 		expect(getByTestId('app-code-save')).not.toHaveAttribute('aria-disabled', 'true');
 	});

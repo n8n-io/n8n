@@ -51,7 +51,10 @@ export class AppDraftService {
 		if (draft) await this.snapshotService.snapshotAfterRun(appId, user, draft);
 		const [newest] = await this.appsService.listVersions(appId);
 		if (!newest) return null;
-		return { versionId: newest.id, files: await this.appsService.listVersionFiles(appId, newest.id) };
+		return {
+			versionId: newest.id,
+			files: await this.appsService.listVersionFiles(appId, newest.id),
+		};
 	}
 
 	/** `draft`: the app's sandbox workspace; a sandbox that does not hold the app yet gets it restored first. */
@@ -93,7 +96,8 @@ export class AppDraftService {
 		const root = await getWorkspaceRoot(draft);
 		const workspace = createScopedWorkspace(draft, root);
 		const filesystem = workspace.filesystem;
-		if (!filesystem) return { error: true, message: 'The sandbox is not available on this instance.' };
+		if (!filesystem)
+			return { error: true, message: 'The sandbox is not available on this instance.' };
 
 		const appDir = `apps/${namespace}`;
 		if (!(await filesystem.exists(`${appDir}/package.json`))) {
