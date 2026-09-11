@@ -3,10 +3,12 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
 import PreferencesTable from './PreferencesTable.vue';
+import type { Scope } from '@n8n/permissions';
+
 import type { Preference } from '../context.types';
 
-const WRITABLE = ['preference:read', 'preference:update', 'preference:delete'];
-const READ_ONLY = ['preference:read'];
+const WRITABLE: Scope[] = ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'];
+const READ_ONLY: Scope[] = ['aiPreference:read'];
 
 function preference(overrides: Partial<Preference> = {}): Preference {
 	return {
@@ -53,7 +55,7 @@ describe('PreferencesTable', () => {
 				id: 'c',
 				userId: null,
 				projectId: 'proj',
-				project: { id: 'proj', name: 'Darwin' },
+				project: { id: 'proj', name: 'Darwin', icon: null },
 			}),
 		]);
 

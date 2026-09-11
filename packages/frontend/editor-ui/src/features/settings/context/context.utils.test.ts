@@ -1,8 +1,10 @@
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import { setActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mockedStore } from '@/__tests__/utils';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 
 import type { Preference } from './context.types';
 import {
@@ -29,9 +31,9 @@ function preference(overrides: Partial<Preference> = {}): Preference {
 const initialState = {
 	[STORES.PROJECTS]: {
 		myProjects: [
-			// Project admins and editors both resolve to `projectVariable:create`.
-			{ id: 'writable', name: 'Writable', type: 'team', scopes: ['projectVariable:create'] },
-			{ id: 'readonly', name: 'Read only', type: 'team', scopes: ['projectVariable:read'] },
+			// Project admins and editors both hold `projectAiPreference:create`.
+			{ id: 'writable', name: 'Writable', type: 'team', scopes: ['projectAiPreference:create'] },
+			{ id: 'readonly', name: 'Read only', type: 'team', scopes: ['projectAiPreference:read'] },
 		],
 	},
 };
@@ -62,7 +64,7 @@ describe('context.utils', () => {
 
 	describe('toPreferencePermissions', () => {
 		it('grants nothing when the row carries no write scopes', () => {
-			expect(toPreferencePermissions(preference({ scopes: ['preference:read'] }))).toEqual({
+			expect(toPreferencePermissions(preference({ scopes: ['aiPreference:read'] }))).toEqual({
 				update: false,
 				delete: false,
 			});
@@ -70,11 +72,15 @@ describe('context.utils', () => {
 
 		it('reads update and delete independently', () => {
 			expect(
-				toPreferencePermissions(preference({ scopes: ['preference:read', 'preference:update'] })),
+				toPreferencePermissions(
+					preference({ scopes: ['aiPreference:read', 'aiPreference:update'] }),
+				),
 			).toEqual({ update: true, delete: false });
 
 			expect(
-				toPreferencePermissions(preference({ scopes: ['preference:read', 'preference:delete'] })),
+				toPreferencePermissions(
+					preference({ scopes: ['aiPreference:read', 'aiPreference:delete'] }),
+				),
 			).toEqual({ update: false, delete: true });
 		});
 	});
@@ -96,13 +102,20 @@ describe('context.utils', () => {
 	});
 
 	describe('canWriteInstanceScope', () => {
-		it('allows instance owners and admins only', () => {
+		it('allows a user holding the global create scope', () => {
 			const usersStore = mockedStore(useUsersStore);
 
-			usersStore.isAdminOrOwner = true;
+			usersStore.currentUser = mock<IUser>({ globalScopes: ['aiPreference:create'] });
 			expect(canWriteInstanceScope()).toBe(true);
+		});
 
-			usersStore.isAdminOrOwner = false;
+		it('refuses a user without it', () => {
+			const usersStore = mockedStore(useUsersStore);
+
+			usersStore.currentUser = mock<IUser>({ globalScopes: ['aiPreference:read'] });
+			expect(canWriteInstanceScope()).toBe(false);
+
+			usersStore.currentUser = null;
 			expect(canWriteInstanceScope()).toBe(false);
 		});
 	});

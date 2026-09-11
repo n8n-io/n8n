@@ -1,9 +1,42 @@
-import type { AiPreference, Project, User } from '@n8n/db';
+import type {
+	AiPreferenceDto,
+	AiPreferenceListDto,
+	AiPreferenceProjectDto,
+	AiPreferenceRequestDto,
+} from '@n8n/api-types';
+import type { AiPreference, Project, ReadableProjects, User } from '@n8n/db';
 import { AiPreferenceRepository, ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
+import { randomUUID } from 'node:crypto';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProjectService } from '@/services/project.service.ee';
 
 export type AiPreferenceProjectRef = { id: string; name: string };
+
+/** The three write operations a preference has. Reading needs no scope of its own. */
+type WriteOperation = 'create' | 'update' | 'delete';
+
+/** The projects one operation is allowed in. `'all'` covers every project. */
+type AllowedProjects = Set<string> | 'all';
+
+/** What a writer holds on the row it just wrote. */
+const WRITABLE_SCOPES: Scope[] = [
+	'aiPreference:read',
+	'aiPreference:update',
+	'aiPreference:delete',
+];
+
+/** Where a request wants the preference to live, once the caller is allowed there. */
+type PreferenceTarget = {
+	userId: string | null;
+	projectId: string | null;
+	project: Project | null;
+};
 
 export type ApplicableAiPreferences = {
 	/** Set by an admin. Apply to everyone on the instance. */
@@ -15,15 +48,17 @@ export type ApplicableAiPreferences = {
 };
 
 /**
- * Reads the preferences that apply to one user and renders them as prompt text.
- * Shared by the AI assistant and the MCP server, so both surfaces see the same
- * preferences in the same words.
+ * Owns the preferences of one instance: the settings CRUD that writes them, and the
+ * read that renders the ones applying to a user as prompt text. The AI assistant and
+ * the MCP server share that read, so both surfaces see the same preferences in the
+ * same words, under the same rules that decided who could write them.
  */
 @Service()
 export class AiPreferenceService {
 	constructor(
 		private readonly aiPreferenceRepository: AiPreferenceRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -64,6 +99,212 @@ export class AiPreferenceService {
 		);
 		return await this.getApplicable(user.id, sorted);
 	}
+
+	// ---------------------------------------------------------------------------
+	// Settings CRUD
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * One page of the preferences the user may see in settings: the instance-wide
+	 * rows, their own rows, and the rows of every project they may list preferences
+	 * in. The page keeps the order the preferences reach a prompt in.
+	 */
+	async list(user: User, page: { skip: number; take: number }): Promise<AiPreferenceListDto> {
+		const [projectIds, updatable, deletable] = await Promise.all([
+			this.readableProjects(user),
+			this.allowedProjects(user, 'update'),
+			this.allowedProjects(user, 'delete'),
+		]);
+		const [rows, count] = await this.aiPreferenceRepository.findPageApplicable({
+			userId: user.id,
+			projectIds,
+			...page,
+		});
+
+		return {
+			count,
+			data: rows.map((row) => this.toDto(row, this.rowScopes(row, user, updatable, deletable))),
+		};
+	}
+
+	async create(user: User, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
+		const target = await this.resolveTarget(user, request, 'create');
+
+		const row = await this.aiPreferenceRepository.save(
+			this.aiPreferenceRepository.create({
+				id: randomUUID(),
+				content: request.content,
+				userId: target.userId,
+				projectId: target.projectId,
+				createdById: user.id,
+			}),
+		);
+		row.project = target.project;
+
+		return this.toDto(row, WRITABLE_SCOPES);
+	}
+
+	/**
+	 * Replaces the whole preference, scope included. Moving one to another target
+	 * needs the write right on both, so nobody can push a preference somewhere they
+	 * could not have created it.
+	 */
+	async update(user: User, id: string, request: AiPreferenceRequestDto): Promise<AiPreferenceDto> {
+		const row = await this.requireVisible(user, id);
+		await this.assertCanWrite(user, row, 'update');
+		const target = await this.resolveTarget(user, request, 'update');
+
+		row.content = request.content;
+		row.userId = target.userId;
+		row.projectId = target.projectId;
+		// The row was read with its project, so the relation is set either way. A set
+		// relation outranks the id column on save, so a move needs both.
+		row.project = target.project;
+
+		return this.toDto(await this.aiPreferenceRepository.save(row), WRITABLE_SCOPES);
+	}
+
+	async delete(user: User, id: string): Promise<void> {
+		const row = await this.requireVisible(user, id);
+		await this.assertCanWrite(user, row, 'delete');
+
+		await this.aiPreferenceRepository.delete({ id: row.id });
+	}
+
+	/**
+	 * A row the user may not see must not be told apart from one that is gone, so
+	 * both answer the same way.
+	 */
+	private async requireVisible(user: User, id: string): Promise<AiPreference> {
+		const row = await this.aiPreferenceRepository.findByIdWithProject(id);
+		if (!row || !(await this.canSee(user, row))) {
+			throw new NotFoundError(`Preference with id ${id} not found`);
+		}
+		return row;
+	}
+
+	private async canSee(user: User, row: AiPreference): Promise<boolean> {
+		if (row.projectId) return await this.hasProjectScope(user, row.projectId, 'read');
+		// Instance preferences apply to everyone, so everyone sees them.
+		if (row.userId) return row.userId === user.id;
+		return true;
+	}
+
+	private async assertCanWrite(user: User, row: AiPreference, operation: WriteOperation) {
+		const allowed = row.projectId
+			? await this.hasProjectScope(user, row.projectId, operation)
+			: row.userId
+				? row.userId === user.id
+				: hasGlobalScope(user, `aiPreference:${operation}`);
+
+		if (!allowed) throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
+	}
+
+	/**
+	 * Turns the scope a request asks for into the columns that carry it, once the
+	 * caller is allowed to write there.
+	 */
+	private async resolveTarget(
+		user: User,
+		request: AiPreferenceRequestDto,
+		operation: WriteOperation,
+	): Promise<PreferenceTarget> {
+		switch (request.scope) {
+			case 'user':
+				// Preferences of one's own need no scope: every user has them.
+				return { userId: user.id, projectId: null, project: null };
+
+			case 'instance':
+				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
+					throw new ForbiddenError('You are not allowed to set preferences for the whole instance');
+				}
+				return { userId: null, projectId: null, project: null };
+
+			case 'project': {
+				if (!request.projectId) {
+					throw new BadRequestError('A preference for a project needs a project id');
+				}
+				const project = await this.projectService.getProjectWithScope(user, request.projectId, [
+					`projectAiPreference:${operation}`,
+				]);
+				if (!project) {
+					throw new ForbiddenError('You are not allowed to set preferences for this project');
+				}
+				// A personal project reaches only its owner, which is what a personal
+				// preference already does. Two ways to say one thing confuse the list.
+				if (project.type !== 'team') {
+					throw new BadRequestError('A preference cannot belong to a personal project');
+				}
+				return { userId: null, projectId: project.id, project };
+			}
+		}
+	}
+
+	/** The projects whose preferences the user may list, without enumerating them all. */
+	private async readableProjects(user: User): Promise<ReadableProjects> {
+		if (hasGlobalScope(user, 'projectAiPreference:list')) return 'all';
+		return await this.projectService.getProjectIdsWithScope(user, ['projectAiPreference:list']);
+	}
+
+	private async allowedProjects(user: User, operation: WriteOperation): Promise<AllowedProjects> {
+		if (hasGlobalScope(user, `projectAiPreference:${operation}`)) return 'all';
+		const ids = await this.projectService.getProjectIdsWithScope(user, [
+			`projectAiPreference:${operation}`,
+		]);
+		return new Set(ids);
+	}
+
+	private async hasProjectScope(user: User, projectId: string, operation: 'read' | WriteOperation) {
+		const project = await this.projectService.getProjectWithScope(user, projectId, [
+			`projectAiPreference:${operation}`,
+		]);
+		return project !== null;
+	}
+
+	/**
+	 * What the user may do to one row, in the `aiPreference` namespace whatever
+	 * granted it, so the client runs one check over every row it is shown.
+	 */
+	private rowScopes(
+		row: AiPreference,
+		user: User,
+		updatable: AllowedProjects,
+		deletable: AllowedProjects,
+	): Scope[] {
+		const may = (allowed: AllowedProjects, global: Scope) => {
+			if (row.projectId) return allowed === 'all' || allowed.has(row.projectId);
+			if (row.userId) return row.userId === user.id;
+			return hasGlobalScope(user, global);
+		};
+
+		const scopes: Scope[] = ['aiPreference:read'];
+		if (may(updatable, 'aiPreference:update')) scopes.push('aiPreference:update');
+		if (may(deletable, 'aiPreference:delete')) scopes.push('aiPreference:delete');
+		return scopes;
+	}
+
+	private toDto(row: AiPreference, scopes: Scope[]): AiPreferenceDto {
+		return {
+			id: row.id,
+			content: row.content,
+			userId: row.userId,
+			projectId: row.projectId,
+			project: row.project
+				? { id: row.project.id, name: row.project.name, icon: toProjectIcon(row.project.icon) }
+				: null,
+			scopes,
+			createdAt: row.createdAt.toISOString(),
+			updatedAt: row.updatedAt.toISOString(),
+		};
+	}
+}
+
+/** Splits the column's union so the response type discriminates on `type`. */
+function toProjectIcon(icon: Project['icon']): AiPreferenceProjectDto['icon'] {
+	if (!icon) return null;
+	return icon.type === 'emoji'
+		? { type: 'emoji', value: icon.value }
+		: { type: 'icon', value: icon.value };
 }
 
 export function groupAiPreferences(

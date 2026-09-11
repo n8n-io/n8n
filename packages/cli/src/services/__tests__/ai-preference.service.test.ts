@@ -8,6 +8,7 @@ import type {
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { ProjectService } from '@/services/project.service.ee';
 import {
 	AiPreferenceService,
 	groupAiPreferences,
@@ -25,7 +26,12 @@ const projects = [
 describe('AiPreferenceService', () => {
 	const aiPreferenceRepository = mock<AiPreferenceRepository>();
 	const projectRepository = mock<ProjectRepository>();
-	const service = new AiPreferenceService(aiPreferenceRepository, projectRepository);
+	const projectService = mock<ProjectService>();
+	const service = new AiPreferenceService(
+		aiPreferenceRepository,
+		projectRepository,
+		projectService,
+	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();

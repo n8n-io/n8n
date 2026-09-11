@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -13,6 +14,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 
 import { useContextStore } from '../context.store';
 import type { Preference } from '../context.types';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { Scope } from '@n8n/permissions';
 
 const trackMock = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -43,14 +46,29 @@ const initialState = {
 	},
 	[STORES.PROJECTS]: {
 		myProjects: [
-			// Project admins and editors both resolve to `projectVariable:create`.
-			{ id: 'p-write', name: 'Writable Project', type: 'team', scopes: ['projectVariable:create'] },
-			{ id: 'p-read', name: 'Read Only Project', type: 'team', scopes: ['projectVariable:read'] },
+			// Project admins and editors both hold `projectAiPreference:create`.
+			{
+				id: 'p-write',
+				name: 'Writable Project',
+				type: 'team',
+				scopes: ['projectAiPreference:create'],
+			},
+			{
+				id: 'p-read',
+				name: 'Read Only Project',
+				type: 'team',
+				scopes: ['projectAiPreference:read'],
+			},
 		],
 	},
 };
 
 const global = { stubs: { Modal: ModalStub } };
+
+/** The instance scope is gated on the global `aiPreference:create` scope. */
+function currentUser(globalScopes: Scope[]) {
+	return mock<IUser>({ id: 'user-1', globalScopes });
+}
 const renderModal = createComponentRenderer(PreferenceModal);
 
 let pinia: ReturnType<typeof createTestingPinia>;
@@ -72,7 +90,7 @@ describe('PreferenceModal', () => {
 		contextStore = mockedStore(useContextStore);
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
-		usersStore.isAdminOrOwner = false;
+		usersStore.currentUser = currentUser([]);
 		trackMock.mockReset();
 	});
 
@@ -84,7 +102,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('disables "Everyone" for a user who is not an instance owner or admin', () => {
-			usersStore.isAdminOrOwner = false;
+			usersStore.currentUser = currentUser([]);
 
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
@@ -92,7 +110,7 @@ describe('PreferenceModal', () => {
 		});
 
 		it('enables "Everyone" for an instance owner or admin', () => {
-			usersStore.isAdminOrOwner = true;
+			usersStore.currentUser = currentUser(['aiPreference:create']);
 
 			renderModal({ props: { data: { mode: 'new' } }, global, pinia });
 
@@ -238,8 +256,8 @@ describe('PreferenceModal', () => {
 				content: 'Use sub-workflows.',
 				userId: null,
 				projectId: 'p-write',
-				project: { id: 'p-write', name: 'Writable Project' },
-				scopes: ['preference:read', 'preference:update', 'preference:delete'],
+				project: { id: 'p-write', name: 'Writable Project', icon: null },
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
@@ -265,8 +283,8 @@ describe('PreferenceModal', () => {
 				content: 'Use sub-workflows.',
 				userId: null,
 				projectId: 'p-write',
-				project: { id: 'p-write', name: 'Writable Project' },
-				scopes: ['preference:read', 'preference:update', 'preference:delete'],
+				project: { id: 'p-write', name: 'Writable Project', icon: null },
+				scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 				createdAt: '2026-09-08T00:00:00.000Z',
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};

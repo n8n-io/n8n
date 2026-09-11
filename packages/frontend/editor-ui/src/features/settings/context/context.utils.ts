@@ -20,40 +20,29 @@ export function preferenceScope(
 
 /**
  * Maps the row-level scopes the API sends onto the two actions the table offers.
- *
- * Replace this with `getResourcePermissions(row.scopes).preference` once `preference:*`
- * is a registered resource in `@n8n/permissions`.
+ * The API reports them in the `aiPreference` namespace whatever granted them, so
+ * one check covers a personal, a project and an instance row alike.
  */
 export function toPreferencePermissions(row: Preference): PreferencePermissions {
+	const permissions = getResourcePermissions(row.scopes).aiPreference;
 	return {
-		update: row.scopes.includes('preference:update'),
-		delete: row.scopes.includes('preference:delete'),
+		update: permissions?.update === true,
+		delete: permissions?.delete === true,
 	};
 }
 
 /*
- * Write checks for the scope picker.
- *
- * Both stand in for permissions that do not exist yet, and both are shared with the
- * in-memory server so the picker and the rows it produces cannot disagree:
- *
- *  - `projectVariable:create` resolves to project admins and editors, which is the set
- *    that may write project preferences. A global owner also holds it on every
- *    project, because the backend merges global scopes into each project's scopes.
- *    That is deliberate and matches project variables: an instance owner may already
- *    write those anywhere, and `projectPreference:create` will grant the same.
- *  - instance preferences reuse the instance owner/admin check.
- *
- * Swap both for the real `projectPreference:create` and `preference:manageInstance`
- * scopes when the backend registers them.
+ * Write checks for the scope picker. The rows the list shows carry their own
+ * permissions; these answer the question the picker asks before a row exists.
  */
 
 export function canWriteProjectScope(projectId: string | null | undefined): boolean {
 	if (!projectId) return false;
 	const project = useProjectsStore().myProjects.find((candidate) => candidate.id === projectId);
-	return getResourcePermissions(project?.scopes).projectVariable?.create === true;
+	return getResourcePermissions(project?.scopes).projectAiPreference?.create === true;
 }
 
 export function canWriteInstanceScope(): boolean {
-	return useUsersStore().isAdminOrOwner;
+	const { currentUser } = useUsersStore();
+	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
 }
