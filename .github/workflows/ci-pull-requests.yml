@@ -61,6 +61,7 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              .github/workflows/test-linting-reusable.yml
             runtime:
               **
               !packages/@n8n/task-runner-python/**

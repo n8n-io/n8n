@@ -77,4 +77,20 @@ describe('MicrosoftOAuth2Api Credential', () => {
 			expect(merged[start + 1].type).toBe('options');
 		});
 	});
+
+	describe('scope', () => {
+		it('should hint the scope format without saving a default', () => {
+			const merged: INodeProperties[] = [];
+			NodeHelpers.mergeNodeProperties(merged, new OAuth2Api().properties);
+			NodeHelpers.mergeNodeProperties(merged, microsoftOAuth2Api.properties);
+
+			const scope = merged.find((p) => p.name === 'scope');
+			expect(scope?.type).toBe('string');
+			expect(scope?.default).toBe('');
+			expect(scope?.placeholder).toBe('openid offline_access Sites.Selected');
+			expect(scope?.hint).toContain('offline_access');
+			expect(scope?.hint).toContain('openid');
+			expect(scope?.displayOptions?.show?.useDynamicClientRegistration).toEqual([false]);
+		});
+	});
 });

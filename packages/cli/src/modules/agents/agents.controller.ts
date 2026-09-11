@@ -34,11 +34,32 @@ export class AgentsController {
 		@Body payload: CreateAgentDto,
 	) {
 		const { projectId } = req.params;
-		const defaultModel = await this.agentDefaultModelResolverService.resolve(req.user, projectId);
+		const isDuplicate = Boolean(payload.schema);
+
+		const defaultModel = isDuplicate
+			? undefined
+			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
 		const agent = await this.agentsService.create(projectId, payload.name, {
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
+			// Keep the config name in sync with the entity name so the list and
+			// builder never disagree on a directly-seeded create. Narrowing
+			// payload.schema here keeps the spread over a defined config, so its
+			// required fields (model, instructions) stay required for the service.
+			...(isDuplicate && payload.schema
+				? {
+						schema: { ...payload.schema, name: payload.name },
+						skills: payload.skills,
+						tools: payload.tools,
+						// A REST duplicate is a user-driven write: the service sanitizes the
+						// config, blanks inaccessible credentials, copies channels as
+						// drafts, and emits `agent-saved` so the dependency index
+						// refreshes. The duplicate itself is reported by the frontend
+						// "User duplicated agent" event (carrying the source agent id).
+						user: req.user,
+					}
+				: {}),
 		});
 		return await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user);
 	}

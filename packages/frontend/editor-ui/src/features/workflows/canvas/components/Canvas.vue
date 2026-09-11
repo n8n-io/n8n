@@ -2,7 +2,7 @@
 import ContextMenu from '@/features/shared/contextMenu/components/ContextMenu.vue';
 import type { ContextMenuTarget } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
-import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
+import type { CanvasLayoutEvent, CanvasLayoutResult } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
@@ -727,6 +727,29 @@ function commitManualNodePositions(events: CanvasNodeMoveEvent[]) {
 		'update:nodes:position',
 		injectedNodeGroupView?.settleManualNodePositions(events, getStoredNodePositionById) ?? events,
 	);
+}
+
+function getCanvasNodesByIds(nodeIds: string[]) {
+	return nodeIds.map(findNode).filter(isPresent);
+}
+
+function settleLayoutResult(result: CanvasLayoutResult): CanvasLayoutResult {
+	const settled = injectedNodeGroupView?.settleManualNodePositions(
+		result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
+		getStoredNodePositionById,
+	);
+	if (!settled) return result;
+
+	const resultNodeById = new Map(result.nodes.map((node) => [node.id, node]));
+	return {
+		...result,
+		nodes: settled.map(({ id, position }) => ({
+			...resultNodeById.get(id),
+			id,
+			x: position.x,
+			y: position.y,
+		})),
+	};
 }
 
 // Bake the positions of nodes that `sourceGroupIds` were visually pushing into
@@ -1562,7 +1585,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 		case 'tidy_up':
-			return await onTidyUp({ source: 'context-menu' });
+			return await onTidyUp(
+				groupId !== undefined || nodeIds.length > 1
+					? { source: 'context-menu', target: 'selection', nodeIdsFilter: nodeIds }
+					: { source: 'context-menu', target: 'all' },
+			);
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
 		case 'group_nodes': {
@@ -1616,17 +1643,21 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 }
 
 async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
-	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
-		clearSelectedNodes();
-		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
-	}
-	const applyOnSelection = selectedNodes.value.length > 1;
-	const target = applyOnSelection ? 'selection' : 'all';
-	const result = layout(target);
+	const explicitNodes = payload.nodeIdsFilter ? getCanvasNodesByIds(payload.nodeIdsFilter) : [];
+	const explicitNodeIds = explicitNodes.length > 0 ? explicitNodes.map(({ id }) => id) : undefined;
+	const target =
+		payload.target ??
+		(explicitNodeIds !== undefined || selectedNodes.value.length > 1 ? 'selection' : 'all');
+	const applyOnSelection = target === 'selection';
+	const layoutResult = layout(
+		target,
+		applyOnSelection && explicitNodeIds ? { nodeIdsFilter: explicitNodeIds } : {},
+	);
+	const result = settleLayoutResult(layoutResult);
 
 	emit(
 		'tidy-up',
-		{ result, target, source: payload.source },
+		{ result, target, targetNodeCount: layoutResult.nodes.length, source: payload.source },
 		{
 			trackEvents: payload.trackEvents,
 			trackHistory: payload.trackHistory,
@@ -1636,7 +1667,7 @@ async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
 
 	await nextTick();
 	if (applyOnSelection) {
-		await onFitBounds(selectedNodes.value);
+		await onFitBounds(explicitNodes.length > 0 ? explicitNodes : selectedNodes.value);
 	} else {
 		await onFitView();
 	}
