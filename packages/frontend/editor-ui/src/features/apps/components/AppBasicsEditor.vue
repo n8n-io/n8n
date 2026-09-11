@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nFormInput, N8nSettingsSection } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, reactive, ref, watch } from 'vue';
@@ -80,41 +80,14 @@ const onSave = async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="app-basics-editor">
-		<N8nSettingsSection :title="i18n.baseText('apps.builder.basics.title')">
-			<div :class="$style.fields">
-				<N8nFormInput
-					v-model="name"
-					:label="i18n.baseText('apps.add.input.name.label')"
-					:placeholder="i18n.baseText('apps.add.input.name.placeholder')"
-					name="appName"
-					required
-					:validation-rules="nameValidationRules"
-					data-test-id="app-basics-name"
-					@validate="(valid: boolean) => (formValidation.name = valid)"
-					@enter="onSave"
-				/>
-				<N8nFormInput
-					v-model="namespace"
-					:label="i18n.baseText('apps.add.input.namespace.label')"
-					:placeholder="i18n.baseText('apps.add.input.namespace.placeholder')"
-					:info-text="
-						i18n.baseText('apps.add.input.namespace.hint', {
-							interpolate: { path: namespacePreview },
-						})
-					"
-					name="appNamespace"
-					required
-					:validation-rules="namespaceValidationRules"
-					data-test-id="app-basics-namespace"
-					@validate="(valid: boolean) => (formValidation.namespace = valid)"
-					@enter="onSave"
-				/>
-			</div>
-		</N8nSettingsSection>
-
-		<div :class="$style.footer">
+	<div :class="$style.card" data-test-id="app-basics-editor">
+		<div :class="$style.header">
+			<N8nHeading tag="h2" step="md" color="text-dark">
+				{{ i18n.baseText('apps.builder.basics.title') }}
+			</N8nHeading>
 			<N8nButton
+				size="small"
+				variant="ghost"
 				:loading="saving"
 				:disabled="!canSave"
 				data-test-id="app-basics-save"
@@ -123,17 +96,38 @@ const onSave = async () => {
 				{{ i18n.baseText('apps.builder.basics.save') }}
 			</N8nButton>
 		</div>
+		<N8nFormInput
+			v-model="name"
+			:label="i18n.baseText('apps.add.input.name.label')"
+			:placeholder="i18n.baseText('apps.add.input.name.placeholder')"
+			name="appName"
+			required
+			:validation-rules="nameValidationRules"
+			data-test-id="app-basics-name"
+			@validate="(valid: boolean) => (formValidation.name = valid)"
+			@enter="onSave"
+		/>
+		<N8nFormInput
+			v-model="namespace"
+			:label="i18n.baseText('apps.add.input.namespace.label')"
+			:placeholder="i18n.baseText('apps.add.input.namespace.placeholder')"
+			:info-text="
+				i18n.baseText('apps.add.input.namespace.hint', {
+					interpolate: { path: namespacePreview },
+				})
+			"
+			name="appNamespace"
+			required
+			:validation-rules="namespaceValidationRules"
+			data-test-id="app-basics-namespace"
+			@validate="(valid: boolean) => (formValidation.namespace = valid)"
+			@enter="onSave"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-}
-
-.fields {
+.card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
@@ -143,8 +137,9 @@ const onSave = async () => {
 	background: var(--background--surface);
 }
 
-.footer {
+.header {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: space-between;
 }
 </style>
