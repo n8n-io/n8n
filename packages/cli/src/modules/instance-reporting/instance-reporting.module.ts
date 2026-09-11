@@ -1,6 +1,8 @@
+import { Logger, ModulesConfig } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 
 /**
  * Reports this instance's billable execution numbers to a central monitoring
@@ -13,15 +15,59 @@ import { Container } from '@n8n/di';
  * The daily figure comes from the insights module, but the receiver only sees
  * data points, so that source is an implementation detail of
  * `InstanceReportingService` rather than part of the reporting contract.
+ *
+ * Both entrypoints check the receiver first and import nothing further when it
+ * is unset: an operator who loads the module without configuring it gets
+ * neither the reporting dependency graph nor a claimed report time.
  */
 @BackendModule({ name: 'instance-reporting', instanceTypes: ['main'] })
 export class InstanceReportingModule implements ModuleInterface {
 	async init() {
+		// The daily figure is read from insights, so the reporter cannot run without it.
+		if (Container.get(ModulesConfig).disabledModules.includes('insights')) {
+			throw new UserError(
+				'The `instance-reporting` module requires the `insights` module, but it is listed in N8N_DISABLED_MODULES. Remove `insights` from N8N_DISABLED_MODULES or remove `instance-reporting` from N8N_ENABLED_MODULES.',
+			);
+		}
+
+		if (!(await this.isConfigured())) {
+			Container.get(Logger)
+				.scoped('instance-reporting')
+				.warn(
+					'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
+				);
+			return;
+		}
+
 		const { InstanceReportingScheduler } = await import(
 			'./instance-reporting-scheduler.service.js'
 		);
 
-		await Container.get(InstanceReportingScheduler).init();
+		Container.get(InstanceReportingScheduler).init();
+	}
+
+	/**
+	 * Settings exposed to the frontend under `/rest/module-settings`.
+	 *
+	 * The response shape is `{ enabled: boolean, reportTime?: string }`. A
+	 * consumer reads the three states as: key absent, so the module is not
+	 * enabled on this instance; `enabled: false`, so it is loaded but has no
+	 * receiver; `enabled: true`, so it reports daily at `reportTime`.
+	 */
+	async settings() {
+		if (!(await this.isConfigured())) return { enabled: false };
+
+		const { InstanceReportingSettingsService } = await import(
+			'./instance-reporting-settings.service.js'
+		);
+
+		return {
+			enabled: true,
+			// Resolved on every main, not only the leader. The claim is conditional
+			// and the compaction heal is derived from the stored value, so concurrent
+			// mains settle on one time.
+			reportTime: await Container.get(InstanceReportingSettingsService).getReportTime(),
+		};
 	}
 
 	async entities() {
@@ -30,5 +76,12 @@ export class InstanceReportingModule implements ModuleInterface {
 		);
 
 		return [InstanceMonitoringReport];
+	}
+
+	/** Whether a receiver is configured, i.e. whether reports are actually sent. */
+	private async isConfigured(): Promise<boolean> {
+		const { InstanceReportingConfig } = await import('./instance-reporting.config.js');
+
+		return Container.get(InstanceReportingConfig).instanceReportingBaseUrl !== '';
 	}
 }

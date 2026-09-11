@@ -1,14 +1,12 @@
-import { Logger, ModulesConfig } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
-import { InstanceReportingConfig } from './instance-reporting.config';
 import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
 
 const MINUTES_PER_DAY = 24 * 60;
@@ -39,50 +37,35 @@ export class InstanceReportingScheduler {
 	private isShuttingDown = false;
 
 	constructor(
-		private readonly config: InstanceReportingConfig,
 		private readonly reportingService: InstanceReportingService,
 		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly modulesConfig: ModulesConfig,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
 	}
 
 	/**
-	 * Validate what the module needs, then start reporting if this instance leads.
+	 * Start reporting if this instance leads.
 	 *
-	 * Runs from the module entrypoint, which the registry calls after
+	 * Runs from the module entrypoint, which checks that the module has what it
+	 * needs before it loads this class at all, and which the registry calls after
 	 * `initOrchestration` has settled this instance's role, so `isLeader` is
 	 * already meaningful here.
 	 */
-	async init(): Promise<void> {
+	init(): void {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
-
-		// The daily figure is read from insights, so the reporter cannot run without it.
-		if (this.modulesConfig.disabledModules.includes('insights')) {
-			throw new UserError(
-				'The `instance-reporting` module requires the `insights` module, but it is listed in N8N_DISABLED_MODULES. Remove `insights` from N8N_DISABLED_MODULES or remove `instance-reporting` from N8N_ENABLED_MODULES.',
-			);
-		}
-
-		if (!this.config.instanceReportingBaseUrl) {
-			this.logger.warn(
-				'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
-			);
-			return;
-		}
 
 		if (this.instanceSettings.isLeader) this.start();
 	}
 
+	/**
+	 * Whether this instance may hold the timer. The receiver being configured is
+	 * not checked here: the module never loads this class without one.
+	 */
 	get isEnabled(): boolean {
-		return (
-			this.instanceSettings.instanceType === 'main' &&
-			this.instanceSettings.isLeader &&
-			this.config.instanceReportingBaseUrl !== ''
-		);
+		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
 	}
 
 	/**

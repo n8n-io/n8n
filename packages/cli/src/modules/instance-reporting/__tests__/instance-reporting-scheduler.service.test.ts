@@ -1,15 +1,12 @@
-import type { ModuleName, ModulesConfig } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
 import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
-import { InstanceReportingConfig } from '../instance-reporting.config';
 import type { InstanceReportingService } from '../instance-reporting.service';
 
 const REPORT_TIME = '07:42';
@@ -26,17 +23,9 @@ interface Harness {
 	reportRepository: Mocked<InstanceMonitoringReportRepository>;
 	settingsService: Mocked<InstanceReportingSettingsService>;
 	instanceSettings: Mocked<InstanceSettings>;
-	modulesConfig: Mocked<ModulesConfig>;
 }
 
-function makeHarness({
-	baseUrl = 'https://example.com',
-	isLeader = true,
-	disabledModules = [] as ModuleName[],
-} = {}): Harness {
-	const config = new InstanceReportingConfig();
-	config.instanceReportingBaseUrl = baseUrl;
-
+function makeHarness({ isLeader = true } = {}): Harness {
 	const reportingService = mock<InstanceReportingService>();
 	// No attempt has been made yet, so nothing is holding the next one back.
 	reportingService.msUntilRetryAllowed.mockResolvedValue(0);
@@ -52,15 +41,12 @@ function makeHarness({
 		instanceRole: isLeader ? 'leader' : 'follower',
 		isLeader,
 	});
-	const modulesConfig = mock<ModulesConfig>({ disabledModules });
 
 	const scheduler = new InstanceReportingScheduler(
-		config,
 		reportingService,
 		reportRepository,
 		settingsService,
 		instanceSettings,
-		modulesConfig,
 		mockLogger(),
 	);
 
@@ -70,7 +56,6 @@ function makeHarness({
 		reportRepository,
 		settingsService,
 		instanceSettings,
-		modulesConfig,
 	};
 }
 
@@ -91,25 +76,10 @@ describe('InstanceReportingScheduler', () => {
 	});
 
 	describe('init', () => {
-		test('fails when the insights module is disabled', async () => {
-			const { scheduler } = makeHarness({ disabledModules: ['insights'] });
-
-			await expect(scheduler.init()).rejects.toThrow(UserError);
-		});
-
-		test('warns and stays idle when no base URL is configured', async () => {
-			const { scheduler, reportingService } = makeHarness({ baseUrl: '' });
-
-			await scheduler.init();
-			await vi.advanceTimersByTimeAsync(Time.days.toMilliseconds);
-
-			expect(reportingService.sendReport).not.toHaveBeenCalled();
-		});
-
 		test('does not start a timer on a follower', async () => {
 			const { scheduler, reportingService } = makeHarness({ isLeader: false });
 
-			await scheduler.init();
+			scheduler.init();
 			await vi.advanceTimersByTimeAsync(Time.days.toMilliseconds);
 
 			expect(reportingService.sendReport).not.toHaveBeenCalled();
@@ -118,7 +88,7 @@ describe('InstanceReportingScheduler', () => {
 		test('fires at the configured time on the leader', async () => {
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			expect(reportingService.sendReport).not.toHaveBeenCalled();
 
@@ -131,7 +101,7 @@ describe('InstanceReportingScheduler', () => {
 		test('fires once a day thereafter', async () => {
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await vi.advanceTimersByTimeAsync(3 * Time.days.toMilliseconds);
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(3);
@@ -143,7 +113,7 @@ describe('InstanceReportingScheduler', () => {
 			vi.setSystemTime(new Date(AFTER_SLOT));
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
@@ -154,7 +124,7 @@ describe('InstanceReportingScheduler', () => {
 			const { scheduler, reportingService, reportRepository } = makeHarness();
 			reportRepository.hasSettledToday.mockResolvedValue(true);
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 
 			expect(reportingService.sendReport).not.toHaveBeenCalled();
@@ -164,7 +134,7 @@ describe('InstanceReportingScheduler', () => {
 			vi.setSystemTime(new Date(AFTER_SLOT));
 			const { scheduler, reportingService, reportRepository } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			// The catch-up delivered it, so the rest of the day has nothing to do.
 			reportRepository.hasSettledToday.mockResolvedValue(true);
@@ -179,7 +149,7 @@ describe('InstanceReportingScheduler', () => {
 			vi.setSystemTime(new Date(AFTER_SLOT));
 			const { scheduler, reportingService, instanceSettings } = makeHarness({ isLeader: false });
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			expect(reportingService.sendReport).not.toHaveBeenCalled();
 
@@ -197,7 +167,7 @@ describe('InstanceReportingScheduler', () => {
 		test('stops reporting when this main steps down', async () => {
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			scheduler.stop();
 			await vi.advanceTimersByTimeAsync(2 * Time.days.toMilliseconds);
@@ -208,7 +178,7 @@ describe('InstanceReportingScheduler', () => {
 		test('shutdown stops the timer and blocks a later takeover', async () => {
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			scheduler.shutdown();
 			scheduler.start();
@@ -224,7 +194,7 @@ describe('InstanceReportingScheduler', () => {
 			const { scheduler, reportingService } = makeHarness();
 			reportingService.sendReport.mockRejectedValueOnce(new Error('Network error'));
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(1);
 
@@ -243,7 +213,7 @@ describe('InstanceReportingScheduler', () => {
 				async () => reportingService.sendReport.mock.calls.length >= 3,
 			);
 
-			await scheduler.init();
+			scheduler.init();
 			await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds);
 
 			expect(reportingService.sendReport).toHaveBeenCalledTimes(3);
@@ -256,7 +226,7 @@ describe('InstanceReportingScheduler', () => {
 			const { scheduler, reportingService } = makeHarness();
 			reportingService.msUntilRetryAllowed.mockResolvedValueOnce(2 * Time.minutes.toMilliseconds);
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			expect(reportingService.sendReport).not.toHaveBeenCalled();
 
@@ -269,7 +239,7 @@ describe('InstanceReportingScheduler', () => {
 			const { scheduler, settingsService } = makeHarness();
 			settingsService.getReportTime.mockRejectedValueOnce(new Error('DB down'));
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			expect(settingsService.getReportTime).toHaveBeenCalledTimes(1);
 
@@ -283,7 +253,7 @@ describe('InstanceReportingScheduler', () => {
 		test('a fire before the slot reports nothing and re-arms', async () => {
 			const { scheduler, reportingService } = makeHarness();
 
-			await scheduler.init();
+			scheduler.init();
 			await settle();
 			// Clock jumps backwards an hour, well before the slot.
 			vi.setSystemTime(new Date('2026-03-26T06:41:00.000Z'));
