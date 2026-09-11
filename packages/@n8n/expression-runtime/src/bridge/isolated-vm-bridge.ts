@@ -40,6 +40,26 @@ function producedCachedData(script: ivm.Script): ivm.ExternalCopy<ArrayBuffer> |
 	return data instanceof getIvm().ExternalCopy ? data : null;
 }
 
+/** Globals the runtime bundle must define. Verified after every bundle load. */
+const RUNTIME_GLOBALS = [
+	'DateTime',
+	'extend',
+	'createDeepLazyProxy',
+	'SafeObject',
+	'SafeError',
+	'buildContext',
+];
+
+/** Evaluates inside the isolate to a JSON array of the RUNTIME_GLOBALS that are missing. */
+const MISSING_RUNTIME_GLOBALS_SOURCE = `JSON.stringify(${JSON.stringify(RUNTIME_GLOBALS)}.filter((name) => typeof globalThis[name] === 'undefined'))`;
+
+function assertRuntimeGlobals(missingJson: unknown): void {
+	const missing: unknown = typeof missingJson === 'string' ? JSON.parse(missingJson) : missingJson;
+	if (Array.isArray(missing) && missing.length > 0) {
+		throw new Error(`Runtime bundle verification failed: missing ${missing.join(', ')}`);
+	}
+}
+
 /**
  * The E() error handler injected into every isolate; see injectErrorHandler()
  * for the two exception-handling layers it participates in.
@@ -177,9 +197,6 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system)
 		await this.loadVendorLibraries();
 
-		// Verify proxy system loaded correctly
-		await this.verifyProxySystem();
-
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
 
@@ -222,59 +239,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				await this.context.eval(runtimeBundle);
 			}
 
-			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded');
-
-			// Verify vendor libraries loaded correctly
-			const hasDateTime = await this.context.eval('typeof DateTime !== "undefined"');
-			const hasExtend = await this.context.eval('typeof extend !== "undefined"');
-
-			if (!hasDateTime || !hasExtend) {
-				throw new Error(
-					`Library verification failed: DateTime=${hasDateTime}, extend=${hasExtend}`,
-				);
-			}
-
-			this.logger.debug('[IsolatedVmBridge] Vendor libraries verified successfully');
+			assertRuntimeGlobals(await this.context.eval(MISSING_RUNTIME_GLOBALS_SOURCE));
+			this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded and verified');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to load runtime bundle: ${errorMessage}`);
-		}
-	}
-
-	/**
-	 * Verify the proxy system loaded correctly.
-	 *
-	 * The proxy system is loaded as part of the runtime bundle in loadVendorLibraries().
-	 * This method verifies all required components are available.
-	 *
-	 * @private
-	 * @throws {Error} If context not initialized or proxy system verification fails
-	 */
-	private async verifyProxySystem(): Promise<void> {
-		if (!this.context) {
-			throw new Error('Context not initialized');
-		}
-
-		try {
-			// Verify proxy system components loaded correctly
-			const hasProxyCreator = await this.context.eval('typeof createDeepLazyProxy !== "undefined"');
-			const hasSafeObject = await this.context.eval('typeof SafeObject !== "undefined"');
-			const hasSafeError = await this.context.eval('typeof SafeError !== "undefined"');
-			const hasBuildContext = await this.context.eval('typeof buildContext !== "undefined"');
-
-			if (!hasProxyCreator || !hasSafeObject || !hasSafeError || !hasBuildContext) {
-				throw new Error(
-					`Proxy system verification failed: ` +
-						`createDeepLazyProxy=${hasProxyCreator}, ` +
-						`SafeObject=${hasSafeObject}, SafeError=${hasSafeError}, ` +
-						`buildContext=${hasBuildContext}`,
-				);
-			}
-
-			this.logger.debug('[IsolatedVmBridge] Proxy system verified successfully');
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
 		}
 	}
 
@@ -337,15 +306,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				this.context.evalSync(loadRuntimeBundle());
 			}
 
-			// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
-			const verified = this.context.evalSync(
-				`typeof DateTime !== 'undefined' && typeof extend !== 'undefined' &&
-			 typeof createDeepLazyProxy !== 'undefined' && typeof SafeObject !== 'undefined' &&
-			 typeof SafeError !== 'undefined' && typeof buildContext !== 'undefined'`,
-			);
-			if (verified !== true) {
-				throw new Error('Runtime bundle verification failed during synchronous initialization');
-			}
+			assertRuntimeGlobals(this.context.evalSync(MISSING_RUNTIME_GLOBALS_SOURCE));
 
 			this.context.evalSync(ERROR_HANDLER_SOURCE);
 		} catch (error) {
