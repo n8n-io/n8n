@@ -52,6 +52,12 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 		});
 	}
 
+	/**
+	 * One row by id, with no visibility filter: who may see it depends on project
+	 * scopes this layer cannot resolve. Callers must authorize the row before they
+	 * return it or act on it — `AiPreferenceService.requireVisible` is the one path
+	 * that does, and it answers a row the caller may not see as a missing row.
+	 */
 	async findByIdWithProject(id: string): Promise<AiPreference | null> {
 		return await this.findOne({ where: { id }, relations: { project: true } });
 	}

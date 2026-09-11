@@ -24,13 +24,6 @@ type WriteOperation = 'create' | 'update' | 'delete';
 /** The projects one operation is allowed in. `'all'` covers every project. */
 type AllowedProjects = Set<string> | 'all';
 
-/** What a writer holds on the row it just wrote. */
-const WRITABLE_SCOPES: Scope[] = [
-	'aiPreference:read',
-	'aiPreference:update',
-	'aiPreference:delete',
-];
-
 /** Where a request wants the preference to live, once the caller is allowed there. */
 type PreferenceTarget = {
 	userId: string | null;
@@ -141,7 +134,7 @@ export class AiPreferenceService {
 		);
 		row.project = target.project;
 
-		return this.toDto(row, WRITABLE_SCOPES);
+		return this.toDto(row, await this.scopesFor(user, row));
 	}
 
 	/**
@@ -161,7 +154,8 @@ export class AiPreferenceService {
 		// relation outranks the id column on save, so a move needs both.
 		row.project = target.project;
 
-		return this.toDto(await this.aiPreferenceRepository.save(row), WRITABLE_SCOPES);
+		const saved = await this.aiPreferenceRepository.save(row);
+		return this.toDto(saved, await this.scopesFor(user, saved));
 	}
 
 	async delete(user: User, id: string): Promise<void> {
@@ -190,14 +184,21 @@ export class AiPreferenceService {
 		return true;
 	}
 
-	private async assertCanWrite(user: User, row: AiPreference, operation: WriteOperation) {
-		const allowed = row.projectId
-			? await this.hasProjectScope(user, row.projectId, operation)
-			: row.userId
-				? row.userId === user.id
-				: hasGlobalScope(user, `aiPreference:${operation}`);
+	/** Whether the user may run one write operation on one row. */
+	private async canWrite(
+		user: User,
+		row: Pick<AiPreference, 'userId' | 'projectId'>,
+		operation: WriteOperation,
+	): Promise<boolean> {
+		if (row.projectId) return await this.hasProjectScope(user, row.projectId, operation);
+		if (row.userId) return row.userId === user.id;
+		return hasGlobalScope(user, `aiPreference:${operation}`);
+	}
 
-		if (!allowed) throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
+	private async assertCanWrite(user: User, row: AiPreference, operation: WriteOperation) {
+		if (!(await this.canWrite(user, row, operation))) {
+			throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
+		}
 	}
 
 	/**
@@ -212,9 +213,11 @@ export class AiPreferenceService {
 		switch (request.scope) {
 			case 'user':
 				// Preferences of one's own need no scope: every user has them.
+				this.assertNoProject(request);
 				return { userId: user.id, projectId: null, project: null };
 
 			case 'instance':
+				this.assertNoProject(request);
 				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
 					throw new ForbiddenError('You are not allowed to set preferences for the whole instance');
 				}
@@ -238,6 +241,33 @@ export class AiPreferenceService {
 				return { userId: null, projectId: project.id, project };
 			}
 		}
+	}
+
+	/**
+	 * Only a project preference has a project. Dropping the id quietly would turn a
+	 * client that names the wrong scope into a preference saved somewhere else.
+	 */
+	private assertNoProject(request: AiPreferenceRequestDto) {
+		if (request.projectId !== null && request.projectId !== undefined) {
+			throw new BadRequestError(`A ${request.scope} preference cannot name a project`);
+		}
+	}
+
+	/**
+	 * The row-level scopes for one row, each checked directly. The list path uses the
+	 * batched form instead, so a page costs a fixed number of queries rather than two
+	 * for every row.
+	 */
+	private async scopesFor(user: User, row: AiPreference): Promise<Scope[]> {
+		const [updatable, deletable] = await Promise.all([
+			this.canWrite(user, row, 'update'),
+			this.canWrite(user, row, 'delete'),
+		]);
+
+		const scopes: Scope[] = ['aiPreference:read'];
+		if (updatable) scopes.push('aiPreference:update');
+		if (deletable) scopes.push('aiPreference:delete');
+		return scopes;
 	}
 
 	/** The projects whose preferences the user may list, without enumerating them all. */

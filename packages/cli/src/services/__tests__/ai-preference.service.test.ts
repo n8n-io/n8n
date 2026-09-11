@@ -152,6 +152,60 @@ describe('AiPreferenceService', () => {
 			expect(result).toEqual({ instance: [], user: [], projects: [] });
 		});
 	});
+
+	describe('the scopes a write reports back', () => {
+		const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+		const teamProject = mock<Project>({ id: 'p-1', name: 'Marketing', type: 'team' });
+
+		/** Answers the project lookup for the named operations only. */
+		function allowProjectOperations(...allowed: string[]) {
+			projectService.getProjectWithScope.mockImplementation(async (_user, _projectId, scopes) =>
+				scopes?.some((scope) => allowed.includes(scope)) ? teamProject : null,
+			);
+		}
+
+		it('reports only what a create-only project role holds, not the whole set', async () => {
+			// A custom project role can grant create without update or delete. Reporting
+			// the full set would have the client offer buttons the service then refuses.
+			allowProjectOperations('projectAiPreference:create');
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			const created = await service.create(member, {
+				content: 'Marketing rule.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+
+			expect(created.scopes).toEqual(['aiPreference:read']);
+		});
+
+		it('reports update and delete when the project role grants them', async () => {
+			allowProjectOperations(
+				'projectAiPreference:create',
+				'projectAiPreference:update',
+				'projectAiPreference:delete',
+			);
+			aiPreferenceRepository.create.mockImplementation((row) => row as AiPreference);
+			aiPreferenceRepository.save.mockImplementation(
+				async (row) => ({ ...row, createdAt: new Date(), updatedAt: new Date() }) as AiPreference,
+			);
+
+			const created = await service.create(member, {
+				content: 'Marketing rule.',
+				scope: 'project',
+				projectId: 'p-1',
+			});
+
+			expect(created.scopes).toEqual([
+				'aiPreference:read',
+				'aiPreference:update',
+				'aiPreference:delete',
+			]);
+		});
+	});
 });
 
 describe('groupAiPreferences', () => {

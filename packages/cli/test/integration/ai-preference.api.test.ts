@@ -167,6 +167,18 @@ describe('POST /ai-preferences', () => {
 		});
 	});
 
+	test('reports the scopes the author holds on the row it just created', async () => {
+		const response = await memberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Marketing rule.', scope: 'project', projectId: project.id });
+
+		expect(response.body.data.scopes).toEqual([
+			'aiPreference:read',
+			'aiPreference:update',
+			'aiPreference:delete',
+		]);
+	});
+
 	test('refuses a project preference from a viewer and from a non-member', async () => {
 		const viewer = await memberAgent
 			.post('/ai-preferences')
@@ -187,6 +199,34 @@ describe('POST /ai-preferences', () => {
 			.send({ content: 'Which project?', scope: 'project' });
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('refuses a project id on a scope that has no project', async () => {
+		// Dropping it quietly would save the preference somewhere the caller did not ask
+		// for, so a client that names the wrong scope hears about it.
+		for (const scope of ['user', 'instance'] as const) {
+			const response = await ownerAgent
+				.post('/ai-preferences')
+				.send({ content: 'Somewhere.', scope, projectId: project.id });
+
+			expect(response.statusCode).toBe(400);
+		}
+
+		expect(await repository().count()).toBe(0);
+	});
+
+	test('refuses a project id on a scope that has no project, on update too', async () => {
+		const row = await seed({ content: 'Mine', userId: member.id });
+
+		const response = await memberAgent
+			.patch(`/ai-preferences/${row.id}`)
+			.send({ content: 'Mine', scope: 'user', projectId: project.id });
+
+		expect(response.statusCode).toBe(400);
+		expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({
+			userId: member.id,
+			projectId: null,
+		});
 	});
 
 	test('refuses a preference aimed at a personal project', async () => {
