@@ -317,7 +317,7 @@ export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
 
 /**
  * What the agent proposes to build before it creates an app. The card lets the
- * user edit the name, namespace, workflows and theme, then approve or ask for
+ * user edit the name, namespace, connections and theme, then approve or ask for
  * changes; the resume carries the edited blueprint back.
  */
 export const appBlueprintSchema = z.object({
@@ -334,11 +334,13 @@ export const appBlueprintSchema = z.object({
 		)
 		.min(1)
 		.max(20),
-	/** Published workflows the app will call; each becomes a binding after approval. */
-	workflows: z
+	/** Workflows, data tables and agents the app will use; each becomes a binding after approval. */
+	connections: z
 		.array(
 			z.object({
-				workflowId: z.string(),
+				kind: z.enum(['workflow', 'dataTable', 'agent']),
+				/** The workflow, data table or agent id. */
+				id: z.string(),
 				name: z.string(),
 				key: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
 				purpose: z.string().trim().max(300).optional(),

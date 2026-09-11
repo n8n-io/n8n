@@ -8,6 +8,7 @@ import {
 	N8nInput,
 	N8nSegmentControl,
 	N8nText,
+	type IconName,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -16,6 +17,7 @@ import { computed, ref, watch } from 'vue';
 
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
+import ConnectionRow from './ConnectionRow.vue';
 
 const props = defineProps<{
 	requestId: string;
@@ -38,6 +40,12 @@ const toNamespace = (value: string) =>
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '');
 
+const CONNECTION_ICONS: Record<AppBlueprint['connections'][number]['kind'], IconName> = {
+	workflow: 'workflow',
+	dataTable: 'table',
+	agent: 'robot',
+};
+
 const name = ref(props.blueprint.name);
 // Follows the name until the user types into the namespace field.
 const editedNamespace = ref<string | null>(null);
@@ -47,7 +55,7 @@ const namespace = computed({
 		editedNamespace.value = value;
 	},
 });
-const removedWorkflowIds = ref(new Set<string>());
+const removedConnectionKeys = ref(new Set<string>());
 const primary = ref(props.blueprint.theme.primary);
 const mode = ref<AppThemeSettings['mode']>(props.blueprint.theme.mode);
 const requestingChanges = ref(false);
@@ -60,7 +68,7 @@ watch(
 	(next) => {
 		name.value = next.name;
 		editedNamespace.value = null;
-		removedWorkflowIds.value = new Set();
+		removedConnectionKeys.value = new Set();
 		primary.value = next.theme.primary;
 		mode.value = next.theme.mode;
 	},
@@ -88,9 +96,9 @@ const modeOptions = computed(() => [
 	{ label: i18n.baseText('apps.builder.theme.mode.system'), value: 'system' as const },
 ]);
 
-const workflows = computed(() =>
-	props.blueprint.workflows.filter(
-		(workflow) => !removedWorkflowIds.value.has(workflow.workflowId),
+const connections = computed(() =>
+	props.blueprint.connections.filter(
+		(connection) => !removedConnectionKeys.value.has(connection.key),
 	),
 );
 
@@ -104,12 +112,12 @@ const edited = computed<AppBlueprint>(() => ({
 	...props.blueprint,
 	name: name.value.trim(),
 	namespace: namespace.value,
-	workflows: workflows.value,
+	connections: connections.value,
 	theme: { ...props.blueprint.theme, primary: primary.value, mode: mode.value },
 }));
 
-function removeWorkflow(workflowId: string) {
-	removedWorkflowIds.value = new Set([...removedWorkflowIds.value, workflowId]);
+function removeConnection(key: string) {
+	removedConnectionKeys.value = new Set([...removedConnectionKeys.value, key]);
 }
 
 function track(optionChosen: 'approve' | 'request-changes') {
@@ -127,7 +135,7 @@ function track(optionChosen: 'approve' | 'request-changes') {
 		],
 		skipped_inputs: [],
 		num_pages: props.blueprint.pages.length,
-		num_workflows: workflows.value.length,
+		num_connections: connections.value.length,
 	});
 }
 
@@ -166,29 +174,27 @@ async function requestChanges() {
 
 <template>
 	<div
-		:class="[$style.root, !isResolved && $style.awaitingInput]"
+		:class="[$style.card, !isResolved && $style.awaitingInput]"
 		data-test-id="instance-ai-app-blueprint"
 	>
-		<div :class="$style.header">
-			<span :class="$style.headerTitleGroup">
-				<N8nIcon icon="app-window" size="medium" />
-				<N8nText size="large">{{ i18n.baseText(titleKey) }}</N8nText>
-			</span>
+		<header :class="$style.header">
+			<N8nIcon icon="app-window" size="medium" />
+			<N8nText size="medium" color="text-dark" bold>{{ i18n.baseText(titleKey) }}</N8nText>
 			<N8nText
 				v-if="status === 'changes-requested'"
 				size="small"
-				bold
 				color="text-light"
+				:class="$style.headerStatus"
 				data-test-id="instance-ai-app-blueprint-changes-requested"
 			>
 				{{ i18n.baseText('instanceAi.planReview.changesRequested') }}
 			</N8nText>
-		</div>
+		</header>
 
-		<div :class="$style.body">
-			<div :class="$style.grid">
+		<section :class="$style.section">
+			<div :class="$style.identity">
 				<label :class="$style.field">
-					<N8nText size="xsmall" bold color="text-light" :class="$style.label">
+					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.appBlueprint.name') }}
 					</N8nText>
 					<N8nInput
@@ -199,7 +205,7 @@ async function requestChanges() {
 					/>
 				</label>
 				<label :class="$style.field">
-					<N8nText size="xsmall" bold color="text-light" :class="$style.label">
+					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.appBlueprint.namespace') }}
 					</N8nText>
 					<N8nInput
@@ -207,106 +213,93 @@ async function requestChanges() {
 						size="small"
 						:disabled="isResolved"
 						data-test-id="instance-ai-app-blueprint-namespace"
-					/>
+					>
+						<template #prepend>/apps/</template>
+					</N8nInput>
 					<N8nText
+						v-if="!namespaceValid"
 						size="xsmall"
-						:color="namespaceValid ? 'text-light' : 'danger'"
+						color="danger"
 						data-test-id="instance-ai-app-blueprint-url"
 					>
-						{{
-							namespaceValid
-								? `/apps/${namespace}/`
-								: i18n.baseText('apps.add.input.namespace.error.regex')
-						}}
+						{{ i18n.baseText('apps.add.input.namespace.error.regex') }}
 					</N8nText>
 				</label>
 			</div>
+			<N8nText size="small" color="text-base" data-test-id="instance-ai-app-blueprint-summary">
+				{{ blueprint.summary }}
+			</N8nText>
+		</section>
 
-			<div :class="$style.field">
-				<N8nText size="xsmall" bold color="text-light" :class="$style.label">
-					{{ i18n.baseText('instanceAi.appBlueprint.summary') }}
-				</N8nText>
-				<N8nText size="small">{{ blueprint.summary }}</N8nText>
+		<section :class="$style.section">
+			<N8nText size="small" color="text-dark" bold>
+				{{ i18n.baseText('instanceAi.appBlueprint.pages') }}
+			</N8nText>
+			<div :class="$style.rows">
+				<ConnectionRow
+					v-for="page in blueprint.pages"
+					:key="page.route"
+					:name="page.route"
+					:subtitle="page.purpose"
+					icon="file"
+					:clickable="false"
+					data-test-id="instance-ai-app-blueprint-page"
+				/>
 			</div>
+		</section>
 
-			<div :class="$style.field">
-				<N8nText size="xsmall" bold color="text-light" :class="$style.label">
-					{{ i18n.baseText('instanceAi.appBlueprint.pages') }}
-				</N8nText>
-				<ul :class="$style.list">
-					<li
-						v-for="page in blueprint.pages"
-						:key="page.route"
-						:class="$style.row"
-						data-test-id="instance-ai-app-blueprint-page"
-					>
-						<code :class="$style.code">{{ page.route }}</code>
-						<N8nText size="small" color="text-light">{{ page.purpose }}</N8nText>
-					</li>
-				</ul>
-			</div>
-
-			<div v-if="blueprint.workflows.length > 0" :class="$style.field">
-				<N8nText size="xsmall" bold color="text-light" :class="$style.label">
-					{{ i18n.baseText('instanceAi.appBlueprint.workflows') }}
-				</N8nText>
-				<ul :class="$style.list">
-					<li
-						v-for="workflow in workflows"
-						:key="workflow.workflowId"
-						:class="$style.row"
-						data-test-id="instance-ai-app-blueprint-workflow"
-					>
-						<N8nIcon icon="workflow" size="small" />
-						<N8nText size="small" :class="$style.rowGrow">{{ workflow.name }}</N8nText>
-						<code :class="$style.code">{{ workflow.key }}</code>
+		<section v-if="blueprint.connections.length > 0" :class="$style.section">
+			<N8nText size="small" color="text-dark" bold>
+				{{ i18n.baseText('instanceAi.appBlueprint.connections') }}
+			</N8nText>
+			<div :class="$style.rows">
+				<ConnectionRow
+					v-for="connection in connections"
+					:key="connection.key"
+					:name="connection.name"
+					:subtitle="connection.purpose ?? connection.key"
+					:icon="CONNECTION_ICONS[connection.kind]"
+					:clickable="false"
+					data-test-id="instance-ai-app-blueprint-connection"
+				>
+					<template #action>
 						<N8nIconButton
 							v-if="!isResolved"
 							icon="x"
 							variant="ghost"
-							size="mini"
-							:aria-label="i18n.baseText('generic.delete')"
-							data-test-id="instance-ai-app-blueprint-workflow-remove"
-							@click="removeWorkflow(workflow.workflowId)"
-						/>
-					</li>
-					<li v-if="workflows.length === 0" :class="$style.row">
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('instanceAi.appBlueprint.workflows.none') }}
-						</N8nText>
-					</li>
-				</ul>
-			</div>
-
-			<div :class="$style.grid">
-				<div :class="$style.field">
-					<N8nText size="xsmall" bold color="text-light" :class="$style.label">
-						{{ i18n.baseText('apps.builder.theme.accent.label') }}
-					</N8nText>
-					<div :class="$style.row">
-						<N8nColorPicker
-							v-model="primary"
 							size="small"
-							:disabled="isResolved"
-							data-test-id="instance-ai-app-blueprint-primary"
+							:aria-label="i18n.baseText('generic.delete')"
+							data-test-id="instance-ai-app-blueprint-connection-remove"
+							@click="removeConnection(connection.key)"
 						/>
-						<code :class="$style.code">{{ primary }}</code>
-					</div>
-				</div>
-				<div :class="$style.field">
-					<N8nText size="xsmall" bold color="text-light" :class="$style.label">
-						{{ i18n.baseText('apps.builder.theme.mode.label') }}
-					</N8nText>
-					<N8nSegmentControl
-						v-model="mode"
-						:options="modeOptions"
-						size="small"
-						:disabled="isResolved"
-						data-test-id="instance-ai-app-blueprint-mode"
-					/>
-				</div>
+					</template>
+				</ConnectionRow>
+				<N8nText v-if="connections.length === 0" size="small" color="text-light">
+					{{ i18n.baseText('instanceAi.appBlueprint.connections.none') }}
+				</N8nText>
 			</div>
-		</div>
+		</section>
+
+		<section :class="[$style.section, $style.themeRow]">
+			<N8nText size="small" color="text-dark" bold>
+				{{ i18n.baseText('apps.builder.theme') }}
+			</N8nText>
+			<div :class="$style.themeControls">
+				<N8nColorPicker
+					v-model="primary"
+					size="small"
+					:disabled="isResolved"
+					data-test-id="instance-ai-app-blueprint-primary"
+				/>
+				<N8nSegmentControl
+					v-model="mode"
+					:options="modeOptions"
+					size="small"
+					:disabled="isResolved"
+					data-test-id="instance-ai-app-blueprint-mode"
+				/>
+			</div>
+		</section>
 
 		<template v-if="!isResolved">
 			<ConfirmationFooter v-if="!requestingChanges" layout="row-between" bordered>
@@ -315,8 +308,8 @@ async function requestChanges() {
 				</N8nText>
 				<div :class="$style.footerActions">
 					<N8nButton
-						variant="outline"
-						size="medium"
+						variant="ghost"
+						size="small"
 						data-test-id="instance-ai-app-blueprint-request-changes"
 						@click="requestingChanges = true"
 					>
@@ -324,7 +317,7 @@ async function requestChanges() {
 					</N8nButton>
 					<N8nButton
 						variant="solid"
-						size="medium"
+						size="small"
 						:disabled="!canApprove"
 						data-test-id="instance-ai-app-blueprint-approve"
 						@click="approve"
@@ -338,17 +331,18 @@ async function requestChanges() {
 					v-model="feedback"
 					type="textarea"
 					:rows="2"
+					autofocus
 					:placeholder="i18n.baseText('instanceAi.appBlueprint.feedback.placeholder')"
 					data-test-id="instance-ai-app-blueprint-feedback"
 					@keydown.enter.exact.prevent="requestChanges"
 				/>
 				<div :class="$style.footerActions">
-					<N8nButton variant="outline" size="medium" @click="requestingChanges = false">
+					<N8nButton variant="ghost" size="small" @click="requestingChanges = false">
 						{{ i18n.baseText('generic.cancel') }}
 					</N8nButton>
 					<N8nButton
 						variant="solid"
-						size="medium"
+						size="small"
 						:disabled="!feedback.trim()"
 						data-test-id="instance-ai-app-blueprint-feedback-submit"
 						@click="requestChanges"
@@ -367,13 +361,15 @@ async function requestChanges() {
 </template>
 
 <style lang="scss" module>
-.root {
+.card {
+	display: flex;
+	flex-direction: column;
+	max-width: 90%;
+	margin: var(--spacing--2xs) 0;
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	margin: var(--spacing--2xs) 0;
+	background-color: var(--background--surface);
 	overflow: hidden;
-	background-color: var(--color--background--light-3);
-	max-width: 90%;
 }
 
 .awaitingInput {
@@ -384,29 +380,30 @@ async function requestChanges() {
 .header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-bottom: var(--border);
 }
 
-.headerTitleGroup {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+.headerStatus {
+	margin-left: auto;
 }
 
-.body {
+.section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+
+	& + & {
+		border-top: var(--border);
+	}
 }
 
-.grid {
+.identity {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: var(--spacing--sm);
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: var(--spacing--xs);
 }
 
 .field {
@@ -416,42 +413,23 @@ async function requestChanges() {
 	min-width: 0;
 }
 
-.label {
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.list {
+.rows {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin: 0;
-	padding: 0;
-	list-style: none;
+	margin-left: calc(var(--spacing--2xs) * -1);
 }
 
-.row {
+.themeRow {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.themeControls {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-
-.rowGrow {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.code {
-	padding: 0 var(--spacing--4xs);
-	border-radius: var(--radius--sm);
-	background: var(--color--background--light-2);
-	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--2xs);
-	white-space: nowrap;
+	gap: var(--spacing--xs);
 }
 
 .footerActions {

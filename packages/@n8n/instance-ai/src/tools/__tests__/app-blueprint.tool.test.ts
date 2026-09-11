@@ -7,7 +7,7 @@ const BLUEPRINT: AppBlueprint = {
 	namespace: 'greeter',
 	summary: 'Greets visitors by name',
 	pages: [{ route: '/', purpose: 'Greeting form' }],
-	workflows: [{ workflowId: 'wf-1', name: 'Log greeting', key: 'log' }],
+	connections: [{ kind: 'workflow', id: 'wf-1', name: 'Log greeting', key: 'log' }],
 	theme: { mode: 'system', primary: '#ff6900', tone: 'tinted' },
 };
 
@@ -34,7 +34,7 @@ describe('app-blueprint tool', () => {
 	});
 
 	it('returns the blueprint as the user edited it on approval', async () => {
-		const edited = { ...BLUEPRINT, name: 'Hello', namespace: 'hello', workflows: [] };
+		const edited = { ...BLUEPRINT, name: 'Hello', namespace: 'hello', connections: [] };
 		const { ctx } = createAgentCtx({ approved: true, blueprint: edited });
 
 		const result = await tool.handler!({ blueprint: BLUEPRINT }, ctx as never);

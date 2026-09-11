@@ -22,7 +22,7 @@ export function createAppBlueprintTool() {
 		.description(
 			'Propose an app before creating it; the run suspends until the user approves or asks for changes. ' +
 				'Call it once you know what to build (after the clarifying questions) and before apps(action="create"). ' +
-				'The user can edit the name, namespace, workflows and theme in the card: build from the returned ' +
+				'The user can edit the name, namespace, connections and theme in the card: build from the returned ' +
 				'`blueprint`, not from your proposal. `approved: false` with `feedback` means revise and propose ' +
 				'again; never create the app without an approved blueprint.',
 		)

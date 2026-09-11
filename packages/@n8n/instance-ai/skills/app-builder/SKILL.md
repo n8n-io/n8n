@@ -67,17 +67,20 @@ world app". Skip it only when the conversation is already bound to an app.
    - `name`: short, memorable, from the idea; `namespace`: its slug.
    - `summary`: one sentence.
    - `pages`: every route with its purpose. One page is fine.
-   - `workflows`: published workflows in the project the app should call,
-     found with `workflows(action="list", projectId)`; each with a bound
-     `key` and its purpose. Empty when the data stays in the browser. Only
-     workflows that start with "When Executed by Another Workflow".
+   - `connections`: what the app talks to, each with a `kind`, the resource
+     `id`, its `name`, a bound `key` and its purpose. `workflow`: published
+     workflows in the project that start with "When Executed by Another
+     Workflow" (`workflows(action="list", projectId)`); `dataTable`: a table
+     for data that must survive a reload (`data-tables(action="list")`, or
+     one you will create); `agent`: a published agent the app chats with
+     (`agents(action="list")`). Empty when the data stays in the browser.
    - `theme`: `primary` hex, `mode`, and where the look asks for it
      `radius` (px), `font`, `density` (`compact`|`comfortable`|`spacious`)
      and `tone` (`neutral`|`tinted`). Translate the chosen direction:
      playful → warm primary, large radius, spacious, tinted; minimal → gray
      or one cool primary, small radius, neutral; bold → saturated primary,
      tinted, dark mode.
-   The user can edit the name, namespace, workflows and theme in the card.
+   The user can edit the name, namespace, connections and theme in the card.
    The result is `{ approved: true, blueprint }` with the edited copy: build
    from that copy, not from your proposal. `{ approved: false, feedback }`
    means revise and call `app-blueprint` again; never create the app
@@ -85,10 +88,11 @@ world app". Skip it only when the conversation is already bound to an app.
    blueprint and the build.
 3. Build it, in this order, then stop and point the user at the preview:
    `apps(action="create", name, namespace, theme)` with the blueprint's
-   values; `apps(action="bind", …)` for each blueprint workflow (this asks
-   the user for approval per bind); write the pages and routes; write
-   `BLUEPRINT.md` at the app root with the blueprint (name, summary, pages,
-   workflows, look) so a later conversation about this app can read it.
+   values; `apps(action="bind", …)` for each blueprint connection, creating
+   a missing data table first (this asks the user for approval per bind);
+   write the pages and routes; write `BLUEPRINT.md` at the app root with the
+   blueprint (name, summary, pages, connections, look) so a later
+   conversation about this app can read it.
    Follow the design direction throughout: the theme sets colors, radius and
    spacing; you set the layout, copy tone and components.
 

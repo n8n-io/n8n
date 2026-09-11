@@ -19,9 +19,9 @@ const blueprint: AppBlueprint = {
 	namespace: 'joy-greet',
 	summary: 'A cheerful greeter',
 	pages: [{ route: '/', purpose: 'Greeting' }],
-	workflows: [
-		{ workflowId: 'wf-1', name: 'Log greeting', key: 'log' },
-		{ workflowId: 'wf-2', name: 'Send card', key: 'send' },
+	connections: [
+		{ kind: 'workflow', id: 'wf-1', name: 'Log greeting', key: 'log' },
+		{ kind: 'dataTable', id: 'dt-1', name: 'Greetings', key: 'greetings' },
 	],
 	theme: { mode: 'system', primary: '#ff6900' },
 };
@@ -41,23 +41,23 @@ describe('AppBlueprintCard', () => {
 		const name = getByTestId('instance-ai-app-blueprint-name');
 		await userEvent.clear(name);
 		await userEvent.type(name, 'Hello World!');
-		expect(getByTestId('instance-ai-app-blueprint-url')).toHaveTextContent('/apps/hello-world/');
+		expect(getByTestId('instance-ai-app-blueprint-namespace')).toHaveValue('hello-world');
 
 		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
 		await userEvent.clear(namespace);
 		await userEvent.type(namespace, 'hi');
 		await userEvent.type(name, '?');
-		expect(getByTestId('instance-ai-app-blueprint-url')).toHaveTextContent('/apps/hi/');
+		expect(getByTestId('instance-ai-app-blueprint-namespace')).toHaveValue('hi');
 	});
 
-	it('approves with the edited blueprint and the remaining workflows', async () => {
+	it('approves with the edited blueprint and the remaining connections', async () => {
 		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 		const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
 		const { getByTestId, getAllByTestId } = renderComponent({
 			props: { requestId: 'req-1', blueprint },
 		});
 
-		await userEvent.click(getAllByTestId('instance-ai-app-blueprint-workflow-remove')[0]);
+		await userEvent.click(getAllByTestId('instance-ai-app-blueprint-connection-remove')[0]);
 		await userEvent.click(getByTestId('radio-button-dark'));
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-approve'));
 
@@ -67,7 +67,7 @@ describe('AppBlueprintCard', () => {
 			approved: true,
 			blueprint: {
 				...blueprint,
-				workflows: [blueprint.workflows[1]],
+				connections: [blueprint.connections[1]],
 				theme: { mode: 'dark', primary: '#ff6900' },
 			},
 		});

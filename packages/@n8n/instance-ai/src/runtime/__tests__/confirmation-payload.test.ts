@@ -189,7 +189,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					namespace: 'greeter',
 					summary: 'Greets visitors',
 					pages: [{ route: '/', purpose: 'Greeting' }],
-					workflows: [],
+					connections: [],
 					theme: { mode: 'system', primary: '#ff6900' },
 				},
 			},
