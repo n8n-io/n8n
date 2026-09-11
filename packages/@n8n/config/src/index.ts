@@ -41,6 +41,7 @@ import { OutboundProxyConfig } from './configs/outbound-proxy.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
+import { RegexEngineConfig } from './configs/regex-engine.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SchedulerConfig } from './configs/scheduler.config';
@@ -102,6 +103,7 @@ export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { RegexEngineConfig } from './configs/regex-engine.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
@@ -323,6 +325,9 @@ export class GlobalConfig {
 
 	@Nested
 	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	regexEngine: RegexEngineConfig;
 
 	@Nested
 	evaluation: EvaluationConfig;
