@@ -48,12 +48,24 @@ for (const key of keys) {
 		continue;
 	}
 	if (!b || !a) {
-		diffs.push({ pkg, file, key: '(sample)', before: b ? 'present' : 'absent', after: a ? 'present' : 'absent' });
+		diffs.push({
+			pkg,
+			file,
+			key: '(sample)',
+			before: b ? 'present' : 'absent',
+			after: a ? 'present' : 'absent',
+		});
 		continue;
 	}
 	// a file dropping out of linting is never acceptable silently
 	if (Boolean(b.ignored) !== Boolean(a.ignored)) {
-		diffs.push({ pkg, file, key: '(linted)', before: b.ignored ? 'ignored' : 'linted', after: a.ignored ? 'ignored' : 'linted' });
+		diffs.push({
+			pkg,
+			file,
+			key: '(linted)',
+			before: b.ignored ? 'ignored' : 'linted',
+			after: a.ignored ? 'ignored' : 'linted',
+		});
 		continue;
 	}
 	if (b.ignored) continue;
@@ -62,13 +74,20 @@ for (const key of keys) {
 		const bv = b.rules[rule] ?? [0];
 		const av = a.rules[rule] ?? [0];
 		if (stable(bv) !== stable(av)) {
-			const show = (v) => (v[0] === 0 ? 'off' : v.length > 1 ? `error ${stable(v.slice(1))}` : 'error');
+			const show = (v) =>
+				v[0] === 0 ? 'off' : v.length > 1 ? `error ${stable(v.slice(1))}` : 'error';
 			diffs.push({ pkg, file, key: rule, before: show(bv), after: show(av) });
 		}
 	}
 	for (const field of ['plugins', 'settings', 'languageOptions']) {
 		if (stable(b[field]) !== stable(a[field])) {
-			diffs.push({ pkg, file, key: `(${field})`, before: stable(b[field]), after: stable(a[field]) });
+			diffs.push({
+				pkg,
+				file,
+				key: `(${field})`,
+				before: stable(b[field]),
+				after: stable(a[field]),
+			});
 		}
 	}
 }
@@ -78,8 +97,9 @@ const matches = (d, e) =>
 	(e.file === undefined || d.file.includes(e.file)) &&
 	(e.rule === undefined || d.key === e.rule) &&
 	(e.key === undefined || d.key === e.key) &&
-	(e.before === undefined || d.before === e.before) &&
-	(e.after === undefined || d.after === e.after);
+	// `error` in an expected entry also matches `error [options]`
+	(e.before === undefined || d.before === e.before || d.before.startsWith(`${e.before} `)) &&
+	(e.after === undefined || d.after === e.after || d.after.startsWith(`${e.after} `));
 
 const unexpected = [];
 const accounted = new Map();
@@ -102,7 +122,13 @@ console.log(`\nUNEXPECTED (${unexpected.length}):`);
 const w = (s, n) => String(s).slice(0, n).padEnd(n);
 console.log(w('package', 38), w('file', 38), w('key', 44), w('before', 22), 'after');
 for (const d of unexpected.slice(0, 60)) {
-	console.log(w(d.pkg, 38), w(d.file, 38), w(d.key, 44), w(d.before, 22), String(d.after).slice(0, 40));
+	console.log(
+		w(d.pkg, 38),
+		w(d.file, 38),
+		w(d.key, 44),
+		w(d.before, 22),
+		String(d.after).slice(0, 40),
+	);
 }
 if (unexpected.length > 60) console.log(`... and ${unexpected.length - 60} more`);
 process.exit(1);

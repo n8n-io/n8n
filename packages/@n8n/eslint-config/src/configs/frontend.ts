@@ -17,6 +17,11 @@ export const frontendConfig = tseslint.config(
 	{
 		rules: {
 			'no-console': 'warn',
+
+			// A component file is PascalCase and a composable is `useThing.ts`, so
+			// the kebab-case default from the base layer does not apply here.
+			'unicorn/filename-case': 'off',
+
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
 			'n8n-local-rules/no-reka-ui-pagination': 'error',
