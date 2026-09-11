@@ -159,6 +159,7 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 			expect.objectContaining({ id: archived.id, status: 'archived' }),
 			expect.objectContaining({
 				id: removed.id,
+				name: 'removed',
 				status: 'deleted',
 				version: null,
 				updatedAt: null,
@@ -184,8 +185,17 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = await agent.get(endpoint).expect(400);
-	expect(movedOut.body.message).toContain('moved out of this project');
+	const movedOut = (await agent.get(endpoint).expect(200)).body.data;
+	expect(movedOut).toHaveLength(2);
+	expect(movedOut).toContainEqual(
+		expect.objectContaining({
+			id: modified.id,
+			name: 'renamed',
+			status: 'deleted',
+			version: null,
+			updatedAt: null,
+		}),
+	);
 }, 30_000);
 
 it('preserves workflow moves and changes across workflow files', async () => {

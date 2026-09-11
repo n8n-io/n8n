@@ -6,7 +6,6 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
@@ -164,29 +163,27 @@ export class PromotionChangeService {
 			fileChangeCount: changes.length,
 			workflowIds: [...changedIds],
 		});
-		const metadata = await this.workflowRepository.findByIds([...changedIds], {
-			fields: ['updatedAt', 'versionCounter'],
-		});
+		const metadata = await this.workflowRepository.findByIds(
+			[...changedIds].filter((id) => desiredWorkflows.has(id)),
+			{ fields: ['updatedAt', 'versionCounter'] },
+		);
 		const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
-		const baseIds = new Set(
-			base.filter(({ type }) => type === 'workflow').map(({ entityId }) => entityId),
+		const baseWorkflowSlugs = new Map(
+			base.filter(({ type }) => type === 'workflow').map(({ entityId, slug }) => [entityId, slug]),
 		);
 		return [...changedIds].map((id) => {
 			const entry = desiredWorkflows.get(id);
 			const workflow = metadataById.get(id);
-			if (!entry && workflow) {
-				throw new BadRequestError('A workflow moved out of this project. Use a full promotion.');
-			}
 			let status: PromotableResource['status'] = 'modified';
 			if (!entry) status = 'deleted';
-			else if (!baseIds.has(id)) status = 'new';
+			else if (!baseWorkflowSlugs.has(id)) status = 'new';
 			else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
 			else if (renamedIds.has(id)) {
 				status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
 			}
 			return {
 				id,
-				name: entry?.name ?? id,
+				name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
 				type: 'workflow',
 				status,
 				version: workflow?.versionCounter ?? null,
