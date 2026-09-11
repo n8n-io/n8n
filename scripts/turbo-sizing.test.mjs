@@ -86,44 +86,46 @@ describe('resolveConcurrency precedence', () => {
 	const base = { machine: MACHINE_16GB };
 
 	it('lets an explicit flag win over the environment variable', () => {
-		const result = resolveConcurrency({
-			...base,
-			args: ['--concurrency=5'],
-			env: { TURBO_CONCURRENCY: '3' },
-		});
-		assert.deepEqual(result, { concurrency: '5', source: 'flag', inject: false });
+		const result = resolveConcurrency({ ...base, flag: '5', env: { TURBO_CONCURRENCY: '3' } });
+		assert.deepEqual(result, { concurrency: '5', source: 'flag' });
 	});
 
 	it('lets the environment variable win over the computed default', () => {
-		const result = resolveConcurrency({ ...base, args: [], env: { TURBO_CONCURRENCY: '3' } });
-		assert.deepEqual(result, { concurrency: '3', source: 'env', inject: true });
+		const result = resolveConcurrency({ ...base, env: { TURBO_CONCURRENCY: '3' } });
+		assert.deepEqual(result, { concurrency: '3', source: 'env' });
 	});
 
 	it('falls back to the computed default', () => {
-		const result = resolveConcurrency({ ...base, args: [], env: {} });
-		assert.deepEqual(result, { concurrency: '2', source: 'computed', inject: true });
+		const result = resolveConcurrency({ ...base, env: {} });
+		assert.deepEqual(result, { concurrency: '2', source: 'computed' });
 	});
 
 	it('ignores an invalid environment variable and computes instead', () => {
-		const result = resolveConcurrency({ ...base, args: [], env: { TURBO_CONCURRENCY: 'lots' } });
+		const result = resolveConcurrency({ ...base, env: { TURBO_CONCURRENCY: 'lots' } });
 		assert.equal(result.source, 'computed');
 	});
 
-	it('injects no default under CI, so workflow behaviour does not change', () => {
-		const result = resolveConcurrency({ ...base, args: [], env: { CI: 'true' } });
-		assert.deepEqual(result, { concurrency: undefined, source: 'ci', inject: false });
+	it('treats an empty or blank flag as absent', () => {
+		for (const flag of [undefined, '', '   ']) {
+			const result = resolveConcurrency({ ...base, flag, env: { TURBO_CONCURRENCY: '3' } });
+			assert.equal(result.concurrency, '3', `flag ${JSON.stringify(flag)} was not ignored`);
+		}
 	});
 
-	it('still honours a flag and an environment variable under CI', () => {
-		assert.equal(
-			resolveConcurrency({ ...base, args: ['--concurrency=5'], env: { CI: 'true' } }).concurrency,
-			'5',
-		);
-		assert.equal(
-			resolveConcurrency({ ...base, args: [], env: { CI: 'true', TURBO_CONCURRENCY: '2' } })
-				.concurrency,
-			'2',
-		);
+	it('returns a flag value unvalidated, so turbo reports a bad one', () => {
+		const result = resolveConcurrency({ ...base, flag: 'banana', env: {} });
+		assert.deepEqual(result, { concurrency: 'banana', source: 'flag' });
+	});
+
+	it('accepts a number as the flag, which is how parseArgs callers pass it', () => {
+		assert.equal(resolveConcurrency({ ...base, flag: 4, env: {} }).concurrency, '4');
+	});
+
+	// The CI policy belongs to resolveSizing(). Keeping it out of here is what
+	// lets agent-setup.mjs share the order without inheriting the no-op.
+	it('knows nothing about CI', () => {
+		const result = resolveConcurrency({ ...base, env: { CI: 'true' } });
+		assert.deepEqual(result, { concurrency: '2', source: 'computed' });
 	});
 });
 

@@ -107,36 +107,40 @@ export function parseConcurrencyEnv(raw) {
 }
 
 /**
- * Applies the precedence rules and reports which one won.
+ * The precedence order, in one place. Every caller uses this function, so the
+ * order is never written twice.
  *
- * `source` is `'flag'`, `'env'`, `'ci'`, or `'computed'`. `'ci'` means no
- * default was injected: CI pins its own concurrency per job, so this module
- * must not change what a workflow already runs.
+ * Each caller passes its own flag value in its own idiom: `turbo-sized.mjs`
+ * reads it out of a turbo argument list with `findConcurrencyArg()`, and
+ * `agent-setup.mjs` takes it from `parseArgs`. The flag value is returned
+ * unvalidated, so a bad value reaches turbo, which reports it better than
+ * this module can.
+ *
+ * This function knows nothing about CI. The CI policy belongs to
+ * `resolveSizing()`, which is the only place that may decide to change
+ * nothing at all.
  *
  * @param {object} input
- * @param {string[]} input.args turbo arguments the caller passed through
+ * @param {string | undefined} input.flag value of an explicit concurrency flag
  * @param {Record<string, string | undefined>} input.env
  * @param {{ totalMemMb: number, cpuCount: number }} input.machine
  * @param {number} [input.processMemMb]
- * @returns {{ concurrency: string | undefined, source: string, inject: boolean }}
+ * @returns {{ concurrency: string, source: 'flag' | 'env' | 'computed' }}
  */
-export function resolveConcurrency({ args, env, machine, processMemMb = DEFAULT_PROCESS_MEM_MB }) {
-	const fromFlag = findConcurrencyArg(args);
-	if (fromFlag !== undefined) {
-		return { concurrency: fromFlag, source: 'flag', inject: false };
+export function resolveConcurrency({ flag, env, machine, processMemMb = DEFAULT_PROCESS_MEM_MB }) {
+	if (flag !== undefined && String(flag).trim() !== '') {
+		return { concurrency: String(flag), source: 'flag' };
 	}
 
 	const fromEnv = parseConcurrencyEnv(env[CONCURRENCY_ENV_VAR]);
 	if (fromEnv !== undefined) {
-		return { concurrency: fromEnv, source: 'env', inject: true };
+		return { concurrency: fromEnv, source: 'env' };
 	}
 
-	if (env.CI) {
-		return { concurrency: undefined, source: 'ci', inject: false };
-	}
-
-	const computed = computeConcurrency({ ...machine, processMemMb });
-	return { concurrency: String(computed), source: 'computed', inject: true };
+	return {
+		concurrency: String(computeConcurrency({ ...machine, processMemMb })),
+		source: 'computed',
+	};
 }
 
 /**
@@ -180,14 +184,21 @@ export function resolveNodeOptions(
  */
 export function resolveSizing({ args, env, machine, processMemMb = DEFAULT_PROCESS_MEM_MB }) {
 	if (env.CI) {
-		// Report what the workflow chose, if anything, but change nothing.
-		const { concurrency } = resolveConcurrency({ args, env, machine, processMemMb });
-		return { args, nodeOptions: env.NODE_OPTIONS, concurrency, source: 'ci' };
+		// Report what the workflow pinned itself, if anything, but change nothing.
+		const pinned = findConcurrencyArg(args) ?? parseConcurrencyEnv(env[CONCURRENCY_ENV_VAR]);
+		return { args, nodeOptions: env.NODE_OPTIONS, concurrency: pinned, source: 'ci' };
 	}
 
-	const { concurrency, inject, source } = resolveConcurrency({ args, env, machine, processMemMb });
+	const { concurrency, source } = resolveConcurrency({
+		flag: findConcurrencyArg(args),
+		env,
+		machine,
+		processMemMb,
+	});
+
 	return {
-		args: inject ? [`--concurrency=${concurrency}`, ...args] : args,
+		// The flag is already in args when the caller passed one.
+		args: source === 'flag' ? args : [`--concurrency=${concurrency}`, ...args],
 		nodeOptions: resolveNodeOptions(env.NODE_OPTIONS, processMemMb),
 		concurrency,
 		source,

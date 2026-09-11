@@ -12,7 +12,7 @@
  *
  * Usage:
  *   pnpm agent:setup [all|install|build|test] [flags]
- *   node scripts/agent-setup.mjs all --mem 6144 --concurrency 4
+ *   node scripts/agent-setup.mjs all --mem 4096 --concurrency 2
  *
  * Exit codes: 0 = all steps pass, 1 = a step failed, 2 = invalid arguments.
  *
@@ -27,9 +27,8 @@ import { parseArgs } from 'node:util';
 import {
 	CONCURRENCY_ENV_VAR,
 	DEFAULT_PROCESS_MEM_MB,
-	computeConcurrency,
-	parseConcurrencyEnv,
 	readMachine,
+	resolveConcurrency,
 	resolveNodeOptions,
 } from './turbo-sizing.mjs';
 
@@ -101,20 +100,22 @@ if (!Number.isInteger(tailLines) || tailLines < 0) {
 	fail('--tail must be a non-negative integer');
 }
 
-// Precedence: the --concurrency flag, then the environment variable, then the
-// RAM-aware default. Same order as scripts/turbo-sized.mjs.
-let concurrency;
 if (values.concurrency !== undefined) {
 	const requested = Number(values.concurrency);
 	if (!Number.isInteger(requested) || requested <= 0) {
 		fail('--concurrency must be a positive integer');
 	}
-	concurrency = String(requested);
-} else {
-	concurrency =
-		parseConcurrencyEnv(process.env[CONCURRENCY_ENV_VAR]) ??
-		String(computeConcurrency({ ...readMachine(), processMemMb: mem }));
 }
+
+// The precedence order lives in resolveConcurrency(). Do not repeat it here.
+// This script has no CI branch on purpose: no workflow calls `agent:setup`,
+// and an agent wants the machine-sized default wherever it runs.
+const { concurrency } = resolveConcurrency({
+	flag: values.concurrency,
+	env: process.env,
+	machine: readMachine(),
+	processMemMb: mem,
+});
 
 const logDir = values['log-dir']
 	? resolve(process.cwd(), values['log-dir'])
