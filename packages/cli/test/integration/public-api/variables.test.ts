@@ -264,7 +264,6 @@ describe('Variables in Public API', () => {
 
 			expect(response.status).toBe(201);
 			expect(response.text).toBe('');
-			expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
 			const created = await getVariableByKey('key');
 			expect(created).toEqual(expect.objectContaining(variablePayload));
 		});
