@@ -119,6 +119,15 @@ describe('GET /tags/:id', () => {
 		expect(createdAt).toEqual(tag.createdAt.toISOString());
 		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
 	});
+
+	test('should return only the public tag fields', async () => {
+		const tag = await createTag({});
+
+		const response = await authMemberAgent.get(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual(['createdAt', 'id', 'name', 'updatedAt']);
+	});
 });
 
 describe('DELETE /tags/:id', () => {
@@ -191,7 +200,33 @@ describe('POST /tags', () => {
 		const response = await authOwnerAgent.post('/tags').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			"request/body must have required property 'name'",
+		);
 	});
+
+	test('should reject an unknown body key', async () => {
+		const response = await authOwnerAgent.post('/tags').send({ name: 'Tag 1', color: 'red' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			"request/body Unrecognized key(s) in object: 'color'",
+		);
+	});
+
+	test.each(['id', 'createdAt', 'updatedAt'])(
+		'should reject the read-only field %s',
+		async (key) => {
+			const response = await authOwnerAgent
+				.post('/tags')
+				.send({ name: 'Tag 1', [key]: '2tUt1wbLX592XDdX' });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toHaveProperty('message', `request/body/${key} is read-only`);
+		},
+	);
 
 	test('should create tag', async () => {
 		const payload = {
@@ -259,7 +294,39 @@ describe('PUT /tags/:id', () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			"request/body must have required property 'name'",
+		);
 	});
+
+	test('should reject an unknown body key', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name', color: 'red' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty(
+			'message',
+			"request/body Unrecognized key(s) in object: 'color'",
+		);
+	});
+
+	test.each(['id', 'createdAt', 'updatedAt'])(
+		'should reject the read-only field %s',
+		async (key) => {
+			const tag = await createTag({});
+
+			const response = await authOwnerAgent
+				.put(`/tags/${tag.id}`)
+				.send({ name: 'New name', [key]: '2tUt1wbLX592XDdX' });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toHaveProperty('message', `request/body/${key} is read-only`);
+		},
+	);
 
 	test('should update tag', async () => {
 		const tag = await createTag({});
@@ -287,6 +354,15 @@ describe('PUT /tags/:id', () => {
 
 		expect(dbTag?.name).toBe(payload.name);
 		expect(dbTag?.updatedAt.getTime()).toBeGreaterThan(tag.updatedAt.getTime());
+	});
+
+	test('should omit createdAt, which an update never writes back', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent.put(`/tags/${tag.id}`).send({ name: 'New name' });
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual(['id', 'name', 'updatedAt']);
 	});
 
 	test('should fail if there is already a tag with a the new name', async () => {
