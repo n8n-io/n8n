@@ -6,6 +6,10 @@ const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 // A RegExpExecArray/RegExpMatchArray-like result, but with non-participating
 // capture groups honestly typed as `undefined` (lib.es types claim `string`).
 export type RegexExecArray = Array<string | undefined> & {
+	// Group 0 (the whole match) is always present on a successful match; only
+	// capture groups above it can legitimately be undefined (non-participating).
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- numeric index key, mirrors RegExpExecArray's own shape
+	0: string;
 	index?: number;
 	input?: string;
 	groups?: Record<string, string | undefined>;
