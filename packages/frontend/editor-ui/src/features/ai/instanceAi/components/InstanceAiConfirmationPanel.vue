@@ -127,12 +127,17 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 	(
 		[
 			'instanceAi.tools.workflows.delete.imperative',
+			'instanceAi.tools.workflows.delete.imperativeWithResource',
 			'instanceAi.tools.workflows.unarchive.imperative',
+			'instanceAi.tools.workflows.unarchive.imperativeWithResource',
 			'instanceAi.tools.workflows.publish.imperative',
 			'instanceAi.tools.workflows.publish.imperativeWithResource',
 			'instanceAi.tools.workflows.unpublish.imperative',
+			'instanceAi.tools.workflows.unpublish.imperativeWithResource',
 			'instanceAi.tools.workflows.update-version.imperative',
+			'instanceAi.tools.workflows.update-version.imperativeWithResource',
 			'instanceAi.tools.workflows.restore-version.imperative',
+			'instanceAi.tools.workflows.restore-version.imperativeWithResource',
 			'instanceAi.tools.executions.run.imperative',
 			'instanceAi.tools.executions.run.imperativeWithResource',
 			'instanceAi.tools.credentials.delete.imperative',

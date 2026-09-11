@@ -193,6 +193,25 @@ describe('workflows tool', () => {
 		});
 	});
 
+	it.each([
+		{ action: 'delete', workflowId: 'wf1' },
+		{ action: 'unarchive', workflowId: 'wf1' },
+		{ action: 'unpublish', workflowId: 'wf1' },
+		{ action: 'restore-version', workflowId: 'wf1', versionId: 'v1' },
+		{ action: 'update-version', workflowId: 'wf1', versionId: 'v1', name: 'Release' },
+	] as const)('includes the workflow name in $action approvals', async (input) => {
+		const context = createMockContext();
+		context.workflowService.getVersion = vi.fn().mockResolvedValue(undefined);
+		context.workflowService.restoreVersion = vi.fn();
+		context.workflowService.updateVersion = vi.fn();
+		const suspend = vi.fn();
+		await executeTool(createWorkflowsTool(context, 'full'), input, {
+			suspend,
+			resumeData: undefined,
+		} as never);
+		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ resourceName: 'Test WF' }));
+	});
+
 	it('exports the resume schema without unsupported URI formats', () => {
 		expect(JSON.stringify(zodToJsonSchema(workflowsResumeSchema))).not.toContain('"format":"uri"');
 	});

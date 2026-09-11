@@ -33,6 +33,11 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.approval.deleteTable': 'Eliminar la tabla y todas sus filas',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
 				'instanceAi.tools.workflows.delete.imperative': 'archive workflow',
+				'instanceAi.tools.workflows.restore-version.imperativeWithResource': 'restore a version of',
+				'instanceAi.tools.workflows.update-version.imperativeWithResource': 'update a version of',
+				'instanceAi.tools.workflows.unpublish.imperativeWithResource': 'unpublish',
+				'instanceAi.tools.workflows.unarchive.imperativeWithResource': 'restore',
+				'instanceAi.tools.workflows.delete.imperativeWithResource': 'archive',
 				'instanceAi.tools.build-workflow.imperative': 'edit workflow',
 				'instanceAi.tools.build-workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
@@ -297,7 +302,13 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			expect(getByTestId('instance-ai-panel-confirm-approve')).toBeVisible();
 		});
 
-		it('uses the generic action when no resource phrase exists', () => {
+		it.each([
+			['delete', 'archive'],
+			['unarchive', 'restore'],
+			['unpublish', 'unpublish'],
+			['update-version', 'update a version of'],
+			['restore-version', 'restore a version of'],
+		])('names the workflow for %s approvals', (action, phrase) => {
 			injectPendingConfirmation(
 				thread,
 				{
@@ -306,11 +317,11 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					message: 'Archive this workflow',
 					resourceName: 'Orders',
 				},
-				{ action: 'delete', workflowId: 'wf-1' },
+				{ action, workflowId: 'wf-1' },
 				'workflows',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
-			expect(getByText('Allow n8n Assistant to archive workflow?')).toBeVisible();
+			expect(getByText(`Assistant wants to ${phrase} Orders`)).toBeVisible();
 		});
 
 		it('falls back to the tool label for an unknown approval action', () => {

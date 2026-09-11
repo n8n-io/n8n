@@ -902,6 +902,7 @@ async function handleDelete(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Archive ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
 			approvalDetails: {
 				action: 'archive-workflow',
 				name: workflowName,
@@ -939,6 +940,7 @@ async function handleUnarchive(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
 			approvalDetails: {
 				action: 'restore-workflow',
 				name: workflowName,
@@ -2044,6 +2046,7 @@ async function handleUnpublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Unpublish ${workflowName} (ID: ${input.workflowId})`,
+			resourceName: workflowName,
 			approvalDetails: {
 				action: 'unpublish-workflow',
 				name: workflowName,
@@ -2094,6 +2097,7 @@ async function handleRestoreVersion(
 	const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const version = await context.workflowService.getVersion!(
 			input.workflowId,
 			input.versionId,
@@ -2106,6 +2110,7 @@ async function handleRestoreVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore to version ${versionLabel}`,
+			resourceName: workflowName,
 			approvalDetails: {
 				action: 'restore-version',
 				version: version?.name || input.versionId,
@@ -2147,6 +2152,7 @@ async function handleUpdateVersion(
 	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const fields: string[] = [];
 		if (input.name !== undefined) fields.push(`name to ${formatFieldValue(input.name)}`);
 		if (input.description !== undefined) {
@@ -2157,6 +2163,7 @@ async function handleUpdateVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update version ${input.versionId} — set ${summary}`,
+			resourceName: workflowName,
 			approvalDetails: {
 				action: 'update-version',
 				version: input.versionId,

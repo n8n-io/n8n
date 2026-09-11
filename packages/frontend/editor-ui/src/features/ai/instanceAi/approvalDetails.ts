@@ -51,7 +51,9 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 				interpolate: { column, value: JSON.stringify(value) },
 			});
 		});
-		return conditions.join(t(`instanceAi.approval.filter.${filter.type}`));
+		return conditions.length > 1
+			? conditions.map((condition) => `• ${condition}`).join('\n')
+			: (conditions[0] ?? '');
 	};
 	const nodeList = (names: string[]) => {
 		const visible = names.slice(0, 8);
@@ -110,15 +112,22 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 		}
 		case 'update-rows':
 			return t(
-				details.filter.filters.length
-					? 'instanceAi.approval.updateRows'
-					: 'instanceAi.approval.updateAllRows',
+				details.filter.filters.length > 1
+					? `instanceAi.approval.updateRows.${details.filter.type}`
+					: details.filter.filters.length === 1
+						? 'instanceAi.approval.updateRows'
+						: 'instanceAi.approval.updateAllRows',
 				{ interpolate: { changes: preview(details.changes), filter: filterText(details.filter) } },
 			);
 		case 'delete-rows':
-			return t('instanceAi.approval.deleteRows', {
-				interpolate: { filter: filterText(details.filter) },
-			});
+			return t(
+				details.filter.filters.length > 1
+					? `instanceAi.approval.deleteRows.${details.filter.type}`
+					: 'instanceAi.approval.deleteRows',
+				{
+					interpolate: { filter: filterText(details.filter) },
+				},
+			);
 		case 'archive-workflow':
 			return t('instanceAi.approval.archiveWorkflow', {
 				interpolate: { name: details.name, id: details.id },
