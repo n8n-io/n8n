@@ -31,8 +31,8 @@ export function parseOpenCodeArgs(args) {
 	return options;
 }
 
-export function localVersion(run = spawnSync) {
-	const result = run('opencode', ['--version'], { encoding: 'utf8' });
+function localVersion() {
+	const result = spawnSync('opencode', ['--version'], { encoding: 'utf8' });
 	if (result.error || result.status !== 0)
 		throw new Error('Install OpenCode locally, or use --web to connect with a browser.');
 	const version = result.stdout.trim();
@@ -147,7 +147,7 @@ async function bootstrap(codespace, options, signal) {
 	}
 }
 
-export async function waitForTunnel(url, password, tunnel, signal, fetch = globalThis.fetch) {
+async function waitForTunnel(url, password, tunnel, signal) {
 	for (let attempt = 0; attempt < 60; attempt++) {
 		signal.throwIfAborted();
 		if (tunnel.finished)

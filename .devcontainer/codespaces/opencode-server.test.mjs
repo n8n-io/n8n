@@ -3,66 +3,118 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { setTimeout as delay } from 'node:timers/promises';
 
-import { createOpenCode } from './opencode-server.mjs';
+import { prepareOpenCode } from './opencode-server.mjs';
 
 function fixture(t) {
 	const dir = mkdtempSync(join(tmpdir(), 'opencode-server-'));
+	const binDir = join(dir, 'bin');
+	mkdirSync(binDir);
 	mkdirSync(join(dir, 'n8n', 'node_modules'), { recursive: true });
-	t.after(() => rmSync(dir, { recursive: true, force: true }));
-	const state = { running: false, installFails: false, branchExists: false, sessionStatus: 200 };
-	const commands = [];
-	const sessions = new Map();
-	const prepare = createOpenCode({
-		execFileSync: () => '1.18.30',
-		spawnSync(command, args, options = {}) {
-			commands.push({ command, args });
-			if (command === 'git') {
-				if (args.includes('show-ref')) return { status: state.branchExists ? 0 : 1 };
-				mkdirSync(args.includes('-b') ? args.at(-1) : args.at(-2), { recursive: true });
+	const savedEnv = { ...process.env };
+	process.env.PATH = `${binDir}:${process.env.PATH}`;
+	process.env.TEST_ROOT = dir;
+	process.env.AGENT_WORKER_TOKEN = 'test-worker';
+	process.env.N8N_DEQUEUE_URL = 'test-queue';
+	process.env.SLACK_BOT_TOKEN = 'test-slack';
+	const common = `
+const fs = require('node:fs');
+const path = require('node:path');
+const args = process.argv.slice(2);
+const root = process.env.TEST_ROOT;
+const file = name => path.join(root, name);
+const log = event => fs.appendFileSync(file('commands.jsonl'), JSON.stringify(event) + '\\n');
+log({command: path.basename(process.argv[1]), args});
+`;
+	const bin = (name, body) =>
+		writeFileSync(join(binDir, name), `#!${process.execPath}\n${common}\n${body}`, { mode: 0o755 });
+	bin(
+		'git',
+		`
+if (args.includes('show-ref')) process.exit(fs.existsSync(file('branch-exists')) ? 0 : 1);
+fs.mkdirSync(args.includes('-b') ? args.at(-1) : args.at(-2), { recursive: true });
+`,
+	);
+	bin(
+		'pnpm',
+		`
+fs.mkdirSync(path.join(process.cwd(), 'node_modules'), {recursive:true});
+if (process.env.TEST_INSTALL_FAIL) process.exit(1);
+`,
+	);
+	bin(
+		'tmux',
+		`
+if (args[0] === 'has-session') {
+  try { process.kill(+fs.readFileSync(file('pid'), 'utf8'), 0); } catch { process.exit(1); }
+} else {
+  const child = require('node:child_process').spawn('bash', ['-c', args.at(-1)], { detached:true, stdio:'ignore' });
+  fs.writeFileSync(file('pid'), String(child.pid)); child.unref();
+}
+`,
+	);
+	bin(
+		'opencode',
+		`
+if (args[0] === '--version') { console.log('1.18.30'); process.exit(0); }
+fs.writeFileSync(file('server-env.json'), JSON.stringify({
+  worker: !!process.env.AGENT_WORKER_TOKEN, queue: !!process.env.N8N_DEQUEUE_URL, slack: !!process.env.SLACK_BOT_TOKEN,
+  cache: process.env.TURBO_CACHE_DIR, config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
+}));
+let sessions = fs.existsSync(file('sessions.json')) ? JSON.parse(fs.readFileSync(file('sessions.json'), 'utf8')) : {};
+const server = require('node:http').createServer(async (req, res) => {
+  res.setHeader('content-type', 'application/json');
+  const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
+  if (req.headers.authorization !== expected) { res.writeHead(401).end('{}'); return; }
+  if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.18.30' })); return; }
+  if (req.method === 'POST' && req.url === '/session') {
+    for await (const chunk of req) {}
+    const id = 'ses_' + (Object.keys(sessions).length + 1);
+    sessions[id] = { id, directory:decodeURIComponent(req.headers['x-opencode-directory']) };
+    fs.writeFileSync(file('sessions.json'), JSON.stringify(sessions));
+    res.end(JSON.stringify(sessions[id])); return;
+  }
+  if (fs.existsSync(file('reject-session'))) { res.writeHead(503).end('{}'); return; }
+  const session = sessions[req.url.split('/').at(-1)];
+  if (!session) { res.writeHead(404).end('{}'); return; }
+  res.end(JSON.stringify(session));
+});
+server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
+`,
+	);
+	const stop = async () => {
+		try {
+			const pid = +readFileSync(join(dir, 'pid'), 'utf8');
+			process.kill(-pid, 'SIGTERM');
+			for (let count = 0; count < 100; count++) {
+				try {
+					process.kill(pid, 0);
+				} catch {
+					return;
+				}
+				await delay(20);
 			}
-			if (command === 'pnpm') {
-				mkdirSync(join(options.cwd, 'node_modules'), { recursive: true });
-				return { status: state.installFails ? 1 : 0 };
-			}
-			if (command === 'tmux') {
-				if (args[0] === 'has-session') return { status: state.running ? 0 : 1 };
-				state.running = true;
-			}
-			return { status: 0 };
-		},
-		async fetch(url, options) {
-			const path = new URL(url).pathname;
-			if (path === '/global/health') {
-				return Response.json({ healthy: state.running, version: '1.18.30' });
-			}
-			const credentials = JSON.parse(
-				readFileSync(join(dir, '.n8n-opencode', 'server.json'), 'utf8'),
-			);
-			assert.equal(
-				options.headers.authorization,
-				`Basic ${Buffer.from(`opencode:${credentials.password}`).toString('base64')}`,
-			);
-			const directory = decodeURIComponent(options.headers['x-opencode-directory']);
-			if (path === '/session' && options.method === 'POST') {
-				const id = `ses_${sessions.size + 1}`;
-				const session = { id, directory };
-				sessions.set(id, session);
-				return Response.json(session);
-			}
-			if (state.sessionStatus !== 200) return Response.json({}, { status: state.sessionStatus });
-			const session = sessions.get(path.split('/').at(-1));
-			return Response.json(session ?? {}, { status: session ? 200 : 404 });
-		},
+			throw new Error('Fixture server did not stop.');
+		} catch (error) {
+			if (!['ENOENT', 'ESRCH'].includes(error.code)) throw error;
+		}
+	};
+	t.after(async () => {
+		await stop();
+		for (const key of Object.keys(process.env)) if (!(key in savedEnv)) delete process.env[key];
+		Object.assign(process.env, savedEnv);
+		rmSync(dir, { recursive: true, force: true });
 	});
 	return {
 		dir,
-		state,
-		stop: () => {
-			state.running = false;
-		},
-		prepare: (options = {}) => prepare({ workspaces: dir, ...options }),
-		commands: () => commands,
+		stop,
+		prepare: (options = {}) => prepareOpenCode({ workspaces: dir, ...options }),
+		commands: () =>
+			readFileSync(join(dir, 'commands.jsonl'), 'utf8')
+				.trim()
+				.split('\n')
+				.map((line) => JSON.parse(line)),
 	};
 }
 
@@ -80,11 +132,11 @@ test(
 		const fresh = await f.prepare({ name: 'fix-flaky', fresh: true });
 		assert.notEqual(fresh.sessionID, first.sessionID);
 		assert.equal((await f.prepare({ name: 'fix-flaky' })).sessionID, fresh.sessionID);
-		const launcher = readFileSync(join(f.dir, '.n8n-opencode', 'serve.sh'), 'utf8');
-		assert.match(launcher, /unset AGENT_WORKER_TOKEN N8N_DEQUEUE_URL SLACK_BOT_TOKEN/);
-		assert.ok(launcher.includes(join(f.dir, '.turbo-cache')));
-		assert.ok(launcher.includes('"enabled_providers":["openrouter"]'));
-		assert.ok(launcher.includes('"apiKey":"{env:OPENROUTER_API_KEY}"'));
+		const env = JSON.parse(readFileSync(join(f.dir, 'server-env.json'), 'utf8'));
+		assert.deepEqual([env.worker, env.queue, env.slack], [false, false, false]);
+		assert.equal(env.cache, join(f.dir, '.turbo-cache'));
+		assert.equal(env.config.provider.openrouter.options.apiKey, '{env:OPENROUTER_API_KEY}');
+		assert.deepEqual(env.config.enabled_providers, ['openrouter']);
 		assert.equal(statSync(join(f.dir, '.n8n-opencode')).mode & 0o777, 0o700);
 		for (const file of ['serve.sh', 'server.json', 'fix-flaky.session.json']) {
 			assert.equal(statSync(join(f.dir, '.n8n-opencode', file)).mode & 0o777, 0o600);
@@ -96,7 +148,7 @@ test(
 		assert.equal(restarted.sessionID, fresh.sessionID);
 		assert.notEqual(restarted.password, first.password);
 		rmSync(first.directory, { recursive: true });
-		f.state.branchExists = true;
+		writeFileSync(join(f.dir, 'branch-exists'), '');
 		assert.equal((await f.prepare({ name: 'fix-flaky' })).sessionID, fresh.sessionID);
 		const worktree = f
 			.commands()
@@ -118,10 +170,10 @@ test(
 	{ timeout: 10000 },
 	async (t) => {
 		const f = fixture(t);
-		f.state.installFails = true;
+		process.env.TEST_INSTALL_FAIL = '1';
 		await assert.rejects(f.prepare({ name: 'retry' }), /pnpm failed/);
 		assert.ok(!f.commands().some((entry) => entry.command === 'tmux'));
-		f.state.installFails = false;
+		delete process.env.TEST_INSTALL_FAIL;
 		assert.equal((await f.prepare({ name: 'retry' })).directory, join(f.dir, 'wt-retry'));
 		assert.equal(f.commands().filter((entry) => entry.command === 'pnpm').length, 2);
 	},
@@ -133,9 +185,9 @@ test(
 	async (t) => {
 		const f = fixture(t);
 		rmSync(join(f.dir, 'n8n', 'node_modules'), { recursive: true });
-		f.state.installFails = true;
+		process.env.TEST_INSTALL_FAIL = '1';
 		await assert.rejects(f.prepare(), /pnpm failed/);
-		f.state.installFails = false;
+		delete process.env.TEST_INSTALL_FAIL;
 		assert.equal((await f.prepare()).directory, join(f.dir, 'n8n'));
 		assert.equal(f.commands().filter((entry) => entry.command === 'pnpm').length, 2);
 	},
@@ -147,11 +199,11 @@ test(
 	async (t) => {
 		const f = fixture(t);
 		const first = await f.prepare();
-		f.state.sessionStatus = 503;
+		writeFileSync(join(f.dir, 'reject-session'), '');
 		await assert.rejects(f.prepare(), /Cannot resume OpenCode session \(503\)/);
 		const saved = join(f.dir, '.n8n-opencode', 'agent.session.json');
 		assert.equal(JSON.parse(readFileSync(saved, 'utf8')).id, first.sessionID);
-		f.state.sessionStatus = 200;
+		rmSync(join(f.dir, 'reject-session'));
 		writeFileSync(saved, JSON.stringify({ id: 'ses_missing' }));
 		assert.notEqual((await f.prepare()).sessionID, first.sessionID);
 		writeFileSync(saved, '{');

@@ -8,12 +8,7 @@ import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import {
-	freePort,
-	localVersion,
-	parseOpenCodeArgs,
-	waitForTunnel,
-} from '../../scripts/cloud-session-opencode.mjs';
+import { freePort, parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/cloud-session.mjs', import.meta.url));
 const secret = 'a'.repeat(64);
@@ -44,7 +39,7 @@ if (args[0] === 'codespace' && args[1] === 'list') {
   log({ event: 'ssh-child', pid: ssh.pid });
   const server = require('node:http').createServer((req, res) => {
     const expected = 'Basic ' + Buffer.from('opencode:' + '${secret}').toString('base64');
-    if (req.headers.authorization !== expected) { res.writeHead(401).end(); return; }
+    if (process.env.TEST_UNAUTHORIZED || req.headers.authorization !== expected) { res.writeHead(401).end(); return; }
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ healthy: true, version: process.env.TEST_SERVER_VERSION || '1.18.30' }));
   });
@@ -68,6 +63,7 @@ if (args[0] === 'codespace' && args[1] === 'list') {
 		'opencode',
 		`
 if (args[0] === '--version') {
+  if (process.env.TEST_NO_CLIENT) process.exit(1);
   console.log(process.env.TEST_CLIENT_VERSION || '1.18.30');
 } else {
   log({ command: 'opencode', args, password: process.env.OPENCODE_SERVER_PASSWORD });
@@ -118,39 +114,6 @@ async function waitFor(check) {
 	}
 	throw new Error('Fixture did not become ready.');
 }
-
-test('reports a missing local client', () => {
-	assert.throws(() => localVersion(() => ({ status: 1 })), /Install OpenCode locally/);
-	assert.throws(
-		() => localVersion(() => ({ status: 0, stdout: 'unexpected' })),
-		/Cannot read the local OpenCode version/,
-	);
-	assert.equal(
-		localVersion(() => ({ status: 0, stdout: '1.18.30\n' })),
-		'1.18.30',
-	);
-});
-
-test('reports authentication failures from the tunnel health check', async () => {
-	const controller = new AbortController();
-	await assert.rejects(
-		waitForTunnel(
-			'http://127.0.0.1:4242',
-			secret,
-			{ finished: false },
-			controller.signal,
-			async (url, options) => {
-				assert.equal(url, 'http://127.0.0.1:4242/global/health');
-				assert.equal(
-					options.headers.authorization,
-					`Basic ${Buffer.from(`opencode:${secret}`).toString('base64')}`,
-				);
-				return new Response(null, { status: 401 });
-			},
-		),
-		/health check failed \(401\)/,
-	);
-});
 
 test('selects another tunnel port when the first candidate is the browser port', async (t) => {
 	const address = Server.prototype.address;
@@ -229,7 +192,7 @@ for (const signal of ['SIGINT', 'SIGHUP']) {
 		`opens the saved web conversation and cleans up on ${signal}`,
 		{ timeout: 15000 },
 		async (t) => {
-			const f = fixture(t);
+			const f = fixture(t, { TEST_NO_CLIENT: '1' });
 			const run = f.start(['--web', 'fix-flaky']);
 			const browser = await waitFor(() => f.calls().find((call) => call.command === 'browser'));
 			const url = new URL(browser.args[0]);
@@ -252,8 +215,10 @@ for (const signal of ['SIGINT', 'SIGHUP']) {
 
 for (const [label, env, message] of [
 	['a version mismatch', { TEST_SERVER_VERSION: '1.14.22' }, /versions differ/],
+	['an authentication failure', { TEST_UNAUTHORIZED: '1' }, /health check failed \(401\)/],
 	['a tunnel startup failure', { TEST_TUNNEL_FAIL: '1' }, /SSH tunnel closed/],
 	['a remote preparation failure', { TEST_BOOTSTRAP_FAIL: '1' }, /Could not prepare/],
+	['a missing local client', { TEST_NO_CLIENT: '1' }, /Install OpenCode locally/],
 	['a connection loss', { TEST_CLIENT_WAIT: '1', TEST_TUNNEL_DROP: '1' }, /SSH connection closed/],
 ]) {
 	test(`reports ${label} without printing credentials`, { timeout: 15000 }, async (t) => {
