@@ -6,7 +6,7 @@ import { AiPreference } from '../entities';
 import { BaseRepository } from './base-repository';
 import { TransactionRunner } from '../services/transaction';
 
-export type ApplicableAiPreferencesQuery = {
+type ApplicableAiPreferencesQuery = {
 	userId: string;
 	/** The projects whose preferences the caller may read. */
 	projectIds: string[];
