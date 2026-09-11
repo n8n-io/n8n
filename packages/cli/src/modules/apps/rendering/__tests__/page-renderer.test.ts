@@ -1,5 +1,6 @@
 import type { AppContent, AppLayout, AppTheme } from '@n8n/api-types';
 
+import { AppComponentsError } from '../../runtime/app-code-runtime';
 import { registerStaticRenderers } from '../register-static-renderers';
 import { registerBlockRenderer } from '../renderer-registry';
 import { renderLayout, renderPage, type PageToRender } from '../page-renderer';
@@ -13,8 +14,15 @@ registerBlockRenderer({
 });
 
 const basePage = (content: AppContent, overrides: Partial<PageToRender> = {}): PageToRender => ({
-	app: { id: 'app-1', name: 'Acme Portal', namespace: 'acme', projectId: 'p1', theme: null },
-	page: { id: 'page-1', route: '', content, path: '/apps/acme' },
+	app: {
+		id: 'app-1',
+		name: 'Acme Portal',
+		namespace: 'acme',
+		projectId: 'p1',
+		theme: null,
+		components: null,
+	},
+	page: { id: 'page-1', route: '', title: null, content, path: '/apps/acme' },
 	pages: [{ id: 'page-1', route: '', parentPageId: null }],
 	layout: null,
 	params: {},
@@ -26,11 +34,42 @@ const basePage = (content: AppContent, overrides: Partial<PageToRender> = {}): P
 });
 
 describe('renderPage', () => {
+	test('keys a failing components module under `components`, not the block', async () => {
+		registerBlockRenderer({
+			type: 'code',
+			render: async () => {
+				throw new AppComponentsError('Unexpected token (1:14)');
+			},
+		});
+
+		const { html, errors } = await renderPage(
+			basePage([
+				{ id: 'c1', type: 'code', data: { source: '' } },
+				{ id: 'c2', type: 'code', data: { source: '' } },
+			]),
+		);
+
+		expect(errors).toEqual({ components: 'Unexpected token (1:14)' });
+		expect(html).not.toContain('Unexpected token');
+	});
+
 	test('renders the shell with the app name and title, and no token', async () => {
 		const { html } = await renderPage(basePage([]));
 
 		expect(html).toContain('Acme Portal');
 		expect(html).not.toContain('n8n-app-token');
+	});
+
+	test('titles the document after the page title, else the route-derived name', async () => {
+		const untitled = await renderPage(basePage([]));
+		expect(untitled.html).toContain('<title>Home · Acme Portal</title>');
+
+		const titled = await renderPage(
+			basePage([], {
+				page: { id: 'page-1', route: '', title: 'Overview', content: [], path: '/apps/acme' },
+			}),
+		);
+		expect(titled.html).toContain('<title>Overview · Acme Portal</title>');
 	});
 
 	test('renders a registered typed block', async () => {
@@ -101,7 +140,14 @@ describe('renderPage', () => {
 
 	const themedPage = (theme: AppTheme) =>
 		basePage([], {
-			app: { id: 'app-1', name: 'Acme', namespace: 'acme', projectId: 'p1', theme },
+			app: {
+				id: 'app-1',
+				name: 'Acme',
+				namespace: 'acme',
+				projectId: 'p1',
+				theme,
+				components: null,
+			},
 		});
 
 	test('renders theme colors as --app-color-* custom properties', async () => {
@@ -112,6 +158,12 @@ describe('renderPage', () => {
 		expect(html).toContain('--app-color-primary: #ff0000;');
 		expect(html).toContain('--app-radius: var(--radius--sm);');
 		expect(html).toContain('--app-font-family: Inter;');
+	});
+
+	test('renders the theme content width as --app-content-width', async () => {
+		const { html } = await renderPage(themedPage({ contentWidth: '64rem' }));
+
+		expect(html).toContain(':root{--app-content-width: 64rem;}');
 	});
 
 	test('drops a theme value that could close the inline style tag', async () => {

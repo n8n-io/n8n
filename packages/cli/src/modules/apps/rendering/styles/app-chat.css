@@ -1,1 +1,65 @@
-/* Filled by the agent-chat block work; imported from app.css. */
+/* The `agent-chat` block (partial app-block-agent-chat.handlebars, script app-chat.js). */
+.app-chat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	background: var(--app-color-surface, var(--background--surface));
+	border: 1px solid var(--border-color);
+	border-radius: var(--app-radius);
+	padding: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
+}
+
+.app-chat-messages {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	max-height: 24rem;
+	overflow-y: auto;
+}
+
+.app-chat-bubble {
+	max-width: 80%;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--app-radius);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.app-chat-bubble--user {
+	align-self: flex-end;
+	background: var(--app-color-primary, var(--color--primary));
+	color: var(--text-color--inverse);
+}
+
+.app-chat-bubble--assistant {
+	align-self: flex-start;
+	background: var(--app-color-background, var(--background--subtle));
+}
+
+.app-chat-bubble--assistant:empty::after {
+	content: '…';
+	color: var(--app-color-muted, var(--text-color--subtle));
+}
+
+.app-chat-bubble--notice {
+	align-self: stretch;
+	max-width: none;
+	border: 1px solid var(--border-color--danger);
+}
+
+.app-chat-form {
+	display: flex;
+	gap: var(--spacing--xs);
+	align-items: flex-end;
+}
+
+.app-chat-form textarea {
+	flex: 1;
+	min-width: 0;
+	resize: vertical;
+	padding: var(--spacing--xs);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius--sm);
+	font: inherit;
+}

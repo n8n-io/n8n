@@ -13,6 +13,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: null,
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,
@@ -59,6 +60,23 @@ describe('AppThemeForm', () => {
 		await waitFor(() =>
 			expect(appsStore.updateApp).toHaveBeenCalledWith('p1', 'app1', { theme: {} }),
 		);
+	});
+
+	it('saves the content width with the theme', async () => {
+		const theme = { contentWidth: '64rem' };
+		appsStore.updateApp.mockResolvedValue({ ...app, theme });
+		const { getByTestId } = renderComponent();
+
+		await userEvent.type(getByTestId('app-theme-content-width'), '64rem');
+		await userEvent.click(getByTestId('app-theme-save'));
+
+		await waitFor(() => expect(appsStore.updateApp).toHaveBeenCalledWith('p1', 'app1', { theme }));
+	});
+
+	it('shows the saved content width from the theme prop', () => {
+		const { getByTestId } = renderComponent({ props: { theme: { contentWidth: '1200px' } } });
+
+		expect(getByTestId('app-theme-content-width')).toHaveValue('1200px');
 	});
 
 	it('shows the saved custom CSS from the theme prop', () => {

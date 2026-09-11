@@ -8,7 +8,7 @@ import { appPageApiTypes, APP_PAGE_API_FILE_NAME } from '@n8n/api-types';
 
 import { indexedDbCache } from '@/app/plugins/cache';
 import type { LanguageServiceWorker } from '../types';
-import { APP_COMPILER_OPTIONS } from './constants';
+import { APP_COMPILER_OPTIONS, APP_COMPONENTS_FILE_NAME } from './constants';
 import { removeUnusedLibs } from './env';
 import { bufferChangeSets } from './utils';
 import { getCompletionsAtPos } from './completions';
@@ -20,6 +20,8 @@ self.process = { env: {} } as NodeJS.Process;
 export interface AppWorkerInitOptions {
 	id: string;
 	content: string[];
+	/** TSX source of the App's shared components module, resolved for `import ... from 'app/components'`. */
+	components?: string;
 }
 
 export interface AppLanguageServiceWorkerInit {
@@ -50,6 +52,7 @@ export const appApiWorker: AppLanguageServiceWorkerInit = {
 		removeUnusedLibs(fsMap);
 		fsMap.set(APP_PAGE_API_FILE_NAME, appPageApiTypes);
 		fsMap.set(fileName, Text.of(options.content).toString());
+		if (options.components !== undefined) fsMap.set(APP_COMPONENTS_FILE_NAME, options.components);
 
 		const system = tsvfs.createSystem(fsMap);
 		const env = tsvfs.createVirtualTypeScriptEnvironment(

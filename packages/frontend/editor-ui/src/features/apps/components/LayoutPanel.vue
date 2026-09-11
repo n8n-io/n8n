@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDebounceFn } from '@vueuse/core';
-import type { AppLayout } from '@n8n/api-types';
+import { APP_LAYOUT_PRESETS, type AppLayout, type AppLayoutPresetId } from '@n8n/api-types';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-import { DEBOUNCE_TIME } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import PageContentEditor from '@/features/apps/components/PageContentEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
 import type { Page, RenderErrors, UpdatePageInput } from '@/features/apps/apps.types';
+import { getPageLabel } from '@/features/apps/pageTree.utils';
 
 const props = defineProps<{
 	projectId: string;
@@ -27,6 +30,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 const appsStore = useAppsStore();
 
 const saving = ref(false);
@@ -37,7 +41,7 @@ const ownerPage = computed(() => appsStore.pages.find((p) => p.id === props.owne
 const inheritedLabel = computed(() =>
 	ownerPage.value
 		? i18n.baseText('apps.layout.inheritedFrom', {
-				interpolate: { page: ownerPage.value.route || i18n.baseText('apps.page.home') },
+				interpolate: { page: getPageLabel(ownerPage.value, i18n.baseText('apps.page.home')) },
 			})
 		: i18n.baseText('apps.layout.default'),
 );
@@ -78,6 +82,27 @@ const inherit = async () => {
 	await persist(props.page.id, { layout: null });
 };
 
+/** Replaces the page's layout with a preset's blocks; the preset's theme stays out (the Theme tab owns it). */
+const applyPreset = async (id: AppLayoutPresetId) => {
+	const preset = APP_LAYOUT_PRESETS.find((candidate) => candidate.id === id);
+	if (!preset) return;
+	if (props.page.layout !== null) {
+		const answer = await message.confirm(
+			i18n.baseText('apps.layout.preset.confirm.message', {
+				interpolate: { name: escapeHtml(preset.name) },
+			}),
+			i18n.baseText('apps.layout.preset.confirm.title'),
+			{
+				confirmButtonText: i18n.baseText('apps.layout.preset.confirm.button'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+			},
+		);
+		if (answer !== MODAL_CONFIRM) return;
+	}
+	dirty.value = null;
+	await persist(props.page.id, { layout: structuredClone(preset.blocks) });
+};
+
 watch(() => props.page.id, flush);
 onBeforeUnmount(flush);
 </script>
@@ -90,6 +115,24 @@ onBeforeUnmount(flush);
 				{{ i18n.baseText('generic.saving') }}
 			</N8nText>
 		</div>
+
+		<N8nSelect
+			model-value=""
+			size="small"
+			:placeholder="i18n.baseText('apps.layout.preset.label')"
+			:disabled="saving"
+			:class="$style.presetSelect"
+			data-test-id="page-layout-preset"
+			@update:model-value="applyPreset"
+		>
+			<N8nOption
+				v-for="preset in APP_LAYOUT_PRESETS"
+				:key="preset.id"
+				:value="preset.id"
+				:label="preset.name"
+				:data-test-id="`page-layout-preset-${preset.id}`"
+			/>
+		</N8nSelect>
 
 		<template v-if="page.layout === null">
 			<N8nText color="text-light" size="small" data-test-id="page-layout-inherited">
@@ -158,6 +201,10 @@ onBeforeUnmount(flush);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	width: 100%;
+}
+
+.presetSelect {
 	width: 100%;
 }
 

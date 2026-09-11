@@ -1,3 +1,4 @@
+import type { AppLayoutPresetId } from '@n8n/api-types';
 import { makeRestApiRequest, rawRequest } from '@n8n/rest-api-client';
 import { jsonParse } from 'n8n-workflow';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -26,11 +27,23 @@ export const createAppApi = async (
 	projectId: string,
 	name: string,
 	namespace: string,
+	layoutPreset: AppLayoutPresetId,
 ) => {
 	return await makeRestApiRequest<App>(context, 'POST', `/projects/${projectId}/apps`, {
 		name,
 		namespace,
+		layoutPreset,
 	});
+};
+
+/** The stylesheet every served page loads, from its public route; the editor canvas applies it scoped. */
+export const fetchServedCssApi = async (baseUrl: string): Promise<string> => {
+	const response = await rawRequest({
+		method: 'GET',
+		baseURL: baseUrl,
+		endpoint: '/apps/_static/app.css',
+	});
+	return String(response.data);
 };
 
 export const updateAppApi = async (
@@ -62,12 +75,13 @@ export const createPageApi = async (
 	appId: string,
 	route: string,
 	parentPageId?: string,
+	title?: string,
 ) => {
 	return await makeRestApiRequest<Page>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/pages`,
-		{ route, ...(parentPageId ? { parentPageId } : {}) },
+		{ route, ...(parentPageId ? { parentPageId } : {}), ...(title ? { title } : {}) },
 	);
 };
 
@@ -146,13 +160,15 @@ export const fetchLayoutPreviewApi = async (
 };
 
 const RENDER_ERRORS_HEADER = 'x-n8n-app-render-errors';
+const CODE_HEADER = 'x-n8n-app-code';
 
 /**
  * Draft preview HTML for a page (`text/html`), fetched through the session so
  * `srcdoc` never has to navigate the iframe to a REST URL. `makeRestApiRequest`
  * assumes every response body is JSON wrapped in a `data` key, which an HTML
  * response isn't, so this calls the lower-level `rawRequest` directly; the
- * render errors travel in a header next to the body.
+ * render errors and the one-time code travel in headers next to the body, so
+ * neither ever lands in the HTML.
  */
 export const fetchPreviewApi = async (
 	context: IRestApiContext,
@@ -172,8 +188,10 @@ export const fetchPreviewApi = async (
 		headers: { 'push-ref': context.pushRef },
 	});
 	const errorsHeader: unknown = response.headers[RENDER_ERRORS_HEADER];
+	const codeHeader: unknown = response.headers[CODE_HEADER];
 	return {
 		html: String(response.data),
 		errors: typeof errorsHeader === 'string' ? jsonParse<RenderErrors>(errorsHeader) : {},
+		code: typeof codeHeader === 'string' ? codeHeader : null,
 	};
 };

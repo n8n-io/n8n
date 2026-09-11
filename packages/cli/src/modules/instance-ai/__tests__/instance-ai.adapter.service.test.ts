@@ -5038,11 +5038,12 @@ describe('createContext — apps wiring', () => {
 			appsService.getPage.mockResolvedValue({
 				id: 'page-1',
 				route: '',
+				title: 'Overview',
 				parentPageId: null,
 				content: null,
 			} as unknown as Awaited<ReturnType<AppsService['getPage']>>);
 			appsService.listPages.mockResolvedValue([
-				{ id: 'page-1', route: '', parentPageId: null, content: null },
+				{ id: 'page-1', route: '', title: 'Overview', parentPageId: null, content: null },
 			] as unknown as Awaited<ReturnType<AppsService['listPages']>>);
 			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
 			mockAppsModuleActive(appsService);
@@ -5059,10 +5060,12 @@ describe('createContext — apps wiring', () => {
 			expect(page).toEqual({
 				id: 'page-1',
 				route: '',
+				title: 'Overview',
 				parentPageId: null,
 				path: '/apps/orders-dashboard',
 				hasContent: false,
 				content: null,
+				layout: null,
 			});
 		});
 
@@ -5136,8 +5139,8 @@ describe('createContext — apps wiring', () => {
 				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
 			);
 			appsService.listPages.mockResolvedValue([
-				{ id: 'root', route: 'clients', parentPageId: null, content: null },
-				{ id: 'child', route: ':id', parentPageId: 'root', content: [] },
+				{ id: 'root', route: 'clients', title: null, parentPageId: null, content: null },
+				{ id: 'child', route: ':id', title: null, parentPageId: 'root', content: [] },
 			] as unknown as Awaited<ReturnType<AppsService['listPages']>>);
 			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
 			mockAppsModuleActive(appsService);
@@ -5149,6 +5152,7 @@ describe('createContext — apps wiring', () => {
 				{
 					id: 'root',
 					route: 'clients',
+					title: null,
 					parentPageId: null,
 					path: '/apps/orders-dashboard/clients',
 					hasContent: false,
@@ -5156,6 +5160,7 @@ describe('createContext — apps wiring', () => {
 				{
 					id: 'child',
 					route: ':id',
+					title: null,
 					parentPageId: 'root',
 					path: '/apps/orders-dashboard/clients/%3Aid',
 					hasContent: false,
@@ -5179,6 +5184,28 @@ describe('createContext — apps wiring', () => {
 
 			expect(appsService.publish).toHaveBeenCalledWith('app-1', 'user-1');
 			expect(result).toEqual({ versionId: 'v1', url: '/apps/orders-dashboard' });
+		});
+	});
+
+	describe('previewPage', () => {
+		it('renders the draft through appsService.preview and returns errors and logs only', async () => {
+			const appsService = mock<AppsService>();
+			appsService.getApp.mockResolvedValue(
+				appRow as unknown as Awaited<ReturnType<AppsService['getApp']>>,
+			);
+			appsService.preview.mockResolvedValue({
+				html: '<html></html>',
+				errors: { b1: 'boom' },
+				logs: { b2: ['["x"]'] },
+			});
+			const service = createAdapterWithGatewayMock(vi.fn(), { urlService: mockUrlService });
+			mockAppsModuleActive(appsService);
+			const context = service.createContext(mockUser, { projectId: 'proj-1' });
+
+			const result = await context.appService?.previewPage('app-1', 'page-1', '/apps/x/y');
+
+			expect(appsService.preview).toHaveBeenCalledWith('app-1', 'page-1', '/apps/x/y', {});
+			expect(result).toEqual({ errors: { b1: 'boom' }, logs: { b2: ['["x"]'] } });
 		});
 	});
 

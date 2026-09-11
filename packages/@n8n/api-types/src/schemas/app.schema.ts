@@ -27,6 +27,9 @@ export const pageRouteSchema = z
 	.max(255)
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
 
+/** What the menu and the browser tab show for a page; the route stays a URL segment only. */
+export const pageTitleSchema = z.string().trim().min(1).max(255);
+
 const cssColorSchema = z.string().trim().min(1).max(32);
 
 /** Colors, radius and font an App applies on top of the default page stylesheet. */

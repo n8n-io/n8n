@@ -19,6 +19,7 @@ vi.mock('@/features/apps/apps.api', () => ({
 	activateVersionApi: vi.fn(),
 	fetchPreviewApi: vi.fn(),
 	fetchLayoutPreviewApi: vi.fn(),
+	fetchServedCssApi: vi.fn(),
 }));
 
 const app: App = {
@@ -26,6 +27,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: null,
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,
@@ -38,6 +40,50 @@ describe('apps.store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+	});
+
+	it('getApp() keeps the opened app, and updateApp() replaces it', async () => {
+		vi.mocked(appsApi.getAppApi).mockResolvedValue(app);
+		vi.mocked(appsApi.updateAppApi).mockResolvedValue({ ...app, components: 'export {};' });
+		const store = useAppsStore();
+
+		await store.getApp('p1', 'app1');
+		expect(store.app).toEqual(app);
+
+		await store.updateApp('p1', 'app1', { components: 'export {};' });
+		expect(store.app?.components).toBe('export {};');
+
+		await store.updateApp('p1', 'other', { name: 'x' });
+		expect(store.app?.id).toBe('app1');
+	});
+
+	it('createApp() sends the layout preset and adds the app to the list', async () => {
+		vi.mocked(appsApi.createAppApi).mockResolvedValue(app);
+		const store = useAppsStore();
+
+		const created = await store.createApp('p1', 'My app', 'my-app', 'sidebar');
+
+		expect(appsApi.createAppApi).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'My app',
+			'my-app',
+			'sidebar',
+		);
+		expect(created).toEqual(app);
+		expect(store.apps).toEqual([app]);
+	});
+
+	it('fetchServedCss() fetches the stylesheet once and keeps it', async () => {
+		vi.mocked(appsApi.fetchServedCssApi).mockResolvedValue('.app-canvas{}');
+		const store = useAppsStore();
+
+		await store.fetchServedCss();
+		const css = await store.fetchServedCss();
+
+		expect(appsApi.fetchServedCssApi).toHaveBeenCalledTimes(1);
+		expect(css).toBe('.app-canvas{}');
+		expect(store.servedCss).toBe('.app-canvas{}');
 	});
 
 	it('publish() calls the publish endpoint', async () => {
@@ -73,7 +119,7 @@ describe('apps.store', () => {
 	});
 
 	it('fetchPreview() forwards path and params to the API and returns html with render errors', async () => {
-		const preview = { html: '<html></html>', errors: { b1: 'boom' } };
+		const preview = { html: '<html></html>', errors: { b1: 'boom' }, code: null };
 		vi.mocked(appsApi.fetchPreviewApi).mockResolvedValue(preview);
 		const store = useAppsStore();
 
@@ -105,12 +151,41 @@ describe('apps.store', () => {
 		expect(result).toEqual(preview);
 	});
 
+	it('createPage() forwards the parent and the title and adds the page', async () => {
+		const page = {
+			id: 'page2',
+			appId: 'app1',
+			parentPageId: 'page1',
+			route: 'about',
+			title: 'About us',
+			content: [],
+			layout: null,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+		};
+		vi.mocked(appsApi.createPageApi).mockResolvedValue(page);
+		const store = useAppsStore();
+
+		await store.createPage('p1', 'app1', 'about', 'page1', 'About us');
+
+		expect(appsApi.createPageApi).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'app1',
+			'about',
+			'page1',
+			'About us',
+		);
+		expect(store.pages).toEqual([page]);
+	});
+
 	it('updatePage() forwards the layout and replaces the page in the store', async () => {
 		const page = {
 			id: 'page1',
 			appId: 'app1',
 			parentPageId: null,
 			route: '',
+			title: null,
 			content: [],
 			layout: null,
 			createdAt: '2024-01-01T00:00:00.000Z',

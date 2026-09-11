@@ -22,6 +22,7 @@ type RemoteAppWorkerInit = {
 export function useAppTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
 	id: MaybeRefOrGetter<string>,
+	components: MaybeRefOrGetter<string | null | undefined> = undefined,
 ) {
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
 	const webWorker = ref<Worker>();
@@ -42,6 +43,7 @@ export function useAppTypescript(
 		worker.value = await init({
 			id: toValue(id),
 			content: (toValue(view)?.state.doc ?? Text.empty).toJSON(),
+			components: toValue(components) ?? undefined,
 		});
 
 		const editor = toValue(view);

@@ -321,7 +321,7 @@ export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string):
 	return false;
 }
 
-/** `apps` write actions — everything except the read-only `list`/`get`/`code-api`. */
+/** `apps` write actions; the read-only `list`/`get`/`get-page`/`code-api`/`preview-page` never lock the canvas. */
 const APP_WRITE_ACTIONS = new Set([
 	'create',
 	'update-app',

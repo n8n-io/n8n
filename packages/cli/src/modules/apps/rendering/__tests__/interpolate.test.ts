@@ -2,7 +2,14 @@ import type { BlockRenderContext } from '../types';
 import { interpolate } from '../interpolate';
 
 const ctx = (overrides: Partial<BlockRenderContext> = {}): BlockRenderContext => ({
-	app: { id: 'app-1', name: 'App', namespace: 'app', projectId: 'p1', theme: null },
+	app: {
+		id: 'app-1',
+		name: 'App',
+		namespace: 'app',
+		projectId: 'p1',
+		theme: null,
+		components: null,
+	},
 	page: { id: 'page-1', route: '', path: '/apps/app' },
 	actionPageId: 'page-1',
 	menu: [],

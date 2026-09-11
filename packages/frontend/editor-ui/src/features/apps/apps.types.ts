@@ -5,6 +5,8 @@ export interface App {
 	name: string;
 	namespace: string;
 	theme: AppTheme | null;
+	/** TSX source of the shared components code blocks import from `app/components`. */
+	components: string | null;
 	auth: AppAuth;
 	projectId: string;
 	activeVersionId: string | null;
@@ -19,6 +21,7 @@ export interface Page {
 	appId: string;
 	parentPageId: string | null;
 	route: string;
+	title: string | null;
 	content: AppContent | null;
 	/** `null` inherits the nearest ancestor's layout. */
 	layout: AppLayout | null;
@@ -30,11 +33,13 @@ export interface UpdateAppInput {
 	name?: string;
 	namespace?: string;
 	theme?: AppTheme | null;
+	components?: string | null;
 	auth?: AppAuth;
 }
 
 export interface UpdatePageInput {
 	route?: string;
+	title?: string | null;
 	content?: AppContent | null;
 	layout?: AppLayout | null;
 }
@@ -57,6 +62,8 @@ export type RenderErrors = Record<string, string>;
 export interface PagePreview {
 	html: string;
 	errors: RenderErrors;
+	/** One-time code the preview iframe's script exchanges for a draft access token. */
+	code: string | null;
 }
 
 /** The page's effective layout, rendered and sanitized server-side; `html` is null when no ancestor defines one. */

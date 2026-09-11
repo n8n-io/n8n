@@ -181,3 +181,7 @@ export async function render(ctx: PageContext) {
 `<>...</>` (a Fragment) renders its children with no wrapping element. The
 `href` comes from the URL: JSX keeps it when it is a safe URL and drops the
 attribute otherwise.
+
+Shared components used by several blocks belong in the App's components module
+(`update-app` → `components`) and are imported with `import { Card } from
+'app/components'`; see [components.md](components.md) for the `Card`/`Badge` example.

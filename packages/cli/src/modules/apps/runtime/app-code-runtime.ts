@@ -1,6 +1,7 @@
 import { FilterConditionSchema, dataTableFilterTypeSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createHash } from 'node:crypto';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -10,6 +11,9 @@ import { AppIsolatePool, type AppIsolateSlot } from './app-isolate-pool';
 import type { AppActionContext, AppPageContext, PageContextInput } from './page-context.factory';
 
 export class AppCodeError extends Error {}
+
+/** The App's shared components module failed to compile or evaluate; it is not one block's fault. */
+export class AppComponentsError extends AppCodeError {}
 
 export interface AppActionResult {
 	redirect?: string;
@@ -125,9 +129,8 @@ const withDateMarkers = (_key: string, value: unknown): unknown =>
 // ---------------------------------------------------------------------------
 // Isolate-side SDK. Builds `ctx` from static per-render data plus the two
 // host callbacks: `__hostCall` (async, JSON envelope in/out) and `__hostLog`
-// (fire-and-forget). No `require`/`import` is provided, so referencing either
-// is a `ReferenceError` inside the isolate — the compile-error behaviour the
-// spec calls for comes for free from the empty global scope.
+// (fire-and-forget). The only importable module is `app/components`, served by
+// `__require` from the App's own components source; every other name throws.
 // ---------------------------------------------------------------------------
 
 const ISOLATE_SDK = `
@@ -198,6 +201,15 @@ function __buildCtx(staticData) {
 		},
 	};
 }
+var __components = null;
+function __require(name) {
+	if (name !== 'app/components') throw new Error('blocked: only app/components can be imported');
+	if (__components === null) throw new Error('This app has no components yet');
+	return __components;
+}
+function __blockedRequire() {
+	throw new Error('blocked: components cannot import modules');
+}
 var __VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
 var __URL_ATTRIBUTES = new Set(['href', 'src', 'action', 'formaction', 'poster']);
 var __HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -255,9 +267,21 @@ function h(tag, props) {
 `;
 
 export interface RunStaticData extends Omit<PageContextInput, 'logs'> {
+	/** TSX source of the App's shared components module, importable as `app/components`. */
+	components: string | null;
 	/** Present only for an action call. */
 	input?: Record<string, unknown>;
 }
+
+const componentsModuleScript = (code: string) => `
+	__components = (function () {
+		var module = { exports: {} };
+		(function (exports, module, require) {
+			${code}
+		})(module.exports, module, __blockedRequire);
+		return module.exports;
+	})();
+`;
 
 /**
  * Compiles and runs an App `code` block's TSX source in an `isolated-vm`
@@ -267,7 +291,7 @@ export interface RunStaticData extends Omit<PageContextInput, 'logs'> {
  * Adapted from the isolate-execution pattern in
  * `packages/cli/src/modules/agents/runtime/agent-secure-runtime.ts` (by
  * @elsmr's original agents runtime), trimmed: a code block gets no pre-bundled
- * library, so there is nothing to `require()` inside the isolate at all.
+ * library; the only module it can `require()` is the App's own `app/components`.
  */
 @Service()
 export class AppCodeRuntime {
@@ -295,7 +319,7 @@ export class AppCodeRuntime {
 		return await this.poolInitPromise;
 	}
 
-	private async compile(source: string): Promise<string> {
+	async compile(source: string): Promise<string> {
 		const hash = createHash('sha256').update(source).digest('hex');
 		const cached = this.compileCache.get(hash);
 		if (cached) return cached;
@@ -327,9 +351,9 @@ export class AppCodeRuntime {
 		const runScript = `
 			return (async function () {
 				var module = { exports: {} };
-				(function (exports, module) {
+				(function (exports, module, require) {
 					${code}
-				})(module.exports, module);
+				})(module.exports, module, __require);
 				if (typeof module.exports.render !== 'function') {
 					throw new Error("This code block does not export a 'render' function");
 				}
@@ -355,9 +379,9 @@ export class AppCodeRuntime {
 		const runScript = `
 			return (async function () {
 				var module = { exports: {} };
-				(function (exports, module) {
+				(function (exports, module, require) {
 					${code}
-				})(module.exports, module);
+				})(module.exports, module, __require);
 				var actionFn = module.exports.actions && module.exports.actions[${JSON.stringify(name)}];
 				if (typeof actionFn !== 'function') {
 					throw new Error(${JSON.stringify(`This code block has no action named "${name}"`)});
@@ -378,6 +402,9 @@ export class AppCodeRuntime {
 		ctx: AppPageContext | AppActionContext,
 		staticData: RunStaticData,
 	): Promise<AppCodeRunResult<T>> {
+		const { components, ...isolateData } = staticData;
+		const componentsCode = components === null ? null : await this.compileComponents(components);
+
 		const pool = await this.getPool();
 		const slot = await pool.acquire();
 		let disposeSlot = false;
@@ -415,6 +442,13 @@ export class AppCodeRuntime {
 				);
 
 				context.evalSync(ISOLATE_SDK, { timeout: CALL_TIMEOUT_MS });
+				if (componentsCode !== null) {
+					try {
+						context.evalSync(componentsModuleScript(componentsCode), { timeout: CALL_TIMEOUT_MS });
+					} catch (error) {
+						throw new AppComponentsError(ensureError(error).message);
+					}
+				}
 
 				const timeout = new Promise<never>((_, reject) => {
 					setTimeout(() => {
@@ -426,7 +460,7 @@ export class AppCodeRuntime {
 				const value = (await Promise.race([
 					context.evalClosure(
 						runScript,
-						[{ ...staticData, actionUrl: actionUrlParts(staticData) }],
+						[{ ...isolateData, actionUrl: actionUrlParts(staticData) }],
 						{
 							timeout: CALL_TIMEOUT_MS,
 							arguments: { copy: true },
@@ -442,10 +476,19 @@ export class AppCodeRuntime {
 			}
 		} catch (error) {
 			disposeSlot = disposeSlot || !slot.isHealthy;
+			if (error instanceof AppCodeError) throw error;
 			throw error instanceof Error ? new AppCodeError(error.message) : error;
 		} finally {
 			if (disposeSlot) slot.dispose();
 			pool.release(slot);
+		}
+	}
+
+	private async compileComponents(source: string): Promise<string> {
+		try {
+			return await this.compile(source);
+		} catch (error) {
+			throw new AppComponentsError(ensureError(error).message);
 		}
 	}
 

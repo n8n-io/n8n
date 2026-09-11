@@ -1,4 +1,4 @@
-import type { AppLayoutBlock, AppVersionSnapshot } from '@n8n/api-types';
+import type { AppLayoutBlock, AppVersionSnapshot, FormBlock } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Options, Post, RootLevelController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
@@ -14,12 +14,20 @@ import { appBasePath, pagePath } from '../serving/page-menu';
 import { resolvePagePath } from '../serving/resolve-page-path';
 
 import { AppCodeRuntime } from '../runtime/app-code-runtime';
+import type { RunStaticData } from '../runtime/app-code-runtime';
+import {
+	FORM_STEP_FIELD_KEY,
+	FormStepClient,
+	formStepQuery,
+	type FormStepFields,
+} from '../runtime/form-steps';
 import { PageContextFactory } from '../runtime/page-context.factory';
+import type { AppWorkflowRunResult } from '../runtime/page-context.factory';
 import { runTableAction } from './table-actions';
 
-/** Status keys ride along in the POST body only to route the redirect; a workflow
- * or code action never sees them as input. */
-const RESERVED_INPUT_KEYS = new Set(['_form', '_status', '_message']);
+/** Status and form-step keys ride along in the POST body only to route the request;
+ * a workflow or code action never sees them as input. */
+const RESERVED_INPUT_KEYS = new Set(['_form', '_status', '_message', '_exec', '_sig']);
 
 const stripReservedKeys = (input: Record<string, unknown>): Record<string, unknown> => {
 	const result: Record<string, unknown> = {};
@@ -27,6 +35,31 @@ const stripReservedKeys = (input: Record<string, unknown>): Record<string, unkno
 		if (!RESERVED_INPUT_KEYS.has(key)) result[key] = value;
 	}
 	return result;
+};
+
+const formOkRedirect = (blockId: string): ActionOutcome => ({
+	redirect: `?_form=${blockId}&_status=ok`,
+});
+
+/** The waiting run a step page's hidden `_exec`/`_sig` inputs name, when the post came from one. */
+type FormStepRef = { executionId: string; token: string };
+
+const formStepOf = (body: Record<string, unknown>): FormStepRef | undefined =>
+	typeof body._exec === 'string' && typeof body._sig === 'string'
+		? { executionId: body._exec, token: body._sig }
+		: undefined;
+
+const isStringOrStrings = (value: unknown): value is string | string[] =>
+	typeof value === 'string' ||
+	(Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
+
+/** Only the Form node's own `field-<i>` inputs travel to the waiting run. */
+const formStepFields = (input: Record<string, unknown>): FormStepFields => {
+	const fields: FormStepFields = {};
+	for (const [key, value] of Object.entries(input)) {
+		if (FORM_STEP_FIELD_KEY.test(key) && isStringOrStrings(value)) fields[key] = value;
+	}
+	return fields;
 };
 
 /** Only text fields — a file on this endpoint is a client error, not a body to buffer. */
@@ -95,6 +128,7 @@ export class AppActionsController {
 		private readonly appRequestAuth: AppRequestAuth,
 		private readonly pageContextFactory: PageContextFactory,
 		private readonly appCodeRuntime: AppCodeRuntime,
+		private readonly formStepClient: FormStepClient,
 		private readonly logger: Logger,
 	) {}
 
@@ -126,7 +160,7 @@ export class AppActionsController {
 			res.status(authorized.status).json({ error: authorized.error });
 			return;
 		}
-		const { app, viewer, pages } = authorized;
+		const { app, viewer, pages, components } = authorized;
 
 		const actionPage = pages.find((p) => p.id === pageId);
 		// A layout block of this page runs from every page that inherits the layout;
@@ -145,7 +179,14 @@ export class AppActionsController {
 			path: appBasePath(namespace),
 		};
 		const ctx: BlockRenderContext = {
-			app: { id: app.id, name: app.name, namespace, projectId: app.projectId, theme: app.theme },
+			app: {
+				id: app.id,
+				name: app.name,
+				namespace,
+				projectId: app.projectId,
+				theme: app.theme,
+				components,
+			},
 			page: { id: rendered.page.id, route: rendered.page.route, path: rendered.path },
 			actionPageId: actionPage.id,
 			params: rendered.params,
@@ -155,11 +196,12 @@ export class AppActionsController {
 			baseUrl: `${req.protocol}://${req.get('host') ?? ''}`,
 			preview: false,
 		};
-		const input = stripReservedKeys((req.body as Record<string, unknown> | undefined) ?? {});
+		const body = (req.body as Record<string, unknown> | undefined) ?? {};
+		const input = stripReservedKeys(body);
 
 		let outcome: ActionOutcome;
 		try {
-			outcome = await this.dispatch(ctx, block, name, input);
+			outcome = await this.dispatch(ctx, block, name, input, formStepOf(body));
 		} catch (error) {
 			outcome = { error: error instanceof Error ? error.message : String(error) };
 		}
@@ -180,6 +222,7 @@ export class AppActionsController {
 		block: AppLayoutBlock,
 		name: string,
 		input: Record<string, unknown>,
+		formStep: FormStepRef | undefined,
 	): Promise<ActionOutcome> {
 		const staticData = blockStaticData(ctx, block.id);
 
@@ -195,11 +238,7 @@ export class AppActionsController {
 		}
 
 		if (block.type === 'form' && name === 'submit') {
-			const pageContext = this.pageContextFactory.build({ ...staticData, logs: [] });
-			return this.toFormOutcome(
-				await pageContext.workflows.submitForm(block.data.workflowId, input),
-				block.id,
-			);
+			return await this.submitForm(block, staticData, input, formStep);
 		}
 
 		if (block.type === 'button' && block.data.target.kind === 'workflow' && name === 'run') {
@@ -219,15 +258,43 @@ export class AppActionsController {
 		return { error: 'Action not found' };
 	}
 
-	private toFormOutcome(
-		result: { status: 'success' } | { status: 'error'; error: string },
-		blockId: string,
-	): ActionOutcome {
-		return result.status === 'success'
-			? { redirect: `?_form=${blockId}&_status=ok` }
-			: {
+	/**
+	 * First page: the Form Trigger runs through `submitForm`; a run that pauses on a
+	 * Form node continues under the step query. Later pages: the body goes to the
+	 * waiting run itself, and the step query stays until the run ends.
+	 */
+	private async submitForm(
+		block: FormBlock,
+		staticData: RunStaticData,
+		input: Record<string, unknown>,
+		formStep: FormStepRef | undefined,
+	): Promise<ActionOutcome> {
+		if (formStep) {
+			const next = await this.formStepClient.submitPage(
+				formStep.executionId,
+				formStep.token,
+				formStepFields(input),
+			);
+			return next.kind === 'finished'
+				? formOkRedirect(block.id)
+				: { redirect: formStepQuery(block.id, formStep.executionId, formStep.token) };
+		}
+
+		const pageContext = this.pageContextFactory.build({ ...staticData, logs: [] });
+		const result = await pageContext.workflows.submitForm(block.data.workflowId, input);
+		if (result.status === 'waiting') {
+			const token = await this.formStepClient.resumeToken(result.executionId);
+			return { redirect: formStepQuery(block.id, result.executionId, token) };
+		}
+		return this.toFormOutcome(result, block.id);
+	}
+
+	private toFormOutcome(result: AppWorkflowRunResult, blockId: string): ActionOutcome {
+		return result.status === 'error'
+			? {
 					redirect: `?_form=${blockId}&_status=error&_message=${encodeURIComponent(result.error)}`,
-				};
+				}
+			: formOkRedirect(blockId);
 	}
 
 	private respond(

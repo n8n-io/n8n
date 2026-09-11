@@ -10,12 +10,12 @@ export class AppRepository extends Repository<App> {
 		super(App, dataSource.manager);
 	}
 
-	async createApp(projectId: string, name: string, namespace: string) {
+	async createApp(projectId: string, name: string, namespace: string, theme: App['theme'] = null) {
 		if (await this.existsBy({ namespace })) {
 			throw new AppNamespaceConflictError(namespace);
 		}
 
-		const app = this.create({ projectId, name, namespace });
+		const app = this.create({ projectId, name, namespace, theme });
 		return await this.save(app);
 	}
 

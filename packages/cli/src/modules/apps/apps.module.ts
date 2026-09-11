@@ -14,6 +14,7 @@ export class AppsModule implements ModuleInterface {
 		// first router whose path matches, and the serving GET route matches every
 		// `/apps/*` path.
 		await import('./actions/app-actions.controller.js');
+		await import('./serving/app-agent-chat.controller.js');
 		await import('./serving/app-serving.controller.js');
 	}
 

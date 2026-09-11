@@ -11,7 +11,14 @@ import { codeBlockRenderer } from '../code.renderer';
 
 function ctx(preview: boolean): BlockRenderContext {
 	return {
-		app: { id: 'app-1', name: 'My App', namespace: 'my-app', projectId: 'project-1', theme: null },
+		app: {
+			id: 'app-1',
+			name: 'My App',
+			namespace: 'my-app',
+			projectId: 'project-1',
+			theme: null,
+			components: null,
+		},
 		page: { id: 'page-1', route: '', path: '/apps/my-app' },
 		actionPageId: 'page-1',
 		menu: [],
@@ -49,6 +56,19 @@ describe('codeBlockRenderer', () => {
 		expect(html).toBe('<b>hi</b>');
 	});
 
+	it("hands the App's components to the runtime next to the block's static data", async () => {
+		const render = vi.fn().mockResolvedValue({ value: '', logs: [] });
+		Container.set(AppCodeRuntime, mock<AppCodeRuntime>({ render }));
+
+		const withComponents = ctx(false);
+		withComponents.app.components = 'export const Card = () => <div />;';
+		await codeBlockRenderer.render(codeBlock(), withComponents);
+
+		const [, , staticData] = render.mock.calls[0];
+		expect(staticData.components).toBe('export const Card = () => <div />;');
+		expect(staticData.app).not.toHaveProperty('components');
+	});
+
 	it('propagates a runtime failure so the page renderer can render the error block', async () => {
 		Container.set(
 			AppCodeRuntime,
@@ -69,5 +89,20 @@ describe('codeBlockRenderer', () => {
 
 		const productionHtml = await codeBlockRenderer.render(codeBlock(), ctx(false));
 		expect(productionHtml).toBe('hi');
+	});
+
+	it('writes ctx.log lines into the render logs sink under the block id, in preview only', async () => {
+		Container.set(
+			AppCodeRuntime,
+			mock<AppCodeRuntime>({ render: async () => ({ value: 'hi', logs: ['["a"]', '["b"]'] }) }),
+		);
+
+		const preview = { ...ctx(true), logs: {} };
+		await codeBlockRenderer.render(codeBlock(), preview);
+		expect(preview.logs).toEqual({ 'block-1': ['["a"]', '["b"]'] });
+
+		const production = { ...ctx(false), logs: {} };
+		await codeBlockRenderer.render(codeBlock(), production);
+		expect(production.logs).toEqual({});
 	});
 });

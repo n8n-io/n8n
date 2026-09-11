@@ -3423,6 +3423,7 @@ export class InstanceAiAdapterService {
 		): PageSummary => ({
 			id: page.id,
 			route: page.route,
+			title: page.title,
 			parentPageId: page.parentPageId,
 			path: pagePathPattern(namespace, page, pagesById),
 			hasContent: Array.isArray(page.content) && page.content.length > 0,
@@ -3448,6 +3449,7 @@ export class InstanceAiAdapterService {
 				const dto = revalidateAppInput(CreateAppDto, {
 					name: input.name,
 					namespace: input.namespace,
+					layoutPreset: input.layoutPreset,
 				});
 				try {
 					const app = await appsService.createApp(projectId, dto);
@@ -3460,7 +3462,7 @@ export class InstanceAiAdapterService {
 
 			async getApp(appId) {
 				const app = await getAppWithScope(appId, ['app:read']);
-				return toAppSummary(app);
+				return { ...toAppSummary(app), components: app.components };
 			},
 
 			async updateApp(appId, input) {
@@ -3522,6 +3524,12 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				await getAppWithScope(appId, ['app:update']);
 				return await appsService.publish(appId, user.id);
+			},
+
+			async previewPage(appId, pageId, path) {
+				await getAppWithScope(appId, ['app:read']);
+				const { errors, logs } = await appsService.preview(appId, pageId, path, {});
+				return { errors, logs };
 			},
 
 			codeApi() {

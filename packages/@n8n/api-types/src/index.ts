@@ -762,13 +762,19 @@ export {
 	appNameSchema,
 	appNamespaceSchema,
 	pageRouteSchema,
+	pageTitleSchema,
 	appThemeSchema,
 	type AppTheme,
 	appAuthSchema,
 	type AppAuth,
 	appComponentsSchema,
 } from './schemas/app.schema';
-export { APP_LAYOUT_PRESETS, type AppLayoutPreset } from './schemas/app-layout-presets';
+export {
+	APP_LAYOUT_PRESETS,
+	APP_LAYOUT_PRESET_IDS,
+	type AppLayoutPreset,
+	type AppLayoutPresetId,
+} from './schemas/app-layout-presets';
 export {
 	appBlockIdSchema,
 	appActionNameSchema,

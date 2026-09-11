@@ -5,7 +5,10 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { AppRepository } from '@/modules/apps/app.repository';
+import { AppsService } from '@/modules/apps/apps.service';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { AppTokenService } from '@/modules/apps/serving/app-token.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -245,6 +248,30 @@ describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
 		expect(response.text).not.toContain('Parse error');
 	});
 
+	test('gives action URLs the full rendered page path, from ?path= and ?params=', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const clients = await pageRepository.createPage(app.id, null, 'clients');
+		const client = await pageRepository.createPage(app.id, clients.id, ':id', [
+			{
+				id: 'c1',
+				type: 'code',
+				data: {
+					source: "export function render(ctx) { return <a href={ctx.actionUrl('go')}>go</a>; }",
+				},
+			},
+		]);
+		const url = `/projects/${ownerProject.id}/apps/${app.id}/pages/${client.id}/preview`;
+
+		const editorStyle = await authOwnerAgent
+			.get(url)
+			.query({ path: 'clients/:id', params: JSON.stringify({ id: '42' }) })
+			.expect(200);
+		expect(editorStyle.text).toContain('?_path=%2Fapps%2Fmy-app%2Fclients%2F42');
+
+		const toolStyle = await authOwnerAgent.get(url).query({ path: 'clients/7' }).expect(200);
+		expect(toolStyle.text).toContain('?_path=%2Fapps%2Fmy-app%2Fclients%2F7');
+	});
+
 	test('fills a dynamic segment from ?params= into the interpolated content', async () => {
 		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
 		const page = await pageRepository.createPage(app.id, null, ':id');
@@ -267,6 +294,59 @@ describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
 		await authMemberAgent
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
 			.expect(403);
+	});
+
+	test('issues a one-time draft code for the editor user in a header, never in the html', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		const code: string = response.headers['x-n8n-app-code'];
+		expect(code).toMatch(/^[0-9a-f]{64}$/);
+		expect(response.headers['cache-control']).toBe('no-store');
+		expect(response.text).not.toContain(code);
+
+		expect(await Container.get(CacheService).get(`apps:code:${code}`)).toEqual({
+			appId: app.id,
+			viewerId: owner.id,
+			sessionToken: expect.stringMatching(/^ey/),
+			mode: 'draft',
+		});
+		const appTokenService = Container.get(AppTokenService);
+		const pair = await appTokenService.exchangeCode(code);
+		expect(appTokenService.verifyAccess(pair!.accessToken)).toEqual({
+			appId: app.id,
+			viewerId: owner.id,
+			mode: 'draft',
+		});
+	});
+
+	test('AppsService.preview collects ctx.log lines per code block next to the render errors', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [
+				{ id: 'broken', type: 'html', data: { template: '{{#if}}' } },
+				{
+					id: 'chatty',
+					type: 'code',
+					data: { source: 'export function render(ctx) { ctx.log("hello", 1); return ""; }' },
+				},
+			],
+		});
+
+		const { errors, logs } = await Container.get(AppsService).preview(
+			app.id,
+			page.id,
+			undefined,
+			{},
+		);
+
+		expect(Object.keys(errors)).toEqual(['broken']);
+		expect(logs).toEqual({ chatty: [expect.stringContaining('hello')] });
 	});
 });
 
@@ -403,6 +483,56 @@ describe('App pages', () => {
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
 			.expect(200);
 		expect(listResponse.body.data[0].content).toEqual(content);
+	});
+
+	test('stores the title given at creation, and null when none is given', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		const titled = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'clients', title: 'Clients' })
+			.expect(200);
+		expect(titled.body.data.title).toBe('Clients');
+
+		const untitled = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'orders' })
+			.expect(200);
+		expect(untitled.body.data.title).toBeNull();
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.expect(200);
+		expect(listResponse.body.data.map((page: { title: string | null }) => page.title)).toEqual(
+			expect.arrayContaining(['Clients', null]),
+		);
+	});
+
+	test('PATCH changes the title on its own and null resets it', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'clients', null, null, 'Clients');
+
+		const renamed = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ title: 'Customers' })
+			.expect(200);
+		expect(renamed.body.data.title).toBe('Customers');
+		expect(renamed.body.data.route).toBe('clients');
+
+		const reset = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ title: null })
+			.expect(200);
+		expect(reset.body.data.title).toBeNull();
+	});
+
+	test('rejects a blank title', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'clients', title: '   ' })
+			.expect(400);
 	});
 
 	test('accepts an empty route, meaning this page is the index page for its level', async () => {

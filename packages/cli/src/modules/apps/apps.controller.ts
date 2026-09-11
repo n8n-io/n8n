@@ -13,6 +13,7 @@ import {
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -21,6 +22,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
+import { AppTokenService } from './serving/app-token.service';
 
 /** Values of `req.query.params`, sent by the editor as a JSON-encoded object of strings. */
 const parsePreviewParams = (raw: unknown): Record<string, string> => {
@@ -41,6 +43,7 @@ const parsePreviewParams = (raw: unknown): Record<string, string> => {
 };
 
 const RENDER_ERRORS_HEADER = 'X-N8N-App-Render-Errors';
+const CODE_HEADER = 'X-N8N-App-Code';
 
 /** Header values must be Latin-1; the JSON stays valid with `\uXXXX` escapes. */
 const toHeaderJson = (value: unknown): string =>
@@ -55,6 +58,8 @@ export class AppsController {
 		private readonly appsService: AppsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly appTokenService: AppTokenService,
+		private readonly authService: AuthService,
 	) {}
 
 	private checkInstanceWriteAccess(): void {
@@ -249,7 +254,12 @@ export class AppsController {
 		return await this.appsService.previewLayout(appId, pageId);
 	}
 
-	/** Renders the draft page tree, for the editor/AI Assistant preview iframe. */
+	/**
+	 * Renders the draft page tree, for the editor/AI Assistant preview iframe.
+	 * The one-time code in the response header lets the iframe's script obtain a
+	 * `draft` access token for this editor user, so actions run against the draft;
+	 * the HTML itself carries neither code nor token.
+	 */
 	@Get('/:appId/pages/:pageId/preview', { usesTemplates: true })
 	@ProjectScope('app:read')
 	async previewPage(
@@ -269,7 +279,15 @@ export class AppsController {
 			req.query.path,
 			parsePreviewParams(req.query.params),
 		);
+		const code = await this.appTokenService.issueCode({
+			appId,
+			viewerId: req.user.id,
+			sessionToken: this.authService.getCookieToken(req) ?? null,
+			mode: 'draft',
+		});
 		res.setHeader('X-Content-Type-Options', 'nosniff');
+		res.setHeader('Cache-Control', 'no-store');
+		res.setHeader(CODE_HEADER, code);
 		if (Object.keys(errors).length > 0) {
 			res.setHeader(RENDER_ERRORS_HEADER, toHeaderJson(errors));
 		}

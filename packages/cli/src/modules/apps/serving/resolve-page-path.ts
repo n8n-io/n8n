@@ -3,6 +3,7 @@ export type PageNode = {
 	id: string;
 	route: string;
 	parentPageId: string | null;
+	title?: string | null;
 };
 
 export type ResolvedPagePath<T extends PageNode> = {

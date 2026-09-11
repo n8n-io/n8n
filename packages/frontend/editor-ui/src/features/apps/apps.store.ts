@@ -1,3 +1,4 @@
+import type { AppLayoutPresetId } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -12,6 +13,7 @@ import {
 	fetchLayoutPreviewApi,
 	fetchPagesApi,
 	fetchPreviewApi,
+	fetchServedCssApi,
 	fetchVersionsApi,
 	getAppApi,
 	publishAppApi,
@@ -31,24 +33,47 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
+	/** The app open in the builder; block editors read its `components`. */
+	const app = ref<App | null>(null);
 	const pages = ref<Page[]>([]);
+	const servedCss = ref<string | null>(null);
 
 	const fetchApps = async (projectId: string) => {
 		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
 	};
 
 	const getApp = async (projectId: string, appId: string) => {
-		return await getAppApi(rootStore.restApiContext, projectId, appId);
+		app.value = await getAppApi(rootStore.restApiContext, projectId, appId);
+		return app.value;
 	};
 
-	const createApp = async (projectId: string, name: string, namespace: string) => {
-		const app = await createAppApi(rootStore.restApiContext, projectId, name, namespace);
+	const createApp = async (
+		projectId: string,
+		name: string,
+		namespace: string,
+		layoutPreset: AppLayoutPresetId,
+	) => {
+		const app = await createAppApi(
+			rootStore.restApiContext,
+			projectId,
+			name,
+			namespace,
+			layoutPreset,
+		);
 		apps.value = [...apps.value, app];
 		return app;
 	};
 
+	/** Fetched once per session: the build artifact does not change while the editor runs. */
+	const fetchServedCss = async () => {
+		servedCss.value ??= await fetchServedCssApi(rootStore.baseUrl);
+		return servedCss.value;
+	};
+
 	const updateApp = async (projectId: string, appId: string, updates: UpdateAppInput) => {
-		return await updateAppApi(rootStore.restApiContext, projectId, appId, updates);
+		const updated = await updateAppApi(rootStore.restApiContext, projectId, appId, updates);
+		if (app.value?.id === appId) app.value = updated;
+		return updated;
 	};
 
 	const deleteApp = async (projectId: string, appId: string) => {
@@ -65,6 +90,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		appId: string,
 		route: string,
 		parentPageId?: string,
+		title?: string,
 	) => {
 		const page = await createPageApi(
 			rootStore.restApiContext,
@@ -72,6 +98,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 			appId,
 			route,
 			parentPageId,
+			title,
 		);
 		pages.value = [...pages.value, page];
 		return page;
@@ -123,10 +150,13 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 
 	return {
 		apps,
+		app,
 		pages,
+		servedCss,
 		fetchApps,
 		getApp,
 		createApp,
+		fetchServedCss,
 		updateApp,
 		deleteApp,
 		fetchPages,

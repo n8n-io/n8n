@@ -15,7 +15,14 @@ function tableBlock(overrides: Partial<TableBlock['data']> = {}): TableBlock {
 }
 
 const ctx: BlockRenderContext = {
-	app: { id: 'app-1', name: 'App', namespace: 'app', projectId: 'p1', theme: null },
+	app: {
+		id: 'app-1',
+		name: 'App',
+		namespace: 'app',
+		projectId: 'p1',
+		theme: null,
+		components: null,
+	},
 	page: { id: 'page-1', route: ':id', path: '/apps/app/clients/42' },
 	actionPageId: 'page-1',
 	params: { id: '42' },

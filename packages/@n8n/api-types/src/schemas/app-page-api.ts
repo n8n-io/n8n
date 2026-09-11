@@ -107,6 +107,8 @@ declare global {
 	};
 	type WorkflowRunResult =
 		| { status: 'success'; executionId: string; data: unknown }
+		/** The run paused on a Form node (a further form page) or a Wait node; it continues outside this call. */
+		| { status: 'waiting'; executionId: string }
 		| { status: 'error'; executionId?: string; error: string };
 
 	interface WorkflowsApi {

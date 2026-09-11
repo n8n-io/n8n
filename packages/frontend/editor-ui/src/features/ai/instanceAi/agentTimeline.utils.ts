@@ -298,7 +298,7 @@ export interface ArtifactInfo {
 }
 
 /** Actions the `apps` tool returns nothing worth an artifact card for. */
-const APP_NON_ARTIFACT_ACTIONS = new Set(['list', 'get', 'code-api']);
+const APP_NON_ARTIFACT_ACTIONS = new Set(['list', 'get', 'code-api', 'preview-page']);
 
 /** Extract all artifacts (workflows, data tables, agents, and apps) from a node's tool calls. */
 export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
@@ -380,7 +380,7 @@ export function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
 			});
 		}
 
-		// App artifacts — every non-list/get/code-api `apps` result carries `appId` directly.
+		// App artifacts — every `apps` result outside APP_NON_ARTIFACT_ACTIONS carries `appId` directly.
 		if (tc.toolName === 'apps' && typeof result.appId === 'string' && !seenIds.has(result.appId)) {
 			const action = (tc.args as Record<string, unknown> | undefined)?.action;
 			if (typeof action === 'string' && !APP_NON_ARTIFACT_ACTIONS.has(action)) {

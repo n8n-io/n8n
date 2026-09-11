@@ -243,13 +243,14 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 
 	// --- Apps --------------------------------------------------------------
-	// Every `apps` action except `list`/`get`/`code-api` returns a flat result
-	// carrying `appId` (+ `namespace`/`url` where the handler already has
-	// them) — produced. `{ denied }` results carry no `appId` and register
-	// nothing.
+	// Every `apps` action except the read-only `list`/`get`/`code-api`/`preview-page`
+	// returns a flat result carrying `appId` (+ `namespace`/`url` where the
+	// handler already has them) — produced. `{ denied }` results carry no
+	// `appId` and register nothing.
 	if (tc.toolName === 'apps') {
 		const action = optionalString(tc.args?.action);
-		const isProducingAction = action !== 'list' && action !== 'get' && action !== 'code-api';
+		const isProducingAction =
+			action !== 'list' && action !== 'get' && action !== 'code-api' && action !== 'preview-page';
 		if (isProducingAction && typeof result.appId === 'string') {
 			const existing = col.produced.get(result.appId);
 			const entry: ResourceEntry = {

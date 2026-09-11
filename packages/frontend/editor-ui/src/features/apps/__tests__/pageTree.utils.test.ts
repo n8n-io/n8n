@@ -1,11 +1,22 @@
 import type { Page } from '@/features/apps/apps.types';
-import { findPageIdByPath, flattenPageTree, getPageOptions } from '@/features/apps/pageTree.utils';
+import {
+	findPageIdByPath,
+	flattenPageTree,
+	getPageLabel,
+	getPageOptions,
+} from '@/features/apps/pageTree.utils';
 
-const page = (id: string, route: string, parentPageId: string | null = null): Page => ({
+const page = (
+	id: string,
+	route: string,
+	parentPageId: string | null = null,
+	title: string | null = null,
+): Page => ({
 	id,
 	appId: 'app1',
 	parentPageId,
 	route,
+	title,
 	content: [],
 	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -17,7 +28,7 @@ describe('pageTree.utils', () => {
 		page('reports', 'reports'),
 		page('index', ''),
 		page('weekly', 'weekly', 'reports'),
-		page('leads', 'leads', 'reports'),
+		page('leads', 'leads', 'reports', 'Leads'),
 		page('about', 'about'),
 	];
 
@@ -31,13 +42,19 @@ describe('pageTree.utils', () => {
 		]);
 	});
 
-	it('getPageOptions() labels every page with its full path', () => {
-		expect(getPageOptions(pages, 'index').map((option) => option.label)).toEqual([
-			'/ (index)',
-			'/about',
-			'/reports',
-			'/reports/leads',
-			'/reports/weekly',
+	it('getPageLabel() prefers the title, then the route, then the index label', () => {
+		expect(getPageLabel(page('leads', 'leads', null, 'Leads'), 'Home')).toBe('Leads');
+		expect(getPageLabel(page('about', 'about'), 'Home')).toBe('about');
+		expect(getPageLabel(page('index', ''), 'Home')).toBe('Home');
+	});
+
+	it('getPageOptions() labels every page with its name and its full path', () => {
+		expect(getPageOptions(pages, 'Home').map((option) => option.label)).toEqual([
+			'Home — /',
+			'about — /about',
+			'reports — /reports',
+			'Leads — /reports/leads',
+			'weekly — /reports/weekly',
 		]);
 	});
 

@@ -119,6 +119,9 @@ Renders the fields of a workflow's **Form Trigger** (build the workflow
 first with `workflows`/`build-workflow` — it must start with a Form Trigger
 and be published) and posts to it on submit. `successMessage` is
 interpolated and shown in place of the form after a successful submit.
+Later pages (n8n Form nodes) and the Form Ending render in the same block;
+each page's title, fields and button come from its node. No file uploads on
+any page. Details: [forms.md](forms.md).
 
 ### `button`
 
@@ -178,6 +181,29 @@ Output is **not sanitized**: `raw(html)` and returned strings are inserted
 as-is, and external `<script src>` is allowed. See
 [code-examples.md](code-examples.md) for `render` + `actions`, and load
 `apps(action="code-api")` for the full type surface before writing one.
+Shared markup lives in the App's components module and is imported with
+`import { Card } from 'app/components'` — see [components.md](components.md).
+In a layout, a menu block is `nav.app-nav` over `ctx.menu` with the current
+item marked `aria-current="page"` — see the recipes in [styling.md](styling.md).
+
+### `agent-chat`
+
+```json
+{
+  "id": "chat1",
+  "type": "agent-chat",
+  "data": {
+    "agentId": "agent_abc123",
+    "welcome": "Hi! Ask me anything.",
+    "placeholder": "Type your question"
+  }
+}
+```
+
+A chat with one of the project's **published** agents, streamed into the
+page. `welcome` (≤ 500 chars) is the first assistant bubble, `placeholder`
+(≤ 100 chars) the input hint. Details, rules and styling hooks:
+[agent-chat.md](agent-chat.md).
 
 ## Layout-only block
 

@@ -22,9 +22,10 @@ import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keyma
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import { useAppTypescript } from '@/features/shared/editors/plugins/codemirror/typescript/client/useAppTypescript';
 
-const props = withDefaults(defineProps<{ modelValue: string; isReadOnly?: boolean }>(), {
-	isReadOnly: false,
-});
+const props = withDefaults(
+	defineProps<{ modelValue: string; isReadOnly?: boolean; components?: string | null }>(),
+	{ isReadOnly: false, components: null },
+);
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 
 const i18n = useI18n();
@@ -55,7 +56,7 @@ const editorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView>();
 const tsCompartment = new Compartment();
 
-const { createWorker } = useAppTypescript(editor, id);
+const { createWorker } = useAppTypescript(editor, id, () => props.components);
 
 async function createEditor() {
 	const initialExtensions: Extension[] = [

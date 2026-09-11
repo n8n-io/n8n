@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-import type { AppLayout } from '@n8n/api-types';
+import { APP_LAYOUT_PRESETS, type AppLayout } from '@n8n/api-types';
 import { defineComponent, h } from 'vue';
 
 import LayoutPanel from '@/features/apps/components/LayoutPanel.vue';
@@ -9,6 +9,11 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useAppsStore } from '@/features/apps/apps.store';
 import type { Page } from '@/features/apps/apps.types';
+
+const confirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
+}));
 
 const editorMounts = vi.fn();
 const editorIssues = vi.fn();
@@ -36,11 +41,17 @@ const homeLayout: AppLayout = [
 	{ id: 'slot', type: 'slot', data: {} },
 ];
 
-const page = (id: string, route: string, layout: AppLayout | null): Page => ({
+const page = (
+	id: string,
+	route: string,
+	layout: AppLayout | null,
+	title: string | null = null,
+): Page => ({
 	id,
 	appId: 'app1',
 	parentPageId: id === 'home' ? null : 'home',
 	route,
+	title,
 	content: [],
 	layout,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -77,6 +88,21 @@ describe('LayoutPanel', () => {
 
 		expect(getByTestId('page-layout-inherited').textContent).toContain('Inherited from Home');
 		expect(queryByTestId('page-content-editor')).toBeNull();
+	});
+
+	it('names the owner page by its title when it has one', () => {
+		appsStore.pages = [page('home', '', homeLayout, 'Start'), appsStore.pages[1]];
+		const { getByTestId } = renderComponent({
+			props: {
+				projectId: 'p1',
+				appId: 'app1',
+				page: appsStore.pages[1],
+				ownerPageId: 'home',
+				renderErrors: {},
+			},
+		});
+
+		expect(getByTestId('page-layout-inherited').textContent).toContain('Inherited from Start');
 	});
 
 	it('shows the default layout when no ancestor defines one', () => {
@@ -184,6 +210,64 @@ describe('LayoutPanel', () => {
 		});
 
 		expect(getAllByTestId('page-layout-render-error')).toHaveLength(1);
+	});
+
+	describe('preset picker', () => {
+		const sidebar = APP_LAYOUT_PRESETS.find((preset) => preset.id === 'sidebar');
+
+		const pickSidebar = async (getByTestId: (id: string) => HTMLElement) => {
+			await userEvent.click(getByTestId('page-layout-preset'));
+			await userEvent.click(getByTestId('page-layout-preset-sidebar'));
+		};
+
+		it("applies a preset's blocks, and not its theme, to a page without a layout", async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					projectId: 'p1',
+					appId: 'app1',
+					page: appsStore.pages[1],
+					ownerPageId: 'home',
+					renderErrors: {},
+				},
+			});
+
+			await pickSidebar(getByTestId);
+
+			await waitFor(() =>
+				expect(appsStore.updatePage).toHaveBeenCalledWith('p1', 'app1', 'about', {
+					layout: sidebar?.blocks,
+				}),
+			);
+			expect(confirm).not.toHaveBeenCalled();
+			expect(appsStore.updateApp).not.toHaveBeenCalled();
+		});
+
+		it('replaces an existing layout only after confirmation', async () => {
+			confirm.mockResolvedValueOnce('cancel').mockResolvedValueOnce('confirm');
+			const { getByTestId } = renderComponent({
+				props: {
+					projectId: 'p1',
+					appId: 'app1',
+					page: appsStore.pages[0],
+					ownerPageId: 'home',
+					renderErrors: {},
+				},
+			});
+
+			await pickSidebar(getByTestId);
+			await vi.advanceTimersByTimeAsync(100);
+			expect(appsStore.updatePage).not.toHaveBeenCalled();
+
+			await pickSidebar(getByTestId);
+
+			await waitFor(() =>
+				expect(appsStore.updatePage).toHaveBeenCalledWith('p1', 'app1', 'home', {
+					layout: sidebar?.blocks,
+				}),
+			);
+			expect(confirm).toHaveBeenCalledTimes(2);
+			expect(confirm.mock.calls[0][0]).toContain('Sidebar');
+		});
 	});
 
 	it('inherit resets the layout to null and drops pending edits', async () => {

@@ -2,16 +2,23 @@ import type { AppBlock, AppContent, AppTheme } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
+import { AppComponentsError } from '../runtime/app-code-runtime';
 import { buildMenu, pageTitle } from '../serving/page-menu';
 import type { ResolvedLayout } from '../serving/resolve-layout';
 import type { PageNode } from '../serving/resolve-page-path';
 import { getBlockRenderer } from './renderer-registry';
 import { renderPartial, renderTemplate } from './templates';
-import type { BlockRenderContext } from './types';
+import type { BlockRenderContext, RenderLogs } from './types';
 
 export type PageToRender = {
-	app: { id: string; name: string; namespace: string; projectId: string; theme: AppTheme | null };
-	page: { id: string; route: string; content: AppContent | null; path: string };
+	app: BlockRenderContext['app'];
+	page: {
+		id: string;
+		route: string;
+		title: string | null;
+		content: AppContent | null;
+		path: string;
+	};
 	/** Every page of the same tree (draft or snapshot), for the menu. */
 	pages: PageNode[];
 	/** Null renders the built-in shell. */
@@ -52,6 +59,9 @@ function renderThemeStyle(theme: AppTheme | null): string {
 	if (theme.fontFamily && isSafeStyleValue(theme.fontFamily)) {
 		declarations.push(`--app-font-family: ${theme.fontFamily};`);
 	}
+	if (theme.contentWidth && isSafeStyleValue(theme.contentWidth)) {
+		declarations.push(`--app-content-width: ${theme.contentWidth};`);
+	}
 
 	const variables = declarations.length ? `<style>:root{${declarations.join('')}}</style>` : '';
 	const customCss = theme.customCss
@@ -61,12 +71,15 @@ function renderThemeStyle(theme: AppTheme | null): string {
 }
 
 export type RenderErrors = Record<string, string>;
-export type RenderResult = { html: string; errors: RenderErrors };
+export type RenderResult = { html: string; errors: RenderErrors; logs: RenderLogs };
 
 const describeError = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error);
 
-/** A block whose renderer throws renders as nothing; the error goes to `errors` under its id. */
+/**
+ * A block whose renderer throws renders as nothing; the error goes to `errors`
+ * under its id, or under `components` when the App's shared module is at fault.
+ */
 async function renderBlock(
 	block: AppBlock,
 	ctx: BlockRenderContext,
@@ -84,7 +97,7 @@ async function renderBlock(
 			blockId: block.id,
 			error,
 		});
-		errors[block.id] = describeError(error);
+		errors[error instanceof AppComponentsError ? 'components' : block.id] = describeError(error);
 		return '';
 	}
 }
@@ -115,7 +128,7 @@ const renderLayoutBlocks = async (
 	);
 };
 
-const buildContext = (input: PageToRender): BlockRenderContext => ({
+const buildContext = (input: PageToRender, logs: RenderLogs): BlockRenderContext => ({
 	app: input.app,
 	page: { id: input.page.id, route: input.page.route, path: input.page.path },
 	actionPageId: input.page.id,
@@ -125,11 +138,13 @@ const buildContext = (input: PageToRender): BlockRenderContext => ({
 	menu: buildMenu(input.app.namespace, input.pages, input.page.id, input.params),
 	baseUrl: input.baseUrl,
 	preview: input.preview,
+	logs,
 });
 
 export async function renderPage(input: PageToRender): Promise<RenderResult> {
-	const ctx = buildContext(input);
 	const errors: RenderErrors = {};
+	const logs: RenderLogs = {};
+	const ctx = buildContext(input, logs);
 
 	const [blocks, layout] = await Promise.all([
 		renderBlocks(input.page.content ?? [], ctx, errors),
@@ -137,7 +152,7 @@ export async function renderPage(input: PageToRender): Promise<RenderResult> {
 	]);
 
 	const html = await renderTemplate('app-page', {
-		title: pageTitle(input.page.route, input.params) ?? input.app.name,
+		title: pageTitle(input.page, input.params) ?? input.app.name,
 		appName: input.app.name,
 		menu: ctx.menu,
 		blocks,
@@ -147,7 +162,7 @@ export async function renderPage(input: PageToRender): Promise<RenderResult> {
 		appBase: `${input.baseUrl}/apps/${input.app.namespace}`,
 		themeStyle: renderThemeStyle(input.app.theme),
 	});
-	return { html, errors };
+	return { html, errors, logs };
 }
 
 /** The layout alone, with an empty slot, for the editor to place its content editor into. */
@@ -155,6 +170,7 @@ export async function renderLayout(
 	input: Omit<PageToRender, 'layout'> & { layout: ResolvedLayout },
 ): Promise<RenderResult> {
 	const errors: RenderErrors = {};
-	const layout = await renderLayoutBlocks(input.layout, buildContext(input), errors);
-	return { html: await renderPartial('layout', { layout, blocks: [] }), errors };
+	const logs: RenderLogs = {};
+	const layout = await renderLayoutBlocks(input.layout, buildContext(input, logs), errors);
+	return { html: await renderPartial('layout', { layout, blocks: [] }), errors, logs };
 }

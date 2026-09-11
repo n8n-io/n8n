@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { AppTokenService, type AppAccessMode } from '@/modules/apps/serving/app-token.service';
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -41,7 +42,10 @@ beforeEach(async () => {
 const createApp = async () => await appRepository.createApp(ownerProject.id, 'Acme Portal', 'acme');
 
 /** Freezes the app's current draft pages as the active version, like `POST .../publish` does. */
-const publish = async (app: Awaited<ReturnType<typeof createApp>>) => {
+const publish = async (
+	app: Awaited<ReturnType<typeof createApp>>,
+	components: string | null = null,
+) => {
 	const pages = await pageRepository.findManyByAppId(app.id);
 	const version = await appVersionRepository.createFromSnapshot(
 		app.id,
@@ -49,12 +53,13 @@ const publish = async (app: Awaited<ReturnType<typeof createApp>>) => {
 			pages: pages.map((page) => ({
 				id: page.id,
 				route: page.route,
+				title: page.title,
 				parentPageId: page.parentPageId,
 				content: page.content as AppContent | null,
 				layout: page.layout as AppLayout | null,
 			})),
 			theme: null,
-			components: null,
+			components,
 		},
 		owner.id,
 	);
@@ -62,6 +67,31 @@ const publish = async (app: Awaited<ReturnType<typeof createApp>>) => {
 };
 
 describe('GET /apps/:namespace', () => {
+	test("renders a code block that imports the snapshot's components", async () => {
+		const app = await createApp();
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [
+				{
+					id: 'c1',
+					type: 'code',
+					data: {
+						source: `import { Card } from 'app/components';
+						export function render() { return <Card title="Hello" />; }`,
+					},
+				},
+			],
+		});
+		await publish(
+			app,
+			'export function Card(props: { title: string }) { return <h2 class="card">{props.title}</h2>; }',
+		);
+
+		const response = await visitor.get('/apps/acme').redirects(1).expect(200);
+
+		expect(response.text).toContain('<h2 class="card">Hello</h2>');
+	});
+
 	test('serves the index page of the active version without a session', async () => {
 		const app = await createApp();
 		await pageRepository.createPage(app.id, null, '');
@@ -130,6 +160,33 @@ describe('GET /apps/:namespace', () => {
 		// One list for the top level and one for the children of `clients`: the
 		// partial has to recurse to produce the second.
 		expect(response.text.match(/<ul/g)?.length).toBeGreaterThanOrEqual(2);
+	});
+
+	test('names a page in the menu and the document title after its title, not its route', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '', null, null, 'Overview');
+		await pageRepository.createPage(app.id, null, 'clients', null, null, 'Clients');
+		await publish(app);
+
+		const response = await visitor.get('/apps/acme/clients').redirects(1).expect(200);
+
+		expect(response.text).toContain('<title>Clients · Acme Portal</title>');
+		expect(response.text).toContain('>Overview</a>');
+		expect(response.text).toContain('>Clients</span>');
+		expect(response.text).not.toContain('>clients<');
+		expect(response.text).not.toContain('>Home<');
+	});
+
+	test('names a page without a title after its route in the menu and the document title', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '');
+		await pageRepository.createPage(app.id, null, 'clients');
+		await publish(app);
+
+		const response = await visitor.get('/apps/acme/clients').redirects(1).expect(200);
+
+		expect(response.text).toContain('<title>clients · Acme Portal</title>');
+		expect(response.text).toContain('>Home</a>');
 	});
 
 	test('escapes a param value where it reaches the page', async () => {
@@ -260,6 +317,63 @@ describe('GET /apps/:namespace with layouts', () => {
 
 		expect(response.text).toContain('Own banner');
 		expect(response.text).not.toContain('Parent banner');
+	});
+});
+
+describe('GET /apps/:namespace with a draft access token', () => {
+	const bearer = async (appId: string, mode: AppAccessMode) => {
+		const tokens = Container.get(AppTokenService);
+		const pair = await tokens.exchangeCode(
+			await tokens.issueCode({ appId, viewerId: owner.id, sessionToken: null, mode }),
+		);
+		if (!pair) throw new Error('Code exchange failed');
+		return `Bearer ${pair.accessToken}`;
+	};
+
+	/** Index page published; `drafted` exists only as a draft row. */
+	const createAppWithDraftOnlyPage = async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '');
+		await publish(app);
+		await pageRepository.createPage(app.id, null, 'drafted', [
+			{ id: 'h1', type: 'header', data: { text: 'Draft only heading', level: 1 } },
+		]);
+		return app;
+	};
+
+	test('renders a draft-only page for a draft token, as a preview', async () => {
+		const app = await createAppWithDraftOnlyPage();
+
+		const response = await visitor
+			.get('/apps/acme/drafted')
+			.set('Authorization', await bearer(app.id, 'draft'))
+			.expect(200);
+
+		expect(response.text).toContain('Draft only heading');
+		expect(response.text).not.toContain('_code=');
+	});
+
+	test('keeps serving the snapshot for a published token', async () => {
+		const app = await createAppWithDraftOnlyPage();
+		const publishedBearer = await bearer(app.id, 'published');
+
+		await visitor.get('/apps/acme/drafted').set('Authorization', publishedBearer).expect(404);
+		const index = await visitor.get('/apps/acme').set('Authorization', publishedBearer).expect(200);
+		expect(index.text).not.toContain('drafted');
+	});
+
+	test('renders the draft of an App that was never published', async () => {
+		const app = await createApp();
+		await pageRepository.createPage(app.id, null, '', [
+			{ id: 'h1', type: 'header', data: { text: 'Unpublished draft', level: 1 } },
+		]);
+
+		const response = await visitor
+			.get('/apps/acme')
+			.set('Authorization', await bearer(app.id, 'draft'))
+			.expect(200);
+
+		expect(response.text).toContain('Unpublished draft');
 	});
 });
 

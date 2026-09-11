@@ -13,11 +13,17 @@ vi.mock('@/features/apps/useAppDeletion', () => ({
 	useAppDeletion: () => ({ confirmAndDeletePage }),
 }));
 
-const page = (id: string, route: string, parentPageId: string | null = null): Page => ({
+const page = (
+	id: string,
+	route: string,
+	parentPageId: string | null = null,
+	title: string | null = null,
+): Page => ({
 	id,
 	appId: 'app1',
 	parentPageId,
 	route,
+	title,
 	content: [],
 	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -54,6 +60,21 @@ describe('PageTree', () => {
 		expect(rows[1].textContent).toContain('1 sub-page');
 	});
 
+	it('shows the title above the route path when a page has one', () => {
+		appsStore.pages = [page('reports', 'reports', null, 'Reports')];
+		const { getByTestId } = renderComponent();
+
+		const row = getByTestId('page-tree-row');
+		expect(row.textContent).toContain('Reports');
+		expect(row.textContent).toContain('/reports');
+	});
+
+	it('names the index page Home', () => {
+		const { getAllByTestId } = renderComponent();
+
+		expect(getAllByTestId('page-tree-row')[0].textContent).toContain('Home');
+	});
+
 	it('emits open for the clicked page', async () => {
 		const { getAllByTestId, emitted } = renderComponent();
 
@@ -70,7 +91,32 @@ describe('PageTree', () => {
 		await userEvent.type(getByTestId('page-tree-route-input'), 'about{Enter}');
 
 		await waitFor(() =>
-			expect(appsStore.createPage).toHaveBeenCalledWith('p1', 'app1', 'about', undefined),
+			expect(appsStore.createPage).toHaveBeenCalledWith(
+				'p1',
+				'app1',
+				'about',
+				undefined,
+				undefined,
+			),
+		);
+	});
+
+	it('creates a page with a title and a route', async () => {
+		appsStore.createPage.mockResolvedValue(page('about', 'about', null, 'About us'));
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('app-page-add-root'));
+		await userEvent.type(getByTestId('page-tree-title-input'), 'About us');
+		await userEvent.type(getByTestId('page-tree-route-input'), 'about{Enter}');
+
+		await waitFor(() =>
+			expect(appsStore.createPage).toHaveBeenCalledWith(
+				'p1',
+				'app1',
+				'about',
+				undefined,
+				'About us',
+			),
 		);
 	});
 
@@ -84,7 +130,13 @@ describe('PageTree', () => {
 		await userEvent.tab();
 
 		await waitFor(() =>
-			expect(appsStore.createPage).toHaveBeenCalledWith('p1', 'app1', 'leads', 'reports'),
+			expect(appsStore.createPage).toHaveBeenCalledWith(
+				'p1',
+				'app1',
+				'leads',
+				'reports',
+				undefined,
+			),
 		);
 	});
 
@@ -103,6 +155,8 @@ describe('PageTree', () => {
 
 		await userEvent.click(getByTestId('app-page-add-root'));
 		await userEvent.tab();
+		expect(getByTestId('page-tree-route-input')).toHaveFocus();
+		await userEvent.tab();
 		expect(queryByTestId('page-tree-route-input')).not.toBeInTheDocument();
 		expect(appsStore.createPage).not.toHaveBeenCalled();
 	});
@@ -120,8 +174,37 @@ describe('PageTree', () => {
 		await waitFor(() =>
 			expect(appsStore.updatePage).toHaveBeenCalledWith('p1', 'app1', 'reports', {
 				route: 'stats',
+				title: null,
 			}),
 		);
+	});
+
+	it('resets the title when it is emptied on rename', async () => {
+		appsStore.pages = [page('reports', 'reports', null, 'Reports')];
+		appsStore.updatePage.mockResolvedValue(page('reports', 'reports'));
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('page-tree-rename'));
+		const input = getByTestId('page-tree-title-input');
+		expect(input).toHaveValue('Reports');
+		await userEvent.clear(input);
+		await userEvent.keyboard('{Enter}');
+
+		await waitFor(() =>
+			expect(appsStore.updatePage).toHaveBeenCalledWith('p1', 'app1', 'reports', {
+				route: 'reports',
+				title: null,
+			}),
+		);
+	});
+
+	it('does not save a rename that changed nothing', async () => {
+		const { getAllByTestId } = renderComponent();
+
+		await userEvent.click(getAllByTestId('page-tree-rename')[1]);
+		await userEvent.keyboard('{Enter}');
+
+		expect(appsStore.updatePage).not.toHaveBeenCalled();
 	});
 
 	it('asks for confirmation before deleting', async () => {

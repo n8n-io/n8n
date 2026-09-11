@@ -4,9 +4,19 @@ import type { MenuItem } from '../serving/page-menu';
 import type { ResolvedLayout } from '../serving/resolve-layout';
 import type { Viewer } from '../serving/viewer.service';
 
+/** `ctx.log` lines per block id, collected in preview renders only. */
+export type RenderLogs = Record<string, string[]>;
+
 /** Everything a block renderer may read. Built once per page render. */
 export type BlockRenderContext = {
-	app: { id: string; name: string; namespace: string; projectId: string; theme: AppTheme | null };
+	app: {
+		id: string;
+		name: string;
+		namespace: string;
+		projectId: string;
+		theme: AppTheme | null;
+		components: string | null;
+	};
 	page: { id: string; route: string; path: string };
 	/**
 	 * The page whose `content` or `layout` holds the block being rendered, so an
@@ -20,6 +30,8 @@ export type BlockRenderContext = {
 	/** Absolute origin for links and assets, so the same HTML works inside `srcdoc`. */
 	baseUrl: string;
 	preview: boolean;
+	/** Sink a renderer writes its block's log lines into; absent outside page renders. */
+	logs?: RenderLogs;
 };
 
 /** Renders one block to an HTML string. Throwing renders nothing and reports the error. */
@@ -28,18 +40,20 @@ export interface BlockRenderer<T extends AppBlockType = AppBlockType> {
 	render(block: Extract<AppBlock, { type: T }>, ctx: BlockRenderContext): Promise<string>;
 }
 
-/** A page of the active (published) snapshot, resolved from a public URL. */
-export type PublishedPageResolution = {
-	app: BlockRenderContext['app'] & { activeVersionId: string };
+/** A page resolved from a public URL: of the active snapshot, or of the draft rows for a `draft` token. */
+export type PageResolution = {
+	app: BlockRenderContext['app'];
 	page: {
 		id: string;
 		route: string;
+		title: string | null;
 		parentPageId: string | null;
 		content: AppContent | null;
 		layout: AppLayout | null;
 	};
-	/** Every page of the snapshot, for the menu. */
-	pages: Array<{ id: string; route: string; parentPageId: string | null }>;
+	/** Every page of the same tree, for the menu. */
+	pages: Array<{ id: string; route: string; title: string | null; parentPageId: string | null }>;
 	params: Record<string, string>;
 	layout: ResolvedLayout | null;
+	preview: boolean;
 };

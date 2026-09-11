@@ -1,3 +1,4 @@
+import { agentChatBlockRenderer } from './blocks/agent-chat.renderer';
 import { dividerBlockRenderer } from './blocks/divider.renderer';
 import { headerBlockRenderer } from './blocks/header.renderer';
 import { htmlBlockRenderer } from './blocks/html.renderer';
@@ -14,4 +15,5 @@ export function registerStaticRenderers() {
 	registerBlockRenderer(imageBlockRenderer);
 	registerBlockRenderer(dividerBlockRenderer);
 	registerBlockRenderer(htmlBlockRenderer);
+	registerBlockRenderer(agentChatBlockRenderer);
 }

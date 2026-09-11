@@ -98,7 +98,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 8 |  | table |
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
-| [page](page.md) | 8 |  | table |
+| [page](page.md) | 9 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
@@ -1278,6 +1278,7 @@ erDiagram
   TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   datetime_3_ updatedAt
 }
 "poller_state" {

@@ -286,7 +286,7 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
-	test.each(['list', 'get', 'code-api'] as const)(
+	test.each(['list', 'get', 'code-api', 'preview-page'] as const)(
 		'does not return an app artifact for %s',
 		(action) => {
 			const node = makeAgentNode({

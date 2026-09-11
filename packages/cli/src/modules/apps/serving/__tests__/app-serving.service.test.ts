@@ -3,17 +3,21 @@ import { mock } from 'vitest-mock-extended';
 import type { AppVersion } from '../../app-version.entity';
 import type { AppVersionRepository } from '../../app-version.repository';
 import type { App } from '../../app.entity';
+import type { Page } from '../../page.entity';
+import type { PageRepository } from '../../page.repository';
 import { AppServingService } from '../app-serving.service';
 
-const app = mock<App>({
+/** Plain objects rather than `mock<>()`, so nested JSON columns compare by value. */
+const app = {
 	id: 'app-1',
 	name: 'Acme Portal',
 	namespace: 'acme',
 	projectId: 'project-1',
 	activeVersionId: 'v-1',
-});
+	theme: { colors: { primary: '#123456' } },
+} as App;
 
-const unpublishedApp = mock<App>({ ...app, activeVersionId: null });
+const unpublishedApp = { ...app, activeVersionId: null } as App;
 
 const version = mock<AppVersion>({
 	id: 'v-1',
@@ -21,6 +25,7 @@ const version = mock<AppVersion>({
 	createdAt: new Date(),
 	snapshot: {
 		theme: null,
+		components: 'export const Card = () => <div />;',
 		pages: [
 			{ id: 'index', route: '', parentPageId: null, content: [], layout: null },
 			{
@@ -35,15 +40,30 @@ const version = mock<AppVersion>({
 	},
 });
 
+const draftHeader = { id: 'h1', type: 'header', data: { text: 'Draft', level: 1 } };
+const draftRows = [
+	{ id: 'index', route: '', parentPageId: null, content: [], layout: null },
+	{
+		id: 'drafted',
+		route: 'drafted',
+		parentPageId: null,
+		content: [draftHeader],
+		layout: [{ type: 'nope' }],
+	},
+] as Page[];
+
 describe('AppServingService', () => {
 	let appVersionRepository: ReturnType<typeof mock<AppVersionRepository>>;
+	let pageRepository: ReturnType<typeof mock<PageRepository>>;
 	let service: AppServingService;
 
 	beforeEach(() => {
 		appVersionRepository = mock<AppVersionRepository>();
-		service = new AppServingService(appVersionRepository);
+		pageRepository = mock<PageRepository>();
+		service = new AppServingService(appVersionRepository, pageRepository);
 
 		appVersionRepository.findSnapshot.mockResolvedValue(version);
+		pageRepository.findManyByAppId.mockResolvedValue(draftRows);
 	});
 
 	describe('resolvePublished', () => {
@@ -56,13 +76,19 @@ describe('AppServingService', () => {
 			await expect(service.resolvePublished(app, ['nowhere'])).resolves.toBeUndefined();
 		});
 
-		test('resolves the index page of the active snapshot for an empty path', async () => {
+		test('resolves the index page of the active snapshot for an empty path, with the snapshot theme', async () => {
 			const resolution = await service.resolvePublished(app, []);
 
 			expect(resolution).toMatchObject({
-				app: { id: 'app-1', namespace: 'acme', activeVersionId: 'v-1' },
+				app: {
+					id: 'app-1',
+					namespace: 'acme',
+					theme: null,
+					components: 'export const Card = () => <div />;',
+				},
 				page: { id: 'index' },
 				params: {},
+				preview: false,
 			});
 		});
 
@@ -83,6 +109,31 @@ describe('AppServingService', () => {
 			await service.resolvePublished(app, ['clients']);
 
 			expect(appVersionRepository.findSnapshot).toHaveBeenCalledWith('v-1');
+			expect(pageRepository.findManyByAppId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resolveDraft', () => {
+		test('resolves a draft-only page from the Page rows, as a preview, with the App theme', async () => {
+			const resolution = await service.resolveDraft(app, ['drafted']);
+
+			expect(resolution).toMatchObject({
+				app: { theme: { colors: { primary: '#123456' } } },
+				page: { id: 'drafted', content: [draftHeader] },
+				preview: true,
+			});
+			expect(resolution?.layout).toBeNull();
+			expect(appVersionRepository.findSnapshot).not.toHaveBeenCalled();
+		});
+
+		test('resolves without an active version', async () => {
+			await expect(service.resolveDraft(unpublishedApp, [])).resolves.toMatchObject({
+				page: { id: 'index' },
+			});
+		});
+
+		test('resolves nothing when no draft page owns the path', async () => {
+			await expect(service.resolveDraft(app, ['clients'])).resolves.toBeUndefined();
 		});
 	});
 

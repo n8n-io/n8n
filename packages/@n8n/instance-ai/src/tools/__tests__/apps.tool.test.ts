@@ -29,6 +29,7 @@ function createMockAppService(): {
 		updatePage: vi.fn(),
 		deletePage: vi.fn().mockResolvedValue(undefined),
 		publish: vi.fn(),
+		previewPage: vi.fn(),
 		codeApi: vi.fn().mockReturnValue('declare global {}'),
 	};
 }
@@ -235,6 +236,21 @@ describe('apps tool', () => {
 			expect(result).toMatchObject({ appId: 'app-1' });
 		});
 
+		it('forwards the layout preset to the service', async () => {
+			const context = createMockContext({ permissions: { createApp: 'always_allow' } });
+			(context.appService?.createApp as Mock).mockResolvedValue({ app: appSummary });
+
+			const tool = createAppsTool(context);
+			await executeTool(tool, { ...createInput, layoutPreset: 'sidebar' }, noSuspendCtx());
+
+			expect(context.appService?.createApp).toHaveBeenCalledWith({
+				projectId: 'proj-1',
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+				layoutPreset: 'sidebar',
+			});
+		});
+
 		it('returns denied on a namespace conflict', async () => {
 			const context = createMockContext({ permissions: { createApp: 'always_allow' } });
 			(context.appService?.createApp as Mock).mockResolvedValue({ conflict: true });
@@ -256,7 +272,10 @@ describe('apps tool', () => {
 		it('composes the app and its pages', async () => {
 			const pages = [{ id: 'page-1', route: '', parentPageId: null, path: '/', hasContent: true }];
 			const context = createMockContext();
-			(context.appService?.getApp as Mock).mockResolvedValue(appSummary);
+			(context.appService?.getApp as Mock).mockResolvedValue({
+				...appSummary,
+				components: 'export const Card = () => <div />;',
+			});
 			(context.appService?.listPages as Mock).mockResolvedValue(pages);
 
 			const tool = createAppsTool(context);
@@ -275,6 +294,7 @@ describe('apps tool', () => {
 				projectId: 'proj-1',
 				url: '/apps/orders-dashboard/',
 				activeVersionId: null,
+				components: 'export const Card = () => <div />;',
 				pages,
 			});
 		});
@@ -300,6 +320,7 @@ describe('apps tool', () => {
 			expect(context.appService?.updateApp).toHaveBeenCalledWith('app-1', {
 				name: 'Renamed',
 				theme: undefined,
+				components: undefined,
 				auth: undefined,
 			});
 			expect(result).toEqual({
@@ -309,6 +330,24 @@ describe('apps tool', () => {
 				projectId: 'proj-1',
 				url: '/apps/orders-dashboard/',
 			});
+		});
+
+		it('passes the components source through', async () => {
+			const context = createMockContext();
+			(context.appService?.updateApp as Mock).mockResolvedValue(appSummary);
+			const components = 'export function Card() { return <div />; }';
+
+			const tool = createAppsTool(context);
+			await executeTool(
+				tool,
+				{ action: 'update-app' as const, appId: 'app-1', components },
+				noSuspendCtx(),
+			);
+
+			expect(context.appService?.updateApp).toHaveBeenCalledWith(
+				'app-1',
+				expect.objectContaining({ components }),
+			);
 		});
 
 		it('returns denied with issues when the adapter rejects the input', async () => {
@@ -367,6 +406,33 @@ describe('apps tool', () => {
 				projectId: 'proj-1',
 				namespace: 'orders-dashboard',
 			});
+		});
+
+		it('forwards the title and returns it', async () => {
+			const page = {
+				id: 'page-1',
+				route: 'clients',
+				title: 'Clients',
+				parentPageId: null,
+				path: '/clients',
+				hasContent: false,
+			};
+			const context = createMockContext();
+			(context.appService?.createPage as Mock).mockResolvedValue(page);
+			(context.appService?.getApp as Mock).mockResolvedValue(appSummary);
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'create-page' as const, appId: 'app-1', route: 'clients', title: 'Clients' },
+				noSuspendCtx(),
+			);
+
+			expect(context.appService?.createPage).toHaveBeenCalledWith(
+				'app-1',
+				expect.objectContaining({ route: 'clients', title: 'Clients' }),
+			);
+			expect(result).toMatchObject({ pageId: 'page-1', title: 'Clients' });
 		});
 
 		it('generates missing block ids before validating content', async () => {
@@ -699,6 +765,55 @@ describe('apps tool', () => {
 				path: '/new-route',
 			});
 		});
+
+		it('updates the title alone, and null resets it', async () => {
+			const page = {
+				id: 'page-1',
+				route: 'clients',
+				title: 'Customers',
+				parentPageId: null,
+				path: '/clients',
+				hasContent: false,
+			};
+			const context = createMockContext();
+			(context.appService?.updatePage as Mock).mockResolvedValue(page);
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'update-page' as const, appId: 'app-1', pageId: 'page-1', title: 'Customers' },
+				noSuspendCtx(),
+			);
+			await executeTool(
+				tool,
+				{ action: 'update-page' as const, appId: 'app-1', pageId: 'page-1', title: null },
+				noSuspendCtx(),
+			);
+
+			expect(context.appService?.updatePage).toHaveBeenNthCalledWith(1, 'app-1', 'page-1', {
+				route: undefined,
+				title: 'Customers',
+			});
+			expect(context.appService?.updatePage).toHaveBeenNthCalledWith(2, 'app-1', 'page-1', {
+				route: undefined,
+				title: null,
+			});
+			expect(result).toMatchObject({ pageId: 'page-1', route: 'clients', title: 'Customers' });
+		});
+
+		it('denies a call that changes neither the route nor the title', async () => {
+			const context = createMockContext();
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'update-page' as const, appId: 'app-1', pageId: 'page-1' },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ denied: true, reason: 'Pass a route, a title, or both' });
+			expect(context.appService?.updatePage).not.toHaveBeenCalled();
+		});
 	});
 
 	// ── delete-page ─────────────────────────────────────────────────────────
@@ -738,6 +853,27 @@ describe('apps tool', () => {
 				}),
 			);
 			expect(context.appService?.deletePage).not.toHaveBeenCalled();
+		});
+
+		it('names the page by its title in the message when it has one', async () => {
+			const context = createMockContext({ permissions: {} });
+			(context.appService?.getPage as Mock).mockResolvedValue({
+				id: 'page-1',
+				route: 'clients',
+				title: 'Clients',
+				parentPageId: null,
+				path: '/clients',
+				hasContent: false,
+				content: null,
+			});
+			const suspendFn = vi.fn();
+
+			const tool = createAppsTool(context);
+			await executeTool(tool, deleteInput, suspendCtx(suspendFn));
+
+			expect(suspendFn).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Delete page "Clients" from app app-1' }),
+			);
 		});
 
 		it('falls back to a plain message when the page lookup fails', async () => {
@@ -831,6 +967,37 @@ describe('apps tool', () => {
 			expect(result).toMatchObject({
 				denied: true,
 				issues: pages,
+			});
+		});
+	});
+
+	// ── preview-page ────────────────────────────────────────────────────────
+
+	describe('preview-page action', () => {
+		it('returns the render errors and logs per block, without html', async () => {
+			const context = createMockContext();
+			(context.appService?.previewPage as Mock).mockResolvedValue({
+				errors: { b1: 'boom' },
+				logs: { b2: ['["debug"]'] },
+			});
+
+			const tool = createAppsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'preview-page' as const, appId: 'app-1', pageId: 'page-1', path: '/apps/x/c/42' },
+				noSuspendCtx(),
+			);
+
+			expect(context.appService?.previewPage).toHaveBeenCalledWith(
+				'app-1',
+				'page-1',
+				'/apps/x/c/42',
+			);
+			expect(result).toEqual({
+				appId: 'app-1',
+				pageId: 'page-1',
+				errors: { b1: 'boom' },
+				logs: { b2: ['["debug"]'] },
 			});
 		});
 	});

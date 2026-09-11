@@ -104,6 +104,16 @@ describe('AppTokenService', () => {
 			await expect(service.refresh(first!.refreshToken)).resolves.toBeNull();
 		});
 
+		test('keeps the draft mode across a refresh', async () => {
+			const first = await service.exchangeCode(
+				await service.issueCode({ ...record, mode: 'draft' }),
+			);
+
+			const second = await service.refresh(first!.refreshToken);
+
+			expect(service.verifyAccess(second!.accessToken)).toMatchObject({ mode: 'draft' });
+		});
+
 		test('fails when the n8n session is no longer valid', async () => {
 			authService.validateCookieToken.mockRejectedValue(new Error('Unauthorized'));
 			const pair = await service.exchangeCode(await service.issueCode(record));

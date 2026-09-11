@@ -13,6 +13,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: null,
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,

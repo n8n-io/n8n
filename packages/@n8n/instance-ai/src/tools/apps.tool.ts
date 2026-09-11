@@ -5,13 +5,17 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	APP_LAYOUT_PRESETS,
+	APP_LAYOUT_PRESET_IDS,
 	appAuthSchema,
+	appComponentsSchema,
 	appContentSchema,
 	appLayoutSchema,
 	appNameSchema,
 	appNamespaceSchema,
 	appThemeSchema,
 	pageRouteSchema,
+	pageTitleSchema,
 	instanceAiApprovalResumeSchema,
 	buildAppsSessionGrantKey,
 	instanceAiConfirmationSeveritySchema,
@@ -149,6 +153,9 @@ const contentDescribe =
 	'ids are generated automatically. Rejected with `issues` (zod issues) when the blocks are invalid.';
 const routeDescribe =
 	"URL segment: '' for the index page of its level, a slug ('clients'), or a dynamic segment (':id')";
+const titleDescribe =
+	"What the menu and the browser tab show ('Clients'); the route is only the URL segment. " +
+	"Without one (or with null) the page is named after its route ('Home' for an index page).";
 const layoutDescribe =
 	'Layout blocks (see the `app-builder` skill, "Layouts"): any content block plus exactly one ' +
 	'`slot` block where the page content goes. Block `id` is optional. Pass null to inherit the ' +
@@ -166,6 +173,13 @@ const createAction = z.object({
 	namespace: appNamespaceSchema
 		.optional()
 		.describe('URL slug under /apps/<namespace>/. Slugified from the name when omitted.'),
+	layoutPreset: z
+		.enum(APP_LAYOUT_PRESET_IDS)
+		.optional()
+		.describe(
+			'Start from a ready-made layout and theme; the app gets an index page (route "") that carries the layout, so fill it with `set-content` instead of `create-page`. ' +
+				APP_LAYOUT_PRESETS.map((preset) => `${preset.id}: ${preset.description}`).join(' '),
+		),
 });
 
 const getAction = z.object({
@@ -174,7 +188,7 @@ const getAction = z.object({
 });
 
 const updateAppAction = z.object({
-	action: z.literal('update-app').describe("Update an app's name, theme or access"),
+	action: z.literal('update-app').describe("Update an app's name, theme, components or access"),
 	appId: z.string().describe('App ID'),
 	name: appNameSchema.optional().describe('App name'),
 	theme: appThemeSchema
@@ -182,6 +196,12 @@ const updateAppAction = z.object({
 		.optional()
 		.describe(
 			'Colors, radius, font and custom CSS applied on top of the default stylesheet. Pass null to reset.',
+		),
+	components: appComponentsSchema
+		.nullable()
+		.optional()
+		.describe(
+			"TSX source of the app's shared components, one module every code block can import with `import { Card } from 'app/components'`. Export functions only; the module itself cannot import anything. Pass null to remove.",
 		),
 	auth: appAuthSchema
 		.optional()
@@ -194,13 +214,14 @@ const createPageAction = z.object({
 	action: z.literal('create-page').describe('Create a page in an app'),
 	appId: z.string().describe('App ID'),
 	route: pageRouteSchema.describe(routeDescribe),
+	title: pageTitleSchema.optional().describe(titleDescribe),
 	parentPageId: z.string().optional().describe('Parent page ID; omit for a top-level page'),
 	content: z.array(rawBlockSchema).max(200).optional().describe(contentDescribe),
 	layout: z.array(rawBlockSchema).max(200).optional().describe(layoutDescribe),
 });
 
 const getPageAction = z.object({
-	action: z.literal('get-page').describe("Read a page's route, path, and content"),
+	action: z.literal('get-page').describe("Read a page's route, title, path, and content"),
 	appId: z.string().describe('App ID'),
 	pageId: z.string().describe('Page ID'),
 });
@@ -224,10 +245,13 @@ const setLayoutAction = z.object({
 });
 
 const updatePageAction = z.object({
-	action: z.literal('update-page').describe("Change a page's route"),
+	action: z
+		.literal('update-page')
+		.describe("Change a page's route or title; pass at least one of the two"),
 	appId: z.string().describe('App ID'),
 	pageId: z.string().describe('Page ID'),
-	route: pageRouteSchema.describe(routeDescribe),
+	route: pageRouteSchema.optional().describe(routeDescribe),
+	title: pageTitleSchema.nullable().optional().describe(titleDescribe),
 });
 
 const deletePageAction = z.object({
@@ -243,6 +267,22 @@ const publishAction = z.object({
 			"Publish the app: freeze the draft pages as a new version and serve it at the app's URL",
 		),
 	appId: z.string().describe('App ID'),
+});
+
+const previewPageAction = z.object({
+	action: z
+		.literal('preview-page')
+		.describe(
+			'Render the draft page and return render errors and `ctx.log` output per block id, without publishing. Call after `set-content`/`set-layout`; fix every error before `publish`.',
+		),
+	appId: z.string().describe('App ID'),
+	pageId: z.string().describe('Page ID'),
+	path: z
+		.string()
+		.optional()
+		.describe(
+			"Path below the app root to render the page at, e.g. 'clients/42' (fills `:param` segments); defaults to the page's own path",
+		),
 });
 
 const codeApiAction = z.object({
@@ -265,6 +305,7 @@ const allActions = [
 	updatePageAction,
 	deletePageAction,
 	publishAction,
+	previewPageAction,
 	codeApiAction,
 ] as const;
 
@@ -313,7 +354,12 @@ async function handleCreate(
 
 	await persistSessionGrantIfRequested(context, 'create', resumeData);
 
-	const result = await appService.createApp({ projectId, name: input.name, namespace });
+	const result = await appService.createApp({
+		projectId,
+		name: input.name,
+		namespace,
+		layoutPreset: input.layoutPreset,
+	});
 	if ('conflict' in result) {
 		return {
 			denied: true,
@@ -345,6 +391,7 @@ async function handleGet(
 		projectId: app.projectId,
 		url: app.url,
 		activeVersionId: app.activeVersionId,
+		components: app.components,
 		pages,
 	};
 }
@@ -357,6 +404,7 @@ async function handleUpdateApp(
 		const app = await appService.updateApp(input.appId, {
 			name: input.name,
 			theme: input.theme,
+			components: input.components,
 			auth: input.auth,
 		});
 		return {
@@ -393,6 +441,7 @@ async function handleCreatePage(
 	return await callOrDeny(async () => {
 		const page = await appService.createPage(input.appId, {
 			route: input.route,
+			title: input.title,
 			parentPageId: input.parentPageId,
 			content,
 			layout,
@@ -402,6 +451,7 @@ async function handleCreatePage(
 			appId: input.appId,
 			pageId: page.id,
 			route: page.route,
+			title: page.title,
 			path: page.path,
 			projectId: app.projectId,
 			namespace: app.namespace,
@@ -418,6 +468,7 @@ async function handleGetPage(
 		appId: input.appId,
 		pageId: page.id,
 		route: page.route,
+		title: page.title,
 		path: page.path,
 		content: page.content,
 		layout: page.layout,
@@ -474,9 +525,21 @@ async function handleUpdatePage(
 	appService: InstanceAiAppService,
 	input: Extract<FullInput, { action: 'update-page' }>,
 ) {
+	if (input.route === undefined && input.title === undefined) {
+		return { denied: true, reason: 'Pass a route, a title, or both' };
+	}
 	return await callOrDeny(async () => {
-		const page = await appService.updatePage(input.appId, input.pageId, { route: input.route });
-		return { appId: input.appId, pageId: page.id, route: page.route, path: page.path };
+		const page = await appService.updatePage(input.appId, input.pageId, {
+			route: input.route,
+			title: input.title,
+		});
+		return {
+			appId: input.appId,
+			pageId: page.id,
+			route: page.route,
+			title: page.title,
+			path: page.path,
+		};
 	});
 }
 
@@ -500,7 +563,7 @@ async function handleDeletePage(
 		let message = `Delete page ${input.pageId} from app ${input.appId}`;
 		try {
 			const page = await appService.getPage(input.appId, input.pageId);
-			message = `Delete page "${page.route || '(index)'}" from app ${input.appId}`;
+			message = `Delete page "${page.title ?? (page.route || '(index)')}" from app ${input.appId}`;
 		} catch {
 			// Fall back to the plain message above — the confirmation card still
 			// works without the nicer label.
@@ -556,6 +619,14 @@ async function handlePublish(
 	});
 }
 
+async function handlePreviewPage(
+	appService: InstanceAiAppService,
+	input: Extract<FullInput, { action: 'preview-page' }>,
+) {
+	const { errors, logs } = await appService.previewPage(input.appId, input.pageId, input.path);
+	return { appId: input.appId, pageId: input.pageId, errors, logs };
+}
+
 function handleCodeApi(appService: InstanceAiAppService) {
 	return { types: appService.codeApi() };
 }
@@ -574,7 +645,8 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Load `app-builder` via `load_skill` before calling this tool. Build and edit end-user-facing ' +
 				'web Apps served at /apps/<namespace>/ — list/create apps, manage pages made of typed content ' +
-				'blocks and their layouts, publish, and read the `code` block API types.',
+				'blocks and their layouts, preview a draft page for render errors and logs, publish, and read ' +
+				'the `code` block API types.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -603,6 +675,8 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleDeletePage(appService, context, input, ctx);
 				case 'publish':
 					return await handlePublish(appService, context, input, ctx);
+				case 'preview-page':
+					return await handlePreviewPage(appService, input);
 				case 'code-api':
 					return handleCodeApi(appService);
 			}

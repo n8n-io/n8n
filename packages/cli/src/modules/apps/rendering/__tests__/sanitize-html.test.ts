@@ -63,6 +63,16 @@ describe('sanitizeHtml', () => {
 });
 
 describe('sanitizeLayoutPreviewHtml', () => {
+	test('keeps the current-page marker of a menu link', () => {
+		expect(
+			sanitizeLayoutPreviewHtml(
+				"<nav class='app-nav'><ul><li><a href='/apps/a' aria-current='page'>Home</a></li></ul></nav>",
+			),
+		).toBe(
+			'<nav class="app-nav"><ul><li><a href="/apps/a" aria-current="page">Home</a></li></ul></nav>',
+		);
+	});
+
 	test('keeps form controls without anything that could submit or run them', () => {
 		expect(
 			sanitizeLayoutPreviewHtml(

@@ -81,6 +81,7 @@ erDiagram
   TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   datetime_3_ updatedAt
 }
 "project" {

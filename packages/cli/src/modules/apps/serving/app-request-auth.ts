@@ -1,18 +1,19 @@
-import type { AppVersionSnapshot } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { Request } from 'express';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppVersionRepository } from '../app-version.repository';
+import { PageRepository } from '../page.repository';
 import { AppTokenService, bearerToken, type AppAccessPayload } from './app-token.service';
+import { toDraftPages, type SnapshotPages } from './draft-pages';
 import { ViewerService, type Viewer } from './viewer.service';
 
 export type AuthorizedAppRequest = {
 	app: App;
 	viewer: Viewer | null;
 	payload: AppAccessPayload;
-	pages: AppVersionSnapshot['pages'];
+	pages: SnapshotPages;
 	components: string | null;
 };
 
@@ -22,6 +23,8 @@ export type RejectedAppRequest = { status: 401 | 404; error: string };
  * The credential check every endpoint a served page calls back to shares:
  * the access token in the `Authorization` header is the only credential, it
  * must belong to the App named in the URL, and an `n8n` App needs a viewer.
+ * A `draft` token (editor preview) resolves against the current Page rows,
+ * a `published` one against the active snapshot.
  */
 @Service()
 export class AppRequestAuth {
@@ -29,6 +32,7 @@ export class AppRequestAuth {
 		private readonly appTokenService: AppTokenService,
 		private readonly appRepository: AppRepository,
 		private readonly appVersionRepository: AppVersionRepository,
+		private readonly pageRepository: PageRepository,
 		private readonly viewerService: ViewerService,
 	) {}
 
@@ -45,6 +49,11 @@ export class AppRequestAuth {
 
 		const viewer = await this.viewerService.fromToken(payload);
 		if (app.auth === 'n8n' && !viewer) return { status: 401, error: 'Sign in required' };
+
+		if (payload.mode === 'draft') {
+			const pages = toDraftPages(await this.pageRepository.findManyByAppId(app.id));
+			return { app, viewer, payload, pages, components: app.components ?? null };
+		}
 
 		const version = app.activeVersionId
 			? await this.appVersionRepository.findSnapshot(app.activeVersionId)

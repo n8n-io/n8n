@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 import { appContentSchema, appLayoutSchema } from './app-content.schema';
-import { appComponentsSchema, appThemeSchema, pageRouteSchema } from './app.schema';
+import {
+	appComponentsSchema,
+	appThemeSchema,
+	pageRouteSchema,
+	pageTitleSchema,
+} from './app.schema';
 
 /** A published version: the whole page tree, theme and components, frozen at publish time. */
 export const appVersionSnapshotSchema = z.object({
@@ -9,6 +14,7 @@ export const appVersionSnapshotSchema = z.object({
 		z.object({
 			id: z.string().min(1),
 			route: pageRouteSchema,
+			title: pageTitleSchema.nullable().default(null),
 			parentPageId: z.string().nullable(),
 			content: appContentSchema.nullable(),
 			layout: appLayoutSchema.nullable().default(null),

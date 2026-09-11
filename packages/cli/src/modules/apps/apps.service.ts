@@ -5,8 +5,9 @@ import type {
 	UpdateAppDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
-import { appContentSchema, appLayoutSchema } from '@n8n/api-types';
+import { APP_LAYOUT_PRESETS, appContentSchema, appLayoutSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { z } from 'zod';
 
 import {
@@ -18,10 +19,12 @@ import {
 import { sanitizeLayoutPreviewHtml } from './rendering/sanitize-html';
 import type { InvalidPageContent } from './errors/app-content-invalid.error';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 
 import { AppRepository } from './app.repository';
 import { AppVersionRepository } from './app-version.repository';
+import { AppComponentsInvalidError } from './errors/app-components-invalid.error';
 import { AppContentInvalidError } from './errors/app-content-invalid.error';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppVersionNotFoundError } from './errors/app-version-not-found.error';
@@ -30,10 +33,11 @@ import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-le
 import { PageNotFoundError } from './errors/page-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { PageRepository } from './page.repository';
-import type { Page } from './page.entity';
+import { AppCodeRuntime } from './runtime/app-code-runtime';
+import { toDraftPages, type SnapshotPages } from './serving/draft-pages';
 import { appBasePath, pagePath } from './serving/page-menu';
 import { resolveLayout } from './serving/resolve-layout';
-import { isDynamicRoute } from './serving/resolve-page-path';
+import { isDynamicRoute, resolvePagePath, type PageNode } from './serving/resolve-page-path';
 
 /** A draft JSON column against its schema: `null` stays `null`, issues are prefixed with the field. */
 function parseDraftField<T>(
@@ -50,8 +54,11 @@ function parseDraftField<T>(
 	};
 }
 
-/** A draft page's layout as the renderer needs it; an invalid draft layout counts as none. */
-const draftLayout = (page: Page) => appLayoutSchema.safeParse(page.layout).data ?? null;
+function findLayoutPreset(id: string) {
+	const preset = APP_LAYOUT_PRESETS.find((candidate) => candidate.id === id);
+	if (!preset) throw new BadRequestError(`Unknown layout preset: ${id}`);
+	return preset;
+}
 
 @Service()
 export class AppsService {
@@ -60,10 +67,28 @@ export class AppsService {
 		private readonly pageRepository: PageRepository,
 		private readonly appVersionRepository: AppVersionRepository,
 		private readonly urlService: UrlService,
+		private readonly codeRuntime: AppCodeRuntime,
 	) {}
 
+	private async assertComponentsCompile(components: string) {
+		try {
+			await this.codeRuntime.compile(components);
+		} catch (error) {
+			throw new AppComponentsInvalidError(ensureError(error).message);
+		}
+	}
+
+	/** With a `layoutPreset`, the App starts with the preset's theme and an index page carrying its layout. */
 	async createApp(projectId: string, dto: CreateAppDto) {
-		return await this.appRepository.createApp(projectId, dto.name, dto.namespace);
+		const preset = dto.layoutPreset === undefined ? null : findLayoutPreset(dto.layoutPreset);
+		const app = await this.appRepository.createApp(
+			projectId,
+			dto.name,
+			dto.namespace,
+			preset?.theme ?? null,
+		);
+		if (preset) await this.pageRepository.createPage(app.id, null, '', null, preset.blocks);
+		return app;
 	}
 
 	async listApps(projectId: string) {
@@ -114,6 +139,7 @@ export class AppsService {
 			dto.route,
 			dto.content ?? null,
 			dto.layout ?? null,
+			dto.title ?? null,
 		);
 	}
 
@@ -176,12 +202,14 @@ export class AppsService {
 			snapshotPages.push({
 				id: page.id,
 				route: page.route,
+				title: page.title,
 				parentPageId: page.parentPageId,
 				content: content.data,
 				layout: layout.data,
 			});
 		}
 		if (invalidPages.length > 0) throw new AppContentInvalidError({ pages: invalidPages });
+		if (app.components !== null) await this.assertComponentsCompile(app.components);
 
 		const snapshot: AppVersionSnapshot = {
 			pages: snapshotPages,
@@ -212,7 +240,11 @@ export class AppsService {
 		await this.appRepository.setActiveVersionId(app, version.id);
 	}
 
-	/** Renders a draft page for the editor/AI preview; never touches the active version. */
+	/**
+	 * Renders a draft page for the editor/AI preview; never touches the active
+	 * version. `path` is the public path below the app root (`clients/42`); its
+	 * `:param` values fill in where `params` has none.
+	 */
 	async preview(
 		appId: string,
 		pageId: string,
@@ -248,8 +280,12 @@ export class AppsService {
 		params: Record<string, string>,
 	): Promise<PageToRender> {
 		const app = await this.getApp(appId);
-		const page = await this.getPage(appId, pageId);
-		const pages = await this.pageRepository.findManyByAppId(appId);
+		const pages = toDraftPages(await this.pageRepository.findManyByAppId(appId));
+		const page = pages.find((p) => p.id === pageId);
+		if (!page) throw new PageNotFoundError(pageId);
+
+		const fromPath = path ? resolvePagePath(pages, path.split('/').filter(Boolean)) : undefined;
+		const allParams = { ...(fromPath?.page.id === pageId ? fromPath.params : {}), ...params };
 
 		return {
 			app: {
@@ -258,24 +294,18 @@ export class AppsService {
 				namespace: app.namespace,
 				projectId: app.projectId,
 				theme: app.theme,
+				components: app.components,
 			},
 			page: {
 				id: page.id,
 				route: page.route,
-				content: appContentSchema.safeParse(page.content).data ?? null,
-				path: path ?? this.draftPagePath(app.namespace, page, pages, params),
+				title: page.title,
+				content: page.content,
+				path: this.draftPagePath(app.namespace, page, pages, allParams),
 			},
 			pages,
-			layout: resolveLayout(
-				pages.map((p) => ({
-					id: p.id,
-					route: p.route,
-					parentPageId: p.parentPageId,
-					layout: draftLayout(p),
-				})),
-				page.id,
-			),
-			params,
+			layout: resolveLayout(pages, page.id),
+			params: allParams,
 			query: {},
 			viewer: null,
 			baseUrl: this.urlService.getInstanceBaseUrl(),
@@ -286,14 +316,14 @@ export class AppsService {
 	/** The public path this draft page would have, filling `:param` segments from `params` where given. */
 	private draftPagePath(
 		namespace: string,
-		page: Page,
-		pages: Page[],
+		page: PageNode,
+		pages: SnapshotPages,
 		params: Record<string, string>,
 	): string {
 		const byId = new Map(pages.map((p) => [p.id, p]));
 		const segments: string[] = [];
 
-		let current: Page | undefined = page;
+		let current: PageNode | undefined = page;
 		while (current) {
 			const segment = isDynamicRoute(current.route)
 				? (params[current.route.slice(1)] ?? current.route)

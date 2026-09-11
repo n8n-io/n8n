@@ -6,7 +6,8 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useAppsStore } from '@/features/apps/apps.store';
-import { formatRouteSegment, getAncestorPages } from '@/features/apps/pageTree.utils';
+import type { Page } from '@/features/apps/apps.types';
+import { getAncestorPages, getPageLabel } from '@/features/apps/pageTree.utils';
 
 const props = defineProps<{
 	projectId: string;
@@ -20,9 +21,7 @@ const i18n = useI18n();
 const router = useRouter();
 const appsStore = useAppsStore();
 
-// No leading slash here: the breadcrumb's own separator between items
-// already renders one, so "route" wouldn't read "Apps / MyApp / /route".
-const routeLabel = (route: string) => formatRouteSegment(route, i18n.baseText('apps.page.index'));
+const pageLabel = (page: Page) => getPageLabel(page, i18n.baseText('apps.page.home'));
 
 const ancestorPages = computed(() =>
 	props.currentPageId ? getAncestorPages(appsStore.pages, props.currentPageId) : [],
@@ -45,7 +44,7 @@ const items = computed<PathItem[]>(() => {
 	for (const page of ancestorPages.value) {
 		result.push({
 			id: page.id,
-			label: routeLabel(page.route),
+			label: pageLabel(page),
 			href: `/projects/${props.projectId}/apps/${props.appId}/pages/${page.id}`,
 		});
 	}
@@ -53,7 +52,7 @@ const items = computed<PathItem[]>(() => {
 	if (props.currentPageId) {
 		const currentPage = appsStore.pages.find((page) => page.id === props.currentPageId);
 		if (currentPage) {
-			result.push({ id: currentPage.id, label: routeLabel(currentPage.route) });
+			result.push({ id: currentPage.id, label: pageLabel(currentPage) });
 		}
 	}
 

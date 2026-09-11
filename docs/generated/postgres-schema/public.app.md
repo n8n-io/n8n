@@ -76,6 +76,7 @@ erDiagram
   json layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

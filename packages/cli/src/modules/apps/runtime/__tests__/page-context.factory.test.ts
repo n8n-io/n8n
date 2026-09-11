@@ -215,7 +215,7 @@ describe('PageContextFactory', () => {
 			});
 		});
 
-		it('maps a waiting execution to the multi-step-forms error', async () => {
+		it('maps a waiting execution to a waiting result that names the execution', async () => {
 			const { factory, workflowLoader } = buildFactory();
 			const triggerNode = mock<INode>({
 				type: 'n8n-nodes-base.executeWorkflowTrigger',
@@ -228,9 +228,8 @@ describe('PageContextFactory', () => {
 
 			const ctx = factory.build(buildInput());
 			await expect(ctx.workflows.execute('wf-1')).resolves.toEqual({
-				status: 'error',
+				status: 'waiting',
 				executionId: 'exec-1',
-				error: expect.stringContaining('multi-step forms'),
 			});
 		});
 	});

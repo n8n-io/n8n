@@ -13,6 +13,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: null,
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,
@@ -26,6 +27,7 @@ const page = (id: string, route: string, parentPageId: string | null = null): Pa
 	appId: 'app1',
 	parentPageId,
 	route,
+	title: null,
 	content: [],
 	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -44,7 +46,7 @@ describe('AppPreview', () => {
 			page('clients', 'clients'),
 			page('client', ':id', 'clients'),
 		];
-		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {}, code: null });
 	});
 
 	afterEach(() => {
@@ -92,6 +94,7 @@ describe('AppPreview', () => {
 		appsStore.fetchPreview.mockResolvedValue({
 			html: '<html></html>',
 			errors: { menu: 'boom' },
+			code: null,
 		});
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: { projectId: 'p1', appId: 'app1', pageId: 'home', app },
@@ -102,7 +105,7 @@ describe('AppPreview', () => {
 		);
 		expect(getByTestId('app-preview-iframe')).toBeInTheDocument();
 
-		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {}, code: null });
 		await userEvent.click(getByTestId('app-preview-refresh'));
 
 		await waitFor(() => expect(queryByTestId('app-preview-render-errors')).toBeNull());

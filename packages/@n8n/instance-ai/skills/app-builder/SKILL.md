@@ -11,7 +11,8 @@ description: >-
   served by n8n through the apps tool — never written as files in the
   sandbox workspace. Not for n8n workflows, agents, or data tables on their
   own — build those first with their own skills, then wire them into a page
-  with this skill.
+  with this skill (a `form`/`button` for workflows, an `agent-chat` block
+  for agents).
 recommended_tools:
   - apps
   - data-tables
@@ -53,12 +54,17 @@ a block.
    `""`) is top-level only; a detail page under it uses a dynamic segment
    (route `:id`) sharing a name with what its blocks/code read from
    `ctx.params`.
-4. Write each page's blocks and call `apps(action="create-page")` /
-   `apps(action="set-content")`.
+4. Write each page's blocks and call `apps(action="create-page")` with a
+   `title` / `apps(action="set-content")`.
 5. If the result carries `issues`, fix the named block/path and resubmit —
    never guess at a second unrelated fix.
-6. `apps(action="publish")` once every page you touched is set.
-7. Report the app's URL from the result.
+6. `apps(action="preview-page", appId, pageId)` renders the draft without
+   publishing and returns `errors` (per block id) and `logs` (`ctx.log`
+   output of `code` blocks). Fix every error and call it again; publish only
+   when `errors` is empty. Pass `path: 'clients/42'` to render a dynamic page
+   with real values.
+7. `apps(action="publish")` once every page you touched is set.
+8. Report the app's URL from the result.
 
 Don't call `apps(action="publish")` for content you haven't set yet, and
 don't leave a page half-written across turns without telling the user what's
@@ -70,10 +76,13 @@ Every block is `{ id, type, data }`; see
 [references/block-catalog.md](references/block-catalog.md) for full fields,
 limits, and one example per type: `header`, `paragraph`, `list`, `image`,
 `divider` (layout/text), `table` (rows from a Data Table), `form` (fields of
-a workflow's Form Trigger), `button` (runs a workflow or a `code` block
-action), `html` (Handlebars over params/query/viewer, sanitized), `code`
-(TSX against `PageContext`; JSX output is escaped, a returned string is
-inserted as-is).
+a workflow's Form Trigger, plus every later **n8n Form** node page and the
+Form Ending — see [references/forms.md](references/forms.md)), `button`
+(runs a workflow or a `code` block action), `agent-chat` (a chat with a
+published agent of the project — see
+[references/agent-chat.md](references/agent-chat.md)), `html` (Handlebars
+over params/query/viewer, sanitized), `code` (TSX against `PageContext`; JSX
+output is escaped, a returned string is inserted as-is).
 
 Prefer the typed block that matches the job over `html`/`code` — `table` for
 a plain listing, `form` for a plain submission. Reach for `html` or `code`
@@ -94,8 +103,20 @@ only when a typed block can't express what's needed.
 ## Code rules
 
 - Call `apps(action="code-api")` before writing a `code` block and follow
-  the returned types exactly — `import`/`require` is not available inside
-  the isolate.
+  the returned types exactly. The only importable module is the App's own
+  components module: `import { Card } from 'app/components'`; nothing else
+  can be imported inside the isolate.
+- Shared markup goes into the App's **components module** (`update-app` →
+  `components`, TSX exporting function components); blocks import it from
+  `app/components`. A render error keyed `components` means the shared
+  module failed — fix the module, not the blocks. See
+  [references/components.md](references/components.md).
+- `ctx.workflows.submitForm`/`execute` return `{ status: 'waiting',
+  executionId }` when the run pauses (Form or Wait node); treat it as
+  recorded, not as an error.
+- Debug a `code` block with `ctx.log(...)` and read the lines back from
+  `apps(action="preview-page")` → `logs[blockId]`; logs never reach the
+  published page.
 - Write TSX. Return JSX from `render`: `<div class="p-md">{name}</div>`.
   JSX compiles to the built-in `h` / `Fragment`; do not import a library.
 - Export `render(ctx: PageContext)`, and `actions` (an object of named
@@ -134,23 +155,33 @@ content, in place of the built-in menu-and-card shell. A layout is a flat
 block list with exactly one `slot` block. The slot is where the page content
 goes. Every page below it inherits the layout until one of them sets its own.
 Set it with `apps(action="set-layout", appId, pageId, layout=[...])`; pass
-`layout: null` to inherit again. Render a menu from `ctx.menu` in a `code`
-block; turn the vertical stack into columns with `theme.customCss`. See
-[references/layouts.md](references/layouts.md) for the model, the menu
-example and the CSS hooks.
+`layout: null` to inherit again. Start from a preset: `layoutPreset` on
+`create` (default `top-nav`) gives the app its theme and an index page with
+the layout — fill the page with `set-content`. Render a menu from `ctx.menu`
+in a `code` block (`nav.app-nav`, current item `aria-current="page"`); a
+header, footer, hero or sidebar comes from the `app-*` vocabulary, columns
+beyond that from `theme.customCss`. See
+[references/layouts.md](references/layouts.md) for the presets, the model,
+the menu example and the CSS hooks.
 
 ## Styling
 
-Order of preference: `theme.colors` / `radius` / `fontFamily` first, then
-`theme.customCss` for anything the fields cannot express, then utility
-classes in `html` / `code` output for one block only. Set all of these with
+Order of preference: the `app-*` vocabulary first (`app-container`,
+`app-header`, `app-card`, `app-grid-2`, …), then the theme fields
+(`theme.colors` / `radius` / `fontFamily` / `contentWidth`), then
+`theme.customCss` for anything those cannot express, then utility classes in
+`html` / `code` output for one block only. Set the theme with
 `apps(action="update-app", appId, theme={...})`. Only the utility classes
-that the server templates use exist on a served page — see
-[references/styling.md](references/styling.md) for the list, the page
-anatomy, the theme variables and two examples.
+that the server templates use exist on a served page — do not invent
+Tailwind classes. See [references/styling.md](references/styling.md) for the
+vocabulary, the page recipes, the page anatomy, the theme variables and the
+utility list.
 
 ## Route rules
 
+- Give every page a `title` (`Clients`): the menu and the browser tab show
+  it. The route stays a URL segment (`clients`). Without a title the page
+  is named after its route.
 - Only a top-level page can have an empty route (`""`, the index page of
   its level). A sub-page needs a real segment.
 - A dynamic segment (`:id`, `:slug`) must be read back under the exact same

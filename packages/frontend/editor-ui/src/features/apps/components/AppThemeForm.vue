@@ -39,6 +39,7 @@ const form = reactive({
 	muted: '',
 	radius: '' as '' | AppTheme['radius'],
 	fontFamily: '',
+	contentWidth: '',
 	customCss: '',
 });
 
@@ -52,6 +53,7 @@ function loadFromTheme(theme: AppTheme | null) {
 	form.muted = theme?.colors?.muted ?? '';
 	form.radius = theme?.radius ?? '';
 	form.fontFamily = theme?.fontFamily ?? '';
+	form.contentWidth = theme?.contentWidth ?? '';
 	form.customCss = theme?.customCss ?? '';
 }
 
@@ -70,6 +72,7 @@ const onSave = async () => {
 		...(Object.keys(colors).length > 0 ? { colors } : {}),
 		...(form.radius ? { radius: form.radius } : {}),
 		...(form.fontFamily ? { fontFamily: form.fontFamily } : {}),
+		...(form.contentWidth ? { contentWidth: form.contentWidth } : {}),
 		...(form.customCss ? { customCss: form.customCss } : {}),
 	};
 	try {
@@ -135,6 +138,17 @@ const onSave = async () => {
 					v-model="form.fontFamily"
 					name="theme-font-family"
 					data-test-id="app-theme-font-family"
+				/>
+			</N8nInputLabel>
+			<N8nInputLabel
+				:label="i18n.baseText('apps.theme.contentWidth')"
+				input-name="theme-content-width"
+			>
+				<N8nInput
+					v-model="form.contentWidth"
+					name="theme-content-width"
+					:placeholder="i18n.baseText('apps.theme.contentWidth.placeholder')"
+					data-test-id="app-theme-content-width"
 				/>
 			</N8nInputLabel>
 		</div>

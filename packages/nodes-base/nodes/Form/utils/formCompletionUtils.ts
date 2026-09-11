@@ -20,6 +20,7 @@ import {
 	sanitizeCustomCss,
 	sanitizeHtml,
 	validateSafeRedirectUrl,
+	wantsFormJson,
 } from './utils';
 
 type BinaryResponse = { data: string | Buffer; fileName: string; type: string };
@@ -120,6 +121,18 @@ export const renderFormCompletion = async (
 		(context.evaluateExpression(
 			`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 		) as boolean);
+
+	if (respondWith !== 'returnBinary' && wantsFormJson(context.getRequestObject())) {
+		res.json({
+			kind: 'completion',
+			title: completionTitle,
+			message: completionMessage,
+			formTitle: title,
+			redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
+			responseText,
+		});
+		return { noWebhookResponse: true };
+	}
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());

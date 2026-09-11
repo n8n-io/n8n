@@ -1,19 +1,33 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
+import { useTemplateRef } from 'vue';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		/** Preview HTML from `appsStore.fetchPreview`. `null` renders the empty state. */
 		html: string | null;
+		/** One-time code from the same fetch; posted to the iframe once it has loaded. */
+		code?: string | null;
 		/** CSS width of the document; a fixed px value mimics a phone. */
 		width?: string;
 		loading?: boolean;
 	}>(),
-	{ width: '100%', loading: false },
+	{ code: null, width: '100%', loading: false },
 );
 
 const i18n = useI18n();
+const iframe = useTemplateRef<HTMLIFrameElement>('iframe');
+
+/**
+ * The code travels by message, never in the HTML or a URL. The sandboxed
+ * `srcdoc` document has an opaque origin, so `'*'` is the only target that
+ * matches — and the message still reaches that one window only.
+ */
+const postCode = () => {
+	if (!props.code) return;
+	iframe.value?.contentWindow?.postMessage({ type: 'n8n-app-code', code: props.code }, '*');
+};
 </script>
 
 <template>
@@ -29,6 +43,7 @@ const i18n = useI18n();
 		-->
 		<iframe
 			v-else
+			ref="iframe"
 			:key="html ?? 'loading'"
 			:srcdoc="html ?? ''"
 			sandbox="allow-scripts allow-forms allow-popups"
@@ -37,6 +52,7 @@ const i18n = useI18n();
 			:class="$style.iframe"
 			:style="{ width }"
 			data-test-id="app-preview-iframe"
+			@load="postCode"
 		/>
 	</div>
 </template>

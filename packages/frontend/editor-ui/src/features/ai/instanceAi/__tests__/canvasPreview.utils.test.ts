@@ -1468,18 +1468,21 @@ describe('isAgentEditingApp', () => {
 		expect(isAgentEditingApp(node, 'app-1')).toBe(false);
 	});
 
-	test('does not lock for a read-only action (list/get/code-api)', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'apps',
-					isLoading: true,
-					args: { action: 'get', appId: 'app-1' },
-				}),
-			],
-		});
-		expect(isAgentEditingApp(node, 'app-1')).toBe(false);
-	});
+	test.each(['list', 'get', 'code-api', 'preview-page'])(
+		'does not lock for the read-only action %s',
+		(action) => {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolName: 'apps',
+						isLoading: true,
+						args: { action, appId: 'app-1' },
+					}),
+				],
+			});
+			expect(isAgentEditingApp(node, 'app-1')).toBe(false);
+		},
+	);
 
 	test('does not lock when the in-flight call targets a different app id', () => {
 		const node = makeAgentNode({

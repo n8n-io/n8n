@@ -11,8 +11,13 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import LayoutPanel from '@/features/apps/components/LayoutPanel.vue';
 import PageContentEditor from '@/features/apps/components/PageContentEditor.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
-import type { App, LayoutPreview } from '@/features/apps/apps.types';
-import { findPageIdByPath, flattenPageTree, getPageOptions } from '@/features/apps/pageTree.utils';
+import type { App, LayoutPreview, Page } from '@/features/apps/apps.types';
+import {
+	findPageIdByPath,
+	flattenPageTree,
+	getPageLabel,
+	getPageOptions,
+} from '@/features/apps/pageTree.utils';
 
 const props = defineProps<{
 	projectId: string;
@@ -50,7 +55,7 @@ const slotEl = ref<HTMLElement | null>(null);
 const page = computed(() => appsStore.pages.find((p) => p.id === props.pageId));
 const menuRows = computed(() => flattenPageTree(appsStore.pages));
 const pageOptions = computed(() =>
-	getPageOptions(appsStore.pages, i18n.baseText('apps.page.index')),
+	getPageOptions(appsStore.pages, i18n.baseText('apps.page.home')),
 );
 
 // Same custom properties the server puts on :root; the stylesheet falls back to the design tokens.
@@ -64,15 +69,18 @@ const themeStyle = computed(() => {
 		'--app-color-muted': theme?.colors?.muted,
 		'--app-radius': theme?.radius ? RADIUS[theme.radius] : undefined,
 		'--app-font-family': theme?.fontFamily,
+		'--app-content-width': theme?.contentWidth,
 	};
 });
 
-const scopedCss = computed(() => {
-	const css = props.app.theme?.customCss;
-	return css ? `@scope ([data-app-canvas]) { ${css} }` : '';
-});
+// Both stylesheets reach the canvas only: `:root`/`body` rules inside the scope match nothing,
+// the tokens come from the editor and the `--app-*` variables from `themeStyle`.
+const scoped = (css: string | null | undefined) =>
+	css ? `@scope ([data-app-canvas]) { ${css} }` : '';
+const servedCss = computed(() => scoped(appsStore.servedCss));
+const scopedCss = computed(() => scoped(props.app.theme?.customCss));
 
-const menuLabel = (route: string) => route || i18n.baseText('apps.page.home');
+const menuLabel = (menuPage: Page) => getPageLabel(menuPage, i18n.baseText('apps.page.home'));
 
 const save = async () => {
 	const pending = dirty.value;
@@ -144,6 +152,15 @@ watch(
 	{ immediate: true },
 );
 onBeforeUnmount(save);
+
+const loadServedCss = async () => {
+	try {
+		await appsStore.fetchServedCss();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.preview.error'));
+	}
+};
+void loadServedCss();
 </script>
 
 <template>
@@ -188,58 +205,65 @@ onBeforeUnmount(save);
 		<div :class="$style.body">
 			<div
 				ref="canvasRef"
-				:class="[$style.canvas, 'app-canvas']"
+				:class="$style.canvas"
 				:style="themeStyle"
 				data-app-canvas
 				data-test-id="page-editor-canvas"
 			>
+				<component :is="'style'" v-if="servedCss" data-test-id="page-editor-served-css">
+					{{ servedCss }}
+				</component>
 				<component :is="'style'" v-if="scopedCss" data-test-id="page-editor-custom-css">
 					{{ scopedCss }}
 				</component>
-				<!-- eslint-disable vue/no-v-html -- sanitized on the server -->
-				<div
-					v-if="layoutPreview?.html"
-					data-test-id="page-editor-layout"
-					@click="onLayoutClick"
-					v-html="layoutPreview.html"
-				/>
-				<!-- eslint-enable vue/no-v-html -->
-				<div v-else :class="[$style.shell, 'app-shell']">
-					<nav :class="[$style.menu, 'app-menu']" data-test-id="page-editor-menu">
-						<span :class="$style.appName">{{ app.name }}</span>
-						<ul :class="$style.menuList">
-							<li
-								v-for="{ page: menuPage, depth } in menuRows"
-								:key="menuPage.id"
-								:style="{ paddingLeft: `calc(${depth} * var(--spacing--sm))` }"
-							>
-								<span v-if="menuPage.id === pageId" :class="$style.menuCurrent">
-									{{ menuLabel(menuPage.route) }}
-								</span>
-								<a
-									v-else
-									href="#"
-									:class="$style.menuLink"
-									data-test-id="page-editor-menu-link"
-									@click.prevent="emit('update:pageId', menuPage.id)"
-								>
-									{{ menuLabel(menuPage.route) }}
-								</a>
-							</li>
-						</ul>
-					</nav>
-					<main :class="[$style.main, 'app-main']" data-app-slot />
-				</div>
-				<Teleport :to="slotEl" :disabled="!slotEl">
-					<PageContentEditor
-						v-if="page"
-						:key="pageId"
-						:content="page.content ?? []"
-						:project-id="projectId"
-						data-test-id="page-content-editor"
-						@update:content="onContentChange"
+				<div :class="$style.page" class="app-canvas app-text">
+					<!-- eslint-disable vue/no-v-html -- sanitized on the server -->
+					<div
+						v-if="layoutPreview?.html"
+						data-test-id="page-editor-layout"
+						@click="onLayoutClick"
+						v-html="layoutPreview.html"
 					/>
-				</Teleport>
+					<!-- eslint-enable vue/no-v-html -->
+					<div v-else class="app-shell">
+						<nav class="app-menu" data-test-id="page-editor-menu">
+							<span class="block text-xs font-semibold app-muted uppercase mb-sm">{{
+								app.name
+							}}</span>
+							<ul class="list-none pl-sm text-sm">
+								<li
+									v-for="{ page: menuPage, depth } in menuRows"
+									:key="menuPage.id"
+									:style="{ paddingLeft: `calc(${depth} * var(--spacing--sm))` }"
+								>
+									<span v-if="menuPage.id === pageId" class="font-semibold app-text">
+										{{ menuLabel(menuPage) }}
+									</span>
+									<a
+										v-else
+										href="#"
+										class="app-link no-underline hover:underline"
+										data-test-id="page-editor-menu-link"
+										@click.prevent="emit('update:pageId', menuPage.id)"
+									>
+										{{ menuLabel(menuPage) }}
+									</a>
+								</li>
+							</ul>
+						</nav>
+						<main class="app-main" data-app-slot />
+					</div>
+					<Teleport :to="slotEl" :disabled="!slotEl">
+						<PageContentEditor
+							v-if="page"
+							:key="pageId"
+							:content="page.content ?? []"
+							:project-id="projectId"
+							data-test-id="page-content-editor"
+							@update:content="onContentChange"
+						/>
+					</Teleport>
+				</div>
 			</div>
 			<LayoutPanel
 				v-if="layoutPanelOpen && page"
@@ -288,83 +312,16 @@ onBeforeUnmount(save);
 	min-height: 0;
 }
 
-// Mirrors the served shell in packages/cli/src/modules/apps/rendering/styles/app.css.
+// The scope root itself is matched by `:scope` only, so the served `.app-canvas`
+// and `.app-text` rules land on this inner element, as on the served `<body>`.
 .canvas {
+	display: flex;
+	flex-direction: column;
 	flex: 1;
 	overflow: auto;
-	background: var(--app-color-background, var(--background--subtle));
-	color: var(--app-color-text, var(--text-color));
-	font-family: var(--app-font-family, var(--font-family));
-
-	:global(.app-menu),
-	:global(.app-main) {
-		background: var(--app-color-surface, var(--background--surface));
-		border-radius: var(--app-radius, var(--radius--md));
-		border: 1px solid var(--border-color);
-	}
-
-	:global(.app-layout) {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing--md);
-		padding: var(--spacing--xl);
-	}
-
-	:global(.app-main) {
-		padding: var(--spacing--xl);
-	}
 }
 
-.shell {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xl);
-	max-width: 64rem;
-	margin: 0 auto;
-	padding: var(--spacing--xl);
-}
-
-.menu {
-	flex: none;
-	width: 14rem;
-	padding: var(--spacing--md);
-}
-
-.appName {
-	display: block;
-	margin-bottom: var(--spacing--sm);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	text-transform: uppercase;
-	color: var(--app-color-muted, var(--text-color--subtle));
-}
-
-.menuList {
-	list-style: none;
-	margin: 0;
-	padding: 0 0 0 var(--spacing--sm);
-	font-size: var(--font-size--sm);
-
-	li {
-		padding: var(--spacing--2xs) 0;
-	}
-}
-
-.menuCurrent {
-	font-weight: var(--font-weight--bold);
-}
-
-.menuLink {
-	color: var(--app-color-primary, var(--color--primary));
-	text-decoration: none;
-
-	&:hover {
-		text-decoration: underline;
-	}
-}
-
-.main {
+.page {
 	flex: 1;
-	min-width: 0;
 }
 </style>

@@ -1,12 +1,14 @@
 import type { AppBlock, AppVersionSnapshot } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import nock from 'nock';
 
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
 import { PageRepository } from '@/modules/apps/page.repository';
-import { AppTokenService } from '@/modules/apps/serving/app-token.service';
+import { AppTokenService, type AppSessionRecord } from '@/modules/apps/serving/app-token.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createOwner } from '@test-integration/db/users';
@@ -67,6 +69,12 @@ async function createTableWithBlock(flags: { editable?: boolean; deletable?: boo
 	return { block, listRows };
 }
 
+const issueBearer = async (record: AppSessionRecord) => {
+	const pair = await appTokenService.exchangeCode(await appTokenService.issueCode(record));
+	if (!pair) throw new Error('Code exchange failed');
+	return `Bearer ${pair.accessToken}`;
+};
+
 /** Creates a published App with one page holding `blocks`, and an anonymous access token for it. */
 async function publishAppWithBlocks(blocks: AppBlock[], namespace = 'acme') {
 	const app = await appRepository.createApp(ownerProject.id, 'Acme Portal', namespace);
@@ -74,19 +82,24 @@ async function publishAppWithBlocks(blocks: AppBlock[], namespace = 'acme') {
 	await pageRepository.updatePage(page, { content: blocks });
 
 	const snapshot: AppVersionSnapshot = {
-		pages: [{ id: page.id, route: page.route, parentPageId: null, content: blocks, layout: null }],
+		pages: [
+			{
+				id: page.id,
+				route: page.route,
+				title: null,
+				parentPageId: null,
+				content: blocks,
+				layout: null,
+			},
+		],
 		theme: null,
 		components: null,
 	};
 	const version = await appVersionRepository.createFromSnapshot(app.id, snapshot, owner.id);
 	await appRepository.setActiveVersionId(app, version.id);
 
-	const pair = await appTokenService.exchangeCode(
-		await appTokenService.issueCode({ appId: app.id, viewerId: null, sessionToken: null }),
-	);
-	if (!pair) throw new Error('Code exchange failed');
-
-	return { app, page, bearer: `Bearer ${pair.accessToken}` };
+	const bearer = await issueBearer({ appId: app.id, viewerId: null, sessionToken: null });
+	return { app, page, bearer };
 }
 
 const actionUrl = (namespace: string, pageId: string, blockId: string, name: string) =>
@@ -145,9 +158,23 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 		);
 		const snapshot: AppVersionSnapshot = {
 			pages: [
-				{ id: page.id, route: '', parentPageId: null, content: [], layout: null },
-				{ id: clients.id, route: 'clients', parentPageId: null, content: [], layout: null },
-				{ id: client.id, route: ':id', parentPageId: clients.id, content: [block], layout: null },
+				{ id: page.id, route: '', title: null, parentPageId: null, content: [], layout: null },
+				{
+					id: clients.id,
+					route: 'clients',
+					title: null,
+					parentPageId: null,
+					content: [],
+					layout: null,
+				},
+				{
+					id: client.id,
+					route: ':id',
+					title: null,
+					parentPageId: clients.id,
+					content: [block],
+					layout: null,
+				},
 			],
 			theme: null,
 			components: null,
@@ -288,8 +315,15 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 		const child = await pageRepository.createPage(app.id, page.id, 'child');
 		const snapshot: AppVersionSnapshot = {
 			pages: [
-				{ id: page.id, route: page.route, parentPageId: null, content: [], layout },
-				{ id: child.id, route: 'child', parentPageId: page.id, content: null, layout: null },
+				{ id: page.id, route: page.route, title: null, parentPageId: null, content: [], layout },
+				{
+					id: child.id,
+					route: 'child',
+					title: null,
+					parentPageId: page.id,
+					content: null,
+					layout: null,
+				},
 			],
 			theme: null,
 			components: null,
@@ -307,6 +341,37 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 		expect(response.body.data.url).toMatch(
 			new RegExp(`${actionUrl('acme', page.id, 'layout-code', 'go')}\\?_path=`),
 		);
+	});
+
+	test('runs a draft-only action with a draft token, as the editor user; a published token 404s', async () => {
+		const { app, page, bearer: publishedBearer } = await publishAppWithBlocks([]);
+		await pageRepository.updatePage(page, {
+			content: [
+				codeBlock(
+					'draft-only',
+					"export function render() { return ''; } export const actions = { who: (ctx) => ({ data: { viewer: ctx.viewer } }) };",
+				),
+			],
+		});
+		const draftBearer = await issueBearer({
+			appId: app.id,
+			viewerId: owner.id,
+			sessionToken: null,
+			mode: 'draft',
+		});
+
+		const response = await visitor
+			.post(actionUrl('acme', page.id, 'draft-only', 'who'))
+			.set('Authorization', draftBearer)
+			.send({})
+			.expect(200);
+		expect(response.body.data.viewer).toEqual({ id: owner.id, email: owner.email });
+
+		await visitor
+			.post(actionUrl('acme', page.id, 'draft-only', 'who'))
+			.set('Authorization', publishedBearer)
+			.send({})
+			.expect(404);
 	});
 
 	test('answers 404 for a block that does not exist on the page', async () => {
@@ -390,11 +455,19 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 		const ownerPage = await pageRepository.createPage(app.id, owners.id, ':owner');
 		const snapshot: AppVersionSnapshot = {
 			pages: [
-				{ id: page.id, route: '', parentPageId: null, content: [], layout: null },
-				{ id: owners.id, route: 'owners', parentPageId: null, content: [], layout: null },
+				{ id: page.id, route: '', title: null, parentPageId: null, content: [], layout: null },
+				{
+					id: owners.id,
+					route: 'owners',
+					title: null,
+					parentPageId: null,
+					content: [],
+					layout: null,
+				},
 				{
 					id: ownerPage.id,
 					route: ':owner',
+					title: null,
 					parentPageId: owners.id,
 					content: [block],
 					layout: null,
@@ -442,5 +515,107 @@ describe('POST /apps/:namespace/_actions/:pageId/:blockId/:name', () => {
 
 		expect(response.body).toEqual({ error: 'Action not found' });
 		expect(await listRows()).toHaveLength(1);
+	});
+
+	describe('later pages of a multi-page form', () => {
+		const formBlock: AppBlock = { id: 'signup', type: 'form', data: { workflowId: 'wf-1' } };
+		const STEP_PATH = '/form-waiting/exec-1';
+		const SIGNATURE = { signature: 'tok-1' };
+		let loopback: string;
+
+		beforeAll(() => {
+			loopback = `http://127.0.0.1:${Container.get(GlobalConfig).port}`;
+		});
+
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		const submitStep = (pageId: string, bearer: string) =>
+			visitor
+				.post(actionUrl('acme', pageId, 'signup', 'submit'))
+				.set('Authorization', bearer)
+				.field('_exec', 'exec-1')
+				.field('_sig', 'tok-1')
+				.field('field-0', 'Acme')
+				.field('field-1[]', 'Red')
+				.field('other', 'ignored');
+
+		test('posts the step fields to the waiting run over loopback and redirects to the step query', async () => {
+			const { page, bearer } = await publishAppWithBlocks([formBlock]);
+			let posted = '';
+			nock(loopback)
+				.post(STEP_PATH, (body: string) => {
+					posted = body;
+					return true;
+				})
+				.query(SIGNATURE)
+				.reply(200, { formWaitingUrl: `${loopback}${STEP_PATH}` });
+			nock(loopback)
+				.get(`${STEP_PATH}/n8n-execution-status`)
+				.query(SIGNATURE)
+				.reply(200, 'form-waiting');
+			nock(loopback)
+				.get(STEP_PATH)
+				.query(SIGNATURE)
+				.reply(
+					200,
+					{ kind: 'page', formTitle: 'Step 3', formFields: [] },
+					{ 'content-type': 'application/json' },
+				);
+
+			await submitStep(page.id, bearer)
+				.expect(303)
+				.expect('Location', '/apps/acme?_form=signup&_exec=exec-1&_sig=tok-1');
+
+			expect(posted).toContain('name="field-0"');
+			expect(posted).toContain('Acme');
+			expect(posted).toContain('["Red"]');
+			expect(posted).not.toContain('other');
+			expect(posted).not.toContain('_sig');
+			expect(nock.isDone()).toBe(true);
+		});
+
+		test('redirects to the success state when the run ends without a completion page', async () => {
+			const { page, bearer } = await publishAppWithBlocks([formBlock]);
+			nock(loopback).post(STEP_PATH).query(SIGNATURE).reply(200);
+			nock(loopback)
+				.get(`${STEP_PATH}/n8n-execution-status`)
+				.query(SIGNATURE)
+				.reply(200, 'success');
+			nock(loopback)
+				.get(STEP_PATH)
+				.query(SIGNATURE)
+				.reply(200, '<html>Form Submitted</html>', { 'content-type': 'text/html' });
+
+			await submitStep(page.id, bearer)
+				.expect(303)
+				.expect('Location', '/apps/acme?_form=signup&_status=ok');
+		});
+
+		test('answers 400 when the waiting run refuses the step reference', async () => {
+			const { page, bearer } = await publishAppWithBlocks([formBlock]);
+			nock(loopback).post(STEP_PATH).query(SIGNATURE).reply(401, '<html>invalid</html>');
+
+			const response = await submitStep(page.id, bearer).expect(400);
+			expect(response.body).toEqual({ error: 'This form link is not valid' });
+		});
+
+		test('keeps _exec and _sig out of a code action input', async () => {
+			const { page, bearer } = await publishAppWithBlocks([
+				codeBlock(
+					'block-1',
+					"export function render() { return ''; } export const actions = { echo: (ctx) => ({ data: ctx.input }) };",
+				),
+			]);
+
+			const response = await visitor
+				.post(actionUrl('acme', page.id, 'block-1', 'echo'))
+				.set('Authorization', bearer)
+				.send({ _exec: 'exec-1', _sig: 'tok-1', name: 'Ada' })
+				.expect(200);
+
+			expect(response.body).toEqual({ data: { name: 'Ada' } });
+		});
 	});
 });

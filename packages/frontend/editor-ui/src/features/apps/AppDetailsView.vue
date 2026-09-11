@@ -18,6 +18,7 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import AppBasicsForm from '@/features/apps/components/AppBasicsForm.vue';
 import AppPreview from '@/features/apps/components/AppPreview.vue';
+import AppComponentsForm from '@/features/apps/components/AppComponentsForm.vue';
 import AppThemeForm from '@/features/apps/components/AppThemeForm.vue';
 import PageEditor from '@/features/apps/components/PageEditor.vue';
 import PageTree from '@/features/apps/components/PageTree.vue';
@@ -29,7 +30,7 @@ import type { App, AppVersionSummary } from '@/features/apps/apps.types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 type BuilderMode = 'settings' | 'edit' | 'preview';
-type SettingsTab = 'build' | 'pages' | 'theme';
+type SettingsTab = 'build' | 'pages' | 'theme' | 'components';
 
 const OPEN_APP = 'open';
 const DELETE_APP = 'delete';
@@ -88,6 +89,7 @@ const settingsTabOptions = computed(() => [
 	{ value: 'build' as const, label: i18n.baseText('apps.builder.build') },
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
+	{ value: 'components' as const, label: i18n.baseText('apps.builder.components') },
 ]);
 
 const publishMenuItems = computed<Array<ActionDropdownItem<string>>>(() => [
@@ -417,11 +419,18 @@ watch(
 						@open="openPageInEditor"
 					/>
 					<AppThemeForm
-						v-else
+						v-else-if="settingsTab === 'theme'"
 						:project-id="projectId"
 						:app-id="appId"
 						:theme="app.theme"
 						@saved="onThemeSaved"
+					/>
+					<AppComponentsForm
+						v-else
+						:project-id="projectId"
+						:app-id="appId"
+						:components="app.components"
+						@saved="onAppSaved"
 					/>
 				</div>
 			</template>

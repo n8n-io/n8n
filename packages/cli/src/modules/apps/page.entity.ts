@@ -12,6 +12,10 @@ export class Page extends WithTimestampsAndStringId {
 	@Column()
 	route: string;
 
+	/** Shown in the menu and the browser tab; `null` falls back to the route. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	title: string | null;
+
 	@Column({ type: 'json', nullable: true })
 	content: unknown[] | null;
 

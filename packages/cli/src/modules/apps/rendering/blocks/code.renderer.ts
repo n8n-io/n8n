@@ -35,9 +35,9 @@ export const codeBlockRenderer: BlockRenderer<'code'> = {
 			logs,
 		});
 
-		// `BlockRenderer.render()` returns HTML only, so a preview log line rides
-		// along as a comment rather than a second return channel.
 		if (!ctx.preview) return html;
+		if (ctx.logs) ctx.logs[block.id] = logs;
+		// The trailing comment keeps the log readable in the preview iframe's source.
 		const escaped = logs.join('\n').replace(/--/g, '—');
 		return `${html}\n<!-- ctx.log:\n${escaped}\n-->`;
 	},

@@ -12,7 +12,7 @@ import { applyCors } from '@/utils/cors.util';
 
 import { AppRepository } from '../app.repository';
 import { AppServingService } from './app-serving.service';
-import { AppTokenService } from './app-token.service';
+import { AppTokenService, bearerToken } from './app-token.service';
 import { renderAppPageNotFound, renderAppPageUnpublished } from './render-page';
 import { ViewerService } from './viewer.service';
 
@@ -83,6 +83,12 @@ export class AppServingController {
 		res.type('js').send(await readStaticFile('app.js'));
 	}
 
+	@Get('/_static/app-chat.js', { skipAuth: true })
+	async serveChatScript(_req: Request, res: Response) {
+		res.setHeader('Cache-Control', 'public, max-age=86400');
+		res.type('js').send(await readStaticFile('app-chat.js'));
+	}
+
 	// `usesTemplates` because these handlers write the response themselves; the
 	// registry's default handler would send a second time.
 	@Options('/:namespace{/*path}', { skipAuth: true, usesTemplates: true })
@@ -112,8 +118,17 @@ export class AppServingController {
 			: await this.appTokenService.refresh(request.refreshToken);
 	}
 
+	/** A `draft` access token of this App (editor preview) asks for the current Page rows. */
+	private isDraftRequest(req: Request, appId: string): boolean {
+		const token = bearerToken(req);
+		const payload = token === undefined ? null : this.appTokenService.verifyAccess(token);
+		return payload?.appId === appId && payload.mode === 'draft';
+	}
+
 	/**
-	 * Serves a page of an App's active version.
+	 * Serves a page of an App's active version, or of its draft for a `draft`
+	 * token (so the in-place redirect after an action in the editor preview
+	 * lands on draft content).
 	 *
 	 * `skipAuth` because the auth middleware would clear the visitor's editor
 	 * session cookie: a top-level navigation cannot send the `browser-id`
@@ -150,13 +165,18 @@ export class AppServingController {
 		}
 
 		const segments = pathSegments(req.params.path);
-		const resolution = await this.appServingService.resolvePublished(app, segments);
+		const draft = this.isDraftRequest(req, app.id);
+		const resolution = draft
+			? await this.appServingService.resolveDraft(app, segments)
+			: await this.appServingService.resolvePublished(app, segments);
 		if (!resolution) {
 			res
 				.status(404)
 				.type('html')
 				.send(
-					app.activeVersionId ? await renderAppPageNotFound() : await renderAppPageUnpublished(),
+					draft || app.activeVersionId
+						? await renderAppPageNotFound()
+						: await renderAppPageUnpublished(),
 				);
 			return;
 		}

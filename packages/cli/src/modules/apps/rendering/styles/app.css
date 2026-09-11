@@ -20,8 +20,10 @@
 @import 'tailwindcss/utilities' layer(utilities);
 @import './app-chat.css';
 
-/* Scanned for utility classes; table/form/button partials belong to another workstream. */
+/* Scanned for utility classes: the page shell, the layout and menu partials, and every block partial. */
 @source '../../../../../templates/app-page.handlebars';
+@source '../../../../../templates/partials/app-layout.handlebars';
+@source '../../../../../templates/partials/app-page-menu.handlebars';
 @source '../../../../../templates/partials/app-block-*.handlebars';
 
 @theme inline reference {
@@ -228,17 +230,188 @@
 	padding: var(--spacing--xl);
 }
 
-.app-layout {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-	padding: var(--spacing--xl);
-}
-
 .app-notice {
 	background: var(--app-color-surface, var(--background--surface));
 	border: 1px solid var(--border-color--danger);
 	border-radius: var(--app-radius);
 	padding: var(--spacing--md);
 	margin-bottom: var(--spacing--md);
+}
+
+/*
+ * Layout vocabulary. A page layout is a flat list of blocks around one slot
+ * (`.app-layout > .app-block | .app-main`), so these classes give layout blocks
+ * a full-width header, footer, sidebar and hero without custom CSS. The two
+ * `:has()` rules exist because a block cannot style its own wrapper: the
+ * wrapper of a header is what sticks, and the layout that holds a sidebar is
+ * what becomes two columns.
+ */
+.app-layout {
+	display: flex;
+	flex-direction: column;
+}
+
+.app-block {
+	min-width: 0;
+}
+
+.app-block:has(> .app-header) {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+
+.app-layout > .app-main {
+	width: calc(100% - 2 * var(--spacing--xl));
+	max-width: calc(var(--app-content-width, 72rem) - 2 * var(--spacing--xl));
+	margin: var(--spacing--xl) auto;
+}
+
+.app-container {
+	width: 100%;
+	max-width: var(--app-content-width, 72rem);
+	margin: 0 auto;
+	padding: 0 var(--spacing--xl);
+}
+
+.app-header {
+	background: var(--app-color-surface, var(--background--surface));
+	border-bottom: 1px solid var(--border-color);
+}
+
+.app-header > .app-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+	min-height: 3.5rem;
+}
+
+.app-footer {
+	border-top: 1px solid var(--border-color);
+	padding: var(--spacing--lg) 0;
+	color: var(--app-color-muted, var(--text-color--subtle));
+	font-size: var(--font-size--sm);
+}
+
+.app-logo {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	color: inherit;
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+	text-decoration: none;
+}
+
+.app-logo img {
+	height: 2rem;
+}
+
+.app-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--md);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.app-nav a {
+	color: var(--app-color-muted, var(--text-color--subtle));
+	text-decoration: none;
+}
+
+.app-nav a:hover,
+.app-nav a[aria-current='page'] {
+	color: var(--app-color-primary, var(--color--primary));
+}
+
+.app-nav a[aria-current='page'] {
+	font-weight: var(--font-weight--bold);
+}
+
+.app-sidebar {
+	padding: var(--spacing--xl);
+}
+
+.app-sidebar .app-nav ul {
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.app-sidebar .app-nav ul ul {
+	padding-left: var(--spacing--sm);
+	padding-top: var(--spacing--xs);
+}
+
+@media (min-width: 48rem) {
+	.app-layout:has(> .app-block > .app-sidebar) {
+		display: grid;
+		grid-template-columns: 14rem minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-block {
+		grid-column: 1 / -1;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-block:has(> .app-sidebar) {
+		grid-column: 1;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-main {
+		grid-column: 2;
+	}
+}
+
+.app-hero {
+	padding: var(--spacing--3xl) var(--spacing--xl);
+	text-align: center;
+}
+
+.app-hero h1 {
+	margin: 0 0 var(--spacing--md);
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+}
+
+.app-hero p {
+	max-width: 40rem;
+	margin: 0 auto var(--spacing--md);
+	color: var(--app-color-muted, var(--text-color--subtle));
+	font-size: var(--font-size--lg);
+}
+
+.app-hero .app-nav ul {
+	justify-content: center;
+}
+
+.app-card {
+	background: var(--app-color-surface, var(--background--surface));
+	border: 1px solid var(--border-color);
+	border-radius: var(--app-radius);
+	padding: var(--spacing--lg);
+}
+
+.app-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.app-grid-2,
+.app-grid-3 {
+	display: grid;
+	gap: var(--spacing--lg);
+}
+
+@media (min-width: 40rem) {
+	.app-grid-2 {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.app-grid-3 {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
 }

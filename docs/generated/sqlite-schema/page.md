@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) NOT NULL, "parentPageId" varchar(36), "route" varchar(255) NOT NULL, "content" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "layout" text, CONSTRAINT "FK_b85a31f0bff1e857156d27ea152" FOREIGN KEY ("parentPageId") REFERENCES "page" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5e3cf5ed8328c4993a910bd239b" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) NOT NULL, "parentPageId" varchar(36), "route" varchar(255) NOT NULL, "content" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "layout" text, "title" varchar(255), CONSTRAINT "FK_b85a31f0bff1e857156d27ea152" FOREIGN KEY ("parentPageId") REFERENCES "page" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_5e3cf5ed8328c4993a910bd239b" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -22,6 +22,7 @@ CREATE TABLE "page" ("id" varchar(36) PRIMARY KEY NOT NULL, "appId" varchar(36) 
 | layout | TEXT |  | true |  |  |  |
 | parentPageId | varchar(36) |  | true |  | [page](page.md) |  |
 | route | varchar(255) |  | false |  |  |  |
+| title | varchar(255) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -57,6 +58,7 @@ erDiagram
   TEXT layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   datetime_3_ updatedAt
 }
 "app" {

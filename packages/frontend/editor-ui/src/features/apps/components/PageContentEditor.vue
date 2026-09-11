@@ -6,9 +6,11 @@ import Delimiter from '@editorjs/delimiter';
 import type { AppContent, AppLayout } from '@n8n/api-types';
 import { useDebounceFn } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
 import { DEBOUNCE_TIME } from '@/app/constants';
+import { AgentChatBlockTool } from '@/features/apps/components/blocks/AgentChatBlockTool.tool';
 import { TableBlockTool } from '@/features/apps/components/blocks/TableBlockTool.tool';
 import { FormBlockTool } from '@/features/apps/components/blocks/FormBlockTool.tool';
 import { ButtonBlockTool } from '@/features/apps/components/blocks/ButtonBlockTool.tool';
@@ -41,6 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const style = useCssModule();
+const settingsStore = useSettingsStore();
 const holderRef = ref<HTMLDivElement>();
 const issues = ref<Record<string, string>>({});
 const highlighted = computed(() => ({ ...issues.value, ...props.externalIssues }));
@@ -99,6 +102,13 @@ onMounted(() => {
 			button: { class: ButtonBlockTool, config: { projectId: props.projectId } },
 			html: HtmlBlockTool,
 			code: CodeBlockTool,
+			// Always registered so an existing block still renders and saves; only
+			// the toolbox entry follows the agents module.
+			'agent-chat': {
+				class: AgentChatBlockTool,
+				config: { projectId: props.projectId },
+				...(settingsStore.isModuleActive('agents') ? {} : { toolbox: false }),
+			},
 			...(props.schema === 'layout' ? { slot: SlotBlockTool } : {}),
 		},
 		data: { blocks: toEditorBlocks(props.content) },

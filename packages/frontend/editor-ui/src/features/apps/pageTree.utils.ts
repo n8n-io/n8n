@@ -64,9 +64,9 @@ export function getChildCounts(pages: Page[]): Map<string | null, number> {
 	return counts;
 }
 
-/** "foo" -> "foo"; "" -> "(index)" — no leading slash, for breadcrumb items. */
-export function formatRouteSegment(route: string, indexLabel: string): string {
-	return route || `(${indexLabel})`;
+/** How the served menu names a page: its title, else its route segment, else the index label. */
+export function getPageLabel(page: Page, indexLabel: string): string {
+	return page.title ?? (page.route || indexLabel);
 }
 
 /** "foo" -> "/foo"; "" -> "/ (index)" — with leading slash, for titles and labels. */
@@ -99,10 +99,10 @@ export function flattenPageTree(pages: Page[]): PageTreeRow[] {
 	return rows;
 }
 
-/** Select options for every page, labelled with its full path. */
+/** Select options for every page, labelled with its name and its full path. */
 export function getPageOptions(pages: Page[], indexLabel: string) {
 	return flattenPageTree(pages).map(({ page }) => {
 		const path = getPagePath(getAncestorPages(pages, page.id), page.route);
-		return { value: page.id, label: path ? `/${path}` : `/ (${indexLabel})` };
+		return { value: page.id, label: `${getPageLabel(page, indexLabel)} — /${path}` };
 	});
 }

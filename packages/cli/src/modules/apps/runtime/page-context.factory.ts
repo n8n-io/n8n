@@ -108,6 +108,7 @@ export type AppFormField = {
 };
 export type AppWorkflowRunResult =
 	| { status: 'success'; executionId: string; data: unknown }
+	| { status: 'waiting'; executionId: string }
 	| { status: 'error'; executionId?: string; error: string };
 
 export interface AppWorkflowsApi {
@@ -365,11 +366,7 @@ export class PageContextFactory {
 			return { status: 'success', executionId: result.executionId, data: result.data ?? null };
 		}
 		if (result.status === 'waiting') {
-			return {
-				status: 'error',
-				executionId: result.executionId,
-				error: 'Workflow is waiting; multi-step forms are not supported',
-			};
+			return { status: 'waiting', executionId: result.executionId };
 		}
 		return {
 			status: 'error',

@@ -11,6 +11,7 @@ import {
 } from '@/features/apps/components/blocks/CodeBlockTool.tool';
 import { ImageBlockTool } from '@/features/apps/components/blocks/ImageBlockTool.tool';
 import { SlotBlockTool } from '@/features/apps/components/blocks/SlotBlockTool.tool';
+import { AgentChatBlockTool } from '@/features/apps/components/blocks/AgentChatBlockTool.tool';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: () => ({
@@ -21,6 +22,10 @@ vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: () => ({ fetchWorkflowsPage: vi.fn().mockResolvedValue([]) }),
+}));
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgentsPage: vi.fn().mockResolvedValue({ count: 0, data: [] }),
 }));
 
 describe('Editor.js custom block tools', () => {
@@ -130,6 +135,19 @@ describe('Editor.js custom block tools', () => {
 		},
 	);
 
+	it('AgentChatBlockTool renders a config card and round-trips its data through save()', () => {
+		const data = { agentId: 'agent-1', welcome: 'Hi', placeholder: 'Ask' };
+		const tool = new AgentChatBlockTool({
+			data,
+			config: { projectId: 'p1' },
+		} as BlockToolConstructorOptions);
+
+		const element = tool.render();
+
+		expect(element.querySelector('[data-test-id="agent-chat-block-agent-select"]')).not.toBeNull();
+		expect(tool.save()).toEqual(data);
+	});
+
 	it('SlotBlockTool renders a static card and saves empty data', () => {
 		const tool = new SlotBlockTool();
 
@@ -149,6 +167,7 @@ describe('Editor.js custom block tools', () => {
 		CodeBlockTool,
 		ImageBlockTool,
 		SlotBlockTool,
+		AgentChatBlockTool,
 	])('%o keeps Enter inside its inputs instead of splitting the block', (tool) => {
 		expect(tool.enableLineBreaks).toBe(true);
 	});

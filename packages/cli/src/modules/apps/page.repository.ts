@@ -15,8 +15,9 @@ export class PageRepository extends Repository<Page> {
 		route: string,
 		content: Page['content'] = null,
 		layout: Page['layout'] = null,
+		title: Page['title'] = null,
 	) {
-		const page = this.create({ appId, parentPageId, route, content, layout });
+		const page = this.create({ appId, parentPageId, route, content, layout, title });
 		return await this.save(page);
 	}
 
@@ -44,7 +45,10 @@ export class PageRepository extends Repository<Page> {
 		});
 	}
 
-	async updatePage(page: Page, updates: Partial<Pick<Page, 'route' | 'content' | 'layout'>>) {
+	async updatePage(
+		page: Page,
+		updates: Partial<Pick<Page, 'route' | 'title' | 'content' | 'layout'>>,
+	) {
 		return await this.save(Object.assign(page, updates));
 	}
 

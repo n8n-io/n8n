@@ -49,12 +49,13 @@ const appsStore = useAppsStore();
 const device = ref<PreviewDevice>('desktop');
 const paramValues = ref<Record<string, string>>({});
 const html = ref<string | null>(null);
+const code = ref<string | null>(null);
 const renderErrors = ref<RenderErrors>({});
 const loading = ref(false);
 
 const page = computed(() => appsStore.pages.find((p) => p.id === props.pageId));
 const pageOptions = computed(() =>
-	getPageOptions(appsStore.pages, i18n.baseText('apps.page.index')),
+	getPageOptions(appsStore.pages, i18n.baseText('apps.page.home')),
 );
 const path = computed(() =>
 	page.value ? getPagePath(getAncestorPages(appsStore.pages, page.value.id), page.value.route) : '',
@@ -75,10 +76,12 @@ const fetchHtml = async () => {
 			params: paramValues.value,
 		});
 		html.value = preview.html;
+		code.value = preview.code;
 		renderErrors.value = preview.errors;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.builder.preview.error'));
 		html.value = null;
+		code.value = null;
 		renderErrors.value = {};
 	} finally {
 		loading.value = false;
@@ -173,7 +176,7 @@ watch(paramValues, debouncedFetchHtml, { deep: true });
 				</li>
 			</ul>
 		</N8nCallout>
-		<AppPreviewFrame :html="html" :loading="loading" :width="PREVIEW_WIDTHS[device]" />
+		<AppPreviewFrame :html="html" :code="code" :loading="loading" :width="PREVIEW_WIDTHS[device]" />
 	</div>
 </template>
 

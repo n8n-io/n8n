@@ -1,6 +1,11 @@
 import { mock } from 'vitest-mock-extended';
 
-import { AppCodeError, AppCodeRuntime, type RunStaticData } from '../app-code-runtime';
+import {
+	AppCodeError,
+	AppCodeRuntime,
+	AppComponentsError,
+	type RunStaticData,
+} from '../app-code-runtime';
 import type { AppActionContext, AppDataTableHandle, AppPageContext } from '../page-context.factory';
 
 const staticData: RunStaticData = {
@@ -13,6 +18,7 @@ const staticData: RunStaticData = {
 	viewer: null,
 	menu: [],
 	baseUrl: 'https://n8n.example.com',
+	components: null,
 };
 
 function buildCtx(overrides: Partial<AppPageContext> = {}): AppPageContext {
@@ -331,6 +337,71 @@ describe('AppCodeRuntime', () => {
 		// Either the escape is blocked, or it runs inside the isolate's own empty
 		// global scope, where `process` was never defined.
 		expect(['blocked', 'undefined']).toContain(value);
+	});
+
+	describe('app/components', () => {
+		const components = `
+			export function Card(props: { title: string; children?: Renderable }) {
+				return <section class="card"><h2>{props.title}</h2>{props.children}</section>;
+			}
+		`;
+
+		it('imports the components module into a code block', async () => {
+			const source = `
+				import { Card } from 'app/components';
+				export function render() {
+					return <Card title="A & B">hi</Card>;
+				}
+			`;
+			const { value } = await runtime.render(source, buildCtx(), { ...staticData, components });
+			expect(value).toBe('<section class="card"><h2>A &amp; B</h2>hi</section>');
+		});
+
+		it('blocks every other module with the blocked: prefix', async () => {
+			const source = `
+				export function render() {
+					try {
+						require('fs');
+						return 'required';
+					} catch (e) {
+						return e.message;
+					}
+				}
+			`;
+			const { value } = await runtime.render(source, buildCtx(), { ...staticData, components });
+			expect(value).toMatch(/^blocked:/);
+		});
+
+		it('reports a components compile error as AppComponentsError', async () => {
+			const source = 'export function render() { return "ok"; }';
+			const error = await runtime
+				.render(source, buildCtx(), { ...staticData, components: 'export const = ;' })
+				.catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(AppComponentsError);
+		});
+
+		it('does not let the components module import anything', async () => {
+			const source = 'export function render() { return "ok"; }';
+			const error = await runtime
+				.render(source, buildCtx(), {
+					...staticData,
+					components: "import { x } from 'app/components'; export const y = x;",
+				})
+				.catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(AppComponentsError);
+			expect((error as Error).message).toMatch(/^blocked:/);
+		});
+
+		it('tells a block importing components when the app has none', async () => {
+			const source = `
+				import { Card } from 'app/components';
+				export function render() { return <Card title="x" />; }
+			`;
+			const error = await runtime.render(source, buildCtx(), staticData).catch((e: unknown) => e);
+			expect(error).toBeInstanceOf(AppCodeError);
+			expect(error).not.toBeInstanceOf(AppComponentsError);
+			expect((error as Error).message).toBe('This app has no components yet');
+		});
 	});
 
 	it('cannot import or require any module', async () => {

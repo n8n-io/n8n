@@ -9,7 +9,14 @@ import type { BlockRenderContext } from '../../types';
 import { buttonBlockRenderer } from '../button.renderer';
 
 const ctx: BlockRenderContext = {
-	app: { id: 'app-1', name: 'My App', namespace: 'my-app', projectId: 'project-1', theme: null },
+	app: {
+		id: 'app-1',
+		name: 'My App',
+		namespace: 'my-app',
+		projectId: 'project-1',
+		theme: null,
+		components: null,
+	},
 	page: { id: 'page-1', route: '', path: '/apps/my-app' },
 	actionPageId: 'page-1',
 	menu: [],

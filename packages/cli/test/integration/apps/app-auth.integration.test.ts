@@ -65,7 +65,9 @@ async function publishApp(blocks: AppBlock[], auth: 'public' | 'n8n', namespace 
 	const page = await pageRepository.createPage(app.id, null, '', blocks);
 
 	const snapshot: AppVersionSnapshot = {
-		pages: [{ id: page.id, route: '', parentPageId: null, content: blocks, layout: null }],
+		pages: [
+			{ id: page.id, route: '', title: null, parentPageId: null, content: blocks, layout: null },
+		],
 		theme: null,
 		components: null,
 	};

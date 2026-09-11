@@ -35,6 +35,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: null,
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,
@@ -48,6 +49,7 @@ const rootPage: Page = {
 	appId: 'app1',
 	parentPageId: null,
 	route: '',
+	title: null,
 	content: [],
 	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -69,7 +71,7 @@ describe('AppDetailsView', () => {
 		appsStore.pages = [rootPage, childPage];
 		appsStore.fetchPages.mockResolvedValue(undefined);
 		appsStore.fetchVersions.mockResolvedValue([]);
-		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {} });
+		appsStore.fetchPreview.mockResolvedValue({ html: '<html></html>', errors: {}, code: null });
 	});
 
 	afterEach(() => {

@@ -707,7 +707,7 @@ describe('useResourceRegistry', () => {
 			expect(linkableResourceNameIndex.get('orders dashboard')?.id).toBe('app-1');
 		});
 
-		test('does not register from list, get, or code-api results', async () => {
+		test('does not register from list, get, code-api, or preview-page results', async () => {
 			const { messages, producedArtifacts } = setup();
 
 			messages.value = [
@@ -732,6 +732,12 @@ describe('useResourceRegistry', () => {
 								args: { action: 'code-api' },
 								result: { appId: 'app-3', types: 'declare global {}' },
 							}),
+							makeToolCall({
+								toolCallId: 'tc-4',
+								toolName: 'apps',
+								args: { action: 'preview-page', appId: 'app-4', pageId: 'p1' },
+								result: { appId: 'app-4', pageId: 'p1', errors: {}, logs: {} },
+							}),
 						],
 					}),
 				}),
@@ -741,6 +747,7 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('app-1')).toBeUndefined();
 			expect(producedArtifacts.get('app-2')).toBeUndefined();
 			expect(producedArtifacts.get('app-3')).toBeUndefined();
+			expect(producedArtifacts.get('app-4')).toBeUndefined();
 		});
 
 		test('merges a follow-up result that omits namespace/url without dropping them', async () => {

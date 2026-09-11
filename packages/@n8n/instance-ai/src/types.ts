@@ -1053,6 +1053,7 @@ export interface AppSummary {
 export interface PageSummary {
 	id: string;
 	route: string;
+	title: string | null;
 	parentPageId: string | null;
 	path: string;
 	hasContent: boolean;
@@ -1065,11 +1066,14 @@ export interface InstanceAiAppService {
 		projectId: string;
 		name: string;
 		namespace: string;
+		/** An `APP_LAYOUT_PRESETS` id; the App starts with its theme and an index page carrying its layout. */
+		layoutPreset?: string;
 	}): Promise<{ app: AppSummary } | { conflict: true }>;
-	getApp(appId: string): Promise<AppSummary>;
+	/** `components` is the TSX source code blocks import from `app/components`. */
+	getApp(appId: string): Promise<AppSummary & { components: string | null }>;
 	updateApp(
 		appId: string,
-		input: { name?: string; theme?: AppTheme | null; auth?: AppAuth },
+		input: { name?: string; theme?: AppTheme | null; components?: string | null; auth?: AppAuth },
 	): Promise<AppSummary>;
 	listPages(appId: string): Promise<PageSummary[]>;
 	/** `layout` is the page's own; `null` means it inherits the nearest ancestor's or the built-in shell. */
@@ -1079,15 +1083,32 @@ export interface InstanceAiAppService {
 	): Promise<PageSummary & { content: AppContent | null; layout: AppLayout | null }>;
 	createPage(
 		appId: string,
-		input: { route: string; parentPageId?: string; content?: AppContent; layout?: AppLayout },
+		input: {
+			route: string;
+			title?: string;
+			parentPageId?: string;
+			content?: AppContent;
+			layout?: AppLayout;
+		},
 	): Promise<PageSummary>;
 	updatePage(
 		appId: string,
 		pageId: string,
-		input: { route?: string; content?: AppContent | null; layout?: AppLayout | null },
+		input: {
+			route?: string;
+			title?: string | null;
+			content?: AppContent | null;
+			layout?: AppLayout | null;
+		},
 	): Promise<PageSummary>;
 	deletePage(appId: string, pageId: string): Promise<void>;
 	publish(appId: string): Promise<{ versionId: string; url: string }>;
+	/** Renders the draft page and returns what went wrong, per block id; never the HTML. */
+	previewPage(
+		appId: string,
+		pageId: string,
+		path?: string,
+	): Promise<{ errors: Record<string, string>; logs: Record<string, string[]> }>;
 	/** Text of app-page-api.d.ts. */
 	codeApi(): string;
 }

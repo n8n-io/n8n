@@ -47,6 +47,7 @@ const app: App = {
 	name: 'My app',
 	namespace: 'my-app',
 	theme: { colors: { primary: '#ff0000' }, radius: 'lg' },
+	components: null,
 	auth: 'public',
 	projectId: 'p1',
 	activeVersionId: null,
@@ -55,11 +56,12 @@ const app: App = {
 	updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
-const page = (id: string, route: string, text: string): Page => ({
+const page = (id: string, route: string, text: string, title: string | null = null): Page => ({
 	id,
 	appId: 'app1',
 	parentPageId: null,
 	route,
+	title,
 	content: [{ id: `${id}-b1`, type: 'paragraph', data: { text } }],
 	layout: null,
 	createdAt: '2024-01-01T00:00:00.000Z',
@@ -90,6 +92,7 @@ describe('PageEditor', () => {
 		appsStore.pages = [page('home', '', 'Home text'), page('about', 'about', 'About text')];
 		appsStore.updatePage.mockResolvedValue(appsStore.pages[0]);
 		appsStore.fetchLayoutPreview.mockResolvedValue(noLayout);
+		appsStore.servedCss = null;
 	});
 
 	afterEach(() => {
@@ -109,8 +112,22 @@ describe('PageEditor', () => {
 		expect(getAllByTestId('page-editor-menu-link')).toHaveLength(1);
 		const canvas = getByTestId('page-editor-canvas');
 		expect(canvas.getAttribute('style')).toContain('--app-color-primary: #ff0000');
-		expect(canvas).toHaveClass('app-canvas');
+		expect(canvas.querySelector(':scope > .app-canvas.app-text')).not.toBeNull();
 		expect(canvas.querySelector('.app-shell > nav.app-menu + main.app-main')).not.toBeNull();
+	});
+
+	it('names menu entries by their title when they have one', () => {
+		appsStore.pages = [
+			page('home', '', 'Home text'),
+			page('about', 'about', 'About text', 'About us'),
+		];
+		const { getByTestId } = renderComponent({
+			props: { projectId: 'p1', appId: 'app1', pageId: 'home', app },
+		});
+
+		const menu = getByTestId('page-editor-menu');
+		expect(menu.textContent).toContain('About us');
+		expect(menu.textContent).not.toContain('about');
 	});
 
 	it('renders the theme custom CSS scoped to the canvas', () => {
@@ -127,6 +144,36 @@ describe('PageEditor', () => {
 		const style = getByTestId('page-editor-custom-css');
 		expect(style.tagName).toBe('STYLE');
 		expect(style.textContent).toContain(`@scope ([data-app-canvas]) { ${customCss} }`);
+	});
+
+	it('renders the served stylesheet scoped to the canvas and the content width variable', () => {
+		appsStore.servedCss = '.app-header{position:sticky}';
+		const { getByTestId } = renderComponent({
+			props: {
+				projectId: 'p1',
+				appId: 'app1',
+				pageId: 'home',
+				app: { ...app, theme: { contentWidth: '64rem' } },
+			},
+		});
+
+		expect(appsStore.fetchServedCss).toHaveBeenCalled();
+		const style = getByTestId('page-editor-served-css');
+		expect(style.tagName).toBe('STYLE');
+		expect(style.textContent).toContain(
+			'@scope ([data-app-canvas]) { .app-header{position:sticky} }',
+		);
+		expect(getByTestId('page-editor-canvas').getAttribute('style')).toContain(
+			'--app-content-width: 64rem',
+		);
+	});
+
+	it('renders no served stylesheet element before it has loaded', () => {
+		const { queryByTestId } = renderComponent({
+			props: { projectId: 'p1', appId: 'app1', pageId: 'home', app },
+		});
+
+		expect(queryByTestId('page-editor-served-css')).toBeNull();
 	});
 
 	it('renders no custom CSS style element when the theme has none', () => {

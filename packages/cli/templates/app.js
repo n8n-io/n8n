@@ -12,6 +12,10 @@
 
 	let access = null;
 	let refresh = null;
+	let markReady;
+	const ready = new Promise((resolve) => {
+		markReady = resolve;
+	});
 
 	const isAppUrl = (url) => {
 		const path = url.split(/[?#]/)[0];
@@ -35,7 +39,11 @@
 		const send = () =>
 			fetch(url, {
 				...init,
-				headers: { Authorization: 'Bearer ' + access, Accept: 'text/html' },
+				headers: {
+					Accept: 'text/html',
+					...(init && init.headers),
+					Authorization: 'Bearer ' + access,
+				},
 			});
 		const response = await send();
 		if (response.status !== 401 || !refresh) return response;
@@ -130,20 +138,47 @@
 		if (access) void navigate(location.href, false);
 	});
 
+	// The editor's preview iframe has no URL to carry a code, so its parent posts it.
+	window.addEventListener('message', (event) => {
+		const data = event.data;
+		if (
+			window.parent === window ||
+			event.source !== window.parent ||
+			!data ||
+			data.type !== 'n8n-app-code' ||
+			typeof data.code !== 'string'
+		) {
+			return;
+		}
+		void grant({ grant: 'code', code: data.code }).then(markReady);
+	});
+
 	const init = async () => {
 		const params = new URLSearchParams(location.search);
 		const code = params.get('_code');
-		if (!code || !(await grant({ grant: 'code', code }))) return;
-		params.delete('_code');
-		const search = params.toString();
-		try {
-			history.replaceState(
-				{},
-				'',
-				location.pathname + (search ? '?' + search : '') + location.hash,
-			);
-		} catch {}
+		if (!code) {
+			// Framed, the parent posts a code after load; give it a moment before giving up.
+			if (window.parent === window) markReady(false);
+			else setTimeout(() => markReady(false), 5000);
+			return;
+		}
+		const granted = await grant({ grant: 'code', code });
+		if (granted) {
+			params.delete('_code');
+			const search = params.toString();
+			try {
+				history.replaceState(
+					{},
+					'',
+					location.pathname + (search ? '?' + search : '') + location.hash,
+				);
+			} catch {}
+		}
+		markReady(granted);
 	};
 
+	// Block scripts (app-chat.js) call back through here, so the token has one
+	// home: `ready` resolves to whether a token was obtained, by either path.
+	window.n8nApp = { fetch: request, ready };
 	void init();
 })();

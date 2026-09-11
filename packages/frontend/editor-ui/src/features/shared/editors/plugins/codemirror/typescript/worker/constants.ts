@@ -17,11 +17,14 @@ export const COMPILER_OPTIONS: ts.CompilerOptions = {
 	// Suppress TS 6.0 deprecation diagnostic for moduleResolution=node10 set by @typescript/vfs
 	ignoreDeprecations: '6.0',
 };
+export const APP_COMPONENTS_FILE_NAME = '/app/components.tsx';
 export const APP_COMPILER_OPTIONS: ts.CompilerOptions = {
 	...COMPILER_OPTIONS,
 	jsx: ts.JsxEmit.React,
 	jsxFactory: 'h',
 	jsxFragmentFactory: 'Fragment',
+	baseUrl: '/',
+	paths: { 'app/components': [APP_COMPONENTS_FILE_NAME] },
 };
 export const TYPESCRIPT_AUTOCOMPLETE_THRESHOLD = '15';
 export const TYPESCRIPT_FILES = {
