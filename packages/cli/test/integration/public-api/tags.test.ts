@@ -259,6 +259,29 @@ describe('PUT /tags/:id', () => {
 		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe("request/body must have required property 'name'");
+	});
+
+	test('should fail due to unknown property in body', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ name: 'New name', unknown: 'value' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('unknown');
+	});
+
+	test('should fail due to read-only property in body', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent
+			.put(`/tags/${tag.id}`)
+			.send({ id: tag.id, name: 'New name' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('request/body/id is read-only');
 	});
 
 	test('should update tag', async () => {
@@ -273,6 +296,8 @@ describe('PUT /tags/:id', () => {
 		const { id, name, updatedAt } = response.body;
 
 		expect(response.statusCode).toBe(200);
+		// The response carries the fields the write touched, and nothing else
+		expect(Object.keys(response.body).sort()).toEqual(['id', 'name', 'updatedAt']);
 
 		expect(id).toBe(tag.id);
 		expect(name).toBe(payload.name);
