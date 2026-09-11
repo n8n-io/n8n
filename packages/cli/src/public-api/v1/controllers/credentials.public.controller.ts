@@ -241,7 +241,8 @@ export class CredentialsPublicController {
 				throw new ForbiddenError('You are not licensed for sharing credentials');
 			}
 
-			if (!hasGlobalScope(req.user, 'credential:shareGlobally')) {
+			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
 				throw new ForbiddenError(
 					'You do not have permission to change global sharing for credentials',
 				);
