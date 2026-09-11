@@ -29,6 +29,24 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	it('filters ids down to global project credentials', async () => {
+		entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'global-id' })]);
+
+		const ids = await credentialsRepository.findGlobalProjectCredentialIds(['global-id', 'other']);
+
+		expect(ids).toEqual(['global-id']);
+		expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+			where: { id: In(['global-id', 'other']), isGlobal: true, usageScope: 'project' },
+			select: ['id'],
+		});
+	});
+
+	it('does not query for an empty id list', async () => {
+		await expect(credentialsRepository.findGlobalProjectCredentialIds([])).resolves.toEqual([]);
+
+		expect(entityManager.find).not.toHaveBeenCalled();
+	});
+
 	it('finds only dangling project credentials', async () => {
 		const queryBuilder = mock<SelectQueryBuilder<CredentialsEntity>>();
 		queryBuilder.leftJoinAndSelect.mockReturnValue(queryBuilder);

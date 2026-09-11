@@ -29,9 +29,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
 | [agents](agents.md) | 14 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
-| [agents_memory_entry_cursors](agents_memory_entry_cursors.md) | 6 |  | table |
+| [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
-| [agents_memory_entry_sources](agents_memory_entry_sources.md) | 9 |  | table |
+| [agents_memory_entry_sources](agents_memory_entry_sources.md) | 10 |  | table |
 | [agents_messages](agents_messages.md) | 8 |  | table |
 | [agents_observation_cursors](agents_observation_cursors.md) | 6 |  | table |
 | [agents_observation_locks](agents_observation_locks.md) | 7 |  | table |
@@ -188,12 +188,15 @@ erDiagram
 "agents_memory_entries" }o--o| "agents_memory_entries" : "FOREIGN KEY (supersededBy) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agents_memory_entries" }o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_cursors" |o--|| "agents_threads" : "FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_cursors" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_candidates" }o--o| "agents_messages" : "FOREIGN KEY (sourceMessageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"agents_memory_entry_candidates" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_candidates" }o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_candidates" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_locks" |o--|| "agents_resources" : "FOREIGN KEY (resourceId) REFERENCES agents_resources (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_sources" }o--o| "agents_memory_entry_candidates" : "FOREIGN KEY (candidateId) REFERENCES agents_memory_entry_candidates (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents_memory_entry_sources" }o--|| "agents_observations" : "FOREIGN KEY (observationId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents_memory_entry_sources" }o--o| "agents_observations" : "FOREIGN KEY (observationId) REFERENCES agents_observations (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents_memory_entries" : "FOREIGN KEY (memoryEntryId) REFERENCES agents_memory_entries (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entry_sources" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -626,12 +629,20 @@ erDiagram
   varchar_36_ supersededBy FK
   datetime_3_ updatedAt
 }
-"agents_memory_entry_cursors" {
-  varchar_36_ agentId PK
+"agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  TEXT content
   datetime_3_ createdAt
-  datetime_3_ lastIndexedObservationCreatedAt
-  varchar_36_ lastIndexedObservationId
-  varchar_255_ observationScopeId PK
+  TEXT evidenceText
+  varchar_36_ id PK
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
 "agents_memory_entry_locks" {
@@ -644,6 +655,7 @@ erDiagram
 }
 "agents_memory_entry_sources" {
   varchar_36_ agentId FK
+  varchar_36_ candidateId FK
   datetime_3_ createdAt
   varchar_64_ evidenceHash
   TEXT evidenceText
