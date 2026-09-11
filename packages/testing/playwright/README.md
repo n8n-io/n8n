@@ -101,10 +101,8 @@ pnpm --filter n8n-containers services:clean
 This stops the containers and removes `packages/cli/bin/.env`.
 
 **Running service-backed tests against this setup.** Tests with service-backed
-`capability` options skip local mode by default. To run them against your local
-n8n, use the `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` option documented under
-[`test:local:isolated`](#test-local-isolated--local-run-with-full-isolation)
-below. Capability fixtures must support the no-container case.
+`capability` options skip local mode because the service helpers require an n8n
+test container. Run these tests with a container project.
 
 ## Separate Backend and Frontend URLs
 
@@ -139,7 +137,7 @@ pnpm test:chaos									# Runs the chaos tests
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
 
-# Isolated local run: random port, throwaway DB, includes service-backed tests
+# Isolated local run: random port, throwaway DB, includes container-tagged tests
 pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
 
@@ -155,9 +153,9 @@ situations where `test:local`'s defaults aren't enough:
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
   n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
   from your local `~/.n8n` install.
-- **Container-only tests included.** Service-backed, `@licensed`, and
-  `@db:reset` tests are included. Their fixtures must support the missing
-  container case.
+- **Container-tagged tests included.** The local project selects `@licensed`,
+  `@db:reset`, and `@mode:*` tests. Service-backed tests still skip because
+  local mode does not provide the service container helpers.
 - **Self-managed n8n.** Boots n8n with a readiness check against
   `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
   Playwright's own webServer.
@@ -173,7 +171,7 @@ The two underlying env-var levers — usable independently of the script:
 
 | Env var | Effect |
 |---------|--------|
-| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Lets service-backed tests run locally. It also includes `@mode:*`, `@licensed`, and `@db:reset` tests. The fixtures must support the missing container case. |
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Includes `@mode:*`, `@licensed`, and `@db:reset` tests in local runs. Service-backed tests still skip. |
 | `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags

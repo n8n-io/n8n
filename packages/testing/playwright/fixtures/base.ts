@@ -6,7 +6,7 @@ import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import { ALLOW_CONTAINER_ONLY, CAPABILITIES, type Capability } from './capabilities';
+import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
@@ -112,7 +112,7 @@ export const test = base.extend<
 	containerRequirement: [
 		async ({ capability }, use, testInfo) => {
 			testInfo.skip(
-				!ALLOW_CONTAINER_ONLY && !!getBackendUrl() && requiresContainerServices(capability),
+				!!getBackendUrl() && requiresContainerServices(capability),
 				'This test requires container services',
 			);
 			await use(undefined);
