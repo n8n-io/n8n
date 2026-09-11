@@ -104,37 +104,14 @@ workflowInputs: {
 						description: 'Load the workflow from the database by ID',
 					},
 					{
-						name: 'Local File',
-						value: 'localFile',
-						description: 'Load the workflow from a locally saved file',
-					},
-					{
 						name: 'Parameter',
 						value: 'parameter',
 						description: 'Load the workflow from a parameter',
-					},
-					{
-						name: 'URL',
-						value: 'url',
-						description: 'Load the workflow from an URL',
 					},
 				],
 				default: 'database',
 				description: 'Where to get the workflow to execute from',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
-			},
-			{
-				displayName:
-					'The "Local File" and "URL" sources are deprecated and will be removed in a future version. Import the workflow into this n8n instance and use the "Database" source, or paste its JSON into the "Parameter" source instead.',
-				name: 'sourceDeprecationNotice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						source: ['localFile', 'url'],
-						'@version': [{ _cnd: { lte: 1.1 } }],
-					},
-				},
 			},
 			{
 				displayName: 'Source',
@@ -190,24 +167,6 @@ workflowInputs: {
 				required: true,
 			},
 			// ----------------------------------
-			//         source:localFile
-			// ----------------------------------
-			{
-				displayName: 'Workflow Path',
-				name: 'workflowPath',
-				type: 'string',
-				displayOptions: {
-					show: {
-						source: ['localFile'],
-					},
-				},
-				default: '',
-				placeholder: '/data/workflow.json',
-				required: true,
-				description: 'The path to local JSON workflow file to execute',
-			},
-
-			// ----------------------------------
 			//         source:parameter
 			// ----------------------------------
 			{
@@ -227,23 +186,6 @@ workflowInputs: {
 				description: 'The workflow JSON code to execute',
 			},
 
-			// ----------------------------------
-			//         source:url
-			// ----------------------------------
-			{
-				displayName: 'Workflow URL',
-				name: 'workflowUrl',
-				type: 'string',
-				displayOptions: {
-					show: {
-						source: ['url'],
-					},
-				},
-				default: '',
-				placeholder: 'https://example.com/workflow.json',
-				required: true,
-				description: 'The URL from which to load the workflow from',
-			},
 			{
 				displayName:
 					'Any data you pass into this node will be output by the Execute Workflow Trigger. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
