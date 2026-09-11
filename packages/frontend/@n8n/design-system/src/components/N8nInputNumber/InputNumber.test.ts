@@ -415,6 +415,41 @@ describe('components/N8nInputNumber', () => {
 		});
 	});
 
+	describe('grouping', () => {
+		it('should render values above 999 without a grouping separator', () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					modelValue: 1433,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toHaveValue('1433');
+		});
+
+		it('should keep a typed value ungrouped on blur', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					defaultValue: 0,
+				},
+			});
+			const input = wrapper.container.querySelector('input');
+			expect(input).toBeTruthy();
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Expected input element');
+			}
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '1433');
+			await userEvent.tab();
+
+			await waitFor(() => {
+				expect(input).toHaveValue('1433');
+				const emitted = wrapper.emitted('update:modelValue');
+				expect(emitted?.[emitted.length - 1]).toEqual([1433]);
+			});
+		});
+	});
+
 	describe('stepSnapping', () => {
 		it('should snap typed value to step on blur when stepSnapping is true', async () => {
 			const wrapper = render(InputNumber, {
