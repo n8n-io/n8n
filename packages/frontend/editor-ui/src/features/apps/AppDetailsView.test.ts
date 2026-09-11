@@ -982,6 +982,31 @@ describe('AppDetailsView', () => {
 		);
 	});
 
+	it('switches to Preview on a later build too, not just the first', async () => {
+		const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+			artifactMode: true,
+			artifactVersionId: 'v-1',
+		});
+
+		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+
+		await rerender({
+			projectId: 'proj-1',
+			appId: 'app-1',
+			artifactMode: true,
+			artifactVersionId: 'v-2',
+		});
+
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/?v=v-2',
+		);
+	});
+
 	describe('live preview', () => {
 		const liveProps = {
 			projectId: 'proj-1',
