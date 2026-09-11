@@ -26,6 +26,15 @@ vi.mock('form-data', () => {
 	return { default: MockFormData };
 });
 
+const { accumulateTokenUsageMock } = vi.hoisted(() => ({
+	accumulateTokenUsageMock: vi.fn(),
+}));
+
+vi.mock('n8n-workflow', async (importOriginal) => ({
+	...(await importOriginal<typeof import('n8n-workflow')>()),
+	accumulateTokenUsage: accumulateTokenUsageMock,
+}));
+
 describe('Image Edit Operation', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
@@ -734,6 +743,79 @@ describe('Image Edit Operation', () => {
 			expect(getBinaryDataFileSpy).toHaveBeenCalledTimes(2);
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(1, mockExecuteFunctions, 0, 'image1');
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'image2');
+		});
+	});
+
+	describe('token usage reporting', () => {
+		const mockBinaryFile = {
+			fileContent: Buffer.from('mock-image-data'),
+			contentType: 'image/png',
+			filename: 'data.png',
+		};
+
+		const mockEditedBinaryData = {
+			data: 'base64encodedimagedata',
+			mimeType: 'image/png',
+			fileName: 'data',
+		};
+
+		beforeEach(() => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params = {
+					model: 'gpt-image-1',
+					prompt: 'Add a rainbow to this landscape',
+					images: {
+						values: [{ binaryPropertyName: 'data' }],
+					},
+					n: 1,
+					size: '1024x1024',
+					quality: 'auto',
+					options: {},
+				};
+				return params[paramName as keyof typeof params];
+			});
+
+			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
+				mockBinaryFile.fileContent,
+			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(
+				mockEditedBinaryData,
+			);
+		});
+
+		it('should report token usage when the API returns a usage object', async () => {
+			apiRequestSpy.mockResolvedValue({
+				data: [{ b64_json: 'base64encodedimagedata' }],
+				usage: {
+					input_tokens: 350,
+					output_tokens: 4160,
+					total_tokens: 4510,
+					input_tokens_details: { text_tokens: 27, image_tokens: 323 },
+				},
+			});
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).toHaveBeenCalledTimes(1);
+			expect(accumulateTokenUsageMock).toHaveBeenCalledWith(mockExecuteFunctions, 350, 4160);
+		});
+
+		it('should not report token usage when the API omits it, and still return the image', async () => {
+			apiRequestSpy.mockResolvedValue({
+				data: [{ b64_json: 'base64encodedimagedata' }],
+			});
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(accumulateTokenUsageMock).not.toHaveBeenCalled();
+			expect(result).toEqual([
+				{
+					json: expect.objectContaining({ data: undefined }),
+					binary: { data: mockEditedBinaryData },
+					pairedItem: { item: 0 },
+				},
+			]);
 		});
 	});
 });
