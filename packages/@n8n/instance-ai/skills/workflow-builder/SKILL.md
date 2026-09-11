@@ -992,9 +992,9 @@ store its own public endpoint.
 Do not report a build as done until you have made the grouping decision described in
 [Node Groups](#node-groups) and checked what the build did with it. A dropped-group warning
 names what was invalid — a duplicate name, a member that does not exist, a boundary the rules
-reject: fix what the warning reports and build again. If the top level is still above 7
-items, name each remaining item and why it cannot join a group — if you cannot, group it and
-build again.
+reject: fix what the warning reports and build again. If the top level is still above
+{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} items, name each remaining item and why it cannot join
+a group — if you cannot, group it and build again.
 
 For a successful build, finish with one concise sentence naming the workflow and
 what changed. Include the workflow ID when it is available. If setup is

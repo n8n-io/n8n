@@ -7,7 +7,7 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Mock } from 'vitest';
@@ -456,6 +456,17 @@ describe('grouping guidance injection', () => {
 
 		expect(skill.instructions).toContain(GROUPING_GUIDANCE);
 		expect(skill.instructions).not.toContain('{{GROUPING_GUIDANCE_PLACEHOLDER}}');
+	});
+
+	it('resolves the top-level item ceiling from the shared constant', async () => {
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain(`still above\n${TOP_LEVEL_ITEM_CEILING} items`);
+		expect(skill.instructions).not.toContain('{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}}');
 	});
 
 	it('keeps the builder skill file free of its own grouping criteria', async () => {
