@@ -7524,6 +7524,7 @@
 	"agents.chat.toolNames.findFile": "Find file",
 	"agents.chat.toolNames.searchText": "Search text",
 	"agents.chat.toolNames.readFile": "Read file",
+	"agents.chat.toolNames.flagMemory": "Memory noted",
 	"agents.chat.approval.title": "Approval required",
 	"agents.chat.approval.description": "The agent wants to run the {toolName} tool.",
 	"agents.chat.approval.approve": "Approve",

@@ -50,6 +50,8 @@ import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
 
+import { rateLimitMessageFromError } from './channel-rate-limit';
+
 const RESET_SESSION_COMMAND = '/new';
 
 /** Cache key prefix for the per-conversation session-generation pointer, shared across mains. */
@@ -998,7 +1000,8 @@ export class AgentChatBridge {
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
-
+		// Resolve a rate-limit message if the error is a rate-limit error, otherwise undefined.
+		const rateLimitMessage = rateLimitMessageFromError(error);
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
 			threadId: thread?.id,
@@ -1019,9 +1022,11 @@ export class AgentChatBridge {
 			// A `UserError` is written for people and names the misconfiguration,
 			// which lets an agent owner fix it without reading server logs.
 			const text =
-				error instanceof UserError
-					? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
-					: '⚠️ Something went wrong while processing your request. Please try again.';
+				rateLimitMessage !== undefined
+					? `⚠️ ${rateLimitMessage}`
+					: error instanceof UserError
+						? `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`
+						: '⚠️ Something went wrong while processing your request. Please try again.';
 			await thread.post(text);
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

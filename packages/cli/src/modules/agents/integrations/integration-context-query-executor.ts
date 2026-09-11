@@ -3,12 +3,14 @@ import { Service } from '@n8n/di';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService } from './chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
-import { connectionUnavailable, integrationError } from './integration-helpers';
+import { connectionUnavailable, integrationError, rateLimitExceeded } from './integration-helpers';
 import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
+import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-limit';
 
 /**
  * Thin dispatcher that resolves the platform integration for a descriptor and
@@ -20,6 +22,7 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 	constructor(
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
 	async execute(params: {
@@ -29,6 +32,10 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		persistence?: { threadId: string; resourceId: string };
 	}): Promise<unknown> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
+
+		if (this.channelRateLimitGuard.isBlocked(params.descriptor.integrationConnectionId)) {
+			return rateLimitExceeded(channelRateLimitMessage(params.descriptor.integration.type));
+		}
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
 		if (integrationDef && !integrationDef.requiresChatInstance) {
@@ -46,10 +53,12 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 					input: params.input,
 				});
 			} catch (error) {
-				return integrationError(
-					INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
-					error instanceof Error ? error.message : String(error),
-				);
+				return caughtIntegrationError(error, {
+					connectionId: params.descriptor.integrationConnectionId,
+					platform: params.descriptor.integration.type,
+					guard: this.channelRateLimitGuard,
+					failedCode: INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
+				});
 			}
 		}
 
@@ -81,10 +90,12 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 				input: params.input,
 			});
 		} catch (error) {
-			return integrationError(
-				INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
-				error instanceof Error ? error.message : String(error),
-			);
+			return caughtIntegrationError(error, {
+				connectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				guard: this.channelRateLimitGuard,
+				failedCode: INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
+			});
 		}
 	}
 }
