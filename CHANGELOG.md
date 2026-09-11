@@ -1,3 +1,11 @@
+## [2.39.4](https://github.com/n8n-io/n8n/compare/n8n@2.39.3...n8n@2.39.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* **core:** Select sandbox npm install flags by provider ([#38373](https://github.com/n8n-io/n8n/issues/38373)) ([17376d6](https://github.com/n8n-io/n8n/commit/17376d6df26201cdd848df4901b2a107c585133b))
+
+
 ## [2.39.3](https://github.com/n8n-io/n8n/compare/n8n@2.39.2...n8n@2.39.3) (2026-09-11)
 
 
