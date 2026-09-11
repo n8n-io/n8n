@@ -116,7 +116,9 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			return cached;
 		}
 
-		const key = await this.deploymentKeyRepository.findOne({ where: { id } });
+		const key = await this.deploymentKeyRepository.findOne({
+			where: { id, type: 'data_encryption' },
+		});
 		if (!key) return null;
 		const keyInfo: KeyInfo = {
 			id: key.id,
@@ -367,9 +369,12 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		this.activeKeyMemo = undefined;
 	}
 
-	/** Transitions key to 'inactive'. Usage count guard to be added in T13. */
+	/**
+	 * Transitions key to 'inactive'. Never deletes: DeploymentKeyRepository's
+	 * delete/remove/softDelete/softRemove/clear all throw, so a deactivated
+	 * key's value stays intact and readable for any ciphertext still using it.
+	 */
 	async markInactive(id: string): Promise<void> {
-		// TODO: T13 will add usage check — throw ConflictError if usage count > 0
 		await this.deploymentKeyRepository.update(id, { status: 'inactive' });
 		// The active key may be gone now: force the next write to re-read the store.
 		this.activeKeyMemo = undefined;

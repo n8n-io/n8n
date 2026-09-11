@@ -149,7 +149,9 @@ describe('KeyManagerService', () => {
 				algorithm: key.algorithm,
 				format: 'prefixed',
 			});
-			expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'key-1' } });
+			expect(repo.findOne).toHaveBeenCalledWith({
+				where: { id: 'key-1', type: 'data_encryption' },
+			});
 		});
 
 		it('returns null when key not found', async () => {
@@ -677,6 +679,19 @@ describe('KeyManagerService', () => {
 			const active = await service.getActiveKey();
 			expect(active.id).toBe('old-active');
 			expect(repo.find).toHaveBeenCalledTimes(1);
+		});
+
+		it('never deletes the key row', async () => {
+			const { service, repo } = makeFreshService();
+			repo.find.mockResolvedValue([makeKey({ id: 'old-active' })]);
+
+			await service.markInactive('old-active');
+
+			expect(repo.delete).not.toHaveBeenCalled();
+			expect(repo.remove).not.toHaveBeenCalled();
+			expect(repo.softDelete).not.toHaveBeenCalled();
+			expect(repo.softRemove).not.toHaveBeenCalled();
+			expect(repo.update).toHaveBeenCalledWith('old-active', { status: 'inactive' });
 		});
 	});
 
