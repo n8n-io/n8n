@@ -2585,8 +2585,14 @@ describe('createThreadRuntime - pending plan review', () => {
 		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
-	/** Seed one assistant message whose root agent holds the given create-tasks calls. */
-	function seedPlanCards(toolCalls: Array<Record<string, unknown>>) {
+	/**
+	 * Seed one assistant message whose root agent holds the given create-tasks
+	 * calls, optionally followed by later messages from a newer turn.
+	 */
+	function seedPlanCards(
+		toolCalls: Array<Record<string, unknown>>,
+		laterMessages: Array<Record<string, unknown>> = [],
+	) {
 		const runtime = activeRuntime(registry);
 		runtime.messages = [
 			{
@@ -2608,6 +2614,7 @@ describe('createThreadRuntime - pending plan review', () => {
 					timeline: [],
 				},
 			},
+			...laterMessages,
 		] as unknown as typeof runtime.messages;
 		return runtime;
 	}
@@ -2700,6 +2707,43 @@ describe('createThreadRuntime - pending plan review', () => {
 		]);
 
 		expect(runtime.pendingPlanReview?.requestId).toBe('req-plan-revised');
+	});
+
+	// A later turn strands the older card: its run was left behind, so routing
+	// composer feedback into its requestId would resume an abandoned run.
+	it('ignores a plan review stranded by a newer turn', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'assistant',
+					runId: 'run-2',
+					content: 'Working on something else',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
+	});
+
+	it('ignores a plan review once a new turn is optimistically appended', () => {
+		const runtime = seedPlanCards(
+			[planCard()],
+			[
+				{
+					id: 'msg-2',
+					role: 'user',
+					content: 'Actually, do this instead',
+					createdAt: '2026-01-01T00:01:00.000Z',
+				},
+			],
+		);
+
+		expect(runtime.pendingPlanReview).toBeNull();
 	});
 
 	it('still surfaces non-plan confirmations on the same tool call to the panel', () => {

@@ -72,6 +72,30 @@ describe('resolvePlanTasks', () => {
 		expect(resolvePlanTasks(makeToolCall())).toEqual([]);
 	});
 
+	// `isDisplayableConfirmationRequest` treats an empty `planItems` as "no plan
+	// items", so the card renders off args.tasks and the count has to agree.
+	it('falls back to args.tasks when planItems is present but empty', () => {
+		const tc = makeToolCall({
+			confirmation: makeConfirmation({ planItems: [] }),
+			args: { tasks: [PLANNED_TASK] },
+		});
+
+		expect(resolvePlanTasks(tc)).toEqual([PLANNED_TASK]);
+	});
+
+	it('falls back to the confirmation.tasks checklist when args.tasks is present but empty', () => {
+		const tc = makeToolCall({
+			confirmation: makeConfirmation({
+				tasks: { tasks: [{ id: 'task-9', description: 'Reconcile failures', status: 'todo' }] },
+			}),
+			args: { tasks: [] },
+		});
+
+		expect(resolvePlanTasks(tc)).toEqual([
+			{ id: 'task-9', title: 'Reconcile failures', kind: '', spec: '', deps: [] },
+		]);
+	});
+
 	it('returns an empty list when confirmation.tasks is present but empty', () => {
 		const tc = makeToolCall({ confirmation: makeConfirmation({ tasks: { tasks: [] } }) });
 

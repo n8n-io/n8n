@@ -627,12 +627,20 @@ export function createThreadRuntime(
 	 * Newest wins: a revised plan stacks a fresh card on top of the superseded
 	 * one, so the last card is the one the user is looking at. This is the
 	 * opposite of the panel, which queues oldest-first.
+	 *
+	 * Only a card in the transcript tail counts. A later turn strands the older
+	 * card — a suspended run keeps its confirmation row alive and releases its
+	 * concurrency slot, so a new turn starts without settling it. Resuming that
+	 * requestId would revive an abandoned run, and a revision never appends a
+	 * message of its own, so "still the last message" holds for the whole review.
 	 */
 	const pendingPlanReview = computed((): PendingPlanReview | null => {
 		for (let i = actionableConfirmations.value.length - 1; i >= 0; i--) {
 			const item = actionableConfirmations.value[i];
 			const conf = item.toolCall.confirmation;
 			if (conf.inputType !== 'plan-review') continue;
+			// Newest-first: an older card sits even further back in the transcript.
+			if (item.messageId !== messages.value.at(-1)?.id) return null;
 			return {
 				requestId: conf.requestId,
 				inputThreadId: conf.inputThreadId,

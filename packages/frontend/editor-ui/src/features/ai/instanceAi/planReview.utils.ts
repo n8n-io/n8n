@@ -13,6 +13,15 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 }
 
 /**
+ * First source that actually holds tasks. An empty array means "no tasks here",
+ * the same reading `isDisplayableConfirmationRequest` takes, so it has to fall
+ * through to the next source instead of ending the search.
+ */
+function firstNonEmpty(...sources: Array<PlannedTaskArg[] | undefined>): PlannedTaskArg[] {
+	return sources.find((source) => source?.length) ?? [];
+}
+
+/**
  * Resolve the planned tasks a plan-review card is about.
  *
  * The `create-tasks` suspend payload carries `tasks` only, so `planItems` is
@@ -20,10 +29,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
  * sources in one place — a count taken from `planItems` alone reports zero.
  */
 export function resolvePlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
-	return (
-		tc.confirmation?.planItems ??
-		(tc.args?.tasks as PlannedTaskArg[] | undefined) ??
-		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks) ??
-		[]
+	return firstNonEmpty(
+		tc.confirmation?.planItems,
+		tc.args?.tasks as PlannedTaskArg[] | undefined,
+		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks),
 	);
 }
