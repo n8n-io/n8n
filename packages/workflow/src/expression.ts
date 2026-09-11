@@ -222,6 +222,10 @@ export class Expression {
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
+	private static readonly BROWSER_CALLER = {};
+
+	private static useSharedCaller = false;
+
 	constructor(private readonly timezone: string) {}
 
 	/**
@@ -229,11 +233,18 @@ export class Expression {
 	 * @private
 	 */
 	private static shouldUseVm(): boolean {
-		return (
-			(this.expressionEngine === 'vm' || this.expressionEngine === 'quickjs') &&
-			!IS_FRONTEND &&
-			!!this.vmEvaluator
-		);
+		return !!this.vmEvaluator && this.isVmEngineSelected();
+	}
+
+	/**
+	 * Whether an engine other than legacy is selected for this runtime, whether or
+	 * not one started. `vm` is Node-only, because isolated-vm is a native module,
+	 * so the browser can only select quickjs.
+	 * @private
+	 */
+	private static isVmEngineSelected(): boolean {
+		if (this.expressionEngine === 'quickjs') return true;
+		return this.expressionEngine === 'vm' && !IS_FRONTEND;
 	}
 
 	/**
@@ -249,10 +260,20 @@ export class Expression {
 		maxCodeCacheSize: number;
 		observability?: ObservabilityProvider;
 		idleTimeoutMs?: number;
+		runtimeBundle?: string;
+		/**
+		 * Evaluate every expression through one shared bridge rather than one per
+		 * caller. The browser needs this: its synchronous `evaluate()` requires a
+		 * caller that already holds a scope, and the editor creates a new
+		 * Expression for every workflow it builds. Node leaves this off, so the
+		 * pool hands each execution its own bridge and disposes it on release.
+		 */
+		sharedCaller?: boolean;
 		lazyAcquire?: boolean;
 		compileCache?: boolean;
 	}): Promise<void> {
-		if ((options.engine !== 'vm' && options.engine !== 'quickjs') || IS_FRONTEND) return;
+		if (options.engine === 'legacy') return;
+		if (options.engine === 'vm' && IS_FRONTEND) return;
 		this.expressionEngine = options.engine;
 
 		if (!this.vmEvaluator) {
@@ -265,6 +286,7 @@ export class Expression {
 								timeout: options.bridgeTimeout,
 								memoryLimit: options.bridgeMemoryLimit,
 								logger: LoggerProxy,
+								runtimeBundle: options.runtimeBundle,
 							})
 					: () =>
 							new runtime.IsolatedVmBridge({
@@ -273,7 +295,7 @@ export class Expression {
 								logger: LoggerProxy,
 								compileCache: options.compileCache,
 							});
-			this.vmEvaluator = new runtime.ExpressionEvaluator({
+			const evaluator = new runtime.ExpressionEvaluator({
 				createBridge,
 				maxCodeCacheSize: options.maxCodeCacheSize,
 				poolSize: options.poolSize,
@@ -283,7 +305,36 @@ export class Expression {
 				logger: LoggerProxy,
 				observability: options.observability,
 			});
-			await this.vmEvaluator.initialize();
+
+			// Publish the evaluator only once it is usable. A half-started one
+			// would leave `shouldUseVm` reporting the engine as active while no
+			// bridge is acquired, so callers could neither retry the start nor
+			// fall back to the legacy evaluator.
+			try {
+				await evaluator.initialize();
+				// Requested explicitly rather than inferred from `runtimeBundle`.
+				// That option only means "the bundle is already loaded, skip the disk
+				// read"; a backend that pre-loaded it to save an fs call per pooled
+				// bridge would otherwise be switched to one shared caller and lose
+				// per-execution isolation without asking for it. IS_FRONTEND is not
+				// usable as the signal either: vite-plugin-node-polyfills shims
+				// `process` with extra keys, which defeats its detection.
+				if (options.sharedCaller) {
+					// Under `lazyAcquire` this only opens the scope. The runtime itself
+					// is built by the first expression that reaches the engine, so a
+					// session that evaluates nothing never pays for one.
+					await evaluator.acquire(Expression.BROWSER_CALLER);
+					this.useSharedCaller = true;
+				}
+				this.vmEvaluator = evaluator;
+			} catch (error) {
+				// Tear down what the start already built. The pool replenishes in
+				// the background, so an orphaned one keeps creating bridges that
+				// nobody owns, and a retried start would add another.
+				await evaluator.dispose().catch(() => {});
+				this.useSharedCaller = false;
+				throw error;
+			}
 		}
 	}
 
@@ -318,9 +369,13 @@ export class Expression {
 	 */
 	static async disposeExpressionEngine(): Promise<void> {
 		if (this.vmEvaluator) {
+			// The browser holds one shared scope, and an acquired bridge leaves the
+			// pool, so disposing the pool alone would leave that runtime alive.
+			if (this.useSharedCaller) await this.vmEvaluator.release(Expression.BROWSER_CALLER);
 			await this.vmEvaluator.dispose();
 			this.vmEvaluator = undefined;
 		}
+		this.useSharedCaller = false;
 	}
 
 	/**
@@ -650,26 +705,29 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// The VM engines (isolated-vm, quickjs) are Node-only; the browser always
-		// uses the legacy path below.
-		if (
-			(Expression.expressionEngine === 'vm' || Expression.expressionEngine === 'quickjs') &&
-			!IS_FRONTEND
-		) {
-			if (!Expression.vmEvaluator) {
-				throw new UnexpectedError(
-					`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
-				);
-			}
+		const evaluator = Expression.vmEvaluator;
 
+		if (evaluator && Expression.isVmEngineSelected()) {
+			const caller = Expression.useSharedCaller ? Expression.BROWSER_CALLER : this;
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
+				const result = evaluator.evaluate(expression, data, caller, {
 					timezone: this.timezone,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				throw mapVmError(error);
 			}
+		}
+
+		// A host that recorded an engine but started none must not evaluate through
+		// `new Function` without saying so: the backend does this on purpose for
+		// commands that should never evaluate an expression. The editor is the
+		// exception — it falls back to legacy below, so a policy that blocks WASM
+		// leaves expression previews working instead of breaking the editor.
+		if (!evaluator && Expression.isVmEngineSelected() && !IS_FRONTEND) {
+			throw new UnexpectedError(
+				`The ${Expression.expressionEngine} expression engine has not been initialized. Call Expression.initExpressionEngine() during application startup.`,
+			);
 		}
 
 		// Fall back to current implementation

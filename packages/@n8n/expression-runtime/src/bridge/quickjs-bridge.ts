@@ -38,7 +38,9 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 	return _quickjs;
 }
 
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+// Joined by hand, not with `path.join`. This runs at module load, and a browser
+// build resolves `node:path` to an empty module, so `path.join` is undefined there.
+const BUNDLE_RELATIVE_PATH = ['dist', 'bundle', 'runtime.iife.js'].join('/');
 
 // Captured at module load so values rendered into generated code stay stable
 // even if the global is later replaced.
@@ -292,6 +294,9 @@ function serializeError(err: unknown): ErrorSentinel {
  * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
  * relative path) works from either compiled output dir — `dist/cjs/bridge/`
  * and `dist/esm/bridge/` sit at different depths from the bundle.
+ *
+ * Node-only. A browser never reaches it: `initialize()` seeds the cache from
+ * `config.runtimeBundle` first.
  */
 function loadRuntimeBundle(): string {
 	if (_runtimeBundle !== null) return _runtimeBundle;
@@ -554,7 +559,12 @@ export class QuickJsBridge implements RuntimeBridge {
 		const QuickJS = await getQuickJS();
 		_quickjsWasm = QuickJS;
 
-		this.setupContext(QuickJS, loadRuntimeBundle());
+		// A host without a filesystem (the browser) passes the bundle in. Seed the
+		// module cache with it, so initializeSync() can build later bridges too and
+		// loadRuntimeBundle() — the only Node-only code here — is never reached.
+		if (this.config.runtimeBundle) _runtimeBundle = this.config.runtimeBundle;
+
+		this.setupContext(QuickJS, _runtimeBundle ?? loadRuntimeBundle());
 	}
 
 	/**

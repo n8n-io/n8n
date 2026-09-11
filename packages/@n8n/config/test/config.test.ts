@@ -670,6 +670,7 @@ describe('GlobalConfig', () => {
 		},
 		expressionEngine: {
 			engine: 'vm',
+			frontendEngine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
