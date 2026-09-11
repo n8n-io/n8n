@@ -74,19 +74,14 @@ Pcre2Wrapper::Pcre2Wrapper(const std::u16string& pattern,
 
     // PCRE2_UTF opt-in matches JS's `u` flag: off, each UTF-16 code unit is one
     // character (including lone surrogates); on, a surrogate pair is one code point.
-    // PCRE2_AUTO_CALLOUT inserts a callout before every item so checkDeadline() gets
-    // called regardless of the pattern's own content -- match_limit/depth_limit alone
-    // don't bound wall-clock (see WallClockExceeded).
+    // PCRE2_AUTO_CALLOUT inserts a callout before every item so checkDeadline() fires
+    // regardless of pattern content -- match_limit/depth_limit alone don't bound wall-clock.
     //
-    // PCRE2's own start-of-match optimizations (required-literal prescan, auto-anchoring)
-    // can skip past a stretch of a non-matching subject without invoking a single callout,
-    // so the deadline check can't fire during that scan -- PCRE2_NO_START_OPTIMIZE would
-    // close that gap, but it's not applied here: it's documented to change match *results*
-    // for patterns using (*COMMIT)/(*PRUNE)/(*SKIP)/(*ACCEPT) control verbs (confirmed:
-    // enabling it breaks two real corpus cases, e.g. `(*COMMIT)ABC` against `DEFABC`).
-    // That's a correctness regression, not just a performance one, so it can't be a blanket
-    // compile option here -- would need per-pattern detection of control-verb usage to be
-    // safe, which is real follow-up work, not a one-line fix.
+    // Not applied: PCRE2_NO_START_OPTIMIZE, which would close a gap where PCRE2's own
+    // start-of-match prescan skips a non-matching stretch without invoking a callout.
+    // It changes match *results* for (*COMMIT)/(*PRUNE)/(*SKIP)/(*ACCEPT) control verbs
+    // (confirmed against real corpus cases, e.g. `(*COMMIT)ABC` vs `DEFABC`) -- a
+    // correctness regression, so it needs per-pattern control-verb detection first.
     uint32_t options = extraOptions | optionsForFlags(flags) | PCRE2_AUTO_CALLOUT;
     utfEnabled_ = (options & PCRE2_UTF) != 0;
 
