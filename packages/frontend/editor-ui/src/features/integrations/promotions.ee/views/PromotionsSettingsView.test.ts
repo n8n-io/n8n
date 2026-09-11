@@ -265,6 +265,22 @@ describe('PromotionsSettingsView', () => {
 
 			expect(await screen.findByTestId('promotion-providers-load-error')).toBeInTheDocument();
 		});
+
+		it('shows the saved connection after a retry', async () => {
+			api.fetchPromotionProviders
+				.mockRejectedValueOnce(new Error('Unable to load providers'))
+				.mockResolvedValue([summaryOf(sshProvider())]);
+			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
+			renderView();
+
+			await userEvent.click(
+				within(await screen.findByTestId('promotion-providers-load-error')).getByRole('button'),
+			);
+
+			expect(await screen.findByTestId('promotion-connection-name-input')).toHaveValue(
+				'Production',
+			);
+		});
 	});
 
 	describe('instance connection', () => {
