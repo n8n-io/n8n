@@ -6,7 +6,8 @@ import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 // The empirical question behind lazy acquisition: when the pool is exhausted,
 // can a real bridge be built from inside the synchronous evaluate() path?
 // isolated-vm uses its sync APIs directly; QuickJS relies on the WASM module
-// cached by pool warmup (an earlier async initialize).
+// cached by pool warmup (an earlier async initialize). The cold start's cost
+// is tracked in packages/testing/performance (cold-start.bench.ts).
 
 describe(`Lazy acquisition: synchronous cold start (${engineName})`, () => {
 	it('builds a working bridge synchronously when the pool is exhausted', async () => {
@@ -26,18 +27,10 @@ describe(`Lazy acquisition: synchronous cold start (${engineName})`, () => {
 		// A pops the warm bridge. B evaluates in the same synchronous block, so
 		// replenishment cannot have completed: B must cold-start synchronously.
 		const resultA = evaluator.evaluate('{{ $json.x + 1 }}', { $json: { x: 1 } }, callerA);
-		const start = performance.now();
 		const resultB = evaluator.evaluate('{{ $json.x * 2 }}', { $json: { x: 21 } }, callerB);
-		const coldStartMs = performance.now() - start;
 
 		expect(resultA).toBe(2);
 		expect(resultB).toBe(42);
-
-		// The prototype exists to measure this number.
-		// eslint-disable-next-line no-console
-		console.info(
-			`[lazy-sync-cold-start] ${engineName}: exhausted-pool evaluation (cold start + eval) took ${coldStartMs.toFixed(1)}ms`,
-		);
 
 		await evaluator.release(callerA);
 		await evaluator.release(callerB);
