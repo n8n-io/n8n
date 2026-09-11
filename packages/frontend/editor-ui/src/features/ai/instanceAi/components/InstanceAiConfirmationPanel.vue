@@ -388,19 +388,26 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
 
-function settleTestListener(conf: InstanceAiConfirmation, approved: boolean, executionId?: string) {
+function settleTestListener(
+	conf: InstanceAiConfirmation,
+	outcome: { approved: boolean; executionId?: string; fromPush?: boolean },
+) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	trackInputCompleted(
-		conf,
-		[
-			{
-				label: conf.message,
-				options: ['sent', 'cancel'],
-				option_chosen: approved ? 'sent' : 'cancel',
-			},
-		],
-		[],
-	);
+	const { approved, executionId } = outcome;
+	// A push event settles the card without a user choice, so it records no input.
+	if (!outcome.fromPush) {
+		trackInputCompleted(
+			conf,
+			[
+				{
+					label: conf.message,
+					options: ['sent', 'cancel'],
+					option_chosen: approved ? 'sent' : 'cancel',
+				},
+			],
+			[],
+		);
+	}
 	thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	void thread.confirmAction(conf.requestId, {
 		kind: 'approval',
@@ -417,11 +424,11 @@ const removePushListener = usePushConnectionStore().addEventListener((event) => 
 	for (const item of thread.pendingConfirmations) {
 		const conf = item.toolCall.confirmation;
 		if (conf?.testListener?.workflowId !== event.data.workflowId) continue;
-		settleTestListener(
-			conf,
-			true,
-			event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
-		);
+		settleTestListener(conf, {
+			approved: true,
+			executionId: event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
+			fromPush: true,
+		});
 	}
 });
 onBeforeUnmount(removePushListener);
@@ -676,7 +683,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 								data-test-id="instance-ai-test-listener-cancel"
 								size="medium"
 								variant="outline"
-								@click="settleTestListener(chunk.item.toolCall.confirmation, false)"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: false })"
 							>
 								{{ i18n.baseText('instanceAi.testListener.cancel') }}
 							</N8nButton>
@@ -684,7 +691,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 								data-test-id="instance-ai-test-listener-sent"
 								size="medium"
 								variant="solid"
-								@click="settleTestListener(chunk.item.toolCall.confirmation, true)"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: true })"
 							>
 								{{ i18n.baseText('instanceAi.testListener.sent') }}
 							</N8nButton>

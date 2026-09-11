@@ -4220,7 +4220,9 @@ function createRunAdapterForTests(
 	};
 	const mockWorkflowRepository = { isActive: vi.fn().mockResolvedValue(false) };
 	const mockRoleService = { rolesWithScope: vi.fn().mockResolvedValue([]) };
-	const mockUrlService = { getWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678/') };
+	const mockUrlService = {
+		getTestWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678/'),
+	};
 
 	const mockWorkflowRunner = {
 		run: vi.fn().mockResolvedValue('exec-1'),
@@ -4480,6 +4482,47 @@ describe('createExecutionAdapter test listeners', () => {
 		).rejects.toThrow(UserError);
 	});
 
+	it('ignores a push-named execution that started before arming', async () => {
+		const execution = {
+			...makeExecution({ status: 'success', startedAt: new Date('2025-12-31T00:00:00Z') }),
+			workflowId: 'wf-1',
+		};
+		const { adapter, testWebhookRegistrations } = createListenerAdapter(undefined, { execution });
+		testWebhookRegistrations.getAllRegistrations
+			.mockReset()
+			.mockResolvedValue([makeRegistration({})]);
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: new Date().toISOString(),
+			executionId: 'exec-1',
+		});
+
+		expect(outcome).toEqual({ state: 'armed' });
+	});
+
+	it('skips an older running execution and accepts a queued one', async () => {
+		const olderRunning = {
+			...makeExecution({ status: 'running', startedAt: new Date('2025-12-31T00:00:00Z') }),
+			workflowId: 'wf-1',
+		};
+		const queued = {
+			...makeExecution({ status: 'new' }),
+			id: 'exec-2',
+			startedAt: null,
+			workflowId: 'wf-1',
+		};
+		const { adapter } = createListenerAdapter(undefined, {
+			execution: queued,
+			listedExecutions: [olderRunning, queued],
+		});
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: new Date().toISOString(),
+		});
+
+		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-2' });
+	});
+
 	it('falls back to the first execution started after arming', async () => {
 		const execution = {
 			...makeExecution({ status: 'success', startedAt: new Date('2026-01-01T00:00:05Z') }),
@@ -4510,10 +4553,24 @@ describe('createExecutionAdapter test listeners', () => {
 			.mockResolvedValue([makeRegistration({})]);
 
 		const outcome = await adapter.resolveTestListener!('wf-1', {
-			armedAt: '2026-01-01T00:00:00.000Z',
+			armedAt: new Date().toISOString(),
 		});
 
 		expect(outcome).toEqual({ state: 'armed' });
+	});
+
+	it('reports a timeout past the deadline even when the registration lingers', async () => {
+		const { adapter, testWebhookRegistrations } = createListenerAdapter();
+		testWebhookRegistrations.getAllRegistrations
+			.mockReset()
+			.mockResolvedValue([makeRegistration({})]);
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(outcome).toEqual({ state: 'timed_out' });
+		expect(testWebhookRegistrations.getAllRegistrations).not.toHaveBeenCalled();
 	});
 
 	it('reports a timeout once the registration is gone', async () => {

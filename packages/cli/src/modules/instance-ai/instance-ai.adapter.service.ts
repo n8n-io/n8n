@@ -1796,6 +1796,19 @@ export class InstanceAiAdapterService {
 			return execution;
 		};
 
+		// One listener per workflow. `cancelWebhook` deregisters asynchronously, so wait for it:
+		// otherwise it sweeps away a registration made right after, and a request could still
+		// enter after a cancel was reported as done.
+		const clearTestListener = async (workflowId: string) => {
+			if (!testWebhooks || !testWebhookRegistrations) return;
+			await testWebhooks.cancelWebhook(workflowId);
+			for (let attempt = 0; attempt < 20; attempt++) {
+				const registrations = await testWebhookRegistrations.getAllRegistrations();
+				if (!registrations.some((r) => r.workflowEntity.id === workflowId)) return;
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+		};
+
 		const adapter: InstanceAiExecutionService = {
 			async list(options) {
 				const scope: Scope = 'workflow:read';
@@ -2099,7 +2112,7 @@ export class InstanceAiAdapterService {
 					const injectedTriggerNodeName =
 						triggerNode &&
 						(pinDataPlan.mockDataSources.includes('trigger_input') ||
-							pinDataPlan.verificationPinData[triggerNode.name] !== undefined)
+							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
 							? triggerNode.name
 							: undefined;
 					return {
@@ -2225,13 +2238,9 @@ export class InstanceAiAdapterService {
 						(registration) => registration.workflowEntity.id === workflowId,
 					);
 
-				// One listener per workflow. `cancelWebhook` deregisters asynchronously,
-				// so wait for it; otherwise it sweeps away the registration made below.
-				await testWebhooks.cancelWebhook(workflowId);
-				for (let attempt = 0; attempt < 20 && (await listRegistrations()).length > 0; attempt++) {
-					await new Promise((resolve) => setTimeout(resolve, 100));
-				}
+				await clearTestListener(workflowId);
 
+				// Taken before registering so the correlation window covers the whole registration.
 				const armedAt = new Date();
 				// The registration's entity becomes the execution's workflow data, so the
 				// forced save settings `run()` applies must be set here as well.
@@ -2266,7 +2275,7 @@ export class InstanceAiAdapterService {
 				const triggers = (await listRegistrations()).map(({ webhook }) => ({
 					nodeName: webhook.node,
 					method: webhook.httpMethod,
-					url: `${urlService.getWebhookBaseUrl()}${
+					url: `${urlService.getTestWebhookBaseUrl()}${
 						webhook.webhookDescription.nodeType === 'form' ? formTest : webhookTest
 					}/${webhook.path.replace(/^\/+/, '')}`,
 				}));
@@ -2290,9 +2299,17 @@ export class InstanceAiAdapterService {
 					throw new WorkflowNotFoundError(workflowId);
 				}
 				if (cancel) {
-					await testWebhooks.cancelWebhook(workflowId);
+					await clearTestListener(workflowId);
 					return { state: 'cancelled' };
 				}
+				// Only an execution of this arm counts: one started after arming, or one still
+				// queued (a queued execution has no start time yet).
+				const armedAtMs = new Date(armedAt).getTime();
+				const belongsToThisArm = (execution: {
+					status: string;
+					startedAt?: Date | string | null;
+				}) =>
+					execution.status === 'new' || new Date(execution.startedAt ?? NaN).getTime() >= armedAtMs;
 				if (executionId) {
 					const execution = await assertExecutionAccess(executionId);
 					if (execution.workflowId !== workflowId) {
@@ -2300,16 +2317,13 @@ export class InstanceAiAdapterService {
 							`Execution ${executionId} does not belong to workflow ${workflowId}`,
 						);
 					}
-					return { state: 'received', executionId, result: await adapter.getResult(executionId) };
+					// A push from an earlier listener on this workflow can arrive late.
+					if (belongsToThisArm(execution)) {
+						return { state: 'received', executionId, result: await adapter.getResult(executionId) };
+					}
 				}
-				// No push event named the execution: the test request's execution is the
-				// newest one started after arming. A queued execution has no start time
-				// yet, so count executions that have not run either.
-				const armedAtMs = new Date(armedAt).getTime();
-				const received = (await adapter.list({ workflowId, limit: 5 })).find(
-					(execution) =>
-						execution.status === 'running' || new Date(execution.startedAt).getTime() >= armedAtMs,
-				);
+				// No push event named the execution: take the newest one of this arm.
+				const received = (await adapter.list({ workflowId, limit: 5 })).find(belongsToThisArm);
 				if (received) {
 					return {
 						state: 'received',
@@ -2317,9 +2331,13 @@ export class InstanceAiAdapterService {
 						result: await adapter.getResult(received.id),
 					};
 				}
-				const stillArmed = (await testWebhookRegistrations.getAllRegistrations()).some(
-					(registration) => registration.workflowEntity.id === workflowId,
-				);
+				// Past the deadline the registration is gone or about to go: the timeout push can
+				// reach the client before the deregistration completes.
+				const stillArmed =
+					Date.now() < armedAtMs + MAX_TIMEOUT_MS &&
+					(await testWebhookRegistrations.getAllRegistrations()).some(
+						(registration) => registration.workflowEntity.id === workflowId,
+					);
 				return { state: stillArmed ? 'armed' : 'timed_out' };
 			},
 		};

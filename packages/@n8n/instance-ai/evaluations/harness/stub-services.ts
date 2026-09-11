@@ -242,15 +242,22 @@ export async function createStubServices(
 			const { nodes } = await workflowService.getAsWorkflowJSON(workflowId);
 			const triggers = nodes
 				.filter((node) => node.type === WEBHOOK_NODE_TYPE || node.type === FORM_TRIGGER_NODE_TYPE)
-				.filter((node) => !options?.triggerNodeName || node.name === options.triggerNodeName)
-				.map((node) => {
+				.filter((node) => !node.disabled)
+				.filter(
+					(node) => options?.triggerNodeName === undefined || node.name === options.triggerNodeName,
+				)
+				.flatMap((node) => {
 					const isForm = node.type === FORM_TRIGGER_NODE_TYPE;
 					const { path, httpMethod } = node.parameters ?? {};
-					return {
-						nodeName: node.name,
-						method: isForm || typeof httpMethod !== 'string' ? 'GET' : httpMethod,
-						url: `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${typeof path === 'string' ? path : (node.webhookId ?? workflowId)}`,
-					};
+					// Both nodes register `path` verbatim; an empty path falls back to the webhookId.
+					const pathSegment =
+						typeof path === 'string' && path !== '' ? path : (node.webhookId ?? workflowId);
+					const url = `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${pathSegment}`;
+					// A Form Trigger registers GET (renders the form) and POST (receives the submission).
+					const methods = isForm
+						? ['GET', 'POST']
+						: [typeof httpMethod === 'string' ? httpMethod : 'GET'];
+					return methods.map((method) => ({ nodeName: node.name, method, url }));
 				});
 			if (triggers.length === 0) {
 				throw new Error(`Workflow ${workflowId} has no Webhook or Form Trigger to listen on.`);

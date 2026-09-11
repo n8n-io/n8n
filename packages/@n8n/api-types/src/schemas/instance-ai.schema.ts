@@ -536,8 +536,6 @@ export const workflowSetupNodeSchema = z.object({
 		.object({
 			status: z.enum(['success', 'error', 'listening']),
 			error: z.string().optional(),
-			/** Test URL armed for a Webhook or Form Trigger (status `listening`). */
-			url: z.string().optional(),
 		})
 		.optional(),
 	parameterIssues: z.record(z.array(z.string())).optional(),
@@ -711,7 +709,7 @@ export const testListenerCardSchema = z.object({
 	workflowId: z.string(),
 	triggers: z.array(z.object({ nodeName: z.string(), url: z.string(), method: z.string() })),
 	/** ISO timestamp at which the listener deregisters itself. */
-	deadlineAt: z.string(),
+	deadlineAt: z.string().datetime(),
 });
 
 export const confirmationRequestPayloadSchema = z.object({

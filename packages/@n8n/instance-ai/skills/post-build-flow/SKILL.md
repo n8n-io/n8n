@@ -61,7 +61,9 @@ setup returns `announced: true`, or the current user input contains
   setup cannot be confirmed, report what is missing and end the turn.
   If required items remain open for this
   workflow, report them and end the turn without a live run. Otherwise,
-  use `executions(action="run")` with suitable trigger input. The user has
+  run the live test: `executions(action="listen")` for a Webhook or Form
+  Trigger, `executions(action="run")` with suitable trigger input for other
+  triggers. The user has
   already requested this test; do not ask whether they want it. The execution
   tool still enforces its approval policy. Do not publish the workflow to test it.
 - Read the execution output and summarize what ran and what it returned. For
@@ -519,7 +521,8 @@ temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
 An explicit test request in the current user input, including
 `<workflow-test-request>`, already answers
-this question. Run the requested test through `executions(action="run")`.
+this question. Run the requested test through `executions(action="listen")`
+for a Webhook or Form Trigger and through `executions(action="run")` otherwise.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
@@ -527,8 +530,9 @@ If `credentialResolutionNote` says Gateway credits are depleted, that
 note wins over this live-test offer: do not offer a live test. Tell the user
 they must top up Gateway credits or add their own key on the node first.
 
-If the user agrees, use the explicit live execution path (`executions(action="run")`
-for a direct live run) and report the result separately from the earlier mocked
+If the user agrees, use the explicit live execution path (`executions(action="listen")`
+for a Webhook or Form Trigger, `executions(action="run")` for a direct live run of
+other triggers) and report the result separately from the earlier mocked
 verification. If the live test fails, treat the workflow as unresolved and do
 not offer publishing. If the user declines or defers, state what remains
 untested, do not claim live end-to-end verification, and do not offer

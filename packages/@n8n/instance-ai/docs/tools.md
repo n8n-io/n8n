@@ -589,7 +589,11 @@ push, when the user clicks "I sent the request", or when the user cancels.
 **Returns**: `{ state: 'received', ...ExecutionResult }` once a request arrived,
 `{ state: 'timed_out' | 'cancelled', listenerCleared: true, reason }` otherwise,
 `{ state: 'denied', reason }` when the gate refuses, or `{ state: 'unsupported' }`
-when the host has no test webhook registry.
+when the host has no test webhook registry. When the user clicks "I sent the
+request" before any request is visible, the card is shown again up to two times;
+after that the tool returns `{ state: 'armed', listenerCleared: false, reason }`
+while the listener stays armed until the deadline. Call `listen` again to keep
+waiting.
 
 ### `executions(action="debug")`
 

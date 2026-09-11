@@ -28,6 +28,8 @@ export type TestWebhookRegistration = {
 	 * so the identity has to travel on the registration instead.
 	 */
 	encryptedRunnerIdentity?: string;
+	/** Epoch ms at which the registration's own timeout fires. Set by `register()`. */
+	expiresAt?: number;
 };
 
 // Type guard for TestWebhookRegistration.
@@ -57,7 +59,9 @@ export class TestWebhookRegistrationsService {
 	) {
 		const hashKey = this.toKey(registration.webhook);
 
-		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+		await this.cacheService.setHash(this.cacheKey, {
+			[hashKey]: { ...registration, expiresAt: Date.now() + ttl },
+		});
 
 		const isCached = await this.cacheService.exists(this.cacheKey);
 
@@ -78,11 +82,12 @@ export class TestWebhookRegistrationsService {
 		 * with an additional buffer to ensure this safeguard expiration will not delete
 		 * the key before the regular test webhook timeout fetches the key to delete it.
 		 *
-		 * ponytail: the TTL covers the whole hash, so the most recent registration's
-		 * window applies to every test webhook on the instance. Key the TTL per
-		 * registration if short-lived editor tests start expiring long assistant ones.
+		 * The TTL covers the whole hash, so it must outlive the longest-lived registration:
+		 * a short editor test must not expire a long assistant listener.
 		 */
-		await this.cacheService.expire(this.cacheKey, ttl);
+		const now = Date.now();
+		const remaining = (await this.getAllRegistrations()).map((r) => (r.expiresAt ?? 0) - now);
+		await this.cacheService.expire(this.cacheKey, Math.max(ttl, ...remaining));
 	}
 
 	async deregister(arg: IWebhookData | string) {

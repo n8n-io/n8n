@@ -944,29 +944,25 @@ type SetupState = { currentRequestId: string | null; preTestSnapshot: WorkflowJS
 type SetupResumeData = NonNullable<WorkflowToolContext['resumeData']>;
 
 /**
- * Test a single trigger for the setup panel. Webhook and Form Triggers arm their
- * test URL: a run fed an empty `{}` proves nothing about them, so it must not
- * pass. Other triggers run and map the execution status.
+ * Test a single trigger for the setup panel. A Webhook or Form Trigger needs a real
+ * request: a run fed an empty `{}` proves nothing about it, so it must not pass, and
+ * nothing here owns a listener's lifecycle, so it is not armed either. Other triggers
+ * run and map the execution status.
  */
 async function runTriggerTest(
 	context: InstanceAiContext,
 	workflowId: string,
 	triggerNodeName: string,
 	snapshot: WorkflowJSON | null,
-): Promise<{ status: 'success' | 'error' | 'listening'; error?: string; url?: string }> {
+): Promise<{ status: 'success' | 'error' | 'listening'; error?: string }> {
 	try {
 		const triggerType = snapshot?.nodes.find((node) => node.name === triggerNodeName)?.type;
 		if (triggerType === WEBHOOK_NODE_TYPE || triggerType === FORM_TRIGGER_NODE_TYPE) {
-			if (!context.executionService.armTestListener) {
-				return {
-					status: 'error',
-					error: 'This trigger needs a real request. Test it from the editor.',
-				};
-			}
-			const listener = await context.executionService.armTestListener(workflowId, {
-				triggerNodeName,
-			});
-			return { status: 'listening', url: listener.triggers[0]?.url };
+			return {
+				status: 'error',
+				error:
+					'This trigger needs a real request. Arm its test URL with executions(action="listen").',
+			};
 		}
 		const result = await context.executionService.run(workflowId, undefined, {
 			timeout: 30_000,

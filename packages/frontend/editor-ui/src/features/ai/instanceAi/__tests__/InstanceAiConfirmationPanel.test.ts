@@ -849,6 +849,11 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				approved: true,
 				userInput: 'exec-9',
 			});
+			// The user made no choice, so no input telemetry is recorded.
+			expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.anything(),
+			);
 		});
 	});
 

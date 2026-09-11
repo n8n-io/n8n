@@ -29,7 +29,9 @@ describe('TestWebhookRegistrationsService', () => {
 		test('should register a test webhook registration', async () => {
 			await registrations.register(registration);
 
-			expect(cacheService.setHash).toHaveBeenCalledWith(cacheKey, { [webhookKey]: registration });
+			expect(cacheService.setHash).toHaveBeenCalledWith(cacheKey, {
+				[webhookKey]: expect.objectContaining({ version: 1, expiresAt: expect.any(Number) }),
+			});
 		});
 
 		test('should skip setting TTL in single-main setup', async () => {
@@ -47,6 +49,23 @@ describe('TestWebhookRegistrationsService', () => {
 			await multiMainRegistrations.register(registration, 1234);
 
 			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 1234);
+		});
+
+		test('should keep the hash TTL at the longest remaining registration in multi-main setup', async () => {
+			const multiMainRegistrations = new TestWebhookRegistrationsService(
+				cacheService,
+				mock<InstanceSettings>({ isSingleMain: false }),
+			);
+			const longLivedKey = 'POST|long';
+			cacheService.getHash.mockResolvedValue({
+				[longLivedKey]: { version: 1, expiresAt: Date.now() + 500_000 },
+			});
+
+			await multiMainRegistrations.register(registration, 1234);
+
+			const [, ttl] = cacheService.expire.mock.calls[0];
+			expect(ttl).toBeGreaterThan(499_000);
+			expect(ttl).toBeLessThanOrEqual(500_000);
 		});
 
 		test('should throw an error if the registration fails', async () => {

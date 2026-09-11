@@ -32,7 +32,7 @@ export const WORKFLOW_PIN_SIMULATION_REASON =
 
 /** Disclosure for a trigger whose output the assistant injected instead of a real event. */
 export const INJECTED_TRIGGER_SIMULATION_REASON =
-	'Trigger output was injected test input, not a real request — arm the test URL with executions(action="listen") for a live test';
+	'Trigger output was injected test input, not a real event — for a Webhook or Form Trigger, arm the test URL with executions(action="listen") for a live test';
 
 /** Injected trigger output, deduplicated against the other simulation sources. */
 export function injectedTriggerSimulations(

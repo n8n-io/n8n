@@ -184,7 +184,8 @@ export class InstanceAiPage extends BasePage {
 	async confirmTestRequestSent(): Promise<void> {
 		const button = this.getTestListenerCard().getByTestId('instance-ai-test-listener-sent');
 		if (await button.isVisible()) {
-			await button.click().catch(() => undefined);
+			// The push event can settle the card between the check and the click.
+			await button.click({ timeout: 2_000 }).catch(() => undefined);
 		}
 	}
 

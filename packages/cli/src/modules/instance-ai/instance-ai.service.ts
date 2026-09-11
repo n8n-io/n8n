@@ -958,8 +958,8 @@ export class InstanceAiService {
 		this.oauth2CallbackUrl = `${this.urlService.getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 		this.formBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.form}`;
-		this.webhookTestBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhookTest}`;
-		this.formTestBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.formTest}`;
+		this.webhookTestBaseUrl = `${this.urlService.getTestWebhookBaseUrl()}${globalConfig.endpoints.webhookTest}`;
+		this.formTestBaseUrl = `${this.urlService.getTestWebhookBaseUrl()}${globalConfig.endpoints.formTest}`;
 
 		this._ssrfProtectionConfig = ssrfProtectionConfig;
 		this._ssrfProtectionService = ssrfProtectionService;
