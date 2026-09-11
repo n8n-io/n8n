@@ -1,10 +1,11 @@
-import { UserError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
+import { NodeApiError, UserError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getChats, getUsers } from '../../methods/listSearch';
+import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
 
@@ -329,5 +330,39 @@ describe('Microsoft Teams v2 - getUsers', () => {
 			{ name: 'Ann Smith (ann@contoso.com)', value: 'u1' },
 			{ name: 'Zoe Brown (zoe@contoso.com)', value: 'u2' },
 		]);
+	});
+
+	describe('403 handling', () => {
+		const forbidden = () =>
+			new NodeApiError(ctx.getNode(), { message: 'Forbidden' }, { httpCode: '403' });
+
+		it('names the User.Read.All application permission under the Service Principal credential', async () => {
+			ctx.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			apiRequest.mockRejectedValue(forbidden());
+
+			const thrown: unknown = await getUsers.call(ctx).catch((error: unknown) => error);
+
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect((thrown as NodeApiError).message).toContain('User.Read.All');
+			expect((thrown as NodeApiError).message).toContain('By ID');
+			expect((thrown as NodeApiError).message).toContain('object ID');
+			expect((thrown as NodeApiError).httpCode).toBe('403');
+		});
+
+		it('also maps a 403 on a pagination request under the Service Principal credential', async () => {
+			ctx.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			apiRequest.mockRejectedValue(forbidden());
+
+			await expect(
+				getUsers.call(ctx, undefined, 'https://graph.microsoft.com/v1.0/users?$skiptoken=abc'),
+			).rejects.toThrow('User.Read.All');
+		});
+
+		it('leaves a delegated 403 unchanged', async () => {
+			ctx.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+			apiRequest.mockRejectedValue(forbidden());
+
+			await expect(getUsers.call(ctx)).rejects.toThrow('Forbidden');
+		});
 	});
 });
