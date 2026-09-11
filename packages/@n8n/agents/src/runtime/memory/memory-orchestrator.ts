@@ -137,8 +137,8 @@ function hasObservationLogObserverMemory(
 export class MemoryOrchestrator {
 	private memoryTasks: ScopedMemoryTaskRunner | undefined;
 
-	/** Keyed by thread: users of one shared thread must not process its candidates at the same time. */
-	private episodicMemoryTasksByThread = new Map<string, Promise<unknown>>();
+	/** Keyed by resource and thread because backends can lock on either scope. */
+	private episodicMemoryTasks = new Map<string, Promise<unknown>>();
 
 	/**
 	 * Per-message model-facing token estimates, cached by message id so
@@ -780,17 +780,23 @@ export class MemoryOrchestrator {
 		task: () => Promise<void>,
 	): void {
 		const id = crypto.randomUUID();
-		const key = scope.threadId;
-		const previous = this.episodicMemoryTasksByThread.get(key) ?? Promise.resolve();
-		const done = previous
-			.catch(() => undefined)
-			.then(async () => await this.runEpisodicMemoryTask(memory, scope, id, task));
+		const keys = [`resource:${scope.resourceId}`, `thread:${scope.threadId}`];
+		const previous: Array<Promise<unknown>> = [];
+		for (const key of keys) {
+			const running = this.episodicMemoryTasks.get(key);
+			if (running) previous.push(running);
+		}
+		const done = Promise.allSettled(previous).then(
+			async () => await this.runEpisodicMemoryTask(memory, scope, id, task),
+		);
 		const queued = done.finally(() => {
-			if (this.episodicMemoryTasksByThread.get(key) === queued) {
-				this.episodicMemoryTasksByThread.delete(key);
+			for (const key of keys) {
+				if (this.episodicMemoryTasks.get(key) === queued) {
+					this.episodicMemoryTasks.delete(key);
+				}
 			}
 		});
-		this.episodicMemoryTasksByThread.set(key, queued);
+		for (const key of keys) this.episodicMemoryTasks.set(key, queued);
 		this.backgroundTasks.track(queued);
 	}
 

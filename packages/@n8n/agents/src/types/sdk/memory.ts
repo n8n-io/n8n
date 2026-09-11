@@ -179,6 +179,8 @@ export interface EpisodicMemorySearchOptions {
 	topK?: number;
 	queryEmbedding?: number[];
 	includeStatuses?: EpisodicMemoryStatus[];
+	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
+	writeScopeOnly?: boolean;
 }
 
 export interface EpisodicMemoryTaskLockHandle {

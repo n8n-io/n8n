@@ -32,6 +32,13 @@ describe('N8nMemory', () => {
 	let messageRepository: Mocked<AgentMessageRepository>;
 	let threadRepository: Mocked<AgentThreadRepository>;
 	let resourceRepository: Mocked<AgentResourceRepository>;
+	let resourceInsertQueryBuilder: {
+		insert: Mock;
+		into: Mock;
+		values: Mock;
+		orIgnore: Mock;
+		execute: Mock;
+	};
 	let observationRepository: Mocked<AgentObservationRepository>;
 	let observationCursorRepository: Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: Mocked<AgentObservationLockRepository>;
@@ -70,7 +77,14 @@ describe('N8nMemory', () => {
 		memoryEntryCandidateRepository = mock<AgentMemoryEntryCandidateRepository>();
 		memoryEntryLockRepository = mock<AgentMemoryEntryLockRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
-		resourceRepository.existsBy.mockResolvedValue(true);
+		resourceInsertQueryBuilder = {
+			insert: vi.fn().mockReturnThis(),
+			into: vi.fn().mockReturnThis(),
+			values: vi.fn().mockReturnThis(),
+			orIgnore: vi.fn().mockReturnThis(),
+			execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
+		};
+		resourceRepository.createQueryBuilder.mockReturnValue(resourceInsertQueryBuilder as never);
 		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = vi.fn().mockResolvedValue([]);
@@ -437,7 +451,6 @@ describe('N8nMemory', () => {
 			} as unknown as AgentThreadEntity;
 			threadRepository.findOneBy.mockResolvedValue(existing);
 			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
-			resourceRepository.existsBy.mockResolvedValue(true);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -462,7 +475,6 @@ describe('N8nMemory', () => {
 			} as unknown as AgentThreadEntity;
 			threadRepository.findOneBy.mockResolvedValue(existing);
 			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
-			resourceRepository.existsBy.mockResolvedValue(false);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -471,8 +483,11 @@ describe('N8nMemory', () => {
 				metadata: undefined,
 			});
 
-			expect(resourceRepository.existsBy).toHaveBeenCalledWith({ id: 'different-user' });
-			expect(resourceRepository.save).toHaveBeenCalled();
+			expect(resourceInsertQueryBuilder.values).toHaveBeenCalledWith({
+				id: 'different-user',
+				metadata: null,
+			});
+			expect(resourceInsertQueryBuilder.orIgnore).toHaveBeenCalled();
 		});
 
 		it('merges metadata updates instead of replacing existing thread metadata', async () => {
@@ -490,7 +505,6 @@ describe('N8nMemory', () => {
 			} as unknown as AgentThreadEntity;
 			threadRepository.findOneBy.mockResolvedValue(existing);
 			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
-			resourceRepository.existsBy.mockResolvedValue(true);
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -1361,7 +1375,10 @@ describe('N8nMemory', () => {
 			expect(transactionMemoryEntryCreate).toHaveBeenCalledWith(
 				expect.objectContaining({ agentId: 'agent-1', resourceId: 'thread:thread-1' }),
 			);
-			expect(resourceRepository.existsBy).toHaveBeenCalledWith({ id: 'thread:thread-1' });
+			expect(resourceInsertQueryBuilder.values).toHaveBeenCalledWith({
+				id: 'thread:thread-1',
+				metadata: null,
+			});
 			expect(result).toMatchObject({ id: 'merged-memory-1', resourceId: 'thread:thread-1' });
 		});
 
@@ -1430,6 +1447,25 @@ describe('N8nMemory', () => {
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
 		});
 
+		it('limits integration write-scope searches to the current thread', async () => {
+			memoryEntryRepository.find.mockResolvedValue([]);
+
+			await memory.episodic.searchEntries(
+				{ resourceId: 'integration:slack:U1', threadId: 'thread-1' },
+				'shared fact',
+				{ writeScopeOnly: true },
+			);
+
+			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
+				where: {
+					agentId: 'agent-1',
+					resourceId: In(['thread:thread-1']),
+					status: In(['active']),
+				},
+			});
+			expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
+		});
+
 		it('recalls from the author scope, the current thread and the threads they posted in', async () => {
 			messageRepository.findRecentThreadIdsByResourceId.mockResolvedValue([
 				'thread-1',
@@ -1458,6 +1494,7 @@ describe('N8nMemory', () => {
 			);
 
 			expect(messageRepository.findRecentThreadIdsByResourceId).toHaveBeenCalledWith(
+				'agent-1',
 				'integration:slack:U_SINDHUJA',
 				200,
 			);

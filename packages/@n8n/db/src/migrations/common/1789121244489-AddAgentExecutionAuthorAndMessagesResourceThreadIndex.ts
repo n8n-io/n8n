@@ -8,21 +8,45 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddAgentExecutionAuthorAndMessagesResourceThreadIndex1789121244489
 	implements ReversibleMigration
 {
-	async up({ schemaBuilder: { addColumns, column, createIndex } }: MigrationContext) {
-		await addColumns(
-			'agent_execution',
-			[
-				column('author').json.comment(
-					'Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations',
-				),
-			],
-			{ recreatesOnSqlite: true },
-		);
+	async up({
+		isSqlite,
+		escape,
+		runQuery,
+		schemaBuilder: { addColumns, column, createIndex },
+	}: MigrationContext) {
+		// The schema builder rebuilds the table on SQLite.
+		// Add this nullable column in place.
+		if (isSqlite) {
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('agent_execution')} ADD COLUMN ${escape.columnName('author')} text`,
+			);
+		} else {
+			await addColumns(
+				'agent_execution',
+				[
+					column('author').json.comment(
+						'Chat platform user who wrote the turn as {id, name}; null for runs outside chat integrations',
+					),
+				],
+				{ recreatesOnSqlite: true },
+			);
+		}
 		await createIndex('agents_messages', ['resourceId', 'threadId']);
 	}
 
-	async down({ schemaBuilder: { dropColumns, dropIndex } }: MigrationContext) {
+	async down({
+		isSqlite,
+		escape,
+		runQuery,
+		schemaBuilder: { dropColumns, dropIndex },
+	}: MigrationContext) {
 		await dropIndex('agents_messages', ['resourceId', 'threadId']);
-		await dropColumns('agent_execution', ['author'], { recreatesOnSqlite: true });
+		if (isSqlite) {
+			await runQuery(
+				`ALTER TABLE ${escape.tableName('agent_execution')} DROP COLUMN ${escape.columnName('author')}`,
+			);
+		} else {
+			await dropColumns('agent_execution', ['author'], { recreatesOnSqlite: true });
+		}
 	}
 }

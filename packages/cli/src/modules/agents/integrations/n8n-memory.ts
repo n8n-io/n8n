@@ -58,6 +58,7 @@ import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentObservationCursorEntity } from '../entities/agent-observation-cursor.entity';
 import { AgentObservationLockEntity } from '../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../entities/agent-observation.entity';
+import { AgentResourceEntity } from '../entities/agent-resource.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMemoryEntryCandidateRepository } from '../repositories/agent-memory-entry-candidate.repository';
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
@@ -193,12 +194,14 @@ export class N8nMemoryImpl
 	}
 
 	private async ensureResource(resourceId: string): Promise<void> {
-		const exists = await this.resourceRepository.existsBy({ id: resourceId });
-		if (!exists) {
-			await this.resourceRepository.save(
-				this.resourceRepository.create({ id: resourceId, metadata: null }),
-			);
-		}
+		// Two callers can create a new thread scope at the same time. Ignore the loser.
+		await this.resourceRepository
+			.createQueryBuilder()
+			.insert()
+			.into(AgentResourceEntity)
+			.values({ id: resourceId, metadata: null })
+			.orIgnore()
+			.execute();
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
@@ -774,10 +777,14 @@ export class N8nMemoryImpl
 		opts?: EpisodicMemorySearchOptions,
 	): Promise<RetrievedEpisodicMemoryEntry[]> {
 		const statuses = opts?.includeStatuses ?? ['active'];
+		// Reflection must not pull entries from other scopes into a shared thread.
+		const resourceIds = opts?.writeScopeOnly
+			? [episodicMemoryWriteScopeId(scope)]
+			: await this.episodicMemoryReadScopeIds(scope);
 		const entities = await this.memoryEntryRepository.find({
 			where: {
 				agentId: this.agentId,
-				resourceId: In(await this.episodicMemoryReadScopeIds(scope)),
+				resourceId: In(resourceIds),
 				status: In(statuses),
 			},
 		});
@@ -803,6 +810,7 @@ export class N8nMemoryImpl
 	private async episodicMemoryReadScopeIds(scope: EpisodicMemoryScope): Promise<string[]> {
 		if (!isIntegrationMemoryResourceId(scope.resourceId)) return [scope.resourceId];
 		const threadIds = await this.messageRepository.findRecentThreadIdsByResourceId(
+			this.agentId,
 			scope.resourceId,
 			EPISODIC_MEMORY_MAX_THREAD_SCOPES,
 		);

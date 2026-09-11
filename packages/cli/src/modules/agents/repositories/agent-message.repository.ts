@@ -10,10 +10,16 @@ export class AgentMessageRepository extends Repository<AgentMessageEntity> {
 	}
 
 	/** Threads the resource has posted in, most recent activity first. */
-	async findRecentThreadIdsByResourceId(resourceId: string, limit: number): Promise<string[]> {
+	async findRecentThreadIdsByResourceId(
+		agentId: string,
+		resourceId: string,
+		limit: number,
+	): Promise<string[]> {
+		// Thread IDs start with the agent ID because this table has no agent column.
 		const rows = await this.createQueryBuilder('message')
 			.select('message.threadId', 'threadId')
 			.where('message.resourceId = :resourceId', { resourceId })
+			.andWhere('message.threadId LIKE :threadPrefix', { threadPrefix: `${agentId}:%` })
 			.groupBy('message.threadId')
 			.orderBy('MAX(message.createdAt)', 'DESC')
 			.limit(limit)

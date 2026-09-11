@@ -6374,6 +6374,52 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(typeof lockOptions.ttlMs).toBe('number');
 	});
 
+	it('serializes episodic memory tasks for one resource across threads', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+		const memory = new InMemoryMemory();
+		const taskLock = memory.episodic.taskLock!;
+		const acquireSpy = vi.spyOn(taskLock, 'acquire').mockResolvedValue({
+			resourceId: 'resource-1',
+			holderId: 'holder-1',
+			heldUntil: new Date(Date.now() + 60_000),
+		});
+		let finishFirstRelease!: () => void;
+		let markFirstReleaseStarted!: () => void;
+		const firstReleaseGate = new Promise<void>((resolve) => (finishFirstRelease = resolve));
+		const firstReleaseStarted = new Promise<void>((resolve) => (markFirstReleaseStarted = resolve));
+		vi.spyOn(taskLock, 'release')
+			.mockImplementationOnce(async () => {
+				markFirstReleaseStarted();
+				await firstReleaseGate;
+			})
+			.mockResolvedValue(undefined);
+		const runtime = new AgentRuntime({
+			name: 'observing-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never },
+		});
+
+		await runtime.generate('First run.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		await firstReleaseStarted;
+		await runtime.generate('Second run.', {
+			persistence: { threadId: 'thread-2', resourceId: 'resource-1' },
+		});
+		const acquireCountBeforeFirstRelease = acquireSpy.mock.calls.length;
+
+		finishFirstRelease();
+		await runtime.dispose();
+
+		expect(acquireCountBeforeFirstRelease).toBe(1);
+		expect(acquireSpy.mock.calls.map(([scope]) => scope)).toEqual([
+			{ threadId: 'thread-1', resourceId: 'resource-1' },
+			{ threadId: 'thread-2', resourceId: 'resource-1' },
+		]);
+	});
+
 	it('drains pending candidates in the background without blocking the run', async () => {
 		const memory = new InMemoryMemory();
 		for (const toolCallId of ['tc-pending-1', 'tc-pending-2']) {
