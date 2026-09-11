@@ -1694,15 +1694,22 @@ export interface InstanceAiThreadListResponse {
 	hasMore: boolean;
 }
 
+const threadSearchSchema = z
+	.string()
+	.trim()
+	.max(500)
+	.refine((value) => !value.includes('\u0000'))
+	.optional();
+
 export class InstanceAiThreadsQuery extends Z.class({
 	page: z.coerce.number().int().min(0).max(10000).default(0),
 	limit: z.coerce.number().int().min(1).max(100).default(100),
-	search: z.string().trim().max(500).optional(),
+	search: threadSearchSchema,
 }) {}
 
 export class InstanceAiThreadHistoryQuery extends Z.class({
 	limit: z.coerce.number().int().min(1).max(100).default(30),
-	search: z.string().trim().max(500).optional(),
+	search: threadSearchSchema,
 	cursor: z.string().min(1).max(512).optional(),
 }) {}
 

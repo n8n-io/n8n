@@ -38,6 +38,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
+	// Thread IDs are not reused. Keep late responses from restoring deleted chats.
+	const deletedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
@@ -176,6 +178,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function mergeThreads(incoming: InstanceAiThreadInfo[]) {
 		const merged = new Map(threads.value.map((thread) => [thread.id, thread]));
 		for (const thread of incoming) {
+			if (deletedThreadIds.has(thread.id)) continue;
 			persistedThreadIds.add(thread.id);
 			const existing = merged.get(thread.id);
 			if (
@@ -249,6 +252,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (persistedThreadIds.has(threadId)) return;
 
 		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
+		if (deletedThreadIds.has(result.thread.id)) return;
 		persistedThreadIds.add(result.thread.id);
 
 		const templateId = launch.sourceContext?.templateId;
@@ -306,6 +310,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 
 		// Remove thread from list
+		deletedThreadIds.add(threadId);
 		threads.value = threads.value.filter((t) => t.id !== threadId);
 		disposeRuntime(threadId);
 
