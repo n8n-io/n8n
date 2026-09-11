@@ -31,10 +31,6 @@ describe('nodeTypePolicy:manage default grants', () => {
 	});
 });
 
-/**
- * IAM-1144: the public API carries the same scope as an API-key scope, named identically so
- * `getApiKeyScopesForRole` grants it to every global role that already holds the RBAC scope.
- */
 describe('nodeTypePolicy:manage as an API key scope', () => {
 	const principal = (slug: string, scopes: string[]): AuthPrincipal =>
 		({
