@@ -97,17 +97,16 @@ export class SecurityConfig {
 	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so use it to try a
 	 * policy out first. Both headers report violations, but only the enforced one blocks.
 	 *
-	 * Defaults to n8n's Level 3 policy, which is also the enforced default. n8n drops this
-	 * header while the two policies are identical, because reporting on a policy the instance
-	 * already enforces adds nothing. Set it to `{}` to send no report-only header.
+	 * Empty by default: n8n enforces its own policy instead, and an enforced header already
+	 * reports what it blocks. Set this to `default` for n8n's policy, or to the policy you
+	 * want to try out before you enforce it.
 	 *
 	 * Parsed on read, as `N8N_CONTENT_SECURITY_POLICY` is. The variable held a boolean until
 	 * it took a policy, so a boolean parses to `{ legacyBoolean }` for the caller to honor
 	 * with a deprecation warning.
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY', contentSecurityPolicyReportOnlySchema)
-	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting =
-		DEFAULT_CONTENT_SECURITY_POLICY;
+	contentSecurityPolicyReportOnly: ContentSecurityPolicyReportOnlySetting = undefined;
 
 	/**
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
@@ -120,9 +119,8 @@ export class SecurityConfig {
 	 * Whether to disable the `sandbox` directive in the CSP header for webhooks.
 	 * The sandboxing mechanism uses CSP headers now, but the name is kept for backwards compatibility.
 	 *
-	 * To disable the entire CSP, set both `N8N_CONTENT_SECURITY_POLICY` and
-	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` to `{}`, or override the policy with
-	 * `N8N_CONTENT_SECURITY_POLICY`.
+	 * To disable the entire CSP, set `N8N_CONTENT_SECURITY_POLICY` to `{}`. To change it, set
+	 * that variable to your own policy.
 	 */
 	@Env('N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX')
 	disableWebhookHtmlSandboxing: boolean = false;
@@ -135,9 +133,8 @@ export class SecurityConfig {
 	 * The correct way to prevent this is to configure forms to be served from a different
 	 * (sub)domain instead of disabling the sandbox.
 	 *
-	 * To disable the entire CSP, set both `N8N_CONTENT_SECURITY_POLICY` and
-	 * `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` to `{}`, or override the policy with
-	 * `N8N_CONTENT_SECURITY_POLICY`.
+	 * To disable the entire CSP, set `N8N_CONTENT_SECURITY_POLICY` to `{}`. To change it, set
+	 * that variable to your own policy.
 	 */
 	@Env('N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX')
 	disableFormHtmlSandboxing: boolean = false;
