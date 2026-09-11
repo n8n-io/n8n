@@ -3,7 +3,6 @@ import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentMemoryEntryCursorEntity } from '../../entities/agent-memory-entry-cursor.entity';
 import type { AgentMemoryEntryLockEntity } from '../../entities/agent-memory-entry-lock.entity';
 import { AgentMemoryEntrySourceEntity } from '../../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../../entities/agent-memory-entry.entity';
@@ -12,7 +11,7 @@ import { AgentObservationCursorEntity } from '../../entities/agent-observation-c
 import { AgentObservationLockEntity } from '../../entities/agent-observation-lock.entity';
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentThreadEntity } from '../../entities/agent-thread.entity';
-import type { AgentMemoryEntryCursorRepository } from '../../repositories/agent-memory-entry-cursor.repository';
+import type { AgentMemoryEntryCandidateRepository } from '../../repositories/agent-memory-entry-candidate.repository';
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
@@ -36,9 +35,9 @@ describe('N8nMemory', () => {
 	let observationCursorRepository: Mocked<AgentObservationCursorRepository>;
 	let observationLockRepository: Mocked<AgentObservationLockRepository>;
 	let memoryEntryRepository: Mocked<AgentMemoryEntryRepository>;
+	let memoryEntryCandidateRepository: Mocked<AgentMemoryEntryCandidateRepository>;
 	let memoryEntryLockRepository: Mocked<AgentMemoryEntryLockRepository>;
 	let memoryEntrySourceRepository: Mocked<AgentMemoryEntrySourceRepository>;
-	let memoryEntryCursorRepository: Mocked<AgentMemoryEntryCursorRepository>;
 	let runInTransaction: Mock;
 	let transactionDelete: Mock;
 	let observationRunInTransaction: Mock;
@@ -67,9 +66,9 @@ describe('N8nMemory', () => {
 		observationCursorRepository = mock<AgentObservationCursorRepository>();
 		observationLockRepository = mock<AgentObservationLockRepository>();
 		memoryEntryRepository = mock<AgentMemoryEntryRepository>();
+		memoryEntryCandidateRepository = mock<AgentMemoryEntryCandidateRepository>();
 		memoryEntryLockRepository = mock<AgentMemoryEntryLockRepository>();
 		memoryEntrySourceRepository = mock<AgentMemoryEntrySourceRepository>();
-		memoryEntryCursorRepository = mock<AgentMemoryEntryCursorRepository>();
 		resourceRepository.existsBy.mockResolvedValue(true);
 		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
@@ -178,9 +177,9 @@ describe('N8nMemory', () => {
 			observationCursorRepository,
 			observationLockRepository,
 			memoryEntryRepository,
+			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
-			memoryEntryCursorRepository,
 		);
 		memory = memoryService.getImplementation('agent-1');
 	});
@@ -549,12 +548,7 @@ describe('N8nMemory', () => {
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(
-				4,
-				AgentMemoryEntryCursorEntity,
-				observationScope,
-			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, { id: 'thread-1' });
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, { id: 'thread-1' });
 			expect(observationRepository.delete).not.toHaveBeenCalled();
 			expect(observationCursorRepository.delete).not.toHaveBeenCalled();
 			expect(observationLockRepository.delete).not.toHaveBeenCalled();
@@ -642,12 +636,7 @@ describe('N8nMemory', () => {
 				AgentObservationLockEntity,
 				observationScope,
 			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(
-				4,
-				AgentMemoryEntryCursorEntity,
-				observationScope,
-			);
-			expect(transactionDelete).toHaveBeenNthCalledWith(5, AgentThreadEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(4, AgentThreadEntity, {
 				id: Like('test-agent-1%'),
 			});
 			expect(observationRepository.delete).not.toHaveBeenCalled();
@@ -1632,89 +1621,6 @@ describe('N8nMemory', () => {
 				supersededIds: ['memory-1', 'memory-2'],
 				inserted: [expect.objectContaining({ id: 'existing-replacement' })],
 			});
-		});
-
-		const mockEpisodicCursorWrite = () => {
-			const insertQueryBuilder = {
-				insert: vi.fn().mockReturnThis(),
-				into: vi.fn().mockReturnThis(),
-				values: vi.fn().mockReturnThis(),
-				orIgnore: vi.fn().mockReturnThis(),
-				execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
-			};
-			const updateQueryBuilder = {
-				update: vi.fn().mockReturnThis(),
-				set: vi.fn().mockReturnThis(),
-				where: vi.fn().mockReturnThis(),
-				andWhere: vi.fn().mockReturnThis(),
-				setParameters: vi.fn().mockReturnThis(),
-				execute: vi.fn().mockResolvedValue({ affected: 1 }),
-			};
-
-			memoryEntryCursorRepository.createQueryBuilder
-				.mockReturnValueOnce(insertQueryBuilder as never)
-				.mockReturnValueOnce(updateQueryBuilder as never);
-
-			return { insertQueryBuilder, updateQueryBuilder };
-		};
-
-		it('only advances the episodic cursor by observation keyset', async () => {
-			const lastIndexedObservationCreatedAt = new Date('2026-05-05T00:00:00Z');
-			const { insertQueryBuilder, updateQueryBuilder } = mockEpisodicCursorWrite();
-
-			await memory.episodic.setCursor({
-				observationScopeId: 'thread-1',
-				lastIndexedObservationId: 'obs-1',
-				lastIndexedObservationCreatedAt,
-			});
-
-			expect(insertQueryBuilder.values).toHaveBeenCalledWith(
-				expect.objectContaining({
-					agentId: 'agent-1',
-					observationScopeId: 'thread-1',
-					lastIndexedObservationId: 'obs-1',
-					lastIndexedObservationCreatedAt,
-				}),
-			);
-			expect(insertQueryBuilder.orIgnore).toHaveBeenCalled();
-			expect(updateQueryBuilder.where).toHaveBeenCalledWith('"agentId" = :agentId');
-			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
-				'"observationScopeId" = :observationScopeId',
-			);
-			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining(
-					'"lastIndexedObservationCreatedAt" < :lastIndexedObservationCreatedAt',
-				),
-			);
-			expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('"lastIndexedObservationId" < :lastIndexedObservationId'),
-			);
-			expect(updateQueryBuilder.setParameters).toHaveBeenCalledWith({
-				agentId: 'agent-1',
-				observationScopeId: 'thread-1',
-				lastIndexedObservationId: 'obs-1',
-				lastIndexedObservationCreatedAt,
-			});
-			expect(memoryEntryCursorRepository.upsert).not.toHaveBeenCalled();
-		});
-
-		it('reads episodic cursors as dates', async () => {
-			const lastIndexedObservationCreatedAt = new Date('2026-05-05T00:00:00Z');
-			memoryEntryCursorRepository.findOneBy.mockResolvedValue({
-				agentId: 'agent-1',
-				observationScopeId: 'thread-1',
-				lastIndexedObservationId: 'obs-1',
-				lastIndexedObservationCreatedAt,
-				createdAt: new Date('2026-05-05T00:00:00Z'),
-				updatedAt: new Date('2026-05-05T00:00:01Z'),
-			} as AgentMemoryEntryCursorEntity);
-
-			const cursor = await memory.episodic.getCursor({
-				observationScopeId: 'thread-1',
-			});
-
-			expect(cursor?.lastIndexedObservationId).toBe('obs-1');
-			expect(cursor?.lastIndexedObservationCreatedAt).toBe(lastIndexedObservationCreatedAt);
 		});
 	});
 });

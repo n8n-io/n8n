@@ -1,6 +1,3 @@
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
-
 import type { WorkflowData } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { bridgeMessageSchema } from './bridge-messages';
@@ -15,8 +12,6 @@ import { bridgeMessageSchema } from './bridge-messages';
 // callback mechanism (ivm.Callback / vm.newFunction) and marshals the
 // plain, JSON-shaped return values across its own boundary.
 // ============================================================================
-
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
 /** Check if a value is an error sentinel returned by serializeError. */
 export function isErrorSentinel(value: unknown): value is ErrorSentinel {
@@ -71,27 +66,6 @@ export function reconstructError(data: ErrorSentinel): Error {
 	}
 
 	return error;
-}
-
-/**
- * Read the runtime IIFE bundle by walking up from `__dirname` until
- * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
- * relative path) works regardless of where the compiled output lives:
- *   - `src/bridge/`               (vitest running against source)
- *   - `dist/cjs/bridge/`          (CJS build)
- *   - `dist/esm/bridge/`          (ESM build)
- */
-export async function readRuntimeBundle(): Promise<string> {
-	let dir = __dirname;
-	while (dir !== path.dirname(dir)) {
-		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
-		} catch {}
-		dir = path.dirname(dir);
-	}
-	throw new Error(
-		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
-	);
 }
 
 /**

@@ -27,6 +27,12 @@ function isServicePrincipal(this: IExecuteFunctions): boolean {
 
 export const MEETING_HINT = "Check that the 'Meeting' parameter is correctly set";
 
+export function meetingHint(this: IExecuteFunctions): string {
+	return isServicePrincipal.call(this)
+		? "Check that the 'Meeting' and 'Organizer' parameters are correctly set"
+		: "Check that the 'Meeting' parameter is correctly set";
+}
+
 export function throwIfOnlineMeetingUnsupported(this: IExecuteFunctions): void {
 	if (isServicePrincipal.call(this)) {
 		throw new NodeOperationError(

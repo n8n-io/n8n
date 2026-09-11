@@ -68,7 +68,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 	);
 
 	describe('onlineMeeting — un-gated under SP one operation at a time', () => {
-		const spOperations = ['create'];
+		const spOperations = ['create', 'get'];
 		const allOperations = ['create', 'createOrGet', 'deleteMeeting', 'get', 'update'];
 		const fields = actionProps.filter((p) =>
 			p.displayOptions?.show?.resource?.includes('onlineMeeting'),

@@ -1,20 +1,30 @@
 import {
+	CreateVariablePublicDto,
 	GLOBAL_PROJECT_ID_FILTER,
 	ListVariablesQueryDto,
+	UpdateVariablePublicDto,
+	VARIABLE_TYPE_DEFAULT,
 	VariableListPublicDto,
+	variableIdParamSchema,
 	type VariablePublic,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest, Variables } from '@n8n/db';
 import {
 	ApiDescription,
+	ApiErrorResponse,
 	ApiKeyScope,
 	ApiResponse,
 	ApiSummary,
 	ApiTags,
+	Body,
+	Delete,
 	Get,
 	Licensed,
+	Param,
+	Post,
 	PublicApiController,
+	Put,
 	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -65,5 +75,67 @@ export class VariablesPublicController {
 		const { data, nextCursor } = paginateArray(variables, { offset, limit });
 
 		return { data: data.map(toVariablePublic), nextCursor };
+	}
+
+	@Post('/')
+	@Licensed(LICENSE_FEATURES.VARIABLES)
+	@ApiKeyScope('variable:create')
+	@ApiSummary('Create a variable')
+	@ApiDescription('Create a variable in your instance.')
+	@ApiTags(tags)
+	@ApiResponse(201)
+	async createVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: CreateVariablePublicDto,
+	): Promise<void> {
+		const { key, value, projectId } = payload;
+
+		await this.variablesService.create(req.user, {
+			key,
+			value,
+			// The public spec marks `type` read-only, so the caller never sends it.
+			type: VARIABLE_TYPE_DEFAULT,
+			projectId,
+		});
+	}
+
+	@Put('/:id')
+	@Licensed(LICENSE_FEATURES.VARIABLES)
+	@ApiKeyScope('variable:update')
+	@ApiSummary('Update a variable')
+	@ApiDescription('Update a variable from your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async updateVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', variableIdParamSchema) id: string,
+		@Body payload: UpdateVariablePublicDto,
+	): Promise<void> {
+		const { key, value, projectId } = payload;
+
+		await this.variablesService.update(req.user, id, {
+			key,
+			value,
+			projectId,
+		});
+	}
+
+	@Delete('/:id')
+	@Licensed(LICENSE_FEATURES.VARIABLES)
+	@ApiKeyScope('variable:delete')
+	@ApiSummary('Delete a variable')
+	@ApiDescription('Delete a variable from your instance.')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(404)
+	async deleteVariable(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id', variableIdParamSchema) id: string,
+	): Promise<void> {
+		await this.variablesService.deleteForUser(req.user, id);
 	}
 }

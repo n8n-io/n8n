@@ -132,7 +132,7 @@ const toolDisplayName = computed((): string => {
 	) {
 		return '';
 	}
-	return resolveToolNameForDisplay(props.item.toolName, i18n);
+	return resolveToolNameForDisplay(props.item.toolName, i18n, props.item.toolOutput);
 });
 
 const linkedToolName = computed((): string => {
