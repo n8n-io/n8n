@@ -33,6 +33,19 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'with a nanoid id',
+				request: { name: 'Test', nodes: [], connections: {}, id: '2tUt1wbLX592XDdX' },
+			},
+			{
+				name: 'with a uuid id, as older exports carry',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					id: '71f6209b-5d48-41a2-a224-80d529d8bb32',
+				},
+			},
+			{
 				name: 'with redactionPolicy none',
 				request: {
 					name: 'Redacted Workflow',
@@ -398,6 +411,26 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 				expectedErrorPath: ['nodeGroups', 0, 'description'],
+			},
+			{
+				name: 'id with a path separator',
+				request: { name: 'Test', nodes: [], connections: {}, id: 'wf/executions/1' },
+				expectedErrorPath: ['id'],
+			},
+			{
+				name: 'id with a parent directory reference',
+				request: { name: 'Test', nodes: [], connections: {}, id: '..' },
+				expectedErrorPath: ['id'],
+			},
+			{
+				name: 'empty id',
+				request: { name: 'Test', nodes: [], connections: {}, id: '' },
+				expectedErrorPath: ['id'],
+			},
+			{
+				name: 'id longer than the column',
+				request: { name: 'Test', nodes: [], connections: {}, id: 'a'.repeat(37) },
+				expectedErrorPath: ['id'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);
