@@ -91,16 +91,16 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(trackSpy).not.toHaveBeenCalled();
 	});
 
-	it('removes a group whose members do not form a connected subgraph', () => {
+	it('removes a group that references a node missing from the workflow', () => {
 		const store = setupDocumentStore({
 			nodes: [
 				createTestNode({ id: 'node-a', name: 'Node A' }),
 				createTestNode({ id: 'node-b', name: 'Node B' }),
-				createTestNode({ id: 'node-c', name: 'Node C' }),
 			],
 			connections: createConnection('Node A', 'Node B'),
-			// Node C is not connected to the rest of the group
-			nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'node-c'] }],
+			nodeGroups: [
+				{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'does-not-exist'] },
+			],
 		});
 
 		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
@@ -123,7 +123,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 				workflow_id: WORKFLOW_ID,
 				group_id: 'group-1',
 				group_title: 'Group 1',
-				node_ids: ['node-a', 'node-b', 'node-c'],
+				node_ids: ['node-a', 'node-b', 'does-not-exist'],
 				node_count: 3,
 				source: 'invalid-on-save',
 			}),
@@ -177,8 +177,8 @@ describe('useInvalidNodeGroupCleanup', () => {
 			connections: createConnection('Node A', 'Node B'),
 			nodeGroups: [
 				{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] },
-				// Members are not connected to each other
-				{ id: 'group-2', name: 'Group 2', nodeIds: ['node-c', 'node-d'] },
+				// References a missing node
+				{ id: 'group-2', name: 'Group 2', nodeIds: ['node-c', 'node-d', 'also-missing'] },
 				// References a missing node
 				{ id: 'group-3', name: 'Group 3', nodeIds: ['node-e', 'does-not-exist'] },
 			],
@@ -211,7 +211,11 @@ describe('useInvalidNodeGroupCleanup', () => {
 				createTestNode({ id: 'node-b', name: 'Node B' }),
 			],
 			nodeGroups: [
-				{ id: 'group-1', name: '<img src=x onerror=alert(1)>', nodeIds: ['node-a', 'node-b'] },
+				{
+					id: 'group-1',
+					name: '<img src=x onerror=alert(1)>',
+					nodeIds: ['node-a', 'node-b', 'does-not-exist'],
+				},
 			],
 		});
 

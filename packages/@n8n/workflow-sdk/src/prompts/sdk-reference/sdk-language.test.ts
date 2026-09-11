@@ -120,11 +120,11 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
 	});
 
-	it('states the single entry/exit boundary rule that grouping enforces', () => {
-		// reason: 'invalid-subgraph' — grouping rejects a group with more than one
-		// incoming or outgoing main connection (single entry/exit *boundary*).
-		expect(NODE_GROUPS_REFERENCE).toMatch(/single entry and exit/i);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/incoming and one outgoing main connection/i);
+	it('states that grouping imposes no structural constraints', () => {
+		// A group is a visual frame: boundary connections may attach at any
+		// member, and members need not connect to one another.
+		expect(NODE_GROUPS_REFERENCE).toMatch(/no structural constraints/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/attaching at any member/i);
 	});
 
 	it('does not claim the extraction-only per-node single-main-port rule', () => {
@@ -143,9 +143,10 @@ describe('NODE_GROUPS_REFERENCE', () => {
 			expect(NODE_GROUPS_REFERENCE).toMatch(/trigger nodes? (cannot|can't|may not|must not)/i);
 		});
 
-		it('states the single-connected-subgraph rule', () => {
-			// reason: 'invalid-subgraph' — one connected chunk, not two islands.
-			expect(NODE_GROUPS_REFERENCE).toMatch(/single connected|one connected/i);
+		it('states that members need not connect to one another', () => {
+			// reason: 'invalid-subgraph' no longer fires for grouping — a group is
+			// a visual frame and imposes no structural constraints.
+			expect(NODE_GROUPS_REFERENCE).toMatch(/need not connect to one another/i);
 		});
 
 		it('states the AI-Agent-and-sub-nodes-together rule in plain terms', () => {

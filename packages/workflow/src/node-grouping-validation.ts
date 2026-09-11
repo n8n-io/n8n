@@ -83,12 +83,11 @@ export const NODE_GROUPING_RULES = {
 	},
 	invalidSubgraph: {
 		sdkReference:
-			'**One connected section with a single entry and exit.** The connectable members must ' +
-			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
-			'the group boundary. Sticky notes may accompany the selection without participating in ' +
-			'connectivity, and a sticky-only group is valid.',
-		violation: 'must form a single connected subgraph with a single entry and exit',
+			'**No structural constraints.** A group only frames nodes visually and does not ' +
+			'constrain the graph: any number of main connections may cross the group boundary, ' +
+			'attaching at any member, and the members need not connect to one another. Sticky notes ' +
+			'may accompany the selection, and a sticky-only group is valid.',
+		violation: 'must form a valid selection',
 	},
 	nonMainBoundary: {
 		sdkReference:
@@ -159,7 +158,10 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		};
 	}
 
-	const subgraphResult = validateNodeSelectionSubgraph({ ...input, nodes: connectableNodes });
+	const subgraphResult = validateNodeSelectionSubgraph(
+		{ ...input, nodes: connectableNodes },
+		{ relaxIo: true },
+	);
 	if (!subgraphResult.valid) return subgraphResult;
 
 	const nodeNames = new Set(subgraphResult.subGraph.map((node) => node.name));
@@ -454,11 +456,10 @@ function groupRuleViolationMessage(
 	}
 }
 
-function validateNodeSelectionSubgraph<TNode extends INode>({
-	nodes,
-	connectionsBySourceNode,
-	getNodeType,
-}: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
+function validateNodeSelectionSubgraph<TNode extends INode>(
+	{ nodes, connectionsBySourceNode, getNodeType }: NodeGroupingValidationInput<TNode>,
+	{ relaxIo = false }: { relaxIo?: boolean } = {},
+): NodeSelectionValidationResult<TNode> {
 	const triggers = nodes.filter((node) => {
 		const nodeType = getNodeType(node);
 		return nodeType ? isTriggerNode(nodeType) : false;
@@ -473,18 +474,36 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 
 	const adjacencyList = buildAdjacencyList(connectionsBySourceNode);
 	const selectedNodeNames = new Set(nodes.map((node) => node.name));
-	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+	let selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+
+	// A group is a visual frame: it constrains nothing about the graph. Main
+	// connections may cross its boundary at any member, in any number, and the
+	// members need not connect to each other. Extraction does not relax — a
+	// subworkflow has one trigger, one return, and one continuous path.
+	if (Array.isArray(selection) && relaxIo) {
+		// `start` / `end` name the single entry and exit that extraction wires into
+		// a subworkflow. A group has no single pair, and nothing reads these for a
+		// group: the collapsed canvas block remaps every boundary edge onto its own
+		// handles. So report none rather than picking an arbitrary member.
+		selection = { start: undefined, end: undefined };
+	}
 
 	if (Array.isArray(selection)) {
 		return { valid: false, reason: 'invalid-subgraph', errors: selection };
 	}
 
-	const disconnectedSelectionError = findDisconnectedSelectionError(
-		selectedNodeNames,
-		adjacencyList,
-	);
-	if (disconnectedSelectionError) {
-		return { valid: false, reason: 'invalid-subgraph', errors: [disconnectedSelectionError] };
+	// Groups do not require connected members: the collapsed renderer remaps every
+	// boundary edge onto the group's own handles, so a frame around two parallel
+	// branches draws correctly. Extraction still requires connectivity, since a
+	// subworkflow needs one continuous path.
+	if (!relaxIo) {
+		const disconnectedSelectionError = findDisconnectedSelectionError(
+			selectedNodeNames,
+			adjacencyList,
+		);
+		if (disconnectedSelectionError) {
+			return { valid: false, reason: 'invalid-subgraph', errors: [disconnectedSelectionError] };
+		}
 	}
 
 	return { valid: true, subGraph: nodes, subGraphData: selection };

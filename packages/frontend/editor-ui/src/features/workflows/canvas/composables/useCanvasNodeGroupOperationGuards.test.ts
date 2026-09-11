@@ -146,7 +146,8 @@ describe('useCanvasNodeGroupOperationGuards', () => {
 			expect(showToastSpy).not.toHaveBeenCalled();
 		});
 
-		it('still blocks removing the connection that keeps the group connected', () => {
+		it('allows removing the connection between group members', () => {
+			// Members need not stay connected, so the group survives the removal.
 			const { connectionsBySourceNode } = setupStickyGroup();
 			const guards = useCanvasNodeGroupOperationGuards();
 
@@ -156,8 +157,8 @@ describe('useCanvasNodeGroupOperationGuards', () => {
 				connectionsBySourceNode,
 			});
 
-			expect(allowed).toBe(false);
-			expect(showToastSpy).toHaveBeenCalledTimes(1);
+			expect(allowed).toBe(true);
+			expect(showToastSpy).not.toHaveBeenCalled();
 		});
 	});
 });
