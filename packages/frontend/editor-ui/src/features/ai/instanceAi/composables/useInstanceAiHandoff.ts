@@ -217,6 +217,11 @@ export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
+/** Drop a stashed opening message without sending it (e.g. its thread is gone). */
+export function clearPendingFirstMessage(threadId: string): void {
+	localStorage.removeItem(pendingFirstMessageKey(threadId));
+}
+
 const pendingDraftAttachmentKey = (threadId: string) =>
 	`n8n-instance-ai-draft-attachment:${threadId}`;
 
@@ -249,6 +254,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	clearPendingFirstMessage(threadId);
 	clearPendingDraftAttachment(threadId);
 }
 

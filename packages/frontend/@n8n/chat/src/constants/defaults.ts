@@ -26,10 +26,6 @@ export const defaultOptions: ChatOptions = {
 			closeButtonTooltip: 'Close chat',
 			repostButton: 'Repost message',
 			reuseButton: 'Reuse message',
-			credentialStatusMissingAccount: 'Connect 1 account to start chatting',
-			credentialStatusMissingAccounts: 'Connect {count} accounts to start chatting',
-			credentialStatusTestMode:
-				"You're testing with your own connected accounts. Visitors will need to connect their own.",
 		},
 	},
 	theme: {},

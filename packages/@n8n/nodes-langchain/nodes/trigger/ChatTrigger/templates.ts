@@ -1,11 +1,28 @@
 import sanitizeHtml from 'sanitize-html';
 
-import { CHAT_FRAME_SANDBOX } from './shell';
 import type {
 	AuthenticationChatOption,
 	ChatFrameIdentity,
 	LoadPreviousSessionChatOption,
 } from './types';
+
+// Escapes what would let a value break out of an inline <script> block: `<`/`>`
+// to prevent `</script>` breakout, and U+2028/U+2029, which are valid in a JS
+// string but were statement terminators to older engines.
+const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
+	'<': '\\u003c',
+	'>': '\\u003e',
+	'&': '\\u0026',
+	'\u2028': '\\u2028',
+	'\u2029': '\\u2029',
+};
+
+// Returns a JSON literal safe to embed inside an inline <script> block. For string
+// inputs the returned literal includes surrounding double quotes — do not add
+// quotes at the call site.
+export function escapeForScriptContext(value: string | object): string {
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
+}
 
 function sanitizeUserInput(input: unknown): string {
 	// Only strings and numbers are meaningful display values; sanitize-html
@@ -32,35 +49,6 @@ export function getSanitizedInitialMessages(initialMessages: string): string[] {
 		.filter((line) => line !== '');
 }
 
-const SCRIPT_CONTEXT_ESCAPES: Record<string, string> = {
-	'<': '\\u003c',
-	'>': '\\u003e',
-	'&': '\\u0026',
-	'\u2028': '\\u2028',
-	'\u2029': '\\u2029',
-};
-
-// Returns a JSON literal safe to embed inside an inline <script> block. Escapes
-// `<`/`>` to prevent </script> breakout and U+2028/U+2029 for legacy JS engines.
-// For string inputs the returned literal includes surrounding double quotes \u2014
-// do not add quotes at the call site.
-export function escapeForScriptContext(value: string | object): string {
-	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => SCRIPT_CONTEXT_ESCAPES[c]);
-}
-
-const HTML_ATTRIBUTE_ESCAPES: Record<string, string> = {
-	'&': '&amp;',
-	'"': '&quot;',
-	"'": '&#39;',
-	'<': '&lt;',
-	'>': '&gt;',
-};
-
-// For use inside a double-quoted HTML attribute.
-export function escapeForHtmlAttribute(value: string): string {
-	return value.replace(/[&"'<>]/g, (c) => HTML_ATTRIBUTE_ESCAPES[c]);
-}
-
 export function getSanitizedI18nConfig(config: Record<string, string>): Record<string, string> {
 	const sanitized: Record<string, string> = {};
 
@@ -81,8 +69,188 @@ export function getSanitizedCustomCss(customCss: string): string {
  * `localStorageSessionIdKey` in `@n8n/chat/src/constants/localStorage.ts`. Seeding the
  * shim under it keeps continuity working against a widget build predating the
  * `sessionId` option — the bundle comes from an unpinned CDN URL, not the instance.
+ * The shell that passes the id in the fragment is `chat-shell.handlebars`.
  */
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
+
+/**
+ * Handles the send-time credential gate's rejection, in the frame's own page rather
+ * than in `@n8n/chat`: this page ships with the instance, so the behaviour arrives on
+ * upgrade instead of waiting on the widget's npm publish. Mirrors the form page's
+ * `handleCredentialGate`.
+ *
+ * The widget looks `fetch` up globally on every send, and this classic script runs
+ * before its deferred module, so wrapping the global intercepts the rejection without
+ * the widget knowing.
+ *
+ * Two layers. The first refuses the submit while accounts are outstanding, so the
+ * common case never reaches the server at all. The second answers the gate's 428 for
+ * what the first cannot see: a page that was ready when it loaded and had a credential
+ * revoked under it, and the moments before the shell's first readiness signal arrives.
+ *
+ * On that second path the visitor's message stays in the transcript, because it really
+ * was sent - the server received it and declined to run the workflow. The reply says
+ * exactly that. Taking it back out of the transcript and into the input would need the
+ * widget's own state, which this page cannot reach.
+ */
+function buildCredentialGateScript(streaming: boolean) {
+	return `
+			<script>
+				(function () {
+					var STREAMING = ${!!streaming};
+					var NOTICE =
+						'Not all required accounts are connected, so your message could not be processed. Connect them below, then send it again.';
+					var nativeFetch = window.fetch.bind(window);
+
+					// Both the status and the discriminator must match. A 428 without this body
+					// belongs to something else - a proxy, or the webhook trigger's own gate.
+					function isGateBody(body) {
+						return (
+							!!body &&
+							body.status === 'credential_connections_required' &&
+							Array.isArray(body.credentials)
+						);
+					}
+
+					// The shell posts readiness in. The widget has its own listener for this
+					// message, but the published bundle the page loads does not carry it yet, so
+					// this page does the blocking itself. Accepted only from our own parent: the
+					// frame is sandboxed with no origin, so \`event.origin\` cannot be checked
+					// against an allowlist.
+					//
+					// Starts ready: until the shell says otherwise, nothing is blocked. That
+					// matches the widget, which also treats "no status yet" as no gate.
+					var ready = true;
+					window.addEventListener('message', function (event) {
+						if (window.parent === window || event.source !== window.parent) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat:credential-status') return;
+						if (typeof data.ready === 'boolean') ready = data.ready;
+					});
+
+					// Refuse the submit before the widget sees it, so a message that cannot run is
+					// never sent and never appears in the transcript. Capture phase, ahead of the
+					// widget's own handlers. Test mode is blocked too: the server gate refuses
+					// builders as well, so letting it through only wastes a round trip.
+					function blockSubmit(event) {
+						event.preventDefault();
+						event.stopImmediatePropagation();
+						if (window.parent === window) return;
+						// Asks the shell to surface its connect panel. Never a provider popup from
+						// here - this frame's click doesn't hand the shell a usable gesture (it's
+						// an opaque origin, by design), so a popup opened off this message would
+						// just be blocked. The dialog's own Connect button is a real click there.
+						window.parent.postMessage({ type: 'n8n-chat-connect-requested' }, '*');
+					}
+
+					document.addEventListener(
+						'keydown',
+						function (event) {
+							if (ready) return;
+							if (event.key !== 'Enter' || event.shiftKey) return;
+							var target = event.target;
+							if (!target || String(target.tagName).toLowerCase() !== 'textarea') return;
+							blockSubmit(event);
+						},
+						true
+					);
+
+					document.addEventListener(
+						'click',
+						function (event) {
+							if (ready) return;
+							var target = event.target;
+							// The send button's class is part of the widget's published theming
+							// contract (\`--chat--input--send--button--*\`), so it is a safer hook than
+							// its markup.
+							if (!target || !target.closest || !target.closest('.chat-input-send-button')) {
+								return;
+							}
+							blockSubmit(event);
+						},
+						true
+					);
+
+					// Only a message send is ours to answer. \`loadPreviousSession\` goes down this
+					// same \`fetch\`, and replacing its reply with a chat notice would drop the
+					// restored conversation.
+					function isMessageSend(init) {
+						try {
+							var body = init && init.body;
+							if (!body) return false;
+							if (typeof FormData !== 'undefined' && body instanceof FormData) {
+								return body.get('action') === 'sendMessage';
+							}
+							if (typeof body === 'string') {
+								var parsed = JSON.parse(body);
+								return !!parsed && parsed.action === 'sendMessage';
+							}
+						} catch (error) {}
+						return false;
+					}
+
+					// Ids only: the shell must not have to trust a name or a URL from this frame.
+					// targetOrigin '*' because this frame is sandboxed without allow-same-origin
+					// and cannot know the parent's origin.
+					function tellShell(credentials) {
+						if (window.parent === window) return;
+						window.parent.postMessage(
+							{
+								type: 'n8n-chat-credentials-rejected',
+								// The body lists every required credential, connected ones included.
+								ids: credentials
+									.filter(function (credential) {
+										return credential.credentialStatus !== 'configured';
+									})
+									.map(function (credential) {
+										return credential.credentialId;
+									}),
+							},
+							'*'
+						);
+					}
+
+					// Answered in place of the rejection so the widget renders an ordinary bot
+					// message instead of the gate's JSON. The transport decides the shape:
+					// newline-delimited frames when streaming, a plain body otherwise.
+					function noticeResponse() {
+						var frame = { metadata: { nodeId: 'credential-gate' } };
+						var body = STREAMING
+							? JSON.stringify(Object.assign({ type: 'begin' }, frame)) +
+								'\\n' +
+								JSON.stringify(Object.assign({ type: 'item', content: NOTICE }, frame)) +
+								'\\n' +
+								JSON.stringify(Object.assign({ type: 'end' }, frame)) +
+								'\\n'
+							: JSON.stringify({ output: NOTICE });
+
+						return new Response(body, {
+							status: 200,
+							headers: { 'Content-Type': STREAMING ? 'text/plain' : 'application/json' },
+						});
+					}
+
+					window.fetch = function (input, init) {
+						return nativeFetch(input, init).then(function (response) {
+							if (response.status !== 428 || !isMessageSend(init)) return response;
+
+							return response
+								.clone()
+								.json()
+								.catch(function () {
+									return null;
+								})
+								.then(function (body) {
+									if (!isGateBody(body)) return response;
+
+									tellShell(body.credentials);
+									return noticeResponse();
+								});
+						});
+					};
+				})();
+			</script>`;
+}
 
 /**
  * Runs before the widget's module script (classic inline scripts aren't deferred). The
@@ -144,203 +312,6 @@ const innerBootstrapScript = `
 					}
 				})();
 			</script>`;
-
-/**
- * The trusted shell: an n8n-controlled document on the real origin holding nothing but
- * the frame. Everything the author can shape lives in that frame, which has no origin
- * and so can't reach this document's cookies or the OAuth `BroadcastChannel`.
- */
-export function createShellPage({
-	iframeSrc,
-	refresh,
-}: {
-	iframeSrc: string;
-	/**
-	 * Set only on the OAuth2 path: where to ask for a fresh access token, and how many
-	 * seconds the one the frame was just handed has left. A duration, never an absolute
-	 * timestamp — see `ChatShellSession`. Absent leaves the shell exactly what it was
-	 * before refresh existed.
-	 */
-	refresh?: { url: string; expiresIn: number };
-}) {
-	return `<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Chat</title>
-		<style>
-			html, body { width: 100%; height: 100%; margin: 0; padding: 0; }
-			#n8n-chat-frame { display: block; width: 100%; height: 100%; border: 0; }
-		</style>
-	</head>
-	<body>
-		<iframe
-			id="n8n-chat-frame"
-			title="Chat"
-			sandbox="${CHAT_FRAME_SANDBOX}"
-			data-src="${escapeForHtmlAttribute(iframeSrc)}"
-		></iframe>${refresh ? refreshScript(refresh) : ''}
-		<script>
-			(function () {
-				// Held here, not in the frame, whose storage dies with its opaque origin on
-				// every reload. Keyed by path so two chats don't share a conversation.
-				var key = 'n8n-chat-shell/sessionId' + window.location.pathname;
-				var sessionId = '';
-				try { sessionId = window.localStorage.getItem(key) || ''; } catch (error) {}
-				if (!sessionId) {
-					sessionId =
-						window.crypto && window.crypto.randomUUID
-							? window.crypto.randomUUID()
-							: String(Date.now()) + Math.random().toString(16).slice(2);
-					try { window.localStorage.setItem(key, sessionId); } catch (error) {}
-				}
-				var frame = document.getElementById('n8n-chat-frame');
-				frame.src = frame.getAttribute('data-src') + '#sessionId=' + encodeURIComponent(sessionId);
-			})();
-		</script>
-	</body>
-</html>`;
-}
-
-/**
- * Keeps the frame's access token alive. The token is interpolated into the frame's HTML
- * once and frozen for the life of that document, so without this a conversation older
- * than the token fails every message with a 401.
- *
- * Lives on the shell, not in the frame: the refresh token is in an httpOnly cookie
- * scoped to this path, and only a same-origin request carries it. The shell never reads
- * that cookie either — it only asks the server to trade it.
- */
-function refreshScript({ url, expiresIn }: { url: string; expiresIn: number }): string {
-	return `
-		<script>
-			(function () {
-				var endpoint = ${escapeForScriptContext(url)};
-				var timer = null;
-				var reloaded = false;
-
-				// Every token goes down a port the frame handed us, never at its contentWindow:
-				// that names the browsing context, which survives a navigation, so author script
-				// that navigates the frame away would be handed the next token. A port is an
-				// object in the frame document's realm — it dies with that document, and no
-				// replacement can obtain it.
-				var frame = document.getElementById('n8n-chat-frame');
-				var port = null;
-				var latched = false;
-				var pendingToken = '';
-				var portTimer = null;
-
-				window.addEventListener('message', function (event) {
-					// First announcement wins, and the latch never re-arms: the inner document is
-					// already unreloadable (its one-hop cookie is consumed on the first GET), so a
-					// second announcement can only come from a document we must not hand a token.
-					if (latched) return;
-					// allow-popups means a popup the frame opened can reach us as opener.parent,
-					// so the sender has to be the frame itself.
-					if (!frame || event.source !== frame.contentWindow) return;
-					var data = event.data;
-					if (!data || data.type !== 'n8n-chat-frame-ready') return;
-					latched = true;
-					if (event.ports && event.ports.length) port = event.ports[0];
-					if (portTimer) { clearTimeout(portTimer); portTimer = null; }
-					if (!port) {
-						// This browser can't carry a token to the frame. Stop: the frame keeps the
-						// token baked into its HTML for its full hour, as it did before refresh existed.
-						if (timer) { clearTimeout(timer); timer = null; }
-						return;
-					}
-					if (pendingToken) {
-						port.postMessage({ type: 'n8n-chat-auth-token', token: pendingToken });
-						pendingToken = '';
-					}
-				});
-
-				function deliver(token) {
-					if (port) { port.postMessage({ type: 'n8n-chat-auth-token', token: token }); return; }
-					// Hold the newest token rather than lose a one-shot post: a refresh can beat
-					// the frame's own bootstrap.
-					pendingToken = token;
-					if (!portTimer) portTimer = setTimeout(portMissing, 10000);
-				}
-
-				function portMissing() {
-					portTimer = null;
-					if (port) return;
-					// No fallback that posts at the frame's own window: a document that navigated
-					// the frame simply never announces itself, so the fallback would be the exact
-					// path that hands it the token. Reload instead — guarded, same-origin.
-					giveUp();
-				}
-
-				// How long BEFORE expiry to refresh, not when to refresh: a fifth of the
-				// lifetime, clamped to [60s, 600s]. A one-hour token is therefore replaced at
-				// t+50min, leaving ten minutes of margin — enough for a throttled background
-				// tab, a slept laptop, and the one retry before the reload fallback.
-				function leadSeconds(lifetimeSeconds) {
-					return Math.min(600, Math.max(60, lifetimeSeconds * 0.2));
-				}
-
-				// Takes a duration, never an absolute expiry the server computed: a clock that
-				// disagrees with the server's would otherwise skew every schedule. This timer is
-				// the only thing that starts a refresh, so two can never be in flight at once.
-				function planFor(lifetimeSeconds) {
-					var remaining = Math.max(0, lifetimeSeconds);
-					var delay = Math.max(0, (remaining - leadSeconds(remaining)) * 1000);
-					if (timer) clearTimeout(timer);
-					timer = setTimeout(function () { refresh(false); }, delay);
-				}
-
-				function giveUp() {
-					// One reload, guarded: it re-runs the handshake, which auto-approves against
-					// the visitor's existing consent. Without the guard a broken AS would put the
-					// page in a reload loop.
-					if (reloaded) return;
-					reloaded = true;
-					window.location.reload();
-				}
-
-				function refresh(isRetry) {
-					// The frame announced itself with no port, so there is nowhere to put a fresh
-					// token. Reachable through the 5s retry: a request already in flight when that
-					// announcement arrives still schedules one.
-					if (latched && !port) return;
-					// Taken before the request leaves, so the elapsed time subtracted below covers
-					// the whole window — both network legs, our handler, and the AS round trip.
-					// Without it the page anchors the lifetime to when the response *arrived* and
-					// so always believes it has more left than it does, which is the direction
-					// that ends in 401s.
-					var startedAt = Date.now();
-					fetch(endpoint, {
-						method: 'GET',
-						credentials: 'same-origin',
-						cache: 'no-store',
-						// Custom header, so the request needs a preflight no other origin gets
-						// past. This is the CSRF guard on the leg.
-						headers: { 'x-n8n-chat-refresh': '1' },
-					})
-						.then(function (response) {
-							if (!response.ok) throw new Error('refresh failed: ' + response.status);
-							return response.json();
-						})
-						.then(function (data) {
-							if (!data || typeof data.token !== 'string' || !data.token) {
-								throw new Error('refresh returned no token');
-							}
-							deliver(data.token);
-							var lifetime = typeof data.expiresIn === 'number' ? data.expiresIn : 3600;
-							planFor(lifetime - (Date.now() - startedAt) / 1000);
-						})
-						.catch(function () {
-							if (isRetry) giveUp();
-							else setTimeout(function () { refresh(true); }, 5000);
-						});
-				}
-
-				planFor(${String(Math.max(0, Math.round(expiresIn)))});
-			})();
-		</script>`;
-}
 
 export function createPage({
 	instanceId,
@@ -490,7 +461,7 @@ export function createPage({
 			</style>
 			<style>${sanitizedCustomCss}</style>
 		</head>
-		<body>${shellInner ? innerBootstrapScript : ''}
+		<body>${shellInner ? innerBootstrapScript + buildCredentialGateScript(!!enableStreaming) : ''}
 			<script type="module">
 				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 

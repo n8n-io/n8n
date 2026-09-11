@@ -24,10 +24,11 @@ jobs:
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
       dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
+      frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
+      db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
@@ -38,7 +39,7 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           # Use merge_group SHA when in merge queue, otherwise PR merge ref
           ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
@@ -60,6 +61,7 @@ jobs:
               !**/*.md
               !**/LICENSE
               !**/CHANGELOG.md
+              .github/workflows/test-linting-reusable.yml
             runtime:
               **
               !packages/@n8n/task-runner-python/**
@@ -75,6 +77,8 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
+              !scripts/preview.mjs
+              !scripts/preview-serve.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -90,6 +94,8 @@ jobs:
               !scripts/agent-setup.mjs
               !scripts/backend-module/**
               !scripts/cloud-session.mjs
+              !scripts/preview.mjs
+              !scripts/preview-serve.mjs
               !scripts/licenses/**
               !scripts/mutation-health/**
               !scripts/sync-agent-skill-links.mjs
@@ -112,19 +118,28 @@ jobs:
               packages/testing/playwright/playwright-projects.ts
               packages/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
+            frontend-declarations:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/chat/**
+              packages/frontend/@n8n/frontend-vite-config/**
+              turbo.json
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/test-frontend-declarations-reusable.yml
+              .github/actions/setup-nodejs/**
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .devcontainer/codespaces/agent-worker*.mjs
               OWNERS
+              scripts/*.test.mjs
+              scripts/codespace-env.mjs
+              scripts/preview.mjs
+              scripts/preview*
+              scripts/serve-ready.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
               .agents/review-rules/**
-            performance:
-              packages/testing/performance/**
-              packages/workflow/src/**
-              packages/@n8n/expression-runtime/src/**
-              .github/workflows/test-bench-reusable.yml
             e2e-performance:
               packages/testing/playwright/tests/performance/**
               packages/testing/playwright/utils/performance-helper.ts
@@ -149,7 +164,8 @@ jobs:
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
-              packages/cli/**/__tests__/**
+              packages/cli/src/**/*.integration.test.ts
+              packages/cli/vitest.*
               packages/testing/containers/services/postgres.ts
               packages/testing/containers/postgres-versions.json
               packages/testing/containers/test-containers.ts
@@ -158,6 +174,23 @@ jobs:
               docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
+            # Sub-filter of db. Lists the paths that can change a migration
+            # test result. Gates the migration step inside each DB matrix leg.
+            db-migrations:
+              packages/@n8n/db/**
+              packages/@n8n/backend-test-utils/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/cli/test/setup-testcontainers.js
+              packages/cli/test/teardown-testcontainers.js
+              packages/cli/vitest.config.base.ts
+              packages/cli/vitest.config.migration.ts
+              packages/cli/vitest.config.migration.testcontainers.ts
+              packages/testing/containers/services/postgres.ts
+              packages/testing/containers/postgres-versions.json
+              packages/testing/containers/test-containers.ts
+              .github/workflows/test-db-reusable.yml
+              .github/scripts/db-test-matrix.mjs
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -186,10 +219,14 @@ jobs:
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
+      # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
+      # full Postgres range, so every merge still gates on the older majors.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
         if: fromJSON(steps.ci-filter.outputs.results).db
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs)" >> "$GITHUB_OUTPUT"
+        env:
+          DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
@@ -223,7 +260,7 @@ jobs:
       # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -248,7 +285,7 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
@@ -314,6 +351,18 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  # `@n8n/design-system` and `@n8n/chat` emit their declarations only when `RELEASE` is set,
+  # because no consumer in this repo reads them and the emit costs ~15s of build time. No other
+  # CI job builds them that way, so a break in the declaration emit would first show up in a
+  # release.
+  frontend-declarations:
+    name: Frontend declarations
+    needs: install-and-build
+    if: needs.install-and-build.outputs.frontend_declarations == 'true'
+    uses: ./.github/workflows/test-frontend-declarations-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
   db-tests:
     name: DB Tests
     needs: install-and-build
@@ -322,14 +371,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
-
-  performance:
-    name: Performance
-    needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
-    uses: ./.github/workflows/test-bench-reusable.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
 
   e2e-performance:
     name: E2E Performance
@@ -395,15 +437,15 @@ jobs:
         check-packaging,
         e2e,
         dev-server-smoke,
+        frontend-declarations,
         db-tests,
-        performance,
         security-checks,
         workflow-scripts,
       ]
     if: always()
     runs-on: ubuntu-slim
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false

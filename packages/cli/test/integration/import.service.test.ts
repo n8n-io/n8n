@@ -19,14 +19,15 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { PolicyViolation } from '@n8n/decorators';
+import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { ImportService } from '@/services/import.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -64,7 +65,12 @@ describe('ImportService', () => {
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
 		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
-		mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+		// The repository verifies the token, so it has to be a real one. With no backend
+		// registered the real service clears everything, which is what a default import does.
+		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
+			async (context) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+		);
 
 		importService = new ImportService(
 			mock(),
@@ -78,6 +84,7 @@ describe('ImportService', () => {
 			mockWorkflowService,
 			mockPolicyEnforcementService,
 			sharedWorkflowRepository,
+			Container.get(WorkflowRepository),
 		);
 	});
 
@@ -487,29 +494,35 @@ describe('ImportService', () => {
 	});
 
 	describe('content-import policy', () => {
+		const clearance = async (context: ContentImportContext) =>
+			await Container.get(PolicyEnforcementService).enforceContentImport(context);
+
 		beforeEach(() => {
-			mockPolicyEnforcementService.evaluateContentImport.mockClear();
-			mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+			mockPolicyEnforcementService.enforceContentImport.mockClear();
+			mockPolicyEnforcementService.enforceContentImport.mockImplementation(clearance);
+			mockWorkflowService.deactivateWorkflow.mockClear();
 		});
 
-		test('evaluates content-import policy once per imported workflow, with the workflow and target project', async () => {
+		test('enforces content-import policy once per imported workflow, with the workflow and target project', async () => {
 			const first = newWorkflow({ id: uuid(), name: 'First' });
 			const second = newWorkflow({ id: uuid(), name: 'Second' });
 
 			await importService.importWorkflows([first, second], ownerPersonalProject.id, owner.id, {});
 
-			expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledTimes(2);
-			expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(2);
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 				workflow: { id: first.id, name: first.name, nodes: first.nodes },
 				projectId: ownerPersonalProject.id,
+				transport: 'cli',
 			});
-			expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 				workflow: { id: second.id, name: second.name, nodes: second.nodes },
 				projectId: ownerPersonalProject.id,
+				transport: 'cli',
 			});
 		});
 
-		test('does not fail the import when a violation is returned, and reports it', async () => {
+		test('skips a blocked workflow, reports it, and still imports the rest of the batch', async () => {
 			const violation: PolicyViolation = {
 				kind: 'node-type-unavailable',
 				checkId: 'test.check',
@@ -517,9 +530,10 @@ describe('ImportService', () => {
 			};
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const flagged = newWorkflow({ id: uuid(), name: 'Flagged' });
-			mockPolicyEnforcementService.evaluateContentImport.mockImplementation(async ({ workflow }) =>
-				workflow.name === 'Flagged' ? { violations: [violation] } : { violations: [] },
-			);
+			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
+				if (context.workflow.name === 'Flagged') throw new PolicyViolationError([violation]);
+				return await clearance(context);
+			});
 
 			const result = await importService.importWorkflows(
 				[clean, flagged],
@@ -529,18 +543,36 @@ describe('ImportService', () => {
 			);
 
 			expect(result.violations).toStrictEqual([
-				{
-					workflowId: flagged.id,
-					name: 'Flagged',
-					contentImportPolicy: { violations: [violation], checkErrors: [] },
-				},
+				{ workflowId: flagged.id, name: 'Flagged', violations: [violation] },
 			]);
-			// The batch completes for every workflow regardless of the violation.
 			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
-			await expect(getWorkflowById(flagged.id)).resolves.toBeDefined();
+			await expect(getWorkflowById(flagged.id)).resolves.toBeNull();
 		});
 
-		test('evaluates an existing workflow against its own project, not the batch projectId', async () => {
+		test('reports a blocked workflow that carries no id yet', async () => {
+			const violation: PolicyViolation = {
+				kind: 'node-type-unavailable',
+				checkId: 'test.check',
+				message: 'not allowed',
+			};
+			const workflowToImport = newWorkflow({ name: 'Unsaved' });
+			mockPolicyEnforcementService.enforceContentImport.mockRejectedValueOnce(
+				new PolicyViolationError([violation]),
+			);
+
+			const result = await importService.importWorkflows(
+				[workflowToImport],
+				ownerPersonalProject.id,
+				owner.id,
+				{},
+			);
+
+			expect(result.violations).toStrictEqual([
+				{ workflowId: null, name: 'Unsaved', violations: [violation] },
+			]);
+		});
+
+		test('enforces an existing workflow against its own project, not the batch projectId', async () => {
 			const member = await createMember();
 			const memberPersonalProject = await getPersonalProject(member);
 			const existingWorkflow = await createWorkflow(undefined, member);
@@ -557,58 +589,50 @@ describe('ImportService', () => {
 				{},
 			);
 
-			expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
 				workflow: {
 					id: workflowToReimport.id,
 					name: workflowToReimport.name,
 					nodes: workflowToReimport.nodes,
 				},
 				projectId: memberPersonalProject.id,
+				transport: 'cli',
 			});
 		});
 
-		test('surfaces a failed check alongside violations, without failing the import', async () => {
-			const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
-			// No explicit id: still unassigned when evaluateContentImport runs, so this also
-			// covers a new workflow reporting a check error.
-			const workflowToImport = newWorkflow({ name: 'Flaky' });
-			mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
-				violations: [],
-				checkErrors: [checkFailure],
+		// A check that cannot answer is an infrastructure fault, not a property of one workflow.
+		// Skipping per workflow would silently skip the whole batch and still report success.
+		test('fails the whole import when the policy layer errors', async () => {
+			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
+			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
+			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
+				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				return await clearance(context);
 			});
 
-			const result = await importService.importWorkflows(
-				[workflowToImport],
-				ownerPersonalProject.id,
-				owner.id,
-				{},
-			);
+			await expect(
+				importService.importWorkflows([clean, broken], ownerPersonalProject.id, owner.id, {}),
+			).rejects.toThrow('backend unavailable');
 
-			expect(result.violations).toStrictEqual([
-				{
-					workflowId: null,
-					name: 'Flaky',
-					contentImportPolicy: { violations: [], checkErrors: [checkFailure] },
-				},
-			]);
-			await expect(getWorkflowById(workflowToImport.id)).resolves.toBeDefined();
+			await expect(getWorkflowById(clean.id)).resolves.toBeNull();
+			await expect(getWorkflowById(broken.id)).resolves.toBeNull();
 		});
 
-		test('does not fail the import when evaluateContentImport throws', async () => {
-			mockPolicyEnforcementService.evaluateContentImport.mockRejectedValueOnce(
-				new Error('backend unavailable'),
-			);
-			const workflowToImport = newWorkflow();
+		// Deactivating during admission would leave the earlier workflow stopped once the failure
+		// aborts the import, with nothing imported in its place.
+		test('leaves an earlier active workflow running when a later admission fails', async () => {
+			const active = await createActiveWorkflow({ name: 'Active' });
+			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
+			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
+				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				return await clearance(context);
+			});
 
-			const result = await importService.importWorkflows(
-				[workflowToImport],
-				ownerPersonalProject.id,
-				owner.id,
-				{},
-			);
+			await expect(
+				importService.importWorkflows([active, broken], ownerPersonalProject.id, owner.id, {}),
+			).rejects.toThrow('backend unavailable');
 
-			expect(result.violations).toStrictEqual([]);
-			await expect(getWorkflowById(workflowToImport.id)).resolves.toBeDefined();
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -31,6 +31,7 @@ export { provision, deprovision, createJobProvisioner, scheduleFingerprint } fro
 export type {
 	JobProvisioner,
 	JobProvisionerDeps,
+	OwnedScope,
 	ProvisionTransaction,
 	RunInProvisionTransaction,
 	DeprovisionTransaction,
@@ -53,17 +54,45 @@ export type {
 	DispatchDecision,
 	BackoffOptions,
 } from './executor';
-export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
+export {
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+	totalDiscarded,
+	ownerKeyFor,
+	withOwnerKeys,
+} from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,
 	MisfireCount,
 	NewOccurrence,
 	RunInTransaction,
+	ScheduledJobOwner,
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
 export type { ReaperOptions, ReapResult } from './reaper';
+export {
+	reconcile,
+	DEFAULT_RECONCILIATION_OPTIONS,
+	ScheduledJobOwnerRegistry,
+} from './reconciliation';
+export type {
+	QuarantinedJob,
+	ReconciliationCursor,
+	ReconciliationHooks,
+	ReconciliationJobStore,
+	ReconciliationOptions,
+	ReconciliationSummary,
+	ScheduledJobOwnerResolver,
+} from './reconciliation';
+export {
+	DuplicateOwnerResolverError,
+	InvalidOwnerTypeError,
+	UnregisteredOwnerTypeError,
+	InvalidOwnerIdError,
+	InvalidOwnerMemberIdError,
+} from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
 export { SpanStatus, noopTracer } from '../observability/tracer';

@@ -1165,6 +1165,8 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
 			});
 		});
 
@@ -1224,12 +1226,37 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: 'project-1',
 			});
 			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
 			});
+		});
+
+		it('deletes a non-resolvable credential even when resolving its project throws', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'project-credential',
+				type: 'gmailOAuth2',
+				usageScope: 'project',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			credentialsRepository.remove.mockResolvedValue(credential);
+			// Nothing but the activity entry needs the project here, so the delete goes ahead.
+			sharedCredentialsRepository.findCredentialOwningProject.mockRejectedValue(
+				new Error('db is gone'),
+			);
+
+			await expect(service.delete(ownerUser, credential.id)).resolves.not.toThrow();
+
+			expect(credentialsRepository.remove).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-deleted',
+				expect.objectContaining({ projectId: undefined }),
+			);
 		});
 
 		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
@@ -1248,6 +1275,8 @@ describe('CredentialsService', () => {
 				user: ownerUser,
 				credentialType: credential.type,
 				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
@@ -1385,7 +1414,7 @@ describe('CredentialsService', () => {
 	});
 
 	describe('updateInstanceCredential', () => {
-		const payload = { name: 'AI Assistant model', type: 'openAiApi', data: { apiKey: 'new-key' } };
+		const payload = { name: 'n8n Assistant model', type: 'openAiApi', data: { apiKey: 'new-key' } };
 		const preparedCredential = {
 			name: payload.name,
 			type: payload.type,
@@ -1568,7 +1597,7 @@ describe('CredentialsService', () => {
 
 	describe('runInstanceCredentialHooks', () => {
 		it('returns the payload after the matching hook runs', async () => {
-			const encrypted = { name: 'AI Assistant model', type: 'openAiApi', data: 'encrypted' };
+			const encrypted = { name: 'n8n Assistant model', type: 'openAiApi', data: 'encrypted' };
 			const createEncryptedDataSpy = vi
 				.spyOn(service, 'createEncryptedData')
 				.mockResolvedValue(encrypted as never);
@@ -1580,14 +1609,14 @@ describe('CredentialsService', () => {
 
 			const result = await service.runInstanceCredentialHooks('create', {
 				id: null,
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'k' },
 			});
 
 			expect(createEncryptedDataSpy).toHaveBeenCalledWith({
 				id: null,
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'k' },
 			});
@@ -1604,7 +1633,7 @@ describe('CredentialsService', () => {
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 			const payload = {
 				id: '',
-				name: 'AI Assistant model',
+				name: 'n8n Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'key' },
 			};
@@ -1623,7 +1652,7 @@ describe('CredentialsService', () => {
 			await expect(
 				service.testWithCredentials(memberUser, {
 					id: '',
-					name: 'AI Assistant model',
+					name: 'n8n Assistant model',
 					type: 'openAiApi',
 					data: { apiKey: 'key' },
 				}),
@@ -3569,14 +3598,14 @@ describe('CredentialsService', () => {
 		describe('assigned instance credentials', () => {
 			const existingCredential = mockExistingCredential({
 				id: 'instance-credential-id',
-				name: 'AI Assistant sandbox',
+				name: 'n8n Assistant sandbox',
 				type: 'httpHeaderAuth',
 				data: {},
 				usageScope: 'instance',
 				shared: [],
 			});
 			const payload = {
-				name: 'AI Assistant sandbox',
+				name: 'n8n Assistant sandbox',
 				type: 'httpHeaderAuth',
 				data: { name: 'Authorization', value: 'secret' },
 			};

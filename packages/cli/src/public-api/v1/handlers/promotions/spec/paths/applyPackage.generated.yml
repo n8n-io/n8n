@@ -1,0 +1,229 @@
+operationId: applyPackage
+tags:
+  - Promotions
+summary: Apply a package to the instance
+description: Resets the local checkout to the configured branch tip and imports the package, overwriting to match. Requires the Apply direction to be cloned first, and is available on the instance connection only.
+x-required-scope: gitConnection:pull
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: promotionConnectionId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            connectionId:
+              type: string
+              minLength: 1
+              maxLength: 36
+            configId:
+              type: string
+              minLength: 1
+              maxLength: 36
+            counts:
+              type: object
+              properties:
+                projects:
+                  type: object
+                  properties:
+                    created:
+                      type: integer
+                      minimum: 0
+                    updated:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - created
+                    - updated
+                    - skipped
+                    - deleted
+                folders:
+                  type: object
+                  properties:
+                    created:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                    removed:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - created
+                    - skipped
+                    - removed
+                workflows:
+                  type: object
+                  properties:
+                    created:
+                      type: integer
+                      minimum: 0
+                    updated:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                    archived:
+                      type: integer
+                      minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
+                    publishing:
+                      type: object
+                      properties:
+                        published:
+                          type: integer
+                          minimum: 0
+                        unpublished:
+                          type: integer
+                          minimum: 0
+                        unchanged:
+                          type: integer
+                          minimum: 0
+                        blocked:
+                          type: integer
+                          minimum: 0
+                        failed:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - published
+                        - unpublished
+                        - unchanged
+                        - blocked
+                        - failed
+                  required:
+                    - created
+                    - updated
+                    - skipped
+                    - archived
+                    - deleted
+                    - publishing
+                credentials:
+                  type: object
+                  properties:
+                    matched:
+                      type: integer
+                      minimum: 0
+                    stubbed:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - matched
+                    - stubbed
+                dataTables:
+                  type: object
+                  properties:
+                    matched:
+                      type: integer
+                      minimum: 0
+                    created:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - matched
+                    - created
+                variables:
+                  type: object
+                  properties:
+                    matched:
+                      type: integer
+                      minimum: 0
+                    created:
+                      type: integer
+                      minimum: 0
+                    updated:
+                      type: integer
+                      minimum: 0
+                    stubbed:
+                      type: integer
+                      minimum: 0
+                    missing:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - matched
+                    - created
+                    - updated
+                    - stubbed
+                    - missing
+                tags:
+                  type: object
+                  properties:
+                    matched:
+                      type: integer
+                      minimum: 0
+                    created:
+                      type: integer
+                      minimum: 0
+                    renamed:
+                      type: integer
+                      minimum: 0
+                    reconciled:
+                      type: integer
+                      minimum: 0
+                    skipped:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - matched
+                    - created
+                    - renamed
+                    - reconciled
+                    - skipped
+              required:
+                - projects
+                - folders
+                - workflows
+                - credentials
+                - dataTables
+                - variables
+                - tags
+            git:
+              type: object
+              properties:
+                commitSha:
+                  type: string
+                branchName:
+                  type: string
+              required:
+                - commitSha
+                - branchName
+          required:
+            - connectionId
+            - configId
+            - counts
+            - git
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

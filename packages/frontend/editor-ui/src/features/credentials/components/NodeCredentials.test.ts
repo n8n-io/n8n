@@ -366,6 +366,55 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('should refetch credentials when the dropdown opens so a rename from another tab shows up', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential({ name: 'Scout' }),
+		};
+
+		renderComponent();
+
+		// The rename happened in another tab: only a fresh fetch can bring the new name.
+		credentialsStore.fetchUsableCredentials = vi.fn().mockImplementation(async () => {
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential({ name: 'Scout renamed' }),
+			};
+			return Object.values(credentialsStore.state.credentials);
+		});
+
+		// Click the input: the dropdown only opens from inside the select trigger.
+		const select = screen.getByTestId('node-credentials-select');
+		await userEvent.click(select.querySelector('input') as HTMLElement);
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: '1' });
+		expect(await screen.findByText('Scout renamed')).toBeInTheDocument();
+		expect(screen.queryByText('Scout')).not.toBeInTheDocument();
+	});
+
+	it('should keep the current list when the refetch on open fails', async () => {
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential({ name: 'Scout' }),
+		};
+
+		renderComponent();
+
+		// A plain function, not vi.fn(): the spy attaches its own handlers to the returned
+		// promise and would hide a missing catch. Vitest fails the run on an unhandled rejection.
+		// The mocked store type only accepts mocks, so assign through the plain store type.
+		let requestedScope: unknown;
+		useCredentialsStore().fetchUsableCredentials = async (scope) => {
+			requestedScope = scope;
+			throw new Error('offline');
+		};
+
+		const select = screen.getByTestId('node-credentials-select');
+		await userEvent.click(select.querySelector('input') as HTMLElement);
+
+		expect(requestedScope).toEqual({ workflowId: '1' });
+		expect(screen.getByText('Scout')).toBeInTheDocument();
+	});
+
 	it('should not fetch credentials on mount when skipCredentialsFetch is set', () => {
 		// Hosts with a synthetic workflow document (e.g. the tool config modal)
 		// own the credential fetch themselves; the component's own fetch would
@@ -1986,7 +2035,7 @@ describe('NodeCredentials', () => {
 				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
 
 				// Trigger overlay + the dropdown row both carry the balance.
-				expect(screen.getAllByText('$2.75 remaining').length).toBeGreaterThanOrEqual(1);
+				expect(screen.getAllByText('$2.75 left').length).toBeGreaterThanOrEqual(1);
 
 				const credentialsSelect = screen.getByTestId('node-credentials-select');
 				await userEvent.click(credentialsSelect);
@@ -1994,7 +2043,7 @@ describe('NodeCredentials', () => {
 				const credentialSearch = credentialsSelect.querySelector('input') as HTMLElement;
 				await userEvent.type(credentialSearch, 'My');
 
-				expect(screen.queryByText('$2.75 remaining')).not.toBeInTheDocument();
+				expect(screen.queryByText('$2.75 left')).not.toBeInTheDocument();
 			});
 
 			it('shows a top-up gear instead of the pen while managed', () => {
@@ -2436,6 +2485,102 @@ describe('NodeCredentials', () => {
 				});
 
 				expect(emitted('credentialSelected')).toBeFalsy();
+			});
+		});
+
+		describe('nodes with a parameter-selected credential type (HTTP Request, GraphQL)', () => {
+			const httpRequestNodeType: INodeTypeDescription = {
+				displayName: 'HTTP Request',
+				name: 'n8n-nodes-base.httpRequest',
+				group: ['transform'],
+				version: 4.5,
+				description: '',
+				defaults: { name: 'HTTP Request' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				credentials: [{ name: 'openAiApi', required: true }],
+				properties: [],
+			};
+
+			const openAiApiCredType: ICredentialType = {
+				name: 'openAiApi',
+				displayName: 'OpenAI API',
+				properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+			};
+
+			beforeEach(() => {
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				nodeTypesStore.setNodeTypes([httpRequestNodeType]);
+				credentialsStore.state.credentialTypes = { openAiApi: openAiApiCredType };
+
+				// Even though the gateway serves the credential type and the node's
+				// version clears the (permissive-by-default) version gate, the node
+				// itself lets the user point at ANY predefined credential type — n8n
+				// credits must never be offered for it.
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'openAiApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'openAiApi'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					creditsLabelKey: computed(() => 'generic.freeCredits'),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+			});
+
+			it('never offers n8n credits on an HTTP Request node, even for a gateway-served type', async () => {
+				const node: INodeUi = {
+					id: 'node-http',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.5,
+					position: [0, 0],
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: 'openAiApi',
+					},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({ props: { node, overrideCredType: 'openAiApi' } });
+
+				await userEvent.click(
+					within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
+				);
+
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+
+			it('does not auto-enable n8n credits on mount for an HTTP Request node with no credentials', () => {
+				const node: INodeUi = {
+					id: 'node-http',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.5,
+					position: [0, 0],
+					parameters: {
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: 'openAiApi',
+					},
+					credentials: {},
+				};
+				ndvStore.activeNode = node;
+
+				const { emitted } = renderComponent({ props: { node, overrideCredType: 'openAiApi' } });
+
+				const payload = ((emitted('credentialSelected')?.at(-1) as unknown[] | undefined) ??
+					[])[0] as { properties: { credentials: Record<string, unknown> } } | undefined;
+				expect(payload?.properties.credentials.openAiApi).toBeUndefined();
 			});
 		});
 

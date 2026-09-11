@@ -3,10 +3,16 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -17,15 +23,17 @@ import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
+	FolderRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
-import { redactTelemetryText } from '@n8n/telemetry';
+import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
+	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,
@@ -38,6 +46,8 @@ import type {
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
+	NodeUsageResult,
+	WorkflowFolderRef,
 	WorkflowDetail,
 	WorkflowNode,
 	WorkflowVersionSummary,
@@ -65,9 +75,12 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiActivityService,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
+	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
 	BuilderTemplatesService,
@@ -76,6 +89,7 @@ import {
 	deriveCredentialHosts,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
+	FolderResolutionError,
 	WorkflowEditorLockedError,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -91,7 +105,6 @@ import {
 	type IConnections,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
-	type DataTableFilter,
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
@@ -136,14 +149,21 @@ import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-crede
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import {
+	MCP_REGISTRY_PACKAGE_NAME,
+	getMcpRegistryCredentialOptions,
+} from '@/modules/mcp-registry/node-description-transform';
+import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -161,11 +181,20 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import {
+	FOLDER_SCAN_LIMIT,
+	FOLDER_SCAN_PROJECT_LIMIT,
+	listCandidatePaths,
+	normalizeFolderPath,
+	resolveRequestedFolder,
+	type FolderInScope,
+} from './instance-ai-folder-scope';
+import {
 	buildInstanceAiRunPinDataPlan,
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceContextService } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
@@ -205,6 +234,16 @@ function resolveDisplayedDefaults(
 		desc,
 	);
 	return resolved ?? (parameters as INodeParameters);
+}
+
+/**
+ * A credential class's `documentationUrl` is normally a docs slug ("slack"), but a
+ * few declare a full URL. Normalizes both to a URL.
+ */
+function credentialDocsUrl(documentationUrl: string | undefined): string | undefined {
+	if (!documentationUrl) return undefined;
+	if (documentationUrl.startsWith('http')) return documentationUrl;
+	return `https://docs.n8n.io/integrations/builtin/credentials/${documentationUrl}/`;
 }
 
 /**
@@ -252,6 +291,21 @@ function hasCredentialValue(value: unknown): boolean {
 	if (Array.isArray(value)) return value.length > 0;
 	if (typeof value === 'object') return Object.keys(value).length > 0;
 	return true;
+}
+
+/** The telemetry taxonomy replaces the hyphens with underscores (a valid
+ *  BigQuery column name); the single-word reasons pass through. */
+function toTelemetryReason(
+	reason: FolderResolutionFailure['reason'],
+): 'not_found' | 'ambiguous' | 'unsupported' | 'scope_too_wide' {
+	switch (reason) {
+		case 'not-found':
+			return 'not_found';
+		case 'scope-too-wide':
+			return 'scope_too_wide';
+		default:
+			return reason;
+	}
 }
 
 // Credential types are loaded once at boot, so the derived host index is
@@ -330,11 +384,20 @@ export class InstanceAiAdapterService {
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
 		private readonly collaborationService: CollaborationService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		// Appended rather than grouped with the other query services: existing tests construct this
+		// service positionally, so inserting mid-list renames every later argument.
+		private readonly workflowDependencyQueryService?: WorkflowDependencyQueryService,
+		// Optional for the same reason as above. Folder exploration treats a
+		// missing dependency as "folders unsupported" rather than failing the run.
+		private readonly folderRepository?: FolderRepository,
+		private readonly folderFinderService?: FolderFinderService,
+		private readonly instanceContext?: InstanceContextService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -359,12 +422,22 @@ export class InstanceAiAdapterService {
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
-			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
+			/** Per-user config-evals gate (via `resolveExperimentGates`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
-			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			/** Per-user MCP registry gate (via `resolveExperimentGates`). Falsy →
 			 *  mcp service/tool not wired. */
 			mcpConnectionsEnabled?: boolean;
+			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
+			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
+			nodeUsageEnabled?: boolean;
+			/** Past-conversation recall, already bound to the run's user, project and
+			 *  thread by the caller. Absent → conversation-history tool not wired. */
+			conversationHistory?: InstanceAiConversationHistoryReader;
+			/** Per-user folder-exploration gate (via `resolveExperimentGates`).
+			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
+			 *  folder attribution. */
+			folderExplorationEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -380,6 +453,9 @@ export class InstanceAiAdapterService {
 			agentId,
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
+			nodeUsageEnabled,
+			conversationHistory,
+			folderExplorationEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -397,8 +473,12 @@ export class InstanceAiAdapterService {
 		return {
 			userId: user.id,
 			projectId,
+			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			modelId,
-			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
+				nodeUsageGateOpen: nodeUsageEnabled === true,
+				folderExploration: folderExplorationEnabled === true,
+			}),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService,
 			nodeService: this.createNodeAdapter(user),
@@ -412,6 +492,11 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			conversationHistoryService: conversationHistory,
+			// Presence is the gate, as with the services above: no reader, no `activity` tool.
+			...(this.instanceContext?.enabled
+				? { activityService: this.createActivityAdapter(user, projectId) }
+				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -475,36 +560,99 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	/** Per-user gate for config-based evals: on when the config-evaluations
-	 *  experiment is on the enabled variant, so we never create evals the user
-	 *  can't run. Fails closed: `getFeatureFlags` returns `{}` on a PostHog outage. */
-	async isConfigEvalsEnabled(user: User): Promise<boolean> {
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
-		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	/**
+	 * Every experiment gate from one PostHog fetch, so a caller wires its context
+	 * from one call. `mcpConnectionsEnabled` also folds in two instance-wide
+	 * preconditions. Fails closed: `getFeatureFlags` returns `{}` on a PostHog
+	 * outage, and an unexpected throw here still fails every gate closed rather
+	 * than failing the whole context build.
+	 */
+	async resolveExperimentGates(user: User): Promise<{
+		/** Config-based evals: never create evals the user can't run. */
+		configEvalsEnabled: boolean;
+		/** MCP registry discovery: module active, MCP access allowed, user in the experiment. */
+		mcpConnectionsEnabled: boolean;
+		/** Past-conversation recall: tool, prompt section and first-turn hint. */
+		conversationHistoryEnabled: boolean;
+		/** Progressive workflow policy and planning-tool selection. */
+		progressiveBuildingEnabled: boolean;
+		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
+		nodeUsageEnabled: boolean;
+		/** Per-user folder-exploration gate, passed into `createContext`. Fails
+		 *  closed with every other gate: `getFeatureFlags` never throws, it
+		 *  returns `{}` on a PostHog outage. */
+		folderExplorationEnabled: boolean;
+	}> {
+		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
+		try {
+			flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		} catch {
+			// getFeatureFlags already swallows PostHog errors and returns {}; this
+			// second layer is for an unexpected throw elsewhere in the call.
+		}
+		return {
+			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
+			mcpConnectionsEnabled:
+				this.mcpPreconditionsHold() &&
+				flags[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+			conversationHistoryEnabled:
+				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
+				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+			progressiveBuildingEnabled:
+				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
+				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
+		};
 	}
 
-	/** Gate for MCP registry discovery tool. All three must hold:
-	 * 1. the `mcp-registry` module is active
-	 * 2. the admin allows MCP access instance-wide
-	 * 3. the user is part of the MCP connections experiment */
-	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
-		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
-		if (!this.settingsService.isMcpAccessEnabled()) return false;
-		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+	private mcpPreconditionsHold(): boolean {
 		return (
-			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
 		);
 	}
 
+	/**
+	 * Binds the reader to this conversation's user and project, so the tool can never widen its own
+	 * scope: what it may see is decided here, not by anything the model passes in.
+	 */
+	private createActivityAdapter(user: User, projectId?: string): InstanceAiActivityService {
+		const instanceContext = this.instanceContext;
+		if (!instanceContext) throw new UnexpectedError('Instance context service is not available');
+
+		return {
+			list: async (input) =>
+				await instanceContext.list({
+					user,
+					...(projectId !== undefined ? { projectId } : {}),
+					limit: input.limit,
+					...(input.category !== undefined ? { category: input.category } : {}),
+					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
+				}),
+			expand: async (id) =>
+				await instanceContext.expand({
+					id,
+					user,
+					...(projectId !== undefined ? { projectId } : {}),
+				}),
+		};
+	}
+
 	private createMcpAdapter(user: User): InstanceAiMcpService {
+		// Templated rows are dropped rather than offered: this path reads credentials
+		// without resolving expressions, so `createConnection` refuses them. Offering
+		// one would walk the user to a credential picker and then an error.
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
-			servers.map((server) => ({
-				slug: server.slug,
-				title: server.title,
-				description: server.description,
-				credentialType: server.credentialType,
-				tools: server.tools.map((tool) => tool.name),
-			}));
+			servers
+				.filter((server) => !server.isTemplated)
+				.map((server) => ({
+					slug: server.slug,
+					title: server.title,
+					description: server.description,
+					tools: server.tools.map((tool) => tool.name),
+				}));
 
 		return {
 			/** Connected servers are filtered out: `connected` answers what the user has,
@@ -517,8 +665,22 @@ export class InstanceAiAdapterService {
 				const connected = new Set(connections.map((connection) => connection.slug));
 				return toSummaries(servers.filter((server) => !connected.has(server.slug)));
 			},
-			getServers: async (slugs: string[]): Promise<McpRegistryServerSummary[]> =>
-				toSummaries(await Container.get(McpRegistryService).resolveBySlugs(slugs)),
+			getServers: async (slugs: string[]): Promise<McpRegistryConnectServerSummary[]> => {
+				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
+				return servers
+					.filter((server) => {
+						if (server.status !== 'active') return false;
+						const connection = resolveMcpRegistryConnection(server);
+						return connection !== null && !connection.isTemplated;
+					})
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.tagline,
+						usesCredentials: getMcpRegistryCredentialOptions(server),
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
 			listConnections: async (): Promise<Array<{ slug: string }>> =>
 				await this.listMcpRegistryConnections(user),
 		};
@@ -647,7 +809,14 @@ export class InstanceAiAdapterService {
 		user: User,
 		threadId?: string,
 		boundProjectId?: string,
+		options: { nodeUsageGateOpen?: boolean; folderExploration?: boolean } = {},
 	): InstanceAiWorkflowService {
+		const foldersOn = options.folderExploration === true;
+		// Attribution reveals folder ids, names and paths on every row, so it needs
+		// the licence as well as the flag. Resolution stays on the flag alone so an
+		// unlicensed instance still answers a folder request loudly (`unsupported`).
+		const foldersAttributed = foldersOn && this.license.isLicensed('feat:folders');
+		const { folderRepository, folderFinderService, projectService } = this;
 		const {
 			workflowService,
 			workflowFinderService,
@@ -662,9 +831,25 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			telemetry,
 			collaborationService,
+			policyEnforcementService,
+			workflowDependencyQueryService,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
+		// Resolved once per context, upstream in `createContext`: the tool registers the action from
+		// the method's presence, so nothing downstream has to know a rollout flag exists.
+		const nodeUsageEnabled =
+			options.nodeUsageGateOpen === true && workflowDependencyQueryService !== undefined;
+
+		/**
+		 * Which project a read targets. An explicit `projectId` wins, otherwise the thread's own
+		 * project unless the caller widened to the whole instance. Shared by `list` and `nodeUsage`
+		 * so the two never disagree about what "this project" means.
+		 */
+		const resolveTargetProjectId = (options?: {
+			projectId?: string;
+			scope?: 'project' | 'instance';
+		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
@@ -682,6 +867,88 @@ export class InstanceAiAdapterService {
 			}
 		};
 
+		/**
+		 * The folders the caller may name, per project. Access is checked with the
+		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * never revealed through a project the user cannot list folders in.
+		 * Returns undefined when folders cannot be read at all (unlicensed or
+		 * missing dependency), which the resolver reports as `unsupported`.
+		 *
+		 * Resolution must not depend on a capped scan: a project can hold more
+		 * folders than `FOLDER_SCAN_LIMIT`, and a valid folder past that page must
+		 * still resolve. So the request is looked up directly first — by id, or by
+		 * the last path segment's name, which every resolver stage requires to
+		 * match — and the capped scan only supplies the candidates listed on a miss.
+		 */
+		const readFoldersInScope = async (
+			projectIds: string[],
+			requested: { folderId?: string; folderPath?: string },
+		): Promise<FolderInScope[] | undefined> => {
+			if (!license.isLicensed('feat:folders') || !folderRepository) return undefined;
+
+			const wantedLeaf =
+				requested.folderPath !== undefined
+					? normalizeFolderPath(requested.folderPath).split('/').at(-1)
+					: undefined;
+
+			// Checked once per project and reused below by both the direct lookup and
+			// the fallback scan, instead of running the same scope query twice.
+			const scopedProjectIds: string[] = [];
+			for (const projectId of projectIds) {
+				if (await userHasScopes(user, ['folder:list'], false, { projectId })) {
+					scopedProjectIds.push(projectId);
+				}
+			}
+
+			const byId = new Map<string, FolderInScope>();
+			const add = (row: { id: string; name: string }, projectId: string) => {
+				if (!byId.has(row.id))
+					byId.set(row.id, { id: row.id, name: row.name, path: row.name, projectId });
+			};
+			for (const projectId of scopedProjectIds) {
+				if (requested.folderId !== undefined && requested.folderId !== '') {
+					try {
+						add(
+							await folderRepository.findOneOrFailFolderInProject(requested.folderId, projectId),
+							projectId,
+						);
+					} catch {
+						// Not in this project; the miss is reported after every project was tried.
+					}
+				} else if (wantedLeaf) {
+					// Exact, not `LIKE`: the resolver applies the exact rules, and an exact
+					// match must never be crowded out of a capped page by a substring one.
+					const rows = await folderRepository.findManyByExactName(
+						projectId,
+						wantedLeaf,
+						FOLDER_SCAN_LIMIT,
+					);
+					for (const row of rows) add(row, projectId);
+				}
+			}
+
+			// Nothing matched directly: scan (capped) so the miss can list real folders.
+			if (byId.size === 0) {
+				for (const projectId of scopedProjectIds) {
+					const rows = await folderRepository.getMany({
+						filter: { projectId },
+						select: { name: true },
+						take: FOLDER_SCAN_LIMIT,
+					});
+					for (const row of rows) add(row, projectId);
+				}
+			}
+
+			const folders = [...byId.values()];
+			// Paths are needed for exact-path and suffix matching, and for the candidates
+			// listed on a miss. One CTE for all folders in hand.
+			const paths = await readFolderPaths(
+				folderRepository,
+				folders.map((folder) => folder.id),
+			);
+			return folders.map((folder) => ({ ...folder, path: paths.get(folder.id) ?? folder.name }));
+		};
+
 		/** Tells open editors to reload, mirroring what the REST controller does after a write. */
 		const notifyWorkflowUpdated = async (workflowId: string) => {
 			try {
@@ -696,19 +963,163 @@ export class InstanceAiAdapterService {
 			}
 		};
 
+		/** Every `list()` call is tracked in both rollout arms, so folder-scoped
+		 *  calls have a denominator. Carries no folder names. */
+		const trackListed = (props: {
+			folderScope: 'none' | 'path' | 'id';
+			recursive?: boolean;
+			folderResolution?: 'resolved' | 'not_found' | 'ambiguous' | 'unsupported' | 'scope_too_wide';
+			candidateCount?: number;
+			scope: 'project' | 'instance';
+			hasQuery: boolean;
+			resultCount: number;
+			total: number;
+		}) => {
+			// Telemetry must never fail a read.
+			try {
+				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_LISTED_WORKFLOWS, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					folder_exploration_enabled: foldersOn,
+					folder_scope: props.folderScope,
+					...(props.recursive !== undefined ? { recursive: props.recursive } : {}),
+					...(props.folderResolution ? { folder_resolution: props.folderResolution } : {}),
+					...(props.candidateCount !== undefined ? { candidate_count: props.candidateCount } : {}),
+					scope: props.scope,
+					has_query: props.hasQuery,
+					result_count: props.resultCount,
+					total: props.total,
+				});
+			} catch {
+				// swallowed on purpose
+			}
+		};
+
 		return {
+			// Present only when the index is wired and the flag is on; the tool reads that presence
+			// to decide whether the action exists at all.
+			...(nodeUsageEnabled && workflowDependencyQueryService
+				? {
+						async nodeUsage(options): Promise<NodeUsageResult> {
+							const targetProjectId = resolveTargetProjectId(options);
+							const result = await workflowDependencyQueryService.getNodeTypeUsage(user, {
+								...(targetProjectId ? { projectId: targetProjectId } : {}),
+								...(options?.nodeType ? { nodeType: options.nodeType } : {}),
+								...(options?.limit !== undefined ? { limit: options.limit } : {}),
+							});
+
+							return {
+								workflowsInScope: result.workflowsInScope,
+								...(result.nodeTypes ? { nodeTypes: result.nodeTypes } : {}),
+								...(result.workflows
+									? {
+											workflows: result.workflows.map((workflow) => ({
+												...workflow,
+												updatedAt: workflow.updatedAt.toISOString(),
+											})),
+										}
+									: {}),
+								...(result.truncated ? { truncated: true } : {}),
+							};
+						},
+					}
+				: {}),
+
 			async list(options) {
-				// An explicit projectId targets one project; otherwise the thread's own
-				// project unless the caller widened to the whole instance. Either way it
-				// goes in as a *filter* on `getMany`, which resolves readability from the
-				// user's own project/workflow roles — so this can only narrow the set the
+				// The target project goes in as a *filter* on `getMany`, which resolves readability
+				// from the user's own project/workflow roles — so this can only narrow the set the
 				// caller could already read, never widen it. Writes keep using
 				// `resolveBoundProjectId` and stay locked to the bound project.
-				const targetProjectId =
-					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+				const targetProjectId = resolveTargetProjectId(options);
+
+				// Telemetry dimensions, computed once so both early returns and the
+				// normal return report the same scope kind. A folder-addressed call
+				// only counts as folder-scoped when the flag is actually on.
+				// `folderId` wins when both are given, the same way the resolver reads them.
+				const folderScope: 'none' | 'path' | 'id' = foldersOn
+					? options?.folderId !== undefined
+						? 'id'
+						: options?.folderPath !== undefined
+							? 'path'
+							: 'none'
+					: 'none';
+				const listScope: 'project' | 'instance' =
+					options?.scope === 'instance' ? 'instance' : 'project';
+
+				/** Every folder failure reports the same empty result and one telemetry row. */
+				const failFolderResolution = (folderResolution: FolderResolutionFailure) => {
+					trackListed({
+						folderScope,
+						recursive: options?.recursive !== false,
+						folderResolution: toTelemetryReason(folderResolution.reason),
+						candidateCount: folderResolution.candidates.length,
+						scope: listScope,
+						hasQuery: Boolean(options?.query),
+						resultCount: 0,
+						total: 0,
+					});
+					return { workflows: [], total: 0, totalInScope: 0, folderResolution };
+				};
+
+				// Folder scoping. Resolved strictly; an unresolved folder returns empty rows
+				// plus `folderResolution`, never a wider set (see resolveRequestedFolder).
+				let folderIds: string[] | undefined;
+				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
+					const requested = options.folderId ?? options.folderPath ?? '';
+					const projectIds = targetProjectId
+						? [targetProjectId]
+						: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
+					// One folder query per project, so a caller with access to very many
+					// projects is asked to name one instead of the instance paying for all.
+					if (targetProjectId === undefined && projectIds.length > FOLDER_SCAN_PROJECT_LIMIT) {
+						return failFolderResolution({ requested, reason: 'scope-too-wide', candidates: [] });
+					}
+					const foldersInScope = await readFoldersInScope(projectIds, {
+						folderPath: options.folderPath,
+						folderId: options.folderId,
+					});
+					const resolved = resolveRequestedFolder(
+						{ folderPath: options.folderPath, folderId: options.folderId },
+						foldersInScope,
+					);
+					if (!('folderId' in resolved)) {
+						return failFolderResolution({ requested, ...resolved });
+					}
+					// Recursion is part of the contract, so a missing finder is reported the
+					// same way an unlicensed instance is. Reading only the folder's top level
+					// would silently answer a different question.
+					if (!folderFinderService) {
+						return failFolderResolution({ requested, reason: 'unsupported', candidates: [] });
+					}
+					// Expanded here, not in the repository: the plain list query treats
+					// `parentFolderId` as an exact match, so relying on it would silently
+					// return only the folder's top level.
+					const expanded = await folderFinderService.findFolderFilterIdsWithoutAccessCheck(
+						resolved.folderId,
+						options.recursive !== false,
+					);
+					// No ids means the folder went away between the scan and the expansion.
+					// The repository drops an empty `parentFolderIds` filter, which would
+					// list the whole scope, so report the miss instead.
+					if (expanded.length === 0) {
+						return failFolderResolution({
+							requested,
+							reason: 'not-found',
+							candidates: listCandidatePaths(foldersInScope ?? []),
+						});
+					}
+					folderIds = expanded;
+				}
+
 				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(targetProjectId ? { projectId: targetProjectId } : {}),
+					// Part of the scope, not of the name filter: `totalInScope` has to describe the
+					// same node-type-filtered set, or the "hidden workflows" note misreports.
+					...(nodeUsageEnabled && options?.nodeTypes?.length
+						? { nodeTypes: options.nodeTypes }
+						: {}),
+					...(folderIds ? { parentFolderIds: folderIds } : {}),
 				};
 				const filter = {
 					...scopeFilter,
@@ -732,22 +1143,92 @@ export class InstanceAiAdapterService {
 				// would repeat the same project on every row.
 				const attributeProjects = targetProjectId === undefined;
 
+				const rows = workflows.filter((wf): wf is WorkflowEntity => 'versionId' in wf);
+
+				// Attribution must not reveal a folder the caller could not list on its own
+				// project — the same rule `readFoldersInScope` applies to resolution. A
+				// folder always belongs to the row's own `homeProject`, never to whatever
+				// project the listing was scoped to: a workflow shared into `targetProjectId`
+				// can still have its folder in a different project the caller cannot list.
+				// One `folder:list` check per distinct project on the page, not per row.
+				const rowFolderProjectId = (wf: WorkflowEntity): string | undefined =>
+					readHomeProject(wf)?.id;
+				const folderProjectIds = foldersAttributed
+					? [
+							...new Set(
+								rows.flatMap((wf) => (readParentFolder(wf) ? (rowFolderProjectId(wf) ?? []) : [])),
+							),
+						]
+					: [];
+				const scopedFolderProjectIds = new Set(
+					(
+						await Promise.all(
+							folderProjectIds.map(
+								async (projectId) =>
+									[
+										projectId,
+										await userHasScopes(user, ['folder:list'], false, { projectId }),
+									] as const,
+							),
+						)
+					)
+						.filter(([, allowed]) => allowed)
+						.map(([projectId]) => projectId),
+				);
+				const canAttributeFolder = (wf: WorkflowEntity): boolean => {
+					if (!foldersAttributed) return false;
+					const projectId = rowFolderProjectId(wf);
+					return projectId !== undefined && scopedFolderProjectIds.has(projectId);
+				};
+
+				// The repository's default select already joined `parentFolder`; until now
+				// the mapping discarded it. Only the root-relative path needs a lookup,
+				// and only for the folders on this page the caller may see.
+				const folderPaths =
+					scopedFolderProjectIds.size > 0 && folderRepository
+						? await readFolderPaths(
+								folderRepository,
+								rows.flatMap((wf) =>
+									canAttributeFolder(wf) ? (readParentFolder(wf)?.id ?? []) : [],
+								),
+							)
+						: new Map<string, string>();
+
+				trackListed({
+					folderScope,
+					...(folderIds
+						? { recursive: options?.recursive !== false, folderResolution: 'resolved' }
+						: {}),
+					scope: listScope,
+					hasQuery: Boolean(options?.query),
+					resultCount: rows.length,
+					total: count,
+				});
+
 				return {
-					workflows: workflows
-						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-						.map((wf): WorkflowSummary => {
-							const project = attributeProjects ? readHomeProject(wf) : undefined;
-							return {
-								id: wf.id,
-								name: wf.name,
-								versionId: wf.versionId,
-								activeVersionId: wf.activeVersionId ?? null,
-								isArchived: wf.isArchived,
-								createdAt: wf.createdAt.toISOString(),
-								updatedAt: wf.updatedAt.toISOString(),
-								...(project ? { project } : {}),
-							};
-						}),
+					workflows: rows.map((wf): WorkflowSummary => {
+						const project = attributeProjects ? readHomeProject(wf) : undefined;
+						const parent = canAttributeFolder(wf) ? readParentFolder(wf) : undefined;
+						const folder: WorkflowFolderRef | undefined = parent
+							? {
+									id: parent.id,
+									name: parent.name,
+									// A root folder's path is its own name; a missing lookup still leaves a usable answer.
+									path: folderPaths.get(parent.id) ?? parent.name,
+								}
+							: undefined;
+						return {
+							id: wf.id,
+							name: wf.name,
+							versionId: wf.versionId,
+							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
+							createdAt: wf.createdAt.toISOString(),
+							updatedAt: wf.updatedAt.toISOString(),
+							...(project ? { project } : {}),
+							...(folder ? { folder } : {}),
+						};
+					}),
 					total: count,
 					totalInScope,
 				};
@@ -916,9 +1397,34 @@ export class InstanceAiAdapterService {
 				return execution?.data?.resultData?.runData ?? null;
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON, options?: { markAsAiTemporary?: boolean }) {
+			async createFromWorkflowJSON(
+				json: WorkflowJSON,
+				options?: { markAsAiTemporary?: boolean; folderPath?: string; folderId?: string },
+			) {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
+
+				// Resolve the target folder BEFORE anything is written. A workflow that
+				// lands at the root when the user named a folder is the silent degradation
+				// folder addressing exists to remove, so an unresolved folder is an error,
+				// not a fallback. Writes stay locked to the bound project, so only its
+				// folders are in scope.
+				let placement: FolderInScope | undefined;
+				if (foldersOn && (options?.folderPath !== undefined || options?.folderId !== undefined)) {
+					const requested = options.folderId ?? options.folderPath ?? '';
+					const foldersInScope = await readFoldersInScope([projectId], {
+						folderPath: options.folderPath,
+						folderId: options.folderId,
+					});
+					const resolved = resolveRequestedFolder(
+						{ folderPath: options.folderPath, folderId: options.folderId },
+						foldersInScope,
+					);
+					if (!('folderId' in resolved)) {
+						throw new FolderResolutionError({ requested, ...resolved });
+					}
+					placement = foldersInScope?.find((folder) => folder.id === resolved.folderId);
+				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
 				// the graph breadth-first. Generated code still wins if it sets its own.
@@ -948,29 +1454,40 @@ export class InstanceAiAdapterService {
 				const newWorkflow = workflowRepository.create({
 					name: json.name,
 					nodes: [] as INode[],
-					connections: {} as IConnections,
+					connections: {},
 					settings,
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
-					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
-					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
-					if (options?.markAsAiTemporary) {
-						if (!threadId) {
-							throw new UnexpectedError(
-								'Cannot mark AI-builder temporary workflow without a thread ID',
+				// The shell has no nodes, so the real content check is the `update()` below.
+				// This call is still needed: `createContent` refuses to write without a clearance.
+				const cleared = await policyEnforcementService.enforceWorkflowSave({
+					workflow: { id: null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+					storedWorkflow: null,
+					projectId,
+				});
+
+				const saved = await workflowRepository.runInTransaction(
+					{ policyCleared: cleared },
+					async (transactionManager, ctx) => {
+						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
+						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+						if (options?.markAsAiTemporary) {
+							if (!threadId) {
+								throw new UnexpectedError(
+									'Cannot mark AI-builder temporary workflow without a thread ID',
+								);
+							}
+							await aiBuilderTemporaryWorkflowRepository.mark(
+								workflow.id,
+								threadId,
+								transactionManager,
 							);
 						}
-						await aiBuilderTemporaryWorkflowRepository.mark(
-							workflow.id,
-							threadId,
-							transactionManager,
-						);
-					}
-					return workflow;
-				});
+						return workflow;
+					},
+				);
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
@@ -998,6 +1515,7 @@ export class InstanceAiAdapterService {
 
 					updated = await workflowService.update(user, updateData, saved.id, {
 						source: 'n8n-ai',
+						...(placement ? { parentFolderId: placement.id } : {}),
 					});
 				} catch (error) {
 					logger.warn('AI-builder workflow save failed', {
@@ -1025,10 +1543,15 @@ export class InstanceAiAdapterService {
 						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
+						folder_placement: placement ? 'resolved' : 'none',
 					});
 				}
 
-				return await toWorkflowDetailWithChecksum(updated, { redactParameters });
+				const detail = await toWorkflowDetailWithChecksum(updated, { redactParameters });
+				if (placement) {
+					detail.folder = { id: placement.id, name: placement.name, path: placement.path };
+				}
+				return detail;
 			},
 
 			async updateFromWorkflowJSON(
@@ -1347,9 +1870,7 @@ export class InstanceAiAdapterService {
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode: triggerNode
-						? getExecutionModeForTrigger(triggerNode)
-						: ('manual' as WorkflowExecuteMode),
+					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						connections,
@@ -1861,10 +2382,7 @@ export class InstanceAiAdapterService {
 			async getDocumentationUrl(credentialType: string) {
 				try {
 					const credClass = loadNodesAndCredentials.getCredential(credentialType);
-					const slug = credClass.type.documentationUrl;
-					if (!slug) return null;
-					if (slug.startsWith('http')) return slug;
-					return `https://docs.n8n.io/integrations/builtin/credentials/${slug}/`;
+					return credentialDocsUrl(credClass.type.documentationUrl) ?? null;
 				} catch {
 					return null;
 				}
@@ -1936,9 +2454,11 @@ export class InstanceAiAdapterService {
 					if (typeName.toLowerCase().includes(q)) {
 						try {
 							const credClass = loadNodesAndCredentials.getCredential(typeName);
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						} catch {
 							// Type not loadable — include with type name as display name
@@ -1951,9 +2471,11 @@ export class InstanceAiAdapterService {
 					try {
 						const credClass = loadNodesAndCredentials.getCredential(typeName);
 						if (credClass.type.displayName.toLowerCase().includes(q)) {
+							const docsUrl = credentialDocsUrl(credClass.type.documentationUrl);
 							results.push({
 								type: typeName,
 								displayName: credClass.type.displayName,
+								...(docsUrl ? { documentationUrl: docsUrl } : {}),
 							});
 						}
 					} catch {
@@ -2374,7 +2896,7 @@ export class InstanceAiAdapterService {
 				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
-					filter: options?.filter as DataTableFilter | undefined,
+					filter: options?.filter,
 				});
 			},
 
@@ -2409,7 +2931,7 @@ export class InstanceAiAdapterService {
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
-					{ filter: filter as DataTableFilter, data: data as DataTableRow },
+					{ filter, data: data as DataTableRow },
 					true,
 				);
 				return {
@@ -2427,12 +2949,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
-				const result = await dataTableService.deleteRows(
-					resolvedId,
-					projectId,
-					{ filter: filter as DataTableFilter },
-					true,
-				);
+				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
 					dataTableId: resolvedId,
@@ -2759,8 +3276,11 @@ export class InstanceAiAdapterService {
 				});
 			},
 
-			async getDescription(nodeType: string, version?: number) {
-				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
+			async getDescription(nodeType, version, options) {
+				const [nodes, gatewayConfig] = await Promise.all([
+					getNodes(),
+					options?.includeGatewayMetadata === false ? Promise.resolve(null) : getGatewayConfig(),
+				]);
 				let desc =
 					version !== undefined
 						? nodes.find((n) => {
@@ -2814,7 +3334,7 @@ export class InstanceAiAdapterService {
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
-					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
+					...(desc.webhooks ? { webhooks: desc.webhooks } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 					...(meta ? { aiGateway: meta } : {}),
@@ -2858,7 +3378,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 
 				const minimalNode: INode = {
@@ -2870,11 +3390,7 @@ export class InstanceAiAdapterService {
 					position: [0, 0],
 				};
 
-				const issues = NodeHelpers.getNodeParametersIssues(
-					nodeProperties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(nodeProperties, minimalNode, desc);
 				const allIssues = issues?.parameters ?? {};
 
 				// Filter to top-level visible parameters only (mirrors setupPanel.utils.ts logic)
@@ -2897,12 +3413,7 @@ export class InstanceAiAdapterService {
 						if (prop.type === 'hidden') return false;
 						if (
 							prop.displayOptions &&
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								prop,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
+							!NodeHelpers.displayParameter(paramsWithDefaults, prop, minimalNode, desc)
 						) {
 							return false;
 						}
@@ -2927,7 +3438,7 @@ export class InstanceAiAdapterService {
 					parameters,
 					nodeType,
 					typeVersion,
-					desc as unknown as INodeTypeDescription,
+					desc,
 				);
 				const minimalNode: INode = {
 					id: '',
@@ -2943,14 +3454,7 @@ export class InstanceAiAdapterService {
 				for (const cred of nodeCredentials) {
 					// Check if credential is displayable given current parameters
 					if (cred.displayOptions) {
-						if (
-							!NodeHelpers.displayParameter(
-								paramsWithDefaults,
-								cred,
-								minimalNode,
-								desc as unknown as INodeTypeDescription,
-							)
-						) {
+						if (!NodeHelpers.displayParameter(paramsWithDefaults, cred, minimalNode, desc)) {
 							continue;
 						}
 					}
@@ -2958,11 +3462,7 @@ export class InstanceAiAdapterService {
 				}
 
 				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
-				const issues = NodeHelpers.getNodeParametersIssues(
-					desc.properties,
-					minimalNode,
-					desc as unknown as INodeTypeDescription,
-				);
+				const issues = NodeHelpers.getNodeParametersIssues(desc.properties, minimalNode, desc);
 				const credentialIssues = issues?.credentials ?? {};
 				for (const credType of Object.keys(credentialIssues)) {
 					credentialTypes.add(credType);
@@ -4008,6 +4508,38 @@ function readHomeProject(workflow: object): { id: string; name: string } | undef
 	return { id, name };
 }
 
+/** Read the joined parent folder off a listed row. Unlike `homeProject`,
+ *  `parentFolder` is declared on `WorkflowEntity`, so no `Reflect.get` is
+ *  needed; `?? undefined` covers both a root-level workflow (`null`) and a
+ *  custom select that omitted the relation (`undefined`). */
+function readParentFolder(workflow: WorkflowEntity): { id: string; name: string } | undefined {
+	const parent = workflow.parentFolder ?? undefined;
+	return parent ? { id: parent.id, name: parent.name } : undefined;
+}
+
+/** Folder ids per path query. `getFolderPathsToRoot` binds one parameter per id
+ *  and SQLite allows 999 of them, so the ids are read in chunks. */
+const FOLDER_PATH_CHUNK_SIZE = 500;
+
+/** One recursive CTE per chunk of the page's distinct folder ids; none when no
+ *  row is foldered. */
+async function readFolderPaths(
+	folderRepository: FolderRepository,
+	folderIds: string[],
+): Promise<Map<string, string>> {
+	const distinct = [...new Set(folderIds)];
+	if (distinct.length === 0) return new Map();
+
+	const paths = new Map<string, string>();
+	for (let start = 0; start < distinct.length; start += FOLDER_PATH_CHUNK_SIZE) {
+		const segments = await folderRepository.getFolderPathsToRoot(
+			distinct.slice(start, start + FOLDER_PATH_CHUNK_SIZE),
+		);
+		for (const [id, names] of segments) paths.set(id, names.join('/'));
+	}
+	return paths;
+}
+
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
 	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
@@ -4091,10 +4623,17 @@ function toWorkflowJSON(
 			notesInFlow: n.notesInFlow,
 			executeOnce: n.executeOnce,
 			retryOnFail: n.retryOnFail,
+			maxTries: n.maxTries,
+			waitBetweenTries: n.waitBetweenTries,
 			alwaysOutputData: n.alwaysOutputData,
-			onError: n.onError,
+			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
+			// read it the way the editor does. An agent save writes these nodes over the saved
+			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
+			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
+			extendsCredential: n.extendsCredential,
+			customTelemetryTags: n.customTelemetryTags,
 		})),
-		connections: source.connections as WorkflowJSON['connections'],
+		connections: source.connections,
 		settings: workflow.settings as WorkflowJSON['settings'],
 		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
@@ -4123,7 +4662,7 @@ function toWorkflowDetail(
 				webhookId: n.webhookId,
 			}),
 		),
-		connections: workflow.connections as Record<string, unknown>,
+		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
 }

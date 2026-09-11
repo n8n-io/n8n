@@ -32,8 +32,46 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+
+/**
+ * Wraps what is going on in this instance — what exists here, what changed lately, and what has
+ * run — so the agent can read the user's intent against it.
+ *
+ * On the turn rather than in the system prompt, and not negotiable: `getSystemPrompt()` is one
+ * shared prompt-cache entry across every thread on the instance, which is why the clock and the
+ * project name ride the turn too. A per-user block in the cached prefix would invalidate it for
+ * every user on every turn.
+ *
+ * LLM-facing only, and carries no structured payload to rebuild: the block is re-derivable, so on
+ * reload it is simply dropped.
+ */
+export const INSTANCE_CONTEXT_OPEN_TAG = '<instance-context>';
+export const INSTANCE_CONTEXT_CLOSE_TAG = '</instance-context>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
+export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
+export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+/** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
+export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
+export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
+export const WORKFLOW_TEST_REQUEST_OPEN_TAG = '<workflow-test-request>';
+export const WORKFLOW_TEST_REQUEST_CLOSE_TAG = '</workflow-test-request>';
+
+export function buildWorkflowTestRequestBlock(workflowId: string): string {
+	return [
+		WORKFLOW_TEST_REQUEST_OPEN_TAG,
+		JSON.stringify({ workflowId }),
+		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
+		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflows(action="get-as-code").',
+		'Do not call workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
+		'Use executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
+		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
+	].join('\n');
+}
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -42,7 +80,7 @@ export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<workflow-setup-state>\n[\s\S]*?\n<\/workflow-setup-state>|<workflow-test-request>\n[\s\S]*?\n<\/workflow-test-request>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<instance-context>\n[\s\S]*?\n<\/instance-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -50,16 +88,24 @@ const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
 /** Captures the leading JSON line inside an agent-preview-context block. */
 const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
-/** Match the final opening tag so user-authored lookalikes earlier in the message stay visible. */
-const CURRENT_DATE_TIME_BLOCK =
-	/\n*<current-date-time>(?:(?!<current-date-time>)[\s\S])*?<\/current-date-time>\s*$/;
+/**
+ * Match the final opening tag so user-authored lookalikes earlier in the message
+ * stay visible. The lookbehind starts `\n*` only at the head of a newline run,
+ * which keeps the scan linear on long runs.
+ */
+function trailingBlockRegex(tag: string): RegExp {
+	return new RegExp(`(?<!\\n)\\n*<${tag}>(?:(?!<${tag}>)[\\s\\S])*?</${tag}>\\s*$`);
+}
 
-/** Same shape as the clock block, for the same reason — see `withProjectContext`. */
-const PROJECT_CONTEXT_BLOCK =
-	/\n*<project-context>(?:(?!<project-context>)[\s\S])*?<\/project-context>\s*$/;
-
-/** Every trailing block the service appends. */
-const TRAILING_CONTEXT_BLOCKS = [CURRENT_DATE_TIME_BLOCK, PROJECT_CONTEXT_BLOCK];
+/**
+ * Every trailing block the service appends. Registering here is what makes a
+ * block invisible to BOTH readers of a stored message: the UI, and the
+ * conversation-history tool's text extraction — so injected context never
+ * pollutes a later history search.
+ */
+const TRAILING_CONTEXT_BLOCKS = ['current-date-time', 'project-context', 'past-conversations'].map(
+	trailingBlockRegex,
+);
 
 /** Strip each trailing block once, in whatever order they were composed. */
 function stripTrailingContextBlocks(message: string): string {
@@ -94,6 +140,23 @@ export function withCurrentDateTime(message: string, dateTimeSection: string): s
  */
 export function withProjectContext(message: string, projectSection: string): string {
 	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
+}
+
+/**
+ * Tell the agent the project has searchable past conversations. First turn of a
+ * thread only — it exists to make the agent reach for the `conversation-history`
+ * tool, which it otherwise has no reason to believe has anything in it.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ */
+export function withPastConversations(message: string, section: string): string {
+	return `${message}\n\n${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
+}
+
+/** Neutralize delimiter tags in title-derived text placed inside the block. */
+export function escapePastConversationsDelimiters(value: string): string {
+	return value
+		.replaceAll(PAST_CONVERSATIONS_OPEN_TAG, '&lt;past-conversations&gt;')
+		.replaceAll(PAST_CONVERSATIONS_CLOSE_TAG, '&lt;/past-conversations&gt;');
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to

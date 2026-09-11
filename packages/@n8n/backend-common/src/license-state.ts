@@ -170,6 +170,10 @@ export class LicenseState {
 		return this.isLicensed('feat:workerView');
 	}
 
+	isWorkerPoolsLicensed() {
+		return this.isLicensed('feat:workerPools');
+	}
+
 	isProjectRoleAdminLicensed() {
 		return this.isLicensed('feat:projectRole:admin');
 	}

@@ -23,7 +23,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
 		createInstanceAgent: vi.fn(),
-		createAllTools: vi.fn(),
 	};
 });
 
@@ -245,8 +244,20 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			payload: {
 				mcpConnectRequest: {
 					servers: [
-						{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' },
-						{ serverSlug: 'linear', title: 'Linear', credentialType: 'linearMcpOAuth2Api' },
+						{
+							serverSlug: 'brave',
+							title: 'Brave',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
+						{
+							serverSlug: 'linear',
+							title: 'Linear',
+							usesCredentials: [
+								{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
+						},
 					],
 				},
 			},

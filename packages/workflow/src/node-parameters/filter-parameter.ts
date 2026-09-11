@@ -40,7 +40,7 @@ function parseSingleFilterValue(
 	version: FilterOptionsValue['version'] = 1,
 ): ValidationResult {
 	if (type === 'any' || value === null || value === undefined) {
-		return { valid: true, newValue: value } as ValidationResult;
+		return { valid: true, newValue: value };
 	}
 
 	if (type === 'boolean' && !strict) {
