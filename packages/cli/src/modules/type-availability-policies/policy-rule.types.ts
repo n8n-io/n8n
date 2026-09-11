@@ -20,6 +20,15 @@ export type {
 	PolicySelector,
 } from '@n8n/api-types';
 
+/**
+ * What identifies a scope to its readers, as opposed to the row id that identifies it to the
+ * database. `projectId: null` is the instance scope.
+ */
+export type PolicyScopeKey = {
+	readonly kind: string;
+	readonly projectId: string | null;
+};
+
 /** One policy document as attached to a scope, with its evaluation-order metadata. */
 export type PolicyAttachment = {
 	readonly policyId: string;

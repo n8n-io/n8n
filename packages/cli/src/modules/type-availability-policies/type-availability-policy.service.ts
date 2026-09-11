@@ -1,4 +1,6 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -6,6 +8,7 @@ import { UserError } from 'n8n-workflow';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/type-availability-policy-scope.repository';
@@ -13,7 +16,12 @@ import { TypeAvailabilityPolicyRepository } from './database/repositories/type-a
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
-import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
+import type {
+	PolicyAction,
+	PolicyAttachment,
+	PolicyRule,
+	PolicyScopeKey,
+} from './policy-rule.types';
 import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
 
 /**
@@ -23,6 +31,19 @@ import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint'
  * writes wins.
  */
 const UNCONFIGURED_VERSION = 0;
+
+/**
+ * A backstop, not the staleness control — every write drops the entry it changed, and any
+ * deployment running more than one process shares one Redis cache. This only bounds the case
+ * an operator opts into with `N8N_CACHE_BACKEND=memory` in queue mode, where each process
+ * keeps its own copy and no delete reaches it.
+ */
+const SCOPE_CACHE_TTL_MS = 5 * Time.minutes.toMilliseconds;
+
+/** `projectId: null` is the instance scope, which every project composes against. */
+function scopeCacheKey(kind: string, projectId: string | null): string {
+	return `type-availability-policy:scope:${kind}:${projectId ?? 'instance'}`;
+}
 
 /** One attachment slot as the API accepts it, before the scope it belongs to is known. */
 export type AttachmentInput = {
@@ -146,11 +167,19 @@ export class TypeAvailabilityPolicyService {
 		private readonly attachmentRepository: TypeAvailabilityPolicyAttachmentRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly eventService: EventService,
-	) {}
+		private readonly cacheService: CacheService,
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('policy');
+	}
 
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
 	 * version `0` rather than being materialized just because someone looked at it.
+	 *
+	 * Deliberately uncached. The `version` it reports is what an editor sends back as
+	 * `expectedVersion`, so a stale read here would turn into a spurious write conflict.
+	 * Enforcement reads go through `readEffectivePolicyCached` instead.
 	 */
 	async getEffectivePolicy(
 		kind: string,
@@ -232,6 +261,13 @@ export class TypeAvailabilityPolicyService {
 			return { before, after };
 		});
 
+		// `updateDefaultAction` leaves the version alone when nothing changed, so that an
+		// env-bootstrap upsert repeated on every main during a rolling restart is a no-op.
+		// Invalidating here anyway would undo that.
+		if (result.before === null || result.before.version !== result.after.version) {
+			await this.invalidateScopes([{ kind, projectId }]);
+		}
+
 		this.eventService.emit('node-type-policy-scope-updated', {
 			updatedBy,
 			kind,
@@ -308,6 +344,8 @@ export class TypeAvailabilityPolicyService {
 		const warnings = lintRulesForShadowing(rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
+			let invalidated: PolicyScopeKey[] = [];
+
 			// Scopes before the document: `setEffectivePolicy` locks its scope and then writes
 			// the document, and every path must take the two in the same order or they deadlock.
 			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
@@ -359,10 +397,16 @@ export class TypeAvailabilityPolicyService {
 				}
 
 				await this.scopeRepository.bumpVersions(lockedScopeIds, ctx);
+
+				// A document edit changes what every scope it is attached to enforces, but the
+				// edit only knows scope ids and a reader addresses a scope by (kind, projectId).
+				invalidated = await this.scopeRepository.findScopeKeysByIds(lockedScopeIds, ctx);
 			}
 
-			return { existing, updated };
+			return { existing, updated, invalidated };
 		});
+
+		await this.invalidateScopes(result.invalidated);
 
 		this.eventService.emit('node-type-policy-document-updated', {
 			updatedBy,
@@ -492,6 +536,8 @@ export class TypeAvailabilityPolicyService {
 				versionAfter: scopeAfter?.version ?? scope.version + 1,
 			};
 		});
+
+		await this.invalidateScopes([{ kind: result.kind, projectId: result.projectId }]);
 
 		this.eventService.emit('node-type-policy-attachments-updated', {
 			updatedBy,
@@ -670,6 +716,9 @@ export class TypeAvailabilityPolicyService {
 			};
 		});
 
+		// This path always bumps the scope's version, so it always invalidates.
+		await this.invalidateScopes([{ kind, projectId }]);
+
 		this.eventService.emit('node-type-policy-scope-updated', {
 			updatedBy,
 			kind,
@@ -774,16 +823,77 @@ export class TypeAvailabilityPolicyService {
 	): Promise<{ instance: EffectivePolicy; project: EffectivePolicy }> {
 		if (projectId === null) {
 			return {
-				instance: await this.getEffectivePolicy(kind, null),
+				instance: await this.readEffectivePolicyCached(kind, null),
 				project: { ...UNCONFIGURED_PROJECT, kind },
 			};
 		}
 
 		const [instance, project] = await Promise.all([
-			this.getEffectivePolicy(kind, null),
-			this.getEffectivePolicy(kind, projectId),
+			this.readEffectivePolicyCached(kind, null),
+			this.readEffectivePolicyCached(kind, projectId),
 		]);
 
 		return { instance, project };
+	}
+
+	/**
+	 * Read-through cache in front of `getEffectivePolicy`, for the evaluation paths only.
+	 *
+	 * Enforcement runs this for every execution and every sub-execution under a 250 ms
+	 * deadline it fails closed on, so the point is to stop a slow database failing runs, not
+	 * to save queries. The instance scope is one entry shared by every project, so a project's
+	 * sub-executions hit it too.
+	 *
+	 * A cache error falls through to the database rather than propagating: the caller blocks
+	 * on a throw, and an unreachable Redis must not start failing executions.
+	 */
+	private async readEffectivePolicyCached(
+		kind: string,
+		projectId: string | null,
+	): Promise<EffectivePolicy> {
+		const key = scopeCacheKey(kind, projectId);
+
+		try {
+			const cached = await this.cacheService.get<EffectivePolicy>(key);
+			if (cached) return cached;
+		} catch (error) {
+			this.logger.warn('Failed to read the node type policy cache', { key, error });
+		}
+
+		const effective = await this.getEffectivePolicy(kind, projectId);
+
+		try {
+			// An unconfigured scope is cached as its allow-all object, never as an absent
+			// value: it is the most common state, and `CacheService.set` drops a `null`.
+			await this.cacheService.set(key, effective, SCOPE_CACHE_TTL_MS);
+		} catch (error) {
+			this.logger.warn('Failed to write the node type policy cache', { key, error });
+		}
+
+		return effective;
+	}
+
+	/**
+	 * Drops the cached entry for every scope a write changed.
+	 *
+	 * Runs after the transaction commits, never inside it — a reader racing in before the
+	 * commit would re-populate the entry from the pre-commit state and outlive the delete.
+	 *
+	 * A failure is logged rather than thrown: the write already committed, so failing the
+	 * response would report a success as an error, and the TTL still bounds the stale entry.
+	 */
+	private async invalidateScopes(keys: readonly PolicyScopeKey[]): Promise<void> {
+		if (keys.length === 0) return;
+
+		const cacheKeys = keys.map(({ kind, projectId }) => scopeCacheKey(kind, projectId));
+
+		try {
+			await this.cacheService.deleteMany(cacheKeys);
+		} catch (error) {
+			this.logger.error('Failed to invalidate the node type policy cache', {
+				keys: cacheKeys,
+				error,
+			});
+		}
 	}
 }
