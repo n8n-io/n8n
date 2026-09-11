@@ -835,7 +835,47 @@ describe('validateWorkflowGroups', () => {
 			{
 				code: 'invalid-subgraph',
 				message:
-					'Node group "Group" must form a single connected subgraph with a single entry and exit.',
+					'Node group "Group" must form a single connected subgraph with a single entry and exit (no path from "C" to "A").',
+			},
+		]);
+	});
+
+	it('names the member that faces outward when a group is rejected', () => {
+		// A loop body whose back-edge leaves from a node that also continues inside:
+		// the engine blames that node, and the message must say so, otherwise the
+		// author has to guess which boundary to redraw.
+		const nodes = [
+			makeNode({ id: 'loop', name: 'Loop', type: 'n8n-nodes-base.splitInBatches' }),
+			makeNode({ id: 'fetch', name: 'Fetch' }),
+			makeNode({ id: 'convert', name: 'Convert' }),
+			makeNode({ id: 'store', name: 'Store' }),
+		];
+
+		const connections: IConnections = {
+			Loop: { main: [[], [{ node: 'Fetch', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Fetch: { main: [[{ node: 'Convert', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Convert: {
+				main: [
+					[
+						{ node: 'Store', type: NodeConnectionTypes.Main, index: 0 },
+						{ node: 'Loop', type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
+			},
+		};
+
+		const result = validateWorkflowGroups({
+			nodes,
+			connectionsBySourceNode: connections,
+			nodeGroups: [{ id: 'g1', name: 'Body', nodeIds: ['fetch', 'convert', 'store'] }],
+			getNodeType,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'invalid-subgraph',
+				message:
+					'Node group "Body" must form a single connected subgraph with a single entry and exit (output edge from non-leaf node: "Convert").',
 			},
 		]);
 	});
