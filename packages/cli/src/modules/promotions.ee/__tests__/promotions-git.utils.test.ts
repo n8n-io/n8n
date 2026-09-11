@@ -96,6 +96,9 @@ describe('promotions-git.utils', () => {
 				knownHostsPath: '/data/`archive`/known_hosts',
 			});
 
+			// The single quote is emitted as the POSIX '\'' sequence (close-quote,
+			// escaped quote, reopen-quote), keeping it literal so it cannot break
+			// out of the argument and inject a command.
 			expect(command).toContain("-i '/data/$(archive)/owner'\\''s/private-key'");
 			expect(command).toContain("-o UserKnownHostsFile='/data/`archive`/known_hosts'");
 		});
