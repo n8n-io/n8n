@@ -500,6 +500,15 @@ watch(
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
 						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -665,6 +674,10 @@ watch(
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {

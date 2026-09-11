@@ -91,7 +91,7 @@ async function enqueueCandidate(
 ): Promise<void> {
 	const tool = createFlagMemoryTool({
 		memory,
-		scope: { resourceId: 'user-1' },
+		scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		persistence: { resourceId: 'user-1', threadId: 'thread-1' },
 		list: sourceList(),
 	});
@@ -196,7 +196,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 
 		expect(
@@ -234,7 +234,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			executionCounter: counter,
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
@@ -250,7 +250,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory: new InMemoryMemory(),
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
@@ -278,7 +278,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
@@ -318,7 +318,7 @@ describe('createRecallMemoryTool', () => {
 		const tool = createRecallMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			agentName: 'my-agent',
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
@@ -345,7 +345,7 @@ describe('createRecallMemoryTool', () => {
 });
 
 describe('getEpisodicMemoryScope', () => {
-	it('uses the persistence resourceId as the episodic memory scope', () => {
+	it('scopes episodic memory by the persistence resource and thread', () => {
 		expect(
 			getEpisodicMemoryScope({
 				resourceId: 'chat-user-1',
@@ -353,6 +353,7 @@ describe('getEpisodicMemoryScope', () => {
 			}),
 		).toEqual({
 			resourceId: 'chat-user-1',
+			threadId: 'thread-1',
 		});
 	});
 });
@@ -412,22 +413,34 @@ describe('InMemoryMemory episodic source cleanup', () => {
 		await memory.deleteThread('thread-1');
 
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'source-backed', { topK: 10 }),
+			memory.episodic.searchEntries(
+				{ resourceId: 'user-1', threadId: 'thread-1' },
+				'source-backed',
+				{ topK: 10 },
+			),
 		).resolves.toEqual([expect.objectContaining({ id: shared.id })]);
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'Postgres storage', {
-				includeStatuses: ['dropped'],
-				topK: 10,
-			}),
+			memory.episodic.searchEntries(
+				{ resourceId: 'user-1', threadId: 'thread-1' },
+				'Postgres storage',
+				{
+					includeStatuses: ['dropped'],
+					topK: 10,
+				},
+			),
 		).resolves.toEqual([expect.objectContaining({ id: orphaned.id, status: 'dropped' })]);
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports', {
-				includeStatuses: ['dropped'],
-				topK: 10,
-			}),
+			memory.episodic.searchEntries(
+				{ resourceId: 'user-1', threadId: 'thread-1' },
+				'concise reports',
+				{
+					includeStatuses: ['dropped'],
+					topK: 10,
+				},
+			),
 		).resolves.toEqual([expect.objectContaining({ id: candidateBacked.id, status: 'dropped' })]);
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
 		).resolves.toEqual([]);
 	});
 });
@@ -449,6 +462,7 @@ describe('agent-directed episodic capture', () => {
 
 		const candidates = await memory.episodic.getPendingCaptureCandidates({
 			resourceId: 'user-1',
+			threadId: 'thread-1',
 		});
 		expect(candidates).toHaveLength(2);
 		expect(candidates).toEqual(
@@ -482,7 +496,7 @@ describe('agent-directed episodic capture', () => {
 		]);
 		const tool = createFlagMemoryTool({
 			memory,
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			persistence: { resourceId: 'user-1', threadId: 'thread-1' },
 			list,
 		});
@@ -503,7 +517,7 @@ describe('agent-directed episodic capture', () => {
 		const memory = new InMemoryMemory();
 		const tool = createFlagMemoryTool({
 			memory,
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			persistence: { resourceId: 'user-1', threadId: 'thread-1' },
 			list: sourceList('Remember this:\nDana’s invoices must CC ap@harborfinch.example.'),
 		});
@@ -524,7 +538,10 @@ describe('agent-directed episodic capture', () => {
 			'one contiguous quote',
 		);
 
-		const candidates = await memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' });
+		const candidates = await memory.episodic.getPendingCaptureCandidates({
+			resourceId: 'user-1',
+			threadId: 'thread-1',
+		});
 		expect(
 			candidates.map(({ toolCallId, sourceMessageId, evidenceText }) => ({
 				toolCallId,
@@ -557,7 +574,7 @@ describe('agent-directed episodic capture', () => {
 			runEpisodicMemoryCandidateProcessor({
 				memory,
 				config: { embedder: fakeEmbedder, reflect },
-				scope: { resourceId: 'user-1' },
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 				now: new Date('2026-05-12T11:00:00.000Z'),
 			}),
 		).resolves.toEqual({ status: 'ran', entriesWritten: 1, candidatesProcessed: 1 });
@@ -565,7 +582,7 @@ describe('agent-directed episodic capture', () => {
 		// Reflection only runs for corrections; a plain preference must not pay for it.
 		expect(reflect).not.toHaveBeenCalled();
 		const entries = await memory.episodic.searchEntries(
-			{ resourceId: 'user-1' },
+			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'concise reports',
 		);
 		expect(entries).toEqual([
@@ -579,7 +596,7 @@ describe('agent-directed episodic capture', () => {
 			}),
 		]);
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
 		).resolves.toEqual([]);
 	});
 
@@ -588,7 +605,7 @@ describe('agent-directed episodic capture', () => {
 		const secret = 'sk-ant-api03-aaaaaaaaaaaaaaaa';
 		const tool = createFlagMemoryTool({
 			memory,
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			persistence: { resourceId: 'user-1', threadId: 'thread-1' },
 			list: sourceList(`Remember key ${secret}.`),
 		});
@@ -605,6 +622,7 @@ describe('agent-directed episodic capture', () => {
 
 		const [candidate] = await memory.episodic.getPendingCaptureCandidates({
 			resourceId: 'user-1',
+			threadId: 'thread-1',
 		});
 		expect(candidate.content).not.toContain(secret);
 		expect(candidate.evidenceText).not.toContain(secret);
@@ -634,11 +652,11 @@ describe('agent-directed episodic capture', () => {
 			runEpisodicMemoryCandidateProcessor({
 				memory,
 				config: { embedder: fakeEmbedder },
-				scope: { resourceId: 'user-1' },
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			}),
 		).rejects.toThrow('temporary persistence failure');
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
 		).resolves.toEqual([
 			expect.objectContaining({ attemptCount: 1, status: 'pending' }),
 			expect.objectContaining({ attemptCount: 1, status: 'pending' }),
@@ -648,11 +666,11 @@ describe('agent-directed episodic capture', () => {
 		await runEpisodicMemoryCandidateProcessor({
 			memory,
 			config: { embedder: fakeEmbedder },
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 
 		const entries = await memory.episodic.searchEntries(
-			{ resourceId: 'user-1' },
+			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'concise reports summaries',
 			{ topK: 10 },
 		);
@@ -705,11 +723,11 @@ describe('agent-directed episodic capture', () => {
 						],
 					}),
 			},
-			scope: { resourceId: 'user-1' },
+			scope: { resourceId: 'user-1', threadId: 'thread-1' },
 		});
 
 		const active = await memory.episodic.searchEntries(
-			{ resourceId: 'user-1' },
+			{ resourceId: 'user-1', threadId: 'thread-1' },
 			'SQLite Postgres',
 			{ queryEmbedding: [1, 0], topK: 10 },
 		);
@@ -735,15 +753,18 @@ describe('agent-directed episodic capture', () => {
 					embedder: fakeEmbedder,
 					reflect: async () => await Promise.reject(reflectionError),
 				},
-				scope: { resourceId: 'user-1' },
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 			}),
 		).rejects.toThrow(reflectionError);
 
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1' }),
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'user-1', threadId: 'thread-1' }),
 		).resolves.toEqual([]);
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'user-1' }, 'concise reports'),
+			memory.episodic.searchEntries(
+				{ resourceId: 'user-1', threadId: 'thread-1' },
+				'concise reports',
+			),
 		).resolves.toHaveLength(1);
 	});
 });

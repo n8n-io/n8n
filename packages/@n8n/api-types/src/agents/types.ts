@@ -327,10 +327,18 @@ export interface AgentPersistedMessageContentPart {
 	childTrace?: PersistedChildTrace;
 }
 
+/** Platform user who wrote a turn in a shared integration thread. */
+export interface AgentMessageAuthor {
+	id: string;
+	name: string;
+}
+
 export interface AgentPersistedMessageDto {
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
+	/** Set on user turns that came in through a chat integration. */
+	author?: AgentMessageAuthor;
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */

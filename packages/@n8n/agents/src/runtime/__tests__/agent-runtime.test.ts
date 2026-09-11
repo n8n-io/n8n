@@ -6349,7 +6349,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 
 		const entries = await memory.episodic.searchEntries(
-			{ resourceId: 'resource-1' },
+			{ resourceId: 'resource-1', threadId: 'thread-1' },
 			'Postgres storage',
 			{ queryEmbedding: [1, 0] },
 		);
@@ -6368,8 +6368,8 @@ describe('AgentRuntime — observation log jobs', () => {
 		]);
 		const firstLockCall = episodicLockSpy.mock.calls.at(0);
 		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
-		const [lockedResourceId, lockOptions] = firstLockCall;
-		expect(lockedResourceId).toBe('resource-1');
+		const [lockedScope, lockOptions] = firstLockCall;
+		expect(lockedScope).toEqual({ resourceId: 'resource-1', threadId: 'thread-1' });
 		expect(typeof lockOptions.holderId).toBe('string');
 		expect(typeof lockOptions.ttlMs).toBe('number');
 	});
@@ -6408,16 +6408,26 @@ describe('AgentRuntime — observation log jobs', () => {
 		// The turn completed while the first batch was still embedding.
 		expect(result.finishReason).toBe('stop');
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+			}),
 		).resolves.toHaveLength(2);
 
 		resolveFirstEmbedding({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		await runtime.dispose();
 		await expect(
-			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+			memory.episodic.getPendingCaptureCandidates({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+			}),
 		).resolves.toEqual([]);
 		await expect(
-			memory.episodic.searchEntries({ resourceId: 'resource-1' }, 'Remember', { topK: 10 }),
+			memory.episodic.searchEntries(
+				{ resourceId: 'resource-1', threadId: 'thread-1' },
+				'Remember',
+				{ topK: 10 },
+			),
 		).resolves.toHaveLength(2);
 	});
 
