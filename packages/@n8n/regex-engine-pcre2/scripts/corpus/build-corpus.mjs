@@ -298,6 +298,15 @@ async function main() {
     console.error(`\n${engineBugs.length} case(s) disagree with real PCRE2 -- see "Engine bugs" above.`);
     process.exitCode = 1;
   }
+
+  // Collapse cases that only differ in literal content, not structural pattern shape/flags/
+  // subject-shape/outcome-shape -- upstream suites carry heavy redundancy of this kind.
+  // Scoped to files this generator owns; realistic-patterns.json stays hand-curated (see above).
+  execSync(
+    'node scripts/corpus/find-near-duplicates.mjs --write ' +
+      '--targets=pcre2-testinput1.json,rust-regex/rust-regex-corpus.json,curated-cases.json',
+    { cwd: ROOT, stdio: 'inherit' },
+  );
 }
 
 main();
