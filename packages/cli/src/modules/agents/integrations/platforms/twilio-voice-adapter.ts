@@ -40,6 +40,9 @@ const FIRST_HOP_WAIT_MS = 3_200;
  */
 const MAX_SILENT_HOPS = 12;
 
+/** Spoken when the agent turn throws, so the caller is not left guessing. */
+const TURN_FAILED_SPEECH = 'Sorry, something went wrong. Please try again.';
+
 /** Safety net so a call that drops mid-answer cannot leak its queue. */
 const TURN_TTL_MS = 5 * 60_000;
 
@@ -294,9 +297,26 @@ export class VoiceTurnStore {
 	/** Open a queue for a call. False when one is already open, so a Twilio
 	 * retry joins the run in flight instead of asking the agent twice. */
 	async create(callSid: string): Promise<boolean> {
-		return await this.withTurnLock(callSid, async () => {
+		return await this.withLock(callSid, async () => {
 			if (await this.cache.get<VoiceTurnState>(this.key(callSid))) return false;
 			await this.write(callSid, { pending: [], finished: false, endsCall: false });
+			return true;
+		});
+	}
+
+	/**
+	 * Claim one caller turn, returning false if it was claimed already.
+	 *
+	 * The queue cannot answer this on its own: it is deleted the moment the
+	 * answer finishes, so a Twilio retry arriving afterwards would look like a
+	 * brand new turn and run the agent — and its tools — a second time. This
+	 * marker outlives the queue.
+	 */
+	async claimTurn(turnId: string): Promise<boolean> {
+		return await this.withLock(`claim:${turnId}`, async () => {
+			const key = this.claimKey(turnId);
+			if (await this.cache.get<boolean>(key)) return false;
+			await this.cache.set(key, true, this.ttlMs);
 			return true;
 		});
 	}
@@ -341,7 +361,7 @@ export class VoiceTurnStore {
 		callSid: string,
 		update: (state: VoiceTurnState) => VoiceTurnState,
 	): Promise<VoiceTurnState | undefined> {
-		return await this.withTurnLock(callSid, async () => {
+		return await this.withLock(callSid, async () => {
 			const state = await this.cache.get<VoiceTurnState>(this.key(callSid));
 			if (!state) return undefined;
 			await this.write(callSid, update(state));
@@ -349,10 +369,10 @@ export class VoiceTurnStore {
 		});
 	}
 
-	private async withTurnLock<T>(callSid: string, fn: () => Promise<T>): Promise<T> {
+	private async withLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
 		return await this.lockService.withLease(
 			LockNamespace.KNOWN_LOCKS,
-			`${this.scope}:twilio-voice-turn:${callSid}`,
+			`${this.scope}:twilio-voice-turn:${id}`,
 			fn,
 		);
 	}
@@ -363,6 +383,10 @@ export class VoiceTurnStore {
 
 	private key(callSid: string): string {
 		return `${TURN_KEY_PREFIX}:${this.scope}:${callSid}`;
+	}
+
+	private claimKey(turnId: string): string {
+		return `${TURN_KEY_PREFIX}:${this.scope}:claim:${turnId}`;
 	}
 }
 
@@ -552,17 +576,19 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		const turnId = url.searchParams.get('turn');
 		if (!turnId || !this.chat) return new Response('Invalid Twilio request', { status: 400 });
 
-		await this.startTurn(payload.CallSid, this.parseMessage(payload, turnId), options);
+		await this.startTurn(payload.CallSid, turnId, this.parseMessage(payload, turnId), options);
 		return await this.speakNext(payload.CallSid, 0, true);
 	}
 
 	private async startTurn(
 		callSid: string,
+		turnId: string,
 		message: Message<TwilioVoiceWebhook>,
 		options?: WebhookOptions,
 	): Promise<void> {
-		// An open queue means Twilio retried the same turn, so the run already in
-		// flight answers it rather than asking the agent the question twice.
+		// A claimed turn is one Twilio has already delivered, so this is a retry.
+		// The existing run answers it rather than asking the agent twice.
+		if (!(await this.options.turns.claimTurn(turnId))) return;
 		if (!(await this.options.turns.create(callSid))) return;
 
 		const turn: ProducingTurn = { accumulator: new SentenceAccumulator(), startedAt: Date.now() };
@@ -572,20 +598,29 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		// Deliberately not awaited: the caller needs a TwiML document now, and
 		// the answer arrives sentence by sentence through `postMessage`.
 		void (async () => {
+			let failed = false;
 			try {
 				await this.chat?.processMessage(this, this.encodeThreadId({ callSid }), message, options);
-			} finally {
-				this.producing.delete(callSid);
-				await this.options.turns.finish(callSid, turn.accumulator.end());
-				this.options.logger.debug('[TwilioVoice] Turn complete', {
-					callSid,
-					totalMs: Date.now() - turn.startedAt,
-					firstSpeechMs: turn.firstSpeechAt ? turn.firstSpeechAt - turn.startedAt : null,
-				});
+			} catch (error) {
+				failed = true;
+				this.options.logger.error('[TwilioVoice] Agent turn failed', { error, callSid });
 			}
+
+			this.producing.delete(callSid);
+			const tail = turn.accumulator.end();
+			// Without this the queue finishes empty, and the caller gets silence
+			// followed by a fresh prompt with no idea the agent gave up.
+			if (failed) tail.push(TURN_FAILED_SPEECH);
+
+			await this.options.turns.finish(callSid, tail);
+			this.options.logger.debug('[TwilioVoice] Turn complete', {
+				callSid,
+				failed,
+				totalMs: Date.now() - turn.startedAt,
+				firstSpeechMs: turn.firstSpeechAt ? turn.firstSpeechAt - turn.startedAt : null,
+			});
 		})().catch((error: unknown) => {
-			// The hop waiting on this queue falls through to its silent-hop limit.
-			this.options.logger.error('[TwilioVoice] Turn failed to complete', { error, callSid });
+			this.options.logger.error('[TwilioVoice] Turn cleanup failed', { error, callSid });
 		});
 	}
 

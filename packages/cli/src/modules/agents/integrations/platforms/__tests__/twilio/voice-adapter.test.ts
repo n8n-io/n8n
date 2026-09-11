@@ -333,6 +333,92 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 		expect(await twimlOf(response)).toContain('not allowed');
 	});
 
+	it('rejects a signed request from another Twilio account', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ AccountSid: 'ACother', SpeechResult: 'hi' })),
+		);
+		expect(response.status).toBe(400);
+	});
+
+	it('rejects a signed request for a different number', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ To: '+14155550000', SpeechResult: 'hi' })),
+		);
+		expect(response.status).toBe(400);
+	});
+
+	it('re-prompts once when it hears nothing, then gives up', async () => {
+		const { adapter } = await initialized();
+
+		const first = await twimlOf(
+			await adapter.handleWebhook(signedRequest(speechUrl, callFields())),
+		);
+		expect(first).toContain('I didn&apos;t hear anything.');
+		expect(first).toContain('empty=1');
+
+		const second = await twimlOf(
+			await adapter.handleWebhook(signedRequest(`${WEBHOOK_URL}?turn=t2&empty=1`, callFields())),
+		);
+		expect(second).toContain("I still didn't hear anything.");
+		expect(second).toContain('<Hangup/>');
+	});
+
+	it('does not re-run the agent when Twilio retries a finished turn', async () => {
+		const { adapter, processMessage, finishAgent, agentDone, agentStarted } = await initialized();
+
+		const firstHop = adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })),
+		);
+		await agentStarted;
+		const stream = deltaStream();
+		const streaming = adapter.stream(threadId, stream.iterable);
+		stream.emit('All done. ');
+		await firstHop;
+		stream.close();
+		await streaming;
+		finishAgent();
+		await agentDone;
+		await Promise.resolve();
+
+		// Drain to the end, which deletes the queue.
+		const finalBody = await twimlOf(
+			await adapter.handleWebhook(signedRequest(streamUrl, callFields())),
+		);
+		expect(finalBody).toContain('<Gather input="speech"');
+
+		// Twilio now retries the original request. The queue is long gone, so only
+		// the turn claim can stop the agent answering it a second time.
+		await adapter.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })));
+		expect(processMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('tells the caller when the agent turn fails', async () => {
+		const { adapter } = await initialized();
+		const failing = await createTurnStore('agent-9:twilioVoice:cred-9');
+		const broken = new TwilioVoiceAdapter({
+			accountSid: ACCOUNT_SID,
+			authToken: AUTH_TOKEN,
+			phoneNumber: PHONE_NUMBER,
+			allowedCallers: [CALLER],
+			webhookUrl: WEBHOOK_URL,
+			verifySignature: true,
+			turns: failing,
+			logger: mock(),
+			chatSdk,
+		});
+		await broken.initialize({
+			processMessage: vi.fn().mockRejectedValue(new Error('agent exploded')),
+		} as unknown as Parameters<TwilioVoiceAdapter['initialize']>[0]);
+		void adapter;
+
+		const body = await twimlOf(
+			await broken.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hi' }))),
+		);
+		expect(body).toContain('Sorry, something went wrong.');
+	});
+
 	it('greets the caller and gathers speech on the first request', async () => {
 		const { adapter } = await initialized();
 		const response = await adapter.handleWebhook(signedRequest(WEBHOOK_URL, callFields()));
