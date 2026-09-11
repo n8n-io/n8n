@@ -9,6 +9,8 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { __clearProjectAgentsListCacheForTests } from '@/features/agents/composables/useProjectAgentsList';
+import type { AgentResource } from '@/features/agents/types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -20,6 +22,7 @@ import { APP_CONNECTIONS_MODAL_KEY } from '../../apps.constants';
 const showMessage = vi.hoisted(() => vi.fn());
 const showError = vi.hoisted(() => vi.fn());
 const confirm = vi.hoisted(() => vi.fn());
+const listAgents = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
@@ -27,6 +30,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm }),
+}));
+
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listAgents: (...args: unknown[]) => listAgents(...args),
 }));
 
 vi.mock('virtual:node-popularity-data', () => ({ default: [] }));
@@ -103,6 +110,22 @@ const ordersBinding: DescribedBinding = {
 	row: { type: 'object' },
 };
 
+const agents = [
+	{ id: 'agent-1', name: 'Support', projectId: 'proj-1', activeVersionId: 'v-1' },
+	{ id: 'agent-2', name: 'Onboarding Guide', projectId: 'proj-1', activeVersionId: 'v-2' },
+	{ id: 'agent-3', name: 'Draft Bot', projectId: 'proj-1', activeVersionId: null },
+	{ id: 'agent-9', name: 'Foreign Agent', projectId: 'proj-2', activeVersionId: 'v-9' },
+] as unknown as AgentResource[];
+
+const supportBinding: DescribedBinding = {
+	key: 'support',
+	kind: 'agent',
+	agentId: 'agent-1',
+	name: 'Support',
+	permissions: ['chat', 'history'],
+	published: true,
+};
+
 const renderModal = createComponentRenderer(AppConnectionsModal, {
 	props: { modalName: APP_CONNECTIONS_MODAL_KEY, data: { projectId: 'proj-1', appId: 'app-1' } },
 });
@@ -123,6 +146,10 @@ async function openDataTab() {
 	await userEvent.click(screen.getByRole('tab', { name: /^Data/ }));
 }
 
+async function openAgentsTab() {
+	await userEvent.click(screen.getByRole('tab', { name: /^Agents/ }));
+}
+
 describe('AppConnectionsModal', () => {
 	let appsStore: MockedStore<typeof useAppsStore>;
 	let uiStore: MockedStore<typeof useUIStore>;
@@ -131,7 +158,7 @@ describe('AppConnectionsModal', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		appsStore = mockedStore(useAppsStore);
-		appsStore.bindings = [echoBinding, ordersBinding];
+		appsStore.bindings = [echoBinding, ordersBinding, supportBinding];
 		appsStore.addBinding.mockResolvedValue(undefined);
 		appsStore.updateBinding.mockResolvedValue(undefined);
 		appsStore.deleteBinding.mockResolvedValue(undefined);
@@ -141,6 +168,8 @@ describe('AppConnectionsModal', () => {
 		dataTableStore = mockedStore(useDataTableStore);
 		dataTableStore.dataTables = dataTables;
 		dataTableStore.fetchDataTables.mockResolvedValue(undefined);
+		__clearProjectAgentsListCacheForTests();
+		listAgents.mockReset().mockResolvedValue(agents);
 		showMessage.mockReset();
 		showError.mockReset();
 		confirm.mockReset();
@@ -302,6 +331,7 @@ describe('AppConnectionsModal', () => {
 
 		expect(getByTestId('tab-workflows').querySelector('[data-icon="workflow"]')).not.toBeNull();
 		expect(getByTestId('tab-data').querySelector('[data-icon="table"]')).not.toBeNull();
+		expect(getByTestId('tab-agents').querySelector('[data-icon="robot"]')).not.toBeNull();
 	});
 
 	it('loads the project data tables and lists them on the Data tab with their connection state', async () => {
@@ -446,6 +476,115 @@ describe('AppConnectionsModal', () => {
 			expect.objectContaining({ confirmButtonText: 'Disconnect' }),
 		);
 		expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'orders');
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
+	});
+
+	it('lists only published agents of the project on the Agents tab with their connection state', async () => {
+		const { getAllByTestId, queryByText } = await renderOpen();
+
+		expect(listAgents).toHaveBeenCalledWith(expect.anything(), 'proj-1');
+
+		await openAgentsTab();
+
+		const rows = getAllByTestId('tools-connection-row');
+		expect(rows).toHaveLength(2);
+		expect(queryByText('Draft Bot')).not.toBeInTheDocument();
+		expect(queryByText('Foreign Agent')).not.toBeInTheDocument();
+
+		const support = rowByTitle(rows, 'Support');
+		expect(
+			support.querySelector('[data-icon="robot"]')?.closest('[class*="wrapper"]'),
+		).not.toBeNull();
+		expect(within(support).getByTestId('tools-connection-row-connected')).toBeInTheDocument();
+
+		const guide = rowByTitle(rows, 'Onboarding Guide');
+		expect(within(guide).queryByTestId('tools-connection-row-connected')).not.toBeInTheDocument();
+	});
+
+	it('shows an error toast when loading the agents fails', async () => {
+		const failure = new Error('nope');
+		listAgents.mockRejectedValue(failure);
+
+		await renderOpen();
+
+		expect(showError).toHaveBeenCalledWith(failure, 'Error loading agents');
+	});
+
+	it('offers Chat and History, both checked, before connecting an agent', async () => {
+		const { getByTestId, getByText, getByRole, queryByTestId } = await openDetail(
+			'Onboarding Guide',
+			openAgentsTab,
+		);
+
+		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
+		expect(
+			getByText(
+				"Anyone who can open the app gets this access. Visitors answer the agent's approval requests.",
+			),
+		).toBeInTheDocument();
+		expect(getByRole('checkbox', { name: 'Chat' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByRole('checkbox', { name: 'History' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByTestId('app-binding-connect')).toBeEnabled();
+		expect(queryByTestId('app-binding-save')).not.toBeInTheDocument();
+		expect(appsStore.addBinding).not.toHaveBeenCalled();
+	});
+
+	it('connects an agent with the chosen permissions and returns to the list', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await openDetail(
+			'Onboarding Guide',
+			openAgentsTab,
+		);
+
+		await userEvent.click(getByRole('checkbox', { name: 'History' }));
+		await userEvent.click(getByTestId('app-binding-connect'));
+
+		expect(appsStore.addBinding).toHaveBeenCalledWith('proj-1', 'app-1', {
+			key: 'onboarding-guide',
+			kind: 'agent',
+			agentId: 'agent-2',
+			permissions: ['chat'],
+		});
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Connected. Ask the assistant to use "Onboarding Guide" in the app.',
+			type: 'success',
+		});
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
+	});
+
+	it('disables Connect when neither agent access level is checked', async () => {
+		const { getByTestId, getByRole } = await openDetail('Onboarding Guide', openAgentsTab);
+
+		await userEvent.click(getByRole('checkbox', { name: 'Chat' }));
+		await userEvent.click(getByRole('checkbox', { name: 'History' }));
+
+		expect(getByTestId('app-binding-connect')).toBeDisabled();
+	});
+
+	it('saves the changed permissions of a connected agent', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await openDetail('Support', openAgentsTab);
+
+		expect(getByTestId('app-binding-save')).toBeDisabled();
+		await userEvent.click(getByRole('checkbox', { name: 'History' }));
+		await userEvent.click(getByTestId('app-binding-save'));
+
+		expect(appsStore.updateBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'support', {
+			permissions: ['chat'],
+		});
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
+	});
+
+	it('disconnects a connected agent after confirmation', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
+		const { getByTestId, queryByTestId } = await openDetail('Support', openAgentsTab);
+
+		await userEvent.click(getByTestId('app-binding-disconnect'));
+
+		expect(confirm).toHaveBeenCalledWith(
+			expect.stringContaining('disconnect the "Support" agent'),
+			'Disconnect agent',
+			expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+		);
+		expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'support');
 		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 	});
 });

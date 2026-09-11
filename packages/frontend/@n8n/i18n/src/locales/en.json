@@ -5229,7 +5229,7 @@
 	"apps.connections.access.chat": "Chat",
 	"apps.connections.access.history": "History",
 	"apps.connections.access.chatHistory": "Chat & history",
-	"apps.connections.access.dialog.agentNote": "Anyone who can open the app gets this access. Visitors answer the agent's approval requests.",
+	"apps.connections.access.agentNote": "Anyone who can open the app gets this access. Visitors answer the agent's approval requests.",
 	"apps.connections.agent.notPublished": "Not published — the app cannot chat yet",
 	"apps.connections.delete.confirm.title": "Disconnect workflow",
 	"apps.connections.delete.confirm.message": "Are you sure you want to disconnect the \"{name}\" workflow? The app will no longer be able to run this workflow.",
