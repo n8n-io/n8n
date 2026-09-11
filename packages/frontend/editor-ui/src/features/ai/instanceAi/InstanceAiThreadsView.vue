@@ -294,6 +294,7 @@ function openThread(threadId: string) {
 			<form :class="$style.renameForm" @submit.prevent="saveRename">
 				<N8nInput
 					v-model="renameTitle"
+					:maxlength="255"
 					autofocus
 					:disabled="saving"
 					:aria-label="i18n.baseText('instanceAi.threads.renameChat')"
