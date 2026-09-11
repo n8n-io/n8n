@@ -1089,15 +1089,22 @@ describe('instanceAiAppAttachmentSchema', () => {
 	const appAttachment = (overrides: Record<string, unknown> = {}) => ({
 		type: 'app',
 		projectId: 'proj-1',
+		appId: 'app-1',
 		name: 'Greeter',
 		...overrides,
 	});
 
-	it('accepts a new app with a slug namespace and no appId', () => {
+	it('accepts an app with a slug namespace', () => {
 		const result = instanceAiAppAttachmentSchema.safeParse(
-			appAttachment({ namespace: 'my-greeter-2', isNewApp: true }),
+			appAttachment({ namespace: 'my-greeter-2' }),
 		);
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing appId', () => {
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ appId: undefined })).success,
+		).toBe(false);
 	});
 
 	it('applies the apps.create name and namespace rules', () => {

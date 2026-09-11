@@ -11,10 +11,19 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
+import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
+import type { AppThreadScope } from '../instanceAiLayout';
+import { APP_DETAILS } from '@/features/apps/apps.constants';
+
+const props = defineProps<{
+	/** Only this app's threads, linked to the app page (`?thread=`) instead of the assistant. */
+	appScope?: AppThreadScope;
+}>();
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -26,9 +35,32 @@ const route = useRoute();
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
-const activeThreadId = computed(() =>
-	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
-);
+const activeThreadId = computed(() => {
+	const id = props.appScope ? route.query.thread : route.params.threadId;
+	return typeof id === 'string' ? id : undefined;
+});
+
+const visibleThreads = computed(() => {
+	const scope = props.appScope;
+	if (!scope) return store.threads;
+	return store.threads.filter(
+		(thread) => getAppBuilderTargetFromThreadMetadata(thread.metadata)?.appId === scope.appId,
+	);
+});
+
+// `thread=new` asks the app page to start another thread for the same app.
+const threadRoute = (threadId: string | undefined): RouteLocationRaw => {
+	if (!props.appScope) {
+		return threadId
+			? { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } }
+			: { name: INSTANCE_AI_VIEW };
+	}
+	return {
+		name: APP_DETAILS,
+		params: { projectId: props.appScope.projectId, appId: props.appScope.appId },
+		query: { thread: threadId ?? 'new' },
+	};
+};
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -60,7 +92,7 @@ const groupedThreads = computed(() => {
 	// but messaged today belongs under "Today", matching the backend ordering
 	// (memory.service returns threads sorted by updatedAt desc) and the
 	// chatHub sidebar's `groupConversationsByDate` behaviour.
-	for (const thread of store.threads) {
+	for (const thread of visibleThreads.value) {
 		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		let threads = groups.get(group);
 		if (!threads) {
@@ -82,16 +114,7 @@ async function handleDeleteThread(threadId: string) {
 	if (!deleted) return;
 	clearPendingThreadHandoff(threadId);
 
-	if (wasActive) {
-		if (store.threads.length > 0) {
-			void router.push({
-				name: INSTANCE_AI_THREAD_VIEW,
-				params: { threadId: store.threads[0].id },
-			});
-		} else {
-			void router.push({ name: INSTANCE_AI_VIEW });
-		}
-	}
+	if (wasActive) void router.push(threadRoute(visibleThreads.value[0]?.id));
 }
 
 function startRename(threadId: string, currentTitle: string) {
@@ -135,7 +158,7 @@ function handleThreadAction(action: string, threadId: string) {
 		<!-- Sidebar header -->
 		<div :class="$style.header">
 			<N8nText :class="$style.title" tag="div" size="medium" bold>
-				{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
+				{{ props.appScope?.name ?? i18n.baseText('instanceAi.sidebar.chatHistory') }}
 			</N8nText>
 			<div :class="$style.headerActions">
 				<N8nTooltip
@@ -158,7 +181,7 @@ function handleThreadAction(action: string, threadId: string) {
 					placement="bottom"
 					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<RouterLink v-slot="{ href, navigate }" :to="{ name: INSTANCE_AI_VIEW }" custom>
+					<RouterLink v-slot="{ href, navigate }" :to="threadRoute(undefined)" custom>
 						<N8nIconButton
 							:href="href"
 							icon="plus"
@@ -202,10 +225,12 @@ function handleThreadAction(action: string, threadId: string) {
 						<!-- Normal display mode -->
 						<template v-else>
 							<RouterLink
-								:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
-								:class="$style.threadLink"
+								:to="threadRoute(thread.id)"
+								:class="[
+									$style.threadLink,
+									{ [$style.threadLinkActive]: thread.id === activeThreadId },
+								]"
 								:title="thread.title"
-								:active-class="$style.threadLinkActive"
 								@dblclick.prevent="startRename(thread.id, thread.title)"
 							>
 								<span :class="$style.threadTitle">{{ thread.title }}</span>

@@ -8,6 +8,7 @@ import {
 	createAppApi,
 	deleteAppApi,
 	deleteBindingApi,
+	fetchAppThreadsApi,
 	fetchAppVersionsApi,
 	fetchAppsApi,
 	fetchBindingsApi,
@@ -52,26 +53,18 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return updated;
 	};
 
-	const applyAppTheme = async (
-		projectId: string,
-		appId: string,
-		theme: AppTheme,
-		threadId?: string,
-	) => {
-		const updated = await applyAppThemeApi(
-			rootStore.restApiContext,
-			projectId,
-			appId,
-			theme,
-			threadId,
-		);
+	const applyAppTheme = async (projectId: string, appId: string, theme: AppTheme) => {
+		const updated = await applyAppThemeApi(rootStore.restApiContext, projectId, appId, theme);
 		apps.value = apps.value.map((a) => (a.id === appId ? updated : a));
 		return updated;
 	};
 
-	const publishApp = async (projectId: string, appId: string, threadId?: string) => {
-		return await publishAppApi(rootStore.restApiContext, projectId, appId, threadId);
+	const publishApp = async (projectId: string, appId: string) => {
+		return await publishAppApi(rootStore.restApiContext, projectId, appId);
 	};
+
+	const fetchThreads = async (projectId: string, appId: string) =>
+		await fetchAppThreadsApi(rootStore.restApiContext, projectId, appId);
 
 	const fetchVersions = async (projectId: string, appId: string) => {
 		versions.value = await fetchAppVersionsApi(rootStore.restApiContext, projectId, appId);
@@ -160,6 +153,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		updateApp,
 		applyAppTheme,
 		publishApp,
+		fetchThreads,
 		fetchVersions,
 		setActiveVersion,
 		deleteApp,

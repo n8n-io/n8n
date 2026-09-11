@@ -4987,6 +4987,37 @@ describe('createContext — app service wiring', () => {
 		).resolves.toEqual({ conflict: true });
 	});
 
+	it('reports the app to onAppTouched when it is created or built, and survives a failing hook', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const onAppTouched = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue(undefined);
+		const service = createAdapterWithApps({
+			createApp: vi.fn().mockResolvedValue(app),
+			getApp: vi.fn().mockResolvedValue(app),
+			createVersion: vi.fn().mockResolvedValue({ id: 'v-1', appId: 'app-1' }),
+		});
+		const appService = service.createContext(mockUser, {
+			projectId: 'proj-1',
+			threadId: 'thread-1',
+			onAppTouched,
+		}).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual(expect.objectContaining({ app: expect.objectContaining({ id: 'app-1' }) }));
+		await appService?.storeVersion('app-1', { source: Buffer.from('s'), dist: Buffer.from('d') });
+
+		expect(onAppTouched).toHaveBeenCalledTimes(2);
+		expect(onAppTouched).toHaveBeenCalledWith({
+			id: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		});
+	});
+
 	it('stores a version after checking app:update on the app project and returns the served url', async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
@@ -5052,35 +5083,35 @@ describe('createContext — app service wiring', () => {
 		});
 	});
 
-	it('publishes after checking app:update, handing over the thread sandbox as the draft', async () => {
+	it("publishes after checking app:update, handing over the app's sandbox as the draft", async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
 		const published = { versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' };
 		const publish = vi.fn().mockResolvedValue(published);
 		const workspace = { sandbox: {} };
+		const getAppWorkspace = vi.fn(() => workspace as never);
 		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
 		const appService = service.createContext(mockUser, {
 			threadId: 'thread-1',
-			getThreadWorkspace: () => workspace as never,
+			getAppWorkspace,
 		}).appService;
 
 		await expect(appService?.publish('app-1')).resolves.toEqual(published);
-		expect(publish).toHaveBeenCalledWith('app-1', mockUser, {
-			draft: { threadId: 'thread-1', workspace },
-		});
+		expect(getAppWorkspace).toHaveBeenCalledWith('app-1');
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, { draft: workspace });
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
 			projectId: 'proj-1',
 		});
 	});
 
-	it('publishes without a draft when the thread has no live sandbox', async () => {
+	it('publishes without a draft when the app has no live sandbox', async () => {
 		mockAppsModule(true);
 		mockedUserHasScopes.mockResolvedValue(true);
 		const publish = vi.fn().mockResolvedValue({ versionId: 'v-2', url: 'u' });
 		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
 		const appService = service.createContext(mockUser, {
 			threadId: 'thread-1',
-			getThreadWorkspace: () => undefined,
+			getAppWorkspace: () => undefined,
 		}).appService;
 
 		await appService?.publish('app-1');

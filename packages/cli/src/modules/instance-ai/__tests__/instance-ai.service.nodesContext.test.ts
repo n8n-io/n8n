@@ -104,7 +104,7 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 });
 
 describe('buildContextResourcesBlock — app attachment', () => {
-	it('binds the thread to an existing app and steers the agent to build it', () => {
+	it('binds the thread to an existing app and steers the agent to edit and publish it', () => {
 		const attachment: InstanceAiAppAttachment = {
 			type: 'app',
 			appId: 'app-1',
@@ -120,27 +120,17 @@ describe('buildContextResourcesBlock — app attachment', () => {
 		expect(prose).toContain(
 			'App "Greeter" (id: `app-1`, namespace `greeter`, in project `proj-1`)',
 		);
-		expect(prose).toContain('action `build` and `appId` `app-1`');
+		expect(prose).toContain(
+			'if apps/greeter is not in the app sandbox yet, call `apps` with action `restore` and `appId` `app-1` first',
+		);
+		expect(prose).toContain(
+			"edit its files under apps/greeter with the `workspace_*` tools and `sandbox: 'app'`",
+		);
+		expect(prose).toContain(
+			'action `publish` and `appId` `app-1` only when the user asks to publish',
+		);
+		expect(prose).not.toContain('action `build`');
 		expect(prose).toContain('Do not call `apps` with action `create`');
-	});
-
-	it('tells the agent to create a pending app with the handed-off name and namespace', () => {
-		const attachment: InstanceAiAppAttachment = {
-			type: 'app',
-			projectId: 'proj-1',
-			name: 'Greeter',
-			namespace: 'greeter',
-			isNewApp: true,
-		};
-
-		const block = buildContextResourcesBlock([attachment]);
-		const prose = block.split('\n\n').slice(1).join('\n\n');
-
-		expect(prose).toContain('New app "Greeter", namespace `greeter` that does not exist yet');
-		expect(prose).toContain('in project `proj-1`');
-		expect(prose).toContain('first call `apps` with action `create`');
-		expect(prose).toContain('then build it with action `build`');
-		expect(prose).not.toContain('id: `');
 	});
 
 	it('keeps the attachment JSON on the leading line for reload', () => {

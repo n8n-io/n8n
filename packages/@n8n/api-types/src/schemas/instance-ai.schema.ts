@@ -1314,17 +1314,14 @@ export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachment
 
 /**
  * An app reference the apps pages hand off to a message. Binds the thread to
- * the app the `apps` tool should build. `appId` is absent while the app is
- * still to be created (`isNewApp`); the name and namespace then tell the agent
- * what to call `apps.create` with.
+ * the app the `apps` tool should build.
  */
 export const instanceAiAppAttachmentSchema = z.object({
 	type: z.literal('app'),
 	projectId: z.string().min(1).max(64),
-	appId: z.string().min(1).max(64).optional(),
+	appId: z.string().min(1).max(64),
 	name: appNameSchema,
 	namespace: appNamespaceSchema.optional(),
-	isNewApp: z.boolean().optional(),
 });
 export type InstanceAiAppAttachment = z.infer<typeof instanceAiAppAttachmentSchema>;
 
@@ -1748,6 +1745,8 @@ export interface InstanceAiThreadInfo {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** App this thread builds, when it is bound to one. */
+	appId?: string;
 }
 
 export interface InstanceAiThreadListResponse {

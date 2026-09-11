@@ -13,10 +13,8 @@ export type AgentArtifactContextChip = ContextChipBase & {
 
 export type AppArtifactContextChip = ContextChipBase & {
 	type: 'app-artifact';
-	/** Absent while the app is still to be created by `apps.create`. */
-	appId?: string;
+	appId: string;
 	projectId: string;
-	isNewApp: boolean;
 };
 
 export type AgentPreviewSessionContextChip = ContextChipBase & {

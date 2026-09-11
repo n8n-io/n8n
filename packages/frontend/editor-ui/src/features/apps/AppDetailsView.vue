@@ -10,7 +10,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
-	N8nSegmentControl,
+	N8nSpinner,
 	N8nTabs,
 	N8nText,
 	N8nToggle,
@@ -29,6 +29,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
 import AppBreadcrumbs from '@/features/apps/AppBreadcrumbs.vue';
 import PageCard from '@/features/apps/PageCard.vue';
+import AppBasicsEditor from '@/features/apps/components/AppBasicsEditor.vue';
 import AppCodeViewer from '@/features/apps/components/AppCodeViewer.vue';
 import AppPreviewFrame from '@/features/apps/components/AppPreviewFrame.vue';
 import type { InspectedElement } from '@/features/apps/components/AppPreviewFrame.vue';
@@ -38,18 +39,20 @@ import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { useAppElementSelection } from '@/features/apps/useAppElementSelection';
 import { useAppPageAssistant } from '@/features/apps/useAppPageAssistant';
 import { APP_PAGE_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
-import type { App, AppVersion } from '@/features/apps/apps.types';
-import { buildPageRows, getChildCounts, getFullRoutePath } from '@/features/apps/pageTree.utils';
+import type { App, AppTheme, AppVersion } from '@/features/apps/apps.types';
+import {
+	buildPageRows,
+	formatRoutePath,
+	getChildCounts,
+	getFullRoutePath,
+} from '@/features/apps/pageTree.utils';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
-import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 
-type BuilderMode = 'build' | 'preview';
+type BuilderMode = 'build' | 'code' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
-type BuildTab = 'pages' | 'connections' | 'theme' | 'versions' | 'code';
+type PreviewTheme = AppTheme['mode'];
+type BuildTab = 'build' | 'pages' | 'theme' | 'versions';
 type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
-
-const PREVIEW_WIDTHS: Record<PreviewDevice, string> = { desktop: '100%', mobile: '390px' };
 
 const props = withDefaults(
 	defineProps<{
@@ -61,11 +64,9 @@ const props = withDefaults(
 		artifactVersionId?: string;
 		/** Page to open the preview to while embedded, e.g. when the thread was opened from that page's inspector. */
 		artifactPagePath?: string;
-		/** Thread whose sandbox holds the draft; a publish snapshots its current edits first. */
-		threadId?: string;
-		/** Dev-server URL of the thread's sandbox; shown instead of the build while present. */
+		/** Dev-server URL of the app's sandbox; shown instead of the build while present. */
 		liveUrl?: string;
-		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
+		/** State of the thread's live preview, `starting` until the server answers; drives the banner and the Live badge. */
 		liveStatus?: AppPreviewStatus;
 		/** Changes when an assistant turn has landed on the server; the app is re-read then. */
 		refreshKey?: number;
@@ -76,7 +77,6 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactVersionId: undefined,
 		artifactPagePath: undefined,
-		threadId: undefined,
 		liveUrl: undefined,
 		liveStatus: undefined,
 		refreshKey: 0,
@@ -100,8 +100,6 @@ const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp, confirmAndDeleteBinding } = useAppDeletion();
 const { requestPageChange } = useAppPageAssistant();
 const { selectElement } = useAppElementSelection();
-const instanceAiAvailable = useInstanceAiAvailable();
-const { openAppArtifactThread } = useInstanceAiHandoff();
 
 const appsStore = useAppsStore();
 
@@ -114,13 +112,29 @@ const loading = ref(false);
 const publishing = ref(false);
 /** Id of the version whose activate/unpublish request is in flight. */
 const switchingVersionId = ref<string | null>(null);
-const mode = ref<BuilderMode>('build');
+const mode = ref<BuilderMode>('preview');
 const device = ref<PreviewDevice>('desktop');
-const buildTab = ref<BuildTab>('pages');
+const previewTheme = ref<PreviewTheme>('system');
+const previewPath = ref(props.artifactPagePath ?? '');
+const buildTab = ref<BuildTab>('build');
 const inspecting = ref(false);
 const previewFrame = useTemplateRef<InstanceType<typeof AppPreviewFrame>>('previewFrame');
 
 const rootPages = computed(() => appsStore.pages.filter((page) => page.parentPageId === null));
+
+const previewPages = computed<Array<ActionDropdownItem<string>>>(() =>
+	appsStore.pages.map((page) => {
+		const path = getFullRoutePath(appsStore.pages, page);
+		return {
+			id: page.id,
+			label: formatRoutePath(path, i18n.baseText('apps.page.index')),
+			checked: path === previewPath.value,
+		};
+	}),
+);
+const previewPathLabel = computed(() =>
+	formatRoutePath(previewPath.value, i18n.baseText('apps.page.index')),
+);
 const childCounts = computed(() => getChildCounts(appsStore.pages));
 
 // The tree, indented, down to MAX_INLINE_PAGE_LEVELS deep — deeper pages
@@ -163,6 +177,7 @@ const livePending = computed(
 		props.liveStatus !== undefined &&
 		props.liveStatus.status !== 'no-source',
 );
+const liveStarting = computed(() => livePending.value && props.liveStatus?.status === 'starting');
 
 const showPreviewPane = computed(() => hasPreviewSource.value || livePending.value);
 
@@ -188,17 +203,15 @@ const liveBanner = computed(() => {
 	return { text, theme } as const;
 });
 
-const modeOptions = computed(() => [
-	{ label: i18n.baseText('apps.builder.build'), value: 'build' as const },
-	{ label: i18n.baseText('apps.builder.preview'), value: 'preview' as const },
-]);
-
 const buildTabOptions = computed(() => [
-	{ value: 'pages' as const, label: i18n.baseText('apps.pages') },
-	{ value: 'connections' as const, label: i18n.baseText('apps.connections') },
-	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme') },
-	{ value: 'versions' as const, label: i18n.baseText('apps.builder.versions') },
-	{ value: 'code' as const, label: i18n.baseText('apps.builder.code') },
+	{ value: 'build' as const, label: i18n.baseText('apps.builder.build'), icon: 'wrench' as const },
+	{ value: 'pages' as const, label: i18n.baseText('apps.pages'), icon: 'file' as const },
+	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme'), icon: 'palette' as const },
+	{
+		value: 'versions' as const,
+		label: i18n.baseText('apps.builder.versions'),
+		icon: 'history' as const,
+	},
 ]);
 
 // The API reports warnings as one flat list; each starts with the quoted binding key.
@@ -233,7 +246,7 @@ const initialize = async () => {
 			appsStore.fetchBindings(props.projectId, props.appId),
 		]);
 		setApp(result);
-		mode.value = showPreviewPane.value ? 'preview' : 'build';
+		previewTheme.value = result.theme?.mode ?? 'system';
 		if (buildTab.value === 'versions') await refreshVersions();
 		if (!props.artifactMode) {
 			documentTitle.set(`${i18n.baseText('apps.apps')} > ${result.name}`);
@@ -309,8 +322,28 @@ const onDeleteBinding = async (binding: DescribedBinding) => {
 	await confirmAndDeleteBinding(props.projectId, props.appId, binding);
 };
 
+// A toggle group lets the pressed option be clicked again, which yields
+// undefined; the builder always shows one of its modes.
+const onModeChange = (value: unknown) => {
+	if (value === 'build' || value === 'code' || value === 'preview') mode.value = value;
+};
+
 const onDeviceChange = (value: unknown) => {
 	if (value === 'desktop' || value === 'mobile') device.value = value;
+};
+
+const onPreviewThemeChange = (value: unknown) => {
+	if (value === 'light' || value === 'dark' || value === 'system') previewTheme.value = value;
+};
+
+const onPreviewPageSelect = (pageId: string) => {
+	const page = appsStore.pages.find((p) => p.id === pageId);
+	if (page) previewPath.value = getFullRoutePath(appsStore.pages, page);
+};
+
+const onOpenPreviewTab = () => {
+	const src = previewFrame.value?.src;
+	if (src) window.open(src, '_blank', 'noopener');
 };
 
 const onToggleInspect = () => {
@@ -386,7 +419,7 @@ const onPublish = async () => {
 	if (!app.value) return;
 	publishing.value = true;
 	try {
-		const result = await appsStore.publishApp(props.projectId, app.value.id, props.threadId);
+		const result = await appsStore.publishApp(props.projectId, app.value.id);
 		if ('error' in result) {
 			toast.showMessage({
 				title: i18n.baseText('apps.builder.publish.error'),
@@ -420,17 +453,10 @@ const onPublishMenuSelect = async (action: PublishMenuAction) => {
 	}
 };
 
-// Unlike a theme save, stay on the Code tab: the user is likely still editing.
-const onCodeSaved = (updated: App) => {
+// Unlike a theme save, stay in Code: the user is likely still editing.
+const onCodeSaved = async (updated: App) => {
 	setApp(updated);
-};
-
-const onOpenInAssistant = async () => {
-	if (!app.value) return;
-	await openAppArtifactThread(
-		{ type: 'app', appId: app.value.id, projectId: props.projectId, name: app.value.name },
-		{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: app.value.id } },
-	);
+	await appsStore.fetchPages(props.projectId, props.appId);
 };
 
 onMounted(initialize);
@@ -449,12 +475,17 @@ watch(buildTab, async (tab) => {
 	if (tab === 'versions') await refreshVersions();
 });
 
-// The turn's snapshot decides whether the draft has unpublished changes.
+// The turn's snapshot decides whether the draft has unpublished changes and
+// which pages the app has: routes are derived from the newest snapshot.
 watch(
 	() => props.refreshKey,
 	async () => {
 		try {
-			setApp(await appsStore.getApp(props.projectId, props.appId));
+			const [updated] = await Promise.all([
+				appsStore.getApp(props.projectId, props.appId),
+				appsStore.fetchPages(props.projectId, props.appId),
+			]);
+			setApp(updated);
 			if (buildTab.value === 'versions') await refreshVersions();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('apps.getDetails.error'));
@@ -471,22 +502,109 @@ watch(
 		data-test-id="app-details-view"
 	>
 		<div :class="$style.builder">
+			<AppBreadcrumbs
+				v-if="app && !props.artifactMode"
+				:project-id="projectId"
+				:app-id="appId"
+				:app-name="app.name"
+			/>
 			<div :class="$style.toolbar">
 				<div :class="$style.toolbarStart">
-					<AppBreadcrumbs
-						v-if="app && !props.artifactMode"
-						:project-id="projectId"
-						:app-id="appId"
-						:app-name="app.name"
-					/>
+					<template v-if="app">
+						<span :class="$style.appIcon"><N8nIcon icon="app-window" size="medium" /></span>
+						<N8nText tag="h1" size="large" :class="$style.title" data-test-id="app-title">
+							{{ app.name }}
+						</N8nText>
+					</template>
 				</div>
-				<N8nSegmentControl
-					v-model="mode"
-					:options="modeOptions"
-					size="small"
-					data-test-id="app-builder-mode"
-				/>
+				<div
+					v-if="app && mode === 'preview'"
+					:class="$style.addressBar"
+					data-test-id="app-preview-address-bar"
+				>
+					<div :class="$style.addressPill">
+						<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
+							<N8nIconButton
+								icon="refresh-cw"
+								variant="ghost"
+								size="small"
+								:disabled="!hasPreviewSource"
+								:aria-label="i18n.baseText('apps.builder.refresh')"
+								data-test-id="app-preview-refresh"
+								@click="previewFrame?.refresh()"
+							/>
+						</N8nTooltip>
+						<N8nActionDropdown
+							:class="$style.addressMenu"
+							:items="previewPages"
+							placement="bottom-start"
+							:disabled="previewPages.length === 0"
+							data-test-id="app-preview-page-menu"
+							@select="onPreviewPageSelect"
+						>
+							<template #activator>
+								<button
+									type="button"
+									:class="$style.addressButton"
+									:disabled="previewPages.length === 0"
+									data-test-id="app-preview-page"
+								>
+									<N8nText size="small" bold :class="$style.addressPath">
+										{{ previewPathLabel }}
+									</N8nText>
+									<N8nIcon icon="chevron-down" size="small" :class="$style.addressChevron" />
+								</button>
+							</template>
+						</N8nActionDropdown>
+					</div>
+					<N8nTooltip :content="i18n.baseText('apps.builder.openPreviewTab')">
+						<N8nIconButton
+							icon="external-link"
+							variant="ghost"
+							size="small"
+							:disabled="!hasPreviewSource"
+							:aria-label="i18n.baseText('apps.builder.openPreviewTab')"
+							data-test-id="app-preview-open-tab"
+							@click="onOpenPreviewTab"
+						/>
+					</N8nTooltip>
+				</div>
 				<div :class="$style.toolbarEnd">
+					<N8nToggleGroup
+						:model-value="mode"
+						variant="ghost"
+						size="small"
+						:class="$style.modeGroup"
+						data-test-id="app-builder-mode"
+						@update:model-value="onModeChange"
+					>
+						<template #default="{ variant, size }">
+							<N8nToggle
+								value="build"
+								:label="i18n.baseText('apps.builder.settings')"
+								icon="settings"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-builder-mode-build"
+							/>
+							<N8nToggle
+								value="code"
+								:label="i18n.baseText('apps.builder.code')"
+								icon="code"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-builder-mode-code"
+							/>
+							<N8nToggle
+								value="preview"
+								:label="i18n.baseText('apps.builder.preview')"
+								icon="play"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-builder-mode-preview"
+							/>
+						</template>
+					</N8nToggleGroup>
 					<template v-if="app">
 						<div :class="$style.buttonGroup">
 							<N8nTooltip :disabled="!publishUpToDate">
@@ -535,16 +653,6 @@ watch(
 							</N8nActionDropdown>
 						</div>
 						<N8nButton
-							v-if="!props.artifactMode && instanceAiAvailable"
-							variant="subtle"
-							size="small"
-							icon="sparkles"
-							data-test-id="app-open-in-assistant"
-							@click="onOpenInAssistant"
-						>
-							{{ i18n.baseText('apps.builder.openInAssistant') }}
-						</N8nButton>
-						<N8nButton
 							v-if="!props.artifactMode"
 							icon-only
 							icon="trash-2"
@@ -558,13 +666,34 @@ watch(
 				</div>
 			</div>
 
-			<!-- The default mode depends on the fetched active version, so neither block renders before it. -->
+			<!-- Both panes need the app, so neither renders before it. -->
 			<div
 				v-if="app && mode === 'preview'"
-				:class="$style.preview"
+				:class="[$style.preview, { [$style.previewMobile]: device === 'mobile' }]"
 				data-test-id="app-builder-preview"
 			>
-				<div :class="$style.previewBar">
+				<N8nCallout
+					v-if="liveBanner"
+					:theme="liveBanner.theme"
+					slim
+					:round-corners="false"
+					data-test-id="app-preview-live-banner"
+				>
+					{{ liveBanner.text }}
+				</N8nCallout>
+				<AppPreviewFrame
+					v-if="app && hasPreviewSource"
+					ref="previewFrame"
+					:namespace="app.namespace"
+					:version-id="versionId"
+					:path="previewPath"
+					:live-url="props.liveUrl"
+					:device="device"
+					:theme="previewTheme"
+					@diagnostic="emit('diagnostic', $event)"
+					@element-selected="onElementSelected"
+				/>
+				<div v-if="hasPreviewSource" :class="$style.previewTools" data-test-id="app-preview-tools">
 					<N8nToggleGroup
 						:model-value="device"
 						variant="ghost"
@@ -591,51 +720,60 @@ watch(
 							/>
 						</template>
 					</N8nToggleGroup>
-					<div :class="$style.previewBarEnd">
-						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
-							<N8nIconButton
-								icon="mouse-pointer"
-								:variant="inspecting ? 'subtle' : 'ghost'"
-								size="small"
-								:disabled="!hasPreviewSource"
-								:aria-label="i18n.baseText('apps.builder.inspect')"
-								data-test-id="app-preview-inspect"
-								@click="onToggleInspect"
+					<span :class="$style.previewToolsDivider" />
+					<N8nToggleGroup
+						:model-value="previewTheme"
+						variant="ghost"
+						size="small"
+						data-test-id="app-preview-theme"
+						@update:model-value="onPreviewThemeChange"
+					>
+						<template #default="{ variant, size }">
+							<N8nToggle
+								value="light"
+								:label="i18n.baseText('apps.builder.theme.mode.light')"
+								icon="sun"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-preview-theme-light"
 							/>
-						</N8nTooltip>
-						<N8nTooltip :content="i18n.baseText('apps.builder.refresh')">
-							<N8nIconButton
-								icon="refresh-cw"
-								variant="ghost"
-								size="small"
-								:disabled="!hasPreviewSource"
-								:aria-label="i18n.baseText('apps.builder.refresh')"
-								data-test-id="app-preview-refresh"
-								@click="previewFrame?.refresh()"
+							<N8nToggle
+								value="dark"
+								:label="i18n.baseText('apps.builder.theme.mode.dark')"
+								icon="moon"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-preview-theme-dark"
 							/>
-						</N8nTooltip>
-					</div>
+							<N8nToggle
+								value="system"
+								:label="i18n.baseText('apps.builder.theme.mode.system')"
+								icon="laptop"
+								:variant="variant"
+								:size="size"
+								data-test-id="app-preview-theme-system"
+							/>
+						</template>
+					</N8nToggleGroup>
+					<span :class="$style.previewToolsDivider" />
+					<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+						<N8nIconButton
+							icon="mouse-pointer"
+							:variant="inspecting ? 'subtle' : 'ghost'"
+							size="small"
+							:aria-label="i18n.baseText('apps.builder.inspect')"
+							data-test-id="app-preview-inspect"
+							@click="onToggleInspect"
+						/>
+					</N8nTooltip>
 				</div>
-				<N8nCallout
-					v-if="liveBanner"
-					:theme="liveBanner.theme"
-					slim
-					:round-corners="false"
-					data-test-id="app-preview-live-banner"
+				<div
+					v-else-if="liveStarting"
+					:class="$style.emptyState"
+					data-test-id="app-preview-starting"
 				>
-					{{ liveBanner.text }}
-				</N8nCallout>
-				<AppPreviewFrame
-					v-if="app && hasPreviewSource"
-					ref="previewFrame"
-					:namespace="app.namespace"
-					:version-id="versionId"
-					:path="props.artifactPagePath"
-					:live-url="props.liveUrl"
-					:width="PREVIEW_WIDTHS[device]"
-					@diagnostic="emit('diagnostic', $event)"
-					@element-selected="onElementSelected"
-				/>
+					<N8nSpinner />
+				</div>
 				<div
 					v-else-if="!loading && !livePending"
 					:class="$style.emptyState"
@@ -645,33 +783,128 @@ watch(
 						i18n.baseText('apps.builder.empty.title')
 					}}</N8nText>
 					<N8nText color="text-light">{{
-						i18n.baseText(
-							instanceAiAvailable
-								? 'apps.builder.empty.description'
-								: 'apps.builder.empty.descriptionNoAssistant',
-						)
+						i18n.baseText('apps.builder.empty.description')
 					}}</N8nText>
-					<N8nButton
-						v-if="!props.artifactMode && instanceAiAvailable"
-						size="small"
-						icon="sparkles"
-						data-test-id="app-preview-empty-open-in-assistant"
-						@click="onOpenInAssistant"
-					>
-						{{ i18n.baseText('apps.builder.openInAssistant') }}
-					</N8nButton>
 				</div>
 			</div>
 
-			<div v-else-if="app" :class="$style.build" data-test-id="app-builder-build">
-				<N8nTabs
-					v-model="buildTab"
-					:options="buildTabOptions"
-					size="small"
-					variant="modern"
-					data-test-id="app-builder-tabs"
+			<div
+				v-else-if="app && mode === 'code'"
+				:class="$style.codeContainer"
+				data-test-id="app-builder-code"
+			>
+				<AppCodeViewer
+					:project-id="projectId"
+					:app-id="appId"
+					:version-id="versionId"
+					@saved="onCodeSaved"
 				/>
-				<div v-if="buildTab === 'pages'" :class="$style.container">
+			</div>
+
+			<div v-else-if="app" :class="$style.build" data-test-id="app-builder-build">
+				<N8nTabs v-model="buildTab" :options="buildTabOptions" data-test-id="app-builder-tabs" />
+				<div v-if="buildTab === 'build'" :class="$style.container">
+					<AppBasicsEditor :project-id="projectId" :app="app" @saved="setApp" />
+
+					<div :class="$style.connectCard" data-test-id="app-connections">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+
+						<N8nText
+							v-if="appsStore.bindings.length === 0"
+							color="text-light"
+							data-test-id="app-connections-empty"
+						>
+							{{ i18n.baseText('apps.connections.empty') }}
+						</N8nText>
+
+						<div
+							v-for="binding in appsStore.bindings"
+							:key="binding.key"
+							:class="$style.connectionRow"
+							data-test-id="app-connection"
+						>
+							<N8nIcon :icon="binding.kind === 'dataTable' ? 'table' : 'workflow'" size="large" />
+							<N8nText
+								v-if="binding.missing"
+								size="small"
+								color="text-light"
+								:class="$style.connectionName"
+								data-test-id="app-connection-missing"
+							>
+								{{ binding.name }}
+							</N8nText>
+							<N8nLink
+								v-else-if="binding.kind === 'dataTable'"
+								:to="`/projects/${projectId}/datatables/${binding.dataTableId}`"
+								new-window
+								theme="text"
+								size="small"
+								:class="$style.connectionName"
+								data-test-id="app-connection-data-table"
+							>
+								{{ binding.name }}
+							</N8nLink>
+							<N8nLink
+								v-else
+								:to="`/workflow/${binding.workflowId}`"
+								new-window
+								theme="text"
+								size="small"
+								:class="$style.connectionName"
+								data-test-id="app-connection-workflow"
+							>
+								{{ binding.name }}
+							</N8nLink>
+							<N8nText
+								v-if="binding.kind === 'dataTable' && !binding.missing"
+								size="small"
+								color="text-light"
+								data-test-id="app-connection-access"
+							>
+								{{
+									i18n.baseText(
+										binding.permissions.includes('read')
+											? binding.permissions.includes('write')
+												? 'apps.connections.access.readWrite'
+												: 'apps.connections.access.read'
+											: 'apps.connections.access.write',
+									)
+								}}
+							</N8nText>
+							<N8nTooltip
+								v-if="bindingWarnings(binding.key).length > 0"
+								:content="bindingWarnings(binding.key).join(' ')"
+							>
+								<N8nIcon
+									icon="triangle-alert"
+									color="warning"
+									size="small"
+									data-test-id="app-connection-warning"
+								/>
+							</N8nTooltip>
+							<N8nTooltip :content="i18n.baseText('generic.disconnect')">
+								<N8nIconButton
+									icon="trash-2"
+									variant="ghost"
+									size="small"
+									:aria-label="i18n.baseText('generic.disconnect')"
+									data-test-id="app-connection-delete"
+									@click="onDeleteBinding(binding)"
+								/>
+							</N8nTooltip>
+						</div>
+
+						<N8nCallout
+							v-if="unlistedBindingWarnings.length > 0"
+							theme="warning"
+							data-test-id="app-connections-warning"
+						>
+							{{ unlistedBindingWarnings.join(' ') }}
+						</N8nCallout>
+					</div>
+				</div>
+
+				<div v-else-if="buildTab === 'pages'" :class="$style.container">
 					<div :class="$style.header">
 						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.pages') }}</N8nText>
 						<N8nButton size="small" data-test-id="app-page-add-root" @click="onAddRootPage">
@@ -698,116 +931,8 @@ watch(
 					</div>
 				</div>
 
-				<div
-					v-else-if="buildTab === 'connections'"
-					:class="$style.container"
-					data-test-id="app-connections"
-				>
-					<div :class="$style.header">
-						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
-					</div>
-
-					<N8nText
-						v-if="appsStore.bindings.length === 0"
-						color="text-light"
-						data-test-id="app-connections-empty"
-					>
-						{{ i18n.baseText('apps.connections.empty') }}
-					</N8nText>
-
-					<div
-						v-for="binding in appsStore.bindings"
-						:key="binding.key"
-						:class="$style.connectionRow"
-						data-test-id="app-connection"
-					>
-						<N8nIcon :icon="binding.kind === 'dataTable' ? 'table' : 'workflow'" size="large" />
-						<N8nText
-							v-if="binding.missing"
-							size="small"
-							color="text-light"
-							:class="$style.connectionName"
-							data-test-id="app-connection-missing"
-						>
-							{{ binding.name }}
-						</N8nText>
-						<N8nLink
-							v-else-if="binding.kind === 'dataTable'"
-							:to="`/projects/${projectId}/datatables/${binding.dataTableId}`"
-							new-window
-							theme="text"
-							size="small"
-							:class="$style.connectionName"
-							data-test-id="app-connection-data-table"
-						>
-							{{ binding.name }}
-						</N8nLink>
-						<N8nLink
-							v-else
-							:to="`/workflow/${binding.workflowId}`"
-							new-window
-							theme="text"
-							size="small"
-							:class="$style.connectionName"
-							data-test-id="app-connection-workflow"
-						>
-							{{ binding.name }}
-						</N8nLink>
-						<N8nText
-							v-if="binding.kind === 'dataTable' && !binding.missing"
-							size="small"
-							color="text-light"
-							data-test-id="app-connection-access"
-						>
-							{{
-								i18n.baseText(
-									binding.permissions.includes('read')
-										? binding.permissions.includes('write')
-											? 'apps.connections.access.readWrite'
-											: 'apps.connections.access.read'
-										: 'apps.connections.access.write',
-								)
-							}}
-						</N8nText>
-						<N8nTooltip
-							v-if="bindingWarnings(binding.key).length > 0"
-							:content="bindingWarnings(binding.key).join(' ')"
-						>
-							<N8nIcon
-								icon="triangle-alert"
-								color="warning"
-								size="small"
-								data-test-id="app-connection-warning"
-							/>
-						</N8nTooltip>
-						<N8nTooltip :content="i18n.baseText('generic.disconnect')">
-							<N8nIconButton
-								icon="trash-2"
-								variant="ghost"
-								size="small"
-								:aria-label="i18n.baseText('generic.disconnect')"
-								data-test-id="app-connection-delete"
-								@click="onDeleteBinding(binding)"
-							/>
-						</N8nTooltip>
-					</div>
-
-					<N8nCallout
-						v-if="unlistedBindingWarnings.length > 0"
-						theme="warning"
-						data-test-id="app-connections-warning"
-					>
-						{{ unlistedBindingWarnings.join(' ') }}
-					</N8nCallout>
-				</div>
-
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
-					<AppThemeEditor
-						:project-id="projectId"
-						:app="app"
-						:thread-id="props.threadId"
-						@saved="onThemeSaved"
-					/>
+					<AppThemeEditor :project-id="projectId" :app="app" @saved="onThemeSaved" />
 				</div>
 
 				<div
@@ -865,15 +990,6 @@ watch(
 						</N8nButton>
 					</div>
 				</div>
-
-				<div v-else-if="buildTab === 'code'" :class="[$style.container, $style.codeContainer]">
-					<AppCodeViewer
-						:project-id="projectId"
-						:app-id="appId"
-						:version-id="versionId"
-						@saved="onCodeSaved"
-					/>
-				</div>
 			</div>
 		</div>
 	</component>
@@ -899,6 +1015,8 @@ watch(
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	padding-bottom: var(--spacing--sm);
+	border-bottom: var(--border);
 }
 
 .toolbarStart,
@@ -910,8 +1028,36 @@ watch(
 	min-width: 0;
 }
 
+.toolbarStart {
+	gap: var(--spacing--xs);
+}
+
 .toolbarEnd {
 	justify-content: flex-end;
+}
+
+.appIcon {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	border-radius: var(--radius--md);
+	background: var(--background--subtle);
+	color: var(--color--text--tint-1);
+}
+
+.title {
+	margin: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.modeGroup {
+	flex: none;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
 }
 
 .buttonGroup {
@@ -968,6 +1114,7 @@ watch(
 }
 
 .preview {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	flex: 1;
@@ -975,21 +1122,105 @@ watch(
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	overflow: hidden;
+	background: var(--background--subtle);
+	box-shadow: var(--shadow--sm);
+}
+
+// The phone frame is the only box; the pane itself disappears into the page.
+.previewMobile {
+	border-color: transparent;
+	background: transparent;
+	box-shadow: none;
+}
+
+// Floats over the frame like a browser devtools bar, so the document keeps the whole pane.
+.previewTools {
+	position: absolute;
+	bottom: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs);
+	border: var(--border);
+	border-radius: var(--radius--3xs);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--md);
+}
+
+.previewToolsDivider {
+	width: 1px;
+	height: var(--spacing--sm);
+	margin: 0 var(--spacing--4xs);
+	background: var(--border-color);
+}
+
+.addressBar {
+	display: flex;
+	align-items: center;
+	flex: none;
+	gap: var(--spacing--4xs);
+}
+
+.addressPill {
+	display: flex;
+	align-items: center;
+	width: 320px;
+	max-width: 40vw;
+	padding: var(--spacing--4xs);
+	border: var(--border);
+	border-radius: var(--radius--3xs);
 	background: var(--background--surface);
 }
 
-.previewBar {
+// The dropdown wraps its activator in an inline trigger span (its only element
+// child); it has to shrink with the pill so the label can ellipsise.
+.addressMenu {
+	display: flex;
+	min-width: 0;
+
+	> span {
+		display: flex;
+		min-width: 0;
+	}
+}
+
+.addressButton {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-bottom: var(--border);
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	max-width: 240px;
+	height: 100%;
+	min-height: var(--spacing--lg);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--4xs) var(--spacing--xs);
+	border: 0;
+	border-radius: var(--radius--3xs);
+	background: none;
+	color: var(--color--text);
+	cursor: pointer;
+
+	&:hover:not(:disabled) {
+		background: var(--background--hover);
+	}
+
+	&:disabled {
+		cursor: default;
+		color: var(--color--text--tint-1);
+	}
 }
 
-.previewBarEnd {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+.addressPath {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.addressChevron {
+	flex: none;
+	color: var(--color--text--tint-1);
 }
 
 .emptyState {
@@ -1008,8 +1239,11 @@ watch(
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--lg);
+	padding-top: var(--spacing--xs);
 	overflow: auto;
+	width: 100%;
+	max-width: 900px;
 }
 
 .container {
@@ -1020,12 +1254,12 @@ watch(
 	padding-bottom: var(--spacing--lg);
 }
 
-// Unlike the flowing Pages/Theme content, the tree + viewer need a bounded
-// height to fill so each can scroll on its own, the same way `.preview` does.
+// The tree + viewer need a bounded height to fill so each can scroll on its
+// own, the same way `.preview` does.
 .codeContainer {
+	display: flex;
 	flex: 1;
 	min-height: 0;
-	padding-bottom: var(--spacing--2xs);
 }
 
 .header {
@@ -1040,6 +1274,16 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.connectCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
 }
 
 .connectionRow {

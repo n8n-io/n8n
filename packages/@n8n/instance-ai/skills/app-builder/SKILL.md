@@ -20,11 +20,16 @@ recommended_tools:
 # App Builder
 
 You build small static web apps that n8n serves at `/apps/<namespace>/`. The
-source lives in the sandbox workspace under `apps/<namespace>/`; `apps` has
-these actions: `create` registers an app and installs its dependencies,
-`publish` builds the current source into the served version after the user
-confirms, `restore` brings the stored source back into a workspace that does
-not have it, `add-component` copies a component from this skill's own catalog
+user usually creates the app in the App Builder, so the conversation is bound
+to an app that already exists and may still be empty. The source lives in the
+app's own sandbox under `apps/<namespace>/`, shared by every conversation
+about that app: pass `sandbox: 'app'` to every `workspace_*` call that touches
+it (the default targets the thread sandbox, which holds no app). `apps` has
+these actions: `create` registers an app and installs its dependencies, for a
+conversation with no app only; `publish` builds the current source into the
+served version after the user confirms; `restore` brings the stored source
+back into the app sandbox when it is missing, or lays down the starter template
+for an empty app; `add-component` copies a component from this skill's own catalog
 (built on `@ark-ui/vue`) into an app — `create` uses it for the two the
 starter page needs, and every other component goes through it too — and
 `bind`/`unbind`/`bindings` manage the n8n workflows and data tables the app
@@ -42,14 +47,17 @@ also publish with the Publish button above the preview, without you.
    only when the user asked for a specific URL slug; otherwise it is derived
    from the name. The result carries `app.id`, `app.namespace`,
    `workspacePath` (the absolute app directory) and `installed`. If the
-   result is `{ denied, reason }` the namespace is taken: pick another and
-   call again. `installed: false` comes with a `warnings` entry that holds the
-   `npm install` log; fix the cause, then run `npm install` in the app
-   directory with `workspace_execute_command`.
+   result is `{ denied, reason }`, read `reason`: in a bound conversation
+   ("This thread builds app …") use the bound app and do not pick another
+   name; otherwise the namespace is taken, so pick another and call again.
+   `installed: false` comes with a `warnings` entry that holds the
+   `npm install` log; fix the cause, then run `npm install` with
+   `workspace_execute_command`, `sandbox: 'app'` and `cwd` set to
+   `workspacePath`.
    Pass `projectId` only when the user names a project; otherwise the app
    lands in the project bound to this conversation, else the personal one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
-   `workspace_str_replace_file`. The template's `AI_RULES.md` describes the
+   `workspace_str_replace_file`, always with `sandbox: 'app'`. The template's `AI_RULES.md` describes the
    layout. Do not start a dev server and do not run a build to check your
    work: the live preview updates on its own. Never run a build to check your
    work. Tell the user what changed and stop; the preview shows it.
@@ -85,19 +93,20 @@ also publish with the Publish button above the preview, without you.
    - `store`: n8n rejected the upload; `message` says why.
 
 For an already bound app (the conversation names an app id) skip step 1.
-Before you edit, confirm that `apps/<namespace>/` exists in this workspace
-(`workspace_execute_command` with `ls apps/<namespace>`). If it exists, just
+Before you edit, confirm that `apps/<namespace>/` exists in the app sandbox
+(`workspace_execute_command` with `ls apps/<namespace>` and `sandbox: 'app'`). If it exists, just
 edit: n8n restored it when the user opened the preview, and its `npm install`
 may still be running. Call `apps(action="restore", appId)` only when it is
 missing: it unpacks the newest stored source into `apps/<namespace>/` (with the
 SDK the app was created with), refreshes `src/n8n-bindings.d.ts` from the
 current bindings, installs the dependencies and returns `workspacePath`,
-`versionId` and `installed`. A directory that holds only that generated file
-(from a `bind` before the restore) counts as empty. n8n stores a snapshot of
-the source after every turn, so this is your latest work, not only the last
-published build. Then continue with step 2. `{ denied, reason }` means there
-is nothing to restore (no source stored yet) or the directory already has
-files; read `reason`.
+`versionId` and `installed`. An app with no stored source yet (one the user
+just created in the App Builder) gets the starter template instead, and the
+result says `scaffolded: true`. A directory that holds only that generated
+file (from a `bind` before the restore) counts as empty. n8n stores a snapshot
+of the source after every turn, so this is your latest work, not only the last
+published build. Then continue with step 2. `{ denied, reason }` means the
+directory already has files; edit them instead.
 
 ## Rules
 
@@ -134,9 +143,10 @@ files; read `reason`.
   outside the curated catalog), styled with the same utilities. Only build a
   different look when the user asks for one — and point them at the app's
   Theme tab for color/font/radius changes instead of hardcoding a look.
-- Keep dependencies few. Adding one means you must run `npm install` in the
-  app directory yourself (the dev server does not; publishing installs on its
-  own), and every dependency costs build memory.
+- Keep dependencies few. Adding one means you must run `npm install` yourself
+  with `workspace_execute_command`, `sandbox: 'app'` and `cwd` set to the app
+  directory (the dev server does not; publishing installs on its own), and
+  every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
 ## Connecting n8n workflows and data tables
@@ -278,8 +288,9 @@ that may be public.
 
 ## Template
 
-`apps(action="create")` with the default `template: "vue"` copies
-`${N8N_SKILL_DIR}/templates/vue` into the app directory (Vite + Vue 3 + TS +
+`apps(action="create")` with the default `template: "vue"`, and
+`apps(action="restore")` on an empty app, copy `${N8N_SKILL_DIR}/templates/vue`
+into the app directory (Vite + Vue 3 + TS +
 vue-router + Tailwind v4 on CSS-variable theming, with `@ark-ui/vue` already a
 dependency), then adds `button` and `switch` from this skill's own component
 catalog — the two Home.vue's own demo uses — so a fresh app is never one
@@ -289,7 +300,7 @@ the committed `package-lock.json` closer to what an app actually uses.
 `template: "none"` gives an empty directory for other stacks; write
 `package.json` yourself.
 
-Layout after create:
+Layout after create or a scaffolding restore:
 
 ```
 apps/<namespace>/

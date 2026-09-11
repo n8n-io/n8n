@@ -70,6 +70,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		type Internals = {
 			threadPushRef: Map<string, string>;
 			planRequestsByThread: Map<string, number>;
+			appIdByThread: Map<string, string>;
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
 			schedulerLocks: Map<string, unknown>;
@@ -96,6 +97,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
 		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
+		service.appIdByThread = new Map();
 		service.runState = {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
 		};

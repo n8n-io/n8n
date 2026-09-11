@@ -63,7 +63,6 @@ describe('AppThemeEditor', () => {
 					'--radius': '4px',
 				}),
 			}),
-			undefined,
 		);
 	});
 
@@ -83,7 +82,6 @@ describe('AppThemeEditor', () => {
 				mode: 'dark',
 				vars: expect.objectContaining({ '--primary': '#4f46e5', '--ring': '#4f46e5' }),
 			}),
-			undefined,
 		);
 	});
 
@@ -127,24 +125,6 @@ describe('AppThemeEditor', () => {
 				mode: 'dark',
 				vars: expect.objectContaining({ '--radius': '12px' }),
 			}),
-			undefined,
-		);
-	});
-
-	it('passes the thread along so the live preview picks the theme up', async () => {
-		const app = makeApp();
-		appsStore.applyAppTheme.mockResolvedValue(app);
-		const { getByTestId } = renderEditor({
-			props: { projectId: 'proj-1', app, threadId: 'thread-1' },
-		});
-
-		await userEvent.click(getByTestId('app-theme-save'));
-
-		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
-			'proj-1',
-			'app-1',
-			expect.any(Object),
-			'thread-1',
 		);
 	});
 

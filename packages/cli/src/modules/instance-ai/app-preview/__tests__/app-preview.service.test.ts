@@ -10,7 +10,6 @@ import type { JwtService } from '@/services/jwt.service';
 import {
 	AppPreviewService,
 	buildDevServerStartScript,
-	buildDevServerStopScript,
 	buildOccupiedCheckScript,
 	buildPreviewBuildScript,
 	buildRestoreScript,
@@ -64,7 +63,7 @@ const getSourceTarball = vi.fn<EnsureAppPreviewInput['getSourceTarball']>();
 const hasActiveRun = vi.fn<EnsureAppPreviewInput['hasActiveRun']>();
 const tarball = { data: Buffer.from('gzip') };
 
-/** The thread workspace as any provider exposes it: shell via `executeCommand`, files via `filesystem`. */
+/** The app workspace as any provider exposes it: shell via `executeCommand`, files via `filesystem`. */
 const workspaceExec =
 	vi.fn<
 		(command: string, args?: string[], options?: ExecuteCommandOptions) => Promise<CommandResult>
@@ -89,7 +88,6 @@ const ROOT = '/home/user/workspace';
 const DIST_INDEX = `${ROOT}/apps/greeter/.n8n-preview-dist/index.html`;
 
 const input: EnsureAppPreviewInput = {
-	threadId: 'thread-1',
 	appId: 'app-1',
 	projectId: 'project-1',
 	namespace: 'greeter',
@@ -119,10 +117,8 @@ const healthz = (capabilities: string[]) =>
 /** `/healthz` advertises the port route; every other request answers `status`. */
 const serviceWith =
 	(capabilities: string[], status = 200) =>
-	(url: string | URL | Request) =>
-		Promise.resolve(
-			String(url).endsWith('/healthz') ? healthz(capabilities) : httpResponse(status),
-		);
+	async (url: string | URL | Request) =>
+		String(url).endsWith('/healthz') ? healthz(capabilities) : httpResponse(status);
 
 describe('AppPreviewService', () => {
 	const jwtService = mock<JwtService>();
@@ -192,7 +188,7 @@ describe('AppPreviewService', () => {
 			const RESTORE_SCRIPT =
 				/^tar -xzf (\/home\/user\/workspace\/\.app-builds\/greeter-\d+-preview-restore\.tgz) -C \/home\/user\/workspace\/apps\/greeter; rc=\$\?; rm -f \1; \[ "\$rc" -eq 0 \] && cd \/home\/user\/workspace\/apps\/greeter && \(ulimit -c 0; npm install --ignore-scripts --no-audit --no-fund --prefer-offline\)$/;
 
-			it('creates the sandbox, restores the stored source, installs and starts when the thread has no sandbox', async () => {
+			it('creates the sandbox, restores the stored source, installs and starts when the app has no sandbox', async () => {
 				vi.useFakeTimers();
 				sandboxClient.getSandbox.mockRejectedValueOnce(notFound());
 				sandboxClient.stat.mockRejectedValue(notFound());
@@ -269,7 +265,7 @@ describe('AppPreviewService', () => {
 				expect(sandboxClient.writeFile).not.toHaveBeenCalled();
 			});
 
-			it('returns unavailable/sandbox when the sandbox is disabled for the thread', async () => {
+			it('returns unavailable/sandbox when the sandbox is disabled', async () => {
 				sandboxClient.getSandbox.mockRejectedValue(notFound());
 				getWorkspace.mockResolvedValue(undefined);
 
@@ -408,6 +404,14 @@ describe('AppPreviewService', () => {
 			expect(fetchMock).toHaveBeenCalledTimes(3); // healthz + two probes
 		});
 
+		it('shares one preview of the app between callers', async () => {
+			const first = await service.ensure(input);
+			const second = await service.ensure({ ...input, userId: 'user-2' });
+
+			expect(second).toEqual(first);
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
+		});
+
 		it('restarts the dev server when the probe reports a restarted sandbox', async () => {
 			const first = await service.ensure(input);
 			fetchMock
@@ -471,45 +475,6 @@ describe('AppPreviewService', () => {
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 		});
 
-		it('lets a sibling start settle before replacing it, so its probe never poisons the route cache', async () => {
-			const starts: Array<(result: ExecResult) => void> = [];
-			let liveToken = '';
-			sandboxClient.exec.mockImplementation(async (_id, request) => {
-				const base = /APP_BASE=\/apps-preview\/([\w.-]+)\//.exec(request.command);
-				if (!base) return execOk;
-				liveToken = base[1];
-				return await new Promise<ExecResult>((resolve) => starts.push(resolve));
-			});
-			// Like Vite: only the base of the dev server that is running answers; anything else is an HTML 404.
-			fetchMock.mockImplementation(async (url) =>
-				String(url).endsWith('/healthz')
-					? healthz(['ports'])
-					: String(url).includes(`/apps-preview/${liveToken}/`)
-						? httpResponse(200)
-						: httpResponse(404, { 'Content-Type': 'text/html' }),
-			);
-
-			const first = service.ensure(input);
-			await vi.waitFor(() => expect(starts).toHaveLength(1));
-			const second = service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
-			await new Promise((resolve) => setTimeout(resolve, 20));
-			expect(starts).toHaveLength(1);
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
-
-			starts[0](execOk);
-			await expect(first).resolves.toMatchObject({ status: 'ready' });
-			await vi.waitFor(() => expect(starts).toHaveLength(2));
-			starts[1](execOk);
-			const result = await second;
-
-			expect(result.status).toBe('ready');
-			expect(service.resolveToken(tokenOf(await first))).toBeUndefined();
-			expect(service.resolveToken(tokenOf(result))).toMatchObject({ appId: 'app-2' });
-			await expect(
-				service.ensure({ ...input, appId: 'app-2', namespace: 'other' }),
-			).resolves.toEqual(result);
-		});
-
 		it('does not resurrect an entry that was cleared while it was starting', async () => {
 			let finishStart: (result: ExecResult) => void = () => {};
 			sandboxClient.exec.mockImplementationOnce(
@@ -518,26 +483,23 @@ describe('AppPreviewService', () => {
 
 			const first = service.ensure(input);
 			await vi.waitFor(() => expect(sandboxClient.exec).toHaveBeenCalledTimes(1));
-			service.clearThread('thread-1');
+			service.clearApp('app-1');
 			finishStart(execOk);
 			const result = await first;
 
 			expect(service.resolveToken(tokenOf(result))).toBeUndefined();
 		});
 
-		it('replaces the dev server of another app in the same sandbox', async () => {
+		it('starts a second app in its own sandbox and leaves the first running', async () => {
 			const first = await service.ensure(input);
 			const second = await service.ensure({ ...input, appId: 'app-2', namespace: 'other' });
 
 			expect(second.status).toBe('ready');
-			expect(service.resolveToken(tokenOf(first))).toBeUndefined();
+			expect(service.resolveToken(tokenOf(first))).toMatchObject({ appId: 'app-1' });
 			expect(service.resolveToken(tokenOf(second))).toMatchObject({ appId: 'app-2' });
-			expect(sandboxClient.exec).toHaveBeenCalledTimes(3);
-			expect(sandboxClient.exec.mock.calls[1][1].command).toBe(buildDevServerStopScript('greeter'));
-			expect(sandboxClient.exec.mock.calls[1][1].command).toBe(
-				'cd apps/greeter && [ -f .n8n-dev.pid ] && kill "$(cat .n8n-dev.pid)" 2>/dev/null',
-			);
-			expect(sandboxClient.exec.mock.calls[2][1].command).toContain('cd apps/other && ');
+			expect(sandboxClient.exec).toHaveBeenCalledTimes(2);
+			expect(sandboxClient.exec.mock.calls[1][0]).not.toBe(sandboxClient.exec.mock.calls[0][0]);
+			expect(sandboxClient.exec.mock.calls[1][1].command).toContain('cd apps/other && ');
 		});
 
 		it('returns unavailable/sandbox when the sandbox client throws unexpectedly', async () => {
@@ -562,9 +524,9 @@ describe('AppPreviewService', () => {
 		const builtInput: EnsureAppPreviewInput = { ...input, sandbox: undefined };
 		const workspaceCommands = () => workspaceExec.mock.calls.map(([command]) => command);
 		const buildOptions = (index: number) => workspaceExec.mock.calls[index][2];
-		const rebuild = async () => await service.rebuildIfBuilt('thread-1', workspace);
+		const rebuild = async () => await service.rebuildIfBuilt('app-1', workspace);
 
-		it('builds the app through the thread workspace when the provider has no sandbox service', async () => {
+		it('builds the app through the app workspace when the provider has no sandbox service', async () => {
 			const result = await service.ensure(builtInput);
 
 			expect(result.status).toBe('ready');
@@ -624,7 +586,7 @@ describe('AppPreviewService', () => {
 			expect(workspaceExec).not.toHaveBeenCalled();
 		});
 
-		it('returns unavailable/sandbox when the thread has no workspace', async () => {
+		it('returns unavailable/sandbox when the app has no workspace', async () => {
 			getWorkspace.mockResolvedValue(undefined);
 
 			await expect(service.ensure(builtInput)).resolves.toEqual({
@@ -770,9 +732,9 @@ describe('AppPreviewService', () => {
 				expect(tokenOf(second)).not.toBe(tokenOf(first));
 			});
 
-			it('leaves dev-server previews and other threads alone', async () => {
+			it('leaves dev-server previews and other apps alone', async () => {
 				await service.ensure(input);
-				await service.ensure({ ...builtInput, threadId: 'thread-2' });
+				await service.ensure({ ...builtInput, appId: 'app-2', namespace: 'other' });
 				workspaceExec.mockClear();
 
 				await rebuild();
@@ -856,7 +818,6 @@ describe('AppPreviewService', () => {
 			expect(service.resolveToken(tokenOf(result))).toMatchObject({
 				kind: 'dev',
 				appId: 'app-1',
-				threadId: 'thread-1',
 				projectId: 'project-1',
 				namespace: 'greeter',
 				userId: 'user-1',
@@ -893,11 +854,9 @@ describe('AppPreviewService', () => {
 		});
 
 		it('rejects a validly signed token with an unknown jti', () => {
-			const token = jwt.sign(
-				{ sub: 'user-1', appId: 'app-1', threadId: 'thread-1', jti: 'unknown' },
-				SECRET,
-				{ audience: 'app-preview' },
-			);
+			const token = jwt.sign({ sub: 'user-1', appId: 'app-1', jti: 'unknown' }, SECRET, {
+				audience: 'app-preview',
+			});
 
 			expect(service.resolveToken(token)).toBeUndefined();
 		});
@@ -933,10 +892,10 @@ describe('AppPreviewService', () => {
 			expect(service.resolveToken(tokenOf(result))).toBeUndefined();
 		});
 
-		it('rejects a token after the thread was cleared', async () => {
+		it('rejects a token after the app was cleared', async () => {
 			const result = await service.ensure(input);
 
-			service.clearThread('thread-1');
+			service.clearApp('app-1');
 
 			expect(service.resolveToken(tokenOf(result))).toBeUndefined();
 		});

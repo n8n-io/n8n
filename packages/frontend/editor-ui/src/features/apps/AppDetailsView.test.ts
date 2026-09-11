@@ -75,10 +75,10 @@ const renderComponent = createComponentRenderer(AppDetailsView, {
 			PageViewLayout: { template: '<div data-test-id="page-view-layout"><slot /></div>' },
 			AppBreadcrumbs: { template: '<nav data-test-id="app-breadcrumbs" />' },
 			AppThemeEditor: {
-				props: ['projectId', 'app', 'threadId'],
+				props: ['projectId', 'app'],
 				emits: ['saved'],
 				template:
-					'<div data-test-id="app-theme-editor-stub" :data-thread-id="threadId" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
+					'<div data-test-id="app-theme-editor-stub" @click="$emit(\'saved\', { ...app, hasUnpublishedChanges: true })" />',
 			},
 			TimeAgo: { template: '<span data-test-id="time-ago-stub" />' },
 			AppCodeViewer: { template: '<div data-test-id="app-code-viewer-stub" />' },
@@ -134,12 +134,14 @@ describe('AppDetailsView', () => {
 		return rendered;
 	}
 
-	it('opens on Build when the app has no version yet', async () => {
+	it('opens on the empty Preview when the app has no version yet', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-		expect(getByTestId('app-builder-build')).toBeInTheDocument();
+		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-tabs')).toBeInTheDocument();
-		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 	});
 
 	it('opens on Preview and shows the active version in the iframe', async () => {
@@ -174,51 +176,88 @@ describe('AppDetailsView', () => {
 	it('switches between Build and Preview from the mode control', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-build')).toBeInTheDocument();
 		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
-	it('shows the empty preview with a way into the assistant before the first build', async () => {
+	it('shows the empty preview before the first build', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
 		expect(getByTestId('app-preview-refresh')).toHaveAttribute('aria-disabled', 'true');
-
-		await userEvent.click(getByTestId('app-preview-empty-open-in-assistant'));
-		expect(openAppArtifactThread).toHaveBeenCalledWith(
-			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
-			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
-		);
 	});
 
-	it('tells the user to build the app themselves when the assistant is unavailable', async () => {
-		instanceAiAvailable.value = false;
-		const { getByTestId, queryByTestId } = await renderApp(makeApp());
-
-		await userEvent.click(getByTestId('radio-button-preview'));
-
-		expect(getByTestId('app-preview-empty')).toHaveTextContent('Build this app to see it here.');
-		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
-		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
-	});
-
-	it('narrows the frame to a phone width on the mobile toggle', async () => {
+	it('narrows the frame to a phone on the mobile toggle', async () => {
 		const { getByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+		expect(getByTestId('app-preview-frame')).not.toHaveClass('mobile');
 
 		await userEvent.click(getByTestId('app-preview-device-mobile'));
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '390px' });
+		expect(getByTestId('app-preview-frame')).toHaveClass('mobile');
 
 		await userEvent.click(getByTestId('app-preview-device-desktop'));
-		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveStyle({ width: '100%' });
+		expect(getByTestId('app-preview-frame')).not.toHaveClass('mobile');
+	});
+
+	it('opens on the Build tab with the app basics, and Pages on its own tab', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+
+		expect(getByTestId('app-basics-editor')).toBeInTheDocument();
+		expect(queryByTestId('app-page-add-root')).not.toBeInTheDocument();
+		expect(queryByTestId('tab-code')).not.toBeInTheDocument();
+
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
+
+		expect(getByTestId('app-page-add-root')).toBeInTheDocument();
+		expect(queryByTestId('app-basics-editor')).not.toBeInTheDocument();
+	});
+
+	it('switches the preview page from the address bar and opens the frame URL in a new tab', async () => {
+		appsStore.pages = [
+			{ id: 'p-index', parentPageId: null, route: '' },
+			{ id: 'p-clients', parentPageId: null, route: 'clients' },
+		];
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { getByTestId, getByText } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
+
+		expect(getByTestId('app-preview-page')).toHaveTextContent('/');
+
+		await userEvent.click(getByTestId('app-preview-page'));
+		await userEvent.click(getByText('/clients'));
+
+		expect(getByTestId('app-preview-page')).toHaveTextContent('/clients');
+		expect(getByTestId('instance-ai-app-preview-iframe')).toHaveAttribute(
+			'src',
+			'/apps/greeter/clients?v=v-7',
+		);
+
+		await userEvent.click(getByTestId('app-preview-open-tab'));
+		expect(open).toHaveBeenCalledWith('/apps/greeter/clients?v=v-7', '_blank', 'noopener');
+	});
+
+	it('tries the app in another color scheme without saving it', async () => {
+		const { getByTestId } = await renderApp(
+			makeApp({ activeVersionId: 'v-7', theme: { mode: 'light', vars: {} } }),
+		);
+		const iframe = getByTestId<HTMLIFrameElement>('instance-ai-app-preview-iframe');
+		const postMessage = vi.spyOn(iframe.contentWindow!, 'postMessage');
+
+		iframe.dispatchEvent(new Event('load'));
+		await userEvent.click(getByTestId('app-preview-theme-dark'));
+
+		expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
+			{ source: 'n8nable', type: 'theme:set', mode: 'light' },
+			{ source: 'n8nable', type: 'theme:set', mode: 'dark' },
+		]);
+		expect(appsStore.applyAppTheme).not.toHaveBeenCalled();
 	});
 
 	it('reloads the iframe on refresh', async () => {
@@ -329,11 +368,10 @@ describe('AppDetailsView', () => {
 			expect(queryByTestId('app-publish-menu-button')).not.toBeInTheDocument();
 		});
 
-		it('publishes the thread draft in artifact mode, then refreshes the app and confirms', async () => {
+		it('publishes the draft in artifact mode, then refreshes the app and confirms', async () => {
 			appsStore.publishApp.mockResolvedValue(published);
 			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }), {
 				artifactMode: true,
-				threadId: 'thread-1',
 			});
 			appsStore.getApp.mockResolvedValue(
 				makeApp({ activeVersionId: 'v-8', hasUnpublishedChanges: false }),
@@ -342,7 +380,7 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getByTestId('app-publish'));
 			await waitAllPromises();
 
-			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', 'thread-1');
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1');
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				title: 'App published',
 				message: published.url,
@@ -353,14 +391,14 @@ describe('AppDetailsView', () => {
 			expect(getByTestId('app-publish-menu-button')).toBeInTheDocument();
 		});
 
-		it('publishes without a thread outside artifact mode', async () => {
+		it('publishes outside artifact mode', async () => {
 			appsStore.publishApp.mockResolvedValue(published);
 			const { getByTestId } = await renderApp(makeApp({ hasUnpublishedChanges: true }));
 
 			await userEvent.click(getByTestId('app-publish'));
 			await waitAllPromises();
 
-			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1', undefined);
+			expect(appsStore.publishApp).toHaveBeenCalledWith('proj-1', 'app-1');
 		});
 
 		it('shows the build failure with its log tail and keeps the draft flagged', async () => {
@@ -414,6 +452,7 @@ describe('AppDetailsView', () => {
 			await waitAllPromises();
 
 			expect(appsStore.getApp).toHaveBeenCalledTimes(2);
+			expect(appsStore.fetchPages).toHaveBeenCalledTimes(2);
 			expect(appsStore.fetchVersions).not.toHaveBeenCalled();
 			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
 			expect(getByTestId('app-publish')).toBeEnabled();
@@ -422,7 +461,7 @@ describe('AppDetailsView', () => {
 
 		it('refreshes the version list too while the versions tab is open', async () => {
 			const { getByTestId, getByRole, rerender } = await renderApp(published, { refreshKey: 0 });
-			await userEvent.click(getByTestId('radio-button-build'));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByRole('tab', { name: 'Versions' }));
 			await waitAllPromises();
 			appsStore.fetchVersions.mockClear();
@@ -462,28 +501,16 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('hands the app off to the assistant from the toolbar', async () => {
-		const { getByTestId } = await renderApp(makeApp());
-
-		await userEvent.click(getByTestId('app-open-in-assistant'));
-
-		expect(openAppArtifactThread).toHaveBeenCalledWith(
-			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter' },
-			{ source: 'app_builder_page', origin: 'internal', sourceContext: { appId: 'app-1' } },
-		);
-	});
-
 	it('drops the page chrome and navigation actions in artifact mode', async () => {
 		const { getByTestId, queryByTestId } = await renderApp(makeApp(), { artifactMode: true });
 
 		expect(queryByTestId('page-view-layout')).not.toBeInTheDocument();
 		expect(queryByTestId('app-breadcrumbs')).not.toBeInTheDocument();
 		expect(queryByTestId('app-delete')).not.toBeInTheDocument();
-		expect(queryByTestId('app-open-in-assistant')).not.toBeInTheDocument();
 		expect(getByTestId('app-builder-mode')).toBeInTheDocument();
 		expect(getByTestId('app-publish')).toBeInTheDocument();
 
-		await userEvent.click(getByTestId('radio-button-preview'));
+		await userEvent.click(getByTestId('app-builder-mode-preview'));
 		expect(getByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(queryByTestId('app-preview-empty-open-in-assistant')).not.toBeInTheDocument();
 	});
@@ -506,7 +533,7 @@ describe('AppDetailsView', () => {
 
 		async function openVersionsTab(app: App) {
 			const rendered = await renderApp(app);
-			await userEvent.click(rendered.getByTestId('radio-button-build'));
+			await userEvent.click(rendered.getByTestId('app-builder-mode-build'));
 			await userEvent.click(rendered.getByRole('tab', { name: 'Versions' }));
 			await waitAllPromises();
 			return rendered;
@@ -615,8 +642,9 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('shows the Theme tab, enabled, alongside Pages and Code', async () => {
+	it('shows the Theme tab, enabled, alongside Build and Pages', async () => {
 		const { getByTestId, getByRole, queryByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 
 		const themeTab = getByRole('tab', { name: 'Theme' });
 		expect(getByTestId('tab-theme')).toBeInTheDocument();
@@ -629,7 +657,9 @@ describe('AppDetailsView', () => {
 	});
 
 	it('hands adding a root page off to the assistant with a pre-filled, unsent prompt', async () => {
-		const { getByTestId } = await renderApp(makeApp());
+		const { getByTestId, getByRole } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		await userEvent.click(getByTestId('app-page-add-root'));
 
@@ -642,7 +672,9 @@ describe('AppDetailsView', () => {
 
 	it("hands a page card's add/edit/delete actions off to the assistant with the page's route", async () => {
 		appsStore.pages = [{ id: 'p1', parentPageId: null, route: 'clients' }];
-		const { getByTestId } = await renderApp(makeApp());
+		const { getByTestId, getByRole } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		await userEvent.click(getByTestId('app-page-add-child'));
 		expect(openAppArtifactThread).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), {
@@ -665,7 +697,9 @@ describe('AppDetailsView', () => {
 			{ id: 'p1', parentPageId: null, route: 'clients' },
 			{ id: 'p2', parentPageId: 'p1', route: ':id' },
 		];
-		const { getAllByTestId } = await renderApp(makeApp());
+		const { getAllByTestId, getByRole, getByTestId } = await renderApp(makeApp());
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		await userEvent.click(getByRole('tab', { name: 'Pages' }));
 
 		const routes = getAllByTestId('app-page-route').map((el) => el.textContent);
 		expect(routes).toEqual(['/clients', '/:id']);
@@ -676,7 +710,7 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	describe('Connections tab', () => {
+	describe('Connect section on the Build tab', () => {
 		const bindings: DescribedBinding[] = [
 			{
 				key: 'submit',
@@ -706,10 +740,10 @@ describe('AppDetailsView', () => {
 				'Binding \'notify\': workflow "Notify" is not published.',
 				"Binding 'gone': workflow 'wf-3' no longer exists in the app's project.",
 			];
-			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			const rows = getAllByTestId('app-connection');
 			expect(rows).toHaveLength(2);
@@ -740,9 +774,9 @@ describe('AppDetailsView', () => {
 
 		it('lists a connected data table with a link and its access level', async () => {
 			appsStore.bindings = [tasksBinding, { ...tasksBinding, key: 'log', permissions: ['read'] }];
-			const { getByRole, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId, queryByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			const rows = getAllByTestId('app-connection');
 			expect(rows).toHaveLength(2);
@@ -761,9 +795,9 @@ describe('AppDetailsView', () => {
 
 		it('shows write-only access for a data table the app cannot read', async () => {
 			appsStore.bindings = [{ ...tasksBinding, permissions: ['write'] }];
-			const { getByRole, getByTestId } = await renderApp(makeApp());
+			const { getByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			expect(getByTestId('app-connection-access')).toHaveTextContent('Write');
 			expect(getByTestId('app-connection-access')).not.toHaveTextContent('Read');
@@ -779,9 +813,9 @@ describe('AppDetailsView', () => {
 				"Binding 'submit': workflow 'wf-1' no longer exists in the app's project.",
 			];
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId, queryByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			const rows = getAllByTestId('app-connection');
 			expect(rows).toHaveLength(2);
@@ -821,9 +855,9 @@ describe('AppDetailsView', () => {
 		it('disconnects a data table after confirmation with the table copy', async () => {
 			appsStore.bindings = [tasksBinding];
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getByTestId } = await renderApp(makeApp());
+			const { getByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByTestId('app-connection-delete'));
 
 			expect(confirm).toHaveBeenCalledWith(
@@ -839,9 +873,9 @@ describe('AppDetailsView', () => {
 		it('deletes a connection after confirmation', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
 
 			expect(confirm).toHaveBeenCalledWith(
@@ -855,18 +889,18 @@ describe('AppDetailsView', () => {
 		it('keeps the connection when the confirmation is cancelled', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue('cancel');
-			const { getByRole, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
 
 			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
 		});
 
 		it('shows the empty state when nothing is connected', async () => {
-			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			expect(getByTestId('app-connections-empty')).toHaveTextContent(
 				'No workflows or data tables connected yet.',
@@ -875,15 +909,14 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	it('hands the thread to the theme editor and flags the draft after a save, staying on Build', async () => {
+	it('flags the draft after a theme save, staying on Build', async () => {
 		const { getByTestId, getByRole, queryByTestId } = await renderApp(
 			makeApp({ activeVersionId: 'v-7' }),
-			{ artifactMode: true, threadId: 'thread-1' },
+			{ artifactMode: true },
 		);
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
-		expect(getByTestId('app-theme-editor-stub')).toHaveAttribute('data-thread-id', 'thread-1');
 		expect(getByTestId('app-publish')).toBeDisabled();
 
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
@@ -897,11 +930,10 @@ describe('AppDetailsView', () => {
 	it('switches to the live preview after a theme save when the dev server is showing', async () => {
 		const { getByTestId, getByRole } = await renderApp(makeApp(), {
 			artifactMode: true,
-			threadId: 'thread-1',
 			liveUrl: '/apps-preview/tok/',
 			liveStatus: { status: 'ready', url: '/apps-preview/tok/', expiresAt: '2026-09-09T00:00:00Z' },
 		});
-		await userEvent.click(getByTestId('radio-button-build'));
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		await userEvent.click(getByRole('tab', { name: 'Theme' }));
 
 		await userEvent.click(getByTestId('app-theme-editor-stub'));
@@ -909,25 +941,26 @@ describe('AppDetailsView', () => {
 		expect(getByTestId('app-builder-preview')).toBeInTheDocument();
 	});
 
-	it('shows the Code tab, enabled, and renders AppCodeViewer with the active version', async () => {
-		const { getByRole, getByTestId, queryByTestId } = await renderApp(
-			makeApp({ activeVersionId: 'v-7' }),
-		);
-		await userEvent.click(getByTestId('radio-button-build'));
-		const codeTab = getByRole('tab', { name: 'Code' });
-		expect(codeTab).not.toHaveAttribute('aria-disabled', 'true');
+	it('shows the code as its own builder mode, not a Build tab', async () => {
+		const { getByTestId, queryByTestId } = await renderApp(makeApp({ activeVersionId: 'v-7' }));
 		expect(queryByTestId('app-code-viewer-stub')).not.toBeInTheDocument();
 
-		await userEvent.click(codeTab);
+		await userEvent.click(getByTestId('app-builder-mode-code'));
 
+		expect(getByTestId('app-builder-code')).toBeInTheDocument();
 		expect(getByTestId('app-code-viewer-stub')).toBeInTheDocument();
+		expect(queryByTestId('app-builder-preview')).not.toBeInTheDocument();
+		expect(queryByTestId('app-builder-build')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('app-builder-mode-build'));
+		expect(queryByTestId('tab-code')).not.toBeInTheDocument();
 	});
 
 	it('prefers the thread build over the stored version and switches to Preview on the first build', async () => {
 		const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 			artifactMode: true,
 		});
-
+		await userEvent.click(getByTestId('app-builder-mode-build'));
 		expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 		await rerender({
@@ -994,6 +1027,7 @@ describe('AppDetailsView', () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 				artifactMode: true,
 			});
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 			await rerender(liveProps);
@@ -1061,10 +1095,28 @@ describe('AppDetailsView', () => {
 			},
 		);
 
+		it('shows a spinner under the banner while the preview of an app without a build starts', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+				liveStatus: { status: 'starting' },
+			});
+
+			expect(getByTestId('app-preview-starting')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+
+			await rerender({
+				artifactMode: true,
+				liveStatus: { status: 'unavailable', reason: 'sandbox' },
+			});
+
+			expect(queryByTestId('app-preview-starting')).not.toBeInTheDocument();
+		});
+
 		it('switches from the empty state to Preview once the first ensure answer arrives', async () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 				artifactMode: true,
 			});
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			expect(getByTestId('app-builder-build')).toBeInTheDocument();
 
 			await rerender({ artifactMode: true, liveStatus: { status: 'starting' } });
@@ -1080,16 +1132,19 @@ describe('AppDetailsView', () => {
 				liveStatus: { status: 'no-source' },
 			});
 
-			await userEvent.click(getByTestId('radio-button-preview'));
+			await userEvent.click(getByTestId('app-builder-mode-preview'));
 
 			expect(getByTestId('app-preview-empty')).toHaveTextContent('Nothing to preview yet');
 			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
 		});
 
-		it('stays on Build for a starting preview outside artifact mode', async () => {
-			const { getByTestId } = await renderApp(makeApp(), { liveStatus: { status: 'starting' } });
+		it('shows the empty state, not the banner, for a starting preview outside artifact mode', async () => {
+			const { getByTestId, queryByTestId } = await renderApp(makeApp(), {
+				liveStatus: { status: 'starting' },
+			});
 
-			expect(getByTestId('app-builder-build')).toBeInTheDocument();
+			expect(getByTestId('app-preview-empty')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-live-banner')).not.toBeInTheDocument();
 		});
 
 		it('arms the inspector in the live frame and stages the picked element in the thread', async () => {
@@ -1107,6 +1162,7 @@ describe('AppDetailsView', () => {
 			expect(postMessage.mock.calls.map(([data]) => data)).toEqual([
 				{ source: 'n8nable', type: 'inspect:enable' },
 				{ source: 'n8nable', type: 'inspect:enable' },
+				{ source: 'n8nable', type: 'theme:set', mode: 'system' },
 				{ source: 'n8nable', type: 'inspect:disable' },
 			]);
 			expect(instanceAiStore.stageElementSelection).toHaveBeenCalledWith({

@@ -1,5 +1,4 @@
-import type { DescribedBinding } from '@n8n/api-types';
-import type { AppPreviewStatus } from '@n8n/api-types';
+import type { AppPreviewStatus, DescribedBinding, InstanceAiThreadInfo } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -43,19 +42,18 @@ export const updateAppApi = async (
 	});
 };
 
-/** Saves the theme into the app's draft; with `threadId` the thread's dev server shows it right away. Nothing is published. */
+/** Saves the theme into the app's draft; a running dev server shows it right away. Nothing is published. */
 export const applyAppThemeApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
 	theme: AppTheme,
-	threadId?: string,
 ) => {
 	return await makeRestApiRequest<App>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/theme`,
-		threadId ? { theme, threadId } : { theme },
+		{ theme },
 	);
 };
 
@@ -63,37 +61,43 @@ export const deleteAppApi = async (context: IRestApiContext, projectId: string, 
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/apps/${appId}`);
 };
 
-/** Starts (or keeps alive) the app's dev server in the thread's sandbox. */
+/** Starts (or keeps alive) the app's dev server in the app's sandbox. */
 export const ensureAppPreviewApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
-	threadId: string,
 ) => {
 	return await makeRestApiRequest<AppPreviewStatus>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/preview`,
-		{ threadId },
 	);
 };
 
-/** Builds the newest source and makes it the served version; with `threadId` the thread's draft is stored first. */
-export const publishAppApi = async (
-	context: IRestApiContext,
-	projectId: string,
-	appId: string,
-	threadId?: string,
-) => {
+/** Builds the newest source and makes it the served version; the app sandbox's draft is stored first. */
+export const publishAppApi = async (context: IRestApiContext, projectId: string, appId: string) => {
 	return await makeRestApiRequest<AppPublishResult>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/publish`,
-		threadId ? { threadId } : {},
 	);
 };
 
 /** Newest first. */
+/** The caller's assistant threads that build the app, newest activity first. */
+export const fetchAppThreadsApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+) => {
+	const { threads } = await makeRestApiRequest<{ threads: InstanceAiThreadInfo[] }>(
+		context,
+		'GET',
+		`/projects/${projectId}/apps/${appId}/threads`,
+	);
+	return threads;
+};
+
 export const fetchAppVersionsApi = async (
 	context: IRestApiContext,
 	projectId: string,

@@ -135,20 +135,19 @@ describe('InstanceAiAppPreview', () => {
 		showError.mockClear();
 	});
 
-	it('runs the live preview for this thread and hands its state to the details view', async () => {
+	it('runs the live preview for the app and hands its state to the details view', async () => {
 		liveStatus.value = { status: 'starting' };
 		const wrapper = mountPreview({ versionId: 'v-1' });
 
 		const [target, , builtVersionId, running] = useAppLivePreviewMock.mock.calls[0] as unknown as [
-			{ projectId: () => string; appId: () => string; threadId: () => string },
+			{ projectId: () => string; appId: () => string },
 			unknown,
 			() => string | undefined,
 			() => boolean,
 		];
-		expect([target.projectId(), target.appId(), target.threadId(), builtVersionId()]).toEqual([
+		expect([target.projectId(), target.appId(), builtVersionId()]).toEqual([
 			'proj-1',
 			'app-1',
-			'thread-1',
 			'v-1',
 		]);
 		expect(running()).toBe(false);

@@ -12,7 +12,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
+import { AppThreadScopeKey, SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
@@ -1510,150 +1510,6 @@ describe('InstanceAiThreadView', () => {
 				undefined,
 			);
 		});
-
-		it('resolves a new-app chip to the app the agent created under its namespace', async () => {
-			stashPendingAppAttachment('thread-1', {
-				type: 'app',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-				isNewApp: true,
-			});
-
-			const { findByTestId, getByTestId, queryByTestId } = renderView({
-				props: { threadId: 'thread-1' },
-			});
-
-			await vi.waitFor(() => {
-				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
-			});
-			expect(queryByTestId('instance-ai-app-preview-stub')).not.toBeInTheDocument();
-
-			// The `apps create` tool result lands in the registry.
-			thread.producedArtifacts.set('app-1', {
-				type: 'app',
-				id: 'app-1',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-			});
-
-			const preview = await findByTestId('instance-ai-app-preview-stub');
-			expect(preview).toHaveAttribute('data-app-id', 'app-1');
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				instanceAiAppBuilderTarget: { appId: 'app-1', projectId: 'project-1', name: 'Greeter' },
-			});
-			expect(getPendingAppAttachment('thread-1')).toEqual({
-				type: 'app',
-				appId: 'app-1',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-			});
-
-			await userEvent.click(getByTestId('instance-ai-input-submit'));
-			expect(thread.sendMessage).toHaveBeenCalledWith(
-				'Normal message',
-				[
-					{
-						type: 'app',
-						appId: 'app-1',
-						projectId: 'project-1',
-						name: 'Greeter',
-						namespace: 'greeter',
-					},
-				],
-				expect.any(String),
-				undefined,
-			);
-		});
-
-		it('drops the chip when the create result resolves it while the send is in flight', async () => {
-			const send = Promise.withResolvers<boolean>();
-			vi.mocked(thread.sendMessage).mockReturnValueOnce(send.promise);
-			stashPendingAppAttachment('thread-1', {
-				type: 'app',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-				isNewApp: true,
-			});
-
-			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-			await vi.waitFor(() => {
-				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
-			});
-
-			await userEvent.click(getByTestId('instance-ai-input-submit'));
-			thread.producedArtifacts.set('app-1', {
-				type: 'app',
-				id: 'app-1',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-			});
-			await findByTestId('instance-ai-app-preview-stub');
-			expect(getPendingAppAttachment('thread-1')).toMatchObject({ appId: 'app-1' });
-
-			send.resolve(true);
-
-			await vi.waitFor(() => {
-				expect(getPendingAppAttachment('thread-1')).toBeNull();
-				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
-			});
-		});
-
-		it('binds the thread when the create result arrives after the chip was sent', async () => {
-			stashPendingAppAttachment('thread-1', {
-				type: 'app',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-				isNewApp: true,
-			});
-
-			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
-			await vi.waitFor(() => {
-				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
-			});
-
-			await userEvent.click(getByTestId('instance-ai-input-submit'));
-			await vi.waitFor(() => {
-				expect(getPendingAppAttachment('thread-1')).toBeNull();
-			});
-			thread.messages = [
-				{
-					id: 'msg-1',
-					role: 'user',
-					content: 'Normal message',
-					isStreaming: false,
-					createdAt: '2026-04-01T00:00:00.000Z',
-					attachments: [
-						{
-							type: 'app',
-							projectId: 'project-1',
-							name: 'Greeter',
-							namespace: 'greeter',
-							isNewApp: true,
-						},
-					],
-				},
-			] as typeof thread.messages;
-
-			thread.producedArtifacts.set('app-1', {
-				type: 'app',
-				id: 'app-1',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-			});
-
-			const preview = await findByTestId('instance-ai-app-preview-stub');
-			expect(preview).toHaveAttribute('data-app-id', 'app-1');
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				instanceAiAppBuilderTarget: { appId: 'app-1', projectId: 'project-1', name: 'Greeter' },
-			});
-		});
 	});
 
 	it('dismisses a pending preview-context chip without sending it', async () => {
@@ -1909,6 +1765,48 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('on the app page drops the artifacts panel and offers history and collapse-chat instead', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+		const toggleSidebar = vi.fn();
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+			global: {
+				provide: {
+					[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: toggleSidebar },
+					[AppThreadScopeKey as symbol]: ref({
+						appId: 'app-1',
+						projectId: 'proj-1',
+						name: 'Greeter',
+					}),
+				},
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(getByTestId('app-builder-thread-history')).toBeInTheDocument();
+		});
+		expect(queryByTestId('instance-ai-artifacts-panel-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-preview-toggle')).not.toBeInTheDocument();
+		expect(getByTestId('app-builder-back')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-sidebar-toggle')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('app-builder-thread-history'));
+		expect(toggleSidebar).toHaveBeenCalled();
 	});
 
 	it('renders the agent artifact preview when an agent is created', async () => {

@@ -84,7 +84,7 @@ function createDraft(overrides: { exists?: boolean; existing?: string } = {}) {
 		writeFile: vi.fn().mockResolvedValue(undefined),
 	};
 	const workspace = { filesystem } as unknown as Workspace;
-	return { draft: { threadId: 'thread-1', workspace }, filesystem };
+	return { draft: workspace, filesystem };
 }
 
 describe('AppThemeService', () => {
@@ -111,11 +111,7 @@ describe('AppThemeService', () => {
 				"export const THEME_MODE: 'light' | 'dark' | 'system' = 'dark';\n",
 				undefined,
 			);
-			expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith(
-				'thread-1',
-				USER,
-				draft.workspace,
-			);
+			expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('app-1', USER, draft);
 			expect(appsService.getSourceTarball).not.toHaveBeenCalled();
 			expect(appsService.createSourceSnapshot).not.toHaveBeenCalled();
 			expect(result).toEqual({ versionId: 's-9' });

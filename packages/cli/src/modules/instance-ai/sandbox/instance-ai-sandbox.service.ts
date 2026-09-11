@@ -64,6 +64,11 @@ function getThreadScopedSandboxName(threadId: string): string {
 	return `instance-ai-thread-${threadId}`;
 }
 
+/** The sandbox key of an app: one sandbox per app, shared by every thread that builds it. */
+export function appSandboxKey(appId: string): string {
+	return `app-${appId}`;
+}
+
 function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
 	const parts: string[] = [];
 	if (namePrefix) {

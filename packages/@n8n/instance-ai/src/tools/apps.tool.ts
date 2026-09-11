@@ -1,8 +1,8 @@
 /**
- * Apps tool — create an app, restore its stored source into a fresh sandbox,
- * bind n8n workflows and data tables it may use, and publish it as a served
- * version once the user confirms. The agent edits files with the workspace tool
- * in between; the live preview follows.
+ * Apps tool — create an app, restore its stored source into the app's own
+ * sandbox, bind n8n workflows and data tables it may use, and publish it as a
+ * served version once the user confirms. The agent edits files with the
+ * workspace tools and `sandbox: 'app'` in between; the live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -40,7 +40,7 @@ export { APPS_TOOL_ID };
  */
 export type AppSandboxContext = Pick<
 	InstanceAiContext,
-	'appService' | 'workspace' | 'workspaceRoot'
+	'appService' | 'appWorkspace' | 'workspaceRoot' | 'getAppId'
 >;
 
 export const APP_BUILDER_SKILL_DIR = 'app-builder';
@@ -236,7 +236,9 @@ export interface AppRestoreSuccess {
 	name: string;
 	namespace: string;
 	projectId: string;
-	versionId: string;
+	/** Absent when the app had no stored source and the starter template was laid down instead. */
+	versionId?: string;
+	scaffolded: boolean;
 	workspacePath: string;
 	installed: boolean;
 	warnings: string[];
@@ -482,10 +484,10 @@ function requireSandbox(
 	context: AppSandboxContext,
 	abortSignal?: AbortSignal,
 ): {
-	workspace: NonNullable<InstanceAiContext['workspace']>;
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>;
 	run: SandboxRunner;
 } {
-	const workspace = context.workspace;
+	const workspace = context.appWorkspace;
 	const executeCommand = workspace?.sandbox?.executeCommand?.bind(workspace.sandbox);
 	if (!workspace || !executeCommand) {
 		throw new Error('The apps tool needs a sandbox workspace, which is not available in this run.');
@@ -534,12 +536,74 @@ async function installDependencies(
 }
 
 function requireFilesystem(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	purpose: string,
-): NonNullable<NonNullable<InstanceAiContext['workspace']>['filesystem']> {
+): NonNullable<NonNullable<InstanceAiContext['appWorkspace']>['filesystem']> {
 	const filesystem = workspace.filesystem;
 	if (!filesystem) throw new Error(`The sandbox workspace has no filesystem to ${purpose}.`);
 	return filesystem;
+}
+
+/**
+ * Lays down a fresh `apps/<namespace>/`: starter template, SDK tarball,
+ * binding types, a git baseline and node_modules. A failed git or install is
+ * a warning; every other failure throws.
+ */
+async function scaffoldApp(input: {
+	context: AppSandboxContext;
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>;
+	run: SandboxRunner;
+	root: string;
+	namespace: string;
+	template: NonNullable<CreateInput['template']>;
+	bindings: DescribedBinding[];
+	abortSignal?: AbortSignal;
+}): Promise<{ installed: boolean; warnings: string[] }> {
+	const { run, root, namespace, template, abortSignal } = input;
+	const appDir = `${root}/${APPS_DIR}/${namespace}`;
+
+	const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
+	if (mkdir.exitCode !== 0) {
+		throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
+	}
+
+	if (template !== 'none') {
+		const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
+		const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
+			cwd: appDir,
+		});
+		if (copy.exitCode !== 0) {
+			throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
+		}
+	}
+
+	// The Vue template's own Home.vue demonstrates real catalog components rather
+	// than hand-rolled markup, so it needs them to exist from the start. This is a
+	// local copy, not an install.
+	if (template === 'vue') {
+		const addStarters = await run(
+			copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
+			{ cwd: appDir },
+		);
+		if (addStarters.exitCode !== 0) {
+			throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
+		}
+	}
+
+	const appService = requireAppService(input.context);
+	await writeSdkTarball(input.workspace, namespace, await appService.getSdkTarball(), abortSignal);
+	await writeBindingsTypes(input.workspace, namespace, input.bindings, abortSignal);
+
+	const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
+	const install =
+		template === 'none' ? { installed: false } : await installDependencies(run, appDir);
+	return {
+		installed: install.installed,
+		warnings: [
+			...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
+			...(install.warning ? [install.warning] : []),
+		],
+	};
 }
 
 async function handleCreate(
@@ -548,6 +612,14 @@ async function handleCreate(
 	abortSignal?: AbortSignal,
 ) {
 	const appService = requireAppService(context);
+	const boundAppId = context.getAppId?.();
+	if (boundAppId) {
+		const bound = await appService.get(boundAppId);
+		return {
+			denied: true,
+			reason: `This thread builds app "${bound.name}" (id ${bound.id}). Start a new thread to build another app.`,
+		};
+	}
 	const { workspace, run } = requireSandbox(context, abortSignal);
 	const namespace = input.namespace ?? slugifyNamespace(input.name);
 	if (!namespace) {
@@ -567,60 +639,30 @@ async function handleCreate(
 	}
 
 	const root = await getWorkspaceRoot(workspace);
-	const appDir = `${root}/${APPS_DIR}/${namespace}`;
 	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${namespace}`;
 
 	try {
-		const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
-		if (mkdir.exitCode !== 0) {
-			throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
-		}
-
-		const template = input.template ?? DEFAULT_TEMPLATE;
-		if (template !== 'none') {
-			const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
-			const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
-				cwd: appDir,
-			});
-			if (copy.exitCode !== 0) {
-				throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
-			}
-		}
-
-		// The Vue template's own Home.vue demonstrates real catalog components rather
-		// than hand-rolled markup, so it needs them to exist from the start. This is a
-		// local copy, not an install.
-		if (template === 'vue') {
-			const addStarters = await run(
-				copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
-				{ cwd: appDir },
-			);
-			if (addStarters.exitCode !== 0) {
-				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
-			}
-		}
-
-		await writeSdkTarball(workspace, namespace, await appService.getSdkTarball(), abortSignal);
-		await writeBindingsTypes(workspace, namespace, [], abortSignal);
-
-		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
-		const install =
-			template === 'none' ? { installed: false } : await installDependencies(run, appDir);
-		const warnings = [
-			...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
-			...(install.warning ? [install.warning] : []),
-		];
+		const { installed, warnings } = await scaffoldApp({
+			context,
+			workspace,
+			run,
+			root,
+			namespace,
+			template: input.template ?? DEFAULT_TEMPLATE,
+			bindings: [],
+			abortSignal,
+		});
 
 		return {
 			app: created.app,
 			workspacePath,
-			installed: install.installed,
+			installed,
 			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	} catch (error) {
 		throw new Error(
 			`App "${input.name}" is registered (id ${created.app.id}, namespace "${namespace}") but scaffolding failed: ` +
-				`${getErrorMessage(error)} Write the files by hand under ${workspacePath} (app id ${created.app.id}).`,
+				`${getErrorMessage(error)} Write the files by hand under ${workspacePath} with sandbox 'app' (app id ${created.app.id}).`,
 		);
 	}
 }
@@ -752,8 +794,9 @@ export async function handleBuild(
 
 /**
  * Rehydrate `apps/<namespace>/` from the newest stored source (a per-turn
- * snapshot or a build). Needed when a thread starts in a fresh sandbox that
- * never held the app's files.
+ * snapshot or a build), or lay down the starter template for an app that has
+ * no source yet. Needed when the app's sandbox is new and never held the
+ * app's files.
  */
 export async function handleRestore(
 	context: AppSandboxContext,
@@ -777,16 +820,37 @@ export async function handleRestore(
 	if (occupied.exitCode === 0) {
 		return {
 			denied: true,
-			reason: `${workspacePath} already exists and is not empty. Edit the files there; restore only fills an empty app directory.`,
+			reason: `${workspacePath} already exists and is not empty. Edit the files there with sandbox 'app'; restore only fills an empty app directory.`,
 		};
 	}
 
 	const tarball = await appService.getSourceTarball(app.id);
 	if (!tarball) {
-		return {
-			denied: true,
-			reason: `App "${app.name}" has no stored source to restore. Write the files under ${workspacePath} by hand.`,
-		};
+		try {
+			const described = await appService.getBindings(app.id);
+			const { installed, warnings } = await scaffoldApp({
+				context,
+				workspace,
+				run,
+				root,
+				namespace: app.namespace,
+				template: DEFAULT_TEMPLATE,
+				bindings: described.bindings,
+				abortSignal,
+			});
+			return {
+				appId: app.id,
+				name: app.name,
+				namespace: app.namespace,
+				projectId: app.projectId,
+				scaffolded: true,
+				workspacePath,
+				installed,
+				warnings: [...warnings, ...described.warnings],
+			};
+		} catch (error) {
+			return { error: true, stage: 'restore', message: getErrorMessage(error) };
+		}
 	}
 
 	const relativeTarball = `${BUILD_STAGING_DIR}/${app.namespace}-${Date.now()}-restore.tgz`;
@@ -820,6 +884,7 @@ export async function handleRestore(
 			namespace: app.namespace,
 			projectId: app.projectId,
 			versionId: tarball.versionId,
+			scaffolded: false,
 			workspacePath,
 			installed: install.installed,
 			warnings: [
@@ -874,7 +939,7 @@ async function handleAddComponent(
 }
 
 async function writeSdkTarball(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	namespace: string,
 	sdk: { filename: string; data: Uint8Array },
 	abortSignal?: AbortSignal,
@@ -887,7 +952,7 @@ async function writeSdkTarball(
 }
 
 async function writeBindingsTypes(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	namespace: string,
 	bindings: DescribedBinding[],
 	abortSignal?: AbortSignal,
@@ -1154,7 +1219,7 @@ async function handleBindings(
 }
 
 async function readTarball(
-	workspace: NonNullable<InstanceAiContext['workspace']>,
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>,
 	relativePath: string,
 	abortSignal?: AbortSignal,
 ): Promise<Buffer> {
@@ -1194,11 +1259,11 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Create, restore, bind and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
-				'`create` registers the app, copies a starter template into apps/<namespace>/ in the workspace and installs its dependencies; ' +
-				'edit the files there and the live preview updates by itself. Never build to check your work. ' +
+				"`create` registers the app, copies a starter template into apps/<namespace>/ in the app's own sandbox and installs its dependencies; " +
+				"edit the files there with the workspace tools and `sandbox: 'app'`, and the live preview updates by itself. Never build to check your work. " +
 				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
 				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
-				'`restore` unpacks the stored source of an existing app into apps/<namespace>/ when this workspace does not have it yet. ' +
+				"`restore` fills apps/<namespace>/ for an existing app when the app's sandbox does not have it yet: it unpacks the stored source, or copies the starter template when the app has no source (`scaffolded: true`). " +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
 				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`) and read or write data table rows (`n8n.tables.<key>.list/insert/update/delete`): ' +
 				'pass `{ key, kind: "workflow", workflowId }` or `{ key, kind: "dataTable", dataTableId, permissions: ["read", "write"] }` entries (one kind per call), and it rewrites src/n8n-bindings.d.ts with the input and row types. ' +

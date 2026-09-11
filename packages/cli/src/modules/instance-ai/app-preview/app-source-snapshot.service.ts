@@ -56,13 +56,13 @@ export function buildSnapshotScript(input: {
 }
 
 /**
- * Stores the source of every app in a thread's sandbox at the end of a turn,
- * so the working copy survives the sandbox without a build. Best-effort by
+ * Stores the source of every app in an app's sandbox at the end of a turn, so
+ * the working copy survives the sandbox without a build. Best-effort by
  * design: a failed snapshot is logged, never surfaced to the run.
  */
 @Service()
 export class AppSourceSnapshotService {
-	/** `threadId:namespace` → digest of the last stored snapshot, to skip unchanged turns. */
+	/** `appId:namespace` → digest of the last stored snapshot, to skip unchanged turns. */
 	private readonly lastHashes = new Map<string, string>();
 
 	constructor(
@@ -73,7 +73,7 @@ export class AppSourceSnapshotService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	async snapshotAfterRun(threadId: string, user: User, rawWorkspace: Workspace): Promise<void> {
+	async snapshotAfterRun(appId: string, user: User, rawWorkspace: Workspace): Promise<void> {
 		const root = await getWorkspaceRoot(rawWorkspace);
 		const workspace = createScopedWorkspace(rawWorkspace, root);
 		const executeCommand = workspace.sandbox?.executeCommand?.bind(workspace.sandbox);
@@ -83,7 +83,7 @@ export class AppSourceSnapshotService {
 		const listed = await executeCommand(LIST_APPS_SCRIPT, [], { cwd: root });
 		const namespaces = listed.stdout.split('\n').filter((line) => /^[a-z0-9-]+$/.test(line));
 		if (namespaces.length === 0) {
-			this.logger.debug('No app to snapshot in the thread sandbox', { threadId });
+			this.logger.debug('No app to snapshot in the app sandbox', { appId });
 			return;
 		}
 
@@ -94,13 +94,13 @@ export class AppSourceSnapshotService {
 				!(await userHasScopes(user, ['app:update'], false, { projectId: app.projectId }))
 			) {
 				this.logger.debug('Skipping app snapshot: unknown app or no update scope', {
-					threadId,
+					appId,
 					namespace,
 				});
 				continue;
 			}
 
-			const key = `${threadId}:${namespace}`;
+			const key = `${appId}:${namespace}`;
 			const tarball = `${STAGING_DIR}/${namespace}-${Date.now()}-snapshot.tgz`;
 			try {
 				const packed = await executeCommand(
@@ -112,7 +112,7 @@ export class AppSourceSnapshotService {
 				if (packed.exitCode !== 0 || !match) {
 					if (!packed.stdout.includes('UNCHANGED')) {
 						this.logger.debug('App snapshot script did not produce a tarball', {
-							threadId,
+							appId,
 							namespace,
 							exitCode: packed.exitCode,
 							output: packed.stdout.slice(-1024),
@@ -122,18 +122,18 @@ export class AppSourceSnapshotService {
 				}
 				const [, hash, size] = match;
 				if (Number(size) > MAX_TARBALL_BYTES) {
-					this.logger.warn('App source is too large to snapshot', { threadId, namespace, size });
+					this.logger.warn('App source is too large to snapshot', { appId, namespace, size });
 					continue;
 				}
 				const source = await filesystem.readFile(tarball);
 				if (!Buffer.isBuffer(source)) {
-					this.logger.warn('App snapshot read-out was not binary', { threadId, namespace });
+					this.logger.warn('App snapshot read-out was not binary', { appId, namespace });
 					continue;
 				}
 				const version = await this.appsService.createSourceSnapshot(app.id, source);
 				this.lastHashes.set(key, hash);
 				this.logger.debug('Stored app source snapshot', {
-					threadId,
+					appId,
 					namespace,
 					versionId: version.id,
 				});
@@ -146,9 +146,9 @@ export class AppSourceSnapshotService {
 	}
 
 	/** A new sandbox starts from a restore, so the next turn must snapshot again. */
-	clearThread(threadId: string): void {
+	clearApp(appId: string): void {
 		for (const key of this.lastHashes.keys()) {
-			if (key.startsWith(`${threadId}:`)) this.lastHashes.delete(key);
+			if (key.startsWith(`${appId}:`)) this.lastHashes.delete(key);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-import { createScopedWorkspace } from '@n8n/agents';
+import { createScopedWorkspace, type Workspace } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import type { AppTheme } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -10,7 +10,6 @@ import { create as createTar, extract as extractTar } from 'tar';
 
 import { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview/app-source-snapshot.service';
 
-import type { AppPublishDraft } from './app-publish.service';
 import { AppsService } from './apps.service';
 import { createDistTarFilter } from './serving/dist-tar-filter';
 
@@ -58,7 +57,7 @@ const themeFiles = (existingOverrides: string, theme: AppTheme) => ({
 
 /**
  * Writes a saved theme into the app's draft source. Nothing is built or
- * published: with the thread's live sandbox the files land in the app
+ * published: with the app's live sandbox the files land in the app
  * directory (the dev server reloads them) and the draft is snapshotted;
  * otherwise the newest stored source is patched into a new snapshot. The
  * user publishes explicitly afterwards.
@@ -74,18 +73,14 @@ export class AppThemeService {
 		appId: string,
 		theme: AppTheme,
 		user: User,
-		options: { draft?: AppPublishDraft } = {},
+		options: { draft?: Workspace } = {},
 	): Promise<ThemeSaveResult> {
 		const app = await this.appsService.getApp(appId);
 
 		if (options.draft) {
 			const written = await this.writeIntoDraft(app.namespace, theme, options.draft);
 			if (written) {
-				await this.snapshotService.snapshotAfterRun(
-					options.draft.threadId,
-					user,
-					options.draft.workspace,
-				);
+				await this.snapshotService.snapshotAfterRun(appId, user, options.draft);
 				const [newest] = await this.appsService.listVersions(appId);
 				return { versionId: newest?.id ?? null };
 			}
@@ -105,15 +100,15 @@ export class AppThemeService {
 		return { versionId: version.id };
 	}
 
-	/** False when the thread sandbox does not hold this app, so the stored source is patched instead. */
+	/** False when the app sandbox does not hold this app, so the stored source is patched instead. */
 	private async writeIntoDraft(
 		namespace: string,
 		theme: AppTheme,
-		draft: AppPublishDraft,
+		draft: Workspace,
 	): Promise<boolean> {
-		// Handlers pass root-relative paths; the raw thread workspace resolves against `/`.
-		const root = await getWorkspaceRoot(draft.workspace);
-		const filesystem = createScopedWorkspace(draft.workspace, root).filesystem;
+		// Handlers pass root-relative paths; the raw app workspace resolves against `/`.
+		const root = await getWorkspaceRoot(draft);
+		const filesystem = createScopedWorkspace(draft, root).filesystem;
 		if (!filesystem) return false;
 
 		const appDir = `apps/${namespace}`;
