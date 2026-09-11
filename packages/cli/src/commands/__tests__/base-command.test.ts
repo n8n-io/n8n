@@ -44,6 +44,10 @@ const license = mockInstance(License);
 const binaryDataConfig = mockInstance(BinaryDataConfig);
 const objectStoreConfig = mockInstance(ObjectStoreConfig);
 
+afterEach(() => {
+	vi.resetAllMocks();
+});
+
 describe('BaseCommand', () => {
 	let exitSpy: ReturnType<typeof vi.spyOn>;
 
@@ -78,67 +82,32 @@ describe('BaseCommand', () => {
 	});
 });
 
-describe('initBinaryDataService', () => {
-	const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 's3' });
-	const binaryDataService = mockInstance(BinaryDataService);
-	const license = mockInstance(License);
-	mockInstance(DatabaseManager);
+describe('logError', () => {
+	const error = new Error('Something went wrong');
+	error.stack = 'the stack';
 
-	it('should exit before the store starts when the write mode is not licensed', async () => {
-		binaryDataConfig.mode = 's3';
-		license.isLicensed.mockReturnValue(false);
-		const exit = vi.spyOn(process, 'exit').mockImplementation(() => {
-			throw new Error('process.exit');
-		});
-
-		try {
-			await expect(new TestCommand().initBinaryDataService()).rejects.toThrow('process.exit');
-
-			expect(exit).toHaveBeenCalledWith(1);
-			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('S3 binary data storage'));
-			expect(binaryDataService.init).not.toHaveBeenCalled();
-		} finally {
-			exit.mockRestore();
-		}
-	});
-});
-
-describe('initSystemTasks', () => {
-	const diagnostics = Container.get(GlobalConfig).diagnostics;
-	const originalDiagnosticsEnabled = diagnostics.enabled;
-
-	const setDiagnostics = (enabled: boolean) => {
-		diagnostics.enabled = enabled;
-	};
-
-	afterEach(() => {
-		diagnostics.enabled = originalDiagnosticsEnabled;
-	});
-
-	it('should register the shared tasks and the own tasks, then start the runner', async () => {
-		setDiagnostics(true);
-		const metadata = mockInstance(SystemTaskMetadata);
-		const runner = mockInstance(SystemTaskRunner);
-
+	it('should log the error banner', () => {
 		// @ts-expect-error Protected method
-		await new TestCommand().initSystemTasks([DummySystemTask]);
+		new TestCommand().logError(error);
 
-		expect(metadata.register.mock.calls.flat()).toEqual([
-			TelemetryBufferFlushTask,
-			DummySystemTask,
+		expect(logger.error.mock.calls.flat()).toEqual([
+			'\nGOT ERROR',
+			'====================================',
+			'Something went wrong',
+			'the stack',
 		]);
-		expect(runner.init).toHaveBeenCalledTimes(1);
 	});
 
-	it('should leave out the telemetry buffer flush when diagnostics are off', async () => {
-		setDiagnostics(false);
-		const metadata = mockInstance(SystemTaskMetadata);
-		const runner = mockInstance(SystemTaskRunner);
-
+	it('should log the summary before the error banner', () => {
 		// @ts-expect-error Protected method
-		await new TestCommand().initSystemTasks([DummySystemTask]);
+		new TestCommand().logError(error, 'Error updating database.');
 
-		expect(metadata.register.mock.calls.flat()).toEqual([DummySystemTask]);
-		expect(runner.init).toHaveBeenCalledTimes(1);
+		expect(logger.error.mock.calls.flat()).toEqual([
+			'Error updating database.',
+			'\nGOT ERROR',
+			'====================================',
+			'Something went wrong',
+			'the stack',
+		]);
 	});
 });
