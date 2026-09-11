@@ -22,6 +22,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+import { clearPolicyCache } from './shared/policy-cache';
 
 const CHECK_ID = 'node-type-availability';
 
@@ -121,6 +122,7 @@ afterEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 	]);
+	await clearPolicyCache();
 });
 
 describe('POST /workflows/:workflowId/activate', () => {

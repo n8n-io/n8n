@@ -1,9 +1,11 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import type { CacheService } from '@/services/cache/cache.service';
 
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
 import type { TypeAvailabilityPolicyScopeRepository } from '../database/repositories/type-availability-policy-scope.repository';
@@ -59,6 +61,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const attachmentRepository = mock<TypeAvailabilityPolicyAttachmentRepository>();
 	const transactionRunner = mock<TransactionRunner>();
 	const eventService = mock<EventService>();
+	const cacheService = mock<CacheService>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -66,11 +69,15 @@ describe('TypeAvailabilityPolicyService', () => {
 		attachmentRepository,
 		transactionRunner,
 		eventService,
+		cacheService,
+		mockLogger(),
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(ROOT));
+		// The real repository always answers with an array; an unstubbed mock answers undefined.
+		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 	});
 
 	describe('getEffectivePolicy', () => {
@@ -1163,6 +1170,96 @@ describe('TypeAvailabilityPolicyService', () => {
 					optInAvailable: true,
 				});
 			});
+		});
+	});
+	/**
+	 * Behaviour the integration suite cannot reach: what a cache failure does, and what the
+	 * TTL is set to. `node-type-policy.store-reads.test.ts` covers hit/miss counts and the
+	 * invalidation of each write path against a real store.
+	 */
+	describe('the evaluation read cache', () => {
+		const INSTANCE_KEY = 'type-availability-policy:scope:node-types:instance';
+		const TYPE = 'n8n-nodes-base.slack';
+		const FIVE_MINUTES = 300_000;
+
+		it('caches an unconfigured scope as its allow-all object, not as an absent value', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+
+			await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(cacheService.set).toHaveBeenCalledWith(
+				INSTANCE_KEY,
+				expect.objectContaining({ scopeId: null, defaultAction: 'allow', version: 0 }),
+				FIVE_MINUTES,
+			);
+		});
+
+		it('answers from the cache without reading the store', async () => {
+			cacheService.get.mockResolvedValue({
+				scopeId: 'scope-1',
+				kind: KIND,
+				projectId: null,
+				defaultAction: 'deny',
+				version: 3,
+				rules: [],
+				attachments: [],
+			});
+
+			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(scopeRepository.findScopeByKindAndProject).not.toHaveBeenCalled();
+			expect(result.verdicts[0].action).toBe('deny');
+			expect(result.versions).toEqual([{ scope: 'instance', version: 3 }]);
+		});
+
+		it('falls back to the store when the cache read throws', async () => {
+			cacheService.get.mockRejectedValue(new Error('redis is down'));
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 7 }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(result.verdicts[0].action).toBe('deny');
+			expect(result.versions).toEqual([{ scope: 'instance', version: 7 }]);
+		});
+
+		it('still answers when the cache write throws', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			cacheService.set.mockRejectedValue(new Error('redis is down'));
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+				makeScope({ defaultAction: 'deny', version: 7 }),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+			expect(result.verdicts[0].action).toBe('deny');
+		});
+
+		it('leaves the cache alone when setDefaultAction changes nothing', async () => {
+			const unchanged = makeScope({ defaultAction: 'deny', version: 4 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(unchanged);
+			scopeRepository.updateDefaultAction.mockResolvedValue(unchanged);
+
+			await service.setDefaultAction(KIND, null, 'deny', 4, 'user-1');
+
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('does not invalidate when a policy document edit bumps no scope', async () => {
+			const policy = makePolicy({ version: 1 });
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+			scopeRepository.lockScopesByIds.mockResolvedValue([]);
+			policyRepository.findById.mockResolvedValue(policy);
+			policyRepository.updateRules.mockResolvedValue(policy);
+
+			await service.updatePolicyDocument('policy-1', [RULE], 1, 'user-1');
+
+			expect(scopeRepository.findScopeKeysByIds).not.toHaveBeenCalled();
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
 		});
 	});
 });

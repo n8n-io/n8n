@@ -107,6 +107,21 @@ one exception: an instance `delegate` is satisfied only by an explicit project `
 never by a project's bare default. `policy-evaluator.ts` owns that law and is pure, so it is
 the place to read it.
 
+### Reading it on the execution path
+
+`workflowStart` runs for every execution and every sub-execution, under a 250 ms deadline it
+fails closed on — so a slow database fails runs rather than slowing them. Evaluation therefore
+reads each scope through a `CacheService` entry keyed
+`type-availability-policy:scope:{kind}:{projectId ?? 'instance'}`, and a warm decision costs no
+queries at all. The instance entry is one row shared by every project.
+
+Every write drops the entries it changed, after its transaction commits. The 5-minute TTL is a
+backstop for the two cases a delete cannot reach, both under "Known limits".
+
+The admin reads (`getEffectivePolicy`, behind the `GET` routes) stay uncached on purpose: the
+`version` they report is what the editor sends back as `expectedVersion`, so a stale read there
+would surface as a write conflict.
+
 ## The write seal
 
 This is the first check that can deny anything, so the clearance token is now exercised end to
@@ -124,9 +139,11 @@ through a sealed repository method, and the lint rule that guards that has no al
   deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
-- **Every decision reads the database.** There is no cache. `workflowStart` runs for every
-  execution, including each sub-execution, under a 250 ms deadline. A wedged database there
-  fails runs rather than slowing them.
+- **A forced memory cache goes stale.** A write drops the cached scope it changed, which is
+  enough wherever the processes share one Redis cache — which is every deployment that has
+  more than one, unless `N8N_CACHE_BACKEND=memory` is set by hand in queue mode. There each
+  process keeps its own copy and no delete reaches it, so a policy change takes up to the
+  5-minute TTL to land. The same TTL is what bounds a row edited outside the service.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.
