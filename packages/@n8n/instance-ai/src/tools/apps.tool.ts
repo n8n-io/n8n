@@ -528,6 +528,8 @@ const gitInitCommand = (commitMessage: string) =>
 	`git init -q && git add -A && ${GIT_COMMIT} ${commitMessage} --allow-empty`;
 const GIT_UNAVAILABLE_WARNING =
 	'git is unavailable in the sandbox; the app directory is not version-controlled.';
+const CREATE_PREVIEW_HINT =
+	'The live preview beside the chat already shows this app. Do not ask the user to publish to see it.';
 
 /**
  * The live preview's dev server needs node_modules, so `create` and `restore`
@@ -673,6 +675,7 @@ async function handleCreate(
 			app: created.app,
 			workspacePath,
 			installed,
+			preview: CREATE_PREVIEW_HINT,
 			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	} catch (error) {
@@ -1344,7 +1347,7 @@ export function createAppsTool(context: InstanceAiContext) {
 
 	return new Tool(APPS_TOOL_ID)
 		.description(
-			'Create, restore, bind and publish user-facing web apps served by n8n at /apps/<namespace>/. ' +
+			'Create, restore, bind and publish user-facing web apps. The user sees the app in the live preview next to the chat while you edit; publishing only makes it public at /apps/<namespace>/ and is never needed to view or test it. ' +
 				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
 				"`create` registers the app, copies a starter template into apps/<namespace>/ in the app's own sandbox and installs its dependencies; " +
 				"edit the files there with the workspace tools and `sandbox: 'app'`, and the live preview updates by itself. Never build to check your work. " +

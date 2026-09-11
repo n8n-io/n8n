@@ -306,7 +306,10 @@ workflows, tables and agents that may be public. `principal` is `null`.
   credentials, whoever the visitor is. It appears in the executions list with
   mode `integrated` and the custom data `appId`, `appNamespace` and
   `appBindingKey`.
-- Only the published version runs. Draft changes take effect on publish.
+- Only the published version of the workflow runs. Draft changes to the
+  workflow take effect when the user publishes the workflow in n8n. This is
+  about the workflow, not the app: the app's live preview shows every edit
+  without a publish.
 - Rate limit: 60 calls per minute per IP for each runtime route by default
   (instance setting).
 - Concurrency: at most 10 calls per main process hold a run at the same time by

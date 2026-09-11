@@ -130,6 +130,8 @@ const STORED_SUPPORT_BINDING = {
 	permissions: ['chat', 'history'],
 };
 const TYPES_PATH = 'apps/greeter/src/n8n-bindings.d.ts';
+const PREVIEW_HINT =
+	'The live preview beside the chat already shows this app. Do not ask the user to publish to see it.';
 
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
 const fail = (stdout: string, exitCode = 1) => ({ exitCode, stdout, stderr: '' });
@@ -293,6 +295,13 @@ describe('apps tool', () => {
 			expect(tool.description).toContain('app-builder');
 			expect(tool.description).toContain('load_skill');
 		});
+
+		it('opens with the live preview and makes publishing optional for viewing', () => {
+			const tool = createAppsTool(createMockContext());
+			expect(tool.description).toMatch(
+				/^Create, restore, bind and publish user-facing web apps\. The user sees the app in the live preview next to the chat while you edit; publishing only makes it public at \/apps\/<namespace>\/ and is never needed to view or test it\./,
+			);
+		});
 	});
 
 	describe('slugifyNamespace', () => {
@@ -345,6 +354,7 @@ describe('apps tool', () => {
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				installed: true,
+				preview: PREVIEW_HINT,
 			});
 		});
 
@@ -380,6 +390,7 @@ describe('apps tool', () => {
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				installed: false,
+				preview: PREVIEW_HINT,
 				warnings: [expect.stringMatching(/npm install failed.*run `npm install`.*E404 left-pad/)],
 			});
 		});
