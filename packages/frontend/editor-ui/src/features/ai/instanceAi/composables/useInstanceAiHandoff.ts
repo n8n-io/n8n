@@ -2,8 +2,10 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
 	type InstanceAiAgentAttachment,
+	type InstanceAiAppAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiNodesAttachment,
 	type InstanceAiThreadOrigin,
@@ -23,6 +25,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_VIEW,
 } from '../constants';
@@ -217,6 +220,30 @@ export function clearPendingAgentAttachment(threadId: string): void {
 	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
+const pendingAppAttachmentKey = (threadId: string) => `n8n-instance-ai-app-attachment:${threadId}`;
+
+export function stashPendingAppAttachment(
+	threadId: string,
+	attachment: InstanceAiAppAttachment,
+): void {
+	localStorage.setItem(pendingAppAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function getPendingAppAttachment(threadId: string): InstanceAiAppAttachment | null {
+	const raw = localStorage.getItem(pendingAppAttachmentKey(threadId));
+	if (!raw) return null;
+	try {
+		const parsed = instanceAiAppAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingAppAttachment(threadId: string): void {
+	localStorage.removeItem(pendingAppAttachmentKey(threadId));
+}
+
 /** Drop a stashed opening message without sending it (e.g. its thread is gone). */
 export function clearPendingFirstMessage(threadId: string): void {
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
@@ -254,6 +281,7 @@ export function clearPendingThreadHandoff(threadId: string): void {
 	clearPendingHandoffContext(threadId);
 	clearPendingComposerDraft(threadId);
 	clearPendingAgentAttachment(threadId);
+	clearPendingAppAttachment(threadId);
 	clearPendingFirstMessage(threadId);
 	clearPendingDraftAttachment(threadId);
 }
@@ -388,6 +416,62 @@ export function useInstanceAiHandoff() {
 			stashPendingAgentAttachment(threadId, attachment);
 			if (options?.context) stashPendingHandoffContext(threadId, options.context);
 			if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			try {
+				const failure = await router.push({
+					name: INSTANCE_AI_THREAD_VIEW,
+					params: { threadId },
+				});
+				if (failure) throw new Error('Navigation failed');
+			} catch {
+				clearPendingThreadHandoff(threadId);
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	/**
+	 * Open (or hand off to) a thread bound to an existing app — "Open in AI
+	 * Assistant" on the Apps builder page. Unlike an agent attachment, an app
+	 * attachment is never "pending": `appId` is always a real, already-created
+	 * app, so there is no id-resolution step and no `isNewApp` chip state.
+	 */
+	async function openAppArtifactThread(
+		attachment: InstanceAiAppAttachment,
+		launch: InstanceAiThreadLaunch,
+	): Promise<boolean> {
+		if (!instanceAiReady.value) {
+			await routeToSetup();
+			return false;
+		}
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, attachment.projectId, launch);
+			} catch {
+				showOpenFailed();
+				return false;
+			}
+			try {
+				await instanceAiStore.updateThreadMetadata(threadId, {
+					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+						appId: attachment.appId,
+						projectId: attachment.projectId,
+						...(attachment.name ? { name: attachment.name } : {}),
+					},
+				});
+			} catch {
+				await instanceAiStore.deleteThread(threadId);
+				showOpenFailed();
+				return false;
+			}
+			stashPendingAppAttachment(threadId, attachment);
 			try {
 				const failure = await router.push({
 					name: INSTANCE_AI_THREAD_VIEW,
@@ -544,5 +628,11 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext, openAgentArtifactThread, openThreadForDraft };
+	return {
+		startThread,
+		openThreadWithContext,
+		openAgentArtifactThread,
+		openAppArtifactThread,
+		openThreadForDraft,
+	};
 }

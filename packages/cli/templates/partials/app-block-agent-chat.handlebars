@@ -1,0 +1,14 @@
+{{#if available}}
+<section class='app-chat' data-app-chat data-chat-url='{{chatUrl}}'>
+	<div class='app-chat-messages' data-app-chat-messages>
+		{{#if welcome}}<div class='app-chat-bubble app-chat-bubble--assistant'>{{welcome}}</div>{{/if}}
+	</div>
+	<form class='app-chat-form'>
+		<textarea name='message' rows='2' maxlength='4000' required placeholder='{{placeholder}}'></textarea>
+		<button type='submit' class='bg-brand hover:bg-brand-hover text-text-inverse rounded-md p-sm'>Send</button>
+	</form>
+</section>
+<script src='{{scriptHref}}' defer></script>
+{{else}}
+<div class='app-chat app-muted'>Chat is not available on this instance.</div>
+{{/if}}

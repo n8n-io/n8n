@@ -108,6 +108,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
 	if (toolName === 'data-tables') return 'table';
+	if (toolName === 'apps') return 'app-window';
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		toolName === 'workflows' ||

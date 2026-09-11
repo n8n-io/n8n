@@ -6,12 +6,16 @@ import type {
 } from '@n8n/api-types';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/** App artifacts: URL slug the app is served under (`/apps/<namespace>/`). */
+	namespace?: string;
+	/** App artifacts: absolute URL of the last published version, once published. */
+	url?: string;
 	/**
 	 * Set to true when the run-finish reap archived this workflow — a
 	 * stepping-stone the agent created but never promoted to the main
@@ -53,6 +57,12 @@ type AgentBuilderTargetMetadata = {
 	name?: string;
 };
 
+type AppBuilderTargetMetadata = {
+	appId: string;
+	projectId: string;
+	name?: string;
+};
+
 type PendingAgentTargetMetadata = {
 	agentId: string;
 	projectId: string;
@@ -85,6 +95,8 @@ function recordProduced(
 				createdAt: entry.createdAt ?? existing.createdAt,
 				updatedAt: entry.updatedAt ?? existing.updatedAt,
 				projectId: entry.projectId ?? existing.projectId,
+				namespace: entry.namespace ?? existing.namespace,
+				url: entry.url ?? existing.url,
 			}
 		: entry;
 	col.produced.set(entry.id, merged);
@@ -128,6 +140,7 @@ const ARTIFACT_TOOLS = new Set([
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
+	'apps',
 ]);
 const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 function entryFromAgentBuilderTarget(
@@ -227,6 +240,32 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			id: result.agentId,
 			name: optionalString(result.agentName) ?? existing?.name ?? 'Untitled',
 		});
+	}
+
+	// --- Apps --------------------------------------------------------------
+	// Every `apps` action except the read-only `list`/`get`/`code-api`/`preview-page`
+	// returns a flat result carrying `appId` (+ `namespace`/`url` where the
+	// handler already has them) — produced. `{ denied }` results carry no
+	// `appId` and register nothing.
+	if (tc.toolName === 'apps') {
+		const action = optionalString(tc.args?.action);
+		const isProducingAction =
+			action !== 'list' && action !== 'get' && action !== 'code-api' && action !== 'preview-page';
+		if (isProducingAction && typeof result.appId === 'string') {
+			const existing = col.produced.get(result.appId);
+			const entry: ResourceEntry = {
+				type: 'app',
+				id: result.appId,
+				name: optionalString(result.name) ?? existing?.name ?? 'Untitled',
+			};
+			const namespace = optionalString(result.namespace);
+			const url = optionalString(result.url);
+			const projectId = optionalString(result.projectId);
+			if (namespace !== undefined) entry.namespace = namespace;
+			if (url !== undefined) entry.url = url;
+			if (projectId !== undefined) entry.projectId = projectId;
+			recordProduced(col, entry);
+		}
 	}
 
 	// --- Credentials -----------------------------------------------------
@@ -354,6 +393,15 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
+		} else if (attachment.type === 'app') {
+			const entry: ResourceEntry = {
+				type: 'app',
+				id: attachment.appId,
+				name: attachment.name ?? 'Untitled',
+				projectId: attachment.projectId,
+			};
+			if (attachment.namespace !== undefined) entry.namespace = attachment.namespace;
+			recordProduced(col, entry);
 		}
 	}
 }
@@ -380,6 +428,25 @@ function enrichAgentFromBuilderTarget(
 		},
 		{ linkable: existing !== undefined },
 	);
+}
+
+/**
+ * Surface the app a thread is bound to before any message mentions it, so the
+ * preview tab exists as soon as the thread has a binding recorded.
+ */
+function enrichAppFromBuilderTarget(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+): void {
+	if (!target) return;
+	const existing = col.produced.get(target.appId);
+	if (existing && existing.type !== 'app') return;
+	recordProduced(col, {
+		type: 'app',
+		id: target.appId,
+		name: existing?.name ?? target.name ?? 'Untitled',
+		projectId: target.projectId,
+	});
 }
 
 function enrichWorkflowNames(
@@ -457,6 +524,7 @@ export function useResourceRegistry(
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
+	appBuilderTarget?: () => AppBuilderTargetMetadata | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -483,6 +551,7 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
+			enrichAppFromBuilderTarget(col, appBuilderTarget?.());
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

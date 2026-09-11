@@ -10,6 +10,7 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildAppsSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
@@ -33,6 +34,7 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -255,6 +257,9 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.createApp).toBe('blocked');
+		expect(result.deleteAppPage).toBe('blocked');
+		expect(result.publishApp).toBe('blocked');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -552,6 +557,14 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+});
+
+describe('apps session grant keys', () => {
+	it('builds action-scoped keys matching the frontend always-allow format', () => {
+		expect(buildAppsSessionGrantKey('create')).toBe('apps:create');
+		expect(buildAppsSessionGrantKey('delete-page')).toBe('apps:delete-page');
+		expect(buildAppsSessionGrantKey('publish')).toBe('apps:publish');
 	});
 });
 
@@ -1022,6 +1035,45 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
 		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('instanceAiAppAttachmentSchema', () => {
+	const appAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'app',
+		appId: 'app-1',
+		projectId: 'proj-1',
+		name: 'Orders dashboard',
+		namespace: 'orders-dashboard',
+		...overrides,
+	});
+
+	it('accepts a full app attachment', () => {
+		expect(instanceAiAppAttachmentSchema.safeParse(appAttachment()).success).toBe(true);
+	});
+
+	it('accepts an app attachment without the optional name/namespace', () => {
+		const result = instanceAiAppAttachmentSchema.safeParse({
+			type: 'app',
+			appId: 'app-1',
+			projectId: 'proj-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing appId', () => {
+		const result = instanceAiAppAttachmentSchema.safeParse(appAttachment({ appId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a missing projectId', () => {
+		const result = instanceAiAppAttachmentSchema.safeParse(appAttachment({ projectId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('is also accepted by instanceAiResourceAttachmentSchema and instanceAiAttachmentSchema', () => {
+		expect(instanceAiResourceAttachmentSchema.safeParse(appAttachment()).success).toBe(true);
+		expect(instanceAiAttachmentSchema.safeParse(appAttachment()).success).toBe(true);
 	});
 });
 

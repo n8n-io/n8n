@@ -25,6 +25,7 @@ import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueus
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
+	InstanceAiAppAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
@@ -43,6 +44,7 @@ import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getAppBuilderTargetFromThreadMetadata,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
@@ -52,12 +54,14 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	clearPendingAppAttachment,
 	consumePendingDraftAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
@@ -68,6 +72,7 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -101,6 +106,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -150,6 +156,10 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+
+// No resolution step, unlike currentAgentAttachment: an app attachment's
+// appId is always a real, already-created app.
+const pendingAppAttachment = ref<InstanceAiAppAttachment | null>(null);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -289,6 +299,8 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () =>
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 });
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
@@ -306,8 +318,38 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
+
+// The app this thread is bound to, once one exists — written once, from the
+// first `apps` result carrying an appId (via the resource registry's
+// producedArtifacts) or from an `app` attachment the thread was opened with.
+// Never overwritten afterward: this thread edits one app.
+watch(
+	() => {
+		for (const entry of thread.producedArtifacts.values()) {
+			if (entry.type === 'app') return entry;
+		}
+		return undefined;
+	},
+	(entry) => {
+		if (!entry || !entry.projectId) return;
+		if (getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id))) return;
+		void store
+			.updateThreadMetadata(thread.id, {
+				[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+					appId: entry.id,
+					projectId: entry.projectId,
+					name: entry.name,
+				},
+			})
+			.catch((error: unknown) => {
+				toast.showError(error, i18n.baseText('generic.error'));
+			});
+	},
+	{ immediate: true },
+);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -694,6 +736,19 @@ function isCurrentThreadRuntime(): boolean {
 }
 
 const composerContextChip = computed(() => {
+	const appAttachment = pendingAppAttachment.value;
+	if (appAttachment) {
+		return {
+			type: 'app-artifact' as const,
+			appId: appAttachment.appId,
+			projectId: appAttachment.projectId,
+			key: `pending-app:${appAttachment.appId}`,
+			label: appAttachment.name ?? appAttachment.appId,
+			icon: 'app-window',
+			isPending: true,
+		};
+	}
+
 	const agentAttachment = currentAgentAttachment.value;
 	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
 		return {
@@ -758,6 +813,11 @@ function reconnectThreadAfterHydration(): void {
 	if (agentAttachment) {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
+	}
+	const appAttachment = getPendingAppAttachment(props.threadId);
+	if (appAttachment) {
+		pendingAppAttachment.value = appAttachment;
+		preview.openAppPreview(appAttachment.appId, appAttachment.projectId);
 	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
@@ -896,9 +956,15 @@ function handleSubmit(
 	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
-	const submittedAttachments = agentAttachment
-		? [...(attachments ?? []), agentAttachment]
-		: attachments;
+	const queuedAppAttachment = pendingAppAttachment.value;
+	const submittedAttachments =
+		agentAttachment || queuedAppAttachment
+			? [
+					...(attachments ?? []),
+					...(agentAttachment ? [agentAttachment] : []),
+					...(queuedAppAttachment ? [queuedAppAttachment] : []),
+				]
+			: attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
 
@@ -935,6 +1001,10 @@ function handleSubmit(
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
 				pendingAgentAttachment.value = null;
+			}
+			if (queuedAppAttachment && pendingAppAttachment.value === queuedAppAttachment) {
+				clearPendingAppAttachment(props.threadId);
+				pendingAppAttachment.value = null;
 			}
 		});
 }
@@ -1064,6 +1134,12 @@ function dismissPendingComposerContext(key: string): boolean {
 
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
+
+	if (pendingAppAttachment.value) {
+		clearPendingAppAttachment(props.threadId);
+		pendingAppAttachment.value = null;
+		return;
+	}
 
 	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
@@ -1429,6 +1505,18 @@ async function dismissComposerContextChip() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiAppPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAppId.value &&
+									preview.activeAppProjectId.value
+								"
+								:class="$style.previewSlot"
+								:app-id="preview.activeAppId.value"
+								:project-id="preview.activeAppProjectId.value"
+								:page-id="preview.activeAppPageId.value"
+								:refresh-key="preview.appRefreshKey.value"
 							/>
 						</div>
 					</TabsRoot>

@@ -149,6 +149,36 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
+		it('answers a client that prefers JSON with the completion spec instead of the page', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Done',
+					completionMessage: 'Thanks <b>you</b>',
+					redirectUrl: 'https://example.com/next',
+					respondWith: 'text',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getRequestObject.mockReturnValue(
+				mock<Request>({ headers: {}, query: {}, accepts: () => 'json' } as never),
+			);
+			const res = mock<Response>({ json: vi.fn(), render: vi.fn(), setHeader: vi.fn() });
+
+			await renderFormCompletion(mockWebhookFunctions, res, trigger);
+
+			expect(res.render).not.toHaveBeenCalled();
+			expect(res.setHeader).not.toHaveBeenCalled();
+			expect(res.json).toHaveBeenCalledWith({
+				kind: 'completion',
+				title: 'Done',
+				message: 'Thanks <b>you</b>',
+				formTitle: 'Form Title',
+				redirectUrl: 'https://example.com/next',
+				responseText: '',
+			});
+		});
+
 		it('should pass the attribution link to the completion template', async () => {
 			// The completion template renders the "Form automated with n8n" footer as
 			// `<a href={{n8nWebsiteLink}} ...>`. Without the link in the render context

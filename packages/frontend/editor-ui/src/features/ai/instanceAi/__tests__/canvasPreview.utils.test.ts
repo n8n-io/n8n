@@ -12,6 +12,8 @@ import {
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
+	isAgentEditingApp,
+	getLatestAppResult,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -1386,5 +1388,127 @@ describe('isAgentEditingAgent', () => {
 		});
 		const parent = makeAgentNode({ children: [builder] });
 		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
+	});
+});
+
+describe('getLatestAppResult', () => {
+	test('carries the page id of a page-scoped result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: false,
+					args: { action: 'set-content', appId: 'app-1', pageId: 'page-1' },
+					result: {
+						appId: 'app-1',
+						projectId: 'p-1',
+						pageId: 'page-1',
+						path: 'about',
+						blockCount: 2,
+					},
+				}),
+			],
+		});
+
+		expect(getLatestAppResult(node)).toMatchObject({
+			appId: 'app-1',
+			projectId: 'p-1',
+			pageId: 'page-1',
+		});
+	});
+
+	test('leaves the page id undefined for an app-scoped result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: false,
+					args: { action: 'publish', appId: 'app-1' },
+					result: { appId: 'app-1', projectId: 'p-1', versionId: 'v-1', url: 'https://x/apps/a/' },
+				}),
+			],
+		});
+
+		expect(getLatestAppResult(node)?.pageId).toBeUndefined();
+	});
+});
+
+describe('isAgentEditingApp', () => {
+	test.each([
+		'create',
+		'update-app',
+		'create-page',
+		'update-page',
+		'delete-page',
+		'set-content',
+		'publish',
+	] as const)('locks while an in-flight %s call targets the app', (action) => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: true,
+					args: { action, appId: 'app-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingApp(node, 'app-1')).toBe(true);
+	});
+
+	test('does not lock once the call has settled (isLoading false)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: false,
+					args: { action: 'set-content', appId: 'app-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingApp(node, 'app-1')).toBe(false);
+	});
+
+	test.each(['list', 'get', 'code-api', 'preview-page'])(
+		'does not lock for the read-only action %s',
+		(action) => {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolName: 'apps',
+						isLoading: true,
+						args: { action, appId: 'app-1' },
+					}),
+				],
+			});
+			expect(isAgentEditingApp(node, 'app-1')).toBe(false);
+		},
+	);
+
+	test('does not lock when the in-flight call targets a different app id', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: true,
+					args: { action: 'set-content', appId: 'app-other' },
+				}),
+			],
+		});
+		expect(isAgentEditingApp(node, 'app-1')).toBe(false);
+	});
+
+	test('recurses into children', () => {
+		const child = makeAgentNode({
+			agentId: 'child-1',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					isLoading: true,
+					args: { action: 'publish', appId: 'app-1' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({ children: [child] });
+		expect(isAgentEditingApp(parent, 'app-1')).toBe(true);
 	});
 });

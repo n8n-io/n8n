@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createWorkflow, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { AppRepository } from '@/modules/apps/app.repository';
+import { AppsService } from '@/modules/apps/apps.service';
 import { PageRepository } from '@/modules/apps/page.repository';
+import { AppTokenService } from '@/modules/apps/serving/app-token.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -38,7 +41,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate(['App', 'AppVersion', 'Page']);
 });
 
 describe('POST /projects/:projectId/apps', () => {
@@ -91,15 +94,356 @@ describe('GET /projects/:projectId/apps', () => {
 	});
 });
 
-describe('GET /projects/:projectId/apps/data-workflows', () => {
-	// Regression test: this route must be registered before GET /:appId, or
-	// Express matches 'data-workflows' as an appId and 404s looking for that app.
-	test('lists data workflows without being shadowed by GET /:appId', async () => {
+describe('GET /projects/:projectId/apps/:appId', () => {
+	test('reports no active version and no publishedAt before publishing', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
 		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/apps/data-workflows`)
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
 			.expect(200);
 
-		expect(response.body.data).toEqual([]);
+		expect(response.body.data.activeVersionId).toBeNull();
+		expect(response.body.data.publishedAt).toBeNull();
+	});
+
+	test('reports the active version and its publishedAt after publishing', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const publishResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(200);
+
+		expect(response.body.data.activeVersionId).toBe(publishResponse.body.data.versionId);
+		expect(response.body.data.publishedAt).not.toBeNull();
+	});
+});
+
+describe('POST /projects/:projectId/apps/:appId/publish', () => {
+	test('publishes a snapshot of the draft pages and activates it', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		expect(response.body.data.versionId).toBeDefined();
+		expect(response.body.data.url).toBe('/apps/my-app');
+	});
+
+	test('rejects publishing when a draft page has invalid content, with the zod issues', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'b1', type: 'not-a-type', data: {} }],
+		});
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(400);
+
+		expect(response.body.meta.pages).toEqual([expect.objectContaining({ pageId: page.id })]);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authMemberAgent.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`).expect(403);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/versions and activate', () => {
+	test('lists versions newest first and marks the active one', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const first = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+		const second = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions`)
+			.expect(200);
+
+		expect(response.body.data).toEqual([
+			expect.objectContaining({ id: second.body.data.versionId, active: true }),
+			expect.objectContaining({ id: first.body.data.versionId, active: false }),
+		]);
+	});
+
+	test('activating an older version rolls back which one is active', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		await pageRepository.createPage(app.id, null, '');
+
+		const first = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`)
+			.expect(200);
+		await authOwnerAgent.post(`/projects/${ownerProject.id}/apps/${app.id}/publish`).expect(200);
+
+		await authOwnerAgent
+			.post(
+				`/projects/${ownerProject.id}/apps/${app.id}/versions/${first.body.data.versionId}/activate`,
+			)
+			.expect(200);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}`)
+			.expect(200);
+		expect(response.body.data.activeVersionId).toBe(first.body.data.versionId);
+	});
+
+	test('activating an unknown version answers 404', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/versions/does-not-exist/activate`)
+			.expect(404);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/pages/:pageId/preview', () => {
+	test('renders the draft content even when unpublished', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'h1', type: 'header', data: { text: 'Draft heading', level: 1 } }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		expect(response.headers['content-type']).toContain('text/html');
+		expect(response.text).toContain('Draft heading');
+		expect(response.headers['x-n8n-app-render-errors']).toBeUndefined();
+	});
+
+	test('reports a block that fails to render in a header and leaves it out of the html', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [
+				{ id: 'broken', type: 'html', data: { template: '{{#if}}' } },
+				{ id: 'h1', type: 'header', data: { text: 'Still here', level: 1 } },
+			],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		const errors = JSON.parse(response.headers['x-n8n-app-render-errors']);
+		expect(Object.keys(errors)).toEqual(['broken']);
+		expect(errors.broken).toMatch(/Parse error/);
+		expect(errors.broken).not.toMatch(/\nat /);
+		expect(response.text).toContain('Still here');
+		expect(response.text).not.toContain('Parse error');
+	});
+
+	test('gives action URLs the full rendered page path, from ?path= and ?params=', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const clients = await pageRepository.createPage(app.id, null, 'clients');
+		const client = await pageRepository.createPage(app.id, clients.id, ':id', [
+			{
+				id: 'c1',
+				type: 'code',
+				data: {
+					source: "export function render(ctx) { return <a href={ctx.actionUrl('go')}>go</a>; }",
+				},
+			},
+		]);
+		const url = `/projects/${ownerProject.id}/apps/${app.id}/pages/${client.id}/preview`;
+
+		const editorStyle = await authOwnerAgent
+			.get(url)
+			.query({ path: 'clients/:id', params: JSON.stringify({ id: '42' }) })
+			.expect(200);
+		expect(editorStyle.text).toContain('?_path=%2Fapps%2Fmy-app%2Fclients%2F42');
+
+		const toolStyle = await authOwnerAgent.get(url).query({ path: 'clients/7' }).expect(200);
+		expect(toolStyle.text).toContain('?_path=%2Fapps%2Fmy-app%2Fclients%2F7');
+	});
+
+	test('fills a dynamic segment from ?params= into the interpolated content', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, ':id');
+		await pageRepository.updatePage(page, {
+			content: [{ id: 'p1', type: 'paragraph', data: { text: 'Client {{ params.id }}' } }],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.query({ params: JSON.stringify({ id: '42' }) })
+			.expect(200);
+
+		expect(response.text).toContain('Client 42');
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(403);
+	});
+
+	test('issues a one-time draft code for the editor user in a header, never in the html', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/preview`)
+			.expect(200);
+
+		const code: string = response.headers['x-n8n-app-code'];
+		expect(code).toMatch(/^[0-9a-f]{64}$/);
+		expect(response.headers['cache-control']).toBe('no-store');
+		expect(response.text).not.toContain(code);
+
+		expect(await Container.get(CacheService).get(`apps:code:${code}`)).toEqual({
+			appId: app.id,
+			viewerId: owner.id,
+			sessionToken: expect.stringMatching(/^ey/),
+			mode: 'draft',
+		});
+		const appTokenService = Container.get(AppTokenService);
+		const pair = await appTokenService.exchangeCode(code);
+		expect(appTokenService.verifyAccess(pair!.accessToken)).toEqual({
+			appId: app.id,
+			viewerId: owner.id,
+			mode: 'draft',
+		});
+	});
+
+	test('AppsService.preview collects ctx.log lines per code block next to the render errors', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			content: [
+				{ id: 'broken', type: 'html', data: { template: '{{#if}}' } },
+				{
+					id: 'chatty',
+					type: 'code',
+					data: { source: 'export function render(ctx) { ctx.log("hello", 1); return ""; }' },
+				},
+			],
+		});
+
+		const { errors, logs } = await Container.get(AppsService).preview(
+			app.id,
+			page.id,
+			undefined,
+			{},
+		);
+
+		expect(Object.keys(errors)).toEqual(['broken']);
+		expect(logs).toEqual({ chatty: [expect.stringContaining('hello')] });
+	});
+});
+
+describe('Page layouts', () => {
+	const slot = { id: 'slot', type: 'slot', data: {} };
+	const banner = { id: 'banner', type: 'header', data: { text: 'Banner', level: 2 } };
+
+	test('PATCH stores a layout and null resets it to inherit', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: [banner, slot] })
+			.expect(200);
+		expect(response.body.data.layout).toEqual([banner, slot]);
+
+		const reset = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: null })
+			.expect(200);
+		expect(reset.body.data.layout).toBeNull();
+	});
+
+	test('PATCH rejects a layout without a slot', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ layout: [banner] })
+			.expect(400);
+	});
+
+	test('GET layout-preview returns the inherited layout, sanitized, with an empty slot', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const parent = await pageRepository.createPage(app.id, null, 'clients');
+		await pageRepository.updatePage(parent, {
+			layout: [
+				{
+					id: 'menu',
+					type: 'html',
+					data: { template: '<nav>Menu</nav><script>alert(1)</script>' },
+				},
+				slot,
+			],
+		});
+		const child = await pageRepository.createPage(app.id, parent.id, 'orders', [
+			{ id: 'h1', type: 'header', data: { text: 'Orders', level: 1 } },
+		]);
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${child.id}/layout-preview`)
+			.expect(200);
+
+		expect(response.body.data.ownerPageId).toBe(parent.id);
+		expect(response.body.data.html).toContain('data-block-id="menu"');
+		expect(response.body.data.html).toContain('<nav>Menu</nav>');
+		expect(response.body.data.html).toContain('<main class="app-main" data-app-slot></main>');
+		expect(response.body.data.html).not.toContain('script');
+		expect(response.body.data.html).not.toContain('Orders');
+		expect(response.body.data.errors).toEqual({});
+	});
+
+	test('GET layout-preview reports a layout block that fails to render', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+		await pageRepository.updatePage(page, {
+			layout: [{ id: 'menu', type: 'html', data: { template: '{{#if}}' } }, slot],
+		});
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
+			.expect(200);
+
+		expect(Object.keys(response.body.data.errors)).toEqual(['menu']);
+		expect(response.body.data.html).toContain('data-block-id="menu"');
+	});
+
+	test('GET layout-preview returns nulls for the built-in shell', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
+			.expect(200);
+
+		expect(response.body.data).toEqual({ ownerPageId: null, html: null, errors: {} });
+	});
+
+	test('GET layout-preview rejects a non-member with 403', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, '');
+
+		await authMemberAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}/layout-preview`)
+			.expect(403);
 	});
 });
 
@@ -123,6 +467,72 @@ describe('App pages', () => {
 			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
 			.expect(200);
 		expect(listResponse.body.data).toHaveLength(2);
+	});
+
+	test('stores the content given at creation', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const content = [{ id: 'h1', type: 'header', data: { text: 'Submissions', level: 1 } }];
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'submissions', content })
+			.expect(200);
+		expect(response.body.data.content).toEqual(content);
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.expect(200);
+		expect(listResponse.body.data[0].content).toEqual(content);
+	});
+
+	test('stores the title given at creation, and null when none is given', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		const titled = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'clients', title: 'Clients' })
+			.expect(200);
+		expect(titled.body.data.title).toBe('Clients');
+
+		const untitled = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'orders' })
+			.expect(200);
+		expect(untitled.body.data.title).toBeNull();
+
+		const listResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.expect(200);
+		expect(listResponse.body.data.map((page: { title: string | null }) => page.title)).toEqual(
+			expect.arrayContaining(['Clients', null]),
+		);
+	});
+
+	test('PATCH changes the title on its own and null resets it', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+		const page = await pageRepository.createPage(app.id, null, 'clients', null, null, 'Clients');
+
+		const renamed = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ title: 'Customers' })
+			.expect(200);
+		expect(renamed.body.data.title).toBe('Customers');
+		expect(renamed.body.data.route).toBe('clients');
+
+		const reset = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
+			.send({ title: null })
+			.expect(200);
+		expect(reset.body.data.title).toBeNull();
+	});
+
+	test('rejects a blank title', async () => {
+		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
+
+		await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
+			.send({ route: 'clients', title: '   ' })
+			.expect(400);
 	});
 
 	test('accepts an empty route, meaning this page is the index page for its level', async () => {
@@ -292,36 +702,6 @@ describe('App pages', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${appB.id}/pages`)
 			.send({ route: 'child', parentPageId: pageInA.id })
-			.expect(404);
-	});
-
-	test("sets and clears a page's dataWorkflowId", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		const workflow = await createWorkflow({}, ownerProject);
-
-		const setResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
-			.expect(200);
-		expect(setResponse.body.data.dataWorkflowId).toBe(workflow.id);
-
-		const clearResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: null })
-			.expect(200);
-		expect(clearResponse.body.data.dataWorkflowId).toBeNull();
-	});
-
-	test("rejects a dataWorkflowId the caller can't read", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		// Owned by no one, so no SharedWorkflow row grants the owner access to it.
-		const workflow = await createWorkflow();
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
 			.expect(404);
 	});
 });

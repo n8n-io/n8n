@@ -4,8 +4,11 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| activeVersionId | varchar(36) |  | true |  | [public.app_version](public.app_version.md) | app_version served at /apps/\<namespace\>; null means unpublished |
+| auth | varchar(16) | 'public'::character varying | false |  |  | Who may open the App: anyone (public) or a signed-in user of this instance (n8n) |
+| components | text |  | true |  |  | TSX source of the shared components that code blocks import from app/components; null when the App has none |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.page](public.page.md) |  |  |
+| id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.page](public.page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  | URL path segment under /apps/; unique per project |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
@@ -16,8 +19,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_app_auth | CHECK | CHECK (((auth)::text = ANY ((ARRAY['public'::character varying, 'n8n'::character varying])::text[]))) |
 | FK_f84dd7eb539e46e0c233fa09b20 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9478629fc093d229df09e560aea | PRIMARY KEY | PRIMARY KEY (id) |
+| app_activeVersionId_foreign | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES app_version(id) ON DELETE SET NULL |
+| app_auth_not_null | n | NOT NULL auth |
 | app_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_id_not_null | n | NOT NULL id |
 | app_name_not_null | n | NOT NULL name |
@@ -37,10 +43,15 @@
 ```mermaid
 erDiagram
 
+"public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.page" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.app" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.app" {
+  varchar_36_ activeVersionId FK
+  varchar_16_ auth
+  text components
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
   varchar_128_ name
@@ -49,13 +60,23 @@ erDiagram
   json theme
   timestamp_3__with_time_zone updatedAt
 }
+"public.app_version" {
+  varchar_36_ appId FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ id
+  json snapshot
+  timestamp_3__with_time_zone updatedAt
+}
 "public.page" {
   varchar_36_ appId FK
   json content
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  json layout
   varchar_36_ parentPageId FK
   varchar_255_ route
+  varchar_255_ title
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

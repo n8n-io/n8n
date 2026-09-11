@@ -40,6 +40,7 @@ const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
@@ -128,6 +129,11 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
 	}
 
+	// Apps module active + adapter wired — presence of appService is the gate.
+	if (context.appService) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
+	}
+
 	return createToolRegistry(tools);
 }
 
@@ -176,6 +182,11 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([DOMAIN_TOOL_IDS.PARSE_FILE, loadParseFileTool().createParseFileTool(context)]);
+	}
+
+	// Apps module active + adapter wired — presence of appService is the gate.
+	if (context.appService) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
 	}
 
 	return createToolRegistry(tools);

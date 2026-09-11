@@ -265,6 +265,55 @@ describe('extractArtifacts', () => {
 		});
 		expect(extractArtifacts(node)).toEqual([]);
 	});
+
+	test('returns app artifact from a create-page tool call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					args: { action: 'create-page' },
+					result: { appId: 'app-1', name: 'Orders dashboard', projectId: 'proj-1' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)).toEqual([
+			expect.objectContaining({
+				type: 'app',
+				resourceId: 'app-1',
+				name: 'Orders dashboard',
+				projectId: 'proj-1',
+			}),
+		]);
+	});
+
+	test.each(['list', 'get', 'code-api', 'preview-page'] as const)(
+		'does not return an app artifact for %s',
+		(action) => {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolName: 'apps',
+						args: { action },
+						result: { appId: 'app-1', name: 'Orders dashboard' },
+					}),
+				],
+			});
+			expect(extractArtifacts(node)).toEqual([]);
+		},
+	);
+
+	test('falls back to Untitled when an apps result has no name', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					args: { action: 'publish' },
+					result: { appId: 'app-1' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)[0].name).toBe('Untitled');
+	});
 });
 
 describe('buildTimelineBlocks', () => {

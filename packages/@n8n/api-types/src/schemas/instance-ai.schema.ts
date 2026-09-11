@@ -78,6 +78,15 @@ export function buildDataTablesSessionGrantKey(action: string): string {
 	return `data-tables:${action}`;
 }
 
+/**
+ * Builds the thread-level "always allow" grant key for an `apps` tool action
+ * (e.g. `create`, `delete-page`, `publish`). Same shape as
+ * {@link buildDataTablesSessionGrantKey}.
+ */
+export function buildAppsSessionGrantKey(action: string): string {
+	return `apps:${action}`;
+}
+
 // --- Workflow-setup skips ---
 
 const SETUP_SKIP_GRANT_PREFIX = 'workflows:setup-skip:';
@@ -316,7 +325,7 @@ export const runFinishPayloadSchema = z.object({
 
 export const agentSpawnedTargetResourceSchema = z.object({
 	// 'agent'/'config-eval': provisional eval-artifact discovery signals; the assistant doesn't emit them yet.
-	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval']),
+	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval', 'app']),
 	id: z.string().optional(),
 	name: z.string().optional(),
 	projectId: z.string().optional(),
@@ -1314,11 +1323,28 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+/**
+ * An App reference the apps page hands off to a message. Carries no bytes —
+ * the agent resolves it with the `apps` tool and the FE shows it as an
+ * artifact tab. `appId` is always required: unlike the agent attachment,
+ * there is no "pending, not-yet-created" state for apps.
+ */
+export const instanceAiAppAttachmentSchema = z.object({
+	type: z.literal('app'),
+	appId: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	namespace: z.string().max(128).optional(),
+	/** Project that owns the app — required so the FE artifact preview can render. */
+	projectId: z.string().min(1).max(64),
+});
+export type InstanceAiAppAttachment = z.infer<typeof instanceAiAppAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
@@ -1414,6 +1440,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the Apps builder ("Open in AI Assistant")
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
@@ -1431,6 +1458,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1810,6 +1838,9 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	createApp: instanceAiPermissionModeSchema,
+	deleteAppPage: instanceAiPermissionModeSchema,
+	publishApp: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1836,6 +1867,9 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeMcpTool: 'require_approval',
+	createApp: 'require_approval',
+	deleteAppPage: 'require_approval',
+	publishApp: 'require_approval',
 };
 
 /**

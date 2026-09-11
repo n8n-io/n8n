@@ -292,6 +292,18 @@ describe('DataTableProxyService', () => {
 			).rejects.toBe(dbError);
 		});
 	});
+
+	describe('makeDataTableOperationsForProject', () => {
+		it('returns row and column operations scoped to the given project and data table', async () => {
+			const ops = dataTableProxyService.makeDataTableOperationsForProject(
+				PROJECT_ID,
+				'dataTable-id',
+			);
+			await ops.getColumns();
+
+			expect(dataTableServiceMock.getColumns).toBeCalledWith('dataTable-id', PROJECT_ID);
+		});
+	});
 });
 
 describe('DataTableProxyService (with database)', () => {

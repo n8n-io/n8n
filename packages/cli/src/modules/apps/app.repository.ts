@@ -10,12 +10,12 @@ export class AppRepository extends Repository<App> {
 		super(App, dataSource.manager);
 	}
 
-	async createApp(projectId: string, name: string, namespace: string) {
+	async createApp(projectId: string, name: string, namespace: string, theme: App['theme'] = null) {
 		if (await this.existsBy({ namespace })) {
 			throw new AppNamespaceConflictError(namespace);
 		}
 
-		const app = this.create({ projectId, name, namespace });
+		const app = this.create({ projectId, name, namespace, theme });
 		return await this.save(app);
 	}
 
@@ -28,7 +28,10 @@ export class AppRepository extends Repository<App> {
 		return await this.findBy({ projectId });
 	}
 
-	async updateApp(app: App, updates: Partial<Pick<App, 'name' | 'namespace' | 'theme'>>) {
+	async updateApp(
+		app: App,
+		updates: Partial<Pick<App, 'name' | 'namespace' | 'theme' | 'auth' | 'components'>>,
+	) {
 		if (
 			updates.namespace !== undefined &&
 			updates.namespace !== app.namespace &&
@@ -42,5 +45,9 @@ export class AppRepository extends Repository<App> {
 
 	async deleteApp(id: string) {
 		await this.delete({ id });
+	}
+
+	async setActiveVersionId(app: App, activeVersionId: string | null) {
+		return await this.save(Object.assign(app, { activeVersionId }));
 	}
 }

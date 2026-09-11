@@ -50,6 +50,7 @@ function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
 	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
+	appBuilderTarget?: () => { appId: string; projectId: string; name?: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -58,6 +59,7 @@ function setup(
 		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
+		appBuilderTarget,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -256,6 +258,35 @@ describe('useResourceRegistry', () => {
 				pending: true,
 			});
 			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
+		});
+
+		test('registers an app attachment (appId is always required, no pending state)', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'app',
+							appId: 'app-1',
+							projectId: 'proj-1',
+							name: 'Orders dashboard',
+							namespace: 'orders-dashboard',
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Orders dashboard',
+				projectId: 'proj-1',
+				namespace: 'orders-dashboard',
+			});
+			expect(linkableResourceNameIndex.get('orders dashboard')?.id).toBe('app-1');
 		});
 	});
 
@@ -635,6 +666,146 @@ describe('useResourceRegistry', () => {
 				id: 'agent-1',
 				name: 'Support Bot',
 				projectId: 'project-1',
+			});
+		});
+	});
+
+	describe('producedArtifacts — app registration', () => {
+		test('registers an app from a create result', async () => {
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'create' },
+								result: {
+									appId: 'app-1',
+									name: 'Orders dashboard',
+									namespace: 'orders-dashboard',
+									projectId: 'proj-1',
+									url: '/apps/orders-dashboard/',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Orders dashboard',
+				namespace: 'orders-dashboard',
+				projectId: 'proj-1',
+				url: '/apps/orders-dashboard/',
+			});
+			expect(resourceNameIndex.get('orders dashboard')?.id).toBe('app-1');
+			expect(linkableResourceNameIndex.get('orders dashboard')?.id).toBe('app-1');
+		});
+
+		test('does not register from list, get, code-api, or preview-page results', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'apps',
+								args: { action: 'list' },
+								result: { apps: [{ id: 'app-1', name: 'Orders dashboard' }] },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'get' },
+								result: { appId: 'app-2', name: 'Support portal' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-3',
+								toolName: 'apps',
+								args: { action: 'code-api' },
+								result: { appId: 'app-3', types: 'declare global {}' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-4',
+								toolName: 'apps',
+								args: { action: 'preview-page', appId: 'app-4', pageId: 'p1' },
+								result: { appId: 'app-4', pageId: 'p1', errors: {}, logs: {} },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toBeUndefined();
+			expect(producedArtifacts.get('app-2')).toBeUndefined();
+			expect(producedArtifacts.get('app-3')).toBeUndefined();
+			expect(producedArtifacts.get('app-4')).toBeUndefined();
+		});
+
+		test('merges a follow-up result that omits namespace/url without dropping them', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'apps',
+								args: { action: 'create' },
+								result: {
+									appId: 'app-1',
+									name: 'Orders dashboard',
+									namespace: 'orders-dashboard',
+									projectId: 'proj-1',
+									url: '/apps/orders-dashboard/',
+								},
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
+								toolName: 'apps',
+								args: { action: 'update-app' },
+								result: { appId: 'app-1', name: 'Orders overview', projectId: 'proj-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Orders overview',
+				namespace: 'orders-dashboard',
+				projectId: 'proj-1',
+				url: '/apps/orders-dashboard/',
+			});
+		});
+
+		test('hydrates an app from the persisted app-builder target before any tool result', async () => {
+			const { messages, producedArtifacts } = setup(undefined, undefined, undefined, () => ({
+				appId: 'app-1',
+				projectId: 'proj-1',
+				name: 'Orders dashboard',
+			}));
+
+			messages.value = [makeMessage({ agentTree: makeAgentNode() })];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')).toEqual({
+				type: 'app',
+				id: 'app-1',
+				name: 'Orders dashboard',
+				projectId: 'proj-1',
 			});
 		});
 	});

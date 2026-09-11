@@ -1,0 +1,9 @@
+{{#if ordered}}
+<ol class='list-decimal pl-lg mb-md text-text'>
+	{{#each items}}<li>{{{this}}}</li>{{/each}}
+</ol>
+{{else}}
+<ul class='list-disc pl-lg mb-md text-text'>
+	{{#each items}}<li>{{{this}}}</li>{{/each}}
+</ul>
+{{/if}}

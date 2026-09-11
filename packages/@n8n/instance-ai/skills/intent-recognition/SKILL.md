@@ -33,6 +33,16 @@ agent is an AI Agent step inside it), an agent-oriented design for
 agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
 directly for out-of-scope.
 
+**Apps are a third deliverable, outside the anchor decision.** A request for
+something end users open in a browser — a page, dashboard, portal, form page,
+"a UI for my table", "a website for …" — is an **App**: load `app-builder` and
+build it with the `apps` tool (typed content blocks, server-rendered at
+`/apps/<namespace>/`). Never build it as files in the sandbox workspace and
+never classify it as an out-of-scope content task. If the page also needs a
+workflow or Data Table that does not exist yet, build those with their own
+skills first, then wire them into the page — the anchor decision below applies
+only to that automation part.
+
 ## Inputs
 
 - The user's request or scenario prompt.
@@ -138,21 +148,25 @@ builder.
    primitive, grounding the choice in the task's shape. The false-friends
    rule applies to task descriptions, not to an explicitly requested
    artifact.
-2. If the request is not a build intent — a meta or product question, or a
+2. If the deliverable is an App (a page, dashboard, portal, or form page
+   people open in a browser), stop classifying: load `app-builder` and use
+   the `apps` tool. Only the automation behind it, if any, goes through steps
+   4-10.
+3. If the request is not a build intent — a meta or product question, or a
    one-off content task with no trigger or reuse — classify **out-of-scope**
    and answer or do it directly.
-3. Split the request into parts only if it contains multiple independent
+4. Split the request into parts only if it contains multiple independent
    automations with separate lifecycles (unrelated triggers, audiences, or
    cadences). Markers like numbering or "and separately" are a giveaway but
    are not required — a single plain sentence can contain two automations.
    Do not split a single automation that merely enumerates many tools or
-   steps. Run steps 4-9 on each part.
-4. Test the agent signals. If any one holds, classify **agent-anchored**.
-5. Otherwise, test the workflow conditions. If all of them hold, classify
+   steps. Run steps 5-10 on each part.
+5. Test the agent signals. If any one holds, classify **agent-anchored**.
+6. Otherwise, test the workflow conditions. If all of them hold, classify
    **workflow-anchored**.
-6. Decide `embeds_other` in both directions: does an agent step appear inside
+7. Decide `embeds_other` in both directions: does an agent step appear inside
    this workflow, or does this agent invoke workflows as tools?
-7. **Degenerate-shell check.** If a workflow-anchored design reduces to a
+8. **Degenerate-shell check.** If a workflow-anchored design reduces to a
    trigger plus a single open-ended agent step that does all the work — no
    deterministic steps earning the shell — the anchor is wrong: reclassify
    **agent-anchored** and build an n8n Agent (an on-demand duty becomes the
@@ -160,10 +174,10 @@ builder.
    this check while building: when fixed nodes prove unusable and the work
    migrates into one embedded agent step, stop and re-anchor instead of
    finishing the degenerate workflow.
-8. If the request is under-specified on an anchor-deciding axis (rule-based
+9. If the request is under-specified on an anchor-deciding axis (rule-based
    vs judgment-based, scope/autonomy, interaction mode), classify
    **needs-clarification** and name the missing axis instead of guessing.
-9. If both anchors are genuinely defensible, apply the growth tiebreaker:
+10. If both anchors are genuinely defensible, apply the growth tiebreaker:
    prefer whichever primitive scales with likely complexity growth — usually
    agent-anchored when novel situations, longer horizons, or learning are
    implied. The tiebreaker applies only to genuine ties: when a bounded
@@ -413,7 +427,7 @@ instead.
   agent steps inside a pipeline the user described as a pipeline.
 - A workflow whose only real step is one embedded agent doing all the work
   is an agent wearing a workflow costume — the mirror image of the Chat
-  Trigger gotcha above. Apply the degenerate-shell check (step 7) and
+  Trigger gotcha above. Apply the degenerate-shell check (step 8) and
   re-anchor instead of shipping trigger + AI Agent node.
 - Do not treat a cron schedule as a workflow signal by itself — agents run
   scheduled tasks. Classify by the body of each run, and when a one-off

@@ -18,4 +18,13 @@ export type AgentPreviewSessionContextChip = ContextChipBase & {
 	executionId?: string;
 };
 
-export type ContextChip = AgentArtifactContextChip | AgentPreviewSessionContextChip;
+export type AppArtifactContextChip = ContextChipBase & {
+	type: 'app-artifact';
+	appId: string;
+	projectId: string;
+};
+
+export type ContextChip =
+	| AgentArtifactContextChip
+	| AgentPreviewSessionContextChip
+	| AppArtifactContextChip;

@@ -1,0 +1,417 @@
+/*
+ * Tailwind utilities on the n8n design-system tokens.
+ *
+ * theme.css defines every --… token, the reset, the fonts and dark mode
+ * ([data-theme='dark'] and prefers-color-scheme), so Tailwind's preflight is
+ * not imported. The @theme block below replaces Tailwind's palette and scales
+ * with the n8n tokens: every utility compiles to var(--…) and switches theme
+ * with the page. There is no Tailwind default color, spacing, font, radius or
+ * shadow left; use the names below or add a token mapping here.
+ *
+ * theme.css goes into the base layer so its element rules (h1 { color }, a,
+ * code, …) lose to the utilities layer; unlayered rules would beat every
+ * utility. `reference` keeps Tailwind from emitting the mapped keys on :root,
+ * where --color-danger etc. collide with the legacy hooks theme.css reads
+ * (--color--danger: var(--color-danger, …)) and would form a var() cycle.
+ */
+@layer theme, base, utilities;
+@import '@n8n/design-system/theme.css' layer(base);
+@import 'tailwindcss/theme' layer(theme);
+@import 'tailwindcss/utilities' layer(utilities);
+@import './app-chat.css';
+
+/* Scanned for utility classes: the page shell, the layout and menu partials, and every block partial. */
+@source '../../../../../templates/app-page.handlebars';
+@source '../../../../../templates/partials/app-layout.handlebars';
+@source '../../../../../templates/partials/app-page-menu.handlebars';
+@source '../../../../../templates/partials/app-block-*.handlebars';
+
+@theme inline reference {
+	--color-*: initial;
+	--spacing: initial;
+	--spacing-*: initial;
+	--font-*: initial;
+	--text-*: initial;
+	--leading-*: initial;
+	--radius-*: initial;
+	--shadow-*: initial;
+
+	/* Text: text-text, text-text-subtle, … */
+	--color-text: var(--text-color);
+	--color-text-subtle: var(--text-color--subtle);
+	--color-text-subtler: var(--text-color--subtler);
+	--color-text-disabled: var(--text-color--disabled);
+	--color-text-inverse: var(--text-color--inverse);
+	--color-text-success: var(--text-color--success);
+	--color-text-warning: var(--text-color--warning);
+	--color-text-danger: var(--text-color--danger);
+	--color-text-info: var(--text-color--info);
+
+	/* Surfaces: bg-surface, bg-subtle, hover:bg-hover, … */
+	--color-surface: var(--background--surface);
+	--color-subtle: var(--background--subtle);
+	--color-hover: var(--background--hover);
+	--color-active: var(--background--active);
+	--color-disabled: var(--background--disabled);
+	--color-inverse: var(--background--inverse);
+	--color-background-success: var(--background--success);
+	--color-background-warning: var(--background--warning);
+	--color-background-danger: var(--background--danger);
+	--color-background-info: var(--background--info);
+
+	/* Brand action surfaces: bg-brand hover:bg-brand-hover active:bg-brand-active */
+	--color-brand: var(--background--brand);
+	--color-brand-hover: var(--background--brand--hover);
+	--color-brand-active: var(--background--brand--active);
+	--color-brand-focus: var(--background--brand--focus);
+	--color-brand-disabled: var(--background--brand--disabled);
+
+	/* Borders: border-border, border-border-strong, … */
+	--color-border: var(--border-color);
+	--color-border-subtle: var(--border-color--subtle);
+	--color-border-strong: var(--border-color--strong);
+	--color-border-stronger: var(--border-color--stronger);
+	--color-border-success: var(--border-color--success);
+	--color-border-warning: var(--border-color--warning);
+	--color-border-danger: var(--border-color--danger);
+	--color-border-info: var(--border-color--info);
+
+	/* Brand and status colors: text-primary, bg-danger-tint-4, border-success, … */
+	--color-primary: var(--color--primary);
+	--color-primary-shade-1: var(--color--primary--shade-1);
+	--color-primary-tint-1: var(--color--primary--tint-1);
+	--color-primary-tint-2: var(--color--primary--tint-2);
+	--color-primary-tint-3: var(--color--primary--tint-3);
+	--color-secondary: var(--color--secondary);
+	--color-secondary-shade-1: var(--color--secondary--shade-1);
+	--color-secondary-tint-1: var(--color--secondary--tint-1);
+	--color-secondary-tint-2: var(--color--secondary--tint-2);
+	--color-success: var(--color--success);
+	--color-success-shade-1: var(--color--success--shade-1);
+	--color-success-tint-1: var(--color--success--tint-1);
+	--color-success-tint-2: var(--color--success--tint-2);
+	--color-success-tint-3: var(--color--success--tint-3);
+	--color-success-tint-4: var(--color--success--tint-4);
+	--color-warning: var(--color--warning);
+	--color-warning-shade-1: var(--color--warning--shade-1);
+	--color-warning-tint-1: var(--color--warning--tint-1);
+	--color-warning-tint-2: var(--color--warning--tint-2);
+	--color-danger: var(--color--danger);
+	--color-danger-shade-1: var(--color--danger--shade-1);
+	--color-danger-tint-1: var(--color--danger--tint-1);
+	--color-danger-tint-2: var(--color--danger--tint-2);
+	--color-danger-tint-3: var(--color--danger--tint-3);
+	--color-danger-tint-4: var(--color--danger--tint-4);
+	--color-info: var(--color--info);
+	--color-neutral-white: var(--color--neutral-white);
+
+	/* Spacing: p-md, gap-xs, mt-lg, w-2xl, … (also width and height) */
+	--spacing-5xs: var(--spacing--5xs);
+	--spacing-4xs: var(--spacing--4xs);
+	--spacing-3xs: var(--spacing--3xs);
+	--spacing-2xs: var(--spacing--2xs);
+	--spacing-xs: var(--spacing--xs);
+	--spacing-sm: var(--spacing--sm);
+	--spacing-md: var(--spacing--md);
+	--spacing-lg: var(--spacing--lg);
+	--spacing-xl: var(--spacing--xl);
+	--spacing-2xl: var(--spacing--2xl);
+	--spacing-3xl: var(--spacing--3xl);
+	--spacing-4xl: var(--spacing--4xl);
+	--spacing-5xl: var(--spacing--5xl);
+
+	/* Font family: font-sans (the default from theme.css), font-mono */
+	--font-sans: var(--font-family);
+	--font-mono: var(--font-family--monospace);
+
+	/* Font size: text-md, text-2xl, … */
+	--text-4xs: var(--font-size--4xs);
+	--text-3xs: var(--font-size--3xs);
+	--text-2xs: var(--font-size--2xs);
+	--text-xs: var(--font-size--xs);
+	--text-sm: var(--font-size--sm);
+	--text-md: var(--font-size--md);
+	--text-lg: var(--font-size--lg);
+	--text-xl: var(--font-size--xl);
+	--text-2xl: var(--font-size--2xl);
+
+	/* Font weight: font-regular, font-medium, font-bold */
+	--font-weight-regular: var(--font-weight--regular);
+	--font-weight-medium: var(--font-weight--medium);
+	--font-weight-bold: var(--font-weight--bold);
+
+	/* Line height: leading-xs … leading-xl */
+	--leading-xs: var(--line-height--xs);
+	--leading-sm: var(--line-height--sm);
+	--leading-md: var(--line-height--md);
+	--leading-lg: var(--line-height--lg);
+	--leading-xl: var(--line-height--xl);
+
+	/* Radius: rounded (4px base), rounded-xs, rounded-md, rounded-full, … */
+	--radius: var(--radius);
+	--radius-4xs: var(--radius--4xs);
+	--radius-3xs: var(--radius--3xs);
+	--radius-2xs: var(--radius--2xs);
+	--radius-xs: var(--radius--xs);
+	--radius-sm: var(--radius--sm);
+	--radius-md: var(--radius--md);
+	--radius-lg: var(--radius--lg);
+	--radius-xl: var(--radius--xl);
+	--radius-2xl: var(--radius--2xl);
+	--radius-full: var(--radius--full);
+
+	/* Shadow: shadow-xs, shadow-sm, shadow-md, shadow-xl, shadow-outline */
+	--shadow-2xs: var(--shadow--2xs);
+	--shadow-xs: var(--shadow--xs);
+	--shadow-sm: var(--shadow--sm);
+	--shadow-md: var(--shadow--md);
+	--shadow-xl: var(--shadow--xl);
+	--shadow-outline: var(--shadow--outline);
+}
+
+/*
+ * App.theme overrides, read at request time.
+ *
+ * Everything above compiles through Tailwind's `@theme inline`, which bakes
+ * the referenced token into a literal value at build time (that's what
+ * `inline` means) — a utility class like `bg-surface` is not a living
+ * `var(--…)` reference once compiled, so it cannot react to a per-App theme
+ * set on `:root` after the fact. These plain rules are not Tailwind theme
+ * output; they keep a real `var()` chain, so the shell's inline
+ * `<style>:root{--app-color-primary: …}</style>` (built from `App.theme`)
+ * can still override them without a rebuild.
+ */
+:root {
+	--app-radius: var(--radius--md);
+}
+
+.app-canvas {
+	background: var(--app-color-background, var(--background--subtle));
+}
+
+.app-text {
+	color: var(--app-color-text, var(--text-color));
+	font-family: var(--app-font-family, var(--font-family));
+}
+
+.app-muted {
+	color: var(--app-color-muted, var(--text-color--subtle));
+}
+
+.app-link {
+	color: var(--app-color-primary, var(--color--primary));
+}
+
+.app-shell {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--xl);
+	max-width: 64rem;
+	margin: 0 auto;
+	padding: var(--spacing--xl);
+}
+
+.app-menu,
+.app-main {
+	background: var(--app-color-surface, var(--background--surface));
+	border-radius: var(--app-radius);
+	border: 1px solid var(--border-color);
+}
+
+.app-menu {
+	flex: none;
+	width: 14rem;
+	padding: var(--spacing--md);
+}
+
+.app-main {
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--xl);
+}
+
+.app-notice {
+	background: var(--app-color-surface, var(--background--surface));
+	border: 1px solid var(--border-color--danger);
+	border-radius: var(--app-radius);
+	padding: var(--spacing--md);
+	margin-bottom: var(--spacing--md);
+}
+
+/*
+ * Layout vocabulary. A page layout is a flat list of blocks around one slot
+ * (`.app-layout > .app-block | .app-main`), so these classes give layout blocks
+ * a full-width header, footer, sidebar and hero without custom CSS. The two
+ * `:has()` rules exist because a block cannot style its own wrapper: the
+ * wrapper of a header is what sticks, and the layout that holds a sidebar is
+ * what becomes two columns.
+ */
+.app-layout {
+	display: flex;
+	flex-direction: column;
+}
+
+.app-block {
+	min-width: 0;
+}
+
+.app-block:has(> .app-header) {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+
+.app-layout > .app-main {
+	width: calc(100% - 2 * var(--spacing--xl));
+	max-width: calc(var(--app-content-width, 72rem) - 2 * var(--spacing--xl));
+	margin: var(--spacing--xl) auto;
+}
+
+.app-container {
+	width: 100%;
+	max-width: var(--app-content-width, 72rem);
+	margin: 0 auto;
+	padding: 0 var(--spacing--xl);
+}
+
+.app-header {
+	background: var(--app-color-surface, var(--background--surface));
+	border-bottom: 1px solid var(--border-color);
+}
+
+.app-header > .app-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+	min-height: 3.5rem;
+}
+
+.app-footer {
+	border-top: 1px solid var(--border-color);
+	padding: var(--spacing--lg) 0;
+	color: var(--app-color-muted, var(--text-color--subtle));
+	font-size: var(--font-size--sm);
+}
+
+.app-logo {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	color: inherit;
+	font-size: var(--font-size--lg);
+	font-weight: var(--font-weight--bold);
+	text-decoration: none;
+}
+
+.app-logo img {
+	height: 2rem;
+}
+
+.app-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--md);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.app-nav a {
+	color: var(--app-color-muted, var(--text-color--subtle));
+	text-decoration: none;
+}
+
+.app-nav a:hover,
+.app-nav a[aria-current='page'] {
+	color: var(--app-color-primary, var(--color--primary));
+}
+
+.app-nav a[aria-current='page'] {
+	font-weight: var(--font-weight--bold);
+}
+
+.app-sidebar {
+	padding: var(--spacing--xl);
+}
+
+.app-sidebar .app-nav ul {
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.app-sidebar .app-nav ul ul {
+	padding-left: var(--spacing--sm);
+	padding-top: var(--spacing--xs);
+}
+
+@media (min-width: 48rem) {
+	.app-layout:has(> .app-block > .app-sidebar) {
+		display: grid;
+		grid-template-columns: 14rem minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-block {
+		grid-column: 1 / -1;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-block:has(> .app-sidebar) {
+		grid-column: 1;
+	}
+
+	.app-layout:has(> .app-block > .app-sidebar) > .app-main {
+		grid-column: 2;
+	}
+}
+
+.app-hero {
+	padding: var(--spacing--3xl) var(--spacing--xl);
+	text-align: center;
+}
+
+.app-hero h1 {
+	margin: 0 0 var(--spacing--md);
+	font-size: var(--font-size--2xl);
+	font-weight: var(--font-weight--bold);
+}
+
+.app-hero p {
+	max-width: 40rem;
+	margin: 0 auto var(--spacing--md);
+	color: var(--app-color-muted, var(--text-color--subtle));
+	font-size: var(--font-size--lg);
+}
+
+.app-hero .app-nav ul {
+	justify-content: center;
+}
+
+.app-card {
+	background: var(--app-color-surface, var(--background--surface));
+	border: 1px solid var(--border-color);
+	border-radius: var(--app-radius);
+	padding: var(--spacing--lg);
+}
+
+.app-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.app-grid-2,
+.app-grid-3 {
+	display: grid;
+	gap: var(--spacing--lg);
+}
+
+@media (min-width: 40rem) {
+	.app-grid-2 {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.app-grid-3 {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}

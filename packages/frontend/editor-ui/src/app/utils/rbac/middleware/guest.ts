@@ -12,6 +12,12 @@ export const guestMiddleware: RouterMiddleware<GuestPermissionOptions> = async (
 	if (!valid) {
 		const redirect = (to.query.redirect as string) ?? '';
 
+		// A served App page is not an SPA route
+		if (redirect.startsWith('/apps/')) {
+			window.location.assign(redirect);
+			return next(false);
+		}
+
 		// Allow local path redirects
 		if (redirect.startsWith('/')) {
 			return next(redirect);

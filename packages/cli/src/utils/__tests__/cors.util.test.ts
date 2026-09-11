@@ -133,4 +133,36 @@ describe('applyCors', () => {
 		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Allow-Headers', 'Content-Type');
 	});
+
+	it('should add extra allowed headers on top of Content-Type', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		mockReq.headers = {};
+
+		applyCors(mockReq as Request, mockRes as Response, {
+			extraAllowedHeaders: ['Authorization'],
+		});
+
+		expect(setHeaderSpy).toHaveBeenCalledWith(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization',
+		);
+	});
+
+	it('should set Access-Control-Max-Age when provided', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		mockReq.headers = {};
+
+		applyCors(mockReq as Request, mockRes as Response, { maxAge: 600 });
+
+		expect(setHeaderSpy).toHaveBeenCalledWith('Access-Control-Max-Age', '600');
+	});
+
+	it('should not set Access-Control-Max-Age when not provided', () => {
+		getHeaderSpy.mockReturnValue(undefined);
+		mockReq.headers = {};
+
+		applyCors(mockReq as Request, mockRes as Response);
+
+		expect(setHeaderSpy).not.toHaveBeenCalledWith('Access-Control-Max-Age', expect.anything());
+	});
 });

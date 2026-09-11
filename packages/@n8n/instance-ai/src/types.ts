@@ -15,6 +15,10 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	AppAuth,
+	AppContent,
+	AppLayout,
+	AppTheme,
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
@@ -1035,6 +1039,80 @@ export interface InstanceAiWorkflowTemplateService {
 	): Promise<{ available: true; template: Record<string, unknown> } | { available: false }>;
 }
 
+// ── App service ──────────────────────────────────────────────────────────
+
+export interface AppSummary {
+	id: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	url: string;
+	activeVersionId: string | null;
+}
+
+export interface PageSummary {
+	id: string;
+	route: string;
+	title: string | null;
+	parentPageId: string | null;
+	path: string;
+	hasContent: boolean;
+}
+
+/** Backs the `apps` tool. Optional on {@link InstanceAiContext} — its presence gates the tool. */
+export interface InstanceAiAppService {
+	listApps(projectId: string): Promise<AppSummary[]>;
+	createApp(input: {
+		projectId: string;
+		name: string;
+		namespace: string;
+		/** An `APP_LAYOUT_PRESETS` id; the App starts with its theme and an index page carrying its layout. */
+		layoutPreset?: string;
+	}): Promise<{ app: AppSummary } | { conflict: true }>;
+	/** `components` is the TSX source code blocks import from `app/components`. */
+	getApp(appId: string): Promise<AppSummary & { components: string | null }>;
+	updateApp(
+		appId: string,
+		input: { name?: string; theme?: AppTheme | null; components?: string | null; auth?: AppAuth },
+	): Promise<AppSummary>;
+	listPages(appId: string): Promise<PageSummary[]>;
+	/** `layout` is the page's own; `null` means it inherits the nearest ancestor's or the built-in shell. */
+	getPage(
+		appId: string,
+		pageId: string,
+	): Promise<PageSummary & { content: AppContent | null; layout: AppLayout | null }>;
+	createPage(
+		appId: string,
+		input: {
+			route: string;
+			title?: string;
+			parentPageId?: string;
+			content?: AppContent;
+			layout?: AppLayout;
+		},
+	): Promise<PageSummary>;
+	updatePage(
+		appId: string,
+		pageId: string,
+		input: {
+			route?: string;
+			title?: string | null;
+			content?: AppContent | null;
+			layout?: AppLayout | null;
+		},
+	): Promise<PageSummary>;
+	deletePage(appId: string, pageId: string): Promise<void>;
+	publish(appId: string): Promise<{ versionId: string; url: string }>;
+	/** Renders the draft page and returns what went wrong, per block id; never the HTML. */
+	previewPage(
+		appId: string,
+		pageId: string,
+		path?: string,
+	): Promise<{ errors: Record<string, string>; logs: Record<string, string[]> }>;
+	/** Text of app-page-api.d.ts. */
+	codeApi(): string;
+}
+
 // ── Builder delegate (sub-agent) ─────────────────────────────────────────────
 
 /** Reference to a workflow the current instance-AI session built or touched. */
@@ -1221,6 +1299,9 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present only when the `apps` backend module is active and wired.
+	 *  Presence gates the `apps` tool. */
+	appService?: InstanceAiAppService;
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
