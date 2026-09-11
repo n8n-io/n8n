@@ -20,7 +20,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'node:execute-sub-workflow',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -31,7 +31,6 @@ export class ExecuteWorkflow implements INodeType {
 		builderHint: {
 			extraTypeDefContent: [
 				{
-					displayOptions: { show: { mode: ['once', 'each'] } },
 					content: `<patterns>
 These workflowInputs patterns apply to Execute Workflow node versions 1.2 and newer.
 <pattern title="Child accepts all data">
@@ -295,35 +294,32 @@ workflowInputs: {
 				},
 			},
 			{
+				// Kept as a hidden parameter on the versions that offered the mode:
+				// Workflow construction strips parameters that are not declared (or not
+				// displayed) for the node's version, and the runtime guard in execute()
+				// needs to see a stale 'each' value to fail loudly on it. On 1.4+ the
+				// value is stripped and the node always runs once with all items.
 				displayName: 'Mode',
 				name: 'mode',
-				type: 'options',
+				type: 'hidden',
 				noDataExpression: true,
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Run once with all items',
-						value: 'once',
-						description: 'Pass all items into a single execution of the sub-workflow',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Run once for each item',
-						value: 'each',
-						description: 'Call the sub-workflow individually for each item',
-					},
-				],
 				default: 'once',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 1.3 } }],
+					},
+				},
 			},
 			{
 				displayName:
-					'"Run once for each item" is deprecated and will be removed in a future version. To run the sub-workflow once per item, add a "Loop Over Items" node before this node and use "Run once with all items".',
-				name: 'eachModeDeprecationNotice',
+					'The "Run once for each item" mode is no longer available, so this node will fail. Replace it with a new "Execute Sub-workflow" node. To run the sub-workflow once per item, add a "Loop Over Items" node before the new node.',
+				name: 'eachModeRemovedNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
 						mode: ['each'],
+						'@version': [{ _cnd: { lte: 1.3 } }],
 					},
 				},
 			},
@@ -351,7 +347,7 @@ workflowInputs: {
 				message:
 					"Note on using an expression for workflow ID: Since this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 				displayCondition:
-					'={{ $rawParameter.workflowId.startsWith("=") && $parameter.mode === "once" && $nodeVersion >= 1.2 }}',
+					'={{ $rawParameter.workflowId.startsWith("=") && ($nodeVersion >= 1.4 || ($nodeVersion >= 1.2 && $parameter.mode === "once")) }}',
 				whenToDisplay: 'always',
 				location: 'outputPane',
 			},
@@ -364,118 +360,20 @@ workflowInputs: {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
-		const mode = this.getNodeParameter('mode', 0, false) as string;
 		const items = getCurrentWorkflowInputData.call(this);
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
-		const currentWorkflowId = workflowProxy.$workflow.id as string;
 
-		if (mode === 'each') {
-			const returnData: INodeExecutionData[][] = [];
-
-			for (let i = 0; i < items.length; i++) {
-				try {
-					const waitForSubWorkflow = this.getNodeParameter(
-						'options.waitForSubWorkflow',
-						i,
-						true,
-					) as boolean;
-					const workflowInfo = await getWorkflowInfo.call(this, source, i);
-
-					if (waitForSubWorkflow) {
-						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
-							workflowInfo,
-							[items[i]],
-							undefined,
-							{
-								parentExecution: {
-									executionId: workflowProxy.$execution.id,
-									workflowId: workflowProxy.$workflow.id,
-									shouldResume: waitForSubWorkflow,
-								},
-								executionMode: this.getMode(),
-							},
-						);
-						const workflowResult = executionResult.data as INodeExecutionData[][];
-
-						for (const [outputIndex, outputData] of workflowResult.entries()) {
-							for (const item of outputData) {
-								item.pairedItem = { item: i };
-								item.metadata = {
-									subExecution: {
-										executionId: executionResult.executionId,
-										workflowId: workflowInfo.id ?? currentWorkflowId,
-									},
-								};
-							}
-
-							if (returnData[outputIndex] === undefined) {
-								returnData[outputIndex] = [];
-							}
-
-							returnData[outputIndex].push(...outputData);
-						}
-					} else {
-						const executionResult: ExecuteWorkflowData = await this.executeWorkflow(
-							workflowInfo,
-							[items[i]],
-							undefined,
-							{
-								doNotWaitToFinish: true,
-								parentExecution: {
-									executionId: workflowProxy.$execution.id,
-									workflowId: workflowProxy.$workflow.id,
-									shouldResume: waitForSubWorkflow,
-								},
-								executionMode: this.getMode(),
-							},
-						);
-
-						if (returnData.length === 0) {
-							returnData.push([]);
-						}
-
-						returnData[0].push({
-							...items[i],
-							metadata: {
-								subExecution: {
-									workflowId: workflowInfo.id ?? currentWorkflowId,
-									executionId: executionResult.executionId,
-								},
-							},
-						});
-					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						const nodeVersion = this.getNode().typeVersion;
-						// In versions < 1.3 using the "Continue (using error output)" mode
-						// the node would return items in extra "error branches" instead of
-						// returning an array of items on the error output. These branches weren't really shown correctly on the UI.
-						// In the fixed >= 1.3 versions the errors are now all output into the single error output as an array of error items.
-						const outputIndex = nodeVersion >= 1.3 ? 0 : i;
-
-						returnData[outputIndex] ??= [];
-						const metadata = parseErrorMetadata(error);
-						returnData[outputIndex].push({
-							json: { error: error.message },
-							pairedItem: { item: i },
-							metadata,
-						});
-						continue;
-					}
-					throw new NodeOperationError(this.getNode(), error, {
-						message: `Error executing workflow with item at index ${i}`,
-						description: error.message,
-						itemIndex: i,
-					});
-				}
-			}
-
-			this.setMetadata({
-				subExecutionsCount: items.length,
-			});
-
-			return returnData;
+		// The mode selection is gone, but nodes saved before its removal may still carry the value
+		if (this.getNodeParameter('mode', 0, 'once') === 'each') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The "Run once for each item" mode is no longer available',
+				{
+					description:
+						'Replace this node with a new "Execute Sub-workflow" node. To run the sub-workflow once per item, add a "Loop Over Items" node before the new node.',
+				},
+			);
 		} else {
 			try {
 				const waitForSubWorkflow = this.getNodeParameter(

@@ -133,7 +133,10 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 				name: 'n8n-nodes-base.extractFromFile',
 				note: 'For multiple file types, route by file type first with IF/Switch',
 			},
-			{ name: 'n8n-nodes-base.htmlExtract', note: 'JS-rendered content may be empty' },
+			{
+				name: 'n8n-nodes-base.html',
+				note: 'Use the Extract HTML Content operation. JS-rendered content may be empty.',
+			},
 			{ name: 'n8n-nodes-base.splitOut', note: 'Use before Loop Over Items for arrays' },
 			{
 				name: 'n8n-nodes-base.splitInBatches',
@@ -235,15 +238,11 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 				name: 'n8n-nodes-base.phantombuster',
 				note: 'Use this for social media requests: LinkedIn, Facebook, Instagram, Twitter, etc.',
 			},
-			{
-				name: '@n8n/n8n-nodes-langchain.toolSerpApi',
-				note: 'Give agent web search capability, get up-to-date information from websites.',
-			},
 			{ name: 'n8n-nodes-base.perplexity', note: 'Recommended for fetching up-to-date news' },
 			{ name: 'n8n-nodes-base.perplexityTool', note: 'Recommended for fetching up-to-date news' },
 			{
-				name: 'n8n-nodes-base.htmlExtract',
-				note: 'Use to extract HTML content from http requests. Though, JS-rendered sites may return empty',
+				name: 'n8n-nodes-base.html',
+				note: 'Use the Extract HTML Content operation for HTTP Request output. JS-rendered content may be empty.',
 			},
 			{
 				name: 'n8n-nodes-base.splitInBatches',

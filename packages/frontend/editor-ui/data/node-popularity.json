@@ -1196,10 +1196,6 @@
 		"popularity": 0.548
 	},
 	{
-		"id": "@n8n/n8n-nodes-langchain.code",
-		"popularity": 0.053
-	},
-	{
 		"id": "n8n-nodes-base.sendGrid",
 		"popularity": 0.384
 	},

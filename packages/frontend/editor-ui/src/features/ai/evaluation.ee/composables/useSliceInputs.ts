@@ -4,7 +4,6 @@ import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	EVALUATION_TRIGGER_METADATA_FIELDS,
 	EVALUATION_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	getParentNodes,
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
@@ -87,10 +86,6 @@ export function useSliceInputs(options?: UseSliceInputsOptions): ComputedRef<Sli
 // output column; otherwise `input` keeps `helpfulness.userQuery` lookups working.
 export const FALLBACK_INPUT_FIELD_NAME = 'input';
 const CHAT_TRIGGER_FALLBACK_FIELD_NAME = 'chatInput';
-const CHAT_TRIGGER_NODE_TYPES = new Set<string>([
-	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
-]);
 
 function withFallback(
 	result: SliceInputs,
@@ -118,7 +113,7 @@ function pickFallbackFieldName(
 	const byName = new Map(allNodes.map((n) => [n.name, n]));
 	for (const name of chain) {
 		const node = byName.get(name);
-		if (node && CHAT_TRIGGER_NODE_TYPES.has(node.type)) {
+		if (node && node.type === CHAT_TRIGGER_NODE_TYPE) {
 			return CHAT_TRIGGER_FALLBACK_FIELD_NAME;
 		}
 	}

@@ -17,7 +17,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | content | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
 | threadId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
@@ -45,6 +45,7 @@ CREATE TABLE "agents_messages" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 ```mermaid
 erDiagram
 
+"agents_memory_entry_candidates" }o--o| "agents_messages" : "FOREIGN KEY (sourceMessageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents_messages" }o--|| "agents_threads" : "FOREIGN KEY (threadId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agents_messages" {
@@ -55,6 +56,22 @@ erDiagram
   varchar_36_ role
   varchar_255_ threadId FK
   varchar_36_ type
+  datetime_3_ updatedAt
+}
+"agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  TEXT content
+  datetime_3_ createdAt
+  TEXT evidenceText
+  varchar_36_ id PK
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   datetime_3_ updatedAt
 }
 "agents_threads" {

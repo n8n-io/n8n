@@ -272,20 +272,13 @@ describe('NodeView', () => {
 		const imported = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'Imported' });
 
 		const workflowData = { nodes: [imported], connections: {} };
-		let deferred: (() => void | Promise<void>) | undefined;
 
 		beforeEach(() => {
 			useNodeTypesStore().setNodeTypes([
 				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
 			]);
-			// The nudge is "shown": the gate captures the action instead of running it.
-			deferred = undefined;
-			mockMcpJsonNudgeGate.mockReset().mockImplementation(async (_surface, action) => {
-				deferred = action;
-			});
 			// fetchWorkflowDataFromUrl needs a project and the URL fetch stubbed.
 			useProjectsStore().personalProject = { id: 'personal', name: 'Personal' } as Project;
-			vi.spyOn(workflowsStore, 'getWorkflowFromUrl').mockResolvedValue(workflowData as never);
 		});
 
 		// The AI builder's version restore emits the same event, so the nudge must not sit
@@ -299,40 +292,6 @@ describe('NodeView', () => {
 				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
 			);
 			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
-		});
-
-		it('holds a URL import behind the import_url nudge and lands the nodes when it continues', async () => {
-			renderNodeView();
-
-			nodeViewEventBus.emit('importWorkflowUrl', { url: 'https://example.com/workflow.json' });
-
-			await waitFor(() =>
-				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_url', expect.any(Function)),
-			);
-			expect(workflowDocumentStore.allNodes).toHaveLength(0);
-
-			await deferred?.();
-
-			await waitFor(() =>
-				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Imported']),
-			);
-		});
-
-		// The modal lives at the app root and outlives this view. If the user navigates away
-		// while it is open, continuing must not import into whatever workflow is now shown.
-		it('drops a deferred URL import once NodeView has unmounted', async () => {
-			const { unmount } = renderNodeView();
-
-			nodeViewEventBus.emit('importWorkflowUrl', { url: 'https://example.com/workflow.json' });
-
-			await waitFor(() =>
-				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('import_url', expect.any(Function)),
-			);
-			unmount();
-
-			await deferred?.();
-
-			expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		});
 	});
 

@@ -12,7 +12,6 @@ import {
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
@@ -153,12 +152,6 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 		open: false,
 		data: {
 			curlCommands: {},
-		},
-	},
-	[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
-		open: false,
-		data: {
-			url: '',
 		},
 	},
 	[INVITE_USER_MODAL_KEY]: { open: false },

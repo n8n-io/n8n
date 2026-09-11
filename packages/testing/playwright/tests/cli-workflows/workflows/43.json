@@ -119,12 +119,13 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(3000);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(3000);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 3 seconds",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [610, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "e1d77a33-d0c8-4920-a533-bc6fb413ea05"
 		}
 	],

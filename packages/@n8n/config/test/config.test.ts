@@ -317,8 +317,8 @@ describe('GlobalConfig', () => {
 			disablePublicChat: false,
 		},
 		compressionNode: {
-			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
-			maxZipEntries: 5000,
+			maxDecompressedSize: 256 * 1024 * 1024,
+			maxZipEntries: 1000,
 		},
 		mcpClient: {
 			cacheTtl: 300000,
@@ -434,7 +434,7 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
-			taskTimeout: 300,
+			taskTimeout: 60,
 			taskRequestTimeout: 60,
 			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
