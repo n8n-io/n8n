@@ -1,7 +1,11 @@
 // Parses a PCRE2 `pcre2test` testoutputN file. NOT a general pcre2test parser -- only
 // covers the grammar vendor/pcre2/testdata/testoutput1 actually uses (non-UTF, no
 // error-injection).
-import { decodePcre2TestSubject, decodePcre2TestOutput } from './decode-pcre2test-string.mjs';
+import {
+  decodePcre2TestSubject,
+  decodePcre2TestOutput,
+  PCRE2TEST_DELIMITERS,
+} from './decode-pcre2test-string.mjs';
 
 const SINGLE_CHAR_MODIFIERS = new Set(['i', 'm', 's', 'x', 'g']);
 
@@ -47,10 +51,6 @@ function decodeResultText(text, onError) {
   }
 }
 
-// Must match pcre2test-oracle.mjs's DELIMITER_CANDIDATES, since that oracle picks a
-// non-`/` delimiter per pattern to avoid escaping ambiguity. Excludes `#` (comment syntax).
-const RECOGNIZED_DELIMITERS = ['/', '~', '!', '%', '&', '=', ';', '`'];
-
 export function parseTestOutput(text) {
   const lines = text.split('\n');
   const blocks = [];
@@ -82,7 +82,7 @@ export function parseTestOutput(text) {
     }
     if (ignoringUntilBlank || raw.startsWith('#')) continue;
 
-    if (RECOGNIZED_DELIMITERS.includes(raw[0])) {
+    if (PCRE2TEST_DELIMITERS.includes(raw[0])) {
       finishBlock();
       // A pattern can span multiple physical lines in pcre2test, a rare feature this
       // parser doesn't implement -- skip the whole block rather than mis-join lines.

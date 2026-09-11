@@ -4,16 +4,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, execSync } from 'node:child_process';
-import { encodePcre2TestSubject } from './decode-pcre2test-string.mjs';
+import { encodePcre2TestSubject, PCRE2TEST_DELIMITERS } from './decode-pcre2test-string.mjs';
 import { parseTestOutput } from './parse-pcre2-testoutput.mjs';
 
 const FLAG_TO_MODIFIER = { i: 'i', m: 'm', s: 's', x: 'x', u: 'utf' };
 
 // Picking a delimiter that never appears in the pattern avoids an escaping ambiguity:
 // a pattern already containing a real `\/` would otherwise be indistinguishable from a
-// `/` escaped only for delimiter safety, corrupting the header round-trip. Excludes
-// `#`, pcre2test's comment-line character.
-const DELIMITER_CANDIDATES = ['/', '~', '!', '%', '&', '=', ';', '`'];
+// `/` escaped only for delimiter safety, corrupting the header round-trip.
 
 // Raw control characters (e.g. from a JS-decoded [\x00-\x1f]) would corrupt line-based
 // parsing for every pattern after them in the batch, so re-escape as \xHH first.
@@ -36,7 +34,7 @@ function sanitizePatternForScript(pattern) {
 }
 
 function pickDelimiter(pattern) {
-  for (const d of DELIMITER_CANDIDATES) {
+  for (const d of PCRE2TEST_DELIMITERS) {
     if (!pattern.includes(d)) return d;
   }
   return null; // pattern contains every candidate -- vanishingly rare

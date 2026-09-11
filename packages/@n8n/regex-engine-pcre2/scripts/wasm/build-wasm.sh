@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 #
-# Compiles native/*.cpp + the vendored PCRE2 submodule to wasm. Not meant to
-# be run directly -- use `pnpm build:wasm` (scripts/wasm/build.mjs), which
-# picks Docker (recommended, reproducible) or a local emsdk install
-# automatically. This script just does the actual emcmake/cmake build once
-# a matching emcc is already on PATH.
+# Not meant to be run directly -- use `pnpm build:wasm` (scripts/wasm/build.mjs),
+# which picks Docker or a local emsdk and puts a matching emcc on PATH first.
 #
-# Do NOT use a third-party emsdk image (e.g. trzeci/emscripten): it is
-# unmaintained and pins an ancient PCRE2/Emscripten combination with no CI to
-# catch drift. Bump .emsdk-version deliberately (check
-# https://github.com/emscripten-core/emsdk/releases) rather than tracking
-# "latest".
+# Do NOT use a third-party emsdk image (e.g. trzeci/emscripten): unmaintained,
+# pins an ancient PCRE2/Emscripten combination with no CI to catch drift.
 
 set -euo pipefail
 

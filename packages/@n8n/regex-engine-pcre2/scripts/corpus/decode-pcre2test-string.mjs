@@ -1,6 +1,11 @@
 // Decodes pcre2test's own backslash-escape syntax for DATA (subject) lines -- separate
 // from pattern escapes, which PCRE2 itself interprets. Throws on anything unrecognized
 // rather than silently mis-decoding; callers should drop the case, not guess.
+
+// Pattern delimiters pcre2test-oracle.mjs picks from and parse-pcre2-testoutput.mjs
+// recognizes on read -- shared here so the two can't drift apart. Excludes `#`,
+// pcre2test's comment-line character.
+export const PCRE2TEST_DELIMITERS = ['/', '~', '!', '%', '&', '=', ';', '`'];
 const SIMPLE_ESCAPES = {
   a: '\x07',
   b: '\x08',
