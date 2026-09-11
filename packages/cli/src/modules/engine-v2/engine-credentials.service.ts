@@ -44,8 +44,10 @@ export class EngineCredentialsService {
 	/**
 	 * Throws `ForbiddenError` when the credential is not shared with one of the
 	 * workflow's projects, and `NotFoundError` when no credential has that id
-	 * and type. An unknown id is refused as forbidden, because the access check
-	 * runs before the credential row is loaded.
+	 * and type. The access check runs before the row is loaded, so an unknown
+	 * id is usually refused as forbidden. The one exception is a workflow in the
+	 * personal project of a user with global credential access: the check
+	 * grants every id, so an unknown id is reported as not found.
 	 */
 	async resolve({
 		credential,
