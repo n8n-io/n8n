@@ -801,7 +801,8 @@ export class InstanceAiService {
 	/**
 	 * Run IDs whose post-stream terminal handling should be skipped when their
 	 * abort fires. Populated by `shutdown()` for runs that were sitting on an
-	 * inline HITL confirmation, and drained by `shouldPreserveHitlOnShutdown(runId)`.
+	 * inline HITL confirmation and for suspended runs, and drained by
+	 * `shouldPreserveHitlOnShutdown(runId)`.
 	 */
 	private readonly preserveHitlOnShutdown = new Set<string>();
 
@@ -1951,11 +1952,14 @@ export class InstanceAiService {
 			// Suspended runs are recoverable from the checkpoint store + pending
 			// confirmation index, so leave the run-finish unpublished and the
 			// snapshot untouched. We only need to abort the in-process stream;
-			// the DB rows are intentionally preserved across restart.
+			// the DB rows are intentionally preserved across restart. The flag
+			// keeps the card publish alive if the abort lands before the card
+			// reaches the log.
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
+			this.preserveHitlOnShutdown.add(run.runId);
 			run.abortController.abort();
 		}
 		for (const task of this.backgroundTasks.cancelAll()) {
@@ -4255,9 +4259,11 @@ export class InstanceAiService {
 					return;
 				}
 
-				// The awaits above yield to cancelRun. It already published run-finish
-				// and dropped the pending row, so a card published now cannot be answered.
-				if (signal.aborted) return;
+				// The awaits above yield to cancelRun and shutdown. cancelRun already
+				// published run-finish and dropped the pending row, so a card published
+				// now cannot be answered. Shutdown keeps both, so the card must still
+				// reach the log.
+				if (signal.aborted && !this.shouldPreserveHitlOnShutdown(runId)) return;
 
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
@@ -5501,9 +5507,11 @@ export class InstanceAiService {
 					return;
 				}
 
-				// The awaits above yield to cancelRun. It already published run-finish
-				// and dropped the pending row, so a card published now cannot be answered.
-				if (opts.signal.aborted) return;
+				// The awaits above yield to cancelRun and shutdown. cancelRun already
+				// published run-finish and dropped the pending row, so a card published
+				// now cannot be answered. Shutdown keeps both, so the card must still
+				// reach the log.
+				if (opts.signal.aborted && !this.shouldPreserveHitlOnShutdown(opts.runId)) return;
 
 				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
