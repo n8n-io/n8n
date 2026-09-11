@@ -463,14 +463,9 @@ export function useInstanceAiHandoff() {
 	}
 
 	/**
-	 * Open a thread bound to an app, or to an app the agent is yet to create
-	 * (`isNewApp`, no `appId`). The attachment travels with the first message; the
-	 * metadata key is written now only when the app row already exists.
-	 */
-	/**
-	 * Creates a thread that targets an app (or the app to create) and stashes the
-	 * attachment its first message carries. Returns the thread id, or undefined
-	 * after showing the failure toast. Does not navigate.
+	 * Creates a thread bound to an app and stashes the attachment its first
+	 * message carries. Returns the thread id, or undefined after showing the
+	 * failure toast. Does not navigate.
 	 */
 	async function createAppArtifactThread(
 		attachment: InstanceAiAppAttachment,
@@ -484,25 +479,23 @@ export function useInstanceAiHandoff() {
 			showOpenFailed();
 			return undefined;
 		}
-		if (attachment.appId) {
-			try {
-				// A picked element's route becomes the preview's initial page too,
-				// so opening the thread doesn't strand the user looking at the app
-				// root when they picked the element from a different page.
-				const pagePath = options?.initialElementAttachment?.route;
-				await instanceAiStore.updateThreadMetadata(threadId, {
-					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
-						appId: attachment.appId,
-						projectId: attachment.projectId,
-						name: attachment.name,
-						...(pagePath ? { pagePath } : {}),
-					},
-				});
-			} catch {
-				await instanceAiStore.deleteThread(threadId);
-				showOpenFailed();
-				return undefined;
-			}
+		try {
+			// A picked element's route becomes the preview's initial page too,
+			// so opening the thread doesn't strand the user looking at the app
+			// root when they picked the element from a different page.
+			const pagePath = options?.initialElementAttachment?.route;
+			await instanceAiStore.updateThreadMetadata(threadId, {
+				[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+					appId: attachment.appId,
+					projectId: attachment.projectId,
+					name: attachment.name,
+					...(pagePath ? { pagePath } : {}),
+				},
+			});
+		} catch {
+			await instanceAiStore.deleteThread(threadId);
+			showOpenFailed();
+			return undefined;
 		}
 		stashPendingAppAttachment(threadId, attachment);
 		if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);

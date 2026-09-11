@@ -289,16 +289,10 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
-/**
- * Renders one app attachment. A bound app pins `apps.build` to it; a pending
- * one (no row yet) tells the agent exactly what to pass to `apps.create`.
- */
+/** Renders one app attachment: the thread is bound to the app, so the agent restores and builds it, never creates it. */
 function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
 	const namespace = attachment.namespace ? `, namespace \`${attachment.namespace}\`` : '';
-	if (attachment.appId) {
-		return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: when the user asks to build or change it, call \`apps\` with action \`build\` and \`appId\` \`${attachment.appId}\`. Do not call \`apps\` with action \`create\` for it.`;
-	}
-	return `- New app "${attachment.name}"${namespace} that does not exist yet, in project \`${attachment.projectId}\`. When the user asks to build it, first call \`apps\` with action \`create\` using exactly this name${attachment.namespace ? ', namespace' : ''} and project id, then build it with action \`build\` on the returned \`appId\`.`;
+	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if apps/${attachment.namespace ?? '<namespace>'} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, call \`apps\` with action \`build\` and \`appId\` \`${attachment.appId}\`. Do not call \`apps\` with action \`create\` for it.`;
 }
 
 /**
@@ -3927,7 +3921,7 @@ export class InstanceAiService {
 					if (attachment.type === 'app') {
 						return {
 							type: attachment.type,
-							id: attachment.appId ?? 'pending',
+							id: attachment.appId,
 							projectId: attachment.projectId,
 						};
 					}

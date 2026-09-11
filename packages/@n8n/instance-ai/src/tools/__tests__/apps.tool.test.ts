@@ -772,6 +772,7 @@ describe('apps tool', () => {
 				namespace: 'greeter',
 				projectId: 'proj-1',
 				versionId: 'v-1',
+				scaffolded: false,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				installed: true,
 				warnings: [],
@@ -846,19 +847,65 @@ describe('apps tool', () => {
 			expect(await runRestore(context)).toMatchObject({ installed: false, warnings: [] });
 		});
 
-		it('returns denied when the app has no stored version', async () => {
+		it('lays down the starter template when the app has no stored source', async () => {
 			const context = createMockContext();
 			mockEmptyAppDir(context);
 			(context.appService?.getSourceTarball as Mock).mockResolvedValue(null);
+			appServiceMock(context, 'getBindings').mockResolvedValue({
+				bindings: [SUBMIT_BINDING],
+				warnings: ['Binding submit: not published'],
+				stored: STORED_BINDINGS.slice(0, 1),
+			});
+
+			const result = await runRestore(context);
+
+			const commands = commandsRun(context);
+			expect(commands[1]).toBe("mkdir -p '/home/daytona/workspace/apps/greeter'");
+			expect(commands[2]).toContain(
+				"cp -r '/home/daytona/workspace/skills/app-builder/templates/vue/.' '/home/daytona/workspace/apps/greeter/'",
+			);
+			expect(commands[3]).toContain('component-registry/button');
+			expect(commands[4]).toContain('commit -qm scaffold --allow-empty');
+			expect(commands[5]).toContain('npm install');
+			expect(commands.some((command) => command.includes('tar -xzf'))).toBe(false);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				'apps/greeter/vendor/n8n-app-sdk.tgz',
+				SDK_TARBALL,
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes([SUBMIT_BINDING]),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(result).toEqual({
+				appId: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				scaffolded: true,
+				workspacePath: '/home/daytona/workspace/apps/greeter',
+				installed: true,
+				warnings: ['Binding submit: not published'],
+			});
+		});
+
+		it('reports the restore stage when the template copy fails for an app without source', async () => {
+			const context = createMockContext();
+			(context.appService?.getSourceTarball as Mock).mockResolvedValue(null);
+			executeCommandMock(context).mockImplementation(async (command: string) => {
+				if (command.startsWith('[ -d ')) return await Promise.resolve(fail(''));
+				if (command.includes('cp -r')) return await Promise.resolve(fail('cp: no such file'));
+				return await Promise.resolve(ok());
+			});
 
 			const result = await runRestore(context);
 
 			expect(result).toEqual({
-				denied: true,
-				reason: expect.stringContaining('no stored source'),
+				error: true,
+				stage: 'restore',
+				message: expect.stringContaining('cp: no such file'),
 			});
-			expect(writeFileMock(context)).not.toHaveBeenCalled();
-			expect(commandsRun(context)).toHaveLength(1);
 		});
 
 		it('returns denied when apps/<namespace> already has files', async () => {

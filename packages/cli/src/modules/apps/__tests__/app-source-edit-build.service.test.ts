@@ -154,6 +154,7 @@ describe('AppSourceEditBuildService', () => {
 			namespace: 'greeter',
 			projectId: 'proj-1',
 			versionId: 'v-0',
+			scaffolded: false,
 			workspacePath: '/ws/apps/greeter',
 			installed: true,
 			warnings: [],

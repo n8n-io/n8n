@@ -8,7 +8,7 @@ import AddAppModal from '../AddAppModal.vue';
 import { useAppsStore } from '../../apps.store';
 import { ADD_APP_MODAL_KEY, APP_DETAILS } from '../../apps.constants';
 
-const openAppArtifactThread = vi.hoisted(() => vi.fn());
+const createAppArtifactThread = vi.hoisted(() => vi.fn());
 const instanceAiReady = vi.hoisted(() => ({ value: true }));
 const routerPush = vi.hoisted(() => vi.fn());
 
@@ -28,7 +28,7 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', async 
 });
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
-	useInstanceAiHandoff: () => ({ openAppArtifactThread }),
+	useInstanceAiHandoff: () => ({ createAppArtifactThread }),
 }));
 
 const ModalStub = {
@@ -55,7 +55,7 @@ describe('AddAppModal', () => {
 		createTestingPinia();
 		appsStore = mockedStore(useAppsStore);
 		uiStore = mockedStore(useUIStore);
-		openAppArtifactThread.mockReset();
+		createAppArtifactThread.mockReset();
 		routerPush.mockReset();
 		instanceAiReady.value = true;
 	});
@@ -101,7 +101,7 @@ describe('AddAppModal', () => {
 			getByText('Only lowercase letters, numbers, and single hyphens between them are allowed.'),
 		).toBeInTheDocument();
 		expect(getByTestId('apps-new-submit')).toBeDisabled();
-		expect(openAppArtifactThread).not.toHaveBeenCalled();
+		expect(appsStore.createApp).not.toHaveBeenCalled();
 	});
 
 	it('blocks the handoff while the name is longer than 128 characters', async () => {
@@ -116,37 +116,56 @@ describe('AddAppModal', () => {
 		expect(getByTestId('apps-new-submit')).toBeDisabled();
 	});
 
-	it('hands the new app off to the assistant instead of creating it when the assistant is ready', async () => {
-		openAppArtifactThread.mockResolvedValue(true);
+	const createdApp = {
+		id: 'app-1',
+		name: 'Greeter',
+		namespace: 'greeter',
+		theme: null,
+		projectId: 'proj-1',
+		activeVersionId: null,
+		hasUnpublishedChanges: false,
+		createdAt: '2026-04-01T00:00:00.000Z',
+		updatedAt: '2026-04-01T00:00:00.000Z',
+	};
+
+	it('creates the app, binds a thread to it and opens the app page in that thread', async () => {
+		appsStore.createApp.mockResolvedValue(createdApp);
+		createAppArtifactThread.mockResolvedValue('thread-1');
 
 		await fillAndSubmit();
 
-		expect(appsStore.createApp).not.toHaveBeenCalled();
-		expect(openAppArtifactThread).toHaveBeenCalledWith(
-			{ type: 'app', projectId: 'proj-1', name: 'Greeter', namespace: 'greeter', isNewApp: true },
+		expect(appsStore.createApp).toHaveBeenCalledWith('proj-1', 'Greeter', 'greeter');
+		expect(createAppArtifactThread).toHaveBeenCalledWith(
+			{ type: 'app', appId: 'app-1', projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' },
 			{ source: 'app_builder_page', origin: 'internal', sourceContext: { namespace: 'greeter' } },
 		);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(ADD_APP_MODAL_KEY);
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(routerPush).toHaveBeenCalledWith({
+			name: APP_DETAILS,
+			params: { projectId: 'proj-1', appId: 'app-1' },
+			query: { thread: 'thread-1' },
+		});
 	});
 
-	it('creates the app and opens it when the assistant is not ready', async () => {
-		instanceAiReady.value = false;
-		appsStore.createApp.mockResolvedValue({
-			id: 'app-1',
-			name: 'Greeter',
-			namespace: 'greeter',
-			theme: null,
-			projectId: 'proj-1',
-			activeVersionId: null,
-			hasUnpublishedChanges: false,
-			createdAt: '2026-04-01T00:00:00.000Z',
-			updatedAt: '2026-04-01T00:00:00.000Z',
-		});
+	it('opens the app page without a thread when the thread could not be created', async () => {
+		appsStore.createApp.mockResolvedValue(createdApp);
+		createAppArtifactThread.mockResolvedValue(undefined);
 
 		await fillAndSubmit();
 
-		expect(openAppArtifactThread).not.toHaveBeenCalled();
+		expect(routerPush).toHaveBeenCalledWith({
+			name: APP_DETAILS,
+			params: { projectId: 'proj-1', appId: 'app-1' },
+		});
+	});
+
+	it('creates the app and opens it without a thread when the assistant is not ready', async () => {
+		instanceAiReady.value = false;
+		appsStore.createApp.mockResolvedValue(createdApp);
+
+		await fillAndSubmit();
+
+		expect(createAppArtifactThread).not.toHaveBeenCalled();
 		expect(appsStore.createApp).toHaveBeenCalledWith('proj-1', 'Greeter', 'greeter');
 		expect(uiStore.closeModal).toHaveBeenCalledWith(ADD_APP_MODAL_KEY);
 		expect(routerPush).toHaveBeenCalledWith({

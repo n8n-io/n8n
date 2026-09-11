@@ -66,7 +66,6 @@ import {
 	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
-	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
@@ -75,7 +74,6 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
-	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -328,71 +326,6 @@ const preview = useCanvasPreview({
 		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 });
 
-// The namespace the user asked a new app to live under. Outlives the composer
-// chip (cleared on the first send) so the `apps.create` result can still be
-// matched to this thread when it arrives.
-const newAppNamespace = computed(() => {
-	const queued = pendingAppAttachment.value;
-	if (queued && !queued.appId && queued.namespace) return queued.namespace;
-	for (const message of thread.messages) {
-		for (const attachment of message.attachments ?? []) {
-			if (attachment.type === 'app' && !attachment.appId && attachment.namespace) {
-				return attachment.namespace;
-			}
-		}
-	}
-	return undefined;
-});
-
-const createdAppForNamespace = computed(() => {
-	const namespace = newAppNamespace.value;
-	if (!namespace) return undefined;
-	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'app' && entry.namespace === namespace) return entry;
-	}
-	return undefined;
-});
-
-// Resolve the pending app chip and bind the thread once `apps.create` has
-// produced the row. `flush: 'sync'` for the same hydration-gate reason as the
-// auto-open watches in useCanvasPreview.
-watch(
-	() => createdAppForNamespace.value?.id,
-	(appId) => {
-		const created = createdAppForNamespace.value;
-		if (!appId || !created) return;
-		const projectId = created.projectId ?? pendingAppAttachment.value?.projectId;
-		if (!projectId) return;
-
-		const queued = pendingAppAttachment.value;
-		if (queued && !queued.appId) {
-			const resolved: InstanceAiAppAttachment = {
-				type: 'app',
-				appId,
-				projectId,
-				name: created.name,
-				...(created.namespace ? { namespace: created.namespace } : {}),
-			};
-			pendingAppAttachment.value = resolved;
-			stashPendingAppAttachment(props.threadId, resolved);
-		}
-
-		const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
-		if (boundTarget?.appId !== appId) {
-			void store
-				.updateThreadMetadata(thread.id, {
-					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: { appId, projectId, name: created.name },
-				})
-				.catch((error: unknown) => {
-					toast.showError(error, i18n.baseText('generic.error'));
-				});
-		}
-
-		if (thread.isHydratingThread) return;
-		preview.openAppPreview(appId, projectId);
-	},
-	{ flush: 'sync' },
-);
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -822,8 +755,7 @@ const composerContextChip = computed(() => {
 			type: 'app-artifact' as const,
 			appId: appAttachment.appId,
 			projectId: appAttachment.projectId,
-			isNewApp: !appAttachment.appId,
-			key: `pending-app:${appAttachment.appId ?? appAttachment.namespace ?? appAttachment.name}`,
+			key: `pending-app:${appAttachment.appId}`,
 			label: appAttachment.name,
 			icon: 'app-window',
 			isPending: true,

@@ -403,7 +403,7 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				},
 				{ linkable: !attachment.pending },
 			);
-		} else if (attachment.type === 'app' && attachment.appId) {
+		} else if (attachment.type === 'app') {
 			recordProduced(col, {
 				type: 'app',
 				id: attachment.appId,

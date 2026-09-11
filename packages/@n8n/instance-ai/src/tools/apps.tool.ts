@@ -218,7 +218,9 @@ export interface AppRestoreSuccess {
 	name: string;
 	namespace: string;
 	projectId: string;
-	versionId: string;
+	/** Absent when the app had no stored source and the starter template was laid down instead. */
+	versionId?: string;
+	scaffolded: boolean;
 	workspacePath: string;
 	installed: boolean;
 	warnings: string[];
@@ -511,6 +513,68 @@ function requireFilesystem(
 	return filesystem;
 }
 
+/**
+ * Lays down a fresh `apps/<namespace>/`: starter template, SDK tarball,
+ * binding types, a git baseline and node_modules. A failed git or install is
+ * a warning; every other failure throws.
+ */
+async function scaffoldApp(input: {
+	context: AppSandboxContext;
+	workspace: NonNullable<InstanceAiContext['appWorkspace']>;
+	run: SandboxRunner;
+	root: string;
+	namespace: string;
+	template: NonNullable<CreateInput['template']>;
+	bindings: DescribedBinding[];
+	abortSignal?: AbortSignal;
+}): Promise<{ installed: boolean; warnings: string[] }> {
+	const { run, root, namespace, template, abortSignal } = input;
+	const appDir = `${root}/${APPS_DIR}/${namespace}`;
+
+	const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
+	if (mkdir.exitCode !== 0) {
+		throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
+	}
+
+	if (template !== 'none') {
+		const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
+		const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
+			cwd: appDir,
+		});
+		if (copy.exitCode !== 0) {
+			throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
+		}
+	}
+
+	// The Vue template's own Home.vue demonstrates real catalog components rather
+	// than hand-rolled markup, so it needs them to exist from the start. This is a
+	// local copy, not an install.
+	if (template === 'vue') {
+		const addStarters = await run(
+			copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
+			{ cwd: appDir },
+		);
+		if (addStarters.exitCode !== 0) {
+			throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
+		}
+	}
+
+	const appService = requireAppService(input.context);
+	await writeSdkTarball(input.workspace, namespace, await appService.getSdkTarball(), abortSignal);
+	await writeBindingsTypes(input.workspace, namespace, input.bindings, abortSignal);
+
+	const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
+	const install =
+		template === 'none' ? { installed: false } : await installDependencies(run, appDir);
+	return {
+		installed: install.installed,
+		warnings: [
+			...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
+			...(install.warning ? [install.warning] : []),
+		],
+	};
+}
+
 async function handleCreate(
 	context: AppSandboxContext,
 	input: CreateInput,
@@ -544,54 +608,24 @@ async function handleCreate(
 	}
 
 	const root = await getWorkspaceRoot(workspace);
-	const appDir = `${root}/${APPS_DIR}/${namespace}`;
 	const workspacePath = `${context.workspaceRoot ?? root}/${APPS_DIR}/${namespace}`;
 
 	try {
-		const mkdir = await run(`mkdir -p ${q(appDir)}`, { cwd: root });
-		if (mkdir.exitCode !== 0) {
-			throw new Error(`Could not create ${appDir}: ${tailLog(combinedLog(mkdir))}`);
-		}
-
-		const template = input.template ?? DEFAULT_TEMPLATE;
-		if (template !== 'none') {
-			const templateDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/${APP_BUILDER_SKILL_DIR}/templates/${template}`;
-			const copy = await run(buildScaffoldScript({ templateDir, appDir, packageName: namespace }), {
-				cwd: appDir,
-			});
-			if (copy.exitCode !== 0) {
-				throw new Error(`Could not copy the ${template} template: ${tailLog(combinedLog(copy))}`);
-			}
-		}
-
-		// The Vue template's own Home.vue demonstrates real catalog components rather
-		// than hand-rolled markup, so it needs them to exist from the start. This is a
-		// local copy, not an install.
-		if (template === 'vue') {
-			const addStarters = await run(
-				copyComponentsScript(componentRegistryDir(root), appDir, STARTER_COMPONENTS),
-				{ cwd: appDir },
-			);
-			if (addStarters.exitCode !== 0) {
-				throw new Error(`Could not add starter components: ${tailLog(combinedLog(addStarters))}`);
-			}
-		}
-
-		await writeSdkTarball(workspace, namespace, await appService.getSdkTarball(), abortSignal);
-		await writeBindingsTypes(workspace, namespace, [], abortSignal);
-
-		const git = await run(gitInitCommand('scaffold'), { cwd: appDir });
-		const install =
-			template === 'none' ? { installed: false } : await installDependencies(run, appDir);
-		const warnings = [
-			...(git.exitCode === 0 ? [] : [GIT_UNAVAILABLE_WARNING]),
-			...(install.warning ? [install.warning] : []),
-		];
+		const { installed, warnings } = await scaffoldApp({
+			context,
+			workspace,
+			run,
+			root,
+			namespace,
+			template: input.template ?? DEFAULT_TEMPLATE,
+			bindings: [],
+			abortSignal,
+		});
 
 		return {
 			app: created.app,
 			workspacePath,
-			installed: install.installed,
+			installed,
 			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	} catch (error) {
@@ -729,8 +763,9 @@ export async function handleBuild(
 
 /**
  * Rehydrate `apps/<namespace>/` from the newest stored source (a per-turn
- * snapshot or a build). Needed when the app's sandbox is new and never held
- * the app's files.
+ * snapshot or a build), or lay down the starter template for an app that has
+ * no source yet. Needed when the app's sandbox is new and never held the
+ * app's files.
  */
 export async function handleRestore(
 	context: AppSandboxContext,
@@ -760,10 +795,31 @@ export async function handleRestore(
 
 	const tarball = await appService.getSourceTarball(app.id);
 	if (!tarball) {
-		return {
-			denied: true,
-			reason: `App "${app.name}" has no stored source to restore. Write the files under ${workspacePath} by hand with sandbox 'app'.`,
-		};
+		try {
+			const described = await appService.getBindings(app.id);
+			const { installed, warnings } = await scaffoldApp({
+				context,
+				workspace,
+				run,
+				root,
+				namespace: app.namespace,
+				template: DEFAULT_TEMPLATE,
+				bindings: described.bindings,
+				abortSignal,
+			});
+			return {
+				appId: app.id,
+				name: app.name,
+				namespace: app.namespace,
+				projectId: app.projectId,
+				scaffolded: true,
+				workspacePath,
+				installed,
+				warnings: [...warnings, ...described.warnings],
+			};
+		} catch (error) {
+			return { error: true, stage: 'restore', message: getErrorMessage(error) };
+		}
 	}
 
 	const relativeTarball = `${BUILD_STAGING_DIR}/${app.namespace}-${Date.now()}-restore.tgz`;
@@ -797,6 +853,7 @@ export async function handleRestore(
 			namespace: app.namespace,
 			projectId: app.projectId,
 			versionId: tarball.versionId,
+			scaffolded: false,
 			workspacePath,
 			installed: install.installed,
 			warnings: [
@@ -1081,7 +1138,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				"edit the files there with the workspace tools and `sandbox: 'app'`, and the live preview updates by itself. Never build to check your work. " +
 				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
 				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
-				"`restore` unpacks the stored source of an existing app into apps/<namespace>/ when the app's sandbox does not have it yet. " +
+				"`restore` fills apps/<namespace>/ for an existing app when the app's sandbox does not have it yet: it unpacks the stored source, or copies the starter template when the app has no source (`scaffolded: true`). " +
 				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
 				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`): ' +
 				'pass `{ key, kind: "workflow", workflowId }` entries, and it rewrites src/n8n-bindings.d.ts with the input types. ' +
