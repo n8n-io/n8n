@@ -4,18 +4,9 @@
 // Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
 // from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
-
-// Define an own data field rather than assigning through an inherited setter.
-function defineField(target: Record<string, unknown>, key: PropertyKey, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
-}
 
 const min = Math.min;
 const max = Math.max;
