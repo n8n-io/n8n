@@ -248,10 +248,14 @@ export async function createStubServices(
 				)
 				.flatMap((node) => {
 					const isForm = node.type === FORM_TRIGGER_NODE_TYPE;
-					const { path, httpMethod } = node.parameters ?? {};
-					// Both nodes register `path` verbatim; an empty path falls back to the webhookId.
+					const { path, httpMethod, options: nodeOptions } = node.parameters ?? {};
+					// Both nodes register `path` verbatim; Form Trigger 2.2+ keeps it in `options.path`.
+					// An empty path falls back to the webhookId.
+					const customPath = [path, isRecord(nodeOptions) ? nodeOptions.path : undefined].find(
+						(candidate) => typeof candidate === 'string' && candidate !== '',
+					);
 					const pathSegment =
-						typeof path === 'string' && path !== '' ? path : (node.webhookId ?? workflowId);
+						typeof customPath === 'string' ? customPath : (node.webhookId ?? workflowId);
 					const url = `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${pathSegment}`;
 					// A Form Trigger registers GET (renders the form) and POST (receives the submission).
 					const methods = isForm

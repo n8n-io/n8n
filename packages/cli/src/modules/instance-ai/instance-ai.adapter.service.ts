@@ -94,6 +94,7 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import { sleep } from '@n8n/utils/sleep';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -1805,7 +1806,7 @@ export class InstanceAiAdapterService {
 			for (let attempt = 0; attempt < 20; attempt++) {
 				const registrations = await testWebhookRegistrations.getAllRegistrations();
 				if (!registrations.some((r) => r.workflowEntity.id === workflowId)) return;
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				await sleep(100);
 			}
 		};
 
@@ -2232,7 +2233,6 @@ export class InstanceAiAdapterService {
 					// Throws when the node is missing or is not a trigger.
 					resolveRequestedTriggerNode(workflow.nodes ?? [], options.triggerNodeName);
 				}
-				const windowMs = Math.min(options?.timeoutMs ?? MAX_TIMEOUT_MS, MAX_TIMEOUT_MS);
 				const listRegistrations = async () =>
 					(await testWebhookRegistrations.getAllRegistrations()).filter(
 						(registration) => registration.workflowEntity.id === workflowId,
@@ -2263,7 +2263,7 @@ export class InstanceAiAdapterService {
 					triggerToStartFrom:
 						options?.triggerNodeName !== undefined ? { name: options.triggerNodeName } : undefined,
 					workflowIsActive: await workflowRepository.isActive(workflowId),
-					timeoutMs: windowMs,
+					timeoutMs: MAX_TIMEOUT_MS,
 				});
 				if (!registered) {
 					throw new UserError(
@@ -2284,7 +2284,7 @@ export class InstanceAiAdapterService {
 					workflowId,
 					triggers,
 					armedAt: armedAt.toISOString(),
-					deadlineAt: new Date(armedAt.getTime() + windowMs).toISOString(),
+					deadlineAt: new Date(armedAt.getTime() + MAX_TIMEOUT_MS).toISOString(),
 				};
 			},
 

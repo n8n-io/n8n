@@ -87,7 +87,9 @@ export class TestWebhookRegistrationsService {
 		 */
 		const now = Date.now();
 		const remaining = (await this.getAllRegistrations()).map((r) => (r.expiresAt ?? 0) - now);
-		await this.cacheService.expire(this.cacheKey, Math.max(ttl, ...remaining));
+		// Redis EXPIRE takes whole seconds; `remaining` carries arbitrary milliseconds.
+		const ttlMs = Math.ceil(Math.max(ttl, ...remaining) / 1000) * 1000;
+		await this.cacheService.expire(this.cacheKey, ttlMs);
 	}
 
 	async deregister(arg: IWebhookData | string) {

@@ -600,7 +600,7 @@ export interface InstanceAiExecutionService {
 	 */
 	armTestListener?(
 		workflowId: string,
-		options?: { triggerNodeName?: string; timeoutMs?: number },
+		options?: { triggerNodeName?: string },
 	): Promise<TestListenerArmed>;
 	/**
 	 * Settle a listener armed at `armedAt`: cancel it, or report whether a request

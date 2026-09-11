@@ -40,7 +40,7 @@ describe('TestWebhookRegistrationsService', () => {
 			expect(cacheService.expire).not.toHaveBeenCalled();
 		});
 
-		test('should set the given TTL on the hash in multi-main setup', async () => {
+		test('should set the given TTL rounded up to whole seconds on the hash in multi-main setup', async () => {
 			const multiMainRegistrations = new TestWebhookRegistrationsService(
 				cacheService,
 				mock<InstanceSettings>({ isSingleMain: false }),
@@ -48,7 +48,7 @@ describe('TestWebhookRegistrationsService', () => {
 
 			await multiMainRegistrations.register(registration, 1234);
 
-			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 1234);
+			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 2000);
 		});
 
 		test('should keep the hash TTL at the longest remaining registration in multi-main setup', async () => {
@@ -63,9 +63,7 @@ describe('TestWebhookRegistrationsService', () => {
 
 			await multiMainRegistrations.register(registration, 1234);
 
-			const [, ttl] = cacheService.expire.mock.calls[0];
-			expect(ttl).toBeGreaterThan(499_000);
-			expect(ttl).toBeLessThanOrEqual(500_000);
+			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 500_000);
 		});
 
 		test('should throw an error if the registration fails', async () => {
