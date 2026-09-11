@@ -83,8 +83,9 @@ export class SystemTaskRunner {
 	/**
 	 * Take ownership of the registry: route every task registered so far and
 	 * every one registered later, start the in-memory timers if this instance is
-	 * already the leader, and provision the durable jobs. Later leadership
-	 * changes arrive through {@link startTimers} and {@link stopTimers}.
+	 * already the leader, provision the durable jobs and remove the stale ones.
+	 * Later leadership changes arrive through {@link startTimers} and
+	 * {@link stopTimers}.
 	 */
 	async init(): Promise<void> {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
@@ -100,6 +101,40 @@ export class SystemTaskRunner {
 
 			for (const routed of this.durableTasks()) {
 				await this.provisionOne(routed);
+			}
+			await this.deprovisionStale();
+		}
+	}
+
+	/**
+	 * Delete the stored jobs of the system tasks this instance does not run
+	 * durably, unless a newer version wrote them. Never throws: a stale row must
+	 * not stop startup.
+	 */
+	private async deprovisionStale(): Promise<void> {
+		let stale: string[];
+		try {
+			stale = await this.systemTaskOwner.findStale();
+		} catch (error) {
+			this.logger.error('Could not list the durable system task jobs, so stale ones stay', {
+				error,
+			});
+			this.errorReporter.error(error, { shouldBeLogged: false, shouldIsolate: true });
+			return;
+		}
+
+		for (const name of stale) {
+			try {
+				const { removed } = await this.durableJobProvisioner.deprovisionOwner(
+					this.systemTaskOwner.owner(name),
+				);
+				this.logger.info('Removed the stale durable job of a system task', { name, removed });
+			} catch (error) {
+				this.reportFailure(
+					'Could not remove the stale durable job of a system task',
+					{ name },
+					error,
+				);
 			}
 		}
 	}
@@ -233,6 +268,7 @@ export class SystemTaskRunner {
 		this.routedTasksByName.set(task.name, routed);
 
 		if (this.runsDurably(task)) {
+			this.systemTaskOwner.declareDurable(task.name);
 			this.durableScheduler.registerTaskHandler(
 				systemTaskType(task.name),
 				new SystemTaskHandler(task, this.shutdownController.signal, this.logger, (error) =>
@@ -340,7 +376,7 @@ export class SystemTaskRunner {
 		routed.retryTimer.unref();
 	}
 
-	private reportFailure(message: string, task: SystemTask, error: unknown): void {
+	private reportFailure(message: string, task: Pick<SystemTask, 'name'>, error: unknown): void {
 		this.logger.error(message, { name: task.name, error });
 		this.errorReporter.error(error, {
 			extra: { systemTask: task.name },

@@ -313,6 +313,10 @@ export class SchedulerConfig {
 	 * side (for example during a rolling deploy), the older instances still run
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
+	 *
+	 * Give every instance the same value. An instance that does not run a job on
+	 * the durable scheduler removes that job's schedule at startup, so instances
+	 * that disagree keep removing and re-creating it.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;

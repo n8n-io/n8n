@@ -26,6 +26,7 @@ import type {
 	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { isDeepStrictEqual } from 'node:util';
 
 import { rowSchedule, scheduleColumns } from './schedule-columns';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
@@ -240,6 +241,7 @@ export class DurableJobProvisioner {
 				const seededJobIds = new Set<number>();
 				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
+				const outdatedPayloadJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByOwner(manager, owner);
@@ -254,6 +256,9 @@ export class DurableJobProvisioner {
 								row.maxAttempts !== maxAttempts
 							) {
 								outdatedRunOptionJobIds.push(row.id);
+							}
+							if (!isDeepStrictEqual(row.payload, payload)) {
+								outdatedPayloadJobIds.push(row.id);
 							}
 						}
 						return rows.map(
@@ -304,6 +309,8 @@ export class DurableJobProvisioner {
 					misfirePolicy,
 					misfireGraceSeconds,
 				});
+				// Only `insert` writes the payload, so an existing row picks up a change to it here.
+				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,

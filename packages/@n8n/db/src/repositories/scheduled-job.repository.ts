@@ -135,6 +135,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
+	/** The owner id and payload of every job these owners of one kind hold. */
+	async findPayloadsByOwnerIds(
+		ownerType: string,
+		ownerIds: string[],
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'payload'>>> {
+		if (ownerIds.length === 0) return [];
+		return await this.find({
+			where: { ownerType, ownerId: In(ownerIds) },
+			select: ['ownerId', 'payload'],
+		});
+	}
+
+	/** The owner id and payload of every job owners of one kind hold. */
+	async findPayloadsByOwnerType(
+		ownerType: string,
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'payload'>>> {
+		return await this.find({ where: { ownerType }, select: ['ownerId', 'payload'] });
+	}
+
 	async countByOwner(owner: ScheduledJobOwner): Promise<number> {
 		return await this.count({ where: ownerCriteria(owner) });
 	}
@@ -231,6 +250,17 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	): Promise<void> {
 		if (ids.length === 0) return;
 		await manager.update(ScheduledJob, ids, update);
+	}
+
+	/** Rewrites the payload only, leaving schedule and clock untouched. */
+	async updatePayload(
+		manager: EntityManager,
+		ids: number[],
+		payload: ScheduledJob['payload'],
+	): Promise<void> {
+		if (ids.length === 0) return;
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express.
+		await manager.update(ScheduledJob, ids, { payload } as QueryDeepPartialEntity<ScheduledJob>);
 	}
 
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {

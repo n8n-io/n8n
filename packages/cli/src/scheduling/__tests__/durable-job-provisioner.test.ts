@@ -33,24 +33,30 @@ const desiredJob = (
 	firstRunAt: Date | null = CLOCK,
 ): DesiredJob => ({ name, schedule, firstRunAt });
 
-/** A stored cron job row; override the fields a test cares about. */
-const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
-	mock<ScheduledJob>({
-		id: 10,
-		name: 'wf:node:0',
-		kind: 'cron',
-		cronExpression: '0 0 9 * * *',
-		timezone: 'UTC',
-		recurrenceUnit: null,
-		recurrenceSize: null,
-		intervalSeconds: null,
-		fireAt: null,
-		nextRunAt: CLOCK,
-		maxAttempts: 5,
-		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: 90,
-		...over,
-	});
+/**
+ * A stored cron job row; override the fields a test cares about. The payload is
+ * assigned after the mock is built so it stays a plain object rather than a proxy.
+ */
+const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): ScheduledJob =>
+	Object.assign(
+		mock<ScheduledJob>({
+			id: 10,
+			name: 'wf:node:0',
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *',
+			timezone: 'UTC',
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: CLOCK,
+			maxAttempts: 5,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 90,
+			...over,
+		}),
+		{ payload },
+	);
 
 describe('DurableJobProvisioner', () => {
 	const manager = mock<EntityManager>();
@@ -59,7 +65,7 @@ describe('DurableJobProvisioner', () => {
 	const tasks = mock<ScheduledTaskRepository>();
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
-	const systemTaskOwner = new SystemTaskScheduledJobOwner();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -200,7 +206,38 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('rewrites the payload of a job whose stored payload differs, keeping its schedule', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ payload: { n8nVersion: '1.0.0' } })]);
+
+			const summary = await provision(
+				'system:prune',
+				{ n8nVersion: '2.0.0' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [10], { n8nVersion: '2.0.0' });
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('leaves the payload of a job alone when it already matches', async () => {
+			jobs.findManyByOwner.mockResolvedValue([
+				jobRow({ payload: { workflowId: 'wf', nodeId: 'node' } }),
+			]);
+
+			await provision(
+				'schedule-trigger',
+				{ workflowId: 'wf', nodeId: 'node' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 
 		it('reconciles the policy of a job whose schedule is unchanged', async () => {

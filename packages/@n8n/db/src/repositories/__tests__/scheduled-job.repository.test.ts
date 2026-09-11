@@ -96,6 +96,41 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('findPayloadsByOwnerIds', () => {
+		it('reads the owner id and payload of the jobs these owners hold', async () => {
+			const rows = [mock<ScheduledJob>({ ownerId: 'a', payload: { n8nVersion: '1.0.0' } })];
+			entityManager.find.mockResolvedValueOnce(rows);
+
+			const result = await repository.findPayloadsByOwnerIds('system-task', ['a', 'b']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task', ownerId: In(['a', 'b']) },
+				select: ['ownerId', 'payload'],
+			});
+			expect(result).toBe(rows);
+		});
+
+		it('is a no-op with no owner ids', async () => {
+			expect(await repository.findPayloadsByOwnerIds('system-task', [])).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findPayloadsByOwnerType', () => {
+		it('reads the owner id and payload of every job owners of one kind hold', async () => {
+			const rows = [mock<ScheduledJob>({ ownerId: 'a', payload: { n8nVersion: '1.0.0' } })];
+			entityManager.find.mockResolvedValueOnce(rows);
+
+			const result = await repository.findPayloadsByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['ownerId', 'payload'],
+			});
+			expect(result).toBe(rows);
+		});
+	});
+
 	describe('countByOwner', () => {
 		it('counts the jobs owned by the owner member', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
@@ -319,6 +354,22 @@ describe('ScheduledJobRepository', () => {
 			await repository.updateDefinition(entityManager, 10, update);
 
 			expect(entityManager.update).toHaveBeenCalledWith(ScheduledJob, { id: 10 }, update);
+		});
+	});
+
+	describe('updatePayload', () => {
+		it('rewrites the payload of the given ids, leaving schedule and clock untouched', async () => {
+			await repository.updatePayload(entityManager, [1, 2], { n8nVersion: '1.0.0' });
+
+			expect(entityManager.update).toHaveBeenCalledWith(ScheduledJob, [1, 2], {
+				payload: { n8nVersion: '1.0.0' },
+			});
+		});
+
+		it('is a no-op when there are no ids', async () => {
+			await repository.updatePayload(entityManager, [], { n8nVersion: '1.0.0' });
+
+			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 
