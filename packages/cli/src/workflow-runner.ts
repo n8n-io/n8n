@@ -315,16 +315,10 @@ export class WorkflowRunner {
 			}, STREAMING_HEARTBEAT_INTERVAL_MS);
 		}
 
-		// @TODO: Reduce to true branch once feature is stable
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
-
 		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
 
 		try {
-			if (shouldEnqueue) {
+			if (this.executionsConfig.mode === 'queue') {
 				await this.enqueueExecution(
 					executionId,
 					workflowId,

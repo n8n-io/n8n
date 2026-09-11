@@ -7,6 +7,7 @@ import type {
 	InstanceAiDataTableService,
 	InstanceAiWorkflowService,
 	OrchestrationContext,
+	ResolvedNodeParametersResult,
 	WorkflowTaskService,
 } from '../../../types';
 import { createRemediation, MAX_VERIFY_ATTEMPTS } from '../../../workflow-loop/remediation';
@@ -32,6 +33,20 @@ type VerifyBuiltWorkflowOutput = {
 	}>;
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
+	resolvedParameterWarnings?: Array<{
+		nodeName: string;
+		executionId?: string;
+		path: string;
+		raw: string;
+		issue: 'empty' | 'failed';
+		detail?: string;
+	}>;
+	skippedParameterChecks?: Array<{
+		nodeName: string;
+		executionId?: string;
+		reason: string;
+	}>;
+	skippedParameterCheckCount?: number;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
 	nodeErrors?: Array<{ nodeName: string; message?: string }>;
@@ -457,6 +472,9 @@ interface VerifyToolContext {
 					]
 				) => Promise<ExecutionRunResult>
 			>;
+			getResolvedNodeParameters?: Mock<
+				(executionId: string, nodeName: string) => Promise<ResolvedNodeParametersResult>
+			>;
 		};
 		workflowService?: InstanceAiWorkflowService;
 		dataTableService?: InstanceAiDataTableService;
@@ -496,6 +514,8 @@ function makeContext(
 		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
 		availableCredentials?: Array<{ id: string; name: string; type: string }>;
+		/** Replayed parameter resolution per simulated node; nodes not listed make the replay throw. */
+		resolvedParameters?: Record<string, ResolvedNodeParametersResult>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -583,6 +603,13 @@ function makeContext(
 		error: vi.fn(),
 	};
 
+	const getResolvedNodeParameters = vi.fn(async (_executionId: string, nodeName: string) => {
+		await Promise.resolve();
+		const replayed = overrides.resolvedParameters?.[nodeName];
+		if (!replayed) throw new Error(`no run data for ${nodeName}`);
+		return replayed;
+	});
+
 	const ctx: VerifyToolContext = {
 		workflowTaskService: {
 			reportBuildOutcome: vi.fn(),
@@ -602,7 +629,7 @@ function makeContext(
 			recordVerification: vi.fn(coordinator.recordVerification.bind(coordinator)),
 		} as unknown as WorkflowTaskService,
 		domainContext: {
-			executionService: { run },
+			executionService: { run, getResolvedNodeParameters },
 			workflowService,
 			dataTableService,
 			credentialService,
@@ -1167,6 +1194,99 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.simulationNote).toContain('no real external writes');
 	});
 
+	it('surfaces parameters of reached simulated nodes that resolved to empty or threw', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					simulateVerdict('Send Slack', 'Sends a message to a Slack channel'),
+					simulateVerdict('Send SMS', 'Sends an SMS'),
+				],
+				simulationFixtures: { 'Send Slack': [{ ok: true }], 'Send SMS': [{ sid: 'SM1' }] },
+			}),
+			{
+				executionId: 'exec-sim',
+				status: 'success',
+				data: {
+					Webhook: [{ headers: {}, query: {}, body: { CallStatus: 'no-answer' } }],
+					'Send Slack': [{ ok: true }],
+				},
+			},
+			{
+				resolvedParameters: {
+					'Send Slack': {
+						nodeName: 'Send Slack',
+						runIndex: 0,
+						itemIndex: 0,
+						parameters: { text: '={{ $json.query.caller }}' },
+						resolved: '{"text":""}',
+						failedExpressions: [
+							{ path: 'channel', raw: '={{ $json.body.ch.id }}', error: 'Cannot read id' },
+						],
+						emptyResolutions: [
+							{ path: 'text', raw: '={{ $json.query.caller }}', resolved: undefined },
+						],
+					},
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		// Only nodes the run reached are replayed; Send SMS never executed.
+		expect(ctx.domainContext.executionService.getResolvedNodeParameters).toHaveBeenCalledTimes(1);
+		expect(ctx.domainContext.executionService.getResolvedNodeParameters).toHaveBeenCalledWith(
+			'exec-sim',
+			'Send Slack',
+		);
+		expect(result.resolvedParameterWarnings).toEqual([
+			{
+				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
+				path: 'channel',
+				raw: '={{ $json.body.ch.id }}',
+				issue: 'failed',
+				detail: 'Cannot read id',
+			},
+			{
+				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
+				path: 'text',
+				raw: '={{ $json.query.caller }}',
+				issue: 'empty',
+			},
+		]);
+		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('Send Slack: `channel`');
+		expect(result.simulationNote).toContain('`text` (={{ $json.query.caller }}) resolved to empty');
+	});
+
+	it('keeps the verification result when the parameter replay fails', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Send Slack', 'Sends a message to a Slack channel')],
+				simulationFixtures: { 'Send Slack': [{ ok: true }] },
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: { 'Send Slack': [{ ok: true }] } },
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.resolvedParameterWarnings).toBeUndefined();
+		expect(result.skippedParameterChecks).toEqual([
+			{ nodeName: 'Send Slack', executionId: 'exec-sim', reason: 'replay-failed' },
+		]);
+		expect(result.skippedParameterCheckCount).toBe(1);
+		expect(result.simulationNote).toContain('no real external writes');
+		expect(result.simulationNote).toContain('Parameter check skipped');
+		expect(result.simulationNote).toContain('unchecked dynamic fields');
+		expect(ctx.logger.debug).toHaveBeenCalledWith(
+			'Resolved-parameter check skipped for simulated node',
+			expect.objectContaining({ nodeName: 'Send Slack' }),
+		);
+	});
+
 	it('fails closed when the build outcome has no simulation plan at all', async () => {
 		// An undefined plan means the outcome predates classification or
 		// classification failed — nothing shields destructive nodes in that run.
@@ -1241,7 +1361,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 				{
 					nodeName: 'geocode_city',
 					message:
-						'The node "@n8n/n8n-nodes-langchain.toolHttpRequest" has a "supplyData" method but no "execute" method.',
+						'The node "@n8n/n8n-nodes-langchain.toolCalculator" has a "supplyData" method but no "execute" method.',
 				},
 			],
 			lastNodeExecuted: 'Return Brief',

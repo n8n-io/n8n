@@ -21,7 +21,7 @@ exports[`useDebugInfo > should generate debug info 1`] = `
 - error: none
 - progress: true
 - manual: true
-- binaryMode: memory
+- binaryMode: filesystem
 
 ## pruning
 

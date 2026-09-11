@@ -118,7 +118,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
+	binaryDataMode: 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -176,7 +176,6 @@ export interface FrontendSettings {
 			enabled: boolean;
 		};
 	};
-	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
@@ -393,8 +392,6 @@ export type FrontendModuleSettings = {
 		forProjects: boolean;
 		/** Whether role-based access control for external secrets is enabled. */
 		roleBasedAccess: boolean;
-		/** Whether system roles (admin, editor) have external secrets scopes. */
-		systemRolesEnabled: boolean;
 	};
 
 	/**

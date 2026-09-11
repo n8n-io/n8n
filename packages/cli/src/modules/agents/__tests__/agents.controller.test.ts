@@ -135,6 +135,73 @@ describe('AgentsController create', () => {
 			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
 		});
 	});
+
+	it('seeds the schema, skills, and tools for a duplicate and skips default-model resolution', async () => {
+		const { controller, agentsService, agentDefaultModelResolverService } =
+			makeCreateController('agent-copy');
+		const skills = { skill1: { name: 'Triage', instructions: 'Sort tickets.' } };
+		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+			skills,
+			tools,
+		} as never);
+
+		// A duplicate carries its own model, so the resolver is never called.
+		expect(agentDefaultModelResolverService.resolve).not.toHaveBeenCalled();
+		// The duplicate is a user-driven write, so the controller threads the
+		// user through — the service blanks inaccessible credentials and copies
+		// channels as drafts off that flag.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				skills,
+				tools,
+				user: { id: 'user-1' },
+			}),
+		);
+		// No default model is resolved for a duplicate.
+		const [, , options] = agentsService.create.mock.calls[0] as [
+			string,
+			string,
+			Record<string, unknown>,
+		];
+		expect(options).not.toHaveProperty('defaultModel');
+	});
+
+	it('overrides the schema name with the entity name on a duplicate', async () => {
+		const { controller, agentsService } = makeCreateController('agent-copy');
+		const schema = {
+			name: 'Source Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage tickets.',
+		};
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Source Agent Copy',
+			schema,
+		} as never);
+
+		// The config name is kept in sync with the entity name so the list and
+		// the builder never disagree on a directly-seeded create.
+		expect(agentsService.create).toHaveBeenCalledWith(
+			'project-1',
+			'Source Agent Copy',
+			expect.objectContaining({
+				schema: { ...schema, name: 'Source Agent Copy' },
+			}),
+		);
+	});
 });
 
 describe('AgentsController list', () => {

@@ -137,9 +137,9 @@ situations where `test:local`'s defaults aren't enough:
   `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
   are responsible for detecting the missing container and skipping or falling
   back.
-- **Self-managed n8n.** Boots n8n with a real readiness check against
-  `/rest/e2e/reset` (Playwright's default `webServer` favicon check is racy
-  with slower module startups) and skips Playwright's own webServer.
+- **Self-managed n8n.** Boots n8n with a readiness check against
+  `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
+  Playwright's own webServer.
 
 Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
 

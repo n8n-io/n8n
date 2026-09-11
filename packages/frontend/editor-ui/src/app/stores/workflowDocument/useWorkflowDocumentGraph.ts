@@ -1,6 +1,5 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
 	type IConnectedNode,
 	type IConnection,
@@ -115,20 +114,6 @@ export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>
 		});
 	}
 
-	// Like checkIfNodeHasChatParent but also accepts a Manual Chat Trigger, used to decide
-	// whether the Agent v3+ 'auto' prompt source is offered in the NDV.
-	function checkIfNodeHasChatOrManualChatParent(nodeName: string): boolean {
-		const parents = getParentNodes(nodeName, NodeConnectionTypes.Main);
-
-		return parents.some((parent) => {
-			const parentNodeType = workflowObject.value.getNode?.(parent)?.type;
-			return (
-				parentNodeType === CHAT_TRIGGER_NODE_TYPE ||
-				parentNodeType === MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE
-			);
-		});
-	}
-
 	function checkIfToolNodeHasChatParent(nodeName: string): boolean {
 		const agentNodes = getChildNodes(nodeName, NodeConnectionTypes.AiTool);
 		return agentNodes.some((agentNode) => checkIfNodeHasChatParent(agentNode));
@@ -145,7 +130,6 @@ export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>
 		getConnectedNodes,
 		findRootWithMainConnection,
 		checkIfNodeHasChatParent,
-		checkIfNodeHasChatOrManualChatParent,
 		checkIfToolNodeHasChatParent,
 
 		// Node lookup

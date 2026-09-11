@@ -35,7 +35,6 @@ describe('FrontendService', () => {
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
-		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },
@@ -107,8 +106,8 @@ describe('FrontendService', () => {
 	});
 
 	const binaryDataConfig = mock<BinaryDataConfig>({
-		mode: 'default',
-		availableModes: ['default'],
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
 	});
 
 	const credentialTypes = mock<CredentialTypes>({

@@ -671,13 +671,11 @@ export class WorkflowService {
 		await this.workflowRepository.updateContent(workflowId, updatePayload, {
 			policyCleared: cleared,
 		});
-		const tagsDisabled = this.globalConfig.tags.disabled;
-
-		if (tagIds && !tagsDisabled) {
+		if (tagIds) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		const relations = tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'];
+		const relations = ['tags', 'activeVersion'];
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.

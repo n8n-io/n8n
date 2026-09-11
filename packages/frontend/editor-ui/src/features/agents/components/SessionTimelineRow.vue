@@ -53,7 +53,7 @@ const infoText = computed((): string => {
 			return truncate(it.content ?? '', 500);
 		case 'tool': {
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			return resolveToolNameForDisplay(it.toolName, i18n);
+			return resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);

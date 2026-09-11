@@ -5,13 +5,10 @@ import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
-export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const AI_MCP_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const WIKIPEDIA_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWikipedia';
-export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
-export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
 export const GOOGLE_GMAIL_NODE_TYPE = 'n8n-nodes-base.gmail';
@@ -27,13 +24,10 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HTTP_REQUEST_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
-export const INTERVAL_NODE_TYPE = 'n8n-nodes-base.interval';
-export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
 export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
-export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
@@ -45,7 +39,6 @@ export const OPEN_AI_CHAT_MODEL_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatOpen
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
 	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
-export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
 export const SIMPLE_MEMORY_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
@@ -70,7 +63,6 @@ export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
-export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger';
@@ -113,25 +105,13 @@ export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
-export const EXECUTABLE_TRIGGER_NODE_TYPES = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	CRON_NODE_TYPE,
-	INTERVAL_NODE_TYPE,
-];
+export const EXECUTABLE_TRIGGER_NODE_TYPES = [MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE];
 
-export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
-	MANUAL_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-];
+export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [MANUAL_TRIGGER_NODE_TYPE];
 
 export const DATA_TABLE_NODES = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 
-export const NODES_USING_CODE_NODE_EDITOR = [
-	CODE_NODE_TYPE,
-	AI_CODE_NODE_TYPE,
-	AI_TRANSFORM_NODE_TYPE,
-];
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_TRANSFORM_NODE_TYPE];
 export const MODULE_ENABLED_NODES = [
 	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
 	{ nodeType: MESSAGE_AN_AGENT_NODE_TYPE, module: AGENTS_MODULE_NAME },

@@ -6,6 +6,22 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
+n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
+
+### When is action necessary?
+
+If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
+
+### What changed?
+
+The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags are always enabled. n8n now ignores the variable.
+
+### When is action necessary?
+
+No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
+
+### What changed?
+
 The Execute Sub-workflow node no longer supports the "Local File" and "URL" sources. Executions of nodes that still use these sources fail with an error.
 
 ### When is action necessary?
