@@ -86,9 +86,10 @@ One violation per blocked type, deduplicated, in the order the types first appea
 names the scope whose verdict decided, which is what a user needs to know who to ask.
 
 The violations reach the caller as HTTP 403 with `meta.violations`, and a blocked run stores
-them on the execution's error. The builder UI reads effective availability from
-`GET /projects/:projectId/available-types` instead, so it can gray a type out before anyone
-tries to save it.
+them on the execution's error. Today that error is the whole story a user gets: the builder
+does not yet read `GET /projects/:projectId/available-types`, so a denied node looks normal
+until the save is refused. That endpoint exists for the builder to gray the node out up front,
+and wiring it is a separate piece of work.
 
 ## The store
 
@@ -129,9 +130,18 @@ through a sealed repository method, and the lint rule that guards that has no al
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.
-- **An import is judged on its whole content.** A source-control pull of a workflow that
-  already carried a now-blocked type is skipped and reported on every pull, because the import
-  context has no stored workflow to grandfather against.
+- **An import is judged on its whole content.** The import context carries no stored workflow,
+  so there is nothing to grandfather against: a source-control pull of a workflow that already
+  carried a now-blocked type is refused on every pull.
+
+  Each host picks what a refusal costs, and those postures are the substrate's, not this
+  feature's. A pull **skips that one workflow and carries on**, reporting it on the pull result
+  as `contentImportPolicy.violations`; the rest of the pull lands. A package import refuses the
+  whole package. The pull is deliberately partial: one denied workflow must not block every
+  other workflow's deploy, and the skipped one keeps its previous state rather than being
+  half-written. The cost is that git and the instance diverge for that workflow until an admin
+  allows the type or the workflow drops it — which is why the divergence is reported rather
+  than only logged.
 
 ## Files
 

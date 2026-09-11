@@ -47,14 +47,20 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 	// Registration is what makes the check run at all: the decision service reads the registry
 	// per decision, so a missing import here is silent enforcement loss.
+	//
+	// Asserted by class name, because importing the check to compare identities would run
+	// `@PolicyCheck()` here and register it, and reading `id` off an instance would construct
+	// its repositories. Either one would make this pass with `init()` no longer importing it.
 	it('registers the node type policy check on init', async () => {
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
 
-		const { NodeTypePolicyCheck } = await import('../node-type-policy.check.js');
+		const registered = Container.get(PolicyCheckMetadata)
+			.getClasses()
+			.map((checkClass) => checkClass.name);
 
-		expect(Container.get(PolicyCheckMetadata).getClasses()).toContain(NodeTypePolicyCheck);
+		expect(registered).toContain('NodeTypePolicyCheck');
 	}, 30_000);
 
 	it('exposes its entities so the datasource picks them up', async () => {
