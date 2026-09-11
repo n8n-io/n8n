@@ -103,6 +103,7 @@ import {
 	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
+	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
 	type DataTableRow,
@@ -4112,8 +4113,10 @@ export async function extractExecutionOutcome(
 	// parameter-values privacy setting.
 	const runData = execution.data?.resultData?.runData;
 	const executedNodeNames = Object.keys(runData ?? {});
-	if (includeOutputData) {
-		if (runData) {
+	if (includeOutputData && runData) {
+		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+		await workflow?.expression.acquireIsolate();
+		try {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
 				if (!lastRun?.data?.main) continue;
@@ -4124,12 +4127,9 @@ export async function extractExecutionOutcome(
 					resultData[nodeName] = truncateNodeOutput(branches[0]);
 					continue;
 				}
-				// Multi-output nodes (Filter, IF, Switch) route each output to a different
-				// downstream node, so their items are reported per output, never as one list.
-				const names = resolveOutputNames(
-					execution.workflowData?.nodes.find((node) => node.name === nodeName),
-					nodeTypes,
-				);
+				// Multi-output nodes (Filter, IF, Switch) keep each output separate, so
+				// their items are reported per output, never as one list.
+				const names = resolveOutputNames(workflow, nodeName);
 				resultData[nodeName] = {
 					outputs: branches.map((items, index) => ({
 						index,
@@ -4139,6 +4139,8 @@ export async function extractExecutionOutcome(
 					totalItems,
 				} satisfies BranchedNodeOutput;
 			}
+		} finally {
+			await workflow?.expression.releaseIsolate();
 		}
 	}
 
@@ -4253,24 +4255,48 @@ function capItem(item: unknown): unknown {
 }
 
 /**
- * Output labels as the canvas shows them: the node type's `outputNames`
- * (Filter: Kept/Discarded, IF: true/false) or each output's `displayName`, plus
- * "Error" when the node routes errors to an extra output. Empty when node types
- * are unavailable or the type is unknown, so outputs are then index-only.
+ * Transient Workflow over the execution's workflow so `getNodeOutputs` can
+ * resolve dynamic `outputs` expressions (Switch). Same pattern as the
+ * `getNodeInputs` call above. `undefined` when node types are missing or a
+ * node type is not installed; outputs are then index-only.
  */
-function resolveOutputNames(node: INode | undefined, nodeTypes?: NodeTypes): string[] {
-	if (!node || !nodeTypes) return [];
+function buildExecutionWorkflow(
+	workflowData: IWorkflowBase | undefined,
+	nodeTypes?: NodeTypes,
+): Workflow | undefined {
+	if (!workflowData || !nodeTypes) return undefined;
 	try {
-		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		// ponytail: expression outputs (Switch) stay index-only; its default labels are the indices anyway.
-		const names =
-			description.outputNames ??
-			(Array.isArray(description.outputs)
-				? description.outputs.map((output) =>
-						typeof output === 'string' ? '' : (output.displayName ?? ''),
-					)
-				: []);
-		return names.length > 0 && node.onError === 'continueErrorOutput' ? [...names, 'Error'] : names;
+		// The constructor fills default parameters on the passed node objects.
+		// Nothing downstream reads raw parameters, so no copy is needed.
+		return new Workflow({
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+		});
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Output labels as the node's output pane shows them: the resolved output's
+ * `displayName` (Switch rules, Success / Error), else the node type's
+ * `outputNames[i]` (Filter: Kept / Discarded). An empty string means no label.
+ */
+function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): string[] {
+	const node = workflow?.getNode(nodeName);
+	if (!workflow || !node) return [];
+	try {
+		const { description } = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, description);
+		// Filter declares one output but names two, so count both sources.
+		const count = Math.max(outputs.length, description.outputNames?.length ?? 0);
+		return Array.from({ length: count }, (_, i) => {
+			const output = outputs[i];
+			const displayName = typeof output === 'object' ? output.displayName : undefined;
+			return displayName ?? description.outputNames?.[i] ?? '';
+		});
 	} catch {
 		return [];
 	}
@@ -4305,10 +4331,14 @@ export async function extractNodeOutput(
 
 	const startIndex = options?.startIndex ?? 0;
 	const maxItems = Math.min(options?.maxItems ?? 10, 50);
-	const names = resolveOutputNames(
-		execution.workflowData?.nodes.find((node) => node.name === nodeName),
-		nodeTypes,
-	);
+	const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
+	await workflow?.expression.acquireIsolate();
+	let names: string[];
+	try {
+		names = resolveOutputNames(workflow, nodeName);
+	} finally {
+		await workflow?.expression.releaseIsolate();
+	}
 
 	// One page over the items of all outputs (first output first), reported per
 	// output so a Filter's Kept and Discarded items never read as one list.

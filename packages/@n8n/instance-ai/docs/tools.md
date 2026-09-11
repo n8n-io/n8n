@@ -575,7 +575,9 @@ Get the output data of a specific node from an execution.
 
 **Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
 One `outputs` entry per node output, in output order; a Filter reports `Kept` and
-`Discarded` separately. `totalItems` and `returned` count across all outputs.
+`Discarded` separately. `name` follows the node's output pane labels, including
+renamed Switch outputs and `Success` / `Error` for nodes that route errors to an
+extra output. `totalItems` and `returned` count across all outputs.
 
 ### `executions(action="get-resolved-node-parameters")`
 
