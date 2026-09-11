@@ -48,6 +48,7 @@ const agentArtifact = {
 	agentId: 'agent-1',
 	config: {
 		name: 'Digest agent',
+		model: 'anthropic/claude-sonnet-4-5',
 		instructions: 'Use sk-abc123DEF456ghi789jkl012 to call the provider.',
 		credentials: { slack: { id: 'credential-1' } },
 		futureDisplayMode: { density: 'compact' },
@@ -207,6 +208,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			agentId: 'agent-1',
 			config: {
 				name: 'Digest agent',
+				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Use [REDACTED] to call the provider.',
 				credentials: '[REDACTED]',
 				futureDisplayMode: { density: 'compact' },
@@ -325,6 +327,41 @@ describe('eval-results.json — dispatcher contract', () => {
 
 		expect(tc).not.toHaveProperty('agentArtifact');
 		expect(tc.agentArtifactPerRun).toEqual([null, null]);
+	});
+
+	it('preserves positions while dropping artifacts after the aggregate UTF-8 byte cap', () => {
+		const largeArtifact = (index: number) => ({
+			agentId: `agent-${index}`,
+			config: {
+				name: `Large agent ${index}`,
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: '界'.repeat(60_000),
+			},
+			skills: {},
+		});
+		const evaluation = aggregateResults(
+			[0, 1, 2].map((index) => [{ ...iteration1(), agentArtifact: largeArtifact(index) }]),
+			3,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-agent-artifact-run-cap',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+		const tc = report.testCases[0];
+
+		expect(tc.agentArtifact).toEqual(tc.agentArtifactPerRun[0]);
+		expect(tc.agentArtifactPerRun[0]).toMatchObject({ agentId: 'agent-0' });
+		expect(tc.agentArtifactPerRun[1]).toMatchObject({ agentId: 'agent-1' });
+		expect(tc.agentArtifactPerRun[2]).toBeNull();
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {

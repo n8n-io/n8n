@@ -2,8 +2,18 @@ import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import {
+	AGENT_ARTIFACT_ITERATION_CAP_BYTES,
+	sanitizeAgentArtifact,
+} from '../harness/artifacts/agent-artifact';
 import { agentHandler } from '../harness/artifacts/agent-handler';
 import type { ArtifactRef } from '../types';
+
+const validConfig = {
+	name: 'My Agent',
+	model: 'anthropic/claude-sonnet-4-5',
+	instructions: 'Triage requests.',
+};
 
 describe('agentHandler', () => {
 	it('declares its type and static execution mode', () => {
@@ -31,8 +41,7 @@ describe('agentHandler', () => {
 		// Future fields must survive in the raw preview even when this checkout's
 		// AgentJsonConfig type does not know them yet.
 		const rawConfig = {
-			name: 'My Agent',
-			model: { provider: 'anthropic', model: 'claude' },
+			...validConfig,
 			instructions: 'Use sk-abc123DEF456ghi789jkl012 when needed.',
 			futureDisplayMode: { density: 'compact' },
 		} as unknown as AgentJsonConfig;
@@ -92,8 +101,7 @@ describe('agentHandler', () => {
 		const projectId = 'project-123';
 		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue(projectId);
 		const getAgentConfig: Mock = vi.fn().mockResolvedValue({
-			name: 'My Agent',
-			instructions: 'Triage requests.',
+			...validConfig,
 			skills: [{ type: 'skill', id: 'missing-skill' }],
 		});
 		const getAgentSkills: Mock = vi.fn().mockResolvedValue({});
@@ -106,6 +114,25 @@ describe('agentHandler', () => {
 		await expect(agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client)).rejects.toThrow(
 			'Agent agent-1 preview could not be sanitized',
 		);
+	});
+
+	it('rejects malformed known config fields', () => {
+		expect(
+			sanitizeAgentArtifact({
+				config: { ...validConfig, model: { provider: 'anthropic' } },
+				skills: {},
+			}),
+		).toBeNull();
+	});
+
+	it('rejects artifacts over the per-iteration UTF-8 byte cap', () => {
+		const instructions = '界'.repeat(Math.ceil(AGENT_ARTIFACT_ITERATION_CAP_BYTES / 3));
+		expect(
+			sanitizeAgentArtifact({
+				config: { ...validConfig, instructions },
+				skills: {},
+			}),
+		).toBeNull();
 	});
 
 	it('renderArtifact() surfaces skill instructions and reference content for the judge', () => {

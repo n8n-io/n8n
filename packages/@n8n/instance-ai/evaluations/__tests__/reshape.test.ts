@@ -81,7 +81,11 @@ describe('reshapeLangSmithRuns', () => {
 		const cases = [withFile('agent-case', [scenario('s1')])];
 		const agentArtifact = {
 			agentId: 'agent-1',
-			config: { name: 'Support agent' },
+			config: {
+				name: 'Support agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage requests.',
+			},
 			skills: {},
 		};
 		const rows = [

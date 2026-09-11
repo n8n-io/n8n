@@ -1,8 +1,22 @@
 import { sanitizeCredentialShapedValues } from '@n8n/ai-utilities';
-import { agentSkillSchema, sanitizeAgentSkillBodies } from '@n8n/api-types';
+import {
+	AgentJsonConfigSchema,
+	agentSkillSchema,
+	sanitizeAgentJsonConfig,
+	sanitizeAgentSkillBodies,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentArtifact } from '../../types';
+
+const utf8Encoder = new TextEncoder();
+
+export const AGENT_ARTIFACT_ITERATION_CAP_BYTES = 262_144;
+export const AGENT_ARTIFACT_RUN_CAP_BYTES = 524_288;
+
+export function agentArtifactUtf8Bytes(artifact: AgentArtifact): number {
+	return utf8Encoder.encode(JSON.stringify(artifact)).byteLength;
+}
 
 /**
  * Validate the known skill contract without projecting away fields introduced
@@ -20,6 +34,7 @@ export function isAgentArtifact(value: unknown): value is AgentArtifact {
 	const { config, skills, agentId } = value;
 	if (!isRecord(config) || !isRecord(skills)) return false;
 	if (agentId !== undefined && typeof agentId !== 'string') return false;
+	if (!AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(config)).success) return false;
 	const skillRefs = config.skills;
 	if (
 		skillRefs !== undefined &&
@@ -41,7 +56,8 @@ export function isAgentArtifact(value: unknown): value is AgentArtifact {
 export function sanitizeAgentArtifact(value: unknown): AgentArtifact | null {
 	try {
 		const redacted = sanitizeCredentialShapedValues(value);
-		return isAgentArtifact(redacted) ? redacted : null;
+		if (!isAgentArtifact(redacted)) return null;
+		return agentArtifactUtf8Bytes(redacted) <= AGENT_ARTIFACT_ITERATION_CAP_BYTES ? redacted : null;
 	} catch {
 		return null;
 	}

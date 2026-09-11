@@ -18,7 +18,11 @@ import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare'
 import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { sanitizeAgentArtifact } from '../harness/artifacts/agent-artifact';
+import {
+	AGENT_ARTIFACT_RUN_CAP_BYTES,
+	agentArtifactUtf8Bytes,
+	sanitizeAgentArtifact,
+} from '../harness/artifacts/agent-artifact';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
@@ -358,7 +362,20 @@ function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 	);
 	if (!agentAnchored) return {};
 
-	const agentArtifactPerRun = runs.map((run) => sanitizeAgentArtifact(run.agentArtifact));
+	let cumulativeBytes = 0;
+	let overflowed = false;
+	const agentArtifactPerRun = runs.map((run) => {
+		const artifact = sanitizeAgentArtifact(run.agentArtifact);
+		if (!artifact) return null;
+
+		const artifactBytes = agentArtifactUtf8Bytes(artifact);
+		if (overflowed || cumulativeBytes + artifactBytes > AGENT_ARTIFACT_RUN_CAP_BYTES) {
+			overflowed = true;
+			return null;
+		}
+		cumulativeBytes += artifactBytes;
+		return artifact;
+	});
 	const agentArtifact = agentArtifactPerRun.find((artifact) => artifact !== null);
 	return {
 		...(agentArtifact ? { agentArtifact } : {}),
