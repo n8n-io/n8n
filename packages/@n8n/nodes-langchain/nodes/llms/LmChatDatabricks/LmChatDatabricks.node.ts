@@ -20,7 +20,7 @@ import {
 } from 'n8n-workflow';
 
 import { databricksAuthHeaders } from './constants';
-import { makeDatabricksFailedAttemptHandler } from './error-handling';
+import { makeDatabricksFailedAttemptHandler, wrapDatabricksErrorFetch } from './error-handling';
 import type { DatabricksOAuth2Credential } from './token-provider';
 import { getDatabricksTokenProvider } from './token-provider';
 
@@ -340,22 +340,24 @@ export class LmChatDatabricks implements INodeType {
 			// request helpers: `resolveHeaders` runs the expiry clock before every
 			// request, and `refreshHeaders` covers the rejection the clock missed -
 			// revoked server-side, or clock skew
-			fetch: createRefreshingAuthFetch({
-				baseFetch: fetch,
-				expiredStatus: tokenSource.expiredStatus,
-				resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
-				...(refreshAfterRejection && {
-					refreshHeaders: async () => {
-						const refreshed = await refreshAfterRejection();
-						return refreshed ? databricksAuthHeaders(refreshed) : null;
+			fetch: wrapDatabricksErrorFetch(
+				createRefreshingAuthFetch({
+					baseFetch: fetch,
+					expiredStatus: tokenSource.expiredStatus,
+					resolveHeaders: async () => databricksAuthHeaders(await tokenSource.getToken()),
+					...(refreshAfterRejection && {
+						refreshHeaders: async () => {
+							const refreshed = await refreshAfterRejection();
+							return refreshed ? databricksAuthHeaders(refreshed) : null;
+						},
+					}),
+					assertAllowedUrl: async (hopUrl) => {
+						if (!egressFilter) return;
+						const result = await egressFilter.validateUrl(hopUrl);
+						if (!result.ok) throw result.error;
 					},
 				}),
-				assertAllowedUrl: async (hopUrl) => {
-					if (!egressFilter) return;
-					const result = await egressFilter.validateUrl(hopUrl);
-					if (!result.ok) throw result.error;
-				},
-			}),
+			),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,

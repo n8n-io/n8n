@@ -137,7 +137,12 @@ describe('LmChatDatabricks', () => {
 
 			expect(mockedGetDatabricksTokenProvider).toHaveBeenCalledWith(ctx, mockCredential, undefined);
 			const callArgs = MockedChatOpenAI.mock.calls[0][0];
-			expect(callArgs?.configuration?.fetch).toBe(mockFetch);
+			// The refreshing fetch sits behind the error-reshaping wrapper
+			const body = JSON.stringify({ choices: [] });
+			vi.mocked(mockFetch).mockResolvedValue(new Response(body, { status: 200 }));
+			const response = await callArgs?.configuration?.fetch?.('https://my.databricks.com/x');
+			expect(mockFetch).toHaveBeenCalledWith('https://my.databricks.com/x', undefined);
+			expect(await response?.text()).toBe(body);
 		});
 
 		it('should retry on the expiry status the credential declares, not the default 401', async () => {
