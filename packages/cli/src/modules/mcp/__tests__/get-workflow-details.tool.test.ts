@@ -124,7 +124,7 @@ describe('get-workflow-details MCP tool', () => {
 						disabled: false,
 						parameters: {},
 						credentials: {
-							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							openAiApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 						},
 					},
 					{
@@ -356,6 +356,55 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.activeVersionTriggerInfo).toBeUndefined();
 			// The node-level guard let this through, so the notice compare is what suppressed it
 			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('normalizes nodes persisted without a parameters key in the draft and published graphs', async () => {
+			// Regression (ADO-5355): drafts can hold skeleton nodes with no
+			// `parameters` key at all; the payload and the trigger-info builders
+			// must see an object instead.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const skeletonNode = {
+				id: 'node-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'hook-1',
+			} as INode;
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [skeletonNode],
+				activeVersion: { nodes: [{ ...skeletonNode }] },
+			} as unknown as Partial<WorkflowEntity>);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.nodes?.[0].parameters).toEqual({});
+			expect(payload.workflow.activeVersion).toMatchObject({
+				sameAsDraft: false,
+				nodes: [{ parameters: {} }],
+			});
+			// The trigger builder received the normalized node ...
+			const [, supported] = getTriggerDetailsMock.mock.calls[0];
+			expect(supported[0].parameters).toEqual({});
+			// ... and the missing key alone did not read as a trigger divergence.
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
 		});
 
 		test('never emits activeVersionTriggerInfo when the published version is the draft', async () => {

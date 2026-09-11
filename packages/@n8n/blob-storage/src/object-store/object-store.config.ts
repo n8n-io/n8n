@@ -1,4 +1,4 @@
-import { Config, Env, Nested } from '@n8n/config';
+import { Config, Env, Nested, nonnegativeIntSchema } from '@n8n/config';
 import { z } from 'zod';
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -54,6 +54,13 @@ export class ObjectStoreConfig {
 	/** Maximum number of retry attempts for S3 requests */
 	@Env('N8N_EXTERNAL_STORAGE_S3_MAX_ATTEMPTS')
 	maxAttempts: number = 3;
+
+	/**
+	 * Milliseconds to wait for the startup connection check to the S3 bucket before
+	 * giving up. Set to 0 to disable the timeout.
+	 */
+	@Env('N8N_EXTERNAL_STORAGE_S3_STARTUP_TIMEOUT_MS', nonnegativeIntSchema)
+	startupTimeoutMs: number = 10_000;
 
 	@Nested
 	bucket: ObjectStoreBucketConfig = {} as ObjectStoreBucketConfig;

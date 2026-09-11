@@ -19,11 +19,11 @@ const Template: StoryFn = (args) => ({
 	components: {
 		N8nUserStack,
 	},
-	template: '<UserStack v-bind="args" />',
+	template: '<N8nUserStack v-bind="args" />',
 });
 
-export const WithGroups = Template.bind({});
-WithGroups.args = {
+export const Default = Template.bind({});
+Default.args = {
 	currentUserEmail: 'sunny@n8n.io',
 	users: {
 		Owners: [
@@ -195,3 +195,18 @@ NoCutoff.args = {
 		],
 	},
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nUserStack },
+	setup() {
+		return {
+			sizes: ['xxsmall', 'xsmall', 'small', 'medium', 'large'],
+			args: Default.args,
+		};
+	},
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+			<N8nUserStack v-for="size in sizes" :key="size" v-bind="args" :size="size" />
+		</div>
+	`,
+});

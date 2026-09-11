@@ -177,6 +177,8 @@ export type UserConnectedToMCPEventPayload = {
 	protocol_version?: string;
 	auth_type?: Mcpauth_type;
 	mcp_connection_status: 'success' | 'error';
+	/** Status the server answered a failed handshake with; unset on success. */
+	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
 	mcp_canvas_groups_enabled?: boolean;

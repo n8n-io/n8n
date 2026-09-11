@@ -2,7 +2,6 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -92,7 +91,11 @@ const buildOperationTypeSchema = (canvasGroupsEnabled: boolean) =>
 	canvasGroupsEnabled
 		? z.enum([...baseOperationTypes, ...gatedGroupOperationTypes])
 		: z.enum(baseOperationTypes);
-const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
+// A factory, not a shared instance: reusing one Zod instance across two
+// properties makes the JSON Schema generator dedupe the second occurrence into
+// a `$ref` to a `#/properties/...` path, which strict MCP clients cannot
+// resolve. Mirrors `positionSchema` in workflow-operations.ts.
+const positionInputSchema = () => z.array(z.number()).length(2).describe('Canvas [x, y].');
 const credentialsInputSchema = z.record(
 	z.string(),
 	z.object({ id: z.string().optional(), name: z.string() }),
@@ -102,7 +105,7 @@ const nodeInputSchema = z.object({
 	type: z.string().describe('Node type, e.g. "n8n-nodes-base.set".'),
 	typeVersion: z.number(),
 	parameters: z.record(z.string(), z.unknown()).optional(),
-	position: positionInputSchema.optional(),
+	position: positionInputSchema().optional(),
 	credentials: credentialsInputSchema.optional(),
 	disabled: z.boolean().optional(),
 	notes: z.string().optional(),
@@ -112,7 +115,9 @@ const nodeSettingsInputSchema = z.object({
 	onError: z
 		.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
 		.optional()
-		.describe('Error behavior.'),
+		.describe(
+			'Error behavior. "continueErrorOutput" appends an error output after the node\'s regular outputs — index 1 on a single-output node such as HTTP Request. Wire that branch with an addConnection operation whose sourceIndex is that index.',
+		),
 	retryOnFail: z.boolean().optional(),
 	maxTries: z.number().int().min(2).max(5).optional(),
 	waitBetweenTries: z.number().int().min(0).max(5000).optional(),
@@ -157,18 +162,22 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 				.int()
 				.nonnegative()
 				.optional()
-				.describe('For connection ops; default 0.'),
+				.describe(
+					'For connection ops; which output of the source node the connection starts from. Default 0, the first output. Use it to wire a branch: on an If node the false branch is index 1, and onError "continueErrorOutput" appends an error output after the regular ones (index 1 on a single-output node such as HTTP Request, index 2 on an If node). This is the only field that selects an output.',
+				),
 			targetIndex: z
 				.number()
 				.int()
 				.nonnegative()
 				.optional()
-				.describe('For connection ops; default 0.'),
+				.describe(
+					'For connection ops; which input of the target node the connection ends at. Default 0.',
+				),
 			connectionType: z.string().optional().describe('For connection ops; default "main".'),
 			credentialKey: z.string().optional().describe('For setNodeCredential.'),
 			credentialId: z.string().optional().describe('For setNodeCredential.'),
 			credentialName: z.string().optional().describe('For setNodeCredential.'),
-			position: positionInputSchema.optional().describe('For setNodePosition.'),
+			position: positionInputSchema().optional().describe('For setNodePosition.'),
 			disabled: z.boolean().optional().describe('For setNodeDisabled.'),
 			settings: combinedSettingsInputSchema
 				.optional()
@@ -216,6 +225,11 @@ const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 					}
 				: {}),
 		})
+		// Strict, so a field this schema does not declare fails the call instead of
+		// being stripped. Stripping made the tool report success for an operation it
+		// never ran: a guessed output-index field (e.g. sourceOutput) vanished and
+		// the connection was wired from output 0.
+		.strict()
 		.describe('Workflow update operation. Provide fields matching type.');
 type OperationInput = {
 	type: (typeof baseOperationTypes)[number] | (typeof gatedGroupOperationTypes)[number];
@@ -1010,7 +1024,7 @@ async function collectValidationWarnings(
 			name: workflow.name,
 			nodes: workflow.nodes,
 			connections: workflow.connections,
-		} as unknown as WorkflowJSON);
+		});
 
 	const postUpdateWarnings = validate(updated);
 

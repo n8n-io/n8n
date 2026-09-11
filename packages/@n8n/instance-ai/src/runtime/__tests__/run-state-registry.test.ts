@@ -66,10 +66,42 @@ describe('RunStateRegistry', () => {
 	});
 
 	beforeEach(() => {
-		registry = new RunStateRegistry<TestUser>();
+		registry = new RunStateRegistry<TestUser>((user) => user.id);
 		nanoidCounter = 0;
 		mockedNanoid.mockReset();
 		mockedNanoid.mockImplementation(() => `id-${++nanoidCounter}`);
+	});
+
+	it('retains mode across internal runs and clears it on a control request', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getBuildMode('thread-1')).toBe('progressive');
+		registry.setBuildMode('thread-1', undefined);
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
+	it('removes retained mode when a thread is cleared', () => {
+		registry.setBuildMode('thread-1', 'progressive');
+		registry.clearThread('thread-1');
+		expect(registry.getBuildMode('thread-1')).toBeUndefined();
+	});
+
+	it('retains the selected prompt version and metadata until the next explicit selection', () => {
+		const metadata = {
+			version: 'progressive@1',
+			systemPromptVersion: 'instance-agent@1',
+			skillVariants: ['progressive-building@1'],
+			skillsHash: 'selected-skills',
+		};
+		registry.setPromptConfiguration('thread-1', metadata);
+		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
+		expect(registry.getPromptVersion('thread-1')).toBe('progressive@1');
+		expect(registry.getPromptConfiguration('thread-1')).toEqual(metadata);
+		registry.setPromptVersion('thread-1', 'default@1');
+		expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+		expect(registry.getPromptVersion('thread-1')).toBe('default@1');
+		registry.clearThread('thread-1');
+		expect(registry.getPromptVersion('thread-1')).toBeUndefined();
 	});
 
 	// ── startRun ──────────────────────────────────────────────────────────────
@@ -1034,16 +1066,31 @@ describe('RunStateRegistry', () => {
 	describe('shutdown', () => {
 		it('clears everything and returns all active and suspended runs', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			registry.setPromptConfiguration('thread-1', {
+				version: 'progressive@1',
+				systemPromptVersion: 'instance-agent@1',
+				skillVariants: ['progressive-building@1'],
+				skillsHash: 'selected-skills',
+			});
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
 			registry.suspendRun(
 				'thread-2',
 				createSuspendedRunState({ threadId: 'thread-2', runId: 'run_suspended' }),
 			);
+			registry.startRun({ threadId: 'thread-3', user: { id: 'u3', name: 'C' } });
+			registry.setPromptVersion('thread-3', 'default@1');
+			expect(registry.getPromptConfiguration('thread-3')).toBeUndefined();
 
 			const result = registry.shutdown();
 
-			expect(result.activeRuns).toHaveLength(1);
+			expect(result.activeRuns).toHaveLength(2);
 			expect(result.activeRuns[0].runId).toBe('run_id-1');
+			expect(result.activeRuns[0].promptVersion).toBe('progressive@1');
+			expect(result.activeRuns.find((run) => run.threadId === 'thread-3')?.promptVersion).toBe(
+				'default@1',
+			);
+			expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
+			expect(registry.getPromptVersion('thread-3')).toBeUndefined();
 			expect(result.suspendedRuns).toHaveLength(1);
 			expect(result.suspendedRuns[0].runId).toBe('run_suspended');
 		});
@@ -1253,6 +1300,112 @@ describe('RunStateRegistry', () => {
 
 			// now - createdAt === maxAgeMs, so >= matches
 			expect(result.suspendedThreadIds).toEqual(['thread-1']);
+		});
+	});
+
+	// ── activeRunCountForUser ─────────────────────────────────────────────────
+
+	describe('activeRunCountForUser', () => {
+		const alice: TestUser = { id: 'alice', name: 'Alice' };
+		const bob: TestUser = { id: 'bob', name: 'Bob' };
+
+		it("counts only the given user's executing runs", () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.startRun({ threadId: 'thread-2', user: alice });
+			registry.startRun({ threadId: 'thread-3', user: bob });
+
+			expect(registry.activeRunCountForUser('alice')).toBe(2);
+			expect(registry.activeRunCountForUser('bob')).toBe(1);
+			expect(registry.activeRunCount()).toBe(3);
+		});
+
+		it('returns zero for a user with no runs', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+
+			expect(registry.activeRunCountForUser('carol')).toBe(0);
+		});
+
+		it('stops counting a run once it is cleared', () => {
+			const { executionToken } = registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.clearActiveRun('thread-1', executionToken);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+		});
+
+		// A suspended run spends nothing while it waits, so counting it would lock the user
+		// out for the whole confirmation timeout after a few abandoned HITL cards.
+		it('excludes suspended runs, and counts them again on resume', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.suspendRun(
+				'thread-1',
+				createSuspendedRunState({ threadId: 'thread-1', user: alice }),
+			);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+
+			registry.activateSuspendedRun('thread-1');
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
+		// A run restored from the DB after a restart was never stamped by `startRun`, so the
+		// owner has to be recoverable from the suspended state's `user`.
+		it('attributes a resumed run with no stamped userId via its user', () => {
+			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1', user: bob }));
+
+			registry.activateSuspendedRun('thread-1');
+
+			expect(registry.activeRunCountForUser('bob')).toBe(1);
+		});
+
+		// An inline approval card leaves the run in `activeRuns` (it is blocked on a Promise
+		// inside `waitForConfirmation`), so without this the user would be walled out of
+		// starting anything else until they answered or the card timed out.
+		it('excludes a run parked on an inline confirmation', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+
+			expect(registry.activeRunCountForUser('alice')).toBe(0);
+			// The instance cap still counts it: parked or not, the run holds its memory.
+			expect(registry.activeRunCount()).toBe(1);
+		});
+
+		it('counts the run again once the confirmation resolves', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+			registry.resolvePendingConfirmation('alice', 'req-1', { approved: true });
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
+		it('only discounts the thread that is actually parked', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.startRun({ threadId: 'thread-2', user: alice });
+			registry.registerPendingConfirmation('req-1', {
+				resolve: vi.fn(),
+				threadId: 'thread-1',
+				userId: 'alice',
+				createdAt: Date.now(),
+			});
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
+		});
+
+		it('keeps attribution across attachTracing', () => {
+			registry.startRun({ threadId: 'thread-1', user: alice });
+			registry.attachTracing('thread-1', {} as never);
+
+			expect(registry.activeRunCountForUser('alice')).toBe(1);
 		});
 	});
 });

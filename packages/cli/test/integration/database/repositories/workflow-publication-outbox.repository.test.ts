@@ -174,6 +174,21 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(record?.errorMessage).toBeNull();
 	});
 
+	it('marks a claimed record as completed with a warning message', async () => {
+		// A record can complete with a non-fatal side effect (e.g. an abandoned
+		// external webhook deregistration); the warning lands in `errorMessage`
+		// for diagnostics while the status stays `completed`.
+		await repository.enqueue('wf-1', 'v-1', 'publish');
+		const claimed = await repository.claimNextPendingRecord();
+		assert(claimed);
+
+		await repository.markCompleted(claimed.id, undefined, 'external deregistration abandoned');
+
+		const record = await repository.findOneBy({ id: claimed.id });
+		expect(record?.status).toBe('completed');
+		expect(record?.errorMessage).toBe('external deregistration abandoned');
+	});
+
 	it('marks a claimed record as failed and records the error', async () => {
 		await repository.enqueue('wf-1', 'v-1', 'publish');
 		const claimed = await repository.claimNextPendingRecord();

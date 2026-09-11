@@ -1,3 +1,4 @@
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
@@ -19,6 +20,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import {
 	affixRoleToSaveCredential,
 	createCredentials,
+	createManyCredentials,
 	getCredentialSharings,
 } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
@@ -374,6 +376,25 @@ describe('GET /credentials', () => {
 		);
 	});
 
+	test('should return correct shared info for a credential in a team project with multiple members', async () => {
+		const teamProject = await createTeamProject('multi-member-project', owner);
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const saved = await saveCredential(dbCredential(), { project: teamProject });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		const item = response.body.data.find((c: { id: string }) => c.id === saved.id);
+		expect(item).toBeDefined();
+		expect(item.shared).toEqual([
+			expect.objectContaining({
+				id: teamProject.id,
+				name: teamProject.name,
+				role: 'credential:owner',
+			}),
+		]);
+	});
+
 	test('should return empty list when no credentials exist', async () => {
 		const response = await authOwnerAgent.get('/credentials');
 
@@ -401,6 +422,18 @@ describe('GET /credentials', () => {
 		expect(response.body.nextCursor).not.toBeNull();
 	});
 
+	test('should cap the limit at the maximum page size even when a higher limit is requested', async () => {
+		await createManyCredentials(MAX_ITEMS_PER_PAGE + 1);
+
+		const response = await authOwnerAgent
+			.get('/credentials')
+			.query({ limit: MAX_ITEMS_PER_PAGE + 50 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(MAX_ITEMS_PER_PAGE);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
 	test('should paginate with cursor', async () => {
 		await saveCredential(dbCredential(), { user: owner });
 		await saveCredential(dbCredential(), { user: owner });
@@ -416,6 +449,33 @@ describe('GET /credentials', () => {
 			.query({ cursor: first.body.nextCursor });
 		expect(second.statusCode).toBe(200);
 		expect(second.body.data.length).toBe(1);
+		expect(second.body.nextCursor).toBeNull();
+	});
+
+	test('should reject an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+	});
+
+	test('should reject a non-numeric limit', async () => {
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 'abc' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should not include credential data or secrets in the response', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+		const decryptedData = await getDecryptedCredentialData(savedCredential.id);
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('data');
+		}
+		expect(JSON.stringify(response.body)).not.toContain(decryptedData.accessToken);
 	});
 });
 
@@ -462,6 +522,15 @@ describe('GET /credentials/:id', () => {
 
 	test('should return 404 if credential does not exist', async () => {
 		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for member without global scope requesting a nonexistent credential', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+
+		const response = await authMemberWithReadScopeAgent.get('/credentials/123');
 
 		expect(response.statusCode).toBe(404);
 	});

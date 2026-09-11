@@ -67,4 +67,4 @@ const Template: StoryFn = (args) => ({
 	</div>`,
 });
 
-export const RecycleScroller = Template.bind({});
+export const Default = Template.bind({});

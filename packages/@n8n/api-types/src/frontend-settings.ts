@@ -197,6 +197,10 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 	};
+	/**
+	 * @deprecated Gates the AI Transform node's code generation. No longer gates
+	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
+	 */
 	askAi: {
 		enabled: boolean;
 	};
@@ -227,6 +231,9 @@ export interface FrontendSettings {
 	};
 	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
+		enabled: boolean;
+	};
+	workerPools: {
 		enabled: boolean;
 	};
 	collaboration: {
@@ -330,6 +337,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the encryption-key-manager module.
+	 */
+	'encryption-key-manager'?: {
+		/** Whether encryption-key rotation (and its management UI) is enabled. */
+		rotationEnabled: boolean;
+	};
+
+	/**
 	 * Client settings for Chat module.
 	 */
 	'chat-hub'?: {
@@ -357,6 +372,8 @@ export type FrontendModuleSettings = {
 		runDebugEnabled: boolean;
 		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
 		activationCapped?: boolean;
+		/** Whether the non-blocking setup panel replaces the suspending setup wizard (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`). */
+		instanceAiSetupPanelEnabled?: boolean;
 	};
 
 	/**

@@ -19,12 +19,21 @@ export async function resolveCredentialAwareModelConfig(
 	model: string,
 	credential: string,
 	credentialProvider: CredentialProvider & Partial<AiGatewayModelCredentialResolver>,
+	/**
+	 * Azure OpenAI classic deployments are user-named in Azure and surfaced in
+	 * the deployment-based URL path. The catalog model id is not the deployment
+	 * id, so the agent flow must carry the user's deployment name separately.
+	 * Only meaningful for the `azure-openai` provider with a classic endpoint.
+	 */
+	deploymentName?: string,
 ): Promise<ModelConfig> {
 	const provider = getProviderPrefix(model);
 
 	if (credential === AI_GATEWAY_MANAGED_TAG) {
 		if (!credentialProvider.resolveAiGatewayModelCredential) {
-			throw new UserError('This credential provider cannot resolve n8n credits model credentials.');
+			throw new UserError(
+				'This credential provider cannot resolve Gateway credits model credentials.',
+			);
 		}
 		const raw = await credentialProvider.resolveAiGatewayModelCredential(provider);
 		return {
@@ -34,10 +43,14 @@ export async function resolveCredentialAwareModelConfig(
 			// factory's "a baseURL means an OpenAI-compatible server" heuristic —
 			// /chat/completions rejects reasoning effort once tools are attached.
 			...(provider === 'openai' ? { apiStyle: 'responses' } : {}),
-		} as ModelConfig;
+		};
 	}
 
 	const raw = await credentialProvider.resolve(credential);
 	const mapped = mapCredentialForProvider(provider, raw);
-	return { id: model, ...mapped } as ModelConfig;
+	return {
+		id: model,
+		...mapped,
+		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
+	};
 }

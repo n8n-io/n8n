@@ -55,7 +55,7 @@ const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
 const hasPinnedData = computed(
 	() =>
@@ -65,7 +65,7 @@ const hasPinnedData = computed(
 const hasExecutionPinData = computed(
 	() =>
 		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeName[name.value],
+		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =

@@ -78,7 +78,7 @@ describe('AgentDefaultModelResolverService', () => {
 	it('resolves to null instead of throwing when the gateway config lookup fails', async () => {
 		const { service, aiGatewayService } = makeService();
 		aiGatewayService.getCredentialTypeForProvider.mockRejectedValue(
-			new Error('n8n credits config fetch recently failed; retry is throttled.'),
+			new Error('Gateway credits config fetch recently failed; retry is throttled.'),
 		);
 
 		await expect(service.resolve(user, 'project-1')).resolves.toBeNull();

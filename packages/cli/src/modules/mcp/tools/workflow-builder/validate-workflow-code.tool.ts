@@ -11,7 +11,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { CODE_BUILDER_VALIDATE_TOOL, MAX_WORKFLOW_CODE_LENGTH } from './constants';
 
 export type ValidateWorkflowCodeToolOptions = {
 	/**
@@ -26,8 +26,9 @@ export type ValidateWorkflowCodeToolOptions = {
 const inputSchema = {
 	code: z
 		.string()
+		.max(MAX_WORKFLOW_CODE_LENGTH)
 		.describe(
-			'Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must include the workflow export.',
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must include the workflow export. Max ${MAX_WORKFLOW_CODE_LENGTH} characters.`,
 		),
 } satisfies z.ZodRawShape;
 

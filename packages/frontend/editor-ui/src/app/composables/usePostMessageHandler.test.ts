@@ -9,7 +9,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const mockImportWorkflowExact = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));

@@ -26,7 +26,10 @@ import type { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import {
+	ProtectedResourceRegistry,
+	type ProtectedResource,
+} from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -38,9 +41,50 @@ import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
+import { isSameProtectedResource } from './resource-identity';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
+
+/** Maximum length for a client_name, matching the column size declared in the CreateOAuthEntities migration */
+const MAX_CLIENT_NAME_LENGTH = 255;
+
+/**
+ * Grant types this OAuth server implements. Kept in sync with the
+ * `grant_types_supported` list advertised by the metadata endpoint
+ * (see oauth.controller.ts).
+ */
+const SUPPORTED_GRANT_TYPES = ['authorization_code', 'refresh_token'];
+
+/**
+ * Token endpoint auth methods this OAuth server implements. Kept in sync
+ * with the `token_endpoint_auth_methods_supported` list advertised by the
+ * metadata endpoint (see oauth.controller.ts).
+ */
+const SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS = ['none', 'client_secret_post', 'client_secret_basic'];
+
+/**
+ * Counts Unicode code points rather than UTF-16 code units, so a value
+ * containing supplementary-plane characters (surrogate pairs) isn't counted
+ * as longer than it is. Stops once past `limit` to avoid scanning an
+ * oversized value in full.
+ */
+function countCodePointsUpTo(value: string, limit: number): number {
+	let count = 0;
+
+	for (const _codePoint of value) {
+		count++;
+
+		if (count > limit) {
+			break;
+		}
+	}
+
+	return count;
+}
+
+/** Maximum number of grant types per client — one entry per supported grant type is all a client ever needs */
+const MAX_GRANT_TYPES = SUPPORTED_GRANT_TYPES.length;
 
 export type ConnectedOAuthClientOwner = {
 	id: string;
@@ -230,7 +274,10 @@ export class OAuthServerService implements OAuthServerProvider {
 				id: clientId,
 				name: resource.displayName ?? clientId,
 				redirectUris: [clientId],
-				grantTypes: ['authorization_code'],
+				// `refresh_token` so the column matches what the grant actually supports:
+				// the AS issues a refresh token on every authorization-code exchange, and
+				// long-lived trigger pages rotate it rather than redirect again.
+				grantTypes: ['authorization_code', 'refresh_token'],
 				tokenEndpointAuthMethod: 'none',
 				clientSecret: null,
 				clientSecretExpiresAt: null,
@@ -243,7 +290,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			client_id: clientId,
 			client_name: resource.displayName ?? clientId,
 			redirect_uris: [clientId],
-			grant_types: ['authorization_code'],
+			grant_types: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_method: 'none',
 			response_types: ['code'],
 			logo_uri: undefined,
@@ -263,8 +310,22 @@ export class OAuthServerService implements OAuthServerProvider {
 			throw new Error('client_name is required');
 		}
 
+		if (countCodePointsUpTo(client.client_name, MAX_CLIENT_NAME_LENGTH) > MAX_CLIENT_NAME_LENGTH) {
+			throw new Error(`client_name exceeds maximum length of ${MAX_CLIENT_NAME_LENGTH} characters`);
+		}
+
 		if (!client.grant_types || client.grant_types.length === 0) {
 			throw new Error('grant_types is required');
+		}
+
+		if (client.grant_types.length > MAX_GRANT_TYPES) {
+			throw new Error(`grant_types exceeds maximum count of ${MAX_GRANT_TYPES}`);
+		}
+
+		for (const grantType of client.grant_types) {
+			if (!SUPPORTED_GRANT_TYPES.includes(grantType)) {
+				throw new Error('grant_types contains an unsupported value');
+			}
 		}
 
 		if (!client.redirect_uris || client.redirect_uris.length === 0) {
@@ -281,6 +342,13 @@ export class OAuthServerService implements OAuthServerProvider {
 					`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
 				);
 			}
+		}
+
+		if (
+			client.token_endpoint_auth_method !== undefined &&
+			!SUPPORTED_TOKEN_ENDPOINT_AUTH_METHODS.includes(client.token_endpoint_auth_method)
+		) {
+			throw new Error('token_endpoint_auth_method contains an unsupported value');
 		}
 	}
 
@@ -343,6 +411,22 @@ export class OAuthServerService implements OAuthServerProvider {
 			const targetResource = resource
 				? await this.resourceRegistry.getByResourceUrl(resource)
 				: this.resourceRegistry.getDefaultResource();
+
+			// An unavailable resource is hidden from RFC 9728 discovery, but a client
+			// holding a cached resource URL skips discovery — reject it here so the
+			// flow fails before the user is sent through login and consent.
+			if (targetResource && (await this.isResourceUnavailable(targetResource))) {
+				this.logger.warn('OAuth authorization rejected: target resource is unavailable', {
+					clientId: client.client_id,
+					resource: targetResource.getResourceUrl(),
+				});
+				res.status(400).json({
+					error: 'invalid_target',
+					error_description: 'Resource is not available for authorization',
+				});
+				return;
+			}
+
 			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
 			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
 				this.logger.warn(
@@ -434,29 +518,31 @@ export class OAuthServerService implements OAuthServerProvider {
 		const resourceStr = resource?.toString();
 		const tokenResource = await this.resolveAndValidateResourceIndicator(resourceStr);
 
-		// RFC 8707: if both the token request and the auth code specify a resource, they must match
-		// (token substitution defense). Otherwise either supplies the other, falling back to the
-		// registry's default resource.
-		let finalResource: string | undefined;
-		const codeResource = authRecord.resource ?? undefined;
+		// RFC 8707 §2.2: the authorization request's resource applies to the whole grant, so
+		// the token request may only name the resource the user approved. A code carrying no
+		// resource was approved against the registry's default resource — that is what the
+		// consent screen showed — so the token request may only name that one.
+		const approvedResource =
+			authRecord.resource ?? this.resourceRegistry.getDefaultResource()?.getResourceUrl();
 
-		if (tokenResource && codeResource) {
-			if (tokenResource !== codeResource) {
-				throw new InvalidResourceIndicatorError(tokenResource, codeResource);
-			}
-			finalResource = tokenResource;
-		} else {
-			finalResource = tokenResource ?? codeResource;
+		if (
+			tokenResource &&
+			!(
+				approvedResource &&
+				(await isSameProtectedResource(this.resourceRegistry, tokenResource, approvedResource))
+			)
+		) {
+			throw new InvalidResourceIndicatorError(tokenResource, approvedResource ?? 'none');
 		}
 
 		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
 
 		const grantedScopes = authRecord.scope;
 
-		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
+		const { accessToken, refreshToken, audience } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
-			finalResource,
+			approvedResource,
 			grantedScopes,
 		);
 
@@ -466,14 +552,15 @@ export class OAuthServerService implements OAuthServerProvider {
 			client.client_id,
 			authRecord.userId,
 			grantedScopes,
+			audience,
 		);
 
 		// Completion of the authorization-code grant is the point at which the user
 		// has finished the OAuth flow for this client. The authorization server is
 		// shared by every protected resource on the instance (MCP, forms, ...), so
 		// only grants targeting the instance MCP server count as MCP usage.
-		const grantedResource = finalResource
-			? await this.resourceRegistry.getByResourceUrl(finalResource)
+		const grantedResource = approvedResource
+			? await this.resourceRegistry.getByResourceUrl(approvedResource)
 			: this.resourceRegistry.getDefaultResource();
 		if (grantedResource?.id === INSTANCE_MCP_RESOURCE_ID) {
 			this.eventService.emit('mcp-oauth-completed', {
@@ -494,9 +581,10 @@ export class OAuthServerService implements OAuthServerProvider {
 		};
 	}
 
-	// `resource` (when present) is normalized and validated before rotation; if omitted,
-	// the token service falls back to the default protected resource. `_scopes` is part of
-	// the SDK contract but unused — OAuth 2.1 refresh tokens reuse the original grant's scopes.
+	// `resource` (when present) is normalized and validated against the registry here, then
+	// against the grant's own resource by the token service; if omitted, the token service
+	// reuses the grant's resource. `_scopes` is part of the SDK contract but unused — OAuth
+	// 2.1 refresh tokens reuse the original grant's scopes.
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
 		refreshToken: string,
@@ -542,6 +630,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		}
 
 		return null;
+	}
+
+	// Resources without `isAvailable` are treated as always available.
+	private async isResourceUnavailable(resource: ProtectedResource): Promise<boolean> {
+		return !((await resource.isAvailable?.()) ?? true);
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

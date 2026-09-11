@@ -33,7 +33,7 @@ export default defineConfig({
 					...sharedTestConfig,
 					name: 'isolated-vm-engine',
 					include: ENGINE_AWARE,
-					env: { N8N_EXPRESSION_ENGINE: 'isolated-vm' },
+					env: { N8N_EXPRESSION_ENGINE: 'vm' },
 				},
 			},
 			{

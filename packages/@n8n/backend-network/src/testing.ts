@@ -7,6 +7,7 @@
  * limited to what production callers actually need.
  */
 export { convertN8nRequestToAxios, httpRequest } from './http/axios/request';
+export { uninstallGlobalProxyAgent } from './http/http-proxy';
 export { generateContentLengthHeader, isFormDataInstance } from './http/axios/utils';
 export { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from './http/axios/user-agent';
 export { startServer, type LocalServer } from './http/local-server';

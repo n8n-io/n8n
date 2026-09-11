@@ -57,6 +57,10 @@ export async function listModelsForProvider(
 	return await listModels(options);
 }
 
+export {
+	classifyChatModelFailure,
+	type ChatModelFailureKind,
+} from './chat-model-errors';
 export { listAlibabaModels } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
 export { listCohereModels } from './providers/cohere';

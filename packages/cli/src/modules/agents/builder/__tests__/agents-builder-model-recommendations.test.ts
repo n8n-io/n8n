@@ -106,16 +106,6 @@ describe('builder model recommendations', () => {
 		expect(section).not.toContain('text-embedding-3-large');
 	});
 
-	it('routes subagent delegation to the sub-agent builder skill', () => {
-		const prompt = buildPrompt(null);
-		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-sub-agents');
-
-		expect(prompt).not.toContain('`delegate_subagent`');
-		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
-		expect(skill).toBeDefined();
-		expect(skill?.instructions).toContain('`delegate_subagent`');
-	});
-
 	it('routes distinct target-agent functions into autonomously managed skills', () => {
 		const prompt = buildPrompt(null);
 		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-target-skills');

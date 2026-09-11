@@ -991,6 +991,8 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.completeN8nOAuth2Flow.mockResolvedValue({
 				valid: true,
 				token: 'as-token',
+				refreshToken: 'refresh-token',
+				expiresIn: 3600,
 				user: authedUser,
 			});
 
@@ -1053,6 +1055,8 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.completeN8nOAuth2Flow.mockResolvedValue({
 				valid: true,
 				token: 'as-token',
+				refreshToken: 'refresh-token',
+				expiresIn: 3600,
 				user: authedUser,
 				metadata: { query: 'foo=bar' },
 			});

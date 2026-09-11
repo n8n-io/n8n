@@ -1,6 +1,11 @@
 import type { ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 
-/** A due, enabled interval job. Each call gets a distinct sequential name. */
+/**
+ * A due, enabled interval job. Each call gets a distinct sequential name.
+ *
+ * Self-owned by default (`ownerType: 'system-task'`, `ownerId` = its own name).
+ * Override the owner columns for a test that needs jobs to share one.
+ */
 export const createDueJobFactory = (
 	jobRepo: ScheduledJobRepository,
 	taskType: string,
@@ -8,10 +13,12 @@ export const createDueJobFactory = (
 	now = Date.now,
 ) => {
 	let seq = 0;
-	return async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	return async (overrides: Partial<ScheduledJob> = {}) => {
+		const name = `${namePrefix}-${++seq}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `${namePrefix}-${++seq}`,
+				name,
+				...selfOwned(name),
 				taskType,
 				payload: {},
 				kind: 'interval',
@@ -22,6 +29,7 @@ export const createDueJobFactory = (
 				...overrides,
 			}),
 		);
+	};
 };
 
 /**
@@ -49,3 +57,17 @@ export const seedDueTask = async (
 		}),
 	);
 };
+
+/** The owner columns of a self-owned job: nothing outside the row owns it. */
+export const selfOwned = (name: string) => ({
+	ownerType: 'system-task',
+	ownerId: name,
+	ownerMemberId: null,
+});
+
+/** The owner columns of a job one workflow trigger node provisioned. */
+export const workflowOwned = (workflowId: string, nodeId: string) => ({
+	ownerType: 'workflow',
+	ownerId: workflowId,
+	ownerMemberId: nodeId,
+});

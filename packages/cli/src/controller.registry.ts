@@ -12,26 +12,24 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { reportError, send, sendErrorResponse } from '@/response-helper';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
-
-import { AuthService } from '@/auth/auth.service';
 
 @Service()
 export class ControllerRegistry {

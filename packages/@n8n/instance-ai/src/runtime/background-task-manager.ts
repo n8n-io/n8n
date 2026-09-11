@@ -122,7 +122,15 @@ export class BackgroundTaskManager {
 	 */
 	private readonly byRoleAndWorkflowId = new Map<string, string>();
 
-	constructor(private readonly maxConcurrentPerThread = 5) {}
+	constructor(
+		private readonly maxConcurrentPerThread = 5,
+		/**
+		 * Ceiling on sub-agents running across every thread on this process. Guards the
+		 * fan-out the per-thread limit misses: a handful of runs each spawning their full
+		 * complement. `-1` means unlimited, matching the execution concurrency limits.
+		 */
+		private readonly maxConcurrentTotal = -1,
+	) {}
 
 	private workflowKey(role: string, workflowId: string): string {
 		return `${role}:${workflowId}`;
@@ -139,7 +147,7 @@ export class BackgroundTaskManager {
 			const existingId = this.byPlannedTaskId.get(dedupeKey.plannedTaskId);
 			if (existingId) {
 				const existing = this.tasks.get(existingId);
-				if (existing && existing.status === 'running') return existing;
+				if (existing?.status === 'running') return existing;
 			}
 			return undefined;
 		}
@@ -149,7 +157,7 @@ export class BackgroundTaskManager {
 			);
 			if (existingId) {
 				const existing = this.tasks.get(existingId);
-				if (existing && existing.status === 'running') return existing;
+				if (existing?.status === 'running') return existing;
 			}
 		}
 		return undefined;
@@ -163,6 +171,15 @@ export class BackgroundTaskManager {
 		return [...this.tasks.values()].filter(
 			(task) => task.threadId === threadId && task.status === 'running',
 		);
+	}
+
+	/** Sub-agents running across every thread on this process. */
+	runningTaskCount(): number {
+		let count = 0;
+		for (const task of this.tasks.values()) {
+			if (task.status === 'running') count++;
+		}
+		return count;
 	}
 
 	/**
@@ -189,7 +206,7 @@ export class BackgroundTaskManager {
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId) return 'task-not-found';
+		if (task?.threadId !== threadId) return 'task-not-found';
 		if (task.status !== 'running') return 'task-completed';
 		this.touchTask(threadId, taskId);
 		task.corrections.push(correction);
@@ -203,7 +220,7 @@ export class BackgroundTaskManager {
 
 	cancelTask(threadId: string, taskId: string): ManagedBackgroundTask | undefined {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId || task.status !== 'running') return undefined;
+		if (task?.threadId !== threadId || task.status !== 'running') return undefined;
 
 		task.abortController.abort();
 		task.status = 'cancelled';
@@ -242,7 +259,7 @@ export class BackgroundTaskManager {
 
 	touchTask(threadId: string, taskId: string, at = Date.now()): boolean {
 		const task = this.tasks.get(taskId);
-		if (!task || task.threadId !== threadId || task.status !== 'running') return false;
+		if (task?.threadId !== threadId || task.status !== 'running') return false;
 		task.lastActivityAt = at;
 		return true;
 	}
@@ -277,6 +294,13 @@ export class BackgroundTaskManager {
 		if (runningCount >= this.maxConcurrentPerThread) {
 			options.onLimitReached?.(
 				`Cannot start background task: limit of ${this.maxConcurrentPerThread} concurrent tasks reached. Wait for existing tasks to complete.`,
+			);
+			return { status: 'limit-reached' };
+		}
+
+		if (this.maxConcurrentTotal !== -1 && this.runningTaskCount() >= this.maxConcurrentTotal) {
+			options.onLimitReached?.(
+				`Cannot start background task: this n8n instance is at its limit of ${this.maxConcurrentTotal} concurrent tasks. Wait for existing tasks to complete.`,
 			);
 			return { status: 'limit-reached' };
 		}

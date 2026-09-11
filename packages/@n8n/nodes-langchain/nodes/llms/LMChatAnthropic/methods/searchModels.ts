@@ -9,6 +9,7 @@ export async function searchModels(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('anthropicApi');
+	const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
 	const baseURL = (credentials.url as string) ?? 'https://api.anthropic.com';
 
 	// Shared with the agents model catalog: endpoint, auth, and newest-first
@@ -19,7 +20,7 @@ export async function searchModels(
 		apiKey: (credentials.apiKey as string) ?? '',
 		baseURL,
 		headers: mergeCustomHeaders(credentials, {}),
-		fetch: proxyFetch,
+		fetch: async (input, init) => await proxyFetch({ input, init, lookup }),
 	});
 
 	return {

@@ -92,6 +92,7 @@ export class DynamicCredentialsProxy
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		if (!this.storageProvider) {
 			if (credentialStoreMetadata.isResolvable) {
@@ -108,6 +109,7 @@ export class DynamicCredentialsProxy
 			credentialContext,
 			staticData,
 			workflowSettings,
+			executionId,
 		);
 	}
 
@@ -120,6 +122,7 @@ export class DynamicCredentialsProxy
 		executionContext: IExecutionContext | undefined,
 		staticData: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		if (!credentialStoreMetadata.isResolvable || !credentialStoreMetadata.resolverId) {
 			return;
@@ -131,7 +134,7 @@ export class DynamicCredentialsProxy
 
 		if (executionContext?.credentials) {
 			const decrypted = await cipher.decryptV2(executionContext.credentials);
-			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
+			credentialContext = toCredentialContext(decrypted);
 		}
 
 		if (!credentialContext) {
@@ -145,10 +148,11 @@ export class DynamicCredentialsProxy
 
 		await this.storeIfNeeded(
 			credentialStoreMetadata,
-			{ oauthTokenData } as ICredentialDataDecryptedObject,
+			{ oauthTokenData },
 			credentialContext,
 			staticData,
 			workflowSettings,
+			executionId,
 		);
 	}
 }

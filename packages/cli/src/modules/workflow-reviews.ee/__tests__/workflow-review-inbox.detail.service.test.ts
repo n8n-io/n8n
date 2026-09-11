@@ -2,8 +2,8 @@ import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
 	WorkflowHistory,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
@@ -62,7 +62,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const inboxRepository = mock<WorkflowReviewInboxRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mock<LicenseState>();
@@ -71,7 +71,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		authorizationService,
 		workflowHistoryService,
-		requestRepository,
+		inboxRepository,
 		workflowRepository,
 		participantResolver,
 	);
@@ -173,19 +173,17 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		// A covered workflow is removed along with the workflow itself, so a closed
 		// review — history of a deleted workflow — can legitimately cover none
 		it('returns a closed review with no workflows when its workflow was deleted', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+			mockGate([], reviewRequest({ state: 'closed' }));
 
 			const detail = await service.getDetail(requester, requestId);
 
+			expect(detail.state).toBe('closed');
 			expect(detail.workflows).toEqual([]);
 		});
 
 		// An open review can transiently cover no workflow when a delete orphaned
 		// it and the sweep hasn't closed it yet — it stays readable until then
 		it('returns an open review with no workflows when its workflow was deleted', async () => {
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
-
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.state).toBe('open');
@@ -263,15 +261,18 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerCanComment).toBe(false);
 		});
 
-		it('passes empty coverage when a closed review no longer covers any workflow', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
+		it('passes the closed review and its empty coverage to the eligibility check', async () => {
+			mockGate([], reviewRequest({ state: 'closed' }));
 
 			await service.getDetail(requester, requestId);
 
 			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ workflowRows: [], readableWorkflowRows: [] }),
+				expect.objectContaining({
+					request: expect.objectContaining({ state: 'closed' }),
+					workflowRows: [],
+					readableWorkflowRows: [],
+				}),
 			);
 		});
 	});
@@ -396,7 +397,15 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.workflows[0]?.baselineVersion).toMatchObject({ versionId: 'ver-frozen' });
 		});
 
-		it('returns no baseline for a closed review when none was captured', async () => {
+		/**
+		 * The row's own state decides, not the request's: the request is read before its
+		 * rows, so an approval landing in between leaves the request looking open. A
+		 * frozen null would otherwise read as "still open" and resolve the live version,
+		 * showing a diff nobody approved. Null on a closed row can mean never published,
+		 * approved while unpublished, or closed without an approval — callers tell those
+		 * apart via `state` + `decision`, which is why none of them is an input here.
+		 */
+		it('has nothing to compare against on a closed row, whatever the request says', async () => {
 			mockGate(
 				[
 					{
@@ -416,57 +425,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(detail.workflows[0]?.baselineVersion).toBeNull();
-		});
-
-		it('keeps a captured null null when the request row was read before the approval', async () => {
-			// The request is fetched before its rows, so an approval landing in between
-			// leaves the request looking open. The row's own state has to win: a frozen null
-			// baseline would otherwise read as "still open" and resolve the live version.
-			mockGate(
-				[
-					{
-						workflowId,
-						workflowName: 'My workflow',
-						workflowVersionId: 'ver-pinned',
-						activeVersionId: 'ver-pinned',
-						baselineVersionId: null,
-						requestState: 'closed',
-					},
-				],
-				reviewRequest({ state: 'open', decision: 'pending' }),
-			);
-			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
-				historyVersion(versionId),
-			);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.workflows[0]?.baselineVersion).toBeNull();
-		});
-
-		it('returns no baseline for a closed review that was never approved', async () => {
-			mockGate(
-				[
-					{
-						workflowId,
-						workflowName: 'My workflow',
-						workflowVersionId: 'ver-pinned',
-						activeVersionId: 'ver-live-now',
-						baselineVersionId: null,
-						requestState: 'closed',
-					},
-				],
-				reviewRequest({ state: 'closed', decision: 'pending' }),
-			);
-			workflowHistoryService.findVersion.mockImplementation(async (_workflowId, versionId) =>
-				historyVersion(versionId),
-			);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.state).toBe('closed');
-			expect(detail.decision).toBe('pending');
 			expect(detail.workflows[0]?.baselineVersion).toBeNull();
 		});
 	});

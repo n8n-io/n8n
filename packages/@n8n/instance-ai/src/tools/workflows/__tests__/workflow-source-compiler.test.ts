@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { validateWorkflow, workflow as workflowBuilder } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
@@ -9,7 +9,9 @@ vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 }));
 
-vi.mock('@n8n/workflow-sdk', () => ({
+// Keep the real builder: the JSON path borrows its layout to fill missing node positions.
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
@@ -298,6 +300,175 @@ describe('compileWorkflowSource', () => {
 	});
 });
 
+describe('compileWorkflowSource > node positions in JSON sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// INS-1314 defect 3: the agent fell back to a hand-written .json file, whose nodes had no
+	// position. The SDK source path lays nodes out on serialize; the JSON path did not, so the
+	// save rejected every node with `nodes[N].position (invalid_type): Required`.
+	it('gives every node a position when the JSON declares none', async () => {
+		const workflow = {
+			name: 'CRM Motor',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+				{
+					id: 'code-1',
+					name: 'Compute',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					parameters: {},
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+				Fetch: { main: [[{ node: 'Compute', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/crm-motor.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
+	it('replaces a malformed position instead of padding it', async () => {
+		// The builder treats any present position as explicit, so `[100]` survives its layout.
+		// Left alone it reaches the save as `[100, undefined]`.
+		const workflow = {
+			name: 'Malformed',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [100],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: ['200', 0],
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/malformed.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		for (const node of result.workflow.nodes) {
+			expect(node.position).toEqual([expect.any(Number), expect.any(Number)]);
+		}
+	});
+
+	it('leaves positions the JSON already declares untouched', async () => {
+		const workflow = {
+			name: 'Positioned',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [-420, 96] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'Fetch',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					parameters: { url: 'https://example.com' },
+				},
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/positioned.workflow.json',
+			JSON.stringify(workflow),
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		const [trigger, fetch] = result.workflow.nodes;
+		expect(trigger.position).toEqual([-420, 96]);
+		expect(fetch.position).toEqual([expect.any(Number), expect.any(Number)]);
+	});
+
+	it('still gives every node a position when the builder cannot lay the workflow out', async () => {
+		// The builder can reject a workflow the save would accept. Without a fallback the
+		// node reached the save positionless and failed there for the wrong reason.
+		const layout = vi.spyOn(workflowBuilder, 'fromJSON').mockImplementation(() => {
+			throw new Error('cannot import this workflow');
+		});
+		const workflow = {
+			name: 'Unlayoutable',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		try {
+			const result = await compileWorkflowSource(
+				makeContext(),
+				'src/workflows/unlayoutable.workflow.json',
+				JSON.stringify(workflow),
+			);
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes[0].position).toEqual([expect.any(Number), expect.any(Number)]);
+		} finally {
+			layout.mockRestore();
+		}
+	});
+});
+
 describe('compileWorkflowSource credential resolution', () => {
 	const hosts = [
 		{ type: 'stripeApi', hosts: ['api.stripe.com'] },
@@ -400,5 +571,60 @@ describe('compileWorkflowSource credential resolution', () => {
 		);
 
 		expect(warnings).toHaveLength(0);
+	});
+});
+
+describe('compileWorkflowSource > Slack Block Kit shape', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	async function compileSlack(blocksUi: unknown) {
+		const workflow = {
+			name: 'Slack workflow',
+			nodes: [
+				{
+					id: 'slack-1',
+					name: 'Post Lunch Train',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.3,
+					position: [0, 0] as [number, number],
+					parameters: { resource: 'message', operation: 'post', messageType: 'block', blocksUi },
+				},
+			],
+			connections: {},
+		};
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/slack.workflow.json',
+			JSON.stringify(workflow),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings;
+	}
+
+	it('surfaces a warning for a bare Block Kit array', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify([{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }]),
+		);
+
+		expect(warnings).toEqual([
+			expect.objectContaining({
+				code: 'SLACK_BLOCKS_SHAPE_INVALID',
+				nodeName: 'Post Lunch Train',
+			}),
+		]);
+	});
+
+	it('stays quiet for a wrapped Block Kit payload', async () => {
+		const warnings = await compileSlack(
+			JSON.stringify({
+				blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }],
+			}),
+		);
+
+		expect(warnings).toEqual([]);
 	});
 });

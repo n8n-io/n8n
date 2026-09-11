@@ -8,9 +8,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollTriggerTaskHandler } from '@/scheduling/poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 
 import { retryUntil } from '../shared/retry-until';
 import { createDueJobFactory, seedDueTask } from './shared/job-factory';
@@ -77,6 +79,8 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			Container.get(ScheduleTriggerTaskHandler),
 			Container.get(PollTriggerTaskHandler),
 			Container.get(PrometheusSchedulerMetricsService),
+			Container.get(WorkflowScheduledJobOwner),
+			Container.get(AgentScheduledJobOwner),
 		);
 	};
 

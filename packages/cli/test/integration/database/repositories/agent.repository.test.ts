@@ -315,4 +315,38 @@ describe('AgentRepository', () => {
 			).resolves.toBe(false);
 		});
 	});
+
+	describe('findPublishedIds', () => {
+		/** An agent with a published version, so it owns scheduled jobs. */
+		async function createPublishedAgent(): Promise<Agent> {
+			const versionId = uuid();
+			const agent = await createAgent();
+			await createHistory(agent.id, versionId);
+			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
+			return agent;
+		}
+
+		it('keeps the agents that have a published version and drops the drafts', async () => {
+			const published = await createPublishedAgent();
+			const draft = await createAgent();
+
+			const ids = await agentRepo.findPublishedIds([published.id, draft.id]);
+
+			expect(ids).toEqual(new Set([published.id]));
+		});
+
+		it('drops an id that belongs to no agent', async () => {
+			const published = await createPublishedAgent();
+
+			const ids = await agentRepo.findPublishedIds([published.id, uuid()]);
+
+			expect(ids).toEqual(new Set([published.id]));
+		});
+
+		it('answers an empty list without a query', async () => {
+			await createPublishedAgent();
+
+			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
 });

@@ -27,6 +27,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
@@ -37,6 +38,8 @@ import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
+
+const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
@@ -53,6 +56,7 @@ describe('ExecutionService', () => {
 	const executionStopService = mock<ExecutionStopService>();
 	const ownershipService = mock<OwnershipService>();
 	const eventService = mock<EventService>();
+	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -75,6 +79,7 @@ describe('ExecutionService', () => {
 		executionRedactionServiceProxy,
 		executionStopService,
 		ownershipService,
+		engineV2ExecutionReader,
 	);
 
 	beforeEach(() => {
@@ -163,6 +168,46 @@ describe('ExecutionService', () => {
 
 			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
+
+		it('should read an engine 2.0 id from the data plane, not the control plane', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				data: { resultData: {} },
+			});
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: V2_EXECUTION_ID },
+				query: {},
+			});
+
+			await executionService.findOne(req, ['workflow-1']);
+
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, ['workflow-1']);
+			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
+		});
+
+		it('should redact a data-plane execution like any other', async () => {
+			const execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				data: { resultData: {} },
+			});
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: V2_EXECUTION_ID },
+				query: { redactExecutionData: 'true' } as unknown as Record<string, string>,
+			});
+
+			await executionService.findOne(req, ['workflow-1']);
+
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
 	});
 
 	describe('retry', () => {
@@ -173,12 +218,14 @@ describe('ExecutionService', () => {
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(
 				mock<IExecutionResponse>({ data: { executionData: undefined } }),
 			);
-			const req = mock<ExecutionRequest.Retry>();
-
 			/**
 			 * Act
 			 */
-			const retry = executionService.retry(req, []);
+			const retry = executionService.retry({
+				executionId: 'original-123',
+				sharedWorkflowIds: [],
+				user: mock<User>(),
+			});
 
 			/**
 			 * Assert
@@ -213,6 +260,7 @@ describe('ExecutionService', () => {
 				localExecutionRedactionProxy,
 				executionStopService,
 				ownershipService,
+				mock(),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -249,17 +297,15 @@ describe('ExecutionService', () => {
 
 			localExecutionRedactionProxy.processExecution.mockImplementation(async (exec) => exec);
 
-			const req = mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mockUser,
-				body: { loadWorkflow: false },
-				query: {},
-			});
-
 			/**
 			 * Act
 			 */
-			await localExecutionService.retry(req, ['workflow-1']);
+			await localExecutionService.retry({
+				executionId: 'original-123',
+				options: { loadWorkflow: false },
+				sharedWorkflowIds: ['workflow-1'],
+				user: mockUser,
+			});
 
 			/**
 			 * Assert
@@ -298,6 +344,7 @@ describe('ExecutionService', () => {
 				redactionProxy,
 				mock(),
 				ownershipService,
+				mock(),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -316,13 +363,12 @@ describe('ExecutionService', () => {
 			return { service, workflowRunner };
 		};
 
-		const buildRetryRequest = () =>
-			mock<ExecutionRequest.Retry>({
-				params: { id: 'original-123' },
-				user: mock<User>({ id: 'user-1' }),
-				body: { loadWorkflow: false },
-				query: {},
-			});
+		const retryArgs = (): Parameters<ExecutionService['retry']>[0] => ({
+			executionId: 'original-123',
+			options: { loadWorkflow: false },
+			sharedWorkflowIds: ['workflow-1'],
+			user: mock<User>({ id: 'user-1' }),
+		});
 
 		/**
 		 * Builds a crashed (status 'error') source execution to retry. The data is a real
@@ -360,7 +406,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: undefined }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
@@ -374,7 +420,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Missing Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
@@ -389,7 +435,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Crash Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Crash Node']).toHaveLength(0);
 		});
@@ -402,7 +448,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Last Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Last Node']).toHaveLength(1);
 		});
@@ -415,7 +461,7 @@ describe('ExecutionService', () => {
 				buildCrashedExecution({ lastNodeExecuted: 'Empty Node', runData }),
 			);
 
-			await expect(service.retry(buildRetryRequest(), ['workflow-1'])).resolves.toBeDefined();
+			await expect(service.retry(retryArgs())).resolves.toBeDefined();
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			expect(runData['Empty Node']).toHaveLength(0);
 		});

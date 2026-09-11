@@ -12,6 +12,8 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { UUID_V7_PATTERN } from '@n8n/constants';
+import { WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -43,6 +45,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -98,8 +101,19 @@ let eventService: EventService;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
+// This suite asserts on the legacy activation path (`ActiveWorkflowManager` calls,
+// synchronous publish history). The publication service has its own suites under
+// `test/integration/workflows/workflow-publication-*` and `*.publication-status*`.
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	workflowsConfig.useWorkflowPublicationService = false;
 	await utils.initNodeTypes();
+});
+
+afterAll(() => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(async () => {
@@ -4904,6 +4918,40 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 });
 
 describe('POST /workflows/:workflowId/run', () => {
+	test('should reject manual execution when the instance is read-only', async () => {
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						parameters: {},
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+		const instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
+
+		try {
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ triggerToStartFrom: { name: 'Start' } });
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		} finally {
+			instanceWriteAccess.setReadOnly(false);
+		}
+	});
+
 	test('should always use the workflow from the database, ignoring workflowData in the request body', async () => {
 		const dbWorkflow = await createWorkflow(
 			{
@@ -4976,12 +5024,15 @@ describe('POST /workflows/:workflowId/run', () => {
 		const SET_NAME = 'Edit Fields';
 
 		const startExecution = vi.fn();
+		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
 		});
 
 		beforeEach(() => {
+			// Deliberately not the id the control plane minted, so a response echoing
+			// the data plane back would fail the assertion below.
 			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
 		});
 
@@ -5022,9 +5073,14 @@ describe('POST /workflows/:workflowId/run', () => {
 				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.data.executionId).toBe('a3c1e0f2-0000-4000-8000-000000000001');
+
+			// The control plane mints the id, dispatches under it, and reports that
+			// same id — the data plane's response never renames the run.
+			const { executionId } = response.body.data;
+			expect(executionId).toMatch(UUID_V7_PATTERN);
 			expect(startExecution).toHaveBeenCalledWith(
 				objectContaining({
+					executionId,
 					workflowId: dbWorkflow.id,
 					mode: 'manual',
 					triggerOutputs: [[{ json: {} }]],

@@ -3,7 +3,13 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { UNLIMITED_CREDITS, type InstanceAiThreadSummary, type PushMessage } from '@n8n/api-types';
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiThreadSummary,
+	type InstanceAiAttachment,
+	type InstanceAiNodesAttachment,
+	type PushMessage,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
@@ -18,6 +24,7 @@ import {
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
 
 export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
@@ -220,14 +227,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		});
 	}
 
-	async function deleteThread(threadId: string): Promise<boolean> {
+	/**
+	 * Delete a thread. Returns false if the backend refused, in which case the thread is
+	 * left in the list because it genuinely still exists.
+	 *
+	 * `silent` suppresses the failure toast, for callers cleaning up after some other
+	 * failure they have already reported -- a second, unrelated "delete failed" on top of
+	 * the real error only confuses. Those callers should handle `false` themselves.
+	 */
+	async function deleteThread(
+		threadId: string,
+		options: { silent?: boolean } = {},
+	): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
 			try {
 				await deleteThreadApi(rootStore.restApiContext, threadId);
 				persistedThreadIds.delete(threadId);
 			} catch {
-				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				if (!options.silent) {
+					toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				}
 				return false;
 			}
 		}
@@ -261,6 +281,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return typeof used === 'number' ? used : undefined;
 	}
 
+	/**
+	 * Replace a thread's metadata with an authoritative server copy — used after a
+	 * write the server itself made (e.g. persisting a pending agent binds it),
+	 * where a merge would keep locally-known keys the server just removed.
+	 */
+	function setThreadMetadata(threadId: string, metadata: Record<string, unknown> | undefined) {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = metadata;
+	}
+
 	async function updateThreadMetadata(
 		threadId: string,
 		metadata: Record<string, unknown>,
@@ -274,6 +304,38 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		if (persistedThreadIds.has(threadId)) {
 			await updateThreadMetadataApi(rootStore.restApiContext, threadId, metadata);
 		}
+	}
+
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+		const existing = pendingComposerAttachments.value.find(
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+		);
+		if (existing) {
+			existing.sets = mergeNodeSets(existing.sets, newSets);
+		} else {
+			pendingComposerAttachments.value = [
+				...pendingComposerAttachments.value,
+				{ type: 'nodes', workflowId, sets: newSets },
+			];
+		}
+	}
+
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
+	}
+
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
 	}
 
 	return {
@@ -299,6 +361,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getThreadMetadata,
 		threadCreditsUsed,
 		updateThreadMetadata,
+		setThreadMetadata,
 		loadThreads,
 		fetchCredits,
 		handleCreditsPush,
@@ -306,6 +369,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getRuntime,
 		disposeRuntime,
 		syncThread,
+		pendingComposerAttachments,
+		stageNodeSets,
+		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		requestClearCanvasSelection,
 	};
 });
 

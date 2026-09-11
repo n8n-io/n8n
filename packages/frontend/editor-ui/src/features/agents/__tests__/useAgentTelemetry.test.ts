@@ -104,4 +104,34 @@ describe('useAgentTelemetry', () => {
 			session_id: 'session-xyz',
 		});
 	});
+
+	it('trackDuplicatedAgent fires "User duplicated agent" with source, new and project ids', () => {
+		useAgentTelemetry().trackDuplicatedAgent({
+			sourceAgentId: 'agent-1',
+			agentId: 'agent-2',
+			projectId: 'project-1',
+		});
+		expect(trackMock).toHaveBeenCalledWith('User duplicated agent', {
+			source_agent_id: 'agent-1',
+			agent_id: 'agent-2',
+			project_id: 'project-1',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackDuplicatedAgent swallows a telemetry failure so it never breaks the duplicate path', () => {
+		// A RudderStack failure surfaced to the duplicate-confirm critical path
+		// would misreport a successful duplicate as failed. The wrapper must
+		// swallow, mirroring `safeTrack` for the registered events.
+		trackMock.mockImplementation(() => {
+			throw new Error('rudderstack down');
+		});
+		expect(() =>
+			useAgentTelemetry().trackDuplicatedAgent({
+				sourceAgentId: 'agent-1',
+				agentId: 'agent-2',
+				projectId: 'project-1',
+			}),
+		).not.toThrow();
+	});
 });

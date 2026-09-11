@@ -8,11 +8,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { GrafanaCredentials } from './types';
+import { removeTrailingSlash } from '@utils/utilities';
 
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
-}
+import type { GrafanaCredentials } from './types';
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -23,7 +21,7 @@ export async function grafanaApiRequest(
 ) {
 	const { baseUrl: rawBaseUrl } = await this.getCredentials<GrafanaCredentials>('grafanaApi');
 
-	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
+	const baseUrl = removeTrailingSlash(rawBaseUrl);
 
 	const options: IRequestOptions = {
 		headers: {
