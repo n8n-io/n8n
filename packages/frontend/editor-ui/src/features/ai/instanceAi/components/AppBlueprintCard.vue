@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import type { AppBlueprint, AppThemeSettings } from '@n8n/api-types';
+import type { AppBlueprint } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nColorPicker,
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
-	N8nSegmentControl,
 	N8nText,
 	type IconName,
 } from '@n8n/design-system';
@@ -57,7 +56,6 @@ const namespace = computed({
 });
 const removedConnectionKeys = ref(new Set<string>());
 const primary = ref(props.blueprint.theme.primary);
-const mode = ref<AppThemeSettings['mode']>(props.blueprint.theme.mode);
 const requestingChanges = ref(false);
 const feedback = ref('');
 const submitted = ref(false);
@@ -70,7 +68,6 @@ watch(
 		editedNamespace.value = null;
 		removedConnectionKeys.value = new Set();
 		primary.value = next.theme.primary;
-		mode.value = next.theme.mode;
 	},
 );
 
@@ -90,12 +87,6 @@ const titleKey = computed<BaseTextKey>(() => {
 	return 'instanceAi.appBlueprint.title';
 });
 
-const modeOptions = computed(() => [
-	{ label: i18n.baseText('apps.builder.theme.mode.light'), value: 'light' as const },
-	{ label: i18n.baseText('apps.builder.theme.mode.dark'), value: 'dark' as const },
-	{ label: i18n.baseText('apps.builder.theme.mode.system'), value: 'system' as const },
-]);
-
 const connections = computed(() =>
 	props.blueprint.connections.filter(
 		(connection) => !removedConnectionKeys.value.has(connection.key),
@@ -113,7 +104,7 @@ const edited = computed<AppBlueprint>(() => ({
 	name: name.value.trim(),
 	namespace: namespace.value,
 	connections: connections.value,
-	theme: { ...props.blueprint.theme, primary: primary.value, mode: mode.value },
+	theme: { ...props.blueprint.theme, primary: primary.value },
 }));
 
 function removeConnection(key: string) {
@@ -213,16 +204,17 @@ async function requestChanges() {
 						size="small"
 						:disabled="isResolved"
 						data-test-id="instance-ai-app-blueprint-namespace"
-					>
-						<template #prepend>/apps/</template>
-					</N8nInput>
+					/>
 					<N8nText
-						v-if="!namespaceValid"
 						size="xsmall"
-						color="danger"
+						:color="namespaceValid ? 'text-light' : 'danger'"
 						data-test-id="instance-ai-app-blueprint-url"
 					>
-						{{ i18n.baseText('apps.add.input.namespace.error.regex') }}
+						{{
+							namespaceValid
+								? `/apps/${namespace}/`
+								: i18n.baseText('apps.add.input.namespace.error.regex')
+						}}
 					</N8nText>
 				</label>
 			</div>
@@ -282,23 +274,14 @@ async function requestChanges() {
 
 		<section :class="[$style.section, $style.themeRow]">
 			<N8nText size="small" color="text-dark" bold>
-				{{ i18n.baseText('apps.builder.theme') }}
+				{{ i18n.baseText('apps.builder.theme.accent.label') }}
 			</N8nText>
-			<div :class="$style.themeControls">
-				<N8nColorPicker
-					v-model="primary"
-					size="small"
-					:disabled="isResolved"
-					data-test-id="instance-ai-app-blueprint-primary"
-				/>
-				<N8nSegmentControl
-					v-model="mode"
-					:options="modeOptions"
-					size="small"
-					:disabled="isResolved"
-					data-test-id="instance-ai-app-blueprint-mode"
-				/>
-			</div>
+			<N8nColorPicker
+				v-model="primary"
+				size="small"
+				:disabled="isResolved"
+				data-test-id="instance-ai-app-blueprint-primary"
+			/>
 		</section>
 
 		<template v-if="!isResolved">
@@ -424,12 +407,6 @@ async function requestChanges() {
 	align-items: center;
 	justify-content: space-between;
 	flex-wrap: wrap;
-}
-
-.themeControls {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
 }
 
 .footerActions {

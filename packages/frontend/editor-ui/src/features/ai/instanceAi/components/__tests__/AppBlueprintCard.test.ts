@@ -58,7 +58,6 @@ describe('AppBlueprintCard', () => {
 		});
 
 		await userEvent.click(getAllByTestId('instance-ai-app-blueprint-connection-remove')[0]);
-		await userEvent.click(getByTestId('radio-button-dark'));
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-approve'));
 
 		await waitFor(() => expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved'));
@@ -68,7 +67,7 @@ describe('AppBlueprintCard', () => {
 			blueprint: {
 				...blueprint,
 				connections: [blueprint.connections[1]],
-				theme: { mode: 'dark', primary: '#ff6900' },
+				theme: { mode: 'system', primary: '#ff6900' },
 			},
 		});
 	});
