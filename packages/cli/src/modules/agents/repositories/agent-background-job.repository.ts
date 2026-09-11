@@ -135,14 +135,26 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	}
 
 	/** Threads with settled or parked rows their parent has not consumed yet. */
+	// Two queries instead of one OR so each branch can use its partial index.
 	async findThreadsWithUnconsumedMail(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('job')
-			.select('DISTINCT job.parentThreadId', 'parentThreadId')
-			.where('(job.settledAt IS NOT NULL OR job.suspension IS NOT NULL)')
-			.andWhere('job.notifiedAt IS NULL')
-			.getRawMany<{ parentThreadId: string }>();
+		const [settledRows, parkedRows] = await Promise.all([
+			this.createQueryBuilder('job')
+				.select('DISTINCT job.parentThreadId', 'parentThreadId')
+				.where('job.settledAt IS NOT NULL')
+				.andWhere('job.notifiedAt IS NULL')
+				.getRawMany<{ parentThreadId: string }>(),
+			this.createQueryBuilder('job')
+				.select('DISTINCT job.parentThreadId', 'parentThreadId')
+				.where('job.status = :status', { status: 'running' })
+				.andWhere('job.suspension IS NOT NULL')
+				.andWhere('job.notifiedAt IS NULL')
+				.getRawMany<{ parentThreadId: string }>(),
+		]);
 
-		return rows.map(({ parentThreadId }) => parentThreadId);
+		const parentThreadIds = new Set(
+			[...settledRows, ...parkedRows].map(({ parentThreadId }) => parentThreadId),
+		);
+		return [...parentThreadIds];
 	}
 
 	async findRunningWorkflowJobByExecutionId(
