@@ -7,13 +7,8 @@
 // ---------------------------------------------------------------------------
 
 import type {
-<<<<<<< HEAD
-=======
-	InstanceAiHandoffContext,
 	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
 	InstanceAiBuildMode,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -312,15 +307,8 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
-<<<<<<< HEAD
-	): Promise<{ runId: string }> {
-		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
-			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
-=======
 		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
-		handoffContext?: InstanceAiHandoffContext,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
@@ -329,11 +317,9 @@ export class N8nClient {
 				...(attachments?.length ? { attachments } : {}),
 				mode,
 				...(promptVersion ? { promptVersion } : {}),
-				...(handoffContext ? { context: handoffContext } : {}),
 			} satisfies InstanceAiSendMessageRequest,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**

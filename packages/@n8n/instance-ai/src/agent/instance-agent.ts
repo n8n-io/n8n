@@ -18,23 +18,17 @@ import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-<<<<<<< HEAD
 import {
 	ALWAYS_LOADED_TOOL_NAMES,
 	CHECKPOINT_FOLLOW_UP_TOOL_NAMES,
 	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 } from '../tools/tool-ids';
-import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-=======
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
-import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
 	setTracePromptVersion,
 } from '../tracing/langsmith-tracing';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import type {
 	CreateInstanceAgentOptions,
 	InstanceAiContext,
@@ -103,10 +97,6 @@ export async function createInstanceAgent(
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
-<<<<<<< HEAD
-	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
-
-=======
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
@@ -115,7 +105,6 @@ export async function createInstanceAgent(
 			context.runtimeSkillCatalog ??
 			orchestrationContext?.runtimeSkills,
 	};
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change). The manager
 	// returns per-server connection failures alongside the tools so they travel
@@ -227,26 +216,6 @@ export async function createInstanceAgent(
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-<<<<<<< HEAD
-	const systemPrompt = getSystemPrompt({
-		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-		formBaseUrl: orchestrationContext?.formBaseUrl,
-		localGateway: context.localGatewayStatus,
-		toolSearchEnabled: hasDeferrableTools,
-		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
-		licenseHints: context.licenseHints,
-		browserAvailable: browserToolNames.size > 0,
-		branchReadOnly: context.branchReadOnly,
-		projectId: context.projectId,
-		// Presence of the service IS the experiment gate — the host only wires it
-		// for flagged-in users on project-bound runs.
-		conversationHistoryEnabled: Boolean(context.conversationHistoryService),
-		workspaceRoot:
-			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
-				? orchestrationContext.workspaceRoot
-				: undefined,
-	});
-=======
 	const systemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
@@ -263,14 +232,12 @@ export async function createInstanceAgent(
 			// Presence of the service IS the experiment gate — the host only wires it
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
-			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
 					: undefined,
 		},
 	);
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,

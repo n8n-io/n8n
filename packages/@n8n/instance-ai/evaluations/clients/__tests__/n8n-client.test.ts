@@ -14,44 +14,6 @@ import {
 
 const BASE_URL = 'http://localhost:5678';
 
-<<<<<<< HEAD
-=======
-describe('N8nClient.sendMessage', () => {
-	afterEach(() => vi.unstubAllGlobals());
-
-	it('preserves the Execute target through the REST request schema', async () => {
-		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
-		const client = new N8nClient(BASE_URL);
-		const context = { source: 'setup-panel-execute', workflowId: 'wf-remapped' } as const;
-		const attachments = [{ type: 'workflow', id: context.workflowId, name: 'Greeting' }] as const;
-
-		await expect(
-			client.sendMessage(
-				'thread-1',
-				'Run a test.',
-				[...attachments],
-				'progressive',
-				'progressive@1',
-				context,
-			),
-		).resolves.toEqual({ runId: 'run-1' });
-
-		const [url, init] = fetchMock.mock.calls[0];
-		expect(url).toBe(`${BASE_URL}/rest/instance-ai/chat/thread-1`);
-		if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
-		const body = jsonParse<Record<string, unknown>>(init.body);
-		expect(InstanceAiSendMessageRequest.parse(body)).toMatchObject({
-			message: 'Run a test.',
-			attachments,
-			context,
-			mode: 'progressive',
-			promptVersion: 'progressive@1',
-		});
-		expect(body).not.toHaveProperty('handoffContext');
-	});
-});
-
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 /** Builds a minimal `Response`-shaped object for the client's private `fetch()` to consume. */
 function jsonResponse(body: unknown): Response {
 	return {

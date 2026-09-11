@@ -7,16 +7,11 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-<<<<<<< HEAD
-import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
-=======
 import type {
 	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
-	InstanceAiHandoffContext,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -210,12 +205,8 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
-<<<<<<< HEAD
-=======
 		config.buildMode,
 		config.promptVersion,
-		config.openingHandoffContext,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	);
 
 	await runMultiTurnConversation({
@@ -1034,12 +1025,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
-<<<<<<< HEAD
-=======
 				buildMode,
 				promptVersion,
-				openingHandoffContext,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 			);
 			await waitForAllActivity({
 				client,

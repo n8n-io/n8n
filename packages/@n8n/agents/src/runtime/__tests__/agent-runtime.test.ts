@@ -8,14 +8,10 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
-<<<<<<< HEAD
-import type { CheckpointStore, SerializableAgentState } from '../../types';
-=======
 import { createRuntimeSkillSource } from '../../skills/registry';
 import { createRuntimeSkillTools } from '../../skills/tools';
 import type { RuntimeSkillSource } from '../../skills/types';
-import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
+import type { CheckpointStore, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -6605,16 +6601,11 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
-<<<<<<< HEAD
-		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
-=======
 		extra?: {
 			skillSource?: RuntimeSkillSource;
 			tools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
-			model?: ModelConfig;
 		},
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
@@ -6663,8 +6654,6 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
-<<<<<<< HEAD
-=======
 	it('persists full skill content when the memory adapter has no skill state store', async () => {
 		const instructions = 'Wait for a real execution before extending the workflow.';
 		const source = createRuntimeSkillSource([
@@ -6789,43 +6778,6 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
-	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
-		const memory = new InMemoryMemory();
-		const runtime = buildMidRunRuntime(memory, {
-			model: { id: 'custom/test-model', baseURL: 'https://example.test/v1' },
-		});
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
-			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
-
-		await runtime.generate('start work', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		const second = capturedCall(1);
-		expect(second.instructions).not.toBeInstanceOf(Array);
-		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
-		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
-	});
-
-	it('merges system messages after compaction for OpenAI models with a custom URL', async () => {
-		const memory = new InMemoryMemory();
-		const runtime = buildMidRunRuntime(memory, {
-			model: { id: 'openai/x', url: 'http://localhost:8000/v1' },
-		});
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
-			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
-
-		await runtime.generate('start work', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		const second = capturedCall(1);
-		expect(second.instructions).not.toBeInstanceOf(Array);
-		expect(flattenInstructions(second.instructions)).toContain('You are a test assistant.');
-		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
-	});
-
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
 		const memory = new InMemoryMemory();
 		const checkpointStore = makeClaimingCheckpointStore();

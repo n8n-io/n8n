@@ -40,16 +40,12 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
-<<<<<<< HEAD
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
-	loadInstanceAiRuntimeSkillSource,
-=======
 	loadInstanceAiPromptSkills,
 	resolvePromptProfile,
 	describePromptProfile,
 	setTracePromptVersion,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	threadProvenanceMetadata,
@@ -1333,10 +1329,6 @@ export class InstanceAiService {
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
-<<<<<<< HEAD
-			persistence: { resourceId: user.id, threadId, hostRunId: runId },
-=======
-			...modelStreamStallOptions(this.aiConfig),
 			persistence: {
 				resourceId: user.id,
 				threadId,
@@ -1346,7 +1338,6 @@ export class InstanceAiService {
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
 			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
 			// reprocesses the whole conversation uncached on every resume (~100K tokens).
@@ -2653,16 +2644,9 @@ export class InstanceAiService {
 
 		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
 		// preserved) so every derived skill source inherits the exclusion.
-<<<<<<< HEAD
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
-=======
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
-			configEvalsEnabled,
-			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
-		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
@@ -2750,12 +2734,8 @@ export class InstanceAiService {
 			messageGroupId,
 			userId: user.id,
 			projectId: boundProjectId,
-<<<<<<< HEAD
-=======
 			promptConfiguration: promptMetadata,
 			disabledToolNames: new Set(selectedSkills.disabledTools),
-			setupPanelEnabled: isSetupPanelEnabled(context),
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			checkpointStore: this.checkpointStore,

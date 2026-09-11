@@ -13,11 +13,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type JSONObject,
 	type JSONValue,
-<<<<<<< HEAD
-=======
-	type Thread,
 	type RuntimeSkillStateStore,
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';

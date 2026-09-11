@@ -55,7 +55,6 @@ describe('progressive workflow skill variants', () => {
 		if (!policy) throw new Error('Expected the progressive policy');
 		const excluded = disabledInstanceAiSkillIds({
 			configEvalsEnabled: true,
-			instanceContextEnabled: true,
 		});
 		const control = filterRuntimeSkillSource(
 			await loadInstanceAiRuntimeSkillSourceForBuildMode('default'),

@@ -42,19 +42,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
 		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
-<<<<<<< HEAD
-		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
-			registry: {
-				skillsHash: 'runtime-skills-hash',
-				skills: [{ id: 'data-table-manager' }],
-=======
-		traceSandboxOperation: vi.fn(
-			async <T>(_operation: string, _options: unknown, fn: () => Promise<T>) => await fn(),
-		),
-		withSandboxLifecycleTrace: vi.fn(
-			async <T>(_threadId: string, _operation: string, _inputs: unknown, fn: () => Promise<T>) =>
-				await fn(),
-		),
 		loadInstanceAiPromptSkills: vi.fn(() => ({
 			disabledTools: [],
 			source: {
@@ -63,7 +50,6 @@ vi.mock('@n8n/instance-ai', async () => {
 					skills: [{ id: 'data-table-manager' }],
 				},
 				loadSkill: vi.fn(),
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 			},
 		})),
 		disabledInstanceAiSkillIds: vi.fn(() => []),
@@ -933,10 +919,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-<<<<<<< HEAD
-			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
-			spawnBackgroundTask: Mock;
-=======
 			runState: {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
@@ -947,7 +929,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
 			};
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
+			spawnBackgroundTask: Mock;
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
 			schedulePlannedTasks: Mock;
@@ -1239,10 +1221,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-<<<<<<< HEAD
-			runState: { touchActiveRun: Mock; registerPendingConfirmation: Mock };
-			spawnBackgroundTask: Mock;
-=======
 			runState: {
 				touchActiveRun: Mock;
 				registerPendingConfirmation: Mock;
@@ -1253,7 +1231,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				setBuildMode: Mock;
 				setPromptVersion: Mock;
 			};
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
+			spawnBackgroundTask: Mock;
 			cancelBackgroundTask: Mock;
 			backgroundTasks: { touchTask: Mock };
 			schedulePlannedTasks: Mock;

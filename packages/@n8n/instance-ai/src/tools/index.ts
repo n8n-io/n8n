@@ -186,24 +186,19 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
-	const tools: Array<[string, BuiltTool]> = [];
-	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
-	tools.push(
+	const tools: Array<[string, BuiltTool]> = [
+		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
 		],
-<<<<<<< HEAD
 		[
 			ORCHESTRATION_TOOL_IDS.EVAL_SETUP_WITH_AGENT,
 			loadEvalSetupAgentTool().createEvalSetupAgentTool(context),
 		],
 		[ORCHESTRATION_TOOL_IDS.EVAL_DATA, loadEvalDataAgentTool().createEvalDataAgentTool(context)],
 	];
-=======
-	);
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 
 	if (context.workflowTaskService) {
 		tools.push([

@@ -2,16 +2,11 @@ import { createSkillLoadTool } from '@n8n/agents';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-<<<<<<< HEAD
-import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
-=======
-import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
 } from '../runtime-skills';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
@@ -168,27 +163,12 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-<<<<<<< HEAD
 		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
 			CONFIG_EVALS_SKILL_ID,
 		);
 		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
 			CONFIG_EVALS_SKILL_ID,
 		);
-=======
-		expect(
-			disabledInstanceAiSkillIds({
-				configEvalsEnabled: false,
-				instanceContextEnabled: true,
-			}),
-		).toContain(CONFIG_EVALS_SKILL_ID);
-		expect(
-			disabledInstanceAiSkillIds({
-				configEvalsEnabled: true,
-				instanceContextEnabled: true,
-			}),
-		).not.toContain(CONFIG_EVALS_SKILL_ID);
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');

@@ -1,9 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
 import type { AgentDbMessage } from '@n8n/instance-ai';
-=======
-import type { AgentDbMessage, Thread } from '@n8n/agents';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
@@ -74,18 +70,7 @@ describe('TypeORMAgentMemory', () => {
 		});
 		const threadRepo = mock<InstanceAiThreadRepository>();
 		threadRepo.findOneBy.mockResolvedValue(thread);
-		threadRepo.updateThread.mockImplementation(async ({ update }) => {
-			const current: Thread = {
-				id: thread.id,
-				resourceId: thread.resourceId,
-				metadata: thread.metadata ?? undefined,
-				createdAt: thread.createdAt,
-				updatedAt: thread.updatedAt,
-			};
-			const patch = update(current);
-			if (patch?.metadata !== undefined) thread.metadata = patch.metadata;
-			return { ...current, ...patch };
-		});
+		threadRepo.save.mockResolvedValue(thread);
 		const { memory } = createMemory({ threadRepo });
 		const scope = { threadId: 'thread-1', resourceId: 'user-1', agentName: 'builder' };
 		await Promise.all([

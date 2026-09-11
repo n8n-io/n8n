@@ -1,14 +1,6 @@
-<<<<<<< HEAD
-import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
-=======
 import { mock } from 'vitest-mock-extended';
 
-import {
-	createOrchestrationTools,
-	createOrchestratorDomainTools,
-	getActiveOrchestratorDomainToolNames,
-} from '..';
->>>>>>> 1bee3bca (feat(core): Add progressive workflow building (no-changelog) (#37996))
+import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
