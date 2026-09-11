@@ -8,6 +8,8 @@ import {
 	setUserRegexEngine,
 } from 'n8n-workflow';
 
+import { createPcre2Engine } from './pcre2-engine';
+
 /** An engine this service can install, plus the teardown it needs when the process exits. */
 export interface ManagedRegexEngine extends RegexEngine {
 	dispose?(): void;
@@ -49,6 +51,8 @@ export class RegexEngineService {
 		switch (this.globalConfig.regexEngine.engine) {
 			case 'js':
 				return createDefaultRegexEngine();
+			case 'pcre2':
+				return await createPcre2Engine();
 		}
 	}
 }
