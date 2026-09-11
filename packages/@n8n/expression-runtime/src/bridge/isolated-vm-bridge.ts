@@ -11,7 +11,7 @@ import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
 // only loaded when IsolatedVmBridge is actually constructed.
 type IsolatedVm = typeof import('isolated-vm');
 let _ivm: IsolatedVm | null = null;
-/** Runtime bundle source, read once per process by readRuntimeBundle(). */
+/** Runtime bundle source, read once per process by loadRuntimeBundle(). */
 let _runtimeBundle: string | null = null;
 
 function getIvm(): IsolatedVm {
@@ -101,7 +101,7 @@ function serializeError(err: unknown): ErrorSentinel {
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
  */
-function readRuntimeBundle(): string {
+function loadRuntimeBundle(): string {
 	if (_runtimeBundle !== null) return _runtimeBundle;
 	let dir = __dirname;
 	while (dir !== path.dirname(dir)) {
@@ -207,7 +207,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			// Load runtime bundle (includes vendor libraries + proxy system)
-			const runtimeBundle = readRuntimeBundle();
+			const runtimeBundle = loadRuntimeBundle();
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, buildContext)
@@ -328,13 +328,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			if (this.config.compileCache) {
 				const script = this.isolate.compileScriptSync(
-					readRuntimeBundle(),
+					loadRuntimeBundle(),
 					_bundleCachedData ? { cachedData: _bundleCachedData } : { produceCachedData: true },
 				);
 				if (!_bundleCachedData) _bundleCachedData = producedCachedData(script);
 				script.runSync(this.context);
 			} else {
-				this.context.evalSync(readRuntimeBundle());
+				this.context.evalSync(loadRuntimeBundle());
 			}
 
 			// Same checks as loadVendorLibraries() + verifyProxySystem(), condensed.
