@@ -37,12 +37,11 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'header', 'description'],
+		props: ['open', 'size', 'header'],
 		emits: ['update:open'],
 		template: `
 			<div v-if="open" role="dialog">
 				<h2>{{ header }}</h2>
-				<p v-if="description">{{ description }}</p>
 				<slot />
 			</div>
 		`,
@@ -134,6 +133,7 @@ describe('AppConnectionsModal', () => {
 		appsStore = mockedStore(useAppsStore);
 		appsStore.bindings = [echoBinding, ordersBinding];
 		appsStore.addBinding.mockResolvedValue(undefined);
+		appsStore.updateBinding.mockResolvedValue(undefined);
 		appsStore.deleteBinding.mockResolvedValue(undefined);
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalStateById = { [APP_CONNECTIONS_MODAL_KEY]: { open: true } };
@@ -188,11 +188,42 @@ describe('AppConnectionsModal', () => {
 		});
 	});
 
-	it('connects a workflow under a derived key and reports it', async () => {
-		const { getAllByTestId } = await renderOpen();
+	async function openDetail(title: string, tab?: () => Promise<void>) {
+		const rendered = await renderOpen();
+		await tab?.();
+		const row = rowByTitle(rendered.getAllByTestId('tools-connection-row'), title);
+		await userEvent.click(within(row).getByTestId('tools-connection-row-main'));
+		return rendered;
+	}
 
-		const notify = rowByTitle(getAllByTestId('tools-connection-row'), 'Notify Slack');
-		await userEvent.click(within(notify).getByTestId('tools-connection-row-main'));
+	it('opens a detail view for a workflow row instead of connecting it', async () => {
+		const { getByTestId, getByText, queryByTestId, queryByRole } = await openDetail('Notify Slack');
+
+		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
+		expect(getByText('Notify Slack')).toBeInTheDocument();
+		expect(
+			getByText('The app can run this workflow with the inputs of its trigger.'),
+		).toBeInTheDocument();
+		expect(queryByRole('checkbox')).not.toBeInTheDocument();
+		expect(getByTestId('app-binding-connect')).toBeEnabled();
+		expect(queryByTestId('app-binding-disconnect')).not.toBeInTheDocument();
+		expect(queryByTestId('tools-connection-row')).not.toBeInTheDocument();
+		expect(appsStore.addBinding).not.toHaveBeenCalled();
+	});
+
+	it('returns to the list from the detail view', async () => {
+		const { getByTestId, getAllByTestId, queryByTestId } = await openDetail('Notify Slack');
+
+		await userEvent.click(getByTestId('tools-connection-detail-back'));
+
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
+		expect(getAllByTestId('tools-connection-row')).toHaveLength(2);
+	});
+
+	it('connects a workflow under a derived key and returns to the list', async () => {
+		const { getByTestId, queryByTestId } = await openDetail('Notify Slack');
+
+		await userEvent.click(getByTestId('app-binding-connect'));
 
 		expect(appsStore.addBinding).toHaveBeenCalledWith('proj-1', 'app-1', {
 			key: 'notify-slack',
@@ -203,14 +234,14 @@ describe('AppConnectionsModal', () => {
 			title: 'Connected. Ask the assistant to use "Notify Slack" in the app.',
 			type: 'success',
 		});
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 	});
 
 	it('skips a key that is already taken', async () => {
 		appsStore.bindings = [{ ...echoBinding, key: 'notify-slack', workflowId: 'wf-9' }];
-		const { getAllByTestId } = await renderOpen();
+		const { getByTestId } = await openDetail('Notify Slack');
 
-		const notify = rowByTitle(getAllByTestId('tools-connection-row'), 'Notify Slack');
-		await userEvent.click(within(notify).getByTestId('tools-connection-row-main'));
+		await userEvent.click(getByTestId('app-binding-connect'));
 
 		expect(appsStore.addBinding).toHaveBeenCalledWith(
 			'proj-1',
@@ -219,24 +250,31 @@ describe('AppConnectionsModal', () => {
 		);
 	});
 
-	it('shows an error toast when connecting fails', async () => {
+	it('stays on the detail view and shows an error toast when connecting fails', async () => {
 		const failure = new Error('nope');
 		appsStore.addBinding.mockRejectedValue(failure);
-		const { getAllByTestId } = await renderOpen();
+		const { getByTestId } = await openDetail('Notify Slack');
 
-		const notify = rowByTitle(getAllByTestId('tools-connection-row'), 'Notify Slack');
-		await userEvent.click(within(notify).getByTestId('tools-connection-row-main'));
+		await userEvent.click(getByTestId('app-binding-connect'));
 
 		expect(showError).toHaveBeenCalledWith(failure, 'Error connecting to app');
 		expect(showMessage).not.toHaveBeenCalled();
+		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
+	});
+
+	it('shows Disconnect without Save for a connected workflow', async () => {
+		const { getByTestId, queryByTestId } = await openDetail('Echo');
+
+		expect(getByTestId('app-binding-disconnect')).toBeInTheDocument();
+		expect(queryByTestId('app-binding-save')).not.toBeInTheDocument();
+		expect(queryByTestId('app-binding-connect')).not.toBeInTheDocument();
 	});
 
 	it('disconnects a connected workflow after confirmation', async () => {
 		confirm.mockResolvedValue(MODAL_CONFIRM);
-		const { getAllByTestId } = await renderOpen();
+		const { getByTestId, queryByTestId } = await openDetail('Echo');
 
-		const echo = rowByTitle(getAllByTestId('tools-connection-row'), 'Echo');
-		await userEvent.click(within(echo).getByTestId('tools-connection-row-main'));
+		await userEvent.click(getByTestId('app-binding-disconnect'));
 
 		expect(confirm).toHaveBeenCalledWith(
 			expect.stringContaining('disconnect the "Echo" workflow'),
@@ -244,17 +282,21 @@ describe('AppConnectionsModal', () => {
 			expect.objectContaining({ confirmButtonText: 'Disconnect' }),
 		);
 		expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'echo');
-		expect(appsStore.addBinding).not.toHaveBeenCalled();
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Disconnected "Echo" from the app.',
+			type: 'success',
+		});
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 	});
 
-	it('keeps the connection when the confirmation is cancelled', async () => {
+	it('keeps the connection and the detail view when the confirmation is cancelled', async () => {
 		confirm.mockResolvedValue('cancel');
-		const { getAllByTestId } = await renderOpen();
+		const { getByTestId } = await openDetail('Echo');
 
-		const echo = rowByTitle(getAllByTestId('tools-connection-row'), 'Echo');
-		await userEvent.click(within(echo).getByTestId('tools-connection-row-main'));
+		await userEvent.click(getByTestId('app-binding-disconnect'));
 
 		expect(appsStore.deleteBinding).not.toHaveBeenCalled();
+		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
 	});
 
 	it('shows an icon on each tab', async () => {
@@ -305,41 +347,52 @@ describe('AppConnectionsModal', () => {
 		});
 	});
 
-	async function openAccessDialog() {
-		const rendered = await renderOpen();
-		await openDataTab();
-		const notes = rowByTitle(rendered.getAllByTestId('tools-connection-row'), 'Customer Notes');
-		await userEvent.click(within(notes).getByTestId('tools-connection-row-main'));
-		return rendered;
-	}
+	it('offers Read and Write, both checked, before connecting a data table', async () => {
+		const { getByTestId, getByText, getByRole, queryByTestId } = await openDetail(
+			'Customer Notes',
+			openDataTab,
+		);
 
-	it('asks for the access level before connecting a data table', async () => {
-		const { getByTestId, getByRole, getByText, queryByTestId } = await openAccessDialog();
-
-		expect(getByTestId('app-data-table-access-dialog')).toBeInTheDocument();
-		expect(getByRole('heading', { name: 'Connect "Customer Notes"' })).toBeInTheDocument();
+		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
+		expect(getByText('Customer Notes')).toBeInTheDocument();
 		expect(getByText('Anyone who can open the app gets this access.')).toBeInTheDocument();
 		expect(getByRole('checkbox', { name: 'Read' })).toHaveAttribute('aria-checked', 'true');
 		expect(getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'true');
-		expect(getByTestId('app-data-table-access-connect')).toBeEnabled();
-		expect(queryByTestId('tools-connection-modal')).not.toBeInTheDocument();
+		expect(getByTestId('app-binding-connect')).toBeEnabled();
+		expect(queryByTestId('app-binding-save')).not.toBeInTheDocument();
 		expect(appsStore.addBinding).not.toHaveBeenCalled();
 	});
 
 	it('disables Connect when neither access level is checked', async () => {
-		const { getByTestId, getByRole } = await openAccessDialog();
+		const { getByTestId, getByRole } = await openDetail('Customer Notes', openDataTab);
 
 		await userEvent.click(getByRole('checkbox', { name: 'Read' }));
 		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
 
-		expect(getByTestId('app-data-table-access-connect')).toBeDisabled();
+		expect(getByTestId('app-binding-connect')).toBeDisabled();
 	});
 
-	it('connects a data table with the chosen permissions under a derived key', async () => {
-		const { getByTestId, getByRole, queryByTestId } = await openAccessDialog();
+	it('connects a data table with both permissions by default', async () => {
+		const { getByTestId } = await openDetail('Customer Notes', openDataTab);
+
+		await userEvent.click(getByTestId('app-binding-connect'));
+
+		expect(appsStore.addBinding).toHaveBeenCalledWith('proj-1', 'app-1', {
+			key: 'customer-notes',
+			kind: 'dataTable',
+			dataTableId: 'dt-2',
+			permissions: ['read', 'write'],
+		});
+	});
+
+	it('connects a data table with the chosen permissions and returns to the list', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await openDetail(
+			'Customer Notes',
+			openDataTab,
+		);
 
 		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
-		await userEvent.click(getByTestId('app-data-table-access-connect'));
+		await userEvent.click(getByTestId('app-binding-connect'));
 
 		expect(appsStore.addBinding).toHaveBeenCalledWith('proj-1', 'app-1', {
 			key: 'customer-notes',
@@ -351,39 +404,43 @@ describe('AppConnectionsModal', () => {
 			title: 'Connected. Ask the assistant to use "Customer Notes" in the app.',
 			type: 'success',
 		});
-		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 		expect(getByTestId('tools-connection-modal')).toBeInTheDocument();
 	});
 
-	it('connects nothing when the access dialog is cancelled', async () => {
-		const { getByRole, queryByTestId, getByTestId } = await openAccessDialog();
-
-		await userEvent.click(getByRole('button', { name: 'Cancel' }));
-
-		expect(appsStore.addBinding).not.toHaveBeenCalled();
-		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
-		expect(getByTestId('tools-connection-modal')).toBeInTheDocument();
-	});
-
-	it('checks both access levels again when the dialog reopens', async () => {
-		const { getAllByTestId, getByRole } = await openAccessDialog();
-
-		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
-		await userEvent.click(getByRole('button', { name: 'Cancel' }));
-		const notes = rowByTitle(getAllByTestId('tools-connection-row'), 'Customer Notes');
-		await userEvent.click(within(notes).getByTestId('tools-connection-row-main'));
+	it('shows the stored permissions of a connected data table with Save disabled', async () => {
+		appsStore.bindings = [{ ...ordersBinding, permissions: ['read'] }];
+		const { getByTestId, getByRole, queryByTestId } = await openDetail('Orders', openDataTab);
 
 		expect(getByRole('checkbox', { name: 'Read' })).toHaveAttribute('aria-checked', 'true');
-		expect(getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'true');
+		expect(getByRole('checkbox', { name: 'Write' })).toHaveAttribute('aria-checked', 'false');
+		expect(getByTestId('app-binding-save')).toBeDisabled();
+		expect(getByTestId('app-binding-disconnect')).toBeInTheDocument();
+		expect(queryByTestId('app-binding-connect')).not.toBeInTheDocument();
+	});
+
+	it('saves the changed permissions of a connected data table', async () => {
+		const { getByTestId, getByRole, queryByTestId } = await openDetail('Orders', openDataTab);
+
+		await userEvent.click(getByRole('checkbox', { name: 'Write' }));
+		expect(getByTestId('app-binding-save')).toBeEnabled();
+		await userEvent.click(getByTestId('app-binding-save'));
+
+		expect(appsStore.updateBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'orders', {
+			permissions: ['read'],
+		});
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Access for "Orders" updated.',
+			type: 'success',
+		});
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 	});
 
 	it('disconnects a connected data table after confirmation', async () => {
 		confirm.mockResolvedValue(MODAL_CONFIRM);
-		const { getAllByTestId, queryByTestId } = await renderOpen();
+		const { getByTestId, queryByTestId } = await openDetail('Orders', openDataTab);
 
-		await openDataTab();
-		const orders = rowByTitle(getAllByTestId('tools-connection-row'), 'Orders');
-		await userEvent.click(within(orders).getByTestId('tools-connection-row-main'));
+		await userEvent.click(getByTestId('app-binding-disconnect'));
 
 		expect(confirm).toHaveBeenCalledWith(
 			expect.stringContaining('disconnect the "Orders" table'),
@@ -391,6 +448,6 @@ describe('AppConnectionsModal', () => {
 			expect.objectContaining({ confirmButtonText: 'Disconnect' }),
 		);
 		expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'orders');
-		expect(queryByTestId('app-data-table-access-dialog')).not.toBeInTheDocument();
+		expect(queryByTestId('tools-connection-detail')).not.toBeInTheDocument();
 	});
 });

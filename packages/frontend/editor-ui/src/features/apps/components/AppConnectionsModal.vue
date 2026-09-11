@@ -2,6 +2,7 @@
 import type {
 	AppBinding,
 	DataTablePermission,
+	DescribedBinding,
 	DescribedDataTableBinding,
 	DescribedWorkflowBinding,
 } from '@n8n/api-types';
@@ -13,7 +14,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentToolCatalog } from '@/features/agents/composables/useAgentToolCatalog';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { deriveBindingKey } from '@/features/apps/bindingKey';
-import AppDataTableAccessDialog from '@/features/apps/components/AppDataTableAccessDialog.vue';
+import AppBindingDetailBody from '@/features/apps/components/AppBindingDetailBody.vue';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
@@ -50,13 +51,13 @@ const CATEGORY_ICONS: Partial<Record<ToolCategoryKey, IconName>> = {
 	workflows: 'workflow',
 	data: 'table',
 };
-
-// The access dialog and the picker are sequential, not stacked: the picker
-// steps aside while the dialog is open and comes back with its state intact.
-const pendingDataTable = ref<DataStoreConnectionItem | null>(null);
+const DATA_TABLE_PERMISSION_OPTIONS: Array<{ value: DataTablePermission; label: string }> = [
+	{ value: 'read', label: i18n.baseText('apps.connections.access.read') },
+	{ value: 'write', label: i18n.baseText('apps.connections.access.write') },
+];
 
 const isOpen = computed({
-	get: () => uiStore.modalsById[props.modalName]?.open === true && pendingDataTable.value === null,
+	get: () => uiStore.modalsById[props.modalName]?.open === true,
 	set: (value: boolean) => {
 		if (!value) uiStore.closeModal(props.modalName);
 	},
@@ -126,6 +127,23 @@ const items = computed<ToolConnectionItem[]>(() => [
 		.map(dataTableItem),
 ]);
 
+// Resolved from the id on every render so the detail view follows the
+// connection state instead of holding a stale copy of the item.
+const activeItemId = ref<string | null>(null);
+const detailItem = computed<ToolConnectionItem | null>(
+	() => items.value.find((item) => item.id === activeItemId.value) ?? null,
+);
+
+function bindingFor(item: ToolConnectionItem): DescribedBinding | null {
+	if (item.kind === 'service') return bindingByWorkflowId.value.get(item.serviceId) ?? null;
+	if (item.kind === 'data-store') return bindingByDataTableId.value.get(item.dataStoreId) ?? null;
+	return null;
+}
+
+function permissionsOf(binding: DescribedBinding | null): DataTablePermission[] {
+	return binding?.kind === 'dataTable' ? binding.permissions : [];
+}
+
 function bindingKeyFor(title: string): string {
 	return deriveBindingKey(
 		title,
@@ -133,74 +151,97 @@ function bindingKeyFor(title: string): string {
 	);
 }
 
-async function connect(name: string, binding: AppBinding) {
+function newBinding(
+	item: ToolConnectionItem,
+	permissions: DataTablePermission[],
+): AppBinding | null {
+	const key = bindingKeyFor(item.title);
+	if (item.kind === 'service') return { key, kind: 'workflow', workflowId: item.serviceId };
+	if (item.kind === 'data-store') {
+		return { key, kind: 'dataTable', dataTableId: item.dataStoreId, permissions };
+	}
+	return null;
+}
+
+async function connect(item: ToolConnectionItem, permissions: DataTablePermission[]) {
+	const binding = newBinding(item, permissions);
+	if (!binding) return;
 	try {
 		await appsStore.addBinding(props.data.projectId, props.data.appId, binding);
 		toast.showMessage({
-			title: i18n.baseText('apps.connections.picker.connected', { interpolate: { name } }),
+			title: i18n.baseText('apps.connections.picker.connected', {
+				interpolate: { name: item.title },
+			}),
 			type: 'success',
 		});
+		activeItemId.value = null;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.connections.picker.error'));
 	}
 }
 
-async function handleRowActivate(item: ToolConnectionItem) {
-	if (item.kind === 'service') {
-		const existing = bindingByWorkflowId.value.get(item.serviceId);
-		if (existing) {
-			await confirmAndDeleteBinding(props.data.projectId, props.data.appId, existing);
-			return;
-		}
-		await connect(item.title, {
-			key: bindingKeyFor(item.title),
-			kind: 'workflow',
-			workflowId: item.serviceId,
+async function save(item: ToolConnectionItem, permissions: DataTablePermission[]) {
+	const binding = bindingFor(item);
+	if (!binding) return;
+	try {
+		await appsStore.updateBinding(props.data.projectId, props.data.appId, binding.key, {
+			permissions,
 		});
-		return;
-	}
-
-	if (item.kind === 'data-store') {
-		const existing = bindingByDataTableId.value.get(item.dataStoreId);
-		if (existing) {
-			await confirmAndDeleteBinding(props.data.projectId, props.data.appId, existing);
-			return;
-		}
-		pendingDataTable.value = item;
+		toast.showMessage({
+			title: i18n.baseText('apps.connections.picker.updated', {
+				interpolate: { name: item.title },
+			}),
+			type: 'success',
+		});
+		activeItemId.value = null;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.connections.picker.updateError'));
 	}
 }
 
-async function connectDataTable(permissions: DataTablePermission[]) {
-	const item = pendingDataTable.value;
-	pendingDataTable.value = null;
-	if (!item) return;
-	await connect(item.title, {
-		key: bindingKeyFor(item.title),
-		kind: 'dataTable',
-		dataTableId: item.dataStoreId,
-		permissions,
+async function disconnect(item: ToolConnectionItem) {
+	const binding = bindingFor(item);
+	if (!binding) return;
+	const deleted = await confirmAndDeleteBinding(props.data.projectId, props.data.appId, binding);
+	if (!deleted) return;
+	toast.showMessage({
+		title: i18n.baseText('apps.connections.picker.disconnected', {
+			interpolate: { name: item.title },
+		}),
+		type: 'success',
 	});
+	activeItemId.value = null;
 }
 </script>
 
 <template>
-	<!-- Both dialogs teleport out; the div only satisfies the single-root rule. -->
-	<div>
-		<ToolsConnectionModal
-			v-model:open="isOpen"
-			:items="items"
-			:categories="CATEGORIES"
-			:category-icons="CATEGORY_ICONS"
-			:title="i18n.baseText('apps.connections.picker.title')"
-			:search-placeholder="i18n.baseText('apps.connections.picker.search')"
-			:detail-item="null"
-			@open-detail="handleRowActivate"
-		/>
-		<AppDataTableAccessDialog
-			:open="pendingDataTable !== null"
-			:name="pendingDataTable?.title ?? ''"
-			@cancel="pendingDataTable = null"
-			@connect="connectDataTable"
-		/>
-	</div>
+	<ToolsConnectionModal
+		v-model:open="isOpen"
+		:items="items"
+		:categories="CATEGORIES"
+		:category-icons="CATEGORY_ICONS"
+		:title="i18n.baseText('apps.connections.picker.title')"
+		:search-placeholder="i18n.baseText('apps.connections.picker.search')"
+		:detail-item="detailItem"
+		@update:detail-item="activeItemId = $event?.id ?? null"
+	>
+		<template #detail-body="{ item }">
+			<AppBindingDetailBody
+				:item="item"
+				:connected="bindingFor(item) !== null"
+				:permissions="permissionsOf(bindingFor(item))"
+				:permission-options="item.kind === 'data-store' ? DATA_TABLE_PERMISSION_OPTIONS : []"
+				:note="
+					i18n.baseText(
+						item.kind === 'data-store'
+							? 'apps.connections.access.note'
+							: 'apps.connections.workflow.note',
+					)
+				"
+				@connect="connect(item, $event)"
+				@save="save(item, $event)"
+				@disconnect="disconnect(item)"
+			/>
+		</template>
+	</ToolsConnectionModal>
 </template>
