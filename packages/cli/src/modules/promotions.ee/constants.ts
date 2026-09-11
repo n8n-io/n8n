@@ -4,7 +4,6 @@ export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
-/** Prefix for branches that one promotion creates. */
 export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
 
 /**
