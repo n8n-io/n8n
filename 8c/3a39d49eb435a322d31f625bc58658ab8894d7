@@ -1,0 +1,42 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_766636dc171bdc::t_113560783b550e 8198
+packages/cli/src/modules/agents/integrations/platforms/twilio-voice-integration.ts
+  s_766636dc171bdc::t_fc860b35c9d85b 149-150
+  s_766636dc171bdc::t_113560783b550e 86-91,93,97
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_766636dc171bdc::t_113560783b550e 973
+packages/@n8n/db/src/migrations/common/1789045213074-AllowTwilioVoiceAgentChatSubscriptions.ts
+  s_766636dc171bdc::t_113560783b550e 1-21
+packages/frontend/editor-ui/src/features/agents/channels/twilio/AgentChannelTwilioVoiceSetup.vue
+  s_766636dc171bdc::t_113560783b550e 7,143
+packages/cli/src/modules/agents/integrations/platforms/__tests__/twilio/voice-adapter.test.ts
+  s_766636dc171bdc::t_68a47ceeb725f0 103
+packages/cli/src/modules/agents/integrations/platforms/twilio-voice-adapter.ts
+  s_766636dc171bdc::t_113560783b550e 427-428
+  s_766636dc171bdc::t_7d61a48f2af952 69
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_766636dc171bdc::t_caa145e4da1c9a 18
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_766636dc171bdc::t_a6fad1aebfe7d2 9,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8c3a39d49eb435a322d31f625bc58658ab8894d7",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_766636dc171bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9477d701-73d0-426f-ba21-91d4ca0057de",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
