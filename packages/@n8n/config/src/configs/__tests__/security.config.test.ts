@@ -64,13 +64,11 @@ describe('SecurityConfig', () => {
 			consoleWarnSpy.mockRestore();
 		});
 
-		test("warns and keeps n8n's own policy when the report-only policy is unservable", () => {
+		test('warns and reports on nothing when the report-only policy is unservable', () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			process.env = { N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY: unservable };
-			expect(Container.get(SecurityConfig).contentSecurityPolicyReportOnly).toBe(
-				DEFAULT_CONTENT_SECURITY_POLICY,
-			);
+			expect(Container.get(SecurityConfig).contentSecurityPolicyReportOnly).toBeUndefined();
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY'),
 			);

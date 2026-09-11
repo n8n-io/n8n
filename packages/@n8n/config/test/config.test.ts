@@ -533,7 +533,7 @@ describe('GlobalConfig', () => {
 			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: DEFAULT_CONTENT_SECURITY_POLICY,
-			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			contentSecurityPolicyReportOnly: undefined,
 			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,

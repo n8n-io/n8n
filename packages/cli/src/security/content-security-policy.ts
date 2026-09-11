@@ -3,7 +3,7 @@ import type {
 	ContentSecurityPolicyReportOnlySetting,
 	ContentSecurityPolicySetting,
 } from '@n8n/config';
-import { DEFAULT_CONTENT_SECURITY_POLICY, isLegacyBooleanSetting } from '@n8n/config';
+import { isLegacyBooleanSetting } from '@n8n/config';
 import { NONCE_PLACEHOLDER } from '@n8n/constants';
 
 export type ContentSecurityPolicies = {
@@ -14,22 +14,12 @@ export type ContentSecurityPolicies = {
 };
 
 /**
- * Send one header when both policies are the same, as they are by default. A report-only
- * copy of the enforced policy reports the violations the enforced header already reports,
- * so it only adds bytes to every HTML response.
- */
-const dropRedundantReportOnly = (policies: ContentSecurityPolicies): ContentSecurityPolicies =>
-	policies.enforced !== undefined && policies.enforced === policies.reportOnly
-		? { enforced: policies.enforced, reportOnly: undefined }
-		: policies;
-
-/**
  * Decide which CSP headers to send from the two parsed settings. `@n8n/config` has
- * already read each variable on its own; the decisions left are the ones that need
- * both: the boolean the report-only variable used to hold, and the pair being equal.
+ * already read each variable on its own; the only decision left is the one that needs
+ * both, namely the boolean the report-only variable used to hold.
  *
- * Both variables carry the same policy by default, which the instance then enforces:
- * a new instance is protected without configuration.
+ * Only the enforced variable carries a policy by default, so a new instance enforces
+ * n8n's policy and sends no report-only header.
  */
 export const resolveContentSecurityPolicies = (
 	policy: ContentSecurityPolicySetting,
@@ -45,13 +35,12 @@ export const resolveContentSecurityPolicies = (
 		// would break an instance that deliberately asked for report-only.
 		if (reportOnly.legacyBoolean) return { reportOnly: policy };
 
-		return dropRedundantReportOnly({
-			enforced: policy,
-			reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
-		});
+		// `false` meant "enforce". The boolean took the place of a report-only policy, so
+		// there is none to send.
+		return { enforced: policy };
 	}
 
-	return dropRedundantReportOnly({ enforced: policy, reportOnly });
+	return { enforced: policy, reportOnly };
 };
 
 export const renderContentSecurityPolicy = (policy: string, nonce: string) =>
