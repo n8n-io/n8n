@@ -1,8 +1,8 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
-export const projectMemberDocs = {
+export const projectMemberDocs: ZodOpenAPIMetadata = {
 	description: 'A project member (user with their role in the project).',
-} as const satisfies ZodOpenAPIMetadata;
+};
 
 export const projectMemberFieldDocs = {
 	id: {

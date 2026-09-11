@@ -154,15 +154,6 @@ export class ProjectsPublicController {
 		await this.projectService.deleteProject(req.user, projectId);
 	}
 
-	/** Mirrors the ProjectController guard: manual membership changes are disallowed when roles are provisioned. */
-	private async assertProjectRolesNotManaged() {
-		if (await this.provisioningService.isProjectRoleManaged()) {
-			throw new ForbiddenError(
-				'Project roles are managed automatically and cannot be changed manually',
-			);
-		}
-	}
-
 	@Get('/:projectId/users')
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('user:list')
@@ -257,5 +248,14 @@ export class ProjectsPublicController {
 		await this.assertProjectRolesNotManaged();
 
 		await this.projectService.deleteUserFromProject(req.user, projectId, userId);
+	}
+
+	/** Mirrors the ProjectController guard: manual membership changes are disallowed when roles are provisioned. */
+	private async assertProjectRolesNotManaged() {
+		if (await this.provisioningService.isProjectRoleManaged()) {
+			throw new ForbiddenError(
+				'Project roles are managed automatically and cannot be changed manually',
+			);
+		}
 	}
 }
