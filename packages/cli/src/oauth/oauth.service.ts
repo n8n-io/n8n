@@ -765,8 +765,9 @@ export class OauthService {
 		tokenData: unknown,
 		oauth2?: CredentialOAuth2Options,
 	): string | undefined {
+		const oauthTokenData = isRecord(tokenData) ? tokenData : {};
 		const headers = getOAuth2AuthHeaders(
-			{ oauthTokenData: isRecord(tokenData) ? tokenData : {} },
+			{ oauthTokenData: oauthTokenData as ICredentialDataDecryptedObject },
 			oauth2,
 		);
 		const authorization = headers.Authorization;
