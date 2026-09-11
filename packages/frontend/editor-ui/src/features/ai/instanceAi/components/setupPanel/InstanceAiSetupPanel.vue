@@ -429,7 +429,11 @@ async function connectFromRow(id: string, advanced = false) {
 	const bind = async (credentialId: string) => {
 		if (!active || props.workflowId !== workflowId) return;
 		await onBindCredential(item, credentialId);
-		if (active && props.workflowId === workflowId && group.parameters.length > 0)
+		if (
+			active &&
+			props.workflowId === workflowId &&
+			groupById(id)?.parameters.some((row) => !row.isDone)
+		)
 			selectedItemId.value = id;
 	};
 	panelTelemetry.trackConnectionStarted(item, advanced ? 'advanced' : 'oauth');
@@ -493,6 +497,17 @@ async function onBindCredential(item: SetupCredentialItem, credentialId: string)
 	const result = await actions.bindCredential(item, { id: credential.id, name: credential.name });
 	await notifyApplyResult(result);
 	panelTelemetry.trackConnectionCompleted(item, credential.id, result);
+	if (
+		active &&
+		oauth.isOAuthCredentialType(item.credentialType) &&
+		(result === 'applied' || result === 'noop' || result === 'queued') &&
+		selectedGroup.value?.credential?.item.id === item.id &&
+		selectedGroup.value.parameters.every((row) => row.isDone) &&
+		!credentialHasChanges.value &&
+		dirtyParameters.size === 0
+	) {
+		selectedItemId.value = undefined;
+	}
 }
 
 async function onApplyParameters(

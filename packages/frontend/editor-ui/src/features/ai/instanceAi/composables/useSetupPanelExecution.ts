@@ -7,6 +7,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getWorkflow } from '@/app/api/workflows';
+import { useRunWorkflowApi } from '@/app/composables/useRunWorkflowApi';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -30,6 +31,7 @@ export function useSetupPanelExecution(options: {
 }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const { runWorkflowApi } = useRunWorkflowApi();
 	const nodeTypesStore = useNodeTypesStore();
 	const pushStore = usePushConnectionStore();
 	const logsStore = useLogsStore();
@@ -166,10 +168,10 @@ export function useSetupPanelExecution(options: {
 				workflow_id: workflowId,
 				thread_id: options.thread.id,
 			});
-			const response = await workflowsStore.runWorkflow({
-				workflowId,
-				triggerToStartFrom: { name: trigger.name },
-			});
+			const response = await runWorkflowApi(
+				{ workflowId, triggerToStartFrom: { name: trigger.name } },
+				executionState.documentId,
+			);
 			if (disposed) return;
 			waitingForWebhook = response.waitingForWebhook === true;
 			executionState.setExecutionWaitingForWebhook(waitingForWebhook);
@@ -180,6 +182,8 @@ export function useSetupPanelExecution(options: {
 			void readStatus();
 			const result = await completed.promise;
 			cleanup();
+			if (!result && executionState.activeExecutionId === null)
+				executionState.setActiveExecutionId(undefined);
 			if (disposed) return;
 			executionState.setExecutionWaitingForWebhook(false);
 			if (!result) return;

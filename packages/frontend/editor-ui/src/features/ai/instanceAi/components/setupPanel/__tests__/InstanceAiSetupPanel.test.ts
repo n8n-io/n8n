@@ -1,7 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
@@ -459,6 +459,74 @@ describe('InstanceAiSetupPanel', () => {
 		expect(getByRole('dialog', { name: 'Notion' })).toBeVisible();
 		expect(oauthMock.createAndAuthorize).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{ parameters: 'none', result: 'applied', draft: false, closes: true },
+		{ parameters: 'none', result: 'queued', draft: false, closes: true },
+		{ parameters: 'pending', result: 'applied', draft: false, closes: false },
+		{ parameters: 'done', result: 'applied', draft: false, closes: true },
+		{ parameters: 'none', result: 'error', draft: false, closes: false },
+		{ parameters: 'none', result: 'applied', draft: true, closes: false },
+	])(
+		'returns from OAuth setup only when ready: $parameters, $result, draft=$draft',
+		async ({ parameters, result, draft, closes }) => {
+			oauthMock.isOAuthCredentialType.mockReturnValue(true);
+			stateMock.rows = [
+				{ item: credentialItem, isDone: false },
+				{ item: parametersItem, isDone: false },
+			];
+			if (parameters !== 'none')
+				stateMock.rows.push({
+					item: {
+						id: 'wf1:parameters:Notion',
+						kind: 'parameters',
+						nodeName: 'Notion',
+						parameterNames: ['channel'],
+					},
+					isDone: parameters === 'done',
+				});
+			stateMock.nodesByName = { Notion: { ...slackNode, name: 'Notion' }, 'Send Slack': slackNode };
+			credentialsMock.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Account' });
+			actionsMock.bindCredential.mockImplementationOnce(async () => {
+				if (result !== 'error') stateMock.rows[0].isDone = true;
+				return result;
+			});
+			const view = renderComponent({
+				global: {
+					stubs: {
+						InstanceAiSetupPanelDetail: true,
+						CredentialIcon: true,
+						NodeIcon: true,
+						InstanceAiSetupCredential: defineComponent({
+							emits: ['bindCredential', 'update:hasChanges'],
+							setup(_, { emit }) {
+								return () =>
+									h(
+										'button',
+										{
+											onClick: () => {
+												emit('update:hasChanges', draft);
+												emit('bindCredential', credentialItem, 'cred-1');
+											},
+										},
+										'Finish OAuth',
+									);
+							},
+						}),
+					},
+				},
+			});
+			await userEvent.click(view.getByRole('button', { name: /Notion/ }));
+			await userEvent.click(view.getByRole('button', { name: 'Finish OAuth' }));
+			await flushPromises();
+			if (closes) {
+				expect(view.queryByRole('dialog')).toBeNull();
+				expect(view.getByRole('button', { name: 'Notion Complete' })).toBeVisible();
+			} else {
+				expect(view.getByRole('dialog', { name: 'Notion' })).toBeVisible();
+			}
+		},
+	);
 
 	it('opens Advanced setup from the row with workflow context', async () => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(true);

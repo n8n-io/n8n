@@ -2,6 +2,7 @@ import { effectScope, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { flushPromises } from '@vue/test-utils';
+import { mock } from 'vitest-mock-extended';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { PushMessage, InstanceAiMessage } from '@n8n/api-types';
 import type { TerminalExecutionStatus } from 'n8n-workflow';
@@ -12,9 +13,18 @@ import { getWorkflow } from '@/app/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { executionStarted } from '@/app/composables/usePushConnection/handlers/executionStarted';
+import { nodeExecuteBefore } from '@/app/composables/usePushConnection/handlers/nodeExecuteBefore';
+import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
+import type {
+	IExecutionPushResponse,
+	IExecutionResponse,
+} from '@/features/execution/executions/executions.types';
 import { useSetupPanelExecution } from '../composables/useSetupPanelExecution';
 
 vi.mock('@/app/api/workflows', () => ({ getWorkflow: vi.fn() }));
@@ -28,6 +38,7 @@ const workflow = createTestWorkflow({
 });
 const handlers = new Set<(event: PushMessage) => void>();
 const scopes: Array<ReturnType<typeof effectScope>> = [];
+const pushOptions = mock<PushHandlerOptions>({ documentId: createWorkflowDocumentId('wf-1') });
 
 function finish(
 	status: TerminalExecutionStatus = 'success',
@@ -129,6 +140,56 @@ describe('useSetupPanelExecution', () => {
 		expect(thread.sendMessage).toHaveBeenCalledOnce();
 	});
 
+	it.each([false, true])(
+		'tracks live canvas node events when the start response arrives first: %s',
+		async (responseFirst) => {
+			const { executeWorkflow, workflows } = harness();
+			const response = Promise.withResolvers<IExecutionPushResponse>();
+			workflows.runWorkflow.mockReturnValueOnce(response.promise);
+			useWorkflowDocumentStore(pushOptions.documentId).hydrate(workflow);
+			const state = useWorkflowExecutionStateStore(pushOptions.documentId);
+			const pending = executeWorkflow();
+			await flushPromises();
+			expect(state.activeExecutionId).toBeNull();
+			if (responseFirst) {
+				response.resolve({ executionId: 'exec-1' });
+				await flushPromises();
+			}
+			await executionStarted(
+				{
+					type: 'executionStarted',
+					data: {
+						executionId: 'exec-1',
+						workflowId: 'wf-1',
+						mode: 'manual',
+						startedAt: new Date(),
+						flattedRunData: '',
+					},
+				},
+				pushOptions,
+			);
+			await nodeExecuteBefore(
+				{
+					type: 'nodeExecuteBefore',
+					data: {
+						executionId: 'exec-1',
+						nodeName: 'Start',
+						sequenceNumber: 0,
+						data: { startTime: Date.now(), executionIndex: 0, source: [] },
+					},
+				},
+				pushOptions,
+			);
+			expect(state.activeExecutionId).toBe('exec-1');
+			expect(state.displayedExecutionId).toBe('exec-1');
+			expect(state.executingNode.isNodeExecuting('Start')).toBe(true);
+			response.resolve({ executionId: 'exec-1' });
+			await flushPromises();
+			finish();
+			await pending;
+		},
+	);
+
 	it('handles a completion event arriving before the start response', async () => {
 		const { executeWorkflow, workflows, thread } = harness();
 		workflows.runWorkflow.mockImplementationOnce(async () => {
@@ -196,6 +257,9 @@ describe('useSetupPanelExecution', () => {
 		for (const handler of handlers)
 			handler({ type: 'testWebhookDeleted', data: { workflowId: 'wf-1' } });
 		await expect(pending).resolves.toBeUndefined();
+		expect(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1')).activeExecutionId,
+		).toBeUndefined();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(handlers.size).toBe(0);
 	});
@@ -224,6 +288,9 @@ describe('useSetupPanelExecution', () => {
 		const { executeWorkflow, workflows, thread } = harness();
 		workflows.runWorkflow.mockRejectedValueOnce(new Error('Start failed'));
 		await expect(executeWorkflow()).rejects.toThrow('Start failed');
+		expect(
+			useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1')).activeExecutionId,
+		).toBeUndefined();
 		expect(handlers.size).toBe(0);
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 	});
