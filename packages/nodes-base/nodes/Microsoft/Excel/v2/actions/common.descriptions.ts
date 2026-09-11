@@ -20,11 +20,15 @@ export const workbookRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
+			placeholder: 'e.g. 01A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7',
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex: '[a-zA-Z0-9]{2,}',
+						// A work account returns `01A2B3…`; a personal one `<driveId>!<itemId>`, where
+						// the separator arrives as `!` or percent-encoded as `%21`. The pattern is
+						// anchored by the validator, so it must cover both shapes.
+						regex: '[a-zA-Z0-9]{2,}((!|%21)[a-zA-Z0-9]+)*',
 						errorMessage: 'Not a valid Workbook ID',
 					},
 				},
@@ -52,6 +56,7 @@ export const worksheetRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
+			placeholder: 'e.g. {00000000-0001-0000-0000-000000000000}',
 			validation: [
 				{
 					type: 'regex',
@@ -84,6 +89,7 @@ export const tableRLC: INodeProperties = {
 			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
+			placeholder: 'e.g. {21EAB2B0-DD1A-4E5B-9931-1C4D8A0D7A31}',
 			validation: [
 				{
 					type: 'regex',
