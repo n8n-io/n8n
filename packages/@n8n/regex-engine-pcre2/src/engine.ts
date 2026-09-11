@@ -81,6 +81,7 @@ function matchAllPattern(
 	while (offset <= input.length) {
 		budget.checkTime();
 		const outcome = runMatch(handle, pattern, flags, input, offset, sticky);
+		budget.checkTime();
 		if (!outcome.matched) break;
 		budget.recordMatch();
 		results.push(toExecArray(outcome.groups, outcome.matchStart, input, nameToIndex));

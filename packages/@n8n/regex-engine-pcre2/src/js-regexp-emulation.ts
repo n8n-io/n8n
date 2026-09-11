@@ -48,6 +48,7 @@ class Pcre2RegExpLike {
 			this.lastIndex,
 			isSticky(this.flags),
 		);
+		this.budget.checkTime();
 		if (!outcome.matched) {
 			this.lastIndex = 0;
 			return null;
@@ -105,6 +106,7 @@ export function splitPattern(
 	while (offset < input.length) {
 		budget.checkTime();
 		const outcome = runMatch(handle, pattern, flags, input, offset);
+		budget.checkTime();
 		// The search starting offset is bounded above (< input.length), but an unanchored
 		// scan from it can still land a zero-length match (e.g. `$`) exactly at the end of
 		// the string -- native split's per-position search never considers that position,

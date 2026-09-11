@@ -2,7 +2,10 @@ import type { EngineConfig } from './engine.js';
 import { Pcre2BudgetExceededError } from './errors.js';
 
 export interface OperationBudget {
-	/** Call before every pcre2_match() attempt, including the terminating no-match probe. */
+	/** Call before AND after every pcre2_match() attempt (including the terminating no-match
+	 *  probe): a match itself can run close to its own wall-clock cap, so checking only
+	 *  beforehand could let a single call push the operation over budget with no further
+	 *  loop iteration left to catch it. */
 	checkTime: () => void;
 	/** Call only once a match is confirmed -- not the probe that ends the loop, or a
 	 *  limit of N would throw on the (N+1)th probe instead of permitting N real matches. */
