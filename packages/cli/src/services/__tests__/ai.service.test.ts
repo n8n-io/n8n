@@ -1,8 +1,4 @@
-import type {
-	AiAskRequestDto,
-	AiApplySuggestionRequestDto,
-	AiChatRequestDto,
-} from '@n8n/api-types';
+import type { AiApplySuggestionRequestDto, AiChatRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
@@ -160,29 +156,6 @@ describe('AiService', () => {
 			await aiService.init();
 
 			expect(license.onCertRefresh).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('askAi', () => {
-		const payload = mock<AiAskRequestDto>();
-
-		it('should call client askAi method after initialization', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(true);
-			const clientResponse = mock<AiAssistantSDK.AskAiResponsePayload>();
-			client.askAi.mockResolvedValue(clientResponse);
-
-			const result = await aiService.askAi(payload, user);
-
-			expect(client.askAi).toHaveBeenCalledWith(payload, { id: user.id });
-			expect(result).toEqual(clientResponse);
-		});
-
-		it('should throw error if client is not initialized', async () => {
-			license.isAiAssistantEnabled.mockReturnValue(false);
-
-			await expect(aiService.askAi(payload, user)).rejects.toThrow(
-				'AI Assistant client not initialized',
-			);
 		});
 	});
 

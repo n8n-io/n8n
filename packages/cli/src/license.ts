@@ -319,11 +319,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.AI_ASSISTANT);
 	}
 
-	/** @deprecated Use `LicenseState.isAskAiLicensed` instead. */
-	isAskAiEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.ASK_AI);
-	}
-
 	/** @deprecated Use `LicenseState.isAiCreditsLicensed` instead. */
 	isAiCreditsEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.AI_CREDITS);

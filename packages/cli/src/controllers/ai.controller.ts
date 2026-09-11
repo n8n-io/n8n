@@ -6,7 +6,6 @@ import type {
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
-	AiAskRequestDto,
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
@@ -205,25 +204,6 @@ export class AiController {
 	): Promise<AiAssistantSDK.ApplySuggestionResponse> {
 		try {
 			return await this.aiService.applySuggestion(payload, req.user);
-		} catch (e) {
-			throw this.toResponseError(e);
-		}
-	}
-
-	/**
-	 * @deprecated Both callers are deprecated: the Code node's "Ask AI" tab is
-	 * hidden, and the AI Transform node is hidden and has an automated migration
-	 * to the Code node. Removed in v3.
-	 */
-	@Licensed('feat:askAi')
-	@Post('/ask-ai', { ipRateLimit: { limit: 100 } })
-	async askAi(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiAskRequestDto,
-	): Promise<AiAssistantSDK.AskAiResponsePayload> {
-		try {
-			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
