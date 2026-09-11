@@ -524,6 +524,24 @@ export const clearTestChatMessages = async (
 	);
 };
 
+/**
+ * Stop the turn currently streaming on this thread. Closing the SSE connection
+ * does not stop a run, so Stop has to say so explicitly. Scoped to the thread:
+ * the user's other conversations with this agent keep running.
+ */
+export const cancelActiveAgentChatRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<{ cancelled: boolean }> => {
+	return await makeRestApiRequest<{ cancelled: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/active-run`,
+	);
+};
+
 export const cancelAgentChatRun = async (
 	context: IRestApiContext,
 	projectId: string,

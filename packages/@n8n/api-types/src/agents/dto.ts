@@ -251,6 +251,12 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
+	/**
+	 * Thread the resumed turn belongs to. Carried on the request because the
+	 * controller has to index the run for Stop before it loads the checkpoint,
+	 * which is the first place the thread id would otherwise appear.
+	 */
+	sessionId: z.string().min(1),
 	// Deliberately untyped at this boundary: the possible resume shapes overlap
 	// (e.g. credential's `{approved}` matches questions' `{approved, answers}`
 	// and a non-discriminated union would parse against whichever member

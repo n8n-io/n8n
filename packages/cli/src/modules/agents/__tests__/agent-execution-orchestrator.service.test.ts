@@ -16,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
 
+import { CHAT_RUN_INTERRUPTED_BY_SHUTDOWN } from '../agent-active-chat-run.registry';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
@@ -1060,6 +1061,47 @@ describe('AgentExecutionOrchestratorService', () => {
 					finishReason: 'cancelled',
 					error: null,
 					timeline: [expect.objectContaining({ type: 'text', content: 'partial answer' })],
+				}),
+			}),
+		);
+	});
+
+	it('keeps the error when a shutdown aborted the chat stream', async () => {
+		// Nobody asked for this one, so recording it as a clean cancel would erase
+		// the only explanation the user gets for the truncated turn.
+		const { service, executionService } = makeService();
+		const abortController = new AbortController();
+		const runtime = makeRuntime([
+			{ type: 'text-start', id: 'text-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+			{ type: 'error', error: new Error('This operation was aborted') },
+			{ type: 'finish', finishReason: 'error' },
+		]);
+		const stream = service.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
+			agentId,
+			message: 'hello',
+			memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+			projectId,
+			telemetry: telemetryContext,
+			sandboxPrincipalHash: userPrincipalHash,
+			abortSignal: abortController.signal,
+			onExecutionRecorded: vi.fn(),
+		});
+
+		await stream.next();
+		await stream.next();
+		abortController.abort(CHAT_RUN_INTERRUPTED_BY_SHUTDOWN);
+		await collect(stream);
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({
+					assistantResponse: 'partial answer',
+					finishReason: 'error',
+					error: 'This operation was aborted',
 				}),
 			}),
 		);

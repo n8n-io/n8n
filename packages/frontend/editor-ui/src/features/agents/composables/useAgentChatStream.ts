@@ -12,6 +12,7 @@ import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
+	cancelActiveAgentChatRun,
 	cancelAgentChatRun,
 	clearTestChatMessages,
 	getChatMessages,
@@ -907,6 +908,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const { outcome } = await postAndConsume(url, {
 			runId: payload.runId,
 			toolCallId: payload.toolCallId,
+			sessionId: params.continueSessionId?.value,
 			resumeData,
 		});
 		let reconciled = false;
@@ -992,8 +994,36 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			? streamSettlements.get(activeController)
 			: undefined;
 		if (!openSuspension) {
-			activeController?.abort();
-			await activeStreamSettlement;
+			const wasStreaming = isStreaming.value;
+			// Held across the whole stop, not just the request: the local abort
+			// clears `isStreaming` immediately, and without this the composer would
+			// reopen while the cancel is still in flight. A turn started in that gap
+			// registers under the same key server-side, so the late cancel would
+			// abort the new turn instead of the stopped one.
+			if (wasStreaming) isCancelling.value = true;
+			try {
+				// Abort first so the stream ends through the local AbortError path. The
+				// backend sends no terminal event on an explicit stop, so letting its
+				// `res.end()` win the race would render the turn as interrupted.
+				activeController?.abort();
+				await activeStreamSettlement;
+				// Only then tell the backend, because closing the stream no longer stops
+				// the run — without this the turn keeps going and reappears, finished,
+				// on the next reload.
+				// Addressed to this conversation, so the user's other threads with the
+				// same agent keep running.
+				const threadId = params.continueSessionId?.value;
+				if (wasStreaming && threadId) {
+					await cancelActiveAgentChatRun(
+						rootStore.restApiContext,
+						params.projectId.value,
+						params.agentId.value,
+						threadId,
+					).catch((error) => showError(error, locale.baseText('agents.chat.stop.error')));
+				}
+			} finally {
+				isCancelling.value = false;
+			}
 			// Desync recovery: the stream already ended but tool calls are still
 			// pulsing because their terminal events never arrived. There is no
 			// backend run left to cancel — settle the stale state locally so

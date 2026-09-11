@@ -43,7 +43,10 @@ export function initSseStream(res: FlushableResponse) {
 	res.once('finish', stopHeartbeat);
 	res.once('close', stopHeartbeat);
 
+	// A run outlives its connection — the client can be gone while chunks still
+	// arrive — so every write checks the response is still open first.
 	const send = (event: AgentSseEvent) => {
+		if (res.writableEnded || res.destroyed) return;
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
 		res.flush?.();
 	};

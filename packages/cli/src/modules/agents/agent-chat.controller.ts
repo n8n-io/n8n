@@ -13,6 +13,7 @@ import { Body, Delete, Get, Param, Post, ProjectScope, RestController } from '@n
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -20,6 +21,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentActiveChatRunRegistry } from './agent-active-chat-run.registry';
 import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
@@ -45,6 +47,7 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly activeChatRunRegistry: AgentActiveChatRunRegistry,
 	) {}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
@@ -116,19 +119,27 @@ export class AgentChatController {
 		);
 
 		const { send } = initSseStream(res);
+		// The run is NOT tied to this connection: a dropped SSE stream lets the
+		// turn finish and be recorded, so a reload shows the completed response.
+		// Only an explicit Stop (see `cancelActiveChatRun`) aborts it.
 		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		// Minted here rather than in `prepareDraftRun` so the thread is known
+		// before the first await, which is what lets the run be registered — and
+		// therefore stoppable — while it is still being prepared.
+		const threadId = sessionId ?? randomUUID();
+		const unregisterRun = this.activeChatRunRegistry.register(
+			{ agentId, userId: req.user.id, threadId },
+			abortController,
+		);
 		let executionId: string | undefined;
 		let storedAttachments: StoredAttachmentRef[] | undefined;
 		try {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
-				sessionId,
+				sessionId: threadId,
 				credentialProvider,
 			});
-			if (abortController.signal.aborted) return;
 			if (prepared.status === 'session_not_found') {
 				send({ type: 'error', message: 'Session not found' });
 				return;
@@ -143,7 +154,6 @@ export class AgentChatController {
 				return;
 			}
 
-			const threadId = prepared.sessionId;
 			storedAttachments = await this.storeChatAttachments({
 				attachments,
 				agentId,
@@ -184,7 +194,7 @@ export class AgentChatController {
 				send({ type: 'error', message: errorMessage });
 			}
 		} finally {
-			res.off('close', abortOnClose);
+			unregisterRun();
 			res.end();
 		}
 	}
@@ -198,12 +208,15 @@ export class AgentChatController {
 		@Body payload: AgentChatResumeDto,
 	) {
 		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
+		const { runId, toolCallId, resumeData, sessionId } = payload;
 		const { send } = initSseStream(res);
 
+		// Same lifetime rule as `chat`: the resumed turn survives its connection.
 		const abortController = new AbortController();
-		const abortOnClose = () => abortController.abort();
-		res.once('close', abortOnClose);
+		const unregisterRun = this.activeChatRunRegistry.register(
+			{ agentId, userId: req.user.id, threadId: sessionId },
+			abortController,
+		);
 		try {
 			let executionId: string | undefined;
 			const suspended = await pumpChunks(
@@ -232,9 +245,39 @@ export class AgentChatController {
 				send({ type: 'error', message: errorMessage });
 			}
 		} finally {
-			res.off('close', abortOnClose);
+			unregisterRun();
 			res.end();
 		}
+	}
+
+	/**
+	 * Stop the turn this user is streaming on this thread. Dropping the SSE
+	 * connection no longer cancels a run, so the client asks for the stop it
+	 * means — otherwise the turn would finish and reappear on the next reload.
+	 * Scoped to the thread so stopping one conversation leaves the user's other
+	 * conversations with the same agent running.
+	 *
+	 * Returns `cancelled: false` when no run was found, which is expected: the
+	 * turn may have just ended, or (multi-main) be held by another instance.
+	 */
+	@Delete('/:agentId/chat/:threadId/active-run')
+	@ProjectScope('agent:execute')
+	async cancelActiveChatRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const cancelled = this.activeChatRunRegistry.cancel({
+			agentId,
+			userId: req.user.id,
+			threadId,
+		});
+		return { cancelled };
 	}
 
 	@Delete('/:agentId/chat/runs/:runId')

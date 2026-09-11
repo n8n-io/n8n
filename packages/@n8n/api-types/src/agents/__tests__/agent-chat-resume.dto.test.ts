@@ -2,7 +2,15 @@ import { credentialResumeSchema, questionsResumeSchema } from '../agent-interact
 import { AgentChatResumeDto } from '../dto';
 
 describe('AgentChatResumeDto', () => {
-	const base = { runId: 'run-1', toolCallId: 'tc-1' };
+	const base = { runId: 'run-1', toolCallId: 'tc-1', sessionId: 'thread-1' };
+
+	it('requires the thread the resumed turn belongs to', () => {
+		// The controller indexes the run for Stop before it loads the checkpoint,
+		// so the id has to arrive on the request.
+		const { sessionId, ...withoutSession } = base;
+		expect(AgentChatResumeDto.safeParse(withoutSession).success).toBe(false);
+		expect(AgentChatResumeDto.safeParse({ ...base, sessionId: '' }).success).toBe(false);
+	});
 
 	it('does not strip answers from a questions-card resume', () => {
 		const resumeData = {
