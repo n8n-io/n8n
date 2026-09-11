@@ -11,7 +11,7 @@ import type {
 	ValidationResult,
 } from '../interfaces';
 import * as LoggerProxy from '../logger-proxy';
-import { parseRegexLiteral, safeInternalRegex } from '../safe-regex';
+import { parseRegexLiteral, safeUserRegex } from '../safe-regex';
 import { validateFieldType } from '../type-validation';
 
 type FilterConditionMetadata = {
@@ -457,7 +457,7 @@ export function executeFilterCondition(
 		condition,
 		filterOptions,
 		metadata,
-		(pattern, input, flags) => safeInternalRegex.test(pattern, input, flags),
+		(pattern, input, flags) => safeUserRegex.test(pattern, input, flags),
 	);
 }
 
