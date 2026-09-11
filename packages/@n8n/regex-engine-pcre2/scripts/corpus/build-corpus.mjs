@@ -278,7 +278,7 @@ async function main() {
     : { ...curated, divergences: divergenceTuples };
   fs.writeFileSync(curatedFile, JSON.stringify(curatedWithDivergences) + '\n');
 
-  console.log(`es-pcre2-agree + pcre2-only (pass-required, test/pcre2-compatibility/corpus.test.ts): ${dedupedAgree.length} across ${byCategory.size} categories`);
+  console.log(`es-pcre2-agree + pcre2-only (pass-required, test/pcre2-compatibility.test.ts): ${dedupedAgree.length} across ${byCategory.size} categories`);
   for (const [category, cases] of [...byCategory].sort()) {
     const agree = cases.filter((c) => c.validity === 'es-pcre2-agree').length;
     console.log(`  ${category}: ${cases.length} (${agree} es-pcre2-agree, ${cases.length - agree} pcre2-only)`);
