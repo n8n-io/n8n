@@ -3,6 +3,7 @@ import {
 	CreateAppDto,
 	CreatePageDto,
 	SetActiveAppVersionDto,
+	UpdateAppBindingDto,
 	UpdateAppDto,
 	UpdateAppVersionFileDto,
 	UpdatePageDto,
@@ -263,6 +264,20 @@ export class AppsController {
 		const described = await this.appsService.addBinding(appId, parsed.data, req.user);
 		res.status(201);
 		return described;
+	}
+
+	@Patch('/:appId/bindings/:key')
+	@ProjectScope('app:update')
+	async updateBinding(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('key') key: string,
+	) {
+		this.checkInstanceWriteAccess();
+		const parsed = UpdateAppBindingDto.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError(parsed.error.errors[0].message);
+		return await this.appsService.updateBinding(appId, key, parsed.data, req.user);
 	}
 
 	@Delete('/:appId/bindings/:key')

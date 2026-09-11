@@ -351,6 +351,66 @@ describe('AppsService bindings', () => {
 		});
 	});
 
+	describe('updateBinding', () => {
+		it('replaces the permissions of the key and re-checks the list', async () => {
+			app.bindings = [binding(), tableBinding(['read'])];
+			const wf = workflow();
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(wf);
+			workflowLoader.loadWorkflow.mockResolvedValue(wf);
+			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([table()]);
+			dataTableService.validateDataTableExists.mockResolvedValue(table());
+			dataTableService.getColumns.mockResolvedValue([]);
+
+			const result = await service.updateBinding(
+				'app-1',
+				'tasks',
+				{ permissions: ['read', 'write'] },
+				user,
+			);
+
+			expect(dataTableService.findDataTablesByIdsForUser).toHaveBeenCalledWith(['dt-1'], user, [
+				'dataTable:readRow',
+				'dataTable:writeRow',
+			]);
+			expect(appRepository.updateBindings).toHaveBeenCalledWith(app, [
+				binding(),
+				tableBinding(['read', 'write']),
+			]);
+			expect(result.bindings).toEqual([
+				expect.objectContaining({ key: 'submit' }),
+				expect.objectContaining({ key: 'tasks', permissions: ['read', 'write'] }),
+			]);
+		});
+
+		it('throws BindingNotFoundError for an unbound key without saving', async () => {
+			app.bindings = [tableBinding()];
+
+			await expect(
+				service.updateBinding('app-1', 'nope', { permissions: ['read'] }, user),
+			).rejects.toThrow(BindingNotFoundError);
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('rejects a workflow binding, which has no permissions', async () => {
+			app.bindings = [binding()];
+
+			await expect(
+				service.updateBinding('app-1', 'submit', { permissions: ['read'] }, user),
+			).rejects.toBeInstanceOf(InvalidBindingsError);
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('rejects a permission the binding kind does not know', async () => {
+			app.bindings = [tableBinding()];
+
+			await expect(
+				service.updateBinding('app-1', 'tasks', { permissions: ['admin'] }, user),
+			).rejects.toBeInstanceOf(InvalidBindingsError);
+			expect(dataTableService.findDataTablesByIdsForUser).not.toHaveBeenCalled();
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('removeBinding', () => {
 		it('drops the key, saves the rest and describes them', async () => {
 			app.bindings = [binding(), binding('notify', 'wf-2')];

@@ -408,6 +408,102 @@ describe('POST /projects/:projectId/apps/:appId/bindings', () => {
 	});
 });
 
+describe('PATCH /projects/:projectId/apps/:appId/bindings/:key', () => {
+	const appWithTable = async () => {
+		const table = await createDataTable(ownerProject, {
+			columns: [{ name: 'title', type: 'string' }],
+		});
+		const workflow = await passthroughWorkflow();
+		const created = await appRepository.createApp(ownerProject.id, 'Board', 'board');
+		const app = await appRepository.updateBindings(created, [
+			{ key: 'submit', kind: 'workflow', workflowId: workflow.id },
+			{ key: 'tasks', kind: 'dataTable', dataTableId: table.id, permissions: ['read'] },
+		]);
+		return { app, table };
+	};
+
+	test('changes the permissions of a data table binding and back', async () => {
+		const { app, table } = await appWithTable();
+		const url = `/projects/${ownerProject.id}/apps/${app.id}/bindings/tasks`;
+
+		const widened = await authOwnerAgent
+			.patch(url)
+			.send({ permissions: ['read', 'write'] })
+			.expect(200);
+
+		expect(widened.body.data.bindings).toEqual([
+			expect.objectContaining({ key: 'submit', kind: 'workflow' }),
+			expect.objectContaining({ key: 'tasks', permissions: ['read', 'write'] }),
+		]);
+		expect(widened.body.data.warnings[0]).toContain('not published');
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings[1]).toEqual({
+			key: 'tasks',
+			kind: 'dataTable',
+			dataTableId: table.id,
+			permissions: ['read', 'write'],
+		});
+
+		const narrowed = await authOwnerAgent
+			.patch(url)
+			.send({ permissions: ['read'] })
+			.expect(200);
+
+		expect(narrowed.body.data.bindings[1]).toEqual(
+			expect.objectContaining({ key: 'tasks', permissions: ['read'] }),
+		);
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings[1]).toEqual(
+			expect.objectContaining({ permissions: ['read'] }),
+		);
+	});
+
+	test('answers 404 for a key the app has not bound', async () => {
+		const { app } = await appWithTable();
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/bindings/nope`)
+			.send({ permissions: ['read'] })
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('answers 400 for a workflow binding, which has no permissions', async () => {
+		const { app } = await appWithTable();
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.send({ permissions: ['read'] })
+			.expect(400);
+
+		expect(response.body.message).toContain('no permissions');
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('answers 400 for a permission value the binding kind does not know', async () => {
+		const { app } = await appWithTable();
+		const url = `/projects/${ownerProject.id}/apps/${app.id}/bindings/tasks`;
+
+		await authOwnerAgent
+			.patch(url)
+			.send({ permissions: ['admin'] })
+			.expect(400);
+		await authOwnerAgent.patch(url).send({ permissions: [] }).expect(400);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const { app } = await appWithTable();
+
+		await authMemberAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/bindings/tasks`)
+			.send({ permissions: ['read', 'write'] })
+			.expect(403);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+});
+
 describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
 	test('removes the binding by key and describes the remaining ones', async () => {
 		const workflow = await passthroughWorkflow();
@@ -729,6 +825,17 @@ describe('/:appId of another project', () => {
 		await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/apps/${app.id}/bindings`)
 			.send({ key: 'notify', kind: 'workflow', workflowId: workflow.id })
+			.expect(404);
+
+		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
+	});
+
+	test('answers 404 for PATCH /:appId/bindings/:key and leaves the bindings unchanged', async () => {
+		const app = await appOfMember();
+
+		await authOwnerAgent
+			.patch(`/projects/${ownerProject.id}/apps/${app.id}/bindings/submit`)
+			.send({ permissions: ['read'] })
 			.expect(404);
 
 		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
