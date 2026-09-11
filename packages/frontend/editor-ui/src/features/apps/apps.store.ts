@@ -42,6 +42,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const appsCount = ref(0);
 	const pages = ref<Page[]>([]);
 	const bindings = ref<DescribedBinding[]>([]);
+	/** Owner of `bindings`; readers scoped to another app must ignore the list. */
+	const bindingsAppId = ref<string | null>(null);
 	const bindingWarnings = ref<string[]>([]);
 	const versions = ref<AppVersion[]>([]);
 
@@ -111,17 +113,21 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		pages.value = await fetchRoutesApi(rootStore.restApiContext, projectId, appId);
 	};
 
-	const setBindings = (described: { bindings: DescribedBinding[]; warnings: string[] }) => {
+	const setBindings = (
+		appId: string,
+		described: { bindings: DescribedBinding[]; warnings: string[] },
+	) => {
 		bindings.value = described.bindings;
+		bindingsAppId.value = appId;
 		bindingWarnings.value = described.warnings;
 	};
 
 	const fetchBindings = async (projectId: string, appId: string) => {
-		setBindings(await fetchBindingsApi(rootStore.restApiContext, projectId, appId));
+		setBindings(appId, await fetchBindingsApi(rootStore.restApiContext, projectId, appId));
 	};
 
 	const addBinding = async (projectId: string, appId: string, binding: AppBinding) => {
-		setBindings(await addBindingApi(rootStore.restApiContext, projectId, appId, binding));
+		setBindings(appId, await addBindingApi(rootStore.restApiContext, projectId, appId, binding));
 	};
 
 	const updateBinding = async (
@@ -130,11 +136,14 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		key: string,
 		patch: AppBindingPatch,
 	) => {
-		setBindings(await updateBindingApi(rootStore.restApiContext, projectId, appId, key, patch));
+		setBindings(
+			appId,
+			await updateBindingApi(rootStore.restApiContext, projectId, appId, key, patch),
+		);
 	};
 
 	const deleteBinding = async (projectId: string, appId: string, key: string) => {
-		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
+		setBindings(appId, await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
 	};
 
 	const fetchAppDraftFiles = async (projectId: string, appId: string) => {
@@ -178,6 +187,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		appsCount,
 		pages,
 		bindings,
+		bindingsAppId,
 		bindingWarnings,
 		versions,
 		fetchApps,

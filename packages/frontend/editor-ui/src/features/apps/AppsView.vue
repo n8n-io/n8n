@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppsListSortBy } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -18,7 +18,7 @@ import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { APP_DETAILS, APP_NEW } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
@@ -173,29 +173,45 @@ onMounted(() => {
 		<template #item="{ item }">
 			<N8nCard
 				v-if="isApp(item)"
-				hoverable
 				class="mb-2xs"
-				:class="$style.appCard"
+				:class="$style.cardLink"
 				data-test-id="app-card"
 				@click="openApp(item)"
 			>
 				<template #prepend>
-					<N8nIcon icon="app-window" />
-				</template>
-				<N8nText bold>{{ item.name }}</N8nText>
-				<N8nText color="text-light" size="small">
-					/{{ item.namespace }} | {{ i18n.baseText('apps.card.updated') }}
-					<TimeAgo :date="item.updatedAt" />
-				</N8nText>
-				<template #append>
-					<N8nButton
-						icon-only
-						icon="trash-2"
-						variant="subtle"
-						:aria-label="i18n.baseText('generic.delete')"
-						data-test-id="app-delete"
-						@click.stop="onDelete(item)"
+					<N8nIcon
+						:class="$style.cardIcon"
+						icon="app-window"
+						size="xlarge"
+						:stroke-width="1.5"
+						data-test-id="app-card-icon"
 					/>
+				</template>
+				<template #header>
+					<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="app-card-name">
+						{{ item.name }}
+					</N8nText>
+				</template>
+				<div :class="$style.cardDescription">
+					<span>/{{ item.namespace }} |</span>
+					<span>
+						{{ i18n.baseText('apps.card.updated') }}
+						<TimeAgo :date="item.updatedAt" />
+					</span>
+				</div>
+				<template #append>
+					<div :class="$style.cardActions" @click.stop>
+						<N8nTooltip :content="i18n.baseText('generic.delete')">
+							<N8nIconButton
+								icon="trash-2"
+								variant="ghost"
+								size="medium"
+								:aria-label="i18n.baseText('generic.delete')"
+								data-test-id="app-delete"
+								@click="onDelete(item)"
+							/>
+						</N8nTooltip>
+					</div>
 				</template>
 			</N8nCard>
 		</template>
@@ -203,10 +219,66 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
-.appCard {
+@use '@n8n/design-system/css/mixins/breakpoints';
+
+.cardLink {
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+	padding: 0;
+	align-items: stretch;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
+}
+
+.cardIcon {
+	flex-shrink: 0;
+	color: var(--color--text);
+	margin-left: var(--spacing--sm);
+}
+
+.cardHeading {
 	display: flex;
 	align-items: center;
+	font-size: var(--font-size--sm);
+	word-break: break-word;
+	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.cardDescription {
+	min-height: var(--spacing--xl);
+	display: flex;
+	align-items: center;
+	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
-	cursor: pointer;
+}
+
+.cardActions {
+	display: flex;
+	gap: var(--spacing--4xs);
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing--sm) 0 0;
+	cursor: default;
+}
+
+@include breakpoints.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+		--card--append--width: 100%;
+
+		flex-direction: column;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0 var(--spacing--sm) var(--spacing--sm);
+		justify-content: end;
+	}
 }
 </style>

@@ -1,5 +1,6 @@
 import { reactive, watch } from 'vue';
 import type {
+	DescribedBinding,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
@@ -440,6 +441,46 @@ function enrichAppFromBuilderTarget(
 	});
 }
 
+const BINDING_KIND_TO_TYPE = {
+	workflow: 'workflow',
+	dataTable: 'data-table',
+	agent: 'agent',
+} as const satisfies Record<DescribedBinding['kind'], ResourceEntry['type']>;
+
+/**
+ * Surface the resources the bound app can call as preview tabs next to the app.
+ * Entries the thread already produced keep their event-derived data. Bound
+ * resources live in the app's project, which the API enforces on write.
+ */
+function enrichBindingsFromApp(
+	col: Collections,
+	target: AppBuilderTargetMetadata | undefined,
+	bindings: DescribedBinding[] | undefined,
+): void {
+	if (!target || !bindings) return;
+	for (const binding of bindings) {
+		if (binding.missing) continue;
+		const id =
+			binding.kind === 'workflow'
+				? binding.workflowId
+				: binding.kind === 'dataTable'
+					? binding.dataTableId
+					: binding.agentId;
+		if (col.produced.has(id)) continue;
+		recordProduced(
+			col,
+			{
+				type: BINDING_KIND_TO_TYPE[binding.kind],
+				id,
+				name: binding.name,
+				projectId: target.projectId,
+			},
+			// The agent did not produce these in this thread, so prose must not auto-link them.
+			{ linkable: false },
+		);
+	}
+}
+
 function enrichAgentFromBuilderTarget(
 	col: Collections,
 	target: AgentBuilderTargetMetadata | undefined,
@@ -540,6 +581,7 @@ export function useResourceRegistry(
 	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
 	appBuilderTarget?: () => AppBuilderTargetMetadata | undefined,
+	appBindings?: (appId: string) => DescribedBinding[] | undefined,
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -566,7 +608,9 @@ export function useResourceRegistry(
 			const boundTarget = agentBuilderTarget?.();
 			enrichAgentFromBuilderTarget(col, boundTarget);
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
-			enrichAppFromBuilderTarget(col, appBuilderTarget?.());
+			const appTarget = appBuilderTarget?.();
+			enrichAppFromBuilderTarget(col, appTarget);
+			enrichBindingsFromApp(col, appTarget, appTarget && appBindings?.(appTarget.appId));
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);

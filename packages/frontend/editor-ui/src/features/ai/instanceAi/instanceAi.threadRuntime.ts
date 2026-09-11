@@ -31,6 +31,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useAppsStore } from '@/features/apps/apps.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import {
@@ -418,6 +419,7 @@ function setupThreadRuntime(
 ) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const appsStore = useAppsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -511,6 +513,7 @@ function setupThreadRuntime(
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		() => getAppBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		(appId) => (appsStore.bindingsAppId === appId ? appsStore.bindings : undefined),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

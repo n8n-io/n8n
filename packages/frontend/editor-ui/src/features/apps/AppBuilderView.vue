@@ -118,6 +118,7 @@ const initialize = async () => {
 				appsStore.getApp(props.projectId, props.appId),
 				appsStore.fetchThreads(props.projectId, props.appId),
 				instanceAiStore.loadThreads(),
+				appsStore.fetchBindings(props.projectId, props.appId),
 			]);
 			app.value = current;
 			appThreadIds.value = threads.map((thread) => thread.id);
@@ -172,6 +173,16 @@ onMounted(() => {
 });
 
 watch(() => props.appId, initialize);
+
+// A run may have bound or unbound resources; the preview tabs read the store.
+watch(
+	() => (threadId.value ? instanceAiStore.getOrCreateRuntime(threadId.value).isStreaming : false),
+	(streaming, wasStreaming) => {
+		if (wasStreaming && !streaming && props.appId) {
+			void appsStore.fetchBindings(props.projectId, props.appId).catch(() => {});
+		}
+	},
+);
 
 watch(requestedThreadId, async (requested) => {
 	if (requested && requested !== threadId.value) await resolveThread();
