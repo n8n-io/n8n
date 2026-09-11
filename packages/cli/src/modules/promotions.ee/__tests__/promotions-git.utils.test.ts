@@ -96,7 +96,7 @@ describe('promotions-git.utils', () => {
 				knownHostsPath: '/data/`archive`/known_hosts',
 			});
 
-			expect(command).toContain("-i '/data/$(archive)/owner'\"'\"'s/private-key'");
+			expect(command).toContain("-i '/data/$(archive)/owner'\\''s/private-key'");
 			expect(command).toContain("-o UserKnownHostsFile='/data/`archive`/known_hosts'");
 		});
 	});
