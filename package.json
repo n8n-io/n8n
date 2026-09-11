@@ -10,7 +10,7 @@
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
-    "build": "turbo run build",
+    "build": "node scripts/turbo-sized.mjs build",
     "build:unchecked": "turbo run build:unchecked",
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:deploy": "node scripts/build-n8n.mjs",
@@ -20,7 +20,7 @@
     "build:docker:smoke": "node scripts/smoke-n8n-image.mjs",
     "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
-    "typecheck": "turbo typecheck",
+    "typecheck": "node scripts/turbo-sized.mjs typecheck",
     "dev": "node scripts/dev-command-removed-notice.mjs",
     "dev:up": "node scripts/dev-up.mjs",
     "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",

@@ -6,8 +6,9 @@
  * summary, so a fresh agent (cat-bot, Claude Code, a new hire) can verify a
  * checkout without burning context tokens on tens of thousands of lines of
  * pnpm/turbo/vitest output. Every spawned Node process is capped via
- * NODE_OPTIONS=--max-old-space-size and turbo concurrency is capped so total
- * resident memory stays bounded on a 6GB box.
+ * NODE_OPTIONS=--max-old-space-size and turbo concurrency is sized to the
+ * machine by scripts/turbo-sizing.mjs, so total resident memory stays bounded
+ * on a 6GB box.
  *
  * Usage:
  *   pnpm agent:setup [all|install|build|test] [flags]
@@ -23,6 +24,15 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
+import {
+	CONCURRENCY_ENV_VAR,
+	DEFAULT_PROCESS_MEM_MB,
+	computeConcurrency,
+	parseConcurrencyEnv,
+	readMachine,
+	resolveNodeOptions,
+} from './turbo-sizing.mjs';
+
 const REPO_ROOT = resolve(import.meta.dirname, '..');
 const VALID_STEPS = ['all', 'install', 'build', 'test'];
 
@@ -35,8 +45,9 @@ Steps:
   test      turbo run test (full suite)
 
 Flags:
-  --mem <MB>          per-process old-space cap (default 6144, matches CI)
-  --concurrency <n>   turbo concurrency for build/test (default 4)
+  --mem <MB>          per-process old-space cap (default ${DEFAULT_PROCESS_MEM_MB}, matches CI)
+  --concurrency <n>   turbo concurrency for build/test (default: sized to this
+                      machine's RAM; ${CONCURRENCY_ENV_VAR} also overrides it)
   --tail <n>          lines of the failing log to print on failure (default 60)
   --json              emit only the JSON summary to stdout
   --log-dir <path>    write logs and summary.json here (default .agent-setup/)
@@ -56,8 +67,8 @@ let positionals;
 try {
 	({ values, positionals } = parseArgs({
 		options: {
-			mem: { type: 'string', default: '6144' },
-			concurrency: { type: 'string', default: '4' },
+			mem: { type: 'string' },
+			concurrency: { type: 'string' },
 			tail: { type: 'string', default: '60' },
 			json: { type: 'boolean', default: false },
 			'log-dir': { type: 'string' },
@@ -83,15 +94,26 @@ if (!VALID_STEPS.includes(step)) {
 	fail(`unknown step "${step}" — must be one of: ${VALID_STEPS.join(', ')}`);
 }
 
-const mem = Number(values.mem);
-const concurrency = Number(values.concurrency);
+const mem = values.mem === undefined ? DEFAULT_PROCESS_MEM_MB : Number(values.mem);
 const tailLines = Number(values.tail);
 if (!Number.isInteger(mem) || mem <= 0) fail('--mem must be a positive integer (MB)');
-if (!Number.isInteger(concurrency) || concurrency <= 0) {
-	fail('--concurrency must be a positive integer');
-}
 if (!Number.isInteger(tailLines) || tailLines < 0) {
 	fail('--tail must be a non-negative integer');
+}
+
+// Precedence: the --concurrency flag, then the environment variable, then the
+// RAM-aware default. Same order as scripts/turbo-sized.mjs.
+let concurrency;
+if (values.concurrency !== undefined) {
+	const requested = Number(values.concurrency);
+	if (!Number.isInteger(requested) || requested <= 0) {
+		fail('--concurrency must be a positive integer');
+	}
+	concurrency = String(requested);
+} else {
+	concurrency =
+		parseConcurrencyEnv(process.env[CONCURRENCY_ENV_VAR]) ??
+		String(computeConcurrency({ ...readMachine(), processMemMb: mem }));
 }
 
 const logDir = values['log-dir']
@@ -116,12 +138,12 @@ const PLAN = {
 
 const stepsToRun = step === 'all' ? ['install', 'build', 'test'] : [step];
 
-const NODE_OPTS = `--max-old-space-size=${mem}`;
 const childEnv = {
 	...process.env,
-	NODE_OPTIONS: process.env.NODE_OPTIONS
-		? `${process.env.NODE_OPTIONS} ${NODE_OPTS}`
-		: NODE_OPTS,
+	// An explicit --mem outranks a cap already in the environment.
+	NODE_OPTIONS: resolveNodeOptions(process.env.NODE_OPTIONS, mem, {
+		override: values.mem !== undefined,
+	}),
 	FORCE_COLOR: '0',
 };
 

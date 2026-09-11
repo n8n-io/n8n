@@ -94,6 +94,19 @@ You can inspect the last few lines of the build log file to check for errors:
 tail -n 20 build.log
 ```
 
+`pnpm build` and `pnpm typecheck` size turbo's concurrency to the machine's
+RAM, because each type-checking worker peaks between 2.3 GB and 6.9 GB. To
+override the default, use one of these, highest precedence first:
+
+```bash
+pnpm typecheck --concurrency=1     # an explicit flag always wins
+TURBO_CONCURRENCY=3 pnpm build     # then the environment variable
+N8N_TURBO_SIZING_DEBUG=1 pnpm build  # print the sizing decision
+```
+
+Under CI the sizing is a no-op: every workflow pins its own concurrency and
+memory cap per job. See `scripts/turbo-sizing.mjs`.
+
 If build outputs or the turbo cache are stale (e.g. after switching branches
 or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
 by default) for a fast recovery: it cleans build outputs and force-rebuilds

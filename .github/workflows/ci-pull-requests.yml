@@ -136,6 +136,8 @@ jobs:
               scripts/preview.mjs
               scripts/preview*
               scripts/serve-ready.mjs
+              scripts/turbo-sized.mjs
+              scripts/turbo-sizing.mjs
               scripts/licenses/**
               scripts/mutation-health/**
               cubic.yaml
