@@ -36,7 +36,10 @@ import {
 	listPlaceholderTitles,
 } from '@/features/credentials/templatedAuth.utils';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
-import type { SetupCredentialItem } from '../../composables/useSetupPanelActions';
+import type {
+	SetupCredentialItem,
+	SetupCredentialRef,
+} from '../../composables/useSetupPanelActions';
 import { useSetupPanelDocument } from '../../composables/useSetupPanelDocument';
 import type { SetupPanelConnectionMethod } from '../../composables/useSetupPanelTelemetry';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
@@ -44,6 +47,8 @@ import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 const props = defineProps<{
 	item: SetupCredentialItem;
 	node?: INodeUi;
+	/** Saved credential selected while its workflow binding is queued or being applied. */
+	pendingCredential?: SetupCredentialRef;
 	nodes: INodeUi[];
 	workflowId: string;
 	projectId: string;
@@ -114,6 +119,7 @@ const serviceName = computed(
 		),
 );
 const binding = computed(() => {
+	if (props.pendingCredential) return props.pendingCredential;
 	const value = props.node?.credentials?.[props.item.credentialType];
 	return value && typeof value !== 'string' ? value : undefined;
 });

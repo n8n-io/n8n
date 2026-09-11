@@ -44,6 +44,7 @@ import {
 import InstanceAiSetupPanelDetail from './InstanceAiSetupPanelDetail.vue';
 import InstanceAiSetupCredential from './InstanceAiSetupCredential.vue';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import { applySetupParameterChanges } from '../../setupPanelParameterChanges';
 
 const props = defineProps<{
 	/** Workflow selected from an artifact or an early setup announcement. */
@@ -76,10 +77,13 @@ const {
 	rows,
 	rowSource,
 	credentialsAvailable,
+	isRefreshingWorkflow,
 	isAgentBuilding,
-	getNodeByName,
+	getNodeByName: getSavedNodeByName,
 	refreshWorkflow,
 	workflowProjectId,
+	isItemDone,
+	isCredentialConfigured,
 } = useSetupPanelState({
 	thread,
 	workflowId: () => props.workflowId,
@@ -128,6 +132,43 @@ const actions = useSetupPanelActions({
 	onFlushResult: notifyApplyResult,
 });
 
+function getNodeByName(name: string, includePendingParameters = true): INodeUi | undefined {
+	const node = getSavedNodeByName(name);
+	if (!node) return undefined;
+	let credentials = node.credentials;
+	for (const { item } of rows.value) {
+		if (
+			item.kind !== 'credential' ||
+			!item.nodeBindings?.some((binding) => binding.nodeName === name)
+		)
+			continue;
+		const pending = actions.getPendingCredential(item.id);
+		if (pending) credentials = { ...credentials, [item.credentialType]: pending };
+	}
+	const changes = includePendingParameters ? actions.getPendingParameterChanges(name) : [];
+	if (credentials === node.credentials && changes.length === 0) return node;
+	return {
+		...node,
+		credentials,
+		parameters: changes.length
+			? applySetupParameterChanges(node.parameters, changes)
+			: node.parameters,
+	};
+}
+
+// Show submitted values while writes wait. Execute still requires the saved rows to be complete.
+const displayedRows = computed(() =>
+	rows.value.map((row) => {
+		if (row.item.kind === 'credential') {
+			const pending = actions.getPendingCredential(row.item.id);
+			return pending ? { ...row, isDone: isCredentialConfigured(pending) } : row;
+		}
+		return actions.getPendingParameterChanges(row.item.nodeName).length
+			? { ...row, isDone: isItemDone(row.item, getNodeByName) }
+			: row;
+	}),
+);
+
 const execution = useSetupPanelExecution({ thread, workflowId: () => props.workflowId });
 
 const selectedItemId = ref<string>();
@@ -166,7 +207,7 @@ const shownItemIds = useLocalStorage<string[]>(
 	[],
 	{ writeDefaults: false, flush: 'sync' },
 );
-const credentialsReady = credentialsAvailable;
+const credentialsReady = computed(() => credentialsAvailable.value && !isRefreshingWorkflow.value);
 watch(
 	[rows, credentialsReady],
 	([currentRows, ready]) => {
@@ -182,7 +223,7 @@ watch(
 	{ immediate: true, flush: 'sync' },
 );
 const groups = computed(() =>
-	groupSetupPanelRows(rows.value, {
+	groupSetupPanelRows(displayedRows.value, {
 		workflowId: props.workflowId,
 		getNodeByName,
 		getNodeType: nodeType,
@@ -208,6 +249,10 @@ const panelTelemetry = useSetupPanelTelemetry({
 const selectedGroup = computed(() =>
 	groups.value.find((group) => group.id === selectedItemId.value),
 );
+const pendingCredential = computed(() => {
+	const item = selectedGroup.value?.credential?.item;
+	return item ? actions.getPendingCredential(item.id) : undefined;
+});
 const selectedNode = computed(() => {
 	const item = selectedGroup.value?.credential?.item;
 	const name = item?.nodeBindings?.find((binding) => getNodeByName(binding.nodeName))?.nodeName;
@@ -281,7 +326,7 @@ const panelItems = computed<SetupPanelItem[]>(() =>
 				: undefined,
 			disabled: group.credential
 				? !isCredentialProjectReady.value ||
-					!credentialsReady.value ||
+					!credentialsAvailable.value ||
 					!credentialsStore.getCredentialTypeByName(group.credential.item.credentialType)
 				: !group.parameters.some((row) => getNodeByName(row.item.nodeName)),
 		};
@@ -290,8 +335,18 @@ const panelItems = computed<SetupPanelItem[]>(() =>
 
 const parameterEditors = computed(() =>
 	(selectedGroup.value?.parameters ?? []).flatMap((row) => {
-		const node = getNodeByName(row.item.nodeName);
-		return node ? [{ item: row.item, node, isComplete: row.isDone }] : [];
+		// Keep saved parameters as the baseline, so a failed write leaves the input editable.
+		const node = getNodeByName(row.item.nodeName, false);
+		return node
+			? [
+					{
+						item: row.item,
+						node,
+						isComplete: row.isDone,
+						pendingChanges: actions.getPendingParameterChanges(row.item.nodeName),
+					},
+				]
+			: [];
 	}),
 );
 
@@ -496,6 +551,7 @@ async function onApplyParameters(
 					:key="selectedGroup.credential.item.id"
 					:item="selectedGroup.credential.item"
 					:node="selectedNode"
+					:pending-credential="pendingCredential"
 					:nodes="selectedNodes"
 					:workflow-id="workflowId"
 					:project-id="credentialProjectId"
@@ -518,6 +574,7 @@ async function onApplyParameters(
 							:project-id="credentialProjectId"
 							:is-applying="isApplying"
 							:is-complete="editor.isComplete"
+							:pending-changes="editor.pendingChanges"
 							@apply-parameters="onApplyParameters"
 							@update:has-changes="
 								$event

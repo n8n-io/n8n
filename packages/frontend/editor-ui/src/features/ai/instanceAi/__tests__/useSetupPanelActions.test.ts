@@ -96,12 +96,14 @@ describe('useSetupPanelActions', () => {
 		vi.mocked(getWorkflow).mockImplementation(async () => {
 			expect(actions.pendingApplyCount.value).toBe(0);
 			expect(actions.isApplying.value).toBe(true);
+			expect(actions.getPendingCredential(credentialItem.id)).toEqual(credential);
 			if (failed) throw new Error('Unavailable');
 			return makeWorkflow();
 		});
 		building.value = false;
 		await expect(actions.flushPendingApplies()).resolves.toBe(failed ? 'error' : 'applied');
 		expect(actions.isApplying.value).toBe(false);
+		expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined();
 	});
 
 	beforeEach(() => {
@@ -318,6 +320,7 @@ describe('useSetupPanelActions', () => {
 		await actions.bindCredential(credentialItem, { id: 'cred-old', name: 'Old' });
 		await actions.bindCredential(credentialItem, credential);
 		expect(actions.pendingApplyCount.value).toBe(1);
+		expect(actions.getPendingCredential(credentialItem.id)).toEqual(credential);
 
 		await actions.flushPendingApplies();
 		expect(updateWorkflow).not.toHaveBeenCalled();
@@ -346,6 +349,10 @@ describe('useSetupPanelActions', () => {
 		).resolves.toBe('queued');
 		await expect(actions.applyParameterValues('Slack', { channel: '#b' })).resolves.toBe('queued');
 		expect(actions.pendingApplyCount.value).toBe(1);
+		expect(actions.getPendingParameterChanges('Slack')).toEqual([
+			{ path: ['text'], value: 'hi' },
+			{ path: ['channel'], value: '#b' },
+		]);
 
 		building.value = false;
 		await vi.waitFor(() => expect(updateWorkflow).toHaveBeenCalledTimes(1));
@@ -394,6 +401,7 @@ describe('useSetupPanelActions', () => {
 
 		workflowId.value = 'wf-2';
 		building.value = false;
+		expect(actions.getPendingCredential(credentialItem.id)).toBeUndefined();
 		await vi.waitFor(() => expect(actions.pendingApplyCount.value).toBe(0));
 
 		expect(getWorkflow).not.toHaveBeenCalled();

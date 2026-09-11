@@ -328,7 +328,7 @@ describe('InstanceAiSetupPanel interactions', () => {
 
 	it('binds a credential announced without bindings after the build ends', async () => {
 		startBuild();
-		const { getByRole, findByRole } = renderPanel();
+		const { getByRole, findByRole, getByTestId, queryByRole } = renderPanel();
 		await flushPromises();
 		await fireEvent.click(await findByRole('button', { name: /Slack/ }));
 		const picker = getByRole('combobox');
@@ -338,12 +338,37 @@ describe('InstanceAiSetupPanel interactions', () => {
 		expect(updateWorkflow).not.toHaveBeenCalled();
 		await fireEvent.change(picker, { target: { value: 'cred-2' } });
 		expect(updateWorkflow).not.toHaveBeenCalled();
+		expect(getByTestId('selected-account')).toHaveTextContent('Second account');
+		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+		await fireEvent.click(getByRole('button', { name: 'Slack Complete' }));
+		expect(getByRole('combobox')).toHaveValue('cred-2');
+		expect(queryByRole('button', { name: 'Execute' })).toBeNull();
+		// The user's explicit choice replaces the SDK's selection when writes resume.
+		saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
 		thread.messages = [];
 		await flushPromises();
 		expect(updateWorkflow).toHaveBeenCalledTimes(1);
 		expect(saved.nodes[0].credentials?.slackApi).toEqual({ id: 'cred-2', name: 'Second account' });
 		expect(testCredentialInBackground).toHaveBeenCalledWith('cred-2', 'Second account', 'slackApi');
 	});
+
+	it.each([false, true])(
+		'uses the SDK-selected credential before the build ends, canvas: %s',
+		async (hydrated) => {
+			const read = Promise.withResolvers<IWorkflowDb>();
+			fetchWorkflow.mockReturnValueOnce(read.promise);
+			startBuild();
+			const { queryByRole, queryByTestId } = renderPanel(hydrated);
+			await flushPromises();
+			expect(queryByTestId('instance-ai-setup-panel')).toBeNull();
+			saved.nodes[0].credentials = { slackApi: { id: 'cred-1', name: 'First account' } };
+			read.resolve(deepCopy(saved));
+			await flushPromises();
+			expect(queryByRole('button', { name: /Add connection/ })).toBeNull();
+			expect(queryByTestId('instance-ai-setup-panel')).toBeNull();
+			expect(updateWorkflow).not.toHaveBeenCalled();
+		},
+	);
 
 	it('opens a remaining bound node and passes its recipe to the picker', async () => {
 		startBuild();
@@ -500,7 +525,11 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await flushPromises();
 		expect(updateWorkflow).not.toHaveBeenCalled();
 		expect(getByLabelText('Channel')).toHaveValue('queued-value');
-		expect(getByRole('button', { name: 'Confirm' })).toBeEnabled();
+		expect(getByRole('button', { name: 'Confirm' })).toBeDisabled();
+		await fireEvent.click(getByRole('button', { name: 'Back to setup checklist' }));
+		await fireEvent.click(getByRole('button', { name: /Slack/ }));
+		expect(getByLabelText('Channel')).toHaveValue('queued-value');
+		expect(getByRole('button', { name: 'Confirm' })).toBeDisabled();
 		thread.messages = [];
 		await flushPromises();
 		expect(saved.nodes[0].parameters.channel).toBe('queued-value');
@@ -523,6 +552,28 @@ describe('InstanceAiSetupPanel interactions', () => {
 		await fireEvent.click(getByRole('button', { name: 'Confirm' }));
 		await flushPromises();
 		expect(saved.nodes[0].parameters.channel).toBe('newer-value');
+	});
+
+	it('lets a queued field return to its original saved value', async () => {
+		const { getByRole, getByLabelText } = await openParameters(false);
+		thread.setupItemsByWorkflowId['wf-1'].push({
+			id: 'wf-1:parameters:Notify',
+			kind: 'parameters',
+			nodeName: 'Notify',
+			parameterNames: ['channel', 'options'],
+		});
+		startBuild();
+		await flushPromises();
+		await fireEvent.update(getByLabelText('Channel'), 'queued-value');
+		await fireEvent.click(getByRole('button', { name: 'Confirm' }));
+		await fireEvent.update(getByLabelText('Channel'), '');
+		expect(getByLabelText('Channel')).toHaveValue('');
+		expect(getByRole('button', { name: 'Confirm' })).toBeEnabled();
+		await fireEvent.click(getByRole('button', { name: 'Confirm' }));
+		expect(getByRole('button', { name: 'Confirm' })).toBeDisabled();
+		thread.messages = [];
+		await flushPromises();
+		expect(saved.nodes[0].parameters.channel).toBe('');
 	});
 
 	it('preserves saved sibling changes when a nested edit is queued', async () => {

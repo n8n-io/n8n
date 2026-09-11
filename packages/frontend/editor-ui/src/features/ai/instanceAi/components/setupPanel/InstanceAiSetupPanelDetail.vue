@@ -15,6 +15,7 @@ import {
 	applySetupParameterChanges,
 	getSetupParameterChanges,
 	getSetupParameterValue,
+	mergeSetupParameterChanges,
 	type SetupParameterChange,
 } from '../../setupPanelParameterChanges';
 
@@ -26,6 +27,8 @@ const props = defineProps<{
 	projectId?: string;
 	isApplying?: boolean;
 	isComplete?: boolean;
+	/** Confirmed edits waiting for the workflow write. */
+	pendingChanges?: SetupParameterChange[];
 }>();
 
 const emit = defineEmits<{
@@ -40,14 +43,24 @@ const parametersItem = computed(() => props.item);
 
 // --- Parameter edits (buffered locally, applied on Confirm) ---
 
-const parameterChanges = ref<SetupParameterChange[]>([]);
-watch(
-	() => parameterChanges.value.length > 0,
-	(value) => emit('update:hasChanges', value),
-);
+const parameterChanges = ref<SetupParameterChange[]>([...(props.pendingChanges ?? [])]);
 onScopeDispose(() => emit('update:hasChanges', false));
 const displayParameters = computed(() =>
-	applySetupParameterChanges(props.node.parameters, parameterChanges.value),
+	applySetupParameterChanges(
+		props.node.parameters,
+		mergeSetupParameterChanges(props.pendingChanges ?? [], parameterChanges.value),
+	),
+);
+const hasChanges = computed(
+	() =>
+		!isEqual(
+			applySetupParameterChanges(props.node.parameters, props.pendingChanges ?? []),
+			displayParameters.value,
+		),
+);
+watch(
+	() => !isEqual(props.node.parameters, displayParameters.value),
+	(value) => emit('update:hasChanges', value),
 );
 const parameterRoots = computed(
 	() =>
@@ -77,7 +90,10 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	if (!parameterRoots.value.has(parameterName.split(/[.[\]]/)[0])) return;
 	const next = deepCopy(displayParameters.value);
 	setParameterValueByPath(next, parameterName, update.value);
-	parameterChanges.value = getSetupParameterChanges(props.node.parameters, next);
+	parameterChanges.value = mergeSetupParameterChanges(
+		parameterChanges.value,
+		getSetupParameterChanges(displayParameters.value, next),
+	);
 }
 
 function onConfirm() {
@@ -89,7 +105,12 @@ function onConfirm() {
 		const root = change.path[0];
 		if (typeof root === 'string') values[root] = displayParameters.value[root];
 	}
-	emit('applyParameters', item.nodeName, values, props.node.parameters);
+	emit(
+		'applyParameters',
+		item.nodeName,
+		values,
+		applySetupParameterChanges(props.node.parameters, props.pendingChanges ?? []),
+	);
 }
 
 const nodeType = computed(() =>
@@ -193,7 +214,7 @@ useSetupPanelDocument({
 			<div :class="$style.footer">
 				<N8nButton
 					size="medium"
-					:disabled="parameterChanges.length === 0 || isApplying"
+					:disabled="!hasChanges || isApplying"
 					:loading="isApplying"
 					data-test-id="instance-ai-setup-panel-confirm"
 					@click="onConfirm"

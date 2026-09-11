@@ -143,6 +143,7 @@ export function useSetupPanelActions(options: {
 	const isApplying = computed(() => activeApplyCount.value > 0);
 	const pendingCredentialBinds = shallowReactive(new Map<string, CredentialBind>());
 	const pendingParameterApplies = shallowReactive(new Map<string, SetupParameterChange[]>());
+	const applyingDeltas = shallowReactive(new Map<NodesDelta, string>());
 	/**
 	 * The workflow the queued writes were captured for. A build settling and a
 	 * re-anchor can land in the same flush (the settle watcher runs first), so
@@ -154,6 +155,32 @@ export function useSetupPanelActions(options: {
 	const pendingApplyCount = computed(
 		() => pendingCredentialBinds.size + pendingParameterApplies.size,
 	);
+
+	function getPendingCredential(itemId: string): SetupCredentialRef | undefined {
+		const workflowId = toValue(options.workflowId);
+		const queued = pendingCredentialBinds.get(itemId);
+		if (queuedWorkflowId === workflowId && queued) return queued.credential;
+		for (const [delta, targetId] of [...applyingDeltas].reverse()) {
+			if (targetId !== workflowId) continue;
+			const bind = delta.credentialBinds.find(({ item }) => item.id === itemId);
+			if (bind) return bind.credential;
+		}
+		return undefined;
+	}
+
+	function getPendingParameterChanges(nodeName: string): SetupParameterChange[] {
+		const workflowId = toValue(options.workflowId);
+		const queued = pendingParameterApplies.get(nodeName) ?? [];
+		let changes: SetupParameterChange[] = [];
+		for (const [delta, targetId] of applyingDeltas) {
+			if (targetId !== workflowId) continue;
+			for (const apply of delta.parameterApplies) {
+				if (apply.nodeName === nodeName)
+					changes = mergeSetupParameterChanges(changes, apply.changes);
+			}
+		}
+		return mergeSetupParameterChanges(changes, queuedWorkflowId === workflowId ? queued : []);
+	}
 
 	/** Puts a delta back into the queues, keeping any newer entries queued meanwhile. */
 	function requeueDelta(workflowId: string, delta: NodesDelta) {
@@ -287,6 +314,7 @@ export function useSetupPanelActions(options: {
 		delta: NodesDelta,
 	): Promise<SetupPanelApplyResult> {
 		activeApplyCount.value++;
+		applyingDeltas.set(delta, workflowId);
 		try {
 			for (let attempt = 0; attempt < 2; attempt++) {
 				let fresh: IWorkflowDb;
@@ -370,6 +398,7 @@ export function useSetupPanelActions(options: {
 			}
 			return 'conflict';
 		} finally {
+			applyingDeltas.delete(delta);
 			activeApplyCount.value--;
 		}
 	}
@@ -473,6 +502,8 @@ export function useSetupPanelActions(options: {
 		applyParameterValues,
 		flushPendingApplies,
 		pendingApplyCount,
+		getPendingCredential,
+		getPendingParameterChanges,
 		isApplying,
 	};
 }

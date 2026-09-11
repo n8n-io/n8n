@@ -1,4 +1,4 @@
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
 import { useWorkflowSetupItems } from '@/features/setupPanel/composables/useWorkflowSetupItems';
@@ -78,6 +78,15 @@ export function useSetupPanelState(options: {
 		return thread.setupItemsByWorkflowId[id];
 	});
 
+	watch(
+		[eventItems, isAgentBuilding],
+		([items, building]) => {
+			// The SDK saves resolved credentials before announcing setup, while its tool is still active.
+			if (building && items.length > 0) void derivation.refreshWorkflow({ force: true });
+		},
+		{ immediate: true, flush: 'sync' },
+	);
+
 	/**
 	 * Reconciliation: while the agent edits the workflow, its events are the
 	 * row source (the workflow document lags behind the agent's changes); at
@@ -122,11 +131,14 @@ export function useSetupPanelState(options: {
 
 	return {
 		credentialsAvailable: derivation.credentialsAvailable,
+		isRefreshingWorkflow: derivation.isRefreshingWorkflow,
 		rows,
 		rowSource,
 		isAgentBuilding,
 		getNodeByName: derivation.getNodeByName,
 		workflowProjectId: derivation.workflowProjectId,
 		refreshWorkflow: derivation.refreshWorkflow,
+		isItemDone: derivation.isItemDone,
+		isCredentialConfigured: derivation.isCredentialConfigured,
 	};
 }

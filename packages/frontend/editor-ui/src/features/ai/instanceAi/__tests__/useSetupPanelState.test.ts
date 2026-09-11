@@ -47,6 +47,8 @@ function createHarness(
 	const available = ref(workflowAvailable);
 	const derived = ref(derivedItems);
 	const doneIds = ref(new Set<string>());
+	const refreshing = ref(false);
+	const refreshWorkflow = vi.fn().mockResolvedValue(undefined);
 
 	vi.mocked(isAgentEditingWorkflow).mockImplementation(() => editing.value);
 	vi.mocked(useWorkflowSetupItems).mockReturnValue({
@@ -58,8 +60,10 @@ function createHarness(
 			derived.value.filter((item) => item.kind === 'credential'),
 		),
 		isItemDone: (item: InstanceAiSetupItem) => doneIds.value.has(item.id),
+		isCredentialConfigured: vi.fn().mockReturnValue(false),
+		isRefreshingWorkflow: refreshing,
 		getNodeByName: vi.fn(),
-		refreshWorkflow: vi.fn().mockResolvedValue(undefined),
+		refreshWorkflow,
 	});
 
 	const thread: SetupPanelThreadSource = reactive({
@@ -68,7 +72,7 @@ function createHarness(
 	});
 
 	const state = useSetupPanelState({ thread, workflowId: () => workflowId });
-	return { state, editing, available, doneIds, derived };
+	return { state, editing, available, doneIds, derived, refreshing, refreshWorkflow, thread };
 }
 
 describe('useSetupPanelState', () => {
@@ -202,6 +206,19 @@ describe('useSetupPanelState', () => {
 
 		editing.value = false;
 		expect(toValue(options?.paused)).toBe(false);
+	});
+
+	it('refreshes announced snapshots during a build', () => {
+		const { state, thread, refreshing, refreshWorkflow } = createHarness({ agentEditing: true });
+		expect(refreshWorkflow).toHaveBeenCalledExactlyOnceWith({ force: true });
+		refreshing.value = true;
+		expect(state.isRefreshingWorkflow.value).toBe(true);
+		refreshing.value = false;
+		expect(state.isRefreshingWorkflow.value).toBe(false);
+		thread.setupItemsByWorkflowId[WORKFLOW_ID] = [
+			{ ...eventItem, nodeBindings: [{ nodeName: 'Slack' }] },
+		];
+		expect(refreshWorkflow).toHaveBeenCalledTimes(2);
 	});
 
 	it('reads no event items for a workflowId matching a prototype property', () => {

@@ -77,27 +77,33 @@ export function useWorkflowSetupItems(
 	 * placeholders, which would read as an empty (but "available") workflow.
 	 */
 	const fetchedWorkflow = ref<IWorkflowDb>();
+	const isRefreshingWorkflow = ref(false);
 	let workflowFetchVersion = 0;
 	onScopeDispose(() => workflowFetchVersion++);
 
-	async function refreshWorkflow() {
-		const requestVersion = ++workflowFetchVersion;
+	async function refreshWorkflow({ force = false } = {}) {
 		const id = toValue(workflowId);
-		if (!id) return;
+		if (!id || (!force && (toValue(options.paused) || documentStore.value?.hydrated))) return;
+		const requestVersion = ++workflowFetchVersion;
 		const isCurrentRequest = () =>
 			requestVersion === workflowFetchVersion &&
 			toValue(workflowId) === id &&
-			!toValue(options.paused) &&
-			!documentStore.value?.hydrated;
+			(force || (!toValue(options.paused) && !documentStore.value?.hydrated));
+		if (!isCurrentRequest()) return;
+		isRefreshingWorkflow.value = true;
 		// Retry the current read once. An older response can contain pre-build values.
-		for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
-			try {
-				const workflow = await workflowsListStore.fetchWorkflow(id);
-				if (isCurrentRequest()) fetchedWorkflow.value = workflow;
-				return;
-			} catch {
-				// Keep the current rows if both attempts fail.
+		try {
+			for (let attempt = 0; attempt < 2 && isCurrentRequest(); attempt++) {
+				try {
+					const workflow = await workflowsListStore.fetchWorkflow(id);
+					if (isCurrentRequest()) fetchedWorkflow.value = workflow;
+					return;
+				} catch {
+					// Keep the current rows if both attempts fail.
+				}
 			}
+		} finally {
+			if (requestVersion === workflowFetchVersion) isRefreshingWorkflow.value = false;
 		}
 	}
 
@@ -151,16 +157,23 @@ export function useWorkflowSetupItems(
 	});
 	workflowsStore.$onAction(({ name, args, after }) => {
 		if (name !== 'updateWorkflow' || args[0] !== toValue(workflowId)) return;
-		after(() => {
-			void refreshWorkflow();
+		after((saved) => {
+			if (saved.id !== toValue(workflowId)) return;
+			// Keep the saved values visible when the write queue clears.
+			workflowFetchVersion++;
+			fetchedWorkflow.value = saved;
+			isRefreshingWorkflow.value = false;
 		});
 	});
 
 	/** Live canvas nodes when a host hydrated a document store, else the fetched save's. */
 	const workflowNodes = computed<INodeUi[] | undefined>(() => {
 		const docStore = documentStore.value;
-		if (docStore?.hydrated) return docStore.allNodes;
 		const id = toValue(workflowId);
+		// Setup announcements follow a save, before the canvas receives the build result.
+		if (toValue(options.paused) && fetchedWorkflow.value?.id === id)
+			return fetchedWorkflow.value?.nodes;
+		if (docStore?.hydrated) return docStore.allNodes;
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
 
@@ -299,28 +312,31 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
+	function isCredentialConfigured(assigned: INodeCredentialsDetails | string | undefined): boolean {
+		if (!isBoundCredential(assigned)) return false;
+		const credential =
+			typeof assigned !== 'string' && assigned?.id
+				? credentialsStore.getCredentialById(assigned.id)
+				: undefined;
+		return !credential?.isResolvable || credential.connectedByMe !== false;
+	}
+
 	/** Completion requires a binding on every node, not merely an available account. */
-	function isItemDone(item: InstanceAiSetupItem): boolean {
+	function isItemDone(
+		item: InstanceAiSetupItem,
+		readNode: (name: string) => INodeUi | undefined = getNodeByName,
+	): boolean {
 		if (item.kind === 'credential') {
 			const nodeNames = (item.nodeBindings ?? []).map((binding) => binding.nodeName);
-			const hasPendingPrivateConnection = nodeNames.some((nodeName) => {
-				const assigned = nodesByName.value.get(nodeName)?.credentials?.[item.credentialType];
-				const credential =
-					typeof assigned !== 'string' && assigned?.id
-						? credentialsStore.getCredentialById(assigned.id)
-						: undefined;
-				return credential?.isResolvable && credential.connectedByMe === false;
-			});
-			if (hasPendingPrivateConnection) return false;
 			return (
 				nodeNames.length > 0 &&
 				nodeNames.every((nodeName) =>
-					isBoundCredential(nodesByName.value.get(nodeName)?.credentials?.[item.credentialType]),
+					isCredentialConfigured(readNode(nodeName)?.credentials?.[item.credentialType]),
 				)
 			);
 		}
 
-		const node = nodesByName.value.get(item.nodeName);
+		const node = readNode(item.nodeName);
 		if (!node) return false;
 		const pendingNames = getPendingParameterNames(node);
 		return item.parameterNames.every((parameterName) => {
@@ -341,6 +357,8 @@ export function useWorkflowSetupItems(
 		derivedItems,
 		derivedCredentialItems,
 		isItemDone,
+		isCredentialConfigured,
+		isRefreshingWorkflow,
 		getNodeByName,
 		refreshWorkflow,
 	};

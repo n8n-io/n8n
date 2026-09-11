@@ -354,7 +354,7 @@ describe('useWorkflowSetupItems', () => {
 		});
 	});
 
-	it('refreshes a binding saved outside the panel when there is no live canvas document', async () => {
+	it('uses the save response immediately without waiting for another workflow fetch', async () => {
 		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(
 			createTestWorkflow({ id: WORKFLOW_ID, nodes: [createTestNode({ name: 'Slack' })] }),
 		);
@@ -372,13 +372,19 @@ describe('useWorkflowSetupItems', () => {
 			],
 		});
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(saved);
-		workflowsListStore.fetchWorkflow.mockResolvedValueOnce(saved);
+		const olderRead = Promise.withResolvers<IWorkflowDb>();
+		workflowsListStore.fetchWorkflow.mockReturnValueOnce(olderRead.promise);
+		const refresh = state.refreshWorkflow();
 		await useWorkflowsStore().updateWorkflow(WORKFLOW_ID, { nodes: saved.nodes });
-		await flushPromises();
 		expect(state.getNodeByName('Slack')?.credentials?.slackApi).toEqual({
 			id: 'existing',
 			name: 'Existing account',
 		});
+		olderRead.resolve(
+			createTestWorkflow({ id: WORKFLOW_ID, nodes: [createTestNode({ name: 'Slack' })] }),
+		);
+		await refresh;
+		expect(state.isItemDone(credentialItem())).toBe(true);
 	});
 
 	// Pins that the subscription stays non-detached and registered synchronously
@@ -413,6 +419,32 @@ describe('useWorkflowSetupItems', () => {
 			});
 			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(WORKFLOW_ID);
 		});
+	});
+
+	it('reads saved bindings during a build when its snapshot is explicitly refreshed', async () => {
+		const paused = ref(true);
+		const read = Promise.withResolvers<IWorkflowDb>();
+		const canvas = hydrateWorkflow([createTestNode({ name: 'Slack' })]);
+		workflowsListStore.fetchWorkflow.mockReturnValueOnce(read.promise);
+		const state = useWorkflowSetupItems(() => WORKFLOW_ID, { paused });
+		const refresh = state.refreshWorkflow({ force: true });
+		expect(state.isRefreshingWorkflow.value).toBe(true);
+		expect(state.isItemDone(credentialItem())).toBe(false);
+		read.resolve(
+			createTestWorkflow({
+				id: WORKFLOW_ID,
+				nodes: [
+					createTestNode({
+						name: 'Slack',
+						credentials: { slackApi: { id: 'cred-1', name: 'Existing account' } },
+					}),
+				],
+			}),
+		);
+		await refresh;
+		expect(state.isRefreshingWorkflow.value).toBe(false);
+		expect(state.isItemDone(credentialItem())).toBe(true);
+		expect(canvas.allNodes[0].credentials).toBeUndefined();
 	});
 
 	it('does not refresh the usable slice before a connection flow publishes its credential', async () => {

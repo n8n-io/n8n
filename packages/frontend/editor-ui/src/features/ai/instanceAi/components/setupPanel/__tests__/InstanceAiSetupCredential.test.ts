@@ -481,6 +481,11 @@ describe('InstanceAiSetupCredential', () => {
 		await userEvent.click(option);
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(savedCredential.id);
 		expect(store.createNewCredential).not.toHaveBeenCalled();
+		await rendered.rerender({
+			pendingCredential: { id: savedCredential.id, name: savedCredential.name },
+		});
+		expect(rendered.getByTitle('••••••••')).toBeVisible();
+		expect(rendered.queryByLabelText('API key')).toBeNull();
 	});
 
 	it('reconciles a newly saved binding without opening a new OAuth form', async () => {
