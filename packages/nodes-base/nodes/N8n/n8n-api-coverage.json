@@ -155,7 +155,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
-		"GET /workflows/{workflowId}/versions/{versionId}": {
+		"GET /workflows/{workflowId}/versions/{workflowVersionId}": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {

@@ -170,7 +170,7 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
-  /workflows/{workflowId}/versions/{versionId}:
+  /workflows/{workflowId}/versions/{workflowVersionId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
   /workflows/{workflowId}/tags:
