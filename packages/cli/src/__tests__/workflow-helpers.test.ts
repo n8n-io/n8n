@@ -2,7 +2,7 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
@@ -10,6 +10,8 @@ import type {
 	IRun,
 	ITaskData,
 	IWorkflowBase,
+	IWorkflowGroup,
+	IWorkflowGroupVisualLinkEndpoint,
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
@@ -553,6 +555,38 @@ const chainConnections = {
 	'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
 } as never;
 
+const emptyGroupFrame = { position: [100, 200], size: [240, 160] } as const;
+
+function nodeEndpoint(id: string, index = 0) {
+	return { kind: 'node', id, port: { type: NodeConnectionTypes.Main, index } } as const;
+}
+
+function groupEndpoint(id: string) {
+	return {
+		kind: 'group',
+		id,
+		port: { type: NodeConnectionTypes.Main, index: 0 },
+	} as const;
+}
+
+function visualLink(
+	source: IWorkflowGroupVisualLinkEndpoint,
+	target: IWorkflowGroupVisualLinkEndpoint,
+) {
+	return { source, target };
+}
+
+function makeEmptyGroup(overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup {
+	return {
+		id: 'g1',
+		name: 'Empty Group',
+		nodeIds: [],
+		frame: { position: [...emptyGroupFrame.position], size: [...emptyGroupFrame.size] },
+		visualLinks: [],
+		...overrides,
+	};
+}
+
 describe('validateWorkflowNodeGroups', () => {
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
@@ -566,7 +600,7 @@ describe('validateWorkflowNodeGroups', () => {
 		).not.toThrow();
 	});
 
-	it('should pass when all nodeIds reference existing nodes', () => {
+	it('should preserve a legacy non-empty group without empty-group data', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
 				{
@@ -602,16 +636,129 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
-	it('should throw when a group has no members', () => {
+	it('should pass for a standalone empty group with a valid frame', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
 				{
 					nodes: [makeNode('n1')],
-					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+					nodeGroups: [makeEmptyGroup()],
 				},
 				null,
 			),
-		).toThrow('Group "My Group" has no members.');
+		).not.toThrow();
+	});
+
+	it('should pass for a complete empty-group path with one canonical connection', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: connectedNodes,
+					connections: chainConnections,
+					nodeGroups: [
+						makeEmptyGroup({
+							visualLinks: [
+								visualLink(nodeEndpoint('n1'), groupEndpoint('g1')),
+								visualLink(groupEndpoint('g1'), nodeEndpoint('n2')),
+							],
+						}),
+					],
+				},
+				null,
+			),
+		).not.toThrow();
+	});
+
+	it.each([
+		['missing', undefined],
+		['invalid', { position: [0, 0], size: [0, 160] }],
+	] as const)('should throw when an empty-group frame is %s', (_condition, frame) => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [makeEmptyGroup({ frame: frame as never })],
+				},
+				null,
+			),
+		).toThrow('Empty group "Empty Group" must have a finite position and positive finite size.');
+	});
+
+	it.each([
+		[
+			'malformed',
+			[
+				{
+					source: { kind: 'node', id: 'n1' },
+					target: groupEndpoint('g1'),
+				},
+			],
+			'malformed or unsupported visual link',
+		],
+		[
+			'dangling',
+			[visualLink(nodeEndpoint('missing'), groupEndpoint('g1'))],
+			'references unknown node "missing"',
+		],
+	] as const)('should throw for a %s visual link', (_condition, visualLinks, message) => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [makeEmptyGroup({ visualLinks: visualLinks as never })],
+				},
+				null,
+			),
+		).toThrow(message);
+	});
+
+	it.each([
+		['missing', {}],
+		[
+			'duplicate',
+			{
+				'Node n1': {
+					main: [
+						[
+							{ node: 'Node n2', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'Node n2', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			},
+		],
+	] as const)('should throw for a %s projected canonical occurrence', (_condition, connections) => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: connectedNodes,
+					connections: connections as never,
+					nodeGroups: [
+						makeEmptyGroup({
+							visualLinks: [
+								visualLink(nodeEndpoint('n1'), groupEndpoint('g1')),
+								visualLink(groupEndpoint('g1'), nodeEndpoint('n2')),
+							],
+						}),
+					],
+				},
+				null,
+			),
+		).toThrow(/visual projection owns|matching occurrences exist/);
+	});
+
+	it.each([
+		['a frame', { frame: emptyGroupFrame }],
+		['visual links', { visualLinks: [] }],
+	] as const)('should throw when a non-empty group retains %s', (_condition, extra) => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['n1'], ...extra } as never],
+				},
+				null,
+			),
+		).toThrow('Non-empty group "Group" must not retain empty-group frame or visual-link data.');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {

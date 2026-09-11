@@ -1,5 +1,9 @@
 import { STICKY_NODE_TYPE } from './constants';
 import {
+	type EmptyGroupConnectionIssueCode,
+	validateEmptyGroupConnectionState,
+} from './empty-group-connection-reconciliation';
+import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
 	type ExtractableErrorResult,
@@ -83,9 +87,9 @@ export const NODE_GROUPING_RULES = {
 	},
 	invalidSubgraph: {
 		sdkReference:
-			'**One connected section with a single entry and exit.** The connectable members must ' +
+			'**One connected section with one boundary entry node and one boundary exit node.** The connectable members must ' +
 			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — with at most one incoming and one outgoing main connection crossing ' +
+			'unrelated islands. The entry and exit nodes may each have several main connections crossing ' +
 			'the group boundary. Sticky notes may accompany the selection without participating in ' +
 			'connectivity, and a sticky-only group is valid.',
 		violation: 'must form a single connected subgraph with a single entry and exit',
@@ -146,10 +150,9 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 	// below are checked against connectable nodes only — stickies ride along
 	// as plain members. A sticky-only group is valid *data* (a group can
 	// degenerate to one when its last connectable node is deleted); stricter
-	// rules live with the callers: creation surfaces require at least one
-	// connectable node (see `resolveGroupableNodeIds` in the editor) and
-	// persistence rejects memberless groups (see `validateWorkflowNodeGroups`
-	// in the CLI), which also keeps empty selections out of this fast path.
+	// rules live with the callers. Selection-based grouping can require one
+	// connectable node. Workflow-level validation checks the frame and connection
+	// projection for durable empty groups.
 	const connectableNodes = input.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 	if (connectableNodes.length === 0) {
 		return {
@@ -179,9 +182,9 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 export type WorkflowGroupViolationCode =
 	| 'duplicate-group-id'
 	| 'duplicate-group-name'
-	| 'empty-group'
 	| 'unknown-node-id'
 	| 'node-in-multiple-groups'
+	| EmptyGroupConnectionIssueCode
 	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
 
 export type WorkflowGroupViolation = {
@@ -212,6 +215,12 @@ export type WorkflowGroupsValidationResult =
 
 export type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
 
+type AddWorkflowGroupViolation = (
+	group: IWorkflowGroup,
+	code: WorkflowGroupViolationCode,
+	message: string,
+) => void;
+
 /**
  * Builds the `getNodeType` callback that the grouping validator needs to resolve
  * a node to its type description. Returns `null` for unknown node types so
@@ -233,8 +242,11 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
  * the first violation's message, and validate-time surfaces (e.g. the MCP
  * `validate_workflow` tool) report all of them as errors.
  *
- * Basic checks (always run): unique group IDs, unique group names, at least one
- * member, all referenced node IDs exist, and each node belongs to at most one group.
+ * Basic checks (always run): unique group IDs, unique group names, all referenced
+ * node IDs exist, and each node belongs to at most one group. Empty groups must
+ * have valid frame and visual-link data, with exactly one canonical connection
+ * occurrence for each complete visual path. Non-empty groups must not retain
+ * empty-group frame or visual-link data.
  *
  * Full checks (run only when `getNodeType` is non-null, and skipped for groups that
  * already have a basic violation): each group must satisfy the same grouping rules
@@ -276,6 +288,45 @@ export function validateWorkflowGroups<TNode extends INode>({
 	};
 }
 
+function addEmptyGroupConnectionViolations<TNode extends INode>({
+	nodes,
+	connections,
+	nodeGroups,
+	firstEmptyGroup,
+	addViolation,
+	groupsWithBasicViolations,
+}: {
+	nodes: TNode[];
+	connections: IConnections;
+	nodeGroups: IWorkflowGroup[];
+	firstEmptyGroup: IWorkflowGroup;
+	addViolation: AddWorkflowGroupViolation;
+	groupsWithBasicViolations: Set<IWorkflowGroup>;
+}) {
+	const result = validateEmptyGroupConnectionState({
+		nodes,
+		connections,
+		nodeGroups,
+	});
+	if (result.success) return;
+
+	for (const issue of result.issues) {
+		// These checks already ran where object identity is unambiguous.
+		if (issue.code === 'duplicate-group-id' || issue.code === 'non-empty-group-data') continue;
+
+		const group =
+			(issue.groupId
+				? nodeGroups.find((candidate) => candidate.id === issue.groupId)
+				: undefined) ?? firstEmptyGroup;
+		// Empty-group reconciliation must not add follow-up errors to a
+		// non-empty group that already failed its own data-shape rule.
+		if (group.nodeIds.length > 0) continue;
+
+		addViolation(group, issue.code, issue.message);
+		groupsWithBasicViolations.add(group);
+	}
+}
+
 function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
@@ -307,6 +358,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	const seenGroupIds = new Set<string>();
 	const seenGroupNames = new Set<string>();
 	const nodeToGroup = new Map<string, string>();
+	let hasDuplicateGroupId = false;
 
 	for (const group of nodeGroups) {
 		const addBasicViolation = (code: WorkflowGroupViolationCode, message: string) => {
@@ -316,6 +368,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 
 		// Unique group IDs
 		if (seenGroupIds.has(group.id)) {
+			hasDuplicateGroupId = true;
 			addBasicViolation('duplicate-group-id', `Duplicate node group ID "${group.id}".`);
 		}
 		seenGroupIds.add(group.id);
@@ -326,8 +379,14 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 		}
 		seenGroupNames.add(group.name);
 
-		if (group.nodeIds.length === 0) {
-			addBasicViolation('empty-group', `Group "${group.name}" has no members.`);
+		if (
+			group.nodeIds.length > 0 &&
+			(group.frame !== undefined || group.visualLinks !== undefined)
+		) {
+			addBasicViolation(
+				'non-empty-group-data',
+				`Non-empty group "${group.name}" must not retain empty-group frame or visual-link data.`,
+			);
 		}
 
 		for (const nodeId of group.nodeIds) {
@@ -352,6 +411,18 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 		}
 	}
 
+	const firstEmptyGroup = nodeGroups.find((group) => group.nodeIds.length === 0);
+	if (firstEmptyGroup && !hasDuplicateGroupId) {
+		addEmptyGroupConnectionViolations({
+			nodes,
+			connections: connectionsBySourceNode ?? {},
+			nodeGroups,
+			firstEmptyGroup,
+			addViolation,
+			groupsWithBasicViolations,
+		});
+	}
+
 	if (getNodeType) {
 		const connections = connectionsBySourceNode ?? {};
 
@@ -359,6 +430,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 			// A basic violation makes the group's member set unreliable, so the
 			// graph rules would only produce misleading follow-up violations.
 			if (groupsWithBasicViolations.has(group)) continue;
+			if (group.nodeIds.length === 0) continue;
 
 			const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
 			const result = validateNodeSelectionForGrouping({
@@ -389,7 +461,9 @@ function stripWorkflowGroupIdentity({
 
 /**
  * Non-fatal twin of `validateWorkflowGroups`: drops every offending group instead
- * of throwing, returning every violation for the groups it dropped.
+ * of throwing, returning every violation for the groups it dropped. It also
+ * removes visual links that refer to a dropped group. Node connections remain
+ * unchanged, so a former projected connection becomes an ordinary connection.
  * Mutates `nodeGroups`.
  *
  * `shouldDrop` filters which violating groups are removed, letting a caller
@@ -404,26 +478,42 @@ export function dropInvalidWorkflowGroups<TNode extends INode>(
 		return [];
 	}
 
-	const result = validateWorkflowGroupsWithGroupIdentity({
-		nodes: workflow.nodes,
-		connectionsBySourceNode: workflow.connections,
-		nodeGroups: workflow.nodeGroups,
-		getNodeType,
-	});
+	let currentNodeGroups = workflow.nodeGroups;
+	const droppedViolations: WorkflowGroupViolation[] = [];
+	while (currentNodeGroups.length > 0) {
+		const result = validateWorkflowGroupsWithGroupIdentity({
+			nodes: workflow.nodes,
+			connectionsBySourceNode: workflow.connections,
+			nodeGroups: currentNodeGroups,
+			getNodeType,
+		});
+		if (result.valid) break;
 
-	if (result.valid) {
-		return [];
+		const dropped = result.violations.filter(shouldDrop);
+		if (dropped.length === 0) break;
+		droppedViolations.push(...dropped.map(stripWorkflowGroupIdentity));
+
+		const droppedGroups = new Set(dropped.map((violation) => violation.group));
+		const retainedGroups = currentNodeGroups.filter((group) => !droppedGroups.has(group));
+		const retainedGroupIds = new Set(retainedGroups.map((group) => group.id));
+		const droppedGroupIds = new Set(
+			[...droppedGroups]
+				.map((group) => group.id)
+				.filter((groupId) => !retainedGroupIds.has(groupId)),
+		);
+		currentNodeGroups = retainedGroups.map((group) => {
+			if (!group.visualLinks || droppedGroupIds.size === 0) return group;
+			const visualLinks = group.visualLinks.filter(
+				(link) =>
+					!(link.source.kind === 'group' && droppedGroupIds.has(link.source.id)) &&
+					!(link.target.kind === 'group' && droppedGroupIds.has(link.target.id)),
+			);
+			return visualLinks.length === group.visualLinks.length ? group : { ...group, visualLinks };
+		});
+		workflow.nodeGroups = currentNodeGroups;
 	}
 
-	const dropped = result.violations.filter(shouldDrop);
-	if (dropped.length === 0) {
-		return [];
-	}
-
-	const droppedGroups = new Set(dropped.map((violation) => violation.group));
-	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroups.has(group));
-
-	return dropped.map(stripWorkflowGroupIdentity);
+	return droppedViolations;
 }
 
 /**

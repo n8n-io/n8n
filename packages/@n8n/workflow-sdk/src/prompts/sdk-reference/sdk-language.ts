@@ -27,7 +27,7 @@ function renderRulesLines(): string {
 	return [
 		...Object.values(NODE_GROUPING_RULES).map((r) => `- ${r.sdkReference}`),
 		'- **Unique identity.** Group names and ids must be unique within the workflow.',
-		'- **Non-empty.** A group needs at least one node.',
+		'- **Empty groups need editor metadata.** A saved group with no members is valid only when it has a stored frame and its group-facing visual links agree with the executable node connections. The current `.group()` builder cannot author that richer empty-group state.',
 		'',
 		'Prefer grouping a linear range of nodes — they read most clearly — but that is a',
 		'readability guideline, not a rule the server enforces.',
@@ -71,14 +71,15 @@ const SAFE_METHODS_SENTENCE =
  * in `SDK_LANGUAGE_REFERENCE` below) and the MCP `get_sdk_reference` tool.
  *
  * The rules stated here must match what the server enforces on save:
- * - basic rules (unique id/name, non-empty): `validateWorkflowGroups`
+ * - basic rules (unique id/name and empty-group state): `validateWorkflowGroups`
  * - structural rules: `validateNodeSelectionForGrouping`
  * The four structural rules (and their save-path rejection messages) are sourced
  * from the shared `NODE_GROUPING_RULES` constant in `n8n-workflow`, so this doc,
  * the canvas, and the save path share one definition.
  *
- * Grouping DOES enforce a single entry/exit *boundary* (at most one incoming and
- * one outgoing main connection) via the `invalid-subgraph` rule. The stricter
+ * Grouping DOES enforce one entry member and one exit member at the boundary via
+ * the `invalid-subgraph` rule. Either member may have several crossing main
+ * connections. The stricter
  * per-node single-main-port check (`multiple-input/-output-branches`) is
  * extraction-only (`validateNodeSelectionForExtraction`) and is not stated here.
  */

@@ -120,11 +120,16 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).not.toContain('rejected on save');
 	});
 
-	it('states the single entry/exit boundary rule that grouping enforces', () => {
-		// reason: 'invalid-subgraph' — grouping rejects a group with more than one
-		// incoming or outgoing main connection (single entry/exit *boundary*).
-		expect(NODE_GROUPS_REFERENCE).toMatch(/single entry and exit/i);
-		expect(NODE_GROUPS_REFERENCE).toMatch(/incoming and one outgoing main connection/i);
+	it('states the one-entry-member/one-exit-member boundary rule that grouping enforces', () => {
+		// reason: 'invalid-subgraph' — grouping permits several crossing connections
+		// as long as they share one entry member and one exit member.
+		expect(NODE_GROUPS_REFERENCE).toMatch(/one boundary entry node and one boundary exit node/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/may each have several main connections/i);
+	});
+
+	it('distinguishes valid persisted empty groups from what the builder can author', () => {
+		expect(NODE_GROUPS_REFERENCE).toMatch(/saved group with no members is valid/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/current `.group\(\)` builder cannot author/i);
 	});
 
 	it('does not claim the extraction-only per-node single-main-port rule', () => {
@@ -169,8 +174,9 @@ describe('NODE_GROUPS_REFERENCE', () => {
 			);
 		});
 
-		it('states the at-least-one-member rule', () => {
-			expect(NODE_GROUPS_REFERENCE).toMatch(/at least one (node|member)/i);
+		it('does not claim every persisted group needs a member', () => {
+			expect(NODE_GROUPS_REFERENCE).not.toMatch(/needs? at least one (node|member)/i);
+			expect(NODE_GROUPS_REFERENCE).toMatch(/saved group with no members is valid/i);
 		});
 	});
 });

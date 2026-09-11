@@ -14,6 +14,9 @@ import {
 	type INode,
 	type INodeTypeDescription,
 	type INodeTypes,
+	type IWorkflowGroup,
+	type IWorkflowGroupFrame,
+	type IWorkflowGroupVisualLinkEndpoint,
 } from '../src';
 
 function makeNode(overrides: Partial<INode> = {}): INode {
@@ -73,6 +76,41 @@ function makeLinearGraph() {
 	};
 
 	return { nodes, connections };
+}
+
+const emptyGroupFrame: IWorkflowGroupFrame = {
+	position: [100, 200],
+	size: [240, 160],
+};
+
+function nodeEndpoint(id: string, index = 0) {
+	return { kind: 'node', id, port: { type: NodeConnectionTypes.Main, index } } as const;
+}
+
+function groupEndpoint(id: string) {
+	return {
+		kind: 'group',
+		id,
+		port: { type: NodeConnectionTypes.Main, index: 0 },
+	} as const;
+}
+
+function visualLink(
+	source: IWorkflowGroupVisualLinkEndpoint,
+	target: IWorkflowGroupVisualLinkEndpoint,
+) {
+	return { source, target };
+}
+
+function makeEmptyGroup(overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup {
+	return {
+		id: 'g1',
+		name: 'Empty Group',
+		nodeIds: [],
+		frame: { position: [...emptyGroupFrame.position], size: [...emptyGroupFrame.size] },
+		visualLinks: [],
+		...overrides,
+	};
 }
 
 function validateGrouping({
@@ -686,18 +724,166 @@ describe('validateWorkflowGroups', () => {
 		]);
 	});
 
-	it('reports a memberless group', () => {
+	it('accepts a standalone empty group with a valid frame', () => {
 		const graph = makeLinearGraph();
 
 		const result = validateWorkflowGroups({
 			nodes: graph.nodes,
 			connectionsBySourceNode: graph.connections,
-			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [] }],
+			nodeGroups: [makeEmptyGroup()],
 			getNodeType,
 		});
 
-		expectViolations(result, [{ code: 'empty-group', message: 'Group "Group" has no members.' }]);
+		expect(result).toEqual({ valid: true });
 	});
+
+	it('accepts a complete path when its canonical connection occurs exactly once', () => {
+		const graph = makeLinearGraph();
+		const group = makeEmptyGroup({
+			visualLinks: [
+				visualLink(nodeEndpoint('a'), groupEndpoint('g1')),
+				visualLink(groupEndpoint('g1'), nodeEndpoint('b')),
+			],
+		});
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [group],
+			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it.each([
+		['missing', undefined],
+		['non-positive', { position: [0, 0], size: [0, 160] }],
+		['non-finite', { position: [Number.NaN, 0], size: [240, 160] }],
+	] satisfies Array<[string, IWorkflowGroupFrame | undefined]>)(
+		'rejects an empty group with a %s frame',
+		(_condition, frame) => {
+			const result = validateWorkflowGroups({
+				nodes: [],
+				connectionsBySourceNode: {},
+				nodeGroups: [makeEmptyGroup({ frame })],
+				getNodeType,
+			});
+
+			expectViolations(result, [
+				{
+					code: 'invalid-empty-group-frame',
+					message:
+						'Empty group "Empty Group" must have a finite position and positive finite size.',
+				},
+			]);
+		},
+	);
+
+	it.each([
+		[
+			'malformed',
+			[
+				{
+					source: { kind: 'node', id: 'a' },
+					target: groupEndpoint('g1'),
+				},
+			],
+			'unsupported-visual-link',
+		],
+		[
+			'dangling',
+			[visualLink(nodeEndpoint('missing'), groupEndpoint('g1'))],
+			'unknown-node-endpoint',
+		],
+	] as const)('rejects a %s visual link', (_condition, visualLinks, code) => {
+		const result = validateWorkflowGroups({
+			nodes: [makeNode({ id: 'a', name: 'A' })],
+			connectionsBySourceNode: {},
+			nodeGroups: [makeEmptyGroup({ visualLinks: visualLinks as never })],
+			getNodeType,
+		});
+
+		expectViolations(result, [{ code }]);
+	});
+
+	it('rejects a directed cycle that passes through an empty group', () => {
+		const group = makeEmptyGroup({
+			visualLinks: [
+				visualLink(nodeEndpoint('a'), groupEndpoint('g1')),
+				visualLink(groupEndpoint('g1'), nodeEndpoint('b')),
+			],
+		});
+		const result = validateWorkflowGroups({
+			nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+			connectionsBySourceNode: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				B: { main: [[{ node: 'A', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+			nodeGroups: [group],
+			getNodeType,
+		});
+
+		expectViolations(result, [{ code: 'empty-group-cycle' }]);
+	});
+
+	it.each([
+		['missing', {}, 'missing-projected-connection'],
+		[
+			'duplicate',
+			{
+				A: {
+					main: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+							{ node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			},
+			'projected-connection-multiplicity',
+		],
+	] satisfies Array<[string, IConnections, string]>)(
+		'rejects a %s canonical connection occurrence',
+		(_condition, connectionsBySourceNode, code) => {
+			const group = makeEmptyGroup({
+				visualLinks: [
+					visualLink(nodeEndpoint('a'), groupEndpoint('g1')),
+					visualLink(groupEndpoint('g1'), nodeEndpoint('b')),
+				],
+			});
+			const result = validateWorkflowGroups({
+				nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+				connectionsBySourceNode,
+				nodeGroups: [group],
+				getNodeType,
+			});
+
+			expectViolations(result, [{ code }]);
+		},
+	);
+
+	it.each([
+		['a frame', { frame: emptyGroupFrame }],
+		['visual links', { visualLinks: [] }],
+	] satisfies Array<[string, Partial<IWorkflowGroup>]>)(
+		'rejects non-empty groups that retain %s',
+		(_condition, extra) => {
+			const result = validateWorkflowGroups({
+				nodes: [makeNode({ id: 'a', name: 'A' })],
+				connectionsBySourceNode: {},
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], ...extra }],
+				getNodeType,
+			});
+
+			expectViolations(result, [
+				{
+					code: 'non-empty-group-data',
+					message: 'Non-empty group "Group" must not retain empty-group frame or visual-link data.',
+				},
+			]);
+		},
+	);
 
 	it('reports a group member that does not exist in the workflow', () => {
 		const graph = makeLinearGraph();
@@ -891,14 +1077,14 @@ describe('validateWorkflowGroups', () => {
 			}),
 		).toEqual({ valid: true });
 
-		// …but basic violations are still reported.
+		// …but empty-group contract violations are still reported.
 		const result = validateWorkflowGroups({
 			nodes: graph.nodes,
 			connectionsBySourceNode: graph.connections,
 			nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [] }],
 			getNodeType: null,
 		});
-		expectViolations(result, [{ code: 'empty-group' }]);
+		expectViolations(result, [{ code: 'invalid-empty-group-frame' }]);
 	});
 
 	it('collects all violations, basic checks first', () => {
@@ -915,7 +1101,7 @@ describe('validateWorkflowGroups', () => {
 		});
 
 		expectViolations(result, [
-			{ groupId: 'g1', code: 'empty-group' },
+			{ groupId: 'g1', code: 'invalid-empty-group-frame' },
 			{ groupId: 'g2', code: 'invalid-subgraph' },
 		]);
 	});
@@ -939,6 +1125,14 @@ describe('makeGetNodeTypeForGrouping', () => {
 });
 
 describe('dropInvalidWorkflowGroups', () => {
+	it('leaves a valid empty group untouched', () => {
+		const group = makeEmptyGroup();
+		const workflow = { nodes: [], connections: {}, nodeGroups: [group] };
+
+		expect(dropInvalidWorkflowGroups(workflow, null)).toEqual([]);
+		expect(workflow.nodeGroups).toEqual([group]);
+	});
+
 	it('leaves a valid workflow untouched and reports nothing', () => {
 		const graph = makeLinearGraph();
 		const workflow = {
@@ -991,7 +1185,7 @@ describe('dropInvalidWorkflowGroups', () => {
 			expect.objectContaining({
 				groupId: 'g2',
 				groupName: 'Duplicate',
-				code: 'empty-group',
+				code: 'invalid-empty-group-frame',
 			}),
 		]);
 		expect(workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Duplicate', nodeIds: ['a'] }]);
@@ -1018,6 +1212,79 @@ describe('dropInvalidWorkflowGroups', () => {
 			}),
 		]);
 		expect(workflow.nodeGroups).toEqual([{ id: 'dup', name: 'First', nodeIds: ['a'] }]);
+	});
+
+	it('removes cross-owned links to a dropped group and preserves node connections', () => {
+		const source = makeEmptyGroup({
+			id: 'g1',
+			name: 'Source',
+			visualLinks: [visualLink(groupEndpoint('g1'), groupEndpoint('g2'))],
+		});
+		const malformedTarget = makeEmptyGroup({ id: 'g2', name: 'Target', frame: undefined });
+		const connections: IConnections = {
+			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+		};
+		const workflow = { nodes: [], connections, nodeGroups: [source, malformedTarget] };
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toEqual([
+			expect.objectContaining({ groupId: 'g2', code: 'invalid-empty-group-frame' }),
+		]);
+		expect(workflow.nodeGroups).toEqual([{ ...source, visualLinks: [] }]);
+		expect(workflow.connections).toBe(connections);
+		expect(workflow.connections).toEqual({
+			A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+		});
+	});
+
+	it('attributes a missing projection to its owning group and keeps an unrelated empty group', () => {
+		const valid = makeEmptyGroup({ id: 'valid', name: 'Valid' });
+		const invalid = makeEmptyGroup({
+			id: 'invalid',
+			name: 'Invalid',
+			visualLinks: [
+				visualLink(nodeEndpoint('a'), groupEndpoint('invalid')),
+				visualLink(groupEndpoint('invalid'), nodeEndpoint('b')),
+			],
+		});
+		const workflow = {
+			nodes: [makeNode({ id: 'a', name: 'A' }), makeNode({ id: 'b', name: 'B' })],
+			connections: {},
+			nodeGroups: [valid, invalid],
+		};
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toEqual([
+			expect.objectContaining({
+				groupId: 'invalid',
+				code: 'missing-projected-connection',
+			}),
+		]);
+		expect(workflow.nodeGroups).toEqual([valid]);
+	});
+
+	it('revalidates after each drop until the retained groups are valid', () => {
+		const missingFrame = makeEmptyGroup({ id: 'dup', name: 'Missing frame', frame: undefined });
+		const duplicate = makeEmptyGroup({ id: 'dup', name: 'Duplicate' });
+		const workflow = { nodes: [], connections: {}, nodeGroups: [missingFrame, duplicate] };
+
+		const violations = dropInvalidWorkflowGroups(workflow, null);
+
+		expect(violations).toEqual([
+			expect.objectContaining({ groupId: 'dup', code: 'duplicate-group-id' }),
+			expect.objectContaining({ groupId: 'dup', code: 'invalid-empty-group-frame' }),
+		]);
+		expect(workflow.nodeGroups).toEqual([]);
+		expect(
+			validateWorkflowGroups({
+				nodes: workflow.nodes,
+				connectionsBySourceNode: workflow.connections,
+				nodeGroups: workflow.nodeGroups,
+				getNodeType: null,
+			}),
+		).toEqual({ valid: true });
 	});
 
 	describe('with a shouldDrop predicate', () => {
