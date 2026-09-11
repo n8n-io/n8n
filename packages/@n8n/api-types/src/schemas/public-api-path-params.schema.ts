@@ -30,3 +30,4 @@ export const promotionDirectionParamSchema = z
 	.string()
 	.openapi({ param: { description: 'The direction of the promotion: apply or promote.' } });
 export const credentialIdParamSchema = stringIdParamSchema('The ID of the credential.');
+export const tagIdParamSchema = stringIdParamSchema('The ID of the tag.');

@@ -125,7 +125,7 @@
 		"GET /tags/{id}": {
 			"status": "gap"
 		},
-		"DELETE /tags/{id}": {
+		"DELETE /tags/{tagId}": {
 			"status": "gap"
 		},
 		"PUT /tags/{id}": {

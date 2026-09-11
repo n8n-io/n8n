@@ -136,6 +136,7 @@ describe('DELETE /tags/:id', () => {
 		const response = await authOwnerAgent.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
 	});
 
 	test('owner should delete the tag', async () => {
@@ -159,6 +160,15 @@ describe('DELETE /tags/:id', () => {
 		});
 
 		expect(deletedTag).toBeNull();
+	});
+
+	test('should return only the public tag fields', async () => {
+		const tag = await createTag({});
+
+		const response = await authOwnerAgent.delete(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body).sort()).toEqual(['createdAt', 'id', 'name', 'updatedAt']);
 	});
 
 	test('non-owner should not delete tag', async () => {
