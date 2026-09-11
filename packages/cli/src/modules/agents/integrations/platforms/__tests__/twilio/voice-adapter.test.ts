@@ -1,0 +1,551 @@
+import { LockService } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import { createHmac } from 'crypto';
+import { describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { CacheService } from '@/services/cache/cache.service';
+
+import {
+	SentenceAccumulator,
+	splitSentences,
+	TwilioVoiceAdapter,
+	VoiceTurnStore,
+} from '../../twilio-voice-adapter';
+
+const ACCOUNT_SID = 'AC123';
+const AUTH_TOKEN = 'token-secret';
+const PHONE_NUMBER = '+14155550123';
+const CALLER = '+14155550999';
+const CALL_SID = 'CA456';
+const WEBHOOK_URL = 'https://n8n.test/rest/projects/p1/agents/v2/a1/webhooks/twilioVoice';
+
+const chatSdk = {
+	Message: class {
+		constructor(props: Record<string, unknown>) {
+			Object.assign(this, props);
+		}
+	},
+	markdownToPlainText: (value: string) => value,
+	parseMarkdown: (value: string) => ({ type: 'root', children: [], value }),
+	stringifyMarkdown: (value: unknown) => String(value),
+} as unknown as TwilioVoiceAdapterChatSdk;
+
+type TwilioVoiceAdapterChatSdk = ConstructorParameters<typeof TwilioVoiceAdapter>[0]['chatSdk'];
+
+async function createTurnStore(scope = 'agent-1:twilioVoice:cred-1'): Promise<VoiceTurnStore> {
+	const globalConfig = mock<GlobalConfig>({
+		cache: {
+			backend: 'memory',
+			memory: { maxSize: 10 * 1024 * 1024, ttl: 60_000 },
+			redis: { prefix: 'cache', ttl: 60_000 },
+		},
+		executions: { mode: 'regular' },
+		redis: { prefix: 'n8n' },
+	} as GlobalConfig);
+	const cache = new CacheService(globalConfig);
+	await cache.init();
+	return new VoiceTurnStore(cache, Container.get(LockService), scope);
+}
+
+function signedRequest(url: string, fields: Record<string, string>): Request {
+	const form = new FormData();
+	for (const [key, value] of Object.entries(fields)) form.append(key, value);
+
+	const payload = Object.entries(fields)
+		.sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+			leftKey === rightKey ? leftValue.localeCompare(rightValue) : leftKey.localeCompare(rightKey),
+		)
+		.reduce((value, [key, item]) => `${value}${key}${item}`, url);
+	const signature = createHmac('sha1', AUTH_TOKEN).update(payload).digest('base64');
+
+	return new Request(url, {
+		method: 'POST',
+		headers: { 'x-twilio-signature': signature },
+		body: form,
+	});
+}
+
+function callFields(extra: Record<string, string> = {}): Record<string, string> {
+	return {
+		AccountSid: ACCOUNT_SID,
+		CallSid: CALL_SID,
+		From: CALLER,
+		To: PHONE_NUMBER,
+		...extra,
+	};
+}
+
+/** Build an adapter plus a handle to the agent turn it starts. */
+function createAdapter(turns: VoiceTurnStore) {
+	let finishAgent!: () => void;
+	const agentDone = new Promise<void>((resolve) => {
+		finishAgent = resolve;
+	});
+	// Resolves when the bridge starts the turn. Only then can the agent post,
+	// so tests that stream text wait for it exactly as production does.
+	let markStarted!: () => void;
+	const agentStarted = new Promise<void>((resolve) => {
+		markStarted = resolve;
+	});
+	const processMessage = vi.fn().mockImplementation(async () => {
+		markStarted();
+		await agentDone;
+	});
+
+	const adapter = new TwilioVoiceAdapter({
+		accountSid: ACCOUNT_SID,
+		authToken: AUTH_TOKEN,
+		phoneNumber: PHONE_NUMBER,
+		allowedCallers: [CALLER],
+		webhookUrl: WEBHOOK_URL,
+		verifySignature: true,
+		turns,
+		logger: mock(),
+		chatSdk,
+	});
+
+	return { adapter, processMessage, finishAgent, agentDone, agentStarted };
+}
+
+async function initialized() {
+	const context = createAdapter(await createTurnStore());
+	await context.adapter.initialize({
+		processMessage: context.processMessage,
+	} as unknown as Parameters<TwilioVoiceAdapter['initialize']>[0]);
+	return context;
+}
+
+/** Drive adapter.stream() by hand, one delta at a time. */
+function deltaStream() {
+	const queue: string[] = [];
+	let done = false;
+	let wake: (() => void) | null = null;
+	const bump = () => {
+		wake?.();
+		wake = null;
+	};
+	const iterable: AsyncIterable<string> = {
+		[Symbol.asyncIterator]: () => ({
+			async next(): Promise<IteratorResult<string>> {
+				for (;;) {
+					if (queue.length > 0) return { value: queue.shift()!, done: false };
+					if (done) return { value: '', done: true };
+					await new Promise<void>((resolve) => (wake = resolve));
+				}
+			},
+		}),
+	};
+	return {
+		iterable,
+		emit: (delta: string) => {
+			queue.push(delta);
+			bump();
+		},
+		close: () => {
+			done = true;
+			bump();
+		},
+	};
+}
+
+const threadId = `twilioVoice:${CALL_SID}`;
+const speechUrl = `${WEBHOOK_URL}?turn=t1`;
+const streamUrl = `${WEBHOOK_URL}?stream=1`;
+
+describe('splitSentences', () => {
+	it('returns only sentences a terminator plus whitespace has closed', () => {
+		expect(splitSentences('One. Two! Three')).toEqual({
+			complete: ['One.', 'Two!'],
+			rest: 'Three',
+		});
+	});
+
+	it('does not split inside a decimal number', () => {
+		expect(splitSentences('It costs 3.50 today')).toEqual({
+			complete: [],
+			rest: 'It costs 3.50 today',
+		});
+	});
+
+	it('keeps a run of terminators with its sentence', () => {
+		expect(splitSentences('Wow!!! Next')).toEqual({ complete: ['Wow!!!'], rest: 'Next' });
+	});
+
+	it('treats a newline as a boundary', () => {
+		expect(splitSentences('First line\nsecond')).toEqual({
+			complete: ['First line'],
+			rest: 'second',
+		});
+	});
+});
+
+describe('SentenceAccumulator', () => {
+	it('emits a sentence once the deltas that form it have arrived', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('Hello')).toEqual([]);
+		expect(accumulator.push(' there')).toEqual([]);
+		expect(accumulator.push('. ')).toEqual(['Hello there.']);
+	});
+
+	it('speaks the opening words before their sentence is finished', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('I have checked your')).toEqual([]);
+		// The sixth word proves the fifth is complete, so the cut is safe.
+		expect(accumulator.push(' order and it ')).toEqual(['I have checked your order']);
+	});
+
+	it('prefers a clause boundary over a bare word count', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('Yes I can do that, and here is why ')).toEqual(['Yes I can do that,']);
+	});
+
+	it('never cuts an opening chunk mid-word', () => {
+		const accumulator = new SentenceAccumulator();
+		// Looks like five words, but nothing proves the fifth finished — and it
+		// had not: the next delta continues it.
+		expect(accumulator.push('one two three four five')).toEqual([]);
+		expect(accumulator.push('teen ')).toEqual(['one two three four fiveteen']);
+	});
+
+	it('keeps the space between deltas', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('the parcel ')).toEqual([]);
+		expect(accumulator.push('left on Tuesday. ')).toEqual(['the parcel left on Tuesday.']);
+	});
+
+	it('cuts early only once, then waits for whole sentences', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('I have checked your order and ')).toEqual([
+			'I have checked your order',
+		]);
+		// Plenty of words, but the caller is now listening, so this waits.
+		expect(accumulator.push('it turns out that the parcel ')).toEqual([]);
+		expect(accumulator.push('left on Tuesday. ')).toEqual([
+			'and it turns out that the parcel left on Tuesday.',
+		]);
+	});
+
+	it('does not repeat a sentence it already emitted', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('One. ')).toEqual(['One.']);
+		expect(accumulator.push('Two. ')).toEqual(['Two.']);
+	});
+
+	it('emits several sentences that arrive in one delta', () => {
+		expect(new SentenceAccumulator().push('One. Two! Three. ')).toEqual(['One.', 'Two!', 'Three.']);
+	});
+
+	it('says nothing for punctuation with no words in it', () => {
+		expect(new SentenceAccumulator().push('... ')).toEqual([]);
+	});
+
+	it('returns the unterminated tail when the turn ends', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('Done. And a tail')).toEqual(['Done.']);
+		expect(accumulator.end()).toEqual(['And a tail']);
+		expect(accumulator.end()).toEqual([]);
+	});
+
+	it('speaks a whole message including its unterminated tail', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('Checking now. And a tail')).toEqual(['Checking now.']);
+		expect(accumulator.whole('A new message. With more')).toEqual([
+			'And a tail',
+			'A new message.',
+			'With more',
+		]);
+	});
+});
+
+describe('VoiceTurnStore', () => {
+	it('lets another main drain what this one queued', async () => {
+		const store = await createTurnStore();
+		expect(await store.create('CA1')).toBe(true);
+		await store.append('CA1', ['First.'], false);
+
+		const drained = await store.drainWhenReady('CA1', 0);
+		expect(drained?.pending).toEqual(['First.']);
+		expect(drained?.finished).toBe(false);
+
+		// Draining is destructive, so the next hop does not repeat it.
+		expect((await store.drainWhenReady('CA1', 0))?.pending).toEqual([]);
+	});
+
+	it('picks up a sentence another main appends after the wait began', async () => {
+		const store = await createTurnStore();
+		await store.create('CA1');
+
+		const waiting = store.drainWhenReady('CA1', 5_000);
+		const appended = new Promise<void>((resolve) => {
+			setTimeout(() => {
+				store.append('CA1', ['Late arrival.'], false).then(resolve, resolve);
+			}, 300);
+		});
+
+		expect((await waiting)?.pending).toEqual(['Late arrival.']);
+		await appended;
+	});
+
+	it('refuses a second queue for a call already in flight', async () => {
+		const store = await createTurnStore();
+		expect(await store.create('CA1')).toBe(true);
+		expect(await store.create('CA1')).toBe(false);
+	});
+
+	it('scopes queues per agent connection', async () => {
+		const mine = await createTurnStore('agent-1:twilioVoice:cred-1');
+		const theirs = await createTurnStore('agent-2:twilioVoice:cred-1');
+		await mine.create('CA1');
+		expect(await theirs.drainWhenReady('CA1', 0)).toBeUndefined();
+	});
+
+	it('reports the queue as gone once deleted', async () => {
+		const store = await createTurnStore();
+		await store.create('CA1');
+		await store.delete('CA1');
+		expect(await store.drainWhenReady('CA1', 0)).toBeUndefined();
+	});
+});
+
+describe('TwilioVoiceAdapter.handleWebhook', () => {
+	const twimlOf = async (response: Response) => await response.text();
+
+	it('rejects a request with a bad signature', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(
+			new Request(speechUrl, {
+				method: 'POST',
+				headers: { 'x-twilio-signature': 'nope' },
+				body: new FormData(),
+			}),
+		);
+		expect(response.status).toBe(401);
+	});
+
+	it('turns away a caller outside the allow list', async () => {
+		const { adapter } = await initialized();
+		const url = `${WEBHOOK_URL}?turn=t1`;
+		const response = await adapter.handleWebhook(
+			signedRequest(url, callFields({ From: '+14155550000', SpeechResult: 'hi' })),
+		);
+		expect(await twimlOf(response)).toContain('not allowed');
+	});
+
+	it('rejects a signed request from another Twilio account', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ AccountSid: 'ACother', SpeechResult: 'hi' })),
+		);
+		expect(response.status).toBe(400);
+	});
+
+	it('rejects a signed request for a different number', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ To: '+14155550000', SpeechResult: 'hi' })),
+		);
+		expect(response.status).toBe(400);
+	});
+
+	it('re-prompts once when it hears nothing, then gives up', async () => {
+		const { adapter } = await initialized();
+
+		const first = await twimlOf(
+			await adapter.handleWebhook(signedRequest(speechUrl, callFields())),
+		);
+		expect(first).toContain('I didn&apos;t hear anything.');
+		expect(first).toContain('empty=1');
+
+		const second = await twimlOf(
+			await adapter.handleWebhook(signedRequest(`${WEBHOOK_URL}?turn=t2&empty=1`, callFields())),
+		);
+		expect(second).toContain("I still didn't hear anything.");
+		expect(second).toContain('<Hangup/>');
+	});
+
+	it('does not re-run the agent when Twilio retries a finished turn', async () => {
+		const { adapter, processMessage, finishAgent, agentDone, agentStarted } = await initialized();
+
+		const firstHop = adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })),
+		);
+		await agentStarted;
+		const stream = deltaStream();
+		const streaming = adapter.stream(threadId, stream.iterable);
+		stream.emit('All done. ');
+		await firstHop;
+		stream.close();
+		await streaming;
+		finishAgent();
+		await agentDone;
+		await Promise.resolve();
+
+		// Drain to the end, which deletes the queue.
+		const finalBody = await twimlOf(
+			await adapter.handleWebhook(signedRequest(streamUrl, callFields())),
+		);
+		expect(finalBody).toContain('<Gather input="speech"');
+
+		// Twilio now retries the original request. The queue is long gone, so only
+		// the turn claim can stop the agent answering it a second time.
+		await adapter.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })));
+		expect(processMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('tells the caller when the agent turn fails', async () => {
+		const { adapter } = await initialized();
+		const failing = await createTurnStore('agent-9:twilioVoice:cred-9');
+		const broken = new TwilioVoiceAdapter({
+			accountSid: ACCOUNT_SID,
+			authToken: AUTH_TOKEN,
+			phoneNumber: PHONE_NUMBER,
+			allowedCallers: [CALLER],
+			webhookUrl: WEBHOOK_URL,
+			verifySignature: true,
+			turns: failing,
+			logger: mock(),
+			chatSdk,
+		});
+		await broken.initialize({
+			processMessage: vi.fn().mockRejectedValue(new Error('agent exploded')),
+		} as unknown as Parameters<TwilioVoiceAdapter['initialize']>[0]);
+		void adapter;
+
+		const body = await twimlOf(
+			await broken.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hi' }))),
+		);
+		expect(body).toContain('Sorry, something went wrong.');
+	});
+
+	it('greets the caller and gathers speech on the first request', async () => {
+		const { adapter } = await initialized();
+		const response = await adapter.handleWebhook(signedRequest(WEBHOOK_URL, callFields()));
+		const body = await twimlOf(response);
+		expect(body).toContain('<Say>Hello. How can I help you?</Say>');
+		expect(body).toContain('<Gather input="speech"');
+	});
+
+	it('speaks each sentence as it streams instead of waiting for the whole answer', async () => {
+		const { adapter, processMessage, finishAgent, agentDone, agentStarted } = await initialized();
+
+		// The caller speaks. The agent has produced one sentence by the time the
+		// first TwiML document has to go back.
+		const firstHop = adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ SpeechResult: 'what is the status?' })),
+		);
+		await agentStarted;
+		const stream = deltaStream();
+		const streaming = adapter.stream(threadId, stream.iterable);
+		stream.emit('The order shipped. ');
+		const firstBody = await twimlOf(await firstHop);
+
+		expect(processMessage).toHaveBeenCalledTimes(1);
+		expect(firstBody).toContain('<Say>The order shipped.</Say>');
+		expect(firstBody).toContain('stream=1');
+		// The answer is still being written, so the call must not be handed back yet.
+		expect(firstBody).not.toContain('<Gather');
+
+		// Second sentence arrives while the caller is hearing the first.
+		stream.emit('It arrives on Tuesday. ');
+		const secondBody = await twimlOf(
+			await adapter.handleWebhook(signedRequest(streamUrl, callFields())),
+		);
+		expect(secondBody).toContain('<Say>It arrives on Tuesday.</Say>');
+		expect(secondBody).not.toContain('<Say>The order shipped.</Say>');
+
+		// The agent finishes, so the last hop returns the turn to the caller.
+		stream.close();
+		await streaming;
+		finishAgent();
+		await agentDone;
+		await Promise.resolve();
+		const finalBody = await twimlOf(
+			await adapter.handleWebhook(signedRequest(streamUrl, callFields())),
+		);
+		expect(finalBody).toContain('<Gather input="speech"');
+		expect(finalBody).not.toContain('<Redirect');
+	});
+
+	it('joins the run already in flight when Twilio retries the same turn', async () => {
+		const { adapter, processMessage, agentStarted } = await initialized();
+
+		const firstHop = adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })),
+		);
+		await agentStarted;
+		const stream = deltaStream();
+		void adapter.stream(threadId, stream.iterable);
+		stream.emit('Working on it. ');
+		await firstHop;
+
+		stream.emit('Nearly there. ');
+		await adapter.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })));
+
+		expect(processMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('hangs up after speaking a message that ends the call', async () => {
+		const { adapter, finishAgent, agentDone, agentStarted } = await initialized();
+
+		const firstHop = adapter.handleWebhook(
+			signedRequest(speechUrl, callFields({ SpeechResult: 'approve it' })),
+		);
+		await agentStarted;
+		await adapter.postMessage(threadId, { markdown: 'Let me check. ' });
+		await firstHop;
+
+		await adapter.postMessage(threadId, { card: {} } as never);
+		finishAgent();
+		await agentDone;
+		await Promise.resolve();
+
+		const body = await twimlOf(await adapter.handleWebhook(signedRequest(streamUrl, callFields())));
+		expect(body).toContain('needs approval');
+		expect(body).toContain('<Hangup/>');
+		expect(body).not.toContain('<Gather');
+	});
+
+	it('acknowledges a slow agent quickly instead of leaving the caller in silence', async () => {
+		vi.useFakeTimers();
+		try {
+			const { adapter } = await initialized();
+			const firstHop = adapter.handleWebhook(
+				signedRequest(speechUrl, callFields({ SpeechResult: 'think hard' })),
+			);
+
+			// Under the 5s a later hop waits: the first hop must not take that long.
+			await vi.advanceTimersByTimeAsync(4_000);
+			const body = await twimlOf(await firstHop);
+
+			expect(body).toContain('<Say>One moment.</Say>');
+			expect(body).toContain('silent=1');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('gives up after too many silent hops', async () => {
+		vi.useFakeTimers();
+		try {
+			const { adapter } = await initialized();
+			const firstHop = adapter.handleWebhook(
+				signedRequest(speechUrl, callFields({ SpeechResult: 'think hard' })),
+			);
+			await vi.advanceTimersByTimeAsync(5_000);
+			await firstHop;
+
+			const lastHop = adapter.handleWebhook(
+				signedRequest(`${WEBHOOK_URL}?stream=1&silent=999`, callFields()),
+			);
+			await vi.advanceTimersByTimeAsync(5_000);
+			const body = await twimlOf(await lastHop);
+
+			expect(body).toContain('taking too long');
+			expect(body).toContain('<Hangup/>');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});

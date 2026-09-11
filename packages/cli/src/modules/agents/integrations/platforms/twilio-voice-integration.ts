@@ -1,8 +1,10 @@
 import type { AgentIntegrationConfig, AgentTwilioVoiceIntegrationSettings } from '@n8n/api-types';
+import { Logger, LockService } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
@@ -14,7 +16,7 @@ import {
 	type WebhookRequestResolution,
 } from '../agent-chat-integration';
 import { loadChatSdk } from '../esm-loader';
-import { TwilioVoiceAdapter, TwilioVoiceClient } from './twilio-voice-adapter';
+import { TwilioVoiceAdapter, TwilioVoiceClient, VoiceTurnStore } from './twilio-voice-adapter';
 
 @Service()
 export class TwilioVoiceIntegration extends AgentChatIntegration {
@@ -25,8 +27,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Twilio Voice';
 
 	readonly displayIcon = 'mic';
-
-	readonly disableStreaming = true;
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -45,6 +45,9 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 	constructor(
 		outboundHttp: OutboundHttp,
 		private readonly agentRepository: AgentRepository,
+		private readonly cacheService: CacheService,
+		private readonly lockService: LockService,
+		private readonly logger: Logger,
 	) {
 		super();
 		this.httpClient = outboundHttp.requests({
@@ -145,7 +148,13 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 			webhookUrl: ctx.webhookUrlFor(this.type),
 			// HACK: disable signature verification for testing
 			verifySignature: false,
-			httpClient: this.httpClient,
+			// Shared across mains: Twilio spreads the hops of one call over all of them.
+			turns: new VoiceTurnStore(
+				this.cacheService,
+				this.lockService,
+				`${ctx.agentId}:${this.type}:${ctx.credentialId}`,
+			),
+			logger: this.logger,
 			chatSdk,
 		});
 	}
@@ -157,7 +166,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 			platformAgentContext: {},
 			historyContext:
 				'You are speaking to the user on a phone call. Keep the response concise and easy to understand when read aloud.',
-			forceBuffered: true,
 		};
 	}
 
