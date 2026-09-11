@@ -1866,8 +1866,10 @@ describe('GET /workflows', () => {
 			test('should include workflows callable by the parent workflow based on callerPolicy', async () => {
 				const parentWorkflow = await createWorkflow({ name: 'Parent' }, member);
 
-				// Legacy stored callerPolicy: 'any' — behaves like unset, so it inherits the
-				// instance default ('workflowsFromSameOwner') and is not visible cross-project.
+				// Legacy stored callerPolicy: 'any' denies every caller, so the policy
+				// never makes it callable cross-project. Same-project workflows stay
+				// listed regardless of policy, because the list is a union of readable
+				// and callable workflows.
 				const crossProjectLegacyAnyWorkflow = await createWorkflow(
 					{
 						name: 'Cross Project Legacy Any Policy',
@@ -1877,8 +1879,6 @@ describe('GET /workflows', () => {
 					owner,
 				);
 
-				// Legacy stored callerPolicy: 'any' in the caller's own project — visible
-				// under the inherited default.
 				const sameProjectLegacyAnyWorkflow = await createWorkflow(
 					{
 						name: 'Same Project Legacy Any Policy',

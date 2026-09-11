@@ -14,6 +14,11 @@ type WorkflowWithCallerPolicy = Pick<IWorkflowBase, 'id' | 'settings'>;
 
 const VALID_POLICIES: readonly Policy[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
 
+/** Stored policy value that no longer exists, e.g. the removed `any`. Denies every caller. */
+const REMOVED_POLICY = 'removed' as const;
+
+type ResolvedPolicy = Policy | typeof REMOVED_POLICY;
+
 function isValidPolicy(policy: string): policy is Policy {
 	return VALID_POLICIES.some((validPolicy) => validPolicy === policy);
 }
@@ -111,16 +116,16 @@ export class SubworkflowPolicyChecker {
 	}
 
 	/**
-	 * Find the subworkflow's caller policy. A stored value outside the supported
-	 * policies, e.g. the removed `any`, counts as unset and resolves to the
-	 * instance default.
+	 * Find the subworkflow's caller policy. An unset policy resolves to the
+	 * instance default. A stored value outside the supported policies, e.g. the
+	 * removed `any`, denies every caller until the owner picks a new policy.
 	 */
-	private findPolicy(subworkflow: WorkflowWithCallerPolicy): Policy {
+	private findPolicy(subworkflow: WorkflowWithCallerPolicy): ResolvedPolicy {
 		const storedPolicy: string | undefined = subworkflow.settings?.callerPolicy;
 
-		if (storedPolicy !== undefined && isValidPolicy(storedPolicy)) return storedPolicy;
+		if (storedPolicy === undefined) return this.globalConfig.workflows.callerPolicyDefaultOption;
 
-		return this.globalConfig.workflows.callerPolicyDefaultOption;
+		return isValidPolicy(storedPolicy) ? storedPolicy : REMOVED_POLICY;
 	}
 
 	/**
@@ -154,16 +159,18 @@ export class SubworkflowPolicyChecker {
 		return callerIds.includes(parentWorkflowId);
 	}
 
-	private readonly denialReasons: Record<Policy, string> = {
+	private readonly denialReasons: Record<ResolvedPolicy, string> = {
 		none: 'Subworkflow may not be called by any workflow',
 		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
 		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
+		removed:
+			'Subworkflow stores a caller policy that no longer exists. Pick a new policy in the subworkflow settings',
 	};
 
 	private logDenial(
 		details: {
 			subworkflowId: string;
-			policy: Policy;
+			policy: ResolvedPolicy;
 		} & ({ parentWorkflowId: string } | { parentProjectId: string }),
 	) {
 		const { policy, ...context } = details;

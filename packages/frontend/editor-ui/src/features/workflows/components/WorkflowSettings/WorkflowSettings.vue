@@ -906,8 +906,8 @@ onMounted(async () => {
 	if (workflowSettingsData.saveManualExecutions === undefined) {
 		workflowSettingsData.saveManualExecutions = 'DEFAULT';
 	}
-	// A stored policy outside the supported options, e.g. the removed `any`, counts as
-	// unset: show the instance default, which saving then persists.
+	// A stored policy outside the supported options, e.g. the removed `any`, denies every
+	// caller at runtime. Show the instance default so saving persists a supported policy.
 	const validCallerPolicies: string[] = ['none', 'workflowsFromAList', 'workflowsFromSameOwner'];
 	if (
 		workflowSettingsData.callerPolicy === undefined ||

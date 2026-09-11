@@ -254,8 +254,8 @@ describe('WorkflowSettingsVue', () => {
 		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
 	});
 
-	// A workflow can still store the removed `any` policy. It counts as unset: the dialog
-	// shows the instance default, and saving persists it.
+	// A workflow can still store the removed `any` policy, which denies every caller at
+	// runtime. The dialog shows the instance default, and saving persists it as the fix.
 	it('should open with the instance default when the stored policy is the removed `any`', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		settingsStore.settings.workflowCallerPolicyDefaultOption = 'workflowsFromSameOwner';
