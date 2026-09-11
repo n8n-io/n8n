@@ -17,11 +17,9 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
-			// Sidebar starts collapsed; open it so the thread list is queryable.
-			await n8n.instanceAi.openSidebar();
-
-			// Click new thread button
+			// Start a new thread from the main navigation, outside the history popover.
 			await n8n.instanceAi.getNewThreadButton().click();
+			await expect(n8n.page).toHaveURL(/\/assistant$/);
 
 			// Should show empty input in the new thread
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
@@ -51,12 +49,9 @@ test.describe(
 			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
-			// Sidebar starts collapsed; open it so the new-thread button and
-			// thread list are queryable.
-			await n8n.instanceAi.openSidebar();
-
 			// Create second thread
 			await n8n.instanceAi.getNewThreadButton().click();
+			await expect(n8n.page).toHaveURL(/\/assistant$/);
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 10_000 });
 
 			await n8n.instanceAi.sendMessage(
