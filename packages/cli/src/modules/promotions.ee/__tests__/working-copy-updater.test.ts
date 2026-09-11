@@ -4,7 +4,6 @@ import {
 	mkdtemp,
 	readdir,
 	readFile,
-	realpath,
 	rename,
 	rm,
 	stat,
@@ -22,6 +21,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 		...actual,
 		rename: vi.fn(async (from: string, to: string) => await actual.rename(from, to)),
 		rm: vi.fn(async (target, opts) => await actual.rm(target, opts)),
+		mkdtemp: vi.fn(async (prefix: string) => await actual.mkdtemp(prefix)),
 	};
 });
 
@@ -142,9 +142,7 @@ describe('WorkingCopyUpdater', () => {
 	};
 
 	beforeEach(async () => {
-		// realpath so the ancestor-symlink check in applySelection does not trip
-		// over macOS's /var → /private/var.
-		root = await mkdtemp(path.join(await realpath(tmpdir()), 'n8n-working-copy-'));
+		root = await mkdtemp(path.join(tmpdir(), 'n8n-working-copy-'));
 		exportFolder = path.join(root, 'repository', 'n8n-export');
 		stagingFolder = path.join(root, 'staging');
 	});
@@ -233,6 +231,18 @@ describe('WorkingCopyUpdater', () => {
 
 			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
 				/two workflows with id "w1"/,
+			);
+		});
+
+		it('rejects two credentials that share an id as a bad request', async () => {
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/credentials/a-c1/credential.json': credentialFile('c1'),
+				'projects/alpha/credentials/b-c1/credential.json': credentialFile('c1'),
+			});
+
+			await expect(updater.readBranchLayout(exportFolder)).rejects.toThrow(
+				/two credentials with id "c1"/,
 			);
 		});
 	});
@@ -732,6 +742,62 @@ describe('WorkingCopyUpdater', () => {
 			expect((await readWrittenManifest()).workflows).toEqual([wf('w1')]);
 		});
 
+		it('accepts an export whose ancestor directory is a symbolic link', async () => {
+			// e.g. a container volume mount or a symlinked home on the path.
+			const realHome = path.join(root, 'real-home');
+			const linkedHome = path.join(root, 'linked-home');
+			const linkedExport = path.join(linkedHome, 'repository', 'n8n-export');
+			await mkdir(path.join(realHome, 'repository'), { recursive: true });
+			await symlink(realHome, linkedHome);
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			await updater.applySelection(
+				linkedExport,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			expect(
+				await readFile(
+					path.join(realHome, 'repository/n8n-export/projects/alpha/workflows/w1/workflow.json'),
+					'utf-8',
+				),
+			).toBe(workflowFile('w1'));
+		});
+
+		it('creates the temp working dir outside the git clone', async () => {
+			vi.mocked(mkdtemp).mockClear();
+			await writeTree(exportFolder, {
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+
+			await updater.applySelection(
+				exportFolder,
+				stagingFolder,
+				staging,
+				selection({ workflowIds: ['w1'] }),
+			);
+
+			const tempCall = vi
+				.mocked(mkdtemp)
+				.mock.calls.find(([p]) => String(p).includes('n8n-export-'));
+			expect(tempCall).toBeDefined();
+			// temp dir sits above the git clone (root), not inside it (root/repository)
+			expect(path.dirname(String(tempCall![0]))).toBe(root);
+			expect(await readdir(path.dirname(exportFolder))).toEqual(['n8n-export']);
+		});
+
 		it('removes the old directory of a renamed credential a selected workflow still uses', async () => {
 			await writeTree(exportFolder, {
 				'projects/alpha/project.json': projectFile,
@@ -1087,7 +1153,7 @@ describe('WorkingCopyUpdater', () => {
 				.mock.calls.find(([from]) => from === exportFolder)
 				?.at(1);
 			expect(aside).toEqual(expect.any(String));
-			expect(path.dirname(String(aside))).toBe(path.dirname(exportFolder));
+			expect(path.dirname(String(aside))).toBe(path.dirname(path.dirname(exportFolder)));
 			expect(path.basename(String(aside))).toMatch(/^\.n8n-export-bak-[0-9a-f-]{36}$/);
 			expect(aside).not.toBe(`${exportFolder}.bak`);
 		});

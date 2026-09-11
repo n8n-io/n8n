@@ -147,6 +147,7 @@ export class WorkingCopyUpdater {
 
 		await walk(resolvedBase);
 		this.assertUniqueEntityIds(collected);
+		this.assertUniqueDependencyIds(dependencies);
 		const state: BranchLayout = {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
@@ -175,6 +176,25 @@ export class WorkingCopyUpdater {
 				}
 				seen.set(entry.id, entry.target);
 			}
+		}
+	}
+
+	/**
+	 * Two dependency files sharing an id in one collection would make the import
+	 * manifest write reject a duplicate late, as an opaque 500. Catch it here as a
+	 * clear bad request, matching the entity check.
+	 */
+	private assertUniqueDependencyIds(dependencies: DependencyRef[]): void {
+		const seen = new Map<string, string>();
+		for (const dependency of dependencies) {
+			const key = `${dependency.collection}:${dependency.id}`;
+			const previous = seen.get(key);
+			if (previous !== undefined) {
+				throw new BadRequestError(
+					`The branch holds two ${dependency.collection} with id "${dependency.id}" (${previous} and ${dependency.target}). Remove the duplicate and retry.`,
+				);
+			}
+			seen.set(key, dependency.target);
 		}
 	}
 
@@ -287,16 +307,16 @@ export class WorkingCopyUpdater {
 			),
 		};
 		const parent = path.dirname(exportFolder);
-		// Reject a symlinked ancestor: realpath resolves every component, so a
-		// mismatch with the logical path means an intermediate directory is a
-		// symbolic link. resolveContained only checks from `parent` downward.
-		const resolvedParent = path.resolve(parent);
-		const realParent = await fs.realpath(parent).catch(() => resolvedParent);
-		if (realParent !== resolvedParent) {
-			throw new BadRequestError('The export path traverses a symbolic link. Remove it and retry.');
-		}
-		// Reject a symlink at the export path itself before any writes.
+		// Reject a symlink at the export path itself before any writes. Symlinks
+		// inside the export are caught by resolveContained during scan and overlay;
+		// symlinks in ancestors above the export belong to the operator's own
+		// filesystem (e.g. a container mount) and are left alone.
 		await this.resolveContained(parent, path.basename(exportFolder));
+
+		// Keep the temp and backup dirs one level above the git clone (`parent`),
+		// so a crash never leaves them inside the working tree for a commit to pick
+		// up. They stay on the export's filesystem, so the rename swap is atomic.
+		const tempBase = path.dirname(parent);
 
 		let workFolder: string | undefined;
 		let backupFolder: string | undefined;
@@ -305,7 +325,7 @@ export class WorkingCopyUpdater {
 			// A first push meets a branch with no export yet; create it so the temp
 			// copy and the later swap have a directory to work with.
 			await fs.mkdir(exportFolder, { recursive: true });
-			workFolder = await fs.mkdtemp(path.join(parent, `.${path.basename(exportFolder)}-`));
+			workFolder = await fs.mkdtemp(path.join(tempBase, `.${path.basename(exportFolder)}-`));
 
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
@@ -344,7 +364,7 @@ export class WorkingCopyUpdater {
 				selectedWorkflowIds: selection.workflowIds,
 			});
 
-			const backupPath = path.join(parent, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);
+			const backupPath = path.join(tempBase, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);
 			await fs.rename(exportFolder, backupPath);
 			backupFolder = backupPath;
 			await fs.rename(workFolder, exportFolder);
