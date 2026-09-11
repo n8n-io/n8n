@@ -289,10 +289,11 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
-/** Renders one app attachment: the thread is bound to the app, so the agent restores and builds it, never creates it. */
+/** Renders one app attachment: the thread is bound to the app, so the agent restores and edits it, never creates it. */
 function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
 	const namespace = attachment.namespace ? `, namespace \`${attachment.namespace}\`` : '';
-	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if apps/${attachment.namespace ?? '<namespace>'} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, call \`apps\` with action \`build\` and \`appId\` \`${attachment.appId}\`. Do not call \`apps\` with action \`create\` for it.`;
+	const appDir = `apps/${attachment.namespace ?? '<namespace>'}`;
+	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if ${appDir} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, edit its files under ${appDir} with the \`workspace_*\` tools and \`sandbox: 'app'\`; the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
 }
 
 /**

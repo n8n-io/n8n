@@ -104,7 +104,7 @@ describe('buildContextResourcesBlock — nodes attachment', () => {
 });
 
 describe('buildContextResourcesBlock — app attachment', () => {
-	it('binds the thread to an existing app and steers the agent to build it', () => {
+	it('binds the thread to an existing app and steers the agent to edit and publish it', () => {
 		const attachment: InstanceAiAppAttachment = {
 			type: 'app',
 			appId: 'app-1',
@@ -123,7 +123,13 @@ describe('buildContextResourcesBlock — app attachment', () => {
 		expect(prose).toContain(
 			'if apps/greeter is not in the app sandbox yet, call `apps` with action `restore` and `appId` `app-1` first',
 		);
-		expect(prose).toContain('action `build` and `appId` `app-1`');
+		expect(prose).toContain(
+			"edit its files under apps/greeter with the `workspace_*` tools and `sandbox: 'app'`",
+		);
+		expect(prose).toContain(
+			'action `publish` and `appId` `app-1` only when the user asks to publish',
+		);
+		expect(prose).not.toContain('action `build`');
 		expect(prose).toContain('Do not call `apps` with action `create`');
 	});
 
