@@ -1,3 +1,4 @@
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref } from 'vue';
 
@@ -48,7 +49,12 @@ export function usePromotionConnectionSave() {
 				};
 			}
 			case 'config-delete': {
-				await deletePromotionConfig(context, connectionId, write.direction);
+				try {
+					await deletePromotionConfig(context, connectionId, write.direction);
+				} catch (error) {
+					// A config that is already gone means the delete is done, so a retry can finish.
+					if (!(error instanceof ResponseError) || error.httpStatusCode !== 404) throw error;
+				}
 				const configs = { ...connection.configs };
 				delete configs[write.direction];
 				return { ...connection, configs };

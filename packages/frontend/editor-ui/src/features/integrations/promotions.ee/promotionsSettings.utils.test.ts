@@ -247,6 +247,26 @@ describe('planConnectionWrites', () => {
 		]);
 	});
 
+	it('deletes the saved Apply settings when Apply is turned off', () => {
+		const current = connection({ configs: { apply: applyConfig(), promote: promoteConfig() } });
+		const state = connectionFormFrom(current);
+		state.apply.enabled = false;
+
+		expect(planConnectionWrites(state, current)).toEqual([
+			{ kind: 'config-delete', direction: 'apply' },
+		]);
+	});
+
+	it('deletes the saved Promote settings when Promote is turned off', () => {
+		const current = connection({ configs: { promote: promoteConfig() } });
+		const state = connectionFormFrom(current);
+		state.promote.enabled = false;
+
+		expect(planConnectionWrites(state, current)).toEqual([
+			{ kind: 'config-delete', direction: 'promote' },
+		]);
+	});
+
 	it('adds Apply settings when Apply is turned on', () => {
 		const current = connection();
 		const state = connectionFormFrom(current);

@@ -50,7 +50,8 @@ let pendingLoad: Promise<void> = Promise.resolve();
 
 async function load() {
 	// Keep the list mounted during refresh so focus can return to a row.
-	isInitialLoading.value = !hasLoaded;
+	// A retry after an error must show loading, so the form mounts with loaded data.
+	isInitialLoading.value = !hasLoaded || loadError.value;
 	loadError.value = false;
 	try {
 		const [loadedProviders, connections] = await Promise.all([
