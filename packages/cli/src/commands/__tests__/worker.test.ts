@@ -91,6 +91,7 @@ describe('Worker', () => {
 			taskRunners: {},
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			regexEngine: { engine: 'js' },
 			queue: { bull: { gracefulShutdownTimeout: 20 }, workerPool: { enabled: false, name: '' } },
 			generic: { gracefulShutdownTimeout: 30 },
 			...globalConfigOverrides,
@@ -322,4 +323,8 @@ describe('Worker', () => {
 
 test('worker needs the expression engine', () => {
 	expect(new Worker().needsExpressionEngine).toBe(true);
+});
+
+test('worker needs the regex engine', () => {
+	expect(new Worker().needsRegexEngine).toBe(true);
 });

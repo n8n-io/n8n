@@ -261,3 +261,7 @@ test('exitWithCrash logs the crash message to the console', async () => {
 test('execute needs the expression engine', () => {
 	expect(new Execute().needsExpressionEngine).toBe(true);
 });
+
+test('execute needs the regex engine', () => {
+	expect(new Execute().needsRegexEngine).toBe(true);
+});

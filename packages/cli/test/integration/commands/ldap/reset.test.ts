@@ -366,4 +366,5 @@ describe('--projectId', () => {
 
 test('ldap:reset needs the expression engine', () => {
 	expect(new Reset().needsExpressionEngine).toBe(true);
+	expect(new Reset().needsRegexEngine).toBe(true);
 });

@@ -27,7 +27,12 @@ import {
 	StorageConfig,
 } from 'n8n-core';
 import { sleep } from '@n8n/utils/sleep';
-import { Expression, UnexpectedError } from 'n8n-workflow';
+import {
+	Expression,
+	resetUserRegexEngine,
+	setUserRegexEngine,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
@@ -93,6 +98,11 @@ export abstract class BaseCommand<F = never> {
 
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
+
+	/** Whether to init the PCRE2 engine. Takes effect only when `regexEngine.engine` is `pcre2`. */
+	protected needsRegexEngine = false;
+
+	private pcre2RegexEngine?: import('@n8n/regex-engine-pcre2').RegexEngine;
 
 	/**
 	 * Whether to seed missing `instance.id` / `signing.hmac` deployment-key rows.
@@ -271,6 +281,29 @@ export abstract class BaseCommand<F = never> {
 			// vm-configured instance fails loudly instead of silently using the legacy engine
 			Expression.setExpressionEngine(this.globalConfig.expressionEngine.engine);
 		}
+
+		await this.initRegexEngine();
+	}
+
+	/** The default `js` engine needs no setup: `safe-regex.ts` installs it at module load. */
+	private async initRegexEngine(): Promise<void> {
+		if (!this.needsRegexEngine || this.globalConfig.regexEngine.engine !== 'pcre2') return;
+
+		try {
+			const { initPcre2Engine, createPcre2RegexEngine } = await import('@n8n/regex-engine-pcre2');
+			await initPcre2Engine();
+			this.pcre2RegexEngine = createPcre2RegexEngine({
+				jsFlags: ['g', 'u', 'y'],
+				operationTimeoutMs: 250,
+			});
+			setUserRegexEngine(this.pcre2RegexEngine);
+			this.logger.info('Using the PCRE2 regular expression engine');
+		} catch (error) {
+			await this.exitWithCrash(
+				'Could not initialize the PCRE2 regex engine (see errors above for details).',
+				error,
+			);
+		}
 	}
 
 	/**
@@ -305,6 +338,12 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
+			if (this.pcre2RegexEngine) {
+				// Restore the default engine first: a user's regex evaluated during the
+				// rest of the shutdown must still find one.
+				resetUserRegexEngine();
+				this.pcre2RegexEngine.dispose();
+			}
 			await Promise.all([
 				CrashJournal.cleanup(),
 				this.dbConnection.close(),

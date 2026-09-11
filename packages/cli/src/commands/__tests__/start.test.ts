@@ -161,6 +161,7 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+			regexEngine: { engine: 'js' },
 			workflows: { useWorkflowPublicationService: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
@@ -218,6 +219,7 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				regexEngine: { engine: 'js' },
 				workflows: { useWorkflowPublicationService: false },
 			};
 
@@ -255,6 +257,7 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				outboundProxy: { mode: 'all' },
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
+				regexEngine: { engine: 'js' },
 				workflows: { useWorkflowPublicationService: false },
 			};
 
@@ -303,6 +306,7 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			outboundProxy: { mode: 'all' },
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
+			regexEngine: { engine: 'js' as const },
 			workflows: { useWorkflowPublicationService: false },
 		};
 
@@ -427,4 +431,8 @@ describe('Start - AuthRolesService initialization', () => {
 
 test('start needs the expression engine', () => {
 	expect(new Start().needsExpressionEngine).toBe(true);
+});
+
+test('start needs the regex engine', () => {
+	expect(new Start().needsRegexEngine).toBe(true);
 });

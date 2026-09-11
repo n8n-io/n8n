@@ -50,6 +50,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
+	override needsRegexEngine = true;
+
 	override needsTaskRunner = true;
 
 	override seedsInstanceIdentity = true;

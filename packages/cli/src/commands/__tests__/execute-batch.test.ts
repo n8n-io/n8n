@@ -116,3 +116,7 @@ test('should start a task runner', async () => {
 test('execute:batch needs the expression engine', () => {
 	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
 });
+
+test('execute:batch needs the regex engine', () => {
+	expect(new ExecuteBatch().needsRegexEngine).toBe(true);
+});

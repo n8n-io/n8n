@@ -4445,6 +4445,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@n8n/regex-engine-pcre2':
+        specifier: workspace:*
+        version: link:../@n8n/regex-engine-pcre2
       '@n8n/scheduler':
         specifier: workspace:*
         version: link:../@n8n/scheduler
