@@ -151,8 +151,10 @@ test.describe(
 			await n8n.canvas.nodeCreator.selectItem('Webhook');
 			await n8n.page.keyboard.press('Escape');
 
-			// Publish the workflow
+			// Publish the workflow and close the success modal, which opens once the
+			// publication is confirmed via push — it must not linger over the list view
 			await n8n.canvas.publishWorkflow();
+			await n8n.workflowActivationModal.close();
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
 			// Go back to workflows list
