@@ -225,7 +225,7 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagator.inject(trace.setSpan(context.active(), span), headers, defaultTextMapSetter);
+			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,

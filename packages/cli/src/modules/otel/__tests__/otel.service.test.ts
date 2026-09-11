@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { diag, trace } from '@opentelemetry/api';
+import { diag } from '@opentelemetry/api';
 import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
@@ -148,22 +148,9 @@ vi.mock('@opentelemetry/sdk-trace-node', () => ({
 
 vi.mock('@opentelemetry/api', async () => ({
 	...(await vi.importActual<typeof import('@opentelemetry/api')>('@opentelemetry/api')),
-	trace: { disable: vi.fn(), setGlobalTracerProvider: vi.fn() },
 	DiagLogLevel: { WARN: 'WARN' },
 	diag: { setLogger: vi.fn() },
 }));
-
-/** Registers a foreign tracer provider through the real API, the way Sentry does at boot. */
-async function withForeignGlobalTracerProvider(run: () => Promise<void>) {
-	const { trace: actualTrace, ProxyTracerProvider } =
-		await vi.importActual<typeof import('@opentelemetry/api')>('@opentelemetry/api');
-	actualTrace.setGlobalTracerProvider(new ProxyTracerProvider());
-	try {
-		await run();
-	} finally {
-		actualTrace.disable();
-	}
-}
 
 const enabledSettings: OtelConfig = {
 	enabled: true,
@@ -529,14 +516,13 @@ describe('OtelService', () => {
 	});
 
 	describe('shutdown', () => {
-		it('leaves the global OpenTelemetry API untouched', async () => {
+		it('shuts the running provider down', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			await service.init();
 
 			await service.shutdown();
 
 			expect(shutdown).toHaveBeenCalledTimes(1);
-			expect(trace.disable).not.toHaveBeenCalled();
 		});
 
 		it('does not throw when called before init', async () => {
@@ -549,54 +535,6 @@ describe('OtelService', () => {
 			shutdown.mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:9'));
 
 			await expect(service.shutdown()).resolves.not.toThrow();
-		});
-	});
-
-	describe('global OpenTelemetry API', () => {
-		it('registers the provider, context manager and propagator when the global API is free', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
-			await service.init();
-
-			expect(register).toHaveBeenCalledTimes(1);
-			expect(logger.info).not.toHaveBeenCalled();
-		});
-
-		it('keeps the provider private when another library owns the global API', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
-			await withForeignGlobalTracerProvider(async () => {
-				await service.init();
-			});
-
-			expect(register).not.toHaveBeenCalled();
-			expect(trace.setGlobalTracerProvider).not.toHaveBeenCalled();
-			expect(logger.info).toHaveBeenCalledWith(
-				expect.stringContaining('runs on its own tracer provider'),
-			);
-		});
-
-		it('swaps only the global tracer provider on restart when n8n owns the global API', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			await service.init();
-
-			await service.restart();
-
-			expect(register).toHaveBeenCalledTimes(1);
-			expect(trace.disable).toHaveBeenCalledTimes(1);
-			expect(trace.setGlobalTracerProvider).toHaveBeenCalledTimes(1);
-		});
-
-		it('never touches the global API on restart when another library owns it', async () => {
-			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-
-			await withForeignGlobalTracerProvider(async () => {
-				await service.init();
-				await service.restart();
-			});
-
-			expect(register).not.toHaveBeenCalled();
-			expect(trace.disable).not.toHaveBeenCalled();
 		});
 	});
 

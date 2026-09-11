@@ -2,8 +2,7 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
-import type { DiagLogger, Tracer } from '@opentelemetry/api';
+import type { DiagLogger, Tracer, TracerProvider } from '@opentelemetry/api';
 import { DiagLogLevel, ProxyTracerProvider, diag, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import {
@@ -36,13 +35,14 @@ export type OtelTestTraceResult = { success: true } | { success: false; error: s
 const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
 
-const OTEL_API_REGISTRY = Symbol.for('opentelemetry.js.api.1');
+// Deprecated in `@opentelemetry/api` 1.x, but the only public source of a no-op tracer provider.
 const noopTracerProvider = new ProxyTracerProvider();
 
-// `@opentelemetry/api` offers no query for a registered tracer provider, only the registry it writes to.
-function isGlobalTracerProviderTaken(): boolean {
-	const registry: unknown = Reflect.get(globalThis, OTEL_API_REGISTRY);
-	return isRecord(registry) && 'trace' in registry;
+function registeredGlobalTracerProvider(): TracerProvider | undefined {
+	const globalProvider = trace.getTracerProvider();
+	const delegate =
+		globalProvider instanceof ProxyTracerProvider ? globalProvider.getDelegate() : globalProvider;
+	return delegate === noopTracerProvider.getDelegate() ? undefined : delegate;
 }
 
 @Service()
@@ -50,6 +50,7 @@ export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
 	private provider?: NodeTracerProvider;
 	private ownsGlobalApi = false;
+	private hasLoggedForeignGlobalApiOwner = false;
 
 	constructor(
 		private readonly otelSettingsService: OtelSettingsService,
@@ -184,19 +185,26 @@ export class OtelService {
 	private registerGlobalApi(provider: NodeTracerProvider): void {
 		if (this.ownsGlobalApi) {
 			trace.disable();
-			trace.setGlobalTracerProvider(provider);
+			this.ownsGlobalApi = trace.setGlobalTracerProvider(provider);
 			return;
 		}
 
-		if (isGlobalTracerProviderTaken()) {
-			this.logger.info(
-				'Another library owns the global OpenTelemetry API, so n8n workflow tracing runs on its own tracer provider',
-			);
+		if (registeredGlobalTracerProvider()) {
+			this.logForeignGlobalApiOwner();
 			return;
 		}
 
 		provider.register();
-		this.ownsGlobalApi = true;
+		this.ownsGlobalApi = registeredGlobalTracerProvider() === provider;
+	}
+
+	private logForeignGlobalApiOwner(): void {
+		if (this.hasLoggedForeignGlobalApiOwner) return;
+
+		this.hasLoggedForeignGlobalApiOwner = true;
+		this.logger.info(
+			'Another library owns the global OpenTelemetry API, so n8n workflow tracing runs on its own tracer provider',
+		);
 	}
 
 	private async createTraceExporter(

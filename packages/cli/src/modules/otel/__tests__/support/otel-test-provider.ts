@@ -12,8 +12,8 @@ import type { OtelService } from '../../otel.service';
 
 /**
  * Minimal stand-in for `@opentelemetry/context-async-hooks`'
- * `AsyncLocalStorageContextManager` (the one `NodeSDK` registers by default in
- * production) — avoids adding that package as a test-only dependency. Without
+ * `AsyncLocalStorageContextManager` (the one `NodeTracerProvider.register()`
+ * installs in production) — avoids adding that package as a test-only dependency. Without
  * a real context manager registered, `context.with()` is a no-op (the default
  * `NoopContextManager` ignores the context it's given), so span nesting via
  * ambient context can't be exercised at all.
