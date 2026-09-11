@@ -110,18 +110,10 @@ describe('editor-ui vite aliases', () => {
 	 * reads `src`. The fix is an explicit pair: `"@n8n/x": [".../src/index.ts"]` beside `"@n8n/x/*"`.
 	 */
 	it('resolves the bare specifier of every entry package to src', () => {
-		// Each still resolves to `dist` for the typecheck while the bundle reads `src`. Give a package
-		// the explicit pair and delete it here; expect new type errors, since `dist` declarations are
-		// looser than the source they come from.
-		const KNOWN_DIST_FALLBACK = new Set([
-			'@n8n/api-types',
-			'@n8n/chat',
-			'@n8n/chat-hub',
-			'@n8n/constants',
-			'@n8n/i18n',
-			'@n8n/rest-api-client',
-			'@n8n/stores',
-		]);
+		// Empty, and it stays empty (N8N-385). Every entry package now carries the explicit pair, so
+		// the typecheck and the bundle read the same `src`. A new package that only gets the short
+		// `"@n8n/x*"` form fails this test instead of silently typechecking against `dist`.
+		const KNOWN_DIST_FALLBACK = new Set<string>([]);
 
 		const probe = join(editorUiDir, 'src', 'app', 'App.vue');
 		const configPath = ts.findConfigFile(probe, ts.sys.fileExists);

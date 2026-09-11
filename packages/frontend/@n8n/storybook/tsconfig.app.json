@@ -13,13 +13,16 @@
 			"../design-system/src/shims-modules.d.ts"
 		],
 		"paths": {
-			"@n8n/chat*": ["../chat/src*"],
+			"@n8n/chat": ["../chat/src/index.ts"],
+			"@n8n/chat/*": ["../chat/src/*"],
 			"@n8n/design-system": ["../design-system/src/index.ts"],
-			"@n8n/design-system*": ["../design-system/src*"],
-			"@n8n/composables*": ["../composables/src*"],
-			"@n8n/i18n*": ["../i18n/src*"],
-			"@n8n/stores*": ["../stores/src*"],
-			"@n8n/utils*": ["../../../@n8n/utils/src*"],
+			"@n8n/design-system/*": ["../design-system/src/*"],
+			"@n8n/composables/*": ["../composables/src/*"],
+			"@n8n/i18n": ["../i18n/src/index.ts"],
+			"@n8n/i18n/*": ["../i18n/src/*"],
+			"@n8n/stores": ["../stores/src/index.ts"],
+			"@n8n/stores/*": ["../stores/src/*"],
+			"@n8n/utils/*": ["../../../@n8n/utils/src/*"],
 			"@/*": ["../../editor-ui/src/*"]
 		}
 	},
