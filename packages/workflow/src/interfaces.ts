@@ -3591,11 +3591,44 @@ export interface IWaitingForExecutionSource {
 
 export type WorkflowId = IWorkflowBase['id'];
 
+export interface IWorkflowGroupFrame {
+	position: [number, number];
+	size: [number, number];
+}
+
+export interface IWorkflowGroupVisualLinkPort {
+	type: 'main';
+	index: number;
+}
+
+export interface IWorkflowGroupVisualLinkNodeEndpoint {
+	kind: 'node';
+	id: string;
+	port: IWorkflowGroupVisualLinkPort;
+}
+
+export interface IWorkflowGroupVisualLinkGroupEndpoint {
+	kind: 'group';
+	id: string;
+	port: IWorkflowGroupVisualLinkPort & { index: 0 };
+}
+
+export type IWorkflowGroupVisualLinkEndpoint =
+	| IWorkflowGroupVisualLinkNodeEndpoint
+	| IWorkflowGroupVisualLinkGroupEndpoint;
+
+export interface IWorkflowGroupVisualLink {
+	source: IWorkflowGroupVisualLinkEndpoint;
+	target: IWorkflowGroupVisualLinkEndpoint;
+}
+
 export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
 	description?: string;
+	frame?: IWorkflowGroupFrame;
+	visualLinks?: IWorkflowGroupVisualLink[];
 }
 
 export interface IWorkflowBase {
