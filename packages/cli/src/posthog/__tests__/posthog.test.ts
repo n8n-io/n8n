@@ -560,6 +560,65 @@ describe('PostHog', () => {
 		});
 	});
 
+	describe('getFeatureFlagsByUserId', () => {
+		const createdAt = new Date();
+
+		it('evaluates the actor at the epoch, having no signup date to send', async () => {
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlagsByUserId(userId);
+
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
+				personProperties: {
+					created_at_timestamp: '0',
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
+				},
+				groups: { company: instanceId },
+			});
+		});
+
+		/**
+		 * A cache slot holds the whole flag map, so sharing one between the two paths would
+		 * hand a real user an answer computed as though they signed up in 1970 — for every
+		 * flag, including ones belonging to other features.
+		 */
+		it('does not serve its epoch answer to a later real-user evaluation', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ 'test-flag': true }),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlagsByUserId(userId);
+			await ph.getFeatureFlags({ id: userId, createdAt });
+
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenLastCalledWith(
+				`${instanceId}#${userId}`,
+				expect.objectContaining({
+					personProperties: expect.objectContaining({
+						created_at_timestamp: createdAt.getTime().toString(),
+					}),
+				}),
+			);
+		});
+
+		it('caches its own path, so a burst of events costs one evaluation', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+				mockEvaluatedFlags({ 'test-flag': true }),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			await ph.getFeatureFlagsByUserId(userId);
+			await ph.getFeatureFlagsByUserId(userId);
+
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('setupExpressSessionContext', () => {
 		function createApp() {
 			const handlers: RequestHandler[] = [];

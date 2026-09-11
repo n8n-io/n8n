@@ -2472,11 +2472,12 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * | on | anything | on | on |
  * | on | explicit `false` override | on | off |
  *
- * The env var is the local override: set it and the feature is on, with no PostHog
- * involved, which is all that is needed to try this on a dev instance. With it unset the
- * flag decides, and both sides follow it — the relay evaluates it for the acting user of
- * each recorded event, so a rollout reaches writes and reads at the same time and needs
- * no deploy.
+ * The env var is the local override, and it wins over whatever PostHog says — including
+ * when PostHog is unreachable, since the override is applied to the resolved flags rather
+ * than instead of fetching them. Setting it is all that is needed to try this on a dev
+ * instance. With it unset the flag decides, and both sides follow it: the relay evaluates
+ * it for the acting user of each recorded event, so a rollout reaches writes and reads at
+ * the same time and needs no deploy.
  *
  * The last row is the kill switch and the one asymmetry left: an explicit override stops
  * the read while the env var keeps the record accruing, so a token regression can be

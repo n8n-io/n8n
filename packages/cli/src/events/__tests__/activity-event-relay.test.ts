@@ -9,7 +9,7 @@ import type {
 	SharedWorkflowRepository,
 } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 import type { PostHogClient } from '@/posthog';
@@ -40,6 +40,8 @@ describe('ActivityEventRelay', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	let eventService: EventService;
+	/** Shared so a test can count how often the gate consulted PostHog. */
+	let postHogClient: MockProxy<PostHogClient>;
 
 	/**
 	 * `enabled` is the env var and `rolloutFlag` is what PostHog answers for the acting
@@ -52,7 +54,6 @@ describe('ActivityEventRelay', () => {
 			diagnostics = true,
 		}: { rolloutFlag?: boolean; diagnostics?: boolean } = {},
 	) => {
-		const postHogClient = mock<PostHogClient>();
 		postHogClient.getFeatureFlagsByUserId.mockResolvedValue(
 			rolloutFlag ? { '114_instance_activity_context': true } : {},
 		);
@@ -73,6 +74,7 @@ describe('ActivityEventRelay', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		postHogClient = mock<PostHogClient>();
 		eventService = new EventService();
 		// Every event whose resource still exists resolves its project through one of these.
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
@@ -121,6 +123,28 @@ describe('ActivityEventRelay', () => {
 			await emitDeletion();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/** Saving a workflow emits several of these at once; they must ask PostHog once. */
+		it('asks PostHog once for a burst of events from one user', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			eventService.emit('workflow-created', {
+				user,
+				workflow: workflowWith([]),
+				publicApi: false,
+				projectId: 'project1',
+				projectType: 'personal',
+			});
+			eventService.emit('workflow-saved', {
+				user,
+				workflow: workflowWith([]),
+				publicApi: false,
+			});
+			await emitDeletion();
+
+			expect(postHogClient.getFeatureFlagsByUserId).toHaveBeenCalledTimes(1);
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(3);
 		});
 
 		/**

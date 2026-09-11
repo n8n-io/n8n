@@ -180,7 +180,13 @@ export class PostHogClient {
 		const { instanceId } = this.instanceSettings;
 		const fullId = [instanceId, user.id].join('#');
 
-		const cached = this.flagsCache.get(fullId);
+		// Keyed on every input the evaluation reads, not just the id. A caller that knows a
+		// user only by id sends a placeholder signup date, and a slot holds the whole flag
+		// map — so sharing one with the real-user path would hand a genuine user an answer
+		// computed for a different person, across every flag, not only this feature's.
+		const cacheKey = [fullId, user.createdAt.getTime()].join('#');
+
+		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
 			return cached;
 		}
@@ -196,7 +202,7 @@ export class PostHogClient {
 		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
 		if (Object.keys(data.featureFlags).length > 0) {
-			this.flagsCache.set(fullId, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+			this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
 		}
 
 		return data;

@@ -110,6 +110,9 @@ export class ActivityEventRelay extends EventRelay {
 	 *
 	 * Wrapping the map rather than each entry is what lets the log name the event it came from.
 	 */
+	/** In-flight gate checks, keyed by user, so one burst asks PostHog once. */
+	private readonly gateChecks = new Map<string, Promise<boolean>>();
+
 	/**
 	 * Whether this event's actor has the feature on.
 	 *
@@ -122,6 +125,25 @@ export class ActivityEventRelay extends EventRelay {
 	private async shouldRecord(userId: string): Promise<boolean> {
 		if (this.activityLogConfig.enabled) return true;
 
+		// Coalesced per user. Saving a workflow emits several of these events at once, and
+		// without this each one would open its own evaluation before the first resolved.
+		const inFlight = this.gateChecks.get(userId);
+		if (inFlight) return await inFlight;
+
+		const check = this.readGate(userId).finally(() => this.gateChecks.delete(userId));
+		this.gateChecks.set(userId, check);
+		return await check;
+	}
+
+	/**
+	 * Fails closed, so a user outside the rollout is never recorded on a guess.
+	 *
+	 * The cost is that a PostHog outage pauses recording rather than degrading it. Bounded
+	 * in practice: the client caches a user's flags for ten minutes and only replaces them
+	 * on a successful read, so an outage mid-window leaves an already-evaluated user alone
+	 * and reaches only users it has not seen yet.
+	 */
+	private async readGate(userId: string): Promise<boolean> {
 		try {
 			const flags = await this.postHogClient.getFeatureFlagsByUserId(userId);
 			return flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true;
