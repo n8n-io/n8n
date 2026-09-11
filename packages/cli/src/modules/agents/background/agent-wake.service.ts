@@ -220,7 +220,7 @@ export class AgentWakeService {
 			);
 			this.failures.delete(threadId);
 
-			// Results can arrive while the wake is running. Drain them after this turn.
+			// Check for results that arrived during this reply; an empty queue stops further checks.
 			this.scheduleLocal(threadId);
 		} catch {
 			if (signal.aborted) return;

@@ -32,9 +32,7 @@ export function useAgentExecutionUpdates(
 		return !threadId || event.data.threadId === threadId;
 	}
 
-	// Updates are broadcast per execution record and again on finalize, for every
-	// surface of the agent — so bursts are normal. Coalesce them into one trailing
-	// run instead of firing a fetch per message.
+	// Combine push notifications into one active refresh and one queued refresh.
 	let inFlight: Promise<void> | undefined;
 	let queued = false;
 	let disposed = false;
@@ -68,6 +66,7 @@ export function useAgentExecutionUpdates(
 	});
 	pushStore.pushConnect();
 
+	// Remove this listener and stop queued refreshes without disconnecting the shared connection.
 	onScopeDispose(() => {
 		disposed = true;
 		removeListener();

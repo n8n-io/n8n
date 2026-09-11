@@ -139,6 +139,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	} = {}): Promise<boolean> {
 		if (disposed) return false;
 		const continueId = params.continueSessionId?.value;
+		// Reject outdated session, request, and stream snapshots to preserve the current conversation.
 		const target = targetKey();
 		const version = ++historyVersion;
 		const streamAtStart = streamVersion;
@@ -186,6 +187,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			} else if (!silent) {
 				showError(error, locale.baseText('agents.chat.loadHistory.error'));
 			}
+			// Keep the current transcript and retry twice before waiting for another update or recovery event.
 			if (retryCount < 2) {
 				clearTimeout(retryTimer);
 				retryTimer = setTimeout(() => refreshHistoryFromPush(), TIME.SECOND * 2 ** retryCount++);
@@ -212,8 +214,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			...(params.continueSessionId ? { threadId: params.continueSessionId } : {}),
 		},
 		async () => {
-			// A live stream is already writing the transcript — let it finish. Checked
-			// again after the fetch, since a send can start while it is in flight.
+			// Defer history refreshes until the local stream ends to preserve streamed text.
 			if (isStreaming.value) {
 				refreshAfterStream = true;
 				return;
@@ -227,6 +228,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		},
 	);
 
+	// Recover missed updates when the preview reopens, reconnects, becomes visible, or changes session.
 	function refresh() {
 		retryCount = 0;
 		clearTimeout(retryTimer);
@@ -246,6 +248,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		streamVersion++;
 		refresh();
 	});
+	// Clear retry timers and ignore late responses when this chat closes.
 	onScopeDispose(() => {
 		disposed = true;
 		clearTimeout(retryTimer);
