@@ -4,8 +4,12 @@ import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
+// Pinned so the recorded model calls keep pointing at the workflow the replay creates.
+const TEST_LISTENER_WORKFLOW_ID = 'LstnWebhookTest1';
+
 function webhookWorkflow(name: string, path: string): Partial<IWorkflowBase> {
 	return {
+		id: TEST_LISTENER_WORKFLOW_ID,
 		name,
 		active: false,
 		nodes: [
@@ -57,10 +61,6 @@ test.describe(
 		test('arms the webhook test URL, receives a real request, and reads back the execution', async ({
 			n8n,
 		}) => {
-			// No replay recording yet. Record it locally:
-			// ANTHROPIC_API_KEY=... pnpm test:local:instance-ai instance-ai-test-listener.spec.ts
-			test.skip(!!process.env.CI, 'Replay recording pending');
-
 			const workflowName = 'Test Listener Webhook Workflow';
 			const workflow = await n8n.api.workflows.createWorkflow(
 				webhookWorkflow(workflowName, 'test-listener-intake'),
@@ -71,6 +71,10 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				`Listen on the test URL of the existing workflow named "${workflowName}" (ID: ${workflow.id}) so I can send it one real request. Do not publish it, do not inject sample trigger data, and do not create a new workflow. When the request arrives, tell me the exact value of the "greeting" field the Format node produced.`,
 			);
+
+			// Listening goes through the same permission gate as a manual run.
+			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
+			await n8n.instanceAi.getConfirmApproveButton().click();
 
 			// The card carries the exact URL the listener answers on; the workflow stays unpublished.
 			await expect(n8n.instanceAi.getTestListenerCard()).toBeVisible({ timeout: 120_000 });
@@ -89,7 +93,12 @@ test.describe(
 			await n8n.instanceAi.confirmTestRequestSent();
 
 			await n8n.instanceAi.waitForRunComplete(120_000);
-			await expect(n8n.instanceAi.getAssistantMessageText(/hello Ada/)).toBeVisible();
+			// The answer can quote the value more than once (prose and code), so match the first one.
+			await expect(n8n.instanceAi.getAssistantMessageText(/hello Ada/).first()).toBeVisible();
+
+			// The listener ran the workflow on the test URL, so it must still be unpublished.
+			const after = await n8n.api.workflows.getWorkflow(workflow.id);
+			expect(after.active).toBe(false);
 		});
 	},
 );
