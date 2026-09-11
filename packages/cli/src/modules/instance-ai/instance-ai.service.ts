@@ -75,6 +75,7 @@ import {
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
+	restoreApp,
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
@@ -289,11 +290,11 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
-/** Renders one app attachment: the thread is bound to the app, so the agent restores and edits it, never creates it. */
+/** Renders one app attachment: the thread is bound to the app, so the agent edits it, never creates it. */
 function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
 	const namespace = attachment.namespace ? `, namespace \`${attachment.namespace}\`` : '';
 	const appDir = `apps/${attachment.namespace ?? '<namespace>'}`;
-	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if ${appDir} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, edit its files under ${appDir} with the \`workspace_*\` tools and \`sandbox: 'app'\`; the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
+	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app and its source is in ${appDir}: edit the files there with the \`workspace_*\` tools and the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
 }
 
 /**
@@ -2038,6 +2039,32 @@ export class InstanceAiService {
 		return this.sandboxService.getCachedWorkspaceEntry(sandboxKey)?.workspace;
 	}
 
+	/**
+	 * Brings the bound app's source into its sandbox before the agent's first
+	 * tool call: the newest stored snapshot, or the starter template for an app
+	 * that has no source yet. Best-effort: a failure is logged and the agent
+	 * finds an empty directory, which its tools report.
+	 */
+	private async restoreBoundApp(
+		appId: string,
+		threadId: string,
+		appService: NonNullable<InstanceAiContext['appService']>,
+		appWorkspace: Workspace,
+	): Promise<void> {
+		try {
+			const result = await restoreApp({ appService, appWorkspace }, { action: 'restore', appId });
+			if ('error' in result) {
+				this.logger.warn('Bound app restore failed', { threadId, appId, message: result.message });
+			}
+		} catch (error) {
+			this.logger.warn('Bound app restore failed', {
+				threadId,
+				appId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
 	/** Whether a run is active on any thread of this process that builds the app. */
 	hasActiveRunForApp(appId: string): boolean {
 		for (const [threadId, boundAppId] of this.appIdByThread) {
@@ -2829,7 +2856,14 @@ export class InstanceAiService {
 						workspace: entry.workspace,
 						logger: this.logger,
 					}).prepare?.();
-					return await scopeWorkspaceForAgent(entry.workspace);
+					const scoped = await scopeWorkspaceForAgent(entry.workspace);
+					// Only for the app bound at run start: an app `create` makes mid-run
+					// scaffolds the directory itself. Idempotent: an occupied directory is
+					// left alone, so the agent never has to check or restore by hand.
+					if (scoped && context.appService && appId === boundAppId) {
+						await this.restoreBoundApp(appId, threadId, context.appService, scoped);
+					}
+					return scoped;
 				};
 				appWorkspace = createLazyRuntimeWorkspace({
 					id: 'instance-ai-app-workspace',
@@ -2850,6 +2884,7 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 					appWorkspace,
+					defaultSandbox: () => (this.appIdByThread.has(threadId) ? 'app' : 'thread'),
 				});
 				// A thread bound to an app at run start loads its skills into the app
 				// sandbox, so an app page never creates a thread sandbox nothing uses.
