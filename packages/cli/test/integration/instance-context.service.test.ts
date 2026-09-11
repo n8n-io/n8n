@@ -78,7 +78,7 @@ describe('InstanceContextService', () => {
 			enabled: true,
 		});
 
-		expect(blockOf(built)).toContain('Workflows that already exist here: 1');
+		expect(blockOf(built)).toContain('Workflows in this project: 1');
 		expect(blockOf(built)).toContain(
 			'"Lead enrichment" (workflow:' + workflow.id + ') [published]',
 		);
@@ -120,7 +120,7 @@ describe('InstanceContextService', () => {
 			expect(blockOf(built)).toContain('Ours');
 			expect(blockOf(built)).not.toContain('Their secret plan');
 			expect(blockOf(built)).not.toContain('Their deleted workflow');
-			expect(blockOf(built)).toContain('Workflows that already exist here: 1');
+			expect(blockOf(built)).toContain('Workflows in this project: 1');
 		});
 
 		it('returns nothing for an entry in a project the user cannot see', async () => {
@@ -220,7 +220,7 @@ describe('InstanceContextService', () => {
 
 			expect(blockOf(delta)).toContain('Slack account');
 			expect(blockOf(delta)).toContain('since the list earlier in this conversation');
-			expect(blockOf(delta)).not.toContain('Workflows that already exist here');
+			expect(blockOf(delta)).not.toContain('Workflows in this project');
 		});
 
 		it('builds nothing when nothing has happened since the last block', async () => {

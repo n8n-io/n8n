@@ -212,9 +212,36 @@ describe('InstanceContextService', () => {
 			});
 
 			expect(blockOf(built)).toContain('<instance-context>');
-			expect(blockOf(built)).toContain('Workflows that already exist here: 3');
+			expect(blockOf(built)).toContain('Workflows in this project: 3');
 			expect(blockOf(built)).toContain('"Lead enrichment" (workflow:wf-1) [published]');
 			expect(blockOf(built)).toContain('... and 2 more');
+		});
+
+		/**
+		 * The pairing a reader meets whenever work left a project: the feed records where the work
+		 * happened and keeps the entry, while the inventory reports what is there now. The empty
+		 * line has to read as a state, or it contradicts the section directly under it.
+		 */
+		it('says the inventory is empty now rather than never written, beside a feed that shows work', async () => {
+			const service = serviceWith();
+			workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
+			activityEventRepository.findFeed.mockResolvedValue([entry({ action: 'created' })]);
+
+			const block = blockOf(
+				await service.buildBlock({
+					user: USER,
+					projectId: PROJECT_ID,
+					cursor: null,
+					now: NOW,
+					enabled: true,
+				}),
+			);
+
+			expect(block).toContain('Workflows in this project: none right now.');
+			expect(block).not.toContain('Nothing has been built');
+			// The scope the emptiness is claimed over, so "none" cannot be read instance-wide.
+			expect(block).toContain('this project alone, not the whole');
+			expect(block).toContain('What changed recently:');
 		});
 
 		it('reports runs with their counts and points at the failure, not the newest run', async () => {
@@ -348,7 +375,7 @@ describe('InstanceContextService', () => {
 				});
 
 				expect(blockOf(built)).toContain('since the list earlier in this conversation');
-				expect(blockOf(built)).not.toContain('Workflows that already exist here');
+				expect(blockOf(built)).not.toContain('Workflows in this project');
 				expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
 			});
 

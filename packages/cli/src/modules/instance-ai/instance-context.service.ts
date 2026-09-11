@@ -484,7 +484,8 @@ export class InstanceContextService {
 }
 
 const initialPreamble = [
-	'What is going on in this instance. This is work that already exists and that you can pick up:',
+	'What is going on in this project. Every section below is this project alone, not the whole',
+	'instance. This is work that already exists and that you can pick up:',
 	'when the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually',
 	'the most recent thing here, and often the most recent failure. Name what you think they mean',
 	'and act on it rather than asking them to choose from a list they can already see.',
@@ -492,7 +493,8 @@ const initialPreamble = [
 	'what you do rather than what you say.',
 	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
 	'everything else that happened to the same resource, or `activity(action="list")` to look',
-	'further back than this window. An entry may name a resource that no longer exists.',
+	'further back than this window. An entry may name a resource that was since deleted, or that',
+	'moved to another project — the entry records where the work happened, so it stays here.',
 ];
 
 /**
@@ -508,7 +510,12 @@ const updatePreamble = [
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
 function renderInventory(inventory: Inventory): string[] {
-	if (inventory.total === 0) return ['Nothing has been built here yet.', ''];
+	// Both headings name the scope rather than saying "here", and the empty one is a state, not
+	// a history. This block is suppressed only when every leg is empty, so an empty inventory
+	// always sits above a feed or a run list that does show work — and an unqualified "nothing
+	// has been built" then reads as a contradiction of the section under it. It is also just
+	// wrong wherever the work was deleted or moved out rather than never written.
+	if (inventory.total === 0) return ['Workflows in this project: none right now.', ''];
 
 	const named = inventory.workflows.map(
 		(workflow) =>
@@ -519,7 +526,7 @@ function renderInventory(inventory: Inventory): string[] {
 	const more = inventory.total - inventory.workflows.length;
 
 	return [
-		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
+		`Workflows in this project: ${inventory.total}. Most recently worked on:`,
 		...named,
 		...(more > 0 ? [`  ... and ${more} more — \`workflows(action="list")\` for the rest.`] : []),
 		'',
