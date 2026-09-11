@@ -10,6 +10,7 @@ const defaultScopes = [
 	'Chat.ReadWrite',
 	'ChannelMessage.Read.All',
 	'OnlineMeetings.ReadWrite',
+	'ChannelMessage.ReadWrite',
 ];
 
 export class MicrosoftTeamsOAuth2Api implements ICredentialType {
