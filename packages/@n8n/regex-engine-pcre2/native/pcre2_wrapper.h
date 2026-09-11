@@ -77,6 +77,14 @@ public:
     // not once per match (embind previously re-copied the whole string on every call).
     void setSubject(const std::u16string& subject);
 
+    // Releases subject_'s storage once an operation (a single test/exec, or a whole
+    // matchAll/replace/split loop) is done with it. Without this, a cached handle -- which
+    // can live in the LRU pattern cache far longer than the operation that populated it --
+    // keeps holding a full copy of the last subject it matched, so cache-size-many distinct
+    // patterns each run once against a large subject retain cache-size copies of it
+    // indefinitely, not just for the duration of their own operation.
+    void clearSubject();
+
     MatchResult matchAt(size_t startOffset, bool anchored) const;
 
     // Called from the free-function callout registered on matchContext_ (not part of the

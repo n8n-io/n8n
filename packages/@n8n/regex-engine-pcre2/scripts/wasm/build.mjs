@@ -29,6 +29,16 @@ function run(cmd, args) {
   execFileSync(cmd, args, { cwd: PACKAGE_ROOT, stdio: 'inherit' });
 }
 
+// An uninitialized submodule leaves this directory empty; the Docker mount below would
+// otherwise hide that and fail deep inside the build with a confusing "file not found".
+const PCRE2_MARKER = path.join(PACKAGE_ROOT, 'vendor', 'pcre2', 'src', 'pcre2.h.generic');
+if (!existsSync(PCRE2_MARKER)) {
+  console.error(
+    'error: vendor/pcre2 is not initialized. Run `git submodule update --init --recursive` first.',
+  );
+  process.exit(1);
+}
+
 if (commandExists('docker')) {
   console.log(`==> Building via Docker (${EMSDK_IMAGE})`);
   run('docker', [

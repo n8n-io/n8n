@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+
 import {
 	createPcre2RegexEngine,
 	initPcre2Engine,
@@ -207,6 +208,22 @@ describe('handle caching', () => {
 			expect(engine.test('a+b', 'xxaaabxx')).toBe(true);
 		}
 	});
+
+	// A cached handle releases its native subject buffer at the end of every operation
+	// (test/exec/matchAll/replace/split) so it doesn't sit retained for as long as the
+	// handle stays cached. Repeating the exact same input across separate operations must
+	// still match correctly afterwards -- this would silently break if the JS-side
+	// same-subject memoization thought a subject was still set natively after it was cleared.
+	it('matches correctly on a repeated operation against the same input after release', () => {
+		const input = 'xxaaabxx';
+		for (let i = 0; i < 5; i++) {
+			expect(engine.test('a+b', input)).toBe(true);
+			expect(engine.exec('a+b', input)?.[0]).toBe('aaab');
+			expect(engine.matchAll('a+', input).map((m) => m[0])).toEqual(['aaa']);
+			expect(engine.replace('a+', input, '', 'X')).toBe('xxXbxx');
+			expect(engine.split('x+', input)).toEqual(['', 'aaab', '']);
+		}
+	});
 });
 
 // The native match/depth/heap limits bound one pcre2_match() call. These cover the
@@ -272,6 +289,11 @@ describe('handle cache bounding', () => {
 		}
 		// An evicted pattern recompiles transparently on its next use.
 		expect(bounded.test('pattern0', 'xx pattern0 xx')).toBe(true);
+	});
+
+	it('rejects maxCachedPatterns <= 0 instead of evicting a pattern it just compiled', () => {
+		expect(() => createPcre2RegexEngine({ maxCachedPatterns: 0 })).toThrow(/positive integer/);
+		expect(() => createPcre2RegexEngine({ maxCachedPatterns: -1 })).toThrow(/positive integer/);
 	});
 });
 

@@ -53,6 +53,7 @@ EMSCRIPTEN_BINDINGS(pcre2_wrapper) {
         .function("compileStatus", &Pcre2Wrapper::compileStatus)
         .function("namedGroups", &Pcre2Wrapper::namedGroups)
         .function("setSubject", &Pcre2Wrapper::setSubject)
+        .function("clearSubject", &Pcre2Wrapper::clearSubject)
         .function("matchAt", &Pcre2Wrapper::matchAt)
         ;
 

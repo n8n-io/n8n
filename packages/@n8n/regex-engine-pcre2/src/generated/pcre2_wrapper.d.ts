@@ -90,6 +90,8 @@ export declare class Pcre2Wrapper {
 	namedGroups(): NamedGroupVector;
 	/** Marshals `subject` into wasm memory once; matchAt() reuses it until the next call. */
 	setSubject(subject: string): void;
+	/** Releases subject_'s storage once an operation is done with it. */
+	clearSubject(): void;
 	matchAt(startOffset: number, anchored: boolean): MatchResult;
 	/** Frees the underlying wasm-heap C++ object. Must be called once the handle is no longer needed. */
 	delete(): void;
