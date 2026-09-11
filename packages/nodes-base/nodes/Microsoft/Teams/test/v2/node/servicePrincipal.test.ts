@@ -435,7 +435,7 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 	});
 
 	describe('channelMessage delete actions under SP', () => {
-		it.each(['softDeleteMessage'])(
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
 			'channelMessage:%s throws a static error and issues no request under SP',
 			async (operation) => {
 				selectSp({
