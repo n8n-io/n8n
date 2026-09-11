@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start. The rename was opt-in via `N8N_MIGRATE_FS_STORAGE_PATH`. That variable is removed and the rename always runs.
+The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start.
 
 ### When is action necessary?
 
