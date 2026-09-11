@@ -130,6 +130,19 @@ describe('system task provisioning', () => {
 		expect(row.intervalSeconds).toBe(60);
 	});
 
+	it('restamps a row another version provisioned, keeping the row and its cadence', async () => {
+		await provision();
+		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		await jobRepo.update({ id: inserted.id }, { payload: { n8nVersion: '0.0.1' } });
+
+		const summary = await provision();
+
+		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.payload).toEqual({ n8nVersion: N8N_VERSION });
+		expect(row.intervalSeconds).toBe(60);
+	});
+
 	it('lists a stored task as stale unless provisioned here or stamped by a newer version', async () => {
 		const booting = new SystemTaskScheduledJobOwner(jobRepo);
 		booting.declareDurable(TASK_NAME);

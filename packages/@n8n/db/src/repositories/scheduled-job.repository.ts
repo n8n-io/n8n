@@ -267,6 +267,17 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		await manager.update(ScheduledJob, ids, update);
 	}
 
+	/** Rewrites the payload only, leaving schedule and clock untouched. */
+	async updatePayload(
+		manager: EntityManager,
+		ids: number[],
+		payload: ScheduledJob['payload'],
+	): Promise<void> {
+		if (ids.length === 0) return;
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express.
+		await manager.update(ScheduledJob, ids, { payload } as QueryDeepPartialEntity<ScheduledJob>);
+	}
+
 	async deleteManyByIds(manager: EntityManager, ids: number[]): Promise<void> {
 		if (ids.length > 0) {
 			await manager.delete(ScheduledJob, ids);
