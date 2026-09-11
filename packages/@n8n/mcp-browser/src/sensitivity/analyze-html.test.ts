@@ -519,6 +519,57 @@ describe('analyzeHtmlSensitivity', () => {
 		expect(result.ok && result.hits).toEqual([{ type: 'password', value: padded }]);
 	});
 
+	// `readonly` plus `spellcheck=false` plus a long value is enough for the input
+	// pass to call the field sensitive on its own, so both passes read it. Read at
+	// two granularities the field yields overlapping hits, the longer one takes the
+	// span in `buildReplacements`, and the marker the model sees resolves back to
+	// the framing — so one field must be read at one granularity.
+	it('reads a prefixed field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="Bearer ${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: OPAQUE }]);
+	});
+
+	// The same overlap on an assignment: a whole-value hit would carry the name
+	// side into a capturable hit, which is what `ASSIGNMENT_NAME` exists to stop.
+	it('reads an assignment field the input pass also reaches token by token', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(
+				`<div role="dialog"><h2>Save your key</h2><input type="text" readonly spellcheck="false" value="GOOGLE_CLIENT_SECRET=${OPAQUE}"><button type="button">Copy</button></div>`,
+			),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: 'GOOGLE_CLIENT_SECRET=', captureBlocked: ASSIGNMENT_NAME },
+			{ type: 'password', value: OPAQUE },
+		]);
+	});
+
+	// Tokens are the hits only when the value has one. A presented value with no
+	// opaque run is a secret only as a whole, so it stays one hit rather than none.
+	it('keeps the whole value of a presented field with no opaque run', () => {
+		const phrase = 'please contact support';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${phrase}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: phrase }]);
+	});
+
+	// An editable field holds what the caller typed, not what the page wrote, so
+	// there is no framing to strip and the value is the secret whole.
+	it('keeps the whole value of an editable sensitive field', () => {
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="password" value="Bearer ${OPAQUE}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([{ type: 'password', value: `Bearer ${OPAQUE}` }]);
+	});
+
 	it('walks same-origin iframe and shadow-root bundle children', () => {
 		const result = analyzeHtmlSensitivity(
 			probe('<p>outer</p>', [

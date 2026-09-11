@@ -296,22 +296,52 @@ export function opaqueTokenCandidates(el: Element): SecretHit[] {
 export function opaqueFieldValues(container: Element): SecretHit[] {
 	const hits: SecretHit[] = [];
 	for (const field of Array.from(container.querySelectorAll('input, textarea'))) {
-		if (!field.hasAttribute('readonly') && !field.hasAttribute('disabled')) continue;
-		for (const value of sensitiveInputValues(field)) {
-			// `assignmentNames` leaves `NAME= value` alone because in prose that shape
-			// is `dGhpcw== copy` — a padded value with a control's label merged after
-			// it. A field's value carries no merged label, so the spacing is spacing.
-			const names = new Set(assignmentNames(value.replace(/=\s+/g, '=')));
-			for (const token of opaqueTokens(value)) {
-				hits.push(
-					names.has(token)
-						? { type: 'password', value: token, captureBlocked: ASSIGNMENT_NAME }
-						: { type: 'password', value: token },
-				);
-			}
-		}
+		if (!isPresentedField(field)) continue;
+		for (const value of sensitiveInputValues(field)) hits.push(...opaqueValueHits(value));
 	}
 	return hits;
+}
+
+/** A field holding what the page issued, rather than what the caller typed. */
+function isPresentedField(field: Element): boolean {
+	return field.hasAttribute('readonly') || field.hasAttribute('disabled');
+}
+
+/** The opaque runs in one field value, with any name side masked but not capturable. */
+function opaqueValueHits(value: string): SecretHit[] {
+	// `assignmentNames` leaves `NAME= value` alone because in prose that shape
+	// is `dGhpcw== copy` — a padded value with a control's label merged after
+	// it. A field's value carries no merged label, so the spacing is spacing.
+	const names = new Set(assignmentNames(value.replace(/=\s+/g, '=')));
+	return opaqueTokens(value).map((token) =>
+		names.has(token)
+			? { type: 'password', value: token, captureBlocked: ASSIGNMENT_NAME }
+			: { type: 'password', value: token },
+	);
+}
+
+/**
+ * Hits for a field its own signals already confirmed, read at the one
+ * granularity that field is read at anywhere.
+ *
+ * A presented field is read token by token, for the reason `opaqueFieldValues`
+ * is: the page wrote the framing around the value. It matters here because
+ * `readonly` plus `spellcheck=false` plus a long value confirms a field on its
+ * own, so a presented field in a confirmed container is read by both passes. Two
+ * granularities would yield overlapping hits, `buildReplacements` would give the
+ * longer one the span, and the marker the model sees would resolve back to the
+ * framing — capturable.
+ *
+ * A value with no opaque run of its own is a secret only as a whole — a
+ * passphrase, or an issued value under the floor — so it stays one hit. An
+ * editable field is whole for a different reason: it holds what the caller
+ * typed, so there is no framing to leave behind.
+ */
+export function sensitiveFieldHits(field: Element): SecretHit[] {
+	return sensitiveInputValues(field).flatMap((value) => {
+		const tokens = isPresentedField(field) ? opaqueValueHits(value) : [];
+		return tokens.length > 0 ? tokens : [{ type: 'password', value }];
+	});
 }
 
 // Scored on the inner match, reported as the whole token: a shape this class

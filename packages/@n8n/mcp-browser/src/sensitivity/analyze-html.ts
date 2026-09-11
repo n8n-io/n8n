@@ -14,7 +14,7 @@ import {
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
-	sensitiveInputValues,
+	sensitiveFieldHits,
 	SENSITIVE_ARIA_LABEL_PATTERN,
 	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
@@ -64,9 +64,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 				getAssociatedLabelText(field, document, labelsByControlIdMap),
 			);
 		if (!sensitive) continue;
-		for (const value of sensitiveInputValues(field)) {
-			collectHit(hits, { type: 'password', value });
-		}
+		for (const hit of sensitiveFieldHits(field)) collectHit(hits, hit);
 	}
 
 	// A console renders an issued credential as static text beside its label, with
