@@ -481,7 +481,11 @@ function validateNodeSelectionSubgraph<TNode extends INode>(
 	// members need not connect to each other. Extraction does not relax — a
 	// subworkflow has one trigger, one return, and one continuous path.
 	if (Array.isArray(selection) && relaxIo) {
-		selection = resolveBoundarySubgraphEndpoints(selectedNodeNames, adjacencyList);
+		// `start` / `end` name the single entry and exit that extraction wires into
+		// a subworkflow. A group has no single pair, and nothing reads these for a
+		// group: the collapsed canvas block remaps every boundary edge onto its own
+		// handles. So report none rather than picking an arbitrary member.
+		selection = { start: undefined, end: undefined };
 	}
 
 	if (Array.isArray(selection)) {
@@ -622,51 +626,4 @@ function findNonMainBoundaryConnection(
 	}
 
 	return null;
-}
-
-/**
- * Names the members where main connections enter and leave the group.
- *
- * Only extraction reads `start` / `end` (see `validateNodeSelectionForExtraction`
- * and `doExtractNodesIntoSubworkflow`). Grouping ignores them: the collapsed
- * canvas block remaps every boundary edge onto the group's own handles, so it
- * never needs to know which member an edge attached to. This exists so the
- * relaxed path still returns a well-formed `ExtractableSubgraphData`.
- *
- * A group may have many boundary edges attaching anywhere, so "the" entry and
- * exit are ambiguous. It reports a member that nothing inside the group feeds
- * (a true entry) and one that feeds nothing inside it (a true exit), falling
- * back to any boundary member when every edge attaches mid-chain.
- */
-function resolveBoundarySubgraphEndpoints(
-	nodeNames: Set<string>,
-	adjacencyList: IConnectionAdjacencyList,
-): ExtractableSubgraphData {
-	const entryCandidates: string[] = [];
-	const exitCandidates: string[] = [];
-	const hasInsideSource = new Set<string>();
-	const hasInsideTarget = new Set<string>();
-
-	for (const [sourceNodeName, connections] of adjacencyList.entries()) {
-		for (const connection of connections) {
-			if (connection.type !== NodeConnectionTypes.Main) continue;
-
-			const sourceInside = nodeNames.has(sourceNodeName);
-			const targetInside = nodeNames.has(connection.node);
-
-			if (sourceInside && targetInside) {
-				hasInsideSource.add(connection.node);
-				hasInsideTarget.add(sourceNodeName);
-			} else if (targetInside) {
-				entryCandidates.push(connection.node);
-			} else if (sourceInside) {
-				exitCandidates.push(sourceNodeName);
-			}
-		}
-	}
-
-	return {
-		start: entryCandidates.find((name) => !hasInsideSource.has(name)) ?? entryCandidates[0],
-		end: exitCandidates.find((name) => !hasInsideTarget.has(name)) ?? exitCandidates[0],
-	};
 }

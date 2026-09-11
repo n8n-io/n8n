@@ -1137,8 +1137,6 @@ describe('multi-entry/exit groups', () => {
 		});
 
 		expect(result.valid).toBe(true);
-		// The true entry is still preferred over the mid-chain one.
-		if (result.valid) expect(['B', 'C']).toContain(result.subGraphData.start);
 	});
 
 	it('accepts a connection out of a mid-group member', () => {
@@ -1160,10 +1158,9 @@ describe('multi-entry/exit groups', () => {
 		});
 
 		expect(result.valid).toBe(true);
-		if (result.valid) expect(result.subGraphData.end).toBe('D');
 	});
 
-	it('accepts a multi-entry/exit selection, resolving endpoints', () => {
+	it('accepts a multi-entry/exit selection', () => {
 		const result = validateNodeSelectionForGrouping({
 			nodes,
 			connectionsBySourceNode: connections,
@@ -1171,10 +1168,9 @@ describe('multi-entry/exit groups', () => {
 		});
 
 		expect(result.valid).toBe(true);
-		// Endpoints must be members, so the collapsed block can anchor its handles.
+		// Extraction endpoints do not apply to a group with several boundary edges.
 		if (result.valid) {
-			expect(['B', 'C']).toContain(result.subGraphData.start);
-			expect(result.subGraphData.end).toBe('D');
+			expect(result.subGraphData).toEqual({ start: undefined, end: undefined });
 		}
 	});
 
