@@ -24,7 +24,9 @@ SPEC_NAME="upgrade-cycle"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 N8N_REPO="${N8N_REPO:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 N8N_PORT="${N8N_PORT:-5714}"
-FROM_IMAGE="${FROM_IMAGE:-n8nio/n8n:latest}"
+# Pinned so the suite is repeatable; bump deliberately when the
+# compatibility baseline changes.
+FROM_IMAGE="${FROM_IMAGE:-n8nio/n8n:2.37.10}"
 PG_IMAGE="${PG_IMAGE:-postgres:16}"
 DB="${DB:-both}"
 WORK_ROOT="${WORK_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/${SPEC_NAME}.XXXXXX")}"
@@ -162,9 +164,16 @@ start_container() { # start the FROM image on the shared data dir
   if [ "$BACKEND" = "postgres" ]; then
     for kv in $(pg_env docker); do db_args+=(-e "$kv"); done
   fi
+  # --user + whole-home mount: files the container writes stay owned by the
+  # host user, so the local checkout can reuse the same data (Linux runners
+  # have no uid mapping). --add-host makes host.docker.internal resolve on
+  # Linux; Docker Desktop has it built in.
   docker run -d --name "$CONTAINER" \
+    --user "$(id -u):$(id -g)" \
+    --add-host=host.docker.internal:host-gateway \
     -p "${N8N_PORT}:5678" \
-    -v "$DATA_DIR:/home/node/.n8n" \
+    -v "$(dirname "$DATA_DIR"):/home/node" \
+    -e HOME=/home/node \
     -e N8N_DIAGNOSTICS_ENABLED=false \
     -e N8N_VERSION_NOTIFICATIONS_ENABLED=false \
     -e N8N_RUNNERS_ENABLED=false \
