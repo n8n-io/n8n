@@ -301,7 +301,17 @@ export class PostgresTrigger implements INodeType {
 			throw error;
 		}
 
-		const cleanUpDb = async () => {
+		// Cleanup runs at most once. A manual execution reaches it twice: the 60s
+		// timeout below calls it before rejecting, and n8n then calls closeFunction
+		// as that execution unwinds. Releasing the connection makes the second pass
+		// consequential — its `SELECT 1` health probe fails against a connection the
+		// first pass already returned, turning a cleanup that fully succeeded into a
+		// TriggerCloseError warning. The second caller joins the first pass instead:
+		// the connection is gone either way, so there is no UNLISTEN or DROP left for it
+		// to issue, but it must not be told cleanup finished before it actually has.
+		let cleanUp: Promise<void> | undefined;
+
+		const runCleanUp = async () => {
 			try {
 				try {
 					// check if the connection is healthy
@@ -335,7 +345,25 @@ export class PostgresTrigger implements INodeType {
 				}
 			} finally {
 				connection.client.removeListener('notification', onNotification);
+				try {
+					// Direct connections are only returned to the pool by done(), the same way the
+					// setup-failure path above releases them.
+					await connection.done();
+				} catch {
+					// Already released - by an earlier cleanup, or automatically by pg-promise when the
+					// connection was lost. done() throws in that state, and that must not mask the
+					// cleanup error we may be unwinding from.
+				}
 			}
+		};
+
+		const cleanUpDb = async () => {
+			// Holding the promise rather than a boolean means a caller that arrives while
+			// the first pass is still awaiting UNLISTEN joins that pass instead of
+			// returning early. Deactivation must not report itself finished while the
+			// trigger is still being dropped, or a reactivation could recreate it first.
+			cleanUp ??= runCleanUp();
+			await cleanUp;
 		};
 
 		connection.client.on('notification', onNotification);

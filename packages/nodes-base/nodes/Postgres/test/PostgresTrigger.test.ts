@@ -143,11 +143,20 @@ describe('pgTriggerFunction', () => {
 
 describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 	const setup = (additionalFields: IDataObject = {}, firesOn = 'INSERT') => {
+		// A pg-promise direct connection only answers queries until done() returns
+		// it; after that pg-promise throws. The mock mirrors that, because whether
+		// a second cleanup pass is harmless depends on exactly this behaviour.
+		let released = false;
 		const connection = {
 			none: vi.fn().mockResolvedValue(undefined),
 			any: vi.fn().mockResolvedValue([]),
-			query: vi.fn().mockResolvedValue([]),
-			done: vi.fn().mockResolvedValue(undefined),
+			query: vi.fn(async () => {
+				if (released) throw new Error('Loose request outside of an expired connection');
+				return [];
+			}),
+			done: vi.fn(async () => {
+				released = true;
+			}),
 			client: { on: vi.fn(), removeListener: vi.fn() },
 		};
 		const db = {
@@ -207,12 +216,86 @@ describe('PostgresTrigger.trigger (Table Row Change Events mode)', () => {
 		await expect(new PostgresTrigger().trigger.call(fns)).rejects.toThrow();
 		expect(connection.done).toHaveBeenCalled();
 	});
+
+	it('releases the connection when the trigger is closed', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await response.closeFunction?.();
+
+		expect(connection.done).toHaveBeenCalled();
+	});
+
+	it('does not surface a release failure when the connection is already gone', async () => {
+		const { connection, fns } = setup();
+		// pg-promise throws from done() once the connection context is gone — because it was
+		// released by an earlier cleanup or dropped automatically when the connection was lost.
+		// It throws synchronously there, not as a rejected promise, so model that.
+		connection.done.mockImplementation(() => {
+			throw new Error('Cannot invoke done() on a disconnected client');
+		});
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await expect(response.closeFunction?.()).resolves.toBeUndefined();
+	});
+
+	it('cleans up once, so a second close cannot fail against a released connection', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		// A manual execution reaches cleanup twice: its 60s timeout cleans up before
+		// rejecting, and n8n then calls closeFunction as the execution unwinds. The
+		// second pass must not probe a connection the first one returned to the pool.
+		await response.closeFunction?.();
+		await expect(response.closeFunction?.()).resolves.toBeUndefined();
+
+		expect(connection.done).toHaveBeenCalledTimes(1);
+		expect(connection.query).toHaveBeenCalledTimes(1);
+	});
+
+	it('makes a concurrent close join the in-flight cleanup rather than return early', async () => {
+		const { connection, fns } = setup();
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		// Park the first pass inside UNLISTEN. A guard that only records that cleanup
+		// has started lets the second caller resolve here, so deactivation reports
+		// itself finished while the trigger is still being dropped — and a reactivation
+		// can recreate that trigger before the first pass gets round to dropping it.
+		let releaseUnlisten: () => void = () => {};
+		connection.none.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseUnlisten = resolve;
+				}),
+		);
+
+		const first = response.closeFunction?.();
+		const second = response.closeFunction?.();
+		let secondSettled = false;
+		void second?.then(() => {
+			secondSettled = true;
+		});
+
+		await new Promise((resolve) => setImmediate(resolve));
+		// LISTEN during setup, then the UNLISTEN we are holding.
+		expect(connection.none).toHaveBeenCalledTimes(2);
+		expect(secondSettled).toBe(false);
+
+		releaseUnlisten();
+		await Promise.all([first, second]);
+
+		expect(secondSettled).toBe(true);
+		expect(connection.done).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('PostgresTrigger.trigger (Advanced mode)', () => {
 	const setup = (channelName: string) => {
 		const connection = {
 			none: vi.fn().mockResolvedValue(undefined),
+			any: vi.fn().mockResolvedValue([]),
+			query: vi.fn().mockResolvedValue([]),
+			done: vi.fn().mockResolvedValue(undefined),
 			client: { on: vi.fn(), removeListener: vi.fn() },
 		};
 		const db = { connect: vi.fn().mockResolvedValue(connection) };
@@ -255,6 +338,17 @@ describe('PostgresTrigger.trigger (Advanced mode)', () => {
 		await expect(new PostgresTrigger().trigger.call(fns)).rejects.toThrow(/Channel name must/);
 		expect(db.connect).not.toHaveBeenCalled();
 		expect(connection.none).not.toHaveBeenCalled();
+	});
+
+	// Both trigger modes share cleanUpDb, so the release has to hold here too.
+	it('releases the connection when the trigger is closed', async () => {
+		const { connection, fns } = setup('my_channel');
+		const response = await new PostgresTrigger().trigger.call(fns);
+
+		await response.closeFunction?.();
+
+		expect(connection.none).toHaveBeenCalledWith('UNLISTEN $1:name', ['my_channel']);
+		expect(connection.done).toHaveBeenCalled();
 	});
 });
 
