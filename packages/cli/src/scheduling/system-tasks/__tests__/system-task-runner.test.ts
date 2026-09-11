@@ -45,7 +45,7 @@ describe('SystemTaskRunner', () => {
 		const errorReporter = mock<ErrorReporter>();
 		const durableJobProvisioner = mock<DurableJobProvisioner>();
 		durableJobProvisioner.provision.mockResolvedValue(emptySummary);
-		durableJobProvisioner.deprovisionOwner.mockResolvedValue({ removed: 1 });
+		durableJobProvisioner.deprovisionUnchangedJob.mockResolvedValue({ removed: 1 });
 		const jobs = mock<ScheduledJobRepository>();
 		jobs.findPayloadsByOwnerIds.mockResolvedValue([]);
 		jobs.findPayloadsByOwnerType.mockResolvedValue([]);
@@ -652,13 +652,13 @@ describe('SystemTaskRunner', () => {
 	describe('removing stale durable jobs', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 		const stored = (ownerId: string, n8nVersion: string = N8N_VERSION) => ({
+			id: ownerId.length,
 			ownerId,
 			payload: { n8nVersion },
 		});
-		const ownerOf = (ownerId: string) => ({
-			ownerType: 'system-task',
-			ownerId,
-			ownerMemberId: null,
+		const asListed = (ownerId: string, n8nVersion: string = N8N_VERSION) => ({
+			id: ownerId.length,
+			payload: { n8nVersion },
 		});
 
 		it('removes the job of a task nothing registered', async () => {
@@ -667,8 +667,8 @@ describe('SystemTaskRunner', () => {
 
 			await runner.init();
 
-			expect(durableJobProvisioner.deprovisionOwner).toHaveBeenCalledExactlyOnceWith(
-				ownerOf('gone'),
+			expect(durableJobProvisioner.deprovisionUnchangedJob).toHaveBeenCalledExactlyOnceWith(
+				asListed('gone'),
 			);
 		});
 
@@ -679,8 +679,8 @@ describe('SystemTaskRunner', () => {
 
 			await runner.init();
 
-			expect(durableJobProvisioner.deprovisionOwner).toHaveBeenCalledExactlyOnceWith(
-				ownerOf('dummy'),
+			expect(durableJobProvisioner.deprovisionUnchangedJob).toHaveBeenCalledExactlyOnceWith(
+				asListed('dummy'),
 			);
 		});
 
@@ -704,9 +704,9 @@ describe('SystemTaskRunner', () => {
 
 				await runner.init();
 
-				expect(durableJobProvisioner.deprovisionOwner.mock.calls).toEqual([
-					[ownerOf('dummy')],
-					[ownerOf('other-dummy')],
+				expect(durableJobProvisioner.deprovisionUnchangedJob.mock.calls).toEqual([
+					[asListed('dummy')],
+					[asListed('other-dummy')],
 				]);
 			},
 		);
@@ -719,7 +719,7 @@ describe('SystemTaskRunner', () => {
 
 			await runner.init();
 
-			expect(durableJobProvisioner.deprovisionOwner).not.toHaveBeenCalled();
+			expect(durableJobProvisioner.deprovisionUnchangedJob).not.toHaveBeenCalled();
 		});
 
 		it('keeps a job a newer version stamped', async () => {
@@ -730,7 +730,7 @@ describe('SystemTaskRunner', () => {
 
 			await runner.init();
 
-			expect(durableJobProvisioner.deprovisionOwner).not.toHaveBeenCalled();
+			expect(durableJobProvisioner.deprovisionUnchangedJob).not.toHaveBeenCalled();
 		});
 
 		it('removes stale jobs only after provisioning the wanted ones', async () => {
@@ -742,7 +742,7 @@ describe('SystemTaskRunner', () => {
 			await runner.init();
 
 			const [provisioned] = durableJobProvisioner.provision.mock.invocationCallOrder;
-			const [removed] = durableJobProvisioner.deprovisionOwner.mock.invocationCallOrder;
+			const [removed] = durableJobProvisioner.deprovisionUnchangedJob.mock.invocationCallOrder;
 			expect(provisioned).toBeLessThan(removed);
 		});
 
@@ -758,10 +758,10 @@ describe('SystemTaskRunner', () => {
 			});
 		});
 
-		it('logs a stale job another instance already removed at debug', async () => {
+		it('logs a stale job another instance removed or took over since at debug', async () => {
 			const { runner, jobs, durableJobProvisioner, logger } = setup(durably);
 			jobs.findPayloadsByOwnerType.mockResolvedValue([stored('gone')]);
-			durableJobProvisioner.deprovisionOwner.mockResolvedValue({ removed: 0 });
+			durableJobProvisioner.deprovisionUnchangedJob.mockResolvedValue({ removed: 0 });
 
 			await runner.init();
 
@@ -779,7 +779,7 @@ describe('SystemTaskRunner', () => {
 			const error = new Error('delete failed');
 			const { runner, jobs, durableJobProvisioner, errorReporter, logger } = setup(durably);
 			jobs.findPayloadsByOwnerType.mockResolvedValue([stored('gone-1'), stored('gone-2')]);
-			durableJobProvisioner.deprovisionOwner.mockRejectedValueOnce(error);
+			durableJobProvisioner.deprovisionUnchangedJob.mockRejectedValueOnce(error);
 
 			await expect(runner.init()).resolves.toBeUndefined();
 
@@ -792,7 +792,7 @@ describe('SystemTaskRunner', () => {
 				name: 'gone-1',
 				error,
 			});
-			expect(durableJobProvisioner.deprovisionOwner).toHaveBeenCalledTimes(2);
+			expect(durableJobProvisioner.deprovisionUnchangedJob).toHaveBeenCalledTimes(2);
 		});
 
 		it('reports when the stored jobs cannot be listed and starts anyway', async () => {
@@ -806,7 +806,7 @@ describe('SystemTaskRunner', () => {
 				shouldBeLogged: false,
 				shouldIsolate: true,
 			});
-			expect(durableJobProvisioner.deprovisionOwner).not.toHaveBeenCalled();
+			expect(durableJobProvisioner.deprovisionUnchangedJob).not.toHaveBeenCalled();
 		});
 	});
 

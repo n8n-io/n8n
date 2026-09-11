@@ -21,6 +21,7 @@ import { DurableScheduler } from '../durable-scheduler';
 import { SystemTaskHandler } from './system-task-handler';
 import { systemTaskProvisionRequest } from './system-task-job';
 import { SystemTaskScheduledJobOwner } from './system-task-scheduled-job-owner';
+import type { StaleSystemTaskJob } from './system-task-scheduled-job-owner';
 import { SystemTaskTimer } from './system-task-timer';
 import { systemTaskType } from './system-task-type';
 
@@ -110,11 +111,11 @@ export class SystemTaskRunner {
 
 	/**
 	 * Delete the stored jobs of the system tasks this instance does not run
-	 * durably, unless a newer version wrote them. Never throws: a stale row must
-	 * not stop startup.
+	 * durably, unless a newer version wrote them or restamped them since the
+	 * listing. Never throws: a stale row must not stop startup.
 	 */
 	private async deprovisionStale(): Promise<void> {
-		let stale: string[];
+		let stale: StaleSystemTaskJob[];
 		try {
 			stale = await this.systemTaskOwner.findStale();
 		} catch (error) {
@@ -125,11 +126,12 @@ export class SystemTaskRunner {
 			return;
 		}
 
-		for (const name of stale) {
+		for (const { id, ownerId: name, payload } of stale) {
 			try {
-				const { removed } = await this.durableJobProvisioner.deprovisionOwner(
-					this.systemTaskOwner.owner(name),
-				);
+				const { removed } = await this.durableJobProvisioner.deprovisionUnchangedJob({
+					id,
+					payload,
+				});
 				if (removed > 0) {
 					this.logger.info('Removed the stale durable job of a system task', { name, removed });
 				} else {

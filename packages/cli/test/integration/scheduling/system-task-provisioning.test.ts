@@ -143,26 +143,62 @@ describe('system task provisioning', () => {
 		expect(row.intervalSeconds).toBe(60);
 	});
 
+	const store = async (name: string, n8nVersion: string) =>
+		await jobRepo.save(
+			jobRepo.create({
+				name: `system:${name}`,
+				...selfOwned(name),
+				taskType: `system:${name}`,
+				payload: { n8nVersion },
+				kind: 'interval',
+				intervalSeconds: 60,
+				nextRunAt: new Date(),
+			}),
+		);
+
 	it('lists a stored task as stale unless provisioned here or stamped by a newer version', async () => {
 		const booting = new SystemTaskScheduledJobOwner(jobRepo);
 		booting.declareDurable(TASK_NAME);
 		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
-		const store = async (name: string, n8nVersion: string) =>
-			await jobRepo.save(
-				jobRepo.create({
-					name: `system:${name}`,
-					...selfOwned(name),
-					taskType: `system:${name}`,
-					payload: { n8nVersion },
-					kind: 'interval',
-					intervalSeconds: 60,
-					nextRunAt: new Date(),
-				}),
-			);
 		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
-		await store('from-an-older-version', '0.0.1');
+		const older = await store('from-an-older-version', '0.0.1');
 
-		await expect(booting.findStale()).resolves.toEqual(['from-an-older-version']);
+		await expect(booting.findStale()).resolves.toEqual([
+			{ id: older.id, ownerId: 'from-an-older-version', payload: { n8nVersion: '0.0.1' } },
+		]);
+	});
+
+	it('removes a stale job as it was listed, with its occurrences', async () => {
+		const stale = await store('gone', '0.0.1');
+		const now = new Date();
+		await taskRepo.save(
+			taskRepo.create({
+				jobId: stale.id,
+				taskType: 'system:gone',
+				payload: {},
+				scheduledFor: now,
+				runAt: now,
+				status: 'pending',
+			}),
+		);
+		const [listed] = await owner.findStale();
+
+		await expect(provisioner.deprovisionUnchangedJob(listed)).resolves.toEqual({ removed: 1 });
+
+		expect(await jobRepo.countBy({ id: stale.id })).toBe(0);
+		expect(await taskRepo.countBy({ jobId: stale.id })).toBe(0);
+	});
+
+	it('keeps a listed job another version restamped before the delete ran', async () => {
+		const stale = await store('taken-over', '0.0.1');
+		const [listed] = await owner.findStale();
+		const newer = inc(N8N_VERSION, 'minor') as string;
+		await jobRepo.update({ id: stale.id }, { payload: { n8nVersion: newer } });
+
+		await expect(provisioner.deprovisionUnchangedJob(listed)).resolves.toEqual({ removed: 0 });
+
+		const row = await jobRepo.findOneByOrFail({ id: stale.id });
+		expect(row.payload).toEqual({ n8nVersion: newer });
 	});
 
 	it('converges on one row when two mains provision the same task at once', async () => {
