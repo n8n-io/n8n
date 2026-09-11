@@ -62,7 +62,7 @@ function normalizePattern(pattern) {
 			}
 			// Structurally significant escapes: class shorthands, boundaries, backrefs,
 			// unicode property escapes, anchors, control-verb-ish -- keep verbatim.
-			if (/[dDwWsSbBAZzGkKpPQEcRXCg]/.test(next) || /[1-9]/.test(next)) {
+			if (/[dDwWsSbBAZzGkKpPQEcRXCgHhVvN]/.test(next) || /[1-9]/.test(next)) {
 				flushLiteral();
 				let j = i + 2;
 				if ((next === 'k' || next === 'p' || next === 'P' || next === 'g') && pattern[j] === '{') {
@@ -143,6 +143,19 @@ function normalizePattern(pattern) {
 			out += pattern.slice(i, j);
 			i = j;
 			continue;
+		}
+
+		if (c === '{') {
+			// A bounded quantifier, e.g. {2,5} -- the bounds change matching power, so keep
+			// them verbatim rather than collapsing the digits as an ordinary literal run
+			// (which would merge a{2,5} and a{3,8} into the same equivalence class).
+			const boundMatch = /^\{\d*(?:,\d*)?\}/.exec(pattern.slice(i));
+			if (boundMatch) {
+				flushLiteral();
+				out += boundMatch[0];
+				i += boundMatch[0].length;
+				continue;
+			}
 		}
 
 		if ('.^$|)?*+{}=!<>:,-'.includes(c)) {
@@ -279,6 +292,12 @@ let totalAfter = 0;
 for (const target of targets) {
 	if (ONLY_FILES && !ONLY_FILES.has(target.file)) continue;
 	const filePath = path.join(FIXTURES_DIR, target.file);
+	// A category with zero retained cases has its fixture removed by build-corpus.mjs's
+	// manifest cleanup before this script runs -- not an error, just nothing to dedup.
+	if (!fs.existsSync(filePath)) {
+		console.log(`${target.file}: skipped (no fixture on disk)`);
+		continue;
+	}
 	const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
 	const subjects = loadSubjects(target.dir, parsed);
 

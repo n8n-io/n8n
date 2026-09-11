@@ -174,6 +174,19 @@ async function main() {
       continue;
     }
 
+    // The oracle carries no group names, so resultsEqual (ours-vs-oracle, native-vs-oracle)
+    // never compares namedGroups. Compare ours directly against native here, the only place
+    // both sides actually carry names, so a wrong name-to-index mapping in our engine doesn't
+    // get silently classified as agreement.
+    if (
+      native?.matched &&
+      ours.result.matched &&
+      !namedGroupsEqual(ours.result.namedGroups, native.namedGroups)
+    ) {
+      engineBugs.push({ ...record, reason: 'named-groups-mismatch-vs-native' });
+      continue;
+    }
+
     if (native === null) {
       esAgree.push({ ...record, validity: 'pcre2-only' });
     } else if (resultsEqual(native, realPcre2)) {
@@ -222,7 +235,7 @@ async function main() {
   // hand-curated). If a category disappears or every one of
   // its cases gets excluded between runs, its old file would otherwise linger on disk and
   // corpus.test.ts would keep exercising stale, no-longer-generated data.
-  const manifestFile = path.join(OUT_DIR, '.generated-manifest.json');
+  const manifestFile = path.join(OUT_DIR, '.generated-manifest');
   const previousManifest = fs.existsSync(manifestFile)
     ? JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
     : [];
