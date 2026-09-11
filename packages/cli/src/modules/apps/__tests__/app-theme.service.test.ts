@@ -9,7 +9,7 @@ import type { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview
 
 import { AppDraftService, patchTarball } from '../app-draft.service';
 import type { AppPublishService } from '../app-publish.service';
-import { AppThemeService } from '../app-theme.service';
+import { AppThemeService, deriveAppTheme } from '../app-theme.service';
 import type { App } from '../app.entity';
 import type { AppsService } from '../apps.service';
 
@@ -91,7 +91,86 @@ function createDraft(overrides: { existing?: string } = {}) {
 	return { draft: workspace, filesystem };
 }
 
+describe('deriveAppTheme', () => {
+	it('derives primary, contrast foreground, radius and spacing from the settings', () => {
+		const theme = deriveAppTheme({
+			mode: 'light',
+			primary: '#ff6900',
+			radius: 8,
+			density: 'compact',
+		});
+
+		expect(theme.mode).toBe('light');
+		expect(theme.settings).toEqual({
+			mode: 'light',
+			primary: '#ff6900',
+			radius: 8,
+			density: 'compact',
+		});
+		expect(theme.vars).toEqual({
+			'--primary': '#ff6900',
+			'--primary-foreground': '#fafafa',
+			'--ring': '#ff6900',
+			'--radius': '8px',
+			'--space-unit': '0.2rem',
+		});
+		expect(theme.darkVars).toBeUndefined();
+	});
+
+	it('picks dark text over a light primary and the template defaults when unset', () => {
+		const theme = deriveAppTheme({ mode: 'system', primary: '#fde68a' });
+
+		expect(theme.vars['--primary-foreground']).toBe('#0a0a0a');
+		expect(theme.vars['--radius']).toBe('4px');
+		expect(theme.vars['--space-unit']).toBe('0.25rem');
+		expect(theme.vars['--font-sans']).toBeUndefined();
+	});
+
+	it('tints light and dark surfaces with the primary hue', () => {
+		const theme = deriveAppTheme({ mode: 'system', primary: '#4f46e5', tone: 'tinted' });
+
+		// Indigo sits near 275° in OKLCH; every surface shares that hue at low chroma.
+		expect(theme.vars['--background']).toMatch(/^oklch\(98\.20% 0\.00\d+ 27\d\.\d+\)$/);
+		expect(theme.vars['--border']).toMatch(/^oklch\(90\.50% /);
+		expect(theme.darkVars?.['--background']).toMatch(/^oklch\(22\.00% /);
+		expect(theme.darkVars?.['--card']).toMatch(/^oklch\(25\.00% /);
+	});
+
+	it('keeps a gray primary from tinting anything', () => {
+		const theme = deriveAppTheme({ mode: 'system', primary: '#18181b', tone: 'tinted' });
+
+		expect(theme.vars['--background']).toMatch(/^oklch\(98\.20% 0\.000\d /);
+	});
+});
+
 describe('AppThemeService', () => {
+	it('drops the previously derived keys before merging a derived theme, and writes a .dark block', async () => {
+		const { service } = createService();
+		const { draft, filesystem } = createDraft({
+			existing:
+				':root {\n\t--chart-1: #ff00ff;\n\t--background: oklch(1 0 0);\n}\n.dark {\n\t--chart-1: #00ff00;\n\t--background: oklch(0 0 0);\n}\n',
+		});
+
+		await service.applyTheme(
+			'app-1',
+			{
+				mode: 'dark',
+				settings: { mode: 'dark', primary: '#000000' },
+				vars: { '--primary': '#000000' },
+				darkVars: { '--card': 'oklch(0.2 0 0)' },
+			},
+			USER,
+			{ draft },
+		);
+
+		const written = filesystem.writeFile.mock.calls.find(([file]) =>
+			String(file).endsWith('theme-overrides.css'),
+		)?.[1] as string;
+		expect(written).toBe(
+			':root {\n\t--chart-1: #ff00ff;\n\t--primary: #000000;\n}\n.dark {\n\t--chart-1: #00ff00;\n\t--card: oklch(0.2 0 0);\n}\n',
+		);
+	});
+
 	describe('with the app sandbox', () => {
 		it('writes both theme files into the app directory and snapshots the draft', async () => {
 			const { service, appsService, snapshotService } = createService();

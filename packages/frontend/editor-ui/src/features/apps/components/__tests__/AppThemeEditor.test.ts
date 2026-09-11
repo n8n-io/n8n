@@ -42,89 +42,63 @@ describe('AppThemeEditor', () => {
 		showMessage.mockReset();
 	});
 
-	it('saves the template defaults, deriving a coherent set from the accent alone', async () => {
+	it('saves the template defaults when the app has no theme yet', async () => {
 		const app = makeApp();
 		appsStore.applyAppTheme.mockResolvedValue(app);
 		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
 
-		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
-			'proj-1',
-			'app-1',
-			expect.objectContaining({
-				mode: 'system',
-				vars: expect.objectContaining({
-					'--primary': '#ff6900',
-					'--primary-foreground': expect.any(String),
-					'--ring': '#ff6900',
-					'--secondary': expect.any(String),
-					'--accent': expect.any(String),
-					'--radius': '4px',
-				}),
-			}),
-		);
+		expect(appsStore.applyAppTheme).toHaveBeenCalledWith('proj-1', 'app-1', {
+			mode: 'system',
+			primary: '#ff6900',
+			radius: 4,
+			density: 'comfortable',
+			tone: 'neutral',
+		});
 	});
 
-	it('starts from the app’s saved theme and recomputes the derived set from it', async () => {
+	it('starts from the app’s saved settings', async () => {
 		const app = makeApp({
-			theme: { mode: 'dark', vars: { '--primary': '#4f46e5', '--radius': '4px' } },
-		});
-		appsStore.applyAppTheme.mockResolvedValue(app);
-		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
-
-		await userEvent.click(getByTestId('app-theme-save'));
-
-		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
-			'proj-1',
-			'app-1',
-			expect.objectContaining({
+			theme: {
 				mode: 'dark',
-				vars: expect.objectContaining({ '--primary': '#4f46e5', '--ring': '#4f46e5' }),
-			}),
-		);
-	});
-
-	it('only ever sends the keys it manages — the backend merges them onto the live theme', async () => {
-		const app = makeApp({
-			theme: { mode: 'system', vars: { '--primary': '#18181b', '--chart-1': '#ff00ff' } },
+				vars: {},
+				settings: {
+					mode: 'dark',
+					primary: '#4f46e5',
+					radius: 8,
+					density: 'compact',
+					tone: 'tinted',
+				},
+			},
 		});
 		appsStore.applyAppTheme.mockResolvedValue(app);
 		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('app-theme-save'));
 
-		const [, , sentTheme] = appsStore.applyAppTheme.mock.calls[0];
-		expect(Object.keys(sentTheme.vars).sort()).toEqual(
-			[
-				'--accent',
-				'--accent-foreground',
-				'--primary',
-				'--primary-foreground',
-				'--radius',
-				'--ring',
-				'--secondary',
-				'--secondary-foreground',
-			].sort(),
+		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
+			'proj-1',
+			'app-1',
+			expect.objectContaining({ mode: 'dark', primary: '#4f46e5', radius: 8, tone: 'tinted' }),
 		);
 	});
 
-	it('sends the mode and radius the user picks', async () => {
+	it('sends the mode, radius, density and tone the user picks', async () => {
 		const app = makeApp();
 		appsStore.applyAppTheme.mockResolvedValue(app);
 		const { getByTestId } = renderEditor({ props: { projectId: 'proj-1', app } });
 
 		await userEvent.click(getByTestId('radio-button-dark'));
+		await userEvent.click(getByTestId('radio-button-spacious'));
+		await userEvent.click(getByTestId('radio-button-tinted'));
 		await fireEvent.update(getByTestId('app-theme-radius'), '12');
 		await userEvent.click(getByTestId('app-theme-save'));
 
 		expect(appsStore.applyAppTheme).toHaveBeenCalledWith(
 			'proj-1',
 			'app-1',
-			expect.objectContaining({
-				mode: 'dark',
-				vars: expect.objectContaining({ '--radius': '12px' }),
-			}),
+			expect.objectContaining({ mode: 'dark', radius: 12, density: 'spacious', tone: 'tinted' }),
 		);
 	});
 

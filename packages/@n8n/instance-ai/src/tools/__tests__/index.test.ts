@@ -241,6 +241,18 @@ describe('domain tool construction', () => {
 		expect(createAllTools(makeContext({ appService })).has('apps')).toBe(false);
 	});
 
+	it('exposes the app blueprint tool wherever apps is exposed', () => {
+		const appService = {} as InstanceAiContext['appService'];
+		const appWorkspace = {} as InstanceAiContext['appWorkspace'];
+
+		expect(
+			createOrchestratorDomainTools(makeContext({ appService, appWorkspace })).has('app-blueprint'),
+		).toBe(true);
+		expect(createOrchestratorDomainTools(makeContext({ appService })).has('app-blueprint')).toBe(
+			false,
+		);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});

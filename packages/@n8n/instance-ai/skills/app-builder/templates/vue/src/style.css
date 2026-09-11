@@ -16,6 +16,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+	/* Every spacing utility (p-4, gap-2, w-64) is a multiple of this; the theme's density scales it. */
+	--spacing: var(--space-unit);
 	--font-sans: var(--font-sans);
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -64,6 +66,7 @@
  * @n8n/design-system, so it can't reference those tokens directly.
  */
 :root {
+	--space-unit: 0.25rem;
 	--radius: 0.25rem;
 	--font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
 	--background: oklch(98.51% 0 89.88);

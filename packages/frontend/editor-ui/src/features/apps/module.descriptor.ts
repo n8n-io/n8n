@@ -1,8 +1,10 @@
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import type { NavigationGuard } from 'vue-router';
 
 import {
 	APP_DETAILS,
+	APP_NEW,
 	APP_PAGE_DETAILS,
 	APPS_VIEW,
 	PROJECT_APPS,
@@ -15,6 +17,12 @@ const i18n = useI18n();
 const AppsView = async () => await import('@/features/apps/AppsView.vue');
 const AppBuilderView = async () => await import('@/features/apps/AppBuilderView.vue');
 const PageView = async () => await import('@/features/apps/PageView.vue');
+
+// Apps are built in an assistant thread; without the assistant there is nothing to do here.
+const requireInstanceAi: NavigationGuard = (to) =>
+	useInstanceAiAvailable().value
+		? true
+		: { name: PROJECT_APPS, params: { projectId: to.params.projectId } };
 
 export const AppsModule: FrontendModuleDescription = {
 	id: 'apps',
@@ -40,16 +48,25 @@ export const AppsModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
+		// Before `apps/:appId` so "new" never reads as an app id.
+		{
+			name: APP_NEW,
+			path: 'apps/new',
+			props: true,
+			component: AppBuilderView,
+			beforeEnter: requireInstanceAi,
+			meta: {
+				projectRoute: true,
+				layout: 'instanceAi',
+				middleware: ['authenticated', 'custom'],
+			},
+		},
 		{
 			name: APP_DETAILS,
 			path: 'apps/:appId',
 			props: true,
 			component: AppBuilderView,
-			// Apps are built in an assistant thread; without the assistant there is nothing to do here.
-			beforeEnter: (to) =>
-				useInstanceAiAvailable().value
-					? true
-					: { name: PROJECT_APPS, params: { projectId: to.params.projectId } },
+			beforeEnter: requireInstanceAi,
 			meta: {
 				projectRoute: true,
 				layout: 'instanceAi',

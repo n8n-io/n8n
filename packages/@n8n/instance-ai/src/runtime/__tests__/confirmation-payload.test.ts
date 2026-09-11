@@ -1,4 +1,5 @@
 import {
+	appBlueprintResumeSchema,
 	instanceAiApprovalResumeSchema,
 	mcpConnectResumeSchema,
 	type InstanceAiConfirmRequest,
@@ -178,6 +179,27 @@ describe('confirmation payload → tool resume schema contract', () => {
 			request: { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] },
 			targets: [['mcp-servers', mcpConnectResumeSchema]],
 		},
+		{
+			label: 'app blueprint approval',
+			request: {
+				kind: 'appBlueprint',
+				approved: true,
+				blueprint: {
+					name: 'Greeter',
+					namespace: 'greeter',
+					summary: 'Greets visitors',
+					pages: [{ route: '/', purpose: 'Greeting' }],
+					workflows: [],
+					theme: { mode: 'system', primary: '#ff6900' },
+				},
+			},
+			targets: [['app-blueprint', appBlueprintResumeSchema]],
+		},
+		{
+			label: 'app blueprint change request',
+			request: { kind: 'appBlueprint', approved: false, feedback: 'Add a settings page' },
+			targets: [['app-blueprint', appBlueprintResumeSchema]],
+		},
 	];
 
 	const cases = rows.flatMap(({ label, request, targets }) =>
@@ -213,6 +235,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		setupWorkflowApply: true,
 		setupWorkflowTestTrigger: true,
 		mcpConnect: true,
+		appBlueprint: true,
 	} satisfies Record<InstanceAiConfirmRequestKind, true>;
 
 	it('covers every confirmation kind the API accepts', () => {

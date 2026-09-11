@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { agentPermissionSchema, dataTablePermissionSchema } from './app-binding.schema';
-import { appNameSchema, appNamespaceSchema } from './app.schema';
+import { appNameSchema, appNamespaceSchema, appThemeSettingsSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
@@ -314,6 +314,49 @@ export const appBindingMetaSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
+
+/**
+ * What the agent proposes to build before it creates an app. The card lets the
+ * user edit the name, namespace, workflows and theme, then approve or ask for
+ * changes; the resume carries the edited blueprint back.
+ */
+export const appBlueprintSchema = z.object({
+	name: appNameSchema,
+	namespace: appNamespaceSchema,
+	summary: z.string().trim().min(1).max(500),
+	pages: z
+		.array(
+			z.object({
+				/** Route path such as `/` or `/settings`. */
+				route: z.string().trim().min(1).max(255),
+				purpose: z.string().trim().min(1).max(300),
+			}),
+		)
+		.min(1)
+		.max(20),
+	/** Published workflows the app will call; each becomes a binding after approval. */
+	workflows: z
+		.array(
+			z.object({
+				workflowId: z.string(),
+				name: z.string(),
+				key: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+				purpose: z.string().trim().max(300).optional(),
+			}),
+		)
+		.max(20),
+	theme: appThemeSettingsSchema,
+});
+export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
+
+export const appBlueprintResumeSchema = z.object({
+	approved: z.boolean(),
+	/** The blueprint as the user left it in the card; present on approval. */
+	blueprint: appBlueprintSchema.optional(),
+	/** What to change; present when the user asked for changes instead of approving. */
+	feedback: z.string().trim().max(2000).optional(),
+});
+export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -735,6 +778,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'plan-review',
 	'resource-decision',
 	'continue',
+	'app-blueprint',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -777,6 +821,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
+				'app-blueprint shows the editable app proposal card, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
 				'continue shows a single primary button (used by pause-for-user)',
 		),
@@ -808,6 +853,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	appBinding: appBindingMetaSchema
 		.optional()
 		.describe('When present, renders the app binding approval UI instead of generic confirm'),
+	appBlueprint: appBlueprintSchema
+		.optional()
+		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -887,6 +935,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'app-blueprint':
+			return payload.appBlueprint !== undefined;
 		default:
 			return assertNever(inputType);
 	}

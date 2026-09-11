@@ -151,6 +151,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		publish: vi
 			.fn()
 			.mockResolvedValue({ versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' }),
+		applyTheme: vi.fn().mockResolvedValue(undefined),
 	};
 	return {
 		userId: 'user-1',
@@ -356,6 +357,28 @@ describe('apps tool', () => {
 				installed: true,
 				preview: PREVIEW_HINT,
 			});
+		});
+
+		it('applies the theme after the scaffold and reports a failure as a warning', async () => {
+			const context = createMockContext();
+			const theme = { mode: 'dark', primary: '#4f46e5', tone: 'tinted' };
+			await runCreate(context, { theme });
+
+			expect(appServiceMock(context, 'applyTheme')).toHaveBeenCalledWith('app-1', theme);
+			const order = appServiceMock(context, 'applyTheme').mock.invocationCallOrder[0];
+			const installOrder = executeCommandMock(context).mock.invocationCallOrder.at(-1);
+			expect(order).toBeGreaterThan(installOrder!);
+
+			appServiceMock(context, 'applyTheme').mockResolvedValue({ error: 'no source yet' });
+			const result = await runCreate(context, { theme });
+			expect(result.warnings).toEqual(['Theme not applied: no source yet']);
+		});
+
+		it('does not touch the theme when none is given', async () => {
+			const context = createMockContext();
+			await runCreate(context);
+
+			expect(appServiceMock(context, 'applyTheme')).not.toHaveBeenCalled();
 		});
 
 		it('installs the dependencies after the scaffold so the live preview can start', async () => {

@@ -13,9 +13,12 @@ export interface SidebarState {
 	toggle: () => void;
 }
 
-/** Narrows the thread sidebar to one app's threads, linked to that app's page. */
+/**
+ * Narrows the thread sidebar to one app's threads, linked to that app's page.
+ * `appId` is absent on the new-app page until the agent creates the app.
+ */
 export interface AppThreadScope {
-	appId: string;
+	appId?: string;
 	projectId: string;
 	name: string;
 }

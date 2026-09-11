@@ -28,11 +28,11 @@ export const pageRouteSchema = z
 	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
 
 // Flat CSS custom-property overrides applied on top of the shadcn-vue template's
-// default :root/.dark block. Open-ended by design: the Theme tab writes a handful
-// of derived keys (see AppThemeEditor.vue), but Instance AI can set any shadcn/
-// Tailwind variable directly by editing theme-overrides.css itself — the schema
-// only needs to keep the *shape* (a flat map of CSS custom properties) honest,
-// not gatekeep which properties exist.
+// default :root/.dark block. Open-ended by design: the server derives a handful
+// of keys from `appThemeSettingsSchema` (see app-theme.service.ts), but Instance
+// AI can set any shadcn/Tailwind variable directly by editing theme-overrides.css
+// itself — the schema only needs to keep the *shape* (a flat map of CSS custom
+// properties) honest, not gatekeep which properties exist.
 const CSS_CUSTOM_PROPERTY_NAME = /^--[a-zA-Z0-9-]+$/;
 
 export const appThemeVarsSchema = z.record(
@@ -42,9 +42,32 @@ export const appThemeVarsSchema = z.record(
 	z.string().trim().min(1).max(240),
 );
 
+export const appThemeModeSchema = z.enum(['light', 'dark', 'system']);
+
+// What the Theme tab and the `apps` tool choose from. The server turns these
+// into CSS variables so the contrast, tint and spacing maths lives in one place.
+export const appThemeSettingsSchema = z.object({
+	mode: appThemeModeSchema,
+	primary: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Must be a 6-digit hex color, e.g. "#ff6900"'),
+	/** Corner radius in px; the template default is 4. */
+	radius: z.number().int().min(0).max(32).optional(),
+	/** CSS font-family stack for body text; omitted keeps the template's own. */
+	font: z.string().trim().min(1).max(240).optional(),
+	/** Scales every spacing utility (padding, gap, sizes) at once. */
+	density: z.enum(['compact', 'comfortable', 'spacious']).optional(),
+	/** `tinted` derives surfaces (background, cards, borders) from the primary hue. */
+	tone: z.enum(['neutral', 'tinted']).optional(),
+});
+
+export type AppThemeSettings = z.infer<typeof appThemeSettingsSchema>;
+
 export const appThemeSchema = z.object({
-	mode: z.enum(['light', 'dark', 'system']),
+	mode: appThemeModeSchema,
 	vars: appThemeVarsSchema,
+	/** Variables that apply in dark mode only, written into a `.dark` block. */
+	darkVars: appThemeVarsSchema.optional(),
+	/** The choices the variables were derived from; absent for hand-written themes. */
+	settings: appThemeSettingsSchema.optional(),
 });
 
 export type AppTheme = z.infer<typeof appThemeSchema>;

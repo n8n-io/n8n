@@ -1,13 +1,6 @@
-/**
- * Flat CSS custom-property overrides on top of the shadcn-vue template's default
- * :root/.dark block. Open-ended: the Theme tab writes a handful of derived keys
- * (see AppThemeEditor.vue), but Instance AI can set any shadcn/Tailwind variable
- * directly by editing theme-overrides.css, so this isn't a fixed key set.
- */
-export interface AppTheme {
-	mode: 'light' | 'dark' | 'system';
-	vars: Record<string, string>;
-}
+import type { AppTheme, AppThemeSettings } from '@n8n/api-types';
+
+export type { AppTheme, AppThemeSettings };
 
 export interface App {
 	id: string;

@@ -94,6 +94,7 @@ export class AppPublishService {
 		return {
 			create: unsupported('create'),
 			publish: unsupported('publish'),
+			applyTheme: unsupported('applyTheme'),
 			setBindings: unsupported('setBindings'),
 			previewBindings: unsupported('previewBindings'),
 			async getBindings(appId) {

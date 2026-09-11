@@ -135,7 +135,12 @@ describe('AppPreviewController', () => {
 	});
 
 	describe('applyTheme', () => {
-		const theme = { mode: 'dark' as const, vars: { '--primary': '#000' } };
+		const settings = { mode: 'dark' as const, primary: '#000000' };
+		const theme = expect.objectContaining({
+			mode: 'dark',
+			settings,
+			vars: expect.objectContaining({ '--primary': '#000000' }),
+		});
 
 		it('gates the route with a project-scoped app:update check', () => {
 			const route = routeMetadata('applyTheme');
@@ -147,7 +152,7 @@ describe('AppPreviewController', () => {
 		});
 
 		it('stores the theme, writes it into the stored source without a live sandbox, and answers the app', async () => {
-			await expect(controller.applyTheme(req, res, 'app-1', { theme })).resolves.toMatchObject({
+			await expect(controller.applyTheme(req, res, 'app-1', { settings })).resolves.toMatchObject({
 				id: 'app-1',
 				hasUnpublishedChanges: true,
 			});
@@ -162,7 +167,7 @@ describe('AppPreviewController', () => {
 			const workspace = mock<Workspace>();
 			instanceAiService.getCachedWorkspace.mockReturnValue(workspace);
 
-			await controller.applyTheme(req, res, 'app-1', { theme });
+			await controller.applyTheme(req, res, 'app-1', { settings });
 
 			expect(instanceAiService.getCachedWorkspace).toHaveBeenCalledWith(APP_SANDBOX_KEY);
 			expect(appThemeService.applyTheme).toHaveBeenCalledWith('app-1', theme, user, {
@@ -173,7 +178,7 @@ describe('AppPreviewController', () => {
 		it('answers 400 with the service message when the theme cannot be saved', async () => {
 			appThemeService.applyTheme.mockResolvedValue({ error: true, message: 'no source yet' });
 
-			const attempt = controller.applyTheme(req, res, 'app-1', { theme });
+			const attempt = controller.applyTheme(req, res, 'app-1', { settings });
 
 			await expect(attempt).rejects.toThrow(BadRequestError);
 			await expect(attempt).rejects.toThrow('no source yet');
@@ -182,7 +187,7 @@ describe('AppPreviewController', () => {
 		it('answers 403 on a read-only instance', async () => {
 			instanceWriteAccess.isReadOnly.mockReturnValue(true);
 
-			await expect(controller.applyTheme(req, res, 'app-1', { theme })).rejects.toThrow(
+			await expect(controller.applyTheme(req, res, 'app-1', { settings })).rejects.toThrow(
 				ForbiddenError,
 			);
 			expect(appsService.updateApp).not.toHaveBeenCalled();

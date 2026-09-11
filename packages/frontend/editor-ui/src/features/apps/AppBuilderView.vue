@@ -3,20 +3,23 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, provide, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { v4 as uuidv4 } from 'uuid';
 
 import InstanceAiSidebar from '@/features/ai/instanceAi/components/InstanceAiSidebar.vue';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
+import { getAppBuilderTargetFromThreadMetadata } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 import { AppThreadScopeKey, provideSidebarState } from '@/features/ai/instanceAi/instanceAiLayout';
 import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import InstanceAiThreadView from '@/features/ai/instanceAi/InstanceAiThreadView.vue';
 import { useAppsStore } from '@/features/apps/apps.store';
-import { APP_DETAILS, PROJECT_APPS } from '@/features/apps/apps.constants';
+import { APP_DETAILS, APP_NEW, PROJECT_APPS } from '@/features/apps/apps.constants';
 import type { App } from '@/features/apps/apps.types';
 
 const props = defineProps<{
 	projectId: string;
-	appId: string;
+	/** Absent on the new-app page: the thread starts without an app and the agent creates one. */
+	appId?: string;
 }>();
 
 const i18n = useI18n();
@@ -34,9 +37,9 @@ const app = ref<App | null>(null);
 const threadId = ref<string | null>(null);
 
 const appScope = computed(() => ({
-	appId: props.appId,
+	...(props.appId ? { appId: props.appId } : {}),
 	projectId: props.projectId,
-	name: app.value?.name ?? '',
+	name: app.value?.name ?? i18n.baseText('apps.new.title'),
 }));
 provide(AppThreadScopeKey, appScope);
 
@@ -54,11 +57,40 @@ const createThread = async (current: App) => {
 	);
 };
 
+// No app yet: a plain project thread; `apps(action="create")` binds it to the app it makes.
+const createUnboundThread = async () => {
+	const id = uuidv4();
+	try {
+		await instanceAiStore.syncThread(id, props.projectId, {
+			source: 'app_builder_page',
+			origin: 'internal',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.new.error'));
+		return undefined;
+	}
+	return id;
+};
+
 // `?thread=<id>` picks one of the app's threads, `?thread=new` starts another;
 // otherwise the app resumes in its most recent thread, or a first one is created.
 const resolveThread = async () => {
-	if (!app.value) return;
 	const requested = requestedThreadId.value;
+	if (!props.appId) {
+		const known = requested && instanceAiStore.threads.some((thread) => thread.id === requested);
+		const resolved = known ? requested : await createUnboundThread();
+		if (!resolved) return;
+		threadId.value = resolved;
+		if (resolved !== requested) {
+			await router.replace({
+				name: APP_NEW,
+				params: { projectId: props.projectId },
+				query: { thread: resolved },
+			});
+		}
+		return;
+	}
+	if (!app.value) return;
 	const existing =
 		requested && requested !== 'new'
 			? appThreadIds.value.find((id) => id === requested)
@@ -78,22 +110,55 @@ const resolveThread = async () => {
 };
 
 const initialize = async () => {
-	threadId.value = null;
+	// The route swap from new-app to the created app keeps the thread mounted.
+	if (!(props.appId && threadId.value === requestedThreadId.value)) threadId.value = null;
 	try {
-		const [current, threads] = await Promise.all([
-			appsStore.getApp(props.projectId, props.appId),
-			appsStore.fetchThreads(props.projectId, props.appId),
-			instanceAiStore.loadThreads(),
-		]);
-		app.value = current;
-		appThreadIds.value = threads.map((thread) => thread.id);
+		if (props.appId) {
+			const [current, threads] = await Promise.all([
+				appsStore.getApp(props.projectId, props.appId),
+				appsStore.fetchThreads(props.projectId, props.appId),
+				instanceAiStore.loadThreads(),
+			]);
+			app.value = current;
+			appThreadIds.value = threads.map((thread) => thread.id);
+		} else {
+			app.value = null;
+			appThreadIds.value = [];
+			await instanceAiStore.loadThreads();
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.getDetails.error'));
 		await router.push({ name: PROJECT_APPS, params: { projectId: props.projectId } });
 		return;
 	}
-	await resolveThread();
+	if (threadId.value === null) await resolveThread();
 };
+
+// The app the agent created in this thread: written into the thread metadata by
+// the preview panel once the app artifact shows, or already present after a reload.
+const createdAppId = computed(() => {
+	if (props.appId || !threadId.value) return undefined;
+	const target = getAppBuilderTargetFromThreadMetadata(
+		instanceAiStore.getThreadMetadata(threadId.value),
+	);
+	if (target?.appId) return target.appId;
+	for (const entry of instanceAiStore
+		.getOrCreateRuntime(threadId.value)
+		.producedArtifacts.values()) {
+		if (entry.type === 'app') return entry.id;
+	}
+	return undefined;
+});
+
+// Same component on both routes, so the thread view stays mounted across the swap.
+watch(createdAppId, async (appId) => {
+	if (!appId || !threadId.value) return;
+	await router.replace({
+		name: APP_DETAILS,
+		params: { projectId: props.projectId, appId },
+		query: { thread: threadId.value },
+	});
+});
 
 onMounted(() => {
 	void initialize();
@@ -115,7 +180,7 @@ watch(requestedThreadId, async (requested) => {
 
 <template>
 	<div :class="$style.container" data-test-id="app-builder-view">
-		<InstanceAiSidebar :app-scope="appScope" @resize="handleSidebarResize" />
+		<InstanceAiSidebar v-if="props.appId" :app-scope="appScope" @resize="handleSidebarResize" />
 		<InstanceAiThreadView v-if="threadId" :key="threadId" :thread-id="threadId" />
 	</div>
 </template>

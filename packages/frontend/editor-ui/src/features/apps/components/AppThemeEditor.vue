@@ -14,7 +14,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { computed, ref, watch } from 'vue';
 
 import { useAppsStore } from '@/features/apps/apps.store';
-import type { App, AppTheme } from '@/features/apps/apps.types';
+import type { App, AppThemeSettings } from '@/features/apps/apps.types';
 
 const props = defineProps<{
 	projectId: string;
@@ -30,67 +30,20 @@ const appsStore = useAppsStore();
 // Matches the template's own src/style.css defaults, so an app with no saved
 // theme yet shows the values it's actually rendering. #ff6900 is n8n's brand
 // orange (--color--orange-500), converted from the template's oklch value.
-const DEFAULT_ACCENT = '#ff6900';
-const DEFAULT_RADIUS = 4;
+const DEFAULTS: Required<Omit<AppThemeSettings, 'font'>> = {
+	mode: 'system',
+	primary: '#ff6900',
+	radius: 4,
+	density: 'comfortable',
+	tone: 'neutral',
+};
 const SYSTEM_FONT = 'system';
 
 const ACCENT_PRESETS = ['#ff6900', '#4f46e5', '#0d9488', '#be185d', '#18181b'];
 
-/** WCAG relative luminance: picks readable text over whatever accent color the user chooses. */
-function contrastForeground(hex: string): string {
-	const channels = hex.match(/[0-9a-f]{2}/gi)?.map((c) => Number.parseInt(c, 16) / 255) ?? [];
-	const linear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-	const [r = 0, g = 0, b = 0] = channels;
-	const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-	return luminance > 0.45 ? '#0a0a0a' : '#fafafa';
-}
-
-function hexToHue(hex: string): number {
-	const channels = hex.match(/[0-9a-f]{2}/gi)?.map((c) => Number.parseInt(c, 16) / 255) ?? [];
-	const [r = 0, g = 0, b = 0] = channels;
-	const max = Math.max(r, g, b);
-	const min = Math.min(r, g, b);
-	if (max === min) return 0;
-	const d = max - min;
-	const hue = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-	return (hue * 60 + 360) % 360;
-}
-
-function hslToHex(h: number, s: number, l: number): string {
-	const c = (1 - Math.abs(2 * l - 1)) * s;
-	const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-	const m = l - c / 2;
-	const [r, g, b] =
-		h < 60
-			? [c, x, 0]
-			: h < 120
-				? [x, c, 0]
-				: h < 180
-					? [0, c, x]
-					: h < 240
-						? [0, x, c]
-						: h < 300
-							? [x, 0, c]
-							: [c, 0, x];
-	const toHex = (v: number) =>
-		Math.round((v + m) * 255)
-			.toString(16)
-			.padStart(2, '0');
-	return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-/** A very light, low-saturation tint of the accent's hue — for secondary/accent surfaces. */
-function tintOf(hex: string): string {
-	return hslToHex(hexToHue(hex), 0.35, 0.95);
-}
-
-// The Theme tab is deliberately basic (accent, mode, font, radius); it derives
-// --primary(-foreground), --ring, --secondary(-foreground), --accent(-foreground),
-// --radius and --font-sans from those few inputs, rather than exposing every
-// variable. Instance AI can still set any other shadcn/Tailwind variable
-// directly by editing theme-overrides.css — the backend merges this tab's
-// managed keys onto the app's *current* theme-overrides.css rather than
-// replacing it, so a save here never wipes out variables the agent added.
+// The tab only picks; the server derives the CSS variables (contrast, tints,
+// spacing) and merges them onto the app's live theme-overrides.css, so anything
+// Instance AI set on other variables survives a save here.
 
 const FONT_OPTIONS: Array<{ value: string; label: string }> = [
 	{ value: 'Inter, ui-sans-serif, system-ui, sans-serif', label: 'Inter' },
@@ -99,28 +52,27 @@ const FONT_OPTIONS: Array<{ value: string; label: string }> = [
 	{ value: SYSTEM_FONT, label: i18n.baseText('apps.builder.theme.font.systemDefault') },
 ];
 
-const accentColor = ref(props.app.theme?.vars['--primary'] ?? DEFAULT_ACCENT);
-const mode = ref<AppTheme['mode']>(props.app.theme?.mode ?? 'system');
-const font = ref(props.app.theme?.vars['--font-sans'] ?? SYSTEM_FONT);
-const radius = ref(parsePxRadius(props.app.theme?.vars['--radius']) ?? DEFAULT_RADIUS);
+const saved = () => props.app.theme?.settings;
+const accentColor = ref(saved()?.primary ?? DEFAULTS.primary);
+const mode = ref<AppThemeSettings['mode']>(saved()?.mode ?? DEFAULTS.mode);
+const font = ref(saved()?.font ?? SYSTEM_FONT);
+const radius = ref(saved()?.radius ?? DEFAULTS.radius);
+const density = ref<NonNullable<AppThemeSettings['density']>>(saved()?.density ?? DEFAULTS.density);
+const tone = ref<NonNullable<AppThemeSettings['tone']>>(saved()?.tone ?? DEFAULTS.tone);
 const saving = ref(false);
 
 // Switching apps (route param change) reuses this component instance.
 watch(
 	() => props.app.id,
 	() => {
-		accentColor.value = props.app.theme?.vars['--primary'] ?? DEFAULT_ACCENT;
-		mode.value = props.app.theme?.mode ?? 'system';
-		font.value = props.app.theme?.vars['--font-sans'] ?? SYSTEM_FONT;
-		radius.value = parsePxRadius(props.app.theme?.vars['--radius']) ?? DEFAULT_RADIUS;
+		accentColor.value = saved()?.primary ?? DEFAULTS.primary;
+		mode.value = saved()?.mode ?? DEFAULTS.mode;
+		font.value = saved()?.font ?? SYSTEM_FONT;
+		radius.value = saved()?.radius ?? DEFAULTS.radius;
+		density.value = saved()?.density ?? DEFAULTS.density;
+		tone.value = saved()?.tone ?? DEFAULTS.tone;
 	},
 );
-
-function parsePxRadius(value: string | undefined): number | undefined {
-	if (!value) return undefined;
-	const parsed = Number.parseFloat(value);
-	return Number.isFinite(parsed) ? parsed : undefined;
-}
 
 const modeOptions = computed(() => [
 	{ label: i18n.baseText('apps.builder.theme.mode.light'), value: 'light' as const },
@@ -128,32 +80,33 @@ const modeOptions = computed(() => [
 	{ label: i18n.baseText('apps.builder.theme.mode.system'), value: 'system' as const },
 ]);
 
-const theme = computed<AppTheme>(() => {
-	const primary = accentColor.value ?? DEFAULT_ACCENT;
-	const tint = tintOf(primary);
-	const managed: Record<string, string> = {
-		'--primary': primary,
-		'--primary-foreground': contrastForeground(primary),
-		'--ring': primary,
-		'--secondary': tint,
-		'--secondary-foreground': '#18181b',
-		'--accent': tint,
-		'--accent-foreground': '#18181b',
-		'--radius': `${radius.value}px`,
-	};
-	if (font.value !== SYSTEM_FONT) managed['--font-sans'] = font.value;
+const densityOptions = computed(() => [
+	{ label: i18n.baseText('apps.builder.theme.density.compact'), value: 'compact' as const },
+	{
+		label: i18n.baseText('apps.builder.theme.density.comfortable'),
+		value: 'comfortable' as const,
+	},
+	{ label: i18n.baseText('apps.builder.theme.density.spacious'), value: 'spacious' as const },
+]);
 
-	// Only ever send the keys this tab manages — the backend merges them onto
-	// the app's *live* theme-overrides.css, so anything Instance AI set
-	// directly on other variables survives without this tab needing to know
-	// about it (its own copy of the app's theme can otherwise go stale).
-	return { mode: mode.value, vars: managed };
-});
+const toneOptions = computed(() => [
+	{ label: i18n.baseText('apps.builder.theme.tone.neutral'), value: 'neutral' as const },
+	{ label: i18n.baseText('apps.builder.theme.tone.tinted'), value: 'tinted' as const },
+]);
+
+const settings = computed<AppThemeSettings>(() => ({
+	mode: mode.value,
+	primary: accentColor.value ?? DEFAULTS.primary,
+	radius: radius.value,
+	density: density.value,
+	tone: tone.value,
+	...(font.value !== SYSTEM_FONT ? { font: font.value } : {}),
+}));
 
 const onSave = async () => {
 	saving.value = true;
 	try {
-		const updated = await appsStore.applyAppTheme(props.projectId, props.app.id, theme.value);
+		const updated = await appsStore.applyAppTheme(props.projectId, props.app.id, settings.value);
 		emit('saved', updated);
 		toast.showMessage({
 			title: i18n.baseText('apps.builder.theme.saved'),
@@ -192,6 +145,19 @@ const onSave = async () => {
 						/>
 					</template>
 				</N8nSettingsRow>
+				<N8nSettingsRow
+					:title="i18n.baseText('apps.builder.theme.tone.label')"
+					:description="i18n.baseText('apps.builder.theme.tone.description')"
+				>
+					<template #action>
+						<N8nSegmentControl
+							v-model="tone"
+							:options="toneOptions"
+							size="small"
+							data-test-id="app-theme-tone"
+						/>
+					</template>
+				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
 
@@ -221,6 +187,19 @@ const onSave = async () => {
 							/>
 							<span>{{ radius }}px</span>
 						</div>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					:title="i18n.baseText('apps.builder.theme.density.label')"
+					:description="i18n.baseText('apps.builder.theme.density.description')"
+				>
+					<template #action>
+						<N8nSegmentControl
+							v-model="density"
+							:options="densityOptions"
+							size="small"
+							data-test-id="app-theme-density"
+						/>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>

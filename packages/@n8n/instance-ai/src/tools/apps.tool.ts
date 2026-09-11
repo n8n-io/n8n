@@ -9,6 +9,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
 	agentPermissionSchema,
 	appBindingMetaSchema,
+	appThemeSettingsSchema,
 	dataTablePermissionSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -90,6 +91,13 @@ const createSchema = z.object({
 		.optional()
 		.describe(
 			'Starter files to copy (default "vue"). "none" writes only vendor/n8n-app-sdk.tgz and src/n8n-bindings.d.ts.',
+		),
+	theme: appThemeSettingsSchema
+		.optional()
+		.describe(
+			'Look of the app, from the approved blueprint: primary color (hex), light/dark/system mode, ' +
+				'optional radius (px), font stack, density and tone. n8n derives the CSS variables and writes ' +
+				'src/theme-overrides.css; the user can change them later in the Theme tab.',
 		),
 });
 
@@ -671,12 +679,20 @@ async function handleCreate(
 			abortSignal,
 		});
 
+		// After the scaffold so the derived CSS lands in the app directory itself.
+		const themeFailure = input.theme
+			? await appService.applyTheme(created.app.id, input.theme)
+			: undefined;
+		const allWarnings = themeFailure
+			? [...warnings, `Theme not applied: ${themeFailure.error}`]
+			: warnings;
+
 		return {
 			app: created.app,
 			workspacePath,
 			installed,
 			preview: CREATE_PREVIEW_HINT,
-			...(warnings.length > 0 ? { warnings } : {}),
+			...(allWarnings.length > 0 ? { warnings: allWarnings } : {}),
 		};
 	} catch (error) {
 		throw new Error(

@@ -18,6 +18,7 @@ export const DOMAIN_TOOL_IDS = {
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	APPS: 'apps',
+	APP_BLUEPRINT: 'app-blueprint',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -54,6 +55,7 @@ export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
 export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
+export const APP_BLUEPRINT_TOOL_ID = DOMAIN_TOOL_IDS.APP_BLUEPRINT;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
@@ -82,6 +84,8 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Only wired when the host exposes an app service; deferring it would cost
 	// search_tools + load_tool on every "build me an app" request.
 	DOMAIN_TOOL_IDS.APPS,
+	// The blueprint step precedes every app create; loaded together with `apps`.
+	DOMAIN_TOOL_IDS.APP_BLUEPRINT,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

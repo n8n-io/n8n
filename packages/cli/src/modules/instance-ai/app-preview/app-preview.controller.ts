@@ -9,7 +9,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AppDraftService } from '@/modules/apps/app-draft.service';
 import { AppPublishService } from '@/modules/apps/app-publish.service';
-import { AppThemeService } from '@/modules/apps/app-theme.service';
+import { AppThemeService, deriveAppTheme } from '@/modules/apps/app-theme.service';
 import { AppsService } from '@/modules/apps/apps.service';
 import { AppVersionFileNotFoundError } from '@/modules/apps/errors/app-version-file-not-found.error';
 import { pathSegments } from '@/modules/apps/serving/path-segments';
@@ -119,8 +119,9 @@ export class AppPreviewController {
 	) {
 		this.checkInstanceWriteAccess();
 		const app = await this.getAppInProject(appId, req.params.projectId);
-		await this.appsService.updateApp(app.id, { theme: dto.theme });
-		const result = await this.appThemeService.applyTheme(app.id, dto.theme, req.user, {
+		const theme = deriveAppTheme(dto.settings);
+		await this.appsService.updateApp(app.id, { theme });
+		const result = await this.appThemeService.applyTheme(app.id, theme, req.user, {
 			draft: this.instanceAiService.getCachedWorkspace(appSandboxKey(app.id)),
 		});
 		if ('error' in result) throw new BadRequestError(result.message);

@@ -23,6 +23,7 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 
 	switch (conf.inputType) {
 		case 'plan-review':
+		case 'app-blueprint':
 		case 'text':
 		case 'resource-decision':
 		case 'continue':
