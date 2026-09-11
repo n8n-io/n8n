@@ -1114,7 +1114,7 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 					if (typeof txt.database === 'object' && txt.database.__rl) {
 						if (txt.database.__regex) {
 							const extracted = safeRegex.exec(txt.database.__regex, txt.database.value);
-							txt.database = extracted?.[1] ?? txt.database.value;
+							txt.database = extracted![1];
 						} else {
 							txt.database = txt.database.value;
 						}
