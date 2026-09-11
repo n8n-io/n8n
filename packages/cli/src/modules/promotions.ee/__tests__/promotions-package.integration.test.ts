@@ -130,6 +130,8 @@ beforeEach(async () => {
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
+		Container.get(WorkflowRepository),
+		connectionRepository,
 		projectService,
 		packagesService,
 		logger,
@@ -791,5 +793,84 @@ describe('Promote a selection', () => {
 				relations: ['parentFolder'],
 			}),
 		).toMatchObject({ name: 'Unselected', parentFolder: { id: folder.id } });
+	});
+});
+
+describe('Promote a project selection', () => {
+	it('promotes a selected live workflow and returns the pushed branch and commit', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		const w3 = await createWorkflow({ name: 'w3', nodes: [], connections: {} }, project);
+		const result = await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [w3.id],
+			createBranch: false,
+			canExportVariableValues: true,
+		});
+
+		const remoteHead = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
+		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+		expect(result.counts.workflows).toBe(1);
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+		expect(onBranch).toContain(w3.id);
+	});
+
+	it('removes an archived selected workflow from the branch, like a deletion', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflows[0].id, { isArchived: true });
+
+		await service.promoteProjectSelection(project.id, owner, {
+			workflowIds: [workflows[0].id],
+			createBranch: false,
+			canExportVariableValues: true,
+		});
+
+		const { dir } = await inspectBranch(remote.bareDir);
+		const onBranch = (await readBranchEntities(dir, 'workflow.json')).map((w) => w.id);
+		expect(onBranch).not.toContain(workflows[0].id);
+		expect(onBranch).toContain(workflows[1].id);
+	});
+
+	it('rejects a selection with a workflow from another project and pushes nothing', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+
+		const { project: orders } = await setupProjectWithWorkflows('Orders', ['w1']);
+		const { workflows: billingWorkflows } = await setupProjectWithWorkflows('Billing', ['b1']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Full promote',
+		});
+		const headBefore = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
+
+		await expect(
+			service.promoteProjectSelection(orders.id, owner, {
+				workflowIds: [billingWorkflows[0].id],
+				createBranch: false,
+				canExportVariableValues: true,
+			}),
+		).rejects.toThrow('does not belong to project');
+
+		expect((await simpleGit(remote.bareDir).revparse(['main'])).trim()).toBe(headBefore);
 	});
 });

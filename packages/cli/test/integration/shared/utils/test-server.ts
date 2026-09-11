@@ -300,6 +300,10 @@ export const setupTestServer = ({
 						await import('@/modules/source-control.ee/source-control.controller.ee.js');
 						break;
 
+					case 'promotions':
+						await import('@/modules/promotions.ee/promotions.controller.js');
+						break;
+
 					case 'community-packages':
 						await import('@/modules/community-packages/community-packages.controller.js');
 						break;

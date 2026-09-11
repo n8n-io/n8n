@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { Z } from '../../zod-class';
+
 export const promotableResourceStatusSchema = z.enum(['new', 'modified', 'archived', 'deleted']);
 
 export type PromotableResourceStatus = z.infer<typeof promotableResourceStatusSchema>;
@@ -27,3 +29,6 @@ export const promoteRequestSchema = z.object({
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;
+
+/** Request body for the internal, project-scoped selective promote endpoint. */
+export class PromoteSelectionRequestDto extends Z.class(promoteRequestSchema.shape) {}

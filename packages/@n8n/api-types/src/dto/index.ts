@@ -439,6 +439,7 @@ export {
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
 	promoteRequestSchema,
+	PromoteSelectionRequestDto,
 	type PromotableResource,
 	type PromotableResourceStatus,
 	type PromotableResourceType,

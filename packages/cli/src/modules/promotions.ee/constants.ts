@@ -4,6 +4,9 @@ export const PROMOTION_KEY_COMMENT = 'n8n promotions';
 export const GIT_DEFAULT_COMMIT_NAME = 'n8n user';
 export const GIT_DEFAULT_COMMIT_EMAIL = 'n8n@example.com';
 
+/** Commit message for a project-scoped selective promote. The client sends no message. */
+export const PROMOTE_SELECTION_COMMIT_MESSAGE = 'Promote a selection of project changes';
+
 /**
  * Subfolder of the checkout that holds the n8n-managed package. Keeping it
  * separate from the repository root leaves `.git` and any files the user commits
