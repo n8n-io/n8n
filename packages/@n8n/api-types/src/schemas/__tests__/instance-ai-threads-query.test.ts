@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { InstanceAiThreadsQuery } from '../instance-ai.schema';
+import { InstanceAiThreadHistoryQuery, InstanceAiThreadsQuery } from '../instance-ai.schema';
 
 describe('InstanceAiThreadsQuery', () => {
 	it('retains defaults for existing clients', () => {
@@ -24,3 +24,16 @@ describe('InstanceAiThreadsQuery', () => {
 		expect(InstanceAiThreadsQuery.safeParse(query).success).toBe(false);
 	});
 });
+
+describe.each([InstanceAiThreadsQuery, InstanceAiThreadHistoryQuery])(
+	'thread search validation',
+	(schema) => {
+		it('rejects embedded NUL characters', () => {
+			expect(schema.safeParse({ search: 'invoice\u0000draft' }).success).toBe(false);
+		});
+
+		it('accepts and trims ordinary search text', () => {
+			expect(schema.parse({ search: ' Invoice ' }).search).toBe('Invoice');
+		});
+	},
+);
