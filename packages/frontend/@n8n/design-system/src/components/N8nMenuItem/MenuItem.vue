@@ -19,7 +19,6 @@ const props = defineProps<{
 	level?: number;
 	open?: boolean;
 	ariaLabel?: string;
-	disableTooltip?: boolean;
 	scrollLabelOnOverflow?: boolean;
 }>();
 
@@ -102,9 +101,7 @@ const iconColor = computed(() => {
 });
 
 const tooltipDisabled = computed(() => {
-	return (
-		props.disableTooltip || (!props.compact && !(props.item.disabled && props.item.disabledReason))
-	);
+	return !props.compact && !(props.item.disabled && props.item.disabledReason);
 });
 
 const tooltipContent = computed(() => {

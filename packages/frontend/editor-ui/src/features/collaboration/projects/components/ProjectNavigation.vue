@@ -210,7 +210,6 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'instance-ai' && !isInstanceAiThreadView"
 				:class="{ [$style.instanceAiParentInactive]: isInstanceAiThreadView }"
-				disable-tooltip
 				data-test-id="project-instance-ai-menu-item"
 			/>
 			<N8nMenuItem
