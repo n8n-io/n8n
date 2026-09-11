@@ -7,6 +7,8 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { useToast } from '@n8n/composables/useToast';
 import {
+	INSTANCE_AI_CREATE_AGENT_MODE_MANUAL,
+	INSTANCE_AI_CREATE_AGENT_MODE_QUERY,
 	INSTANCE_AI_PENDING_AGENT_ID_STATE,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
@@ -52,8 +54,12 @@ onMounted(async () => {
 		typeof clickedAgentId === 'string' && MINTED_AGENT_ID.test(clickedAgentId)
 			? clickedAgentId
 			: generateNanoId();
+	// The query flag is a mode switch only, never a data channel: the agent id
+	// above still comes exclusively from history state.
+	const manualRequested =
+		route.query[INSTANCE_AI_CREATE_AGENT_MODE_QUERY] === INSTANCE_AI_CREATE_AGENT_MODE_MANUAL;
 	try {
-		if (!instanceAiReady.value) {
+		if (manualRequested || !instanceAiReady.value) {
 			await router.replace({
 				name: AGENT_BUILDER_VIEW,
 				params: { projectId, agentId },

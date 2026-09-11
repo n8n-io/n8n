@@ -31,6 +31,13 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+// Fields the Evaluation Trigger adds to its output alongside dataset columns,
+// regardless of source (Data table or Google Sheets). `row_id` and the Data
+// table system columns (id/createdAt/updatedAt) are NOT here — those are only
+// added by the Data table source, so callers needing that distinction should
+// combine this with `DATA_TABLE_SYSTEM_COLUMNS` (from './data-table.types')
+// and `row_id` themselves, only when they know the trigger's source.
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', '_rowsLeft'] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';

@@ -852,7 +852,7 @@ async function resolveTargetForCall(
 				...(input.name ? { name: input.name } : {}),
 			};
 			// Same agent as the active binding — no re-persist needed.
-			if (boundTarget && boundTarget.agentId === target.agentId) {
+			if (boundTarget?.agentId === target.agentId) {
 				return {
 					ok: true,
 					target: { ...boundTarget, ...target },
@@ -889,7 +889,7 @@ async function resolveTargetForCall(
 		}
 
 		if (input.agentId) {
-			if (boundTarget && input.agentId === boundTarget.agentId) {
+			if (input.agentId === boundTarget?.agentId) {
 				return {
 					ok: true,
 					target: { ...boundTarget, ref: key, ...(input.name ? { name: input.name } : {}) },
@@ -984,7 +984,7 @@ async function resolveTargetForCall(
 	// No addressing key (`name` always produces one) — agentId alone adopts,
 	// otherwise continue the bound target.
 	if (input.agentId) {
-		if (boundTarget && input.agentId === boundTarget.agentId) {
+		if (input.agentId === boundTarget?.agentId) {
 			return { ok: true, target: boundTarget, bindAfterTurn: false, mode: 'edit' };
 		}
 		if (!domainContext.projectId) {

@@ -2,7 +2,9 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
-import type { InstanceAiContext } from '../../../types';
+import type { ThreadPatch, ThreadRecord } from '../../../storage/thread-patch';
+import type { InstanceAiContext, NodeDescription } from '../../../types';
+import { observeWorkflowSetupStates } from '../setup-panel-state';
 import type { SetupRequest } from '../setup-workflow.schema';
 import {
 	buildSetupRequests,
@@ -882,9 +884,162 @@ describe('buildSetupRequests', () => {
 
 describe('analyzeWorkflow', () => {
 	let context: InstanceAiContext;
+	const slackDescription: NodeDescription = {
+		name: 'n8n-nodes-base.slack',
+		displayName: 'Slack',
+		description: 'Slack node',
+		group: [],
+		version: 2,
+		properties: [],
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [{ name: 'slackApi' }],
+	};
 
 	beforeEach(() => {
 		context = createMockContext();
+	});
+
+	it.each(['configuration', 'live', undefined] as const)(
+		'uses the requested validation mode: %s',
+		async (validationMode) => {
+			const node = makeNode({
+				credentials: { slackApi: { id: 'cred-1', name: 'Stored' } },
+				parameters: { channel: { __rl: true, mode: 'list', value: 'channel-1' } },
+			});
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+				makeWorkflowJSON([node]),
+			);
+			vi.mocked(context.nodeService.getDescription).mockResolvedValue(slackDescription);
+			vi.mocked(context.credentialService.list).mockResolvedValue([
+				{ id: 'cred-1', name: 'Stored', type: 'slackApi' },
+			]);
+			context.credentialService.isTestable = vi.fn().mockResolvedValue(true);
+			vi.mocked(context.credentialService.test).mockResolvedValue({
+				success: false,
+				message: 'Connection failed.',
+			});
+			context.nodeService.findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([
+					{ name: 'channel', displayName: 'Channel', currentValue: 'channel-1' },
+				]);
+
+			const [request] = await analyzeWorkflow(context, 'wf-1', undefined, {
+				includeSettled: true,
+				validationMode,
+			});
+
+			expect(context.credentialService.list).toHaveBeenCalledWith({
+				type: 'slackApi',
+				workflowId: 'wf-1',
+			});
+			if (validationMode === 'configuration') {
+				expect(context.nodeService.getDescription).toHaveBeenCalledWith(
+					node.type,
+					node.typeVersion,
+					{ includeGatewayMetadata: false },
+				);
+				expect(request.needsAction).toBe(false);
+				expect(request.credentialTestResult).toBeUndefined();
+				expect(request.parameterIssues).toBeUndefined();
+				expect(context.credentialService.isTestable).not.toHaveBeenCalled();
+				expect(context.credentialService.test).not.toHaveBeenCalled();
+				expect(context.nodeService.findUnavailableLocatorValues).not.toHaveBeenCalled();
+			} else {
+				expect(request.credentialTestResult).toEqual({
+					success: false,
+					message: 'Connection failed.',
+				});
+				expect(request.parameterIssues?.channel).toBeDefined();
+				expect(context.credentialService.test).toHaveBeenCalledWith('cred-1');
+				expect(context.nodeService.findUnavailableLocatorValues).toHaveBeenCalledOnce();
+			}
+		},
+	);
+
+	it('keeps an unbound slot open without checking Gateway availability during observation', async () => {
+		const node = makeNode();
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		vi.mocked(context.nodeService.getDescription).mockResolvedValue(slackDescription);
+		vi.mocked(context.credentialService.list).mockResolvedValue([]);
+		context.credentialService.isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const [summary] = await observeWorkflowSetupStates(context, ['wf-1']);
+
+		expect(summary.open).toHaveLength(1);
+		expect(summary.open[0]).toMatchObject({ kind: 'credential', credentialType: 'slackApi' });
+		expect(summary.configured).toEqual([]);
+		expect(summary.validationWarnings).toEqual([]);
+		expect(context.credentialService.isAiGatewayCredentialType).not.toHaveBeenCalled();
+		expect(context.credentialService.test).not.toHaveBeenCalled();
+		expect(node.credentials).toBeUndefined();
+	});
+
+	it('observes saved bindings and completed parameters without provider calls across turns', async () => {
+		let thread: ThreadRecord = {
+			id: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			metadata: {},
+		};
+		context.threadMemory = {
+			getThread: async () => await Promise.resolve(thread),
+			patchThread: async ({ update }: { update: (current: ThreadRecord) => ThreadPatch }) => {
+				thread = { ...thread, ...update(thread) };
+				return await Promise.resolve(thread);
+			},
+		};
+		const node = makeNode({
+			parameters: { requiredValue: '', url: '<__PLACEHOLDER_VALUE__API URL__>' },
+		});
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([node]),
+		);
+		vi.mocked(context.nodeService.getDescription).mockResolvedValue(slackDescription);
+		vi.mocked(context.credentialService.list).mockResolvedValue([
+			{ id: 'cred-1', name: 'Stored', type: 'slackApi' },
+		]);
+		context.nodeService.getParameterIssues = vi
+			.fn<NonNullable<InstanceAiContext['nodeService']['getParameterIssues']>>()
+			.mockImplementation(async (_type, _version, parameters) => {
+				const issues: Record<string, string[]> = {};
+				if (!parameters.requiredValue) issues.requiredValue = ['Required.'];
+				return await Promise.resolve(issues);
+			});
+		context.nodeService.findUnavailableLocatorValues = vi.fn().mockResolvedValue([]);
+
+		const [before] = await observeWorkflowSetupStates(context, ['wf-1']);
+		expect(before.open).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: 'credential', credentialType: 'slackApi' }),
+				expect.objectContaining({ kind: 'parameters', parameterNames: ['requiredValue', 'url'] }),
+			]),
+		);
+		expect(node.credentials).toBeUndefined();
+
+		node.credentials = { slackApi: { id: 'cred-1', name: 'Stored' } };
+		node.parameters = { requiredValue: 'Filled', url: 'https://example.com/api' };
+		const [after] = await observeWorkflowSetupStates(context, ['wf-1']);
+		expect(after.open).toEqual([]);
+		expect(after.configured).toHaveLength(1);
+		expect(after.settledSinceLastLook).toEqual(
+			expect.arrayContaining([
+				{ kind: 'credential', credentialType: 'slackApi', nodes: ['Slack'] },
+				{ kind: 'parameters', nodeName: 'Slack' },
+			]),
+		);
+		expect(after.validationWarnings).toEqual([]);
+
+		node.credentials = { slackApi: { id: 'cred-removed', name: 'Removed' } };
+		const [removed] = await observeWorkflowSetupStates(context, ['wf-1']);
+		expect(removed.open).toHaveLength(1);
+		expect(removed.open[0]).toMatchObject({ kind: 'credential', credentialType: 'slackApi' });
+		expect(context.credentialService.test).not.toHaveBeenCalled();
+		expect(context.nodeService.findUnavailableLocatorValues).not.toHaveBeenCalled();
 	});
 
 	it('returns empty array for workflow with no actionable nodes', async () => {

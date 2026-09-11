@@ -9,6 +9,8 @@ import {
 	type IDataObject,
 	type IExecuteData,
 	type INode,
+	type INodeExecutionData,
+	type IPairedItemData,
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
@@ -2262,5 +2264,362 @@ describe('WorkflowDataProxy', () => {
 				await workflow.expression.releaseIsolate();
 			}
 		});
+	});
+});
+
+describe('WorkflowDataProxy → pairedItem traversal through recombining ancestry', () => {
+	// Models a polling loop whose Aggregate-style node pairs its single output
+	// item to all of its inputs: ancestry branches fan out at every pass and
+	// recombine on the shared ancestor, forming a DAG. Traversal must resolve
+	// this in polynomial time - a tree walk would take ROWS^PASSES steps.
+	const ROWS = 8;
+	const PASSES = 25;
+
+	const makeWorkflow = (): IWorkflowBase => ({
+		id: '1',
+		name: 'test',
+		nodes: (['Start', 'Rows', 'Agg', 'End'] as const).map((name, i) => ({
+			id: `uuid-${i}`,
+			name,
+			type: 'n8n-nodes-base.code',
+			typeVersion: 1,
+			position: [i * 100, 0] as [number, number],
+			parameters: {},
+		})),
+		connections: {
+			Start: { main: [[{ node: 'Rows', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Rows: { main: [[{ node: 'Agg', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Agg: { main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]] },
+		},
+		active: false,
+		activeVersionId: null,
+		isArchived: false,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+
+	const taskData = (source: Array<{ previousNode: string; previousNodeRun?: number } | null>) => ({
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source,
+		data: { main: [[]] as INodeExecutionData[][] },
+	});
+
+	const makeRun = (
+		startItems: INodeExecutionData[],
+		rowsPairing: (row: number) => number,
+	): IRun => {
+		const start = taskData([null]);
+		start.data.main[0] = startItems;
+
+		const rowsRuns = [];
+		const aggRuns = [];
+		for (let pass = 0; pass < PASSES; pass++) {
+			const rows = taskData([
+				pass === 0 ? { previousNode: 'Start' } : { previousNode: 'Agg', previousNodeRun: pass - 1 },
+			]);
+			// only pass 0 is sourced from Start (multiple items); later passes are
+			// sourced from Agg, which emits a single item
+			rows.data.main[0] = Array.from({ length: ROWS }, (_, row) => ({
+				json: { row },
+				pairedItem: { item: pass === 0 ? rowsPairing(row) : 0 },
+			}));
+			rowsRuns.push(rows);
+
+			const agg = taskData([{ previousNode: 'Rows', previousNodeRun: pass }]);
+			agg.data.main[0] = [
+				{ json: { pass }, pairedItem: Array.from({ length: ROWS }, (_, item) => ({ item })) },
+			];
+			aggRuns.push(agg);
+		}
+
+		const end = taskData([{ previousNode: 'Agg', previousNodeRun: PASSES - 1 }]);
+		end.data.main[0] = [{ json: {}, pairedItem: { item: 0 } }];
+
+		return {
+			data: createRunExecutionData({
+				resultData: { runData: { Start: [start], Rows: rowsRuns, Agg: aggRuns, End: [end] } },
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		};
+	};
+
+	test('resolves when all branches recombine on one ancestor item', () => {
+		const run = makeRun([{ json: { origin: true }, pairedItem: { item: 0 } }], () => 0);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(proxy.$('Start').item.json).toEqual({ origin: true });
+	});
+
+	test('still detects ambiguity when branches resolve to different ancestor items', () => {
+		const startItems = Array.from({ length: ROWS }, (_, item) => ({
+			json: { item },
+			pairedItem: { item },
+		}));
+		// each row pairs back to its own Start item, so resolution is ambiguous
+		const run = makeRun(startItems, (row) => row);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
+	});
+});
+
+describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes', () => {
+	// One item pairs to the same ancestor node run twice: once through its task's
+	// default source and once through a `sourceOverwrite` redirect. The two routes
+	// must resolve as distinct states.
+	const makeWorkflow = (): IWorkflowBase => ({
+		id: '1',
+		name: 'test',
+		nodes: (['Start', 'Mid', 'Join', 'End'] as const).map((name, i) => ({
+			id: `uuid-${i}`,
+			name,
+			type: 'n8n-nodes-base.code',
+			typeVersion: 1,
+			position: [i * 100, 0] as [number, number],
+			parameters: {},
+		})),
+		connections: {
+			Start: { main: [[{ node: 'Mid', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Mid: { main: [[{ node: 'Join', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Join: { main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]] },
+		},
+		active: false,
+		activeVersionId: null,
+		isArchived: false,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+
+	const midRun = (outputs: INodeExecutionData[][]) => ({
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source: [{ previousNode: 'Start' }],
+		data: { main: outputs },
+	});
+
+	// Mid run N emits one item paired to Start item `midRunPairing[N]`
+	const midRunsPairedTo = (midRunPairing: number[]) =>
+		midRunPairing.map((startItem) => midRun([[{ json: {}, pairedItem: { item: startItem } }]]));
+
+	const defaultJoinPairing: IPairedItemData[] = [
+		{ item: 0 },
+		{ item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } },
+	];
+
+	const makeRun = (
+		startItems: INodeExecutionData[],
+		midRuns: ReturnType<typeof midRun>[],
+		joinPairing: IPairedItemData[] = defaultJoinPairing,
+	): IRun => {
+		const start = {
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [null],
+			data: { main: [startItems] },
+		};
+
+		const join = {
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [{ previousNode: 'Mid', previousNodeRun: 0 }],
+			data: { main: [[{ json: {}, pairedItem: joinPairing }]] },
+		};
+
+		const end = {
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: [{ previousNode: 'Join' }],
+			data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
+		};
+
+		return {
+			data: createRunExecutionData({
+				resultData: { runData: { Start: [start], Mid: midRuns, Join: [join], End: [end] } },
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		};
+	};
+
+	test('resolves when the default and overwritten routes agree on the ancestor item', () => {
+		const run = makeRun(
+			[{ json: { origin: true }, pairedItem: { item: 0 } }],
+			midRunsPairedTo([0, 0]),
+		);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(proxy.$('Start').item.json).toEqual({ origin: true });
+	});
+
+	test('detects ambiguity when the overwritten route reaches a different ancestor item', () => {
+		const startItems = [
+			{ json: { item: 0 }, pairedItem: { item: 0 } },
+			{ json: { item: 1 }, pairedItem: { item: 1 } },
+		];
+		const run = makeRun(startItems, midRunsPairedTo([0, 1]));
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
+	});
+
+	test('returns the resolving route when another route fails, also on its memoized revisit', () => {
+		const startItems = [{ json: { origin: true }, pairedItem: { item: 0 } }];
+		// Mid run 1 has no pairedItem, so the overwritten route cannot resolve.
+		// It is listed twice so the second visit replays the memoized error.
+		const brokenRoute = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } };
+		const midRuns = [...midRunsPairedTo([0]), midRun([[{ json: {} }]])];
+
+		const okFirst = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [{ item: 0 }, brokenRoute, brokenRoute]),
+			'End',
+		);
+		expect(okFirst.$('Start').item.json).toEqual({ origin: true });
+
+		const okLast = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [brokenRoute, brokenRoute, { item: 0 }]),
+			'End',
+		);
+		expect(okLast.$('Start').item.json).toEqual({ origin: true });
+
+		const allBroken = getProxyFromFixture(
+			makeWorkflow(),
+			makeRun(startItems, midRuns, [brokenRoute, brokenRoute]),
+			'End',
+		);
+		expect(() => allBroken.$('Start').item).toThrowError(
+			"Paired item data for item from node 'Mid' is unavailable",
+		);
+	});
+
+	test('treats the same item index on different outputs of one run as distinct states', () => {
+		const startItems = [
+			{ json: { item: 0 }, pairedItem: { item: 0 } },
+			{ json: { item: 1 }, pairedItem: { item: 1 } },
+		];
+		// Mid run 0 output 0 item 0 pairs to Start 0, output 1 item 0 pairs to Start 1
+		const midRuns = [
+			midRun([[{ json: {}, pairedItem: { item: 0 } }], [{ json: {}, pairedItem: { item: 1 } }]]),
+		];
+		const run = makeRun(startItems, midRuns, [
+			{
+				item: 0,
+				sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0, previousNodeOutput: 0 },
+			},
+			{
+				item: 0,
+				sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0, previousNodeOutput: 1 },
+			},
+		]);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
+	});
+});
+
+describe('WorkflowDataProxy → pairedItem traversal through a diamond', () => {
+	// Start fans out to Left and Right, which join again in Merge. A Start item is
+	// reached under one state from two different parent nodes.
+	const makeWorkflow = (): IWorkflowBase => ({
+		id: '1',
+		name: 'test',
+		nodes: (['Start', 'Left', 'Right', 'Merge', 'End'] as const).map((name, i) => ({
+			id: `uuid-${i}`,
+			name,
+			type: 'n8n-nodes-base.code',
+			typeVersion: 1,
+			position: [i * 100, 0] as [number, number],
+			parameters: {},
+		})),
+		connections: {
+			Start: {
+				main: [
+					[
+						{ node: 'Left', type: NodeConnectionTypes.Main, index: 0 },
+						{ node: 'Right', type: NodeConnectionTypes.Main, index: 0 },
+					],
+				],
+			},
+			Left: { main: [[{ node: 'Merge', type: NodeConnectionTypes.Main, index: 0 }]] },
+			Right: { main: [[{ node: 'Merge', type: NodeConnectionTypes.Main, index: 1 }]] },
+			Merge: { main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]] },
+		},
+		active: false,
+		activeVersionId: null,
+		isArchived: false,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	});
+
+	const task = (source: Array<{ previousNode: string } | null>, items: INodeExecutionData[]) => ({
+		startTime: 0,
+		executionTime: 0,
+		executionIndex: 0,
+		source,
+		data: { main: [items] },
+	});
+
+	const makeRun = (
+		startItems: INodeExecutionData[],
+		leftItem: number,
+		rightItem: number,
+	): IRun => ({
+		data: createRunExecutionData({
+			resultData: {
+				runData: {
+					Start: [task([null], startItems)],
+					Left: [task([{ previousNode: 'Start' }], [{ json: {}, pairedItem: { item: leftItem } }])],
+					Right: [
+						task([{ previousNode: 'Start' }], [{ json: {}, pairedItem: { item: rightItem } }]),
+					],
+					Merge: [
+						task(
+							[{ previousNode: 'Left' }, { previousNode: 'Right' }],
+							[
+								{
+									json: {},
+									pairedItem: [
+										{ item: 0, input: 0 },
+										{ item: 0, input: 1 },
+									],
+								},
+							],
+						),
+					],
+					End: [task([{ previousNode: 'Merge' }], [{ json: {}, pairedItem: { item: 0 } }])],
+				},
+			},
+		}),
+		mode: 'manual',
+		startedAt: new Date(),
+		status: 'success',
+		storedAt: 'db',
+	});
+
+	test('resolves when both routes reach one ancestor item', () => {
+		const run = makeRun([{ json: { origin: true }, pairedItem: { item: 0 } }], 0, 0);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(proxy.$('Start').item.json).toEqual({ origin: true });
+	});
+
+	test('detects ambiguity when the routes reach different ancestor items', () => {
+		const startItems = [0, 1].map((item) => ({ json: { item }, pairedItem: { item } }));
+		const run = makeRun(startItems, 0, 1);
+		const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+		expect(() => proxy.$('Start').item).toThrowError('Multiple matches');
 	});
 });

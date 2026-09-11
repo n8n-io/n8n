@@ -15,6 +15,7 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // 80x80
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6]; // 256x96
+export const AGENT_NODE_SIZE: [number, number] = [GRID_SIZE * 20, GRID_SIZE * 8]; // 320x128
 export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
 
 // Layout spacing (matching FE useCanvasLayout)
@@ -26,6 +27,7 @@ export const AI_Y_SPACING = GRID_SIZE * 8; // 128
 export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 
 /** Matches the StickyNote node's own width/height defaults. */
 export const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];

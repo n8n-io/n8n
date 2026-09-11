@@ -13,6 +13,29 @@ pnpm test:local           											# Starts a local server and runs the E2E te
 N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the running instance
 ```
 
+## Test Layout
+
+Product Playwright tests live under `tests/`. Most product tests are grouped
+under `tests/e2e/`, with infrastructure, performance, evaluation, and other
+test suites beside it.
+
+Framework and harness tests live under `tests/framework/`. These tests verify
+the test framework, fixtures, startup lifecycle, diagnostics, and harness
+contracts. They are not product E2E tests and must not be added under
+`tests/e2e/`.
+
+Run the framework unit tests with the package Vitest configuration:
+
+```bash
+pnpm exec vitest run tests/framework/telemetry.test.ts
+```
+
+Run the browser-backed harness contract tests with the dedicated configuration:
+
+```bash
+pnpm test:harness
+```
+
 ## Develop against running containers (avoid docker rebuilds)
 
 Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
@@ -114,9 +137,9 @@ situations where `test:local`'s defaults aren't enough:
   `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
   are responsible for detecting the missing container and skipping or falling
   back.
-- **Self-managed n8n.** Boots n8n with a real readiness check against
-  `/rest/e2e/reset` (Playwright's default `webServer` favicon check is racy
-  with slower module startups) and skips Playwright's own webServer.
+- **Self-managed n8n.** Boots n8n with a readiness check against
+  `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
+  Playwright's own webServer.
 
 Pass extra n8n env via `N8N_TEST_ENV` (the same convention `test:local` uses):
 

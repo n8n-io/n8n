@@ -43,12 +43,13 @@ const node: INode = {
 };
 
 describe('AgentToolConfigNodeContent', () => {
-	it('hides waiting operations unsupported by inline agent tool execution', () => {
+	it('hides waiting operations and Custom API Call from inline agent tool execution', () => {
 		const { container } = renderComponent({ props: { initialNode: node } });
 
 		const hiddenOperations = container.textContent ?? '';
 		expect(hiddenOperations).toContain('sendAndWait');
 		expect(hiddenOperations).toContain('dispatchAndWait');
+		expect(hiddenOperations).toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('configures resource mapper schema refreshes', () => {

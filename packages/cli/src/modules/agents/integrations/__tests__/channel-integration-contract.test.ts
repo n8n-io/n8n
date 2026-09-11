@@ -12,6 +12,17 @@ import {
 	type TelegramReplayFixtures,
 } from './helpers/telegram/replay-test-context';
 
+// The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
+// `new Function()` hack to dodge the CJS transform, which can't run under vitest;
+// redirect the loaders to native dynamic imports so the real adapters are used.
+vi.mock('../esm-loader', () => ({
+	loadChatSdk: async () => await import('chat'),
+	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
+	loadTelegramAdapter: async () => await import('@chat-adapter/telegram'),
+	loadSlackAdapter: async () => await import('@chat-adapter/slack'),
+	loadLinearAdapter: async () => await import('@chat-adapter/linear'),
+}));
+
 const slackFixtures = jsonParse<SlackReplayFixtures>(
 	readFileSync(join(__dirname, 'fixtures/slack/basic.json'), 'utf8'),
 );

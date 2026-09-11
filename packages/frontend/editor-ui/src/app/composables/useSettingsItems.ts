@@ -118,14 +118,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
-				id: 'settings-git-connections',
-				icon: 'git-branch',
-				label: i18n.baseText('settings.gitConnections.title'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.GIT_CONNECTIONS_SETTINGS),
-				route: { to: { name: VIEWS.GIT_CONNECTIONS_SETTINGS } },
-			},
-			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),

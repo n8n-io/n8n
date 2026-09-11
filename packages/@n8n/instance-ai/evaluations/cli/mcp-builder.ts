@@ -181,6 +181,12 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// Caps user-proxy follow-ups in the orchestrator chat loop — simply doesn't
 	// apply to a single-shot `claude` build, so it is NOT flagged.
 	messageBudget: 'supported',
+	// Drives the Instance AI orchestrator's progressive-building loop; a
+	// single-shot `claude` build has no mode to set, so a case that pins it
+	// explicitly must run through the orchestrator.
+	buildMode: 'orchestrator-only',
+	promptVersion: 'orchestrator-only',
+	allowUserExecution: 'orchestrator-only',
 	// Judged by the harness after the build (processExpectations are skipped for
 	// transcript-less MCP builds there); declaring them needs no build-side setup.
 	processExpectations: 'supported',
@@ -215,6 +221,7 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	const values: Partial<Record<string, unknown>> = { ...testCase };
 	return ORCHESTRATOR_ONLY_KEYS.filter((key) => {
 		const value = values[key];
+		if (key === 'allowUserExecution') return value === true;
 		if (value === undefined || value === null || value === '') return false;
 		// An empty array declares nothing to seed.
 		return !Array.isArray(value) || value.length > 0;

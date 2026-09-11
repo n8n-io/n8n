@@ -1,3 +1,4 @@
+import type { InsightsByTime } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	HttpRequestClient,
@@ -48,15 +49,22 @@ const LICENSE_METRICS_MOCK = {
 	evaluations: 0,
 };
 
-/** One `getInsightsByTime` row: the reported day held 42 executions. */
-const BY_TIME_MOCK = [{ date: `${REPORT_DATE}T00:00:00.000Z`, values: { total: 42 } }];
-
-function byTime(totalsByDay: Record<string, number>) {
+function byTime(totalsByDay: Record<string, number>): InsightsByTime[] {
 	return Object.entries(totalsByDay).map(([date, total]) => ({
 		date: `${date}T00:00:00.000Z`,
-		values: { total },
+		values: {
+			total,
+			succeeded: 0,
+			failed: 0,
+			failureRate: 0,
+			averageRunTime: 0,
+			timeSaved: 0,
+		},
 	}));
 }
+
+/** One `getInsightsByTime` row: the reported day held 42 executions. */
+const BY_TIME_MOCK = byTime({ [REPORT_DATE]: 42 });
 
 function makeConfig(overrides: Partial<InstanceReportingConfig> = {}): InstanceReportingConfig {
 	const config = new InstanceReportingConfig();

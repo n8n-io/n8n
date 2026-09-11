@@ -100,10 +100,10 @@ From the isolated runner you get:
   `~/.n8n/database.sqlite` is never touched.
 - **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so the `@capability:proxy` tag
   is honoured locally.
-- **Self-managed n8n** with a real `/rest/e2e/reset` readiness check (not the
-  racy default favicon poll), `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop
-  Playwright from spawning a duplicate, and process-group cleanup so
-  `node ./n8n` doesn't get orphaned.
+- **Self-managed n8n** with a `/rest/e2e/reset` readiness check that waits for
+  the E2E controller, `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop Playwright from
+  spawning a duplicate, and process-group cleanup so `node ./n8n` doesn't get
+  orphaned.
 
 The `instanceAiProxySetup` fixture (`fixtures.ts`) detects the missing
 `n8nContainer` and short-circuits all proxy + tool-trace setup, so every LLM

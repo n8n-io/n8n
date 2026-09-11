@@ -49,3 +49,4 @@ export {
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
 export const NEW_SESSION_PARAM = 'newSession';
+export const OPEN_PREVIEW_PARAM = 'openPreview';

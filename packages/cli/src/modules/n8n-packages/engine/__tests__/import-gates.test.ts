@@ -17,6 +17,7 @@ function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): Workfl
 				archiveTransition,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
 			},
 		],
 		conflicts: [],

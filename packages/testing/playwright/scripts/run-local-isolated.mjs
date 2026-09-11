@@ -11,10 +11,10 @@
  *   - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on
  *     exit). n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully
  *     isolated from your local `~/.n8n` install.
- *   - **Self-managed n8n process** with a real readiness check against
- *     `/rest/e2e/reset` (Playwright's default `webServer` favicon check is
- *     racy with slower module startups). Sets `PLAYWRIGHT_SKIP_WEBSERVER=true`
- *     so Playwright doesn't race to spawn its own n8n.
+ *   - **Self-managed n8n process** with a readiness check against
+ *     `/rest/e2e/reset`, so the run waits for the E2E controller itself. Sets
+ *     `PLAYWRIGHT_SKIP_WEBSERVER=true` so Playwright doesn't race to spawn its
+ *     own n8n.
  *   - **Container-only tests included.** Sets `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`
  *     so `@capability:*`, `@licensed`, and `@db:reset` tests are picked up by
  *     the local `e2e` project. Their fixtures are responsible for detecting
@@ -157,8 +157,8 @@ n8n.on('exit', (code, signal) => {
 	}
 });
 
-// Poll an actual REST route, not just /favicon.ico, so we know controllers are
-// registered. We POST `/rest/e2e/reset` with no body — a registered route
+// Poll the actual REST route, not just a health endpoint, so we know controllers
+// are registered. We POST `/rest/e2e/reset` with no body — a registered route
 // returns 4xx/5xx, an unregistered one returns 404 with an HTML body.
 async function waitForN8n(timeoutMs = 120_000) {
 	const deadline = Date.now() + timeoutMs;
