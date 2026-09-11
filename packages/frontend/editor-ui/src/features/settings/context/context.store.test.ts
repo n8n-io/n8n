@@ -104,6 +104,43 @@ describe('context.store', () => {
 		expect(store.loading).toBe(false);
 	});
 
+	// `loading` belongs to the list read alone; a count read must not adopt it.
+	it('clears loading when a count read starts mid-flight', async () => {
+		const listRead = deferred<{ count: number; data: Preference[] }>();
+		const countRead = deferred<{ count: number; data: Preference[] }>();
+		list.mockReturnValueOnce(listRead.promise).mockReturnValueOnce(countRead.promise);
+		const store = useContextStore();
+
+		const rows = store.fetchPreferences({ skip: 0, take: 50 });
+		const total = store.fetchPreferenceCount();
+
+		countRead.settle({ count: 4, data: [row()] });
+		await total;
+		listRead.settle({ count: 4, data: [row({ id: 'page' })] });
+		await rows;
+
+		// Stranding this leaves the table spinning over stale rows forever.
+		expect(store.loading).toBe(false);
+		expect(store.preferences.map((p) => p.id)).toEqual(['page']);
+	});
+
+	it('lets the newer count read win over an older list read', async () => {
+		const listRead = deferred<{ count: number; data: Preference[] }>();
+		const countRead = deferred<{ count: number; data: Preference[] }>();
+		list.mockReturnValueOnce(listRead.promise).mockReturnValueOnce(countRead.promise);
+		const store = useContextStore();
+
+		const rows = store.fetchPreferences({ skip: 0, take: 50 });
+		const total = store.fetchPreferenceCount();
+
+		countRead.settle({ count: 9, data: [row()] });
+		await total;
+		listRead.settle({ count: 1, data: [row({ id: 'page' })] });
+		await rows;
+
+		expect(store.count).toBe(9);
+	});
+
 	// The list watches this, because the modal cannot reach it to say it saved.
 	it.each([
 		[

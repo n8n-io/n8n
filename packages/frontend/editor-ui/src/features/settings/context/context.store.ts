@@ -21,29 +21,35 @@ export const useContextStore = defineStore('context', () => {
 	 */
 	const changeVersion = ref(0);
 
-	/**
+	/*
 	 * Reads land in completion order, not the order they were asked for, so a slow
 	 * earlier read could overwrite a newer one — a reload after a write racing the
-	 * page load it interrupted, for instance. Only the newest read commits. Both
-	 * readers share the counter because both write `count`.
+	 * page load it interrupted, for instance. Only the newest read commits.
+	 *
+	 * One counter per thing written, because the two readers do not write the same
+	 * things. A count read must not take ownership of `loading` away from a list
+	 * read in flight, or nothing would ever clear it.
 	 */
-	let latestRead = 0;
+
+	/** Guards the rows and the loading flag. Only a list read owns these. */
+	let latestListRead = 0;
+	/** Guards the total, which both readers write. */
+	let latestCountRead = 0;
 
 	const isEmpty = computed(() => count.value === 0);
 
 	async function fetchPreferences(query: PreferenceListQuery = {}) {
-		const read = ++latestRead;
+		const listRead = ++latestListRead;
+		const countRead = ++latestCountRead;
 		loading.value = true;
 		try {
 			const response = await api.getPreferences(rootStore.restApiContext, query);
-			if (read === latestRead) {
-				preferences.value = response.data;
-				count.value = response.count;
-			}
+			if (listRead === latestListRead) preferences.value = response.data;
+			if (countRead === latestCountRead) count.value = response.count;
 			return response;
 		} finally {
-			// A superseded read must not clear the flag out from under the newer one.
-			if (read === latestRead) loading.value = false;
+			// A superseded list read must not clear the flag out from under the newer one.
+			if (listRead === latestListRead) loading.value = false;
 		}
 	}
 
@@ -52,9 +58,9 @@ export const useContextStore = defineStore('context', () => {
 	 * only the count, so it asks for a single row.
 	 */
 	async function fetchPreferenceCount() {
-		const read = ++latestRead;
+		const countRead = ++latestCountRead;
 		const response = await api.getPreferences(rootStore.restApiContext, { skip: 0, take: 1 });
-		if (read === latestRead) count.value = response.count;
+		if (countRead === latestCountRead) count.value = response.count;
 		return response.count;
 	}
 
