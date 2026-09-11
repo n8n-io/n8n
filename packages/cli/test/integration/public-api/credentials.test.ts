@@ -355,7 +355,7 @@ describe('POST /credentials', () => {
 		expect(JSON.stringify(response.body)).not.toContain(payload.data.accessToken);
 	});
 
-	test('should reject an unknown body key', async () => {
+	test('should ignore an unknown body key', async () => {
 		const payload = {
 			name: 'test credential',
 			type: 'githubApi',
@@ -365,7 +365,7 @@ describe('POST /credentials', () => {
 
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(200);
 	});
 
 	test('should reject a read-only id field in the body', async () => {
@@ -1567,14 +1567,14 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.body).not.toHaveProperty('data');
 	});
 
-	test('should reject an unknown body key', async () => {
+	test('should ignore an unknown body key', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
 		const response = await authOwnerAgent
 			.patch(`/credentials/${savedCredential.id}`)
 			.send({ notAField: 'nope' });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(200);
 	});
 
 	test('should reject for member without the credential:update scope', async () => {
@@ -1600,17 +1600,16 @@ describe('PATCH /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	// Pins a deliberate contract shift from API-253: on unmodified master this was 415
-	// ("unsupported media type undefined"), because the hand-written spec marked the request
-	// body required. Every field in `UpdateCredentialPublicDto` is optional, so an empty object
-	// is a valid body and the body is no longer required; a bodyless request now falls through
-	// to a 200 no-op update instead of being rejected for its missing content type.
-	test('should accept a request with no body and no content type as a no-op update', async () => {
+	// Every field in `UpdateCredentialPublicDto` is optional, so deriving `requestBody.required`
+	// from the DTO shape alone would make the body optional too, unlike the legacy spec (which
+	// marked it required independently of its properties). `@Body({ required: true })` overrides
+	// that inference (see API-297) to keep this 415, matching the pre-migration contract.
+	test('should reject a request with no body and no content type', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
 
 		const response = await authOwnerAgent.patch(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(200);
+		expect(response.statusCode).toBe(415);
 	});
 });
 
