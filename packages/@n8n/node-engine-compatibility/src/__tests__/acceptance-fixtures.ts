@@ -350,6 +350,8 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 			.send({
 				workflowId: 'wf-m1',
 				graph,
+				// Opaque to the engine, and no acceptance case reads it back.
+				workflow: {},
 				triggerOutputs,
 				mode,
 				executionId: uuidv7(),

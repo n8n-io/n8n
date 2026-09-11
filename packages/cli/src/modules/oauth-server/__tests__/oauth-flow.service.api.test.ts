@@ -122,7 +122,6 @@ const authorizeAndMintCode = async (
 };
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
@@ -132,10 +131,6 @@ beforeAll(async () => {
 	codes = Container.get(OAuthAuthorizationCodeService);
 	oauthServer = Container.get(OAuthServerService);
 	tokenService = Container.get(OAuthTokenService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {

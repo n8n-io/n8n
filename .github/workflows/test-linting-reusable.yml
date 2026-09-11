@@ -15,14 +15,23 @@ on:
         default: 26.5.1
 
 env:
-  # Inherited by every worker turbo spawns, so the real budget is
-  # concurrency x cap: lint:ci runs 2 x 6 GB, fitting the runner's 15.2 GB.
+  # Each shard runs two workers with a 6 GB cap. This fits the runner's 15.2 GB.
   NODE_OPTIONS: --max-old-space-size=6144
 
 jobs:
   lint:
-    name: Lint
+    name: Lint (${{ matrix.name }})
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Backend
+            command: pnpm turbo run lint --concurrency=2 --cache=local:r,remote:r --filter=!./packages/frontend/** --filter=!./packages/modules/*/frontend --filter=!./packages/extensions/**
+            run-global-checks: true
+          - name: Frontend
+            command: pnpm turbo run lint lint:styles --concurrency=2 --cache=local:r,remote:r --filter=./packages/frontend/** --filter=./packages/modules/*/frontend --filter=./packages/extensions/**
+            run-global-checks: false
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -31,5 +40,9 @@ jobs:
       - name: Build and Test
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm lint:ci
+          build-command: ${{ matrix.command }}
           node-version: ${{ inputs.nodeVersion }}
+
+      - name: Run global lint checks
+        if: matrix.run-global-checks
+        run: pnpm boundaries:check && pnpm check:workspace-private-deps

@@ -58,6 +58,16 @@ describe('QuotedPrintablePartData', () => {
 		const partData = new QuotedPrintablePartData(data);
 		expect(partData.toString()).toBe('Hello, world!');
 	});
+
+	it('decodes the declared UTF-8', () => {
+		const partData = new QuotedPrintablePartData('caf=C3=A9', 'utf-8');
+		expect(partData.toString()).toBe('café');
+	});
+
+	it('keeps a body that declares UTF-8 and sends something else', () => {
+		const partData = new QuotedPrintablePartData('caf=E9', 'utf-8');
+		expect(partData.toString()).toBe('café');
+	});
 });
 
 describe('SevenBitPartData', () => {
@@ -72,6 +82,12 @@ describe('BinaryPartData', () => {
 	it('should correctly decode binary data', () => {
 		const data = Buffer.from('Hello, world!', 'utf-8').toString();
 		const partData = new BinaryPartData(data);
+		expect(partData.toString()).toBe('Hello, world!');
+	});
+
+	it('falls back to UTF-8 for a charset no decoder knows', () => {
+		const partData = new BinaryPartData('Hello, world!', 'unknown-8bit');
+		expect(partData.charset).toBe('utf-8');
 		expect(partData.toString()).toBe('Hello, world!');
 	});
 });

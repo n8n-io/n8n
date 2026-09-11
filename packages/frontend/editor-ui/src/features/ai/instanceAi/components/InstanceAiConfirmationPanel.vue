@@ -130,8 +130,6 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.workflows.publish.imperative',
 			'instanceAi.tools.workflows.publish.imperativeWithResource',
 			'instanceAi.tools.workflows.unpublish.imperative',
-			'instanceAi.tools.workflows.update.imperative',
-			'instanceAi.tools.workflows.update.imperativeWithResource',
 			'instanceAi.tools.workflows.update-version.imperative',
 			'instanceAi.tools.workflows.restore-version.imperative',
 			'instanceAi.tools.executions.run.imperative',
@@ -173,7 +171,7 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * Title for the floating approval. We resolve a short imperative phrase
  * (e.g. "archive workflow") via i18n keyed by the tool name and optional
  * action — `instanceAi.tools.{tool}.{action}.imperative`. When that key
- * exists we render the unified "Allow AI Assistant to {action}?" prompt;
+ * exists we render the unified "Allow n8n Assistant to {action}?" prompt;
  * otherwise we fall back to the tool's display label. Doing the lookup on
  * the frontend keeps the action phrase translatable without sending
  * English strings over the wire.
@@ -711,7 +709,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 									<ConfirmationPreview
 										:class="$style.approvalDescription"
 										role="region"
-										:aria-label="buildApprovalTitle(chunk.item)"
+										:aria-label="i18n.baseText('instanceAi.confirmation.details')"
 										tabindex="0"
 									>
 										{{ buildApprovalSubtitle(chunk.item) }}

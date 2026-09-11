@@ -28,7 +28,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 					'These nodes will send credentials here for tests and executions: {nodeNames}.',
 				'instanceAi.confirmation.credentialDestination.approve': 'Use destination',
 				'instanceAi.confirmation.credentialDestination.deny': "Don't use destination",
-				'instanceAi.confirmation.allowPrompt': 'Allow AI Assistant to {action}?',
+				'instanceAi.confirmation.allowPrompt': 'Allow n8n Assistant to {action}?',
+				'instanceAi.confirmation.details': 'Approval details',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
 				'instanceAi.tools.workflows.delete.imperative': 'archive workflow',
 				'instanceAi.tools.build-workflow.imperative': 'edit workflow',
@@ -267,7 +268,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 			const { getByRole, getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			const description = getByRole('region', {
-				name: 'Assistant wants to add a column to Contacts',
+				name: 'Approval details',
 			});
 
 			expect(description.textContent).toBe(message);
@@ -289,7 +290,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				'workflows',
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
-			expect(getByText('Allow AI Assistant to archive workflow?')).toBeVisible();
+			expect(getByText('Allow n8n Assistant to archive workflow?')).toBeVisible();
 		});
 
 		it('falls back to the tool label for an unknown approval action', () => {
@@ -321,7 +322,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
-			expect(getByText('Allow AI Assistant to edit workflow?')).toBeVisible();
+			expect(getByText('Allow n8n Assistant to edit workflow?')).toBeVisible();
 		});
 
 		it('preserves the saved description after a question mark', () => {

@@ -10,6 +10,7 @@ import {
 	type ProviderCredentials,
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
+import { getModelIdString } from '../../utils/model';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -44,12 +45,12 @@ function getProxyFetch(): FetchFn | undefined {
 	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
-	return (async (url, init) =>
+	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,
 			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
 			dispatcher,
-		})) as FetchFn;
+		});
 }
 
 type EntryBuilder<P extends ProviderId> = (
@@ -133,8 +134,30 @@ function buildOpenAiCompatible(
 
 type OpenAiCompatibleProviderId = 'nvidia';
 
-function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+/** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
+export function supportsSplitSystemMessages(model: ModelConfig): boolean {
+	switch (getModelIdString(model).split('/')[0]) {
+		case 'anthropic':
+		case 'google-vertex-anthropic':
+		case 'openrouter':
+			return true;
+		case 'openai': {
+			if (typeof model === 'string') return true;
+			const baseURL =
+				'baseURL' in model && typeof model.baseURL === 'string'
+					? model.baseURL
+					: 'url' in model && typeof model.url === 'string'
+						? model.url
+						: undefined;
+			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+		}
+		default:
+			return false;
+	}
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
@@ -392,7 +415,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Collect credential fields: strip `id`, pass the rest to Zod validation.
 	let credFields: Record<string, unknown> = {};
 	if (typeof config !== 'string') {
-		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
+		const { id: _id, ...rest } = config;
 		credFields = rest;
 	}
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
@@ -417,11 +440,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
 	const resolvedFetch = fetch ?? getProxyFetch();
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(
-		parsed.data as never,
-		modelName,
-		resolvedFetch,
-	);
+	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }
 
 /**

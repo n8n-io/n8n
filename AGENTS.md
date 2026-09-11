@@ -41,6 +41,13 @@ frontend, and extensible node-based workflow engine.
 - The AI gateway feature is **"Gateway credits"** in user-facing text (UI copy,
   error messages, prompts). Only internal identifiers, i18n keys, telemetry, and
   comments keep the historical `n8nConnect` / `n8n credits` / AI Gateway names
+- **Shared utilities:** before you hand-roll a utility (`isRecord`, secret or
+  PII redaction, JSON extraction from LLM output, Zod to JSON Schema, model-id
+  parsing, …), you MUST check the shared packages for an existing
+  implementation and use it: `@n8n/utils` (generic helpers, redaction),
+  `@n8n/ai-utilities` (AI- and LLM-specific helpers) and `n8n-workflow`
+  (workflow graph and traversal). A new shared helper usually belongs in one of
+  these packages too; domain logic stays in the package that owns the domain.
 
 ## Agent Skills and Claude Code Plugin
 
@@ -153,7 +160,7 @@ The monorepo is organized into these key packages:
 - **`packages/frontend/@n8n/i18n`**: Internationalization for UI text
 - **`packages/nodes-base`**: Built-in nodes for integrations
 - **`packages/@n8n/nodes-langchain`**: AI/LangChain nodes
-- **`packages/@n8n/instance-ai`**: "AI Assistant" in the UI, "Instance AI" in code — AI assistant backend. See its `CLAUDE.md` for architecture docs.
+- **`packages/@n8n/instance-ai`**: "n8n Assistant" in the UI, "Instance AI" in code — n8n Assistant backend. See its `CLAUDE.md` for architecture docs.
 - **`@n8n/design-system`**: Vue component library for UI consistency
 - **`@n8n/config`**: Centralized configuration management
 
@@ -258,14 +265,39 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
 
+### ESLint configuration layers
+
+Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
+config picks exactly one:
+
+| layer | subpath | for |
+|---|---|---|
+| `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
+| `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+A package config may add `ignores`, an additive plugin config, a block that
+raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
+down for the whole package: every lint script runs with `--quiet`, so a `warn`
+enforces nothing and reads as if it did. The code-health rule
+`lint-config-layering` enforces this, with existing debt in
+`.code-health-baseline.json`, which only shrinks.
+
+To stop enforcing a rule everywhere, retire it in `base.ts` with the count
+behind the decision. To enforce one again in a package that is ready, set it to
+`error` there. `node scripts/lint-parity/majority.mjs` prints how many packages
+downgrade each rule, and `scripts/lint-parity/snapshot.mjs` plus `diff.mjs`
+prove a config change only altered what you meant it to.
+
 ### Encryption boundary
 
 New code encrypts and decrypts only through `cipher.encryptV2()` /
 `cipher.decryptV2()` — the key-manager module decides which key is used and in
 which output format. Enforced in CI by the rules in
 `packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
-`nodeConfig`; baseConfig packages that depend on `n8n-core` or `@n8n/db`
-compose it directly):
+`backendConfig`, and so of `nodesConfig`; every package that runs on Node
+extends one of those layers):
 
 - The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
 - The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
@@ -276,8 +308,9 @@ compose it directly):
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package
-  that depends on `n8n-core` or `@n8n/db` composes the boundary config at
-  `error` severity, and rejects every directive form that would silence the
+  that depends on `n8n-core` or `@n8n/db` extends `backendConfig` (or
+  `nodesConfig`) at `error` severity, and rejects every directive form that
+  would silence the
   rules in non-test code (`eslint-disable*` and inline `eslint` configuration
   comments). Widening the boundary happens in `encryption-boundary.ts` only;
   that file and the rule files require security (IAM) approval via OWNERS.
@@ -324,7 +357,9 @@ When implementing features:
 2. Implement backend logic in `packages/cli` module, follow
    `scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
-4. Update frontend in `packages/frontend/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
+   frontend feature module, obey
+   `packages/@n8n/module-cli/frontend-module-guide.md`
 5. Write tests with proper mocks
 6. Run `pnpm typecheck` to verify types
 

@@ -49,6 +49,7 @@ describe('EngineV2Module', () => {
 			const request = {
 				workflowId: 'wf-1',
 				graph: { nodes: [], edges: [] },
+				workflow: {},
 				executionId: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa',
 				callerContext: {},
 			};

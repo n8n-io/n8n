@@ -24,7 +24,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
+import WorkflowActivationErrorMessage from '@/features/workflows/components/WorkflowActivationErrorMessage.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 

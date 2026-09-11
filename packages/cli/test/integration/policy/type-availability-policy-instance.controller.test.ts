@@ -208,7 +208,7 @@ describe('node type availability policy instance controller admin happy path', (
 		const updated = await testServer
 			.authAgentFor(owner)
 			.patch(`/node-type-policies/policies/${policyId}`)
-			.send({ rules: [] });
+			.send({ rules: [], version: 1 });
 		expect(updated.statusCode).toBe(200);
 		expect(updated.body.data.policy.version).toBe(2);
 
@@ -221,6 +221,93 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`);
 		expect(missing.statusCode).toBe(404);
+	});
+
+	test('PATCH /policies/:policyId with a stale version returns 409 and writes nothing', async () => {
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/node-type-policies/policies')
+			.send({ rules: [] });
+		const policyId = created.body.data.policy.id;
+
+		const first = await testServer
+			.authAgentFor(owner)
+			.patch(`/node-type-policies/policies/${policyId}`)
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+				version: 1,
+			});
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.policy.version).toBe(2);
+
+		const stale = await testServer
+			.authAgentFor(owner)
+			.patch(`/node-type-policies/policies/${policyId}`)
+			.send({ rules: [], version: 1 });
+		expect(stale.statusCode).toBe(409);
+
+		const fetched = await testServer
+			.authAgentFor(owner)
+			.get(`/node-type-policies/policies/${policyId}`);
+		expect(fetched.body.data.version).toBe(2);
+		expect(fetched.body.data.rules).toHaveLength(1);
+	});
+
+	test('PATCH /policies/:policyId without a version is rejected with 400', async () => {
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/node-type-policies/policies')
+			.send({ rules: [] });
+		const policyId = created.body.data.policy.id;
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/node-type-policies/policies/${policyId}`)
+			.send({ rules: [] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('PATCH on an attached document bumps the instance scope version', async () => {
+		const instancePut = await testServer
+			.authAgentFor(owner)
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(instancePut.statusCode).toBe(200);
+		const versionBefore = instancePut.body.data.version;
+
+		const documents = await testServer.authAgentFor(owner).get('/node-type-policies/policies');
+		expect(documents.body.data).toHaveLength(1);
+		const document = documents.body.data[0];
+
+		const patched = await testServer
+			.authAgentFor(owner)
+			.patch(`/node-type-policies/policies/${document.id}`)
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+				version: document.version,
+			});
+		expect(patched.statusCode).toBe(200);
+
+		const instance = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+		expect(instance.body.data.version).toBeGreaterThan(versionBefore);
+		expect(instance.body.data.rules).toEqual([
+			{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } },
+		]);
+
+		// Repeating the same rules is a no-op for the document, so the scope stays put too.
+		const repeated = await testServer
+			.authAgentFor(owner)
+			.patch(`/node-type-policies/policies/${document.id}`)
+			.send({
+				rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+				version: patched.body.data.policy.version,
+			});
+		expect(repeated.statusCode).toBe(200);
+		const instanceAfterNoop = await testServer
+			.authAgentFor(owner)
+			.get('/node-type-policies/instance');
+		expect(instanceAfterNoop.body.data.version).toBe(instance.body.data.version);
 	});
 
 	test('DELETE /policies/:policyId on an attached policy returns 409, not a raw SQL error', async () => {

@@ -889,6 +889,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // nodeTypes
 				pollCursorService,
 				mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
+				mock(), // engineV2ActiveTriggers
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(

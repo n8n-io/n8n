@@ -12,6 +12,7 @@ import type {
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
@@ -30,6 +31,8 @@ import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
 } from '../sub-agent-source-resolver';
+
+const aiConfigMock = mock<AiConfig>();
 
 const projectId = 'project-1';
 const parentThreadId = 'parent-thread-1';
@@ -131,7 +134,13 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
-		runner = new SubAgentRunner(sourceResolver, agentExecutionService, checkpointStorage, logger);
+		runner = new SubAgentRunner(
+			sourceResolver,
+			agentExecutionService,
+			checkpointStorage,
+			logger,
+			aiConfigMock,
+		);
 
 		childAgent = mock<BuiltAgent>();
 		childAgent.stream.mockResolvedValue(makeStreamResult(defaultStreamChunks));

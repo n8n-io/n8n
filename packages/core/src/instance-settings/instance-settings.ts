@@ -28,6 +28,23 @@ interface WritableSettings {
 
 type Settings = ReadOnlySettings & WritableSettings;
 
+/**
+ * The subset of `DeploymentKeyRepository` the deployment-state initializers
+ * use. Typed inline rather than imported from `@n8n/db` to avoid a circular
+ * package dependency: `@n8n/db` depends on `n8n-core` at runtime.
+ */
+export type DeploymentStateRepo = {
+	findActiveByType(type: string): Promise<{ value: string } | null>;
+	insertOrIgnore(entity: {
+		type: string;
+		value: string;
+		status: string;
+		algorithm: null;
+	}): Promise<void>;
+	findActiveSigningSecret(type: string, opts?: { rewrapLegacy?: boolean }): Promise<string | null>;
+	seedSigningSecret(type: string, secret: string): Promise<void>;
+};
+
 @Service()
 export class InstanceSettings {
 	/** The path to the n8n folder in which all n8n related data gets saved */
@@ -109,19 +126,11 @@ export class InstanceSettings {
 	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
 	 */
 	async initialize(
-		repo: {
-			findActiveByType(type: string): Promise<{ value: string } | null>;
-			insertOrIgnore(entity: {
-				type: string;
-				value: string;
-				status: string;
-				algorithm: null;
-			}): Promise<void>;
-		},
+		repo: DeploymentStateRepo,
 		{ canSeed = true }: { canSeed?: boolean } = {},
 	): Promise<void> {
 		this.canSeedDeploymentState = canSeed;
-		await this.initSecret(
+		await this.initIdentifier(
 			repo,
 			'instance.id',
 			process.env.N8N_INSTANCE_ID,
@@ -143,16 +152,9 @@ export class InstanceSettings {
 		);
 	}
 
-	private async initSecret(
-		repo: {
-			findActiveByType(type: string): Promise<{ value: string } | null>;
-			insertOrIgnore(entity: {
-				type: string;
-				value: string;
-				status: string;
-				algorithm: null;
-			}): Promise<void>;
-		},
+	/** Plain identifier rows (not secret): stored and read as-is. */
+	private async initIdentifier(
+		repo: DeploymentStateRepo,
 		type: string,
 		envValue: string | undefined,
 		canSeed: boolean,
@@ -172,6 +174,37 @@ export class InstanceSettings {
 		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
 		const winner = await repo.findActiveByType(type);
 		if (winner) set(winner.value);
+	}
+
+	/**
+	 * Secret rows: stored through the repository's signing-secret methods,
+	 * which own the at-rest format. A row found in the pre-wrap form is
+	 * upgraded in place, but only by processes allowed to write deployment
+	 * state (`canSeed`) — a one-off CLI command must not mutate it.
+	 */
+	private async initSecret(
+		repo: DeploymentStateRepo,
+		type: string,
+		envValue: string | undefined,
+		canSeed: boolean,
+		get: () => string,
+		set: (v: string) => void,
+	): Promise<void> {
+		if (envValue) {
+			set(envValue);
+			return;
+		}
+		const existing = await repo.findActiveSigningSecret(type, { rewrapLegacy: canSeed });
+		if (existing !== null) {
+			set(existing);
+			return;
+		}
+		if (!canSeed) return;
+		await repo.seedSigningSecret(type, get());
+		// The winner may be a pre-wrap row inserted concurrently by an older
+		// process — rewrap on this read too, so startup always leaves it wrapped.
+		const winner = await repo.findActiveSigningSecret(type, { rewrapLegacy: true });
+		if (winner !== null) set(winner);
 	}
 
 	/**

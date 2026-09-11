@@ -313,6 +313,18 @@ describe('AgentSandboxRuntimeService', () => {
 		);
 	});
 
+	it('marks the n8n sandbox knowledge sandbox ephemeral when configured, but never the workspace', async () => {
+		const service = makeService({
+			configOverrides: { sandboxEphemeral: true },
+			sandboxSettingsService: makeSandboxSettingsService('n8n-sandbox'),
+		});
+
+		await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+		await service.acquireKnowledgeSandbox(projectId, agentId);
+
+		expect(createSandboxMock.mock.calls.map(([config]) => config.ephemeral)).toEqual([false, true]);
+	});
+
 	it('reports how to configure a missing n8n sandbox service URL', async () => {
 		const settingsService = makeSandboxSettingsService('n8n-sandbox');
 		settingsService.resolveN8nSandboxConfig.mockResolvedValue({});

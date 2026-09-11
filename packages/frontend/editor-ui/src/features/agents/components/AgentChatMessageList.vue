@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
+import { useSessionStorage } from '@vueuse/core';
 import {
 	buildDisplayGroups,
 	type DisplayGroup,
@@ -28,7 +28,8 @@ import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
-import type { AgentFixWithAssistantEvent, AgentFixWithAssistantFailure } from '../types';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -42,7 +43,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [event?: AgentFixWithAssistantEvent];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
 }>();
 
 const i18n = useI18n();
@@ -143,6 +144,36 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildDisplayGroups(props.messages));
+
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === 'message' &&
+					group.message.role === 'user' &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
 
 function isThinkingActive(message: ChatMessage): boolean {
 	return (
@@ -287,18 +318,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
-
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
 // large enough that sub-pixel DOM growth during markdown rendering doesn't
@@ -340,24 +359,6 @@ function scrollToBottom(): void {
 
 function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
-}
-
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
 }
 
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
@@ -405,26 +406,6 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
@@ -502,10 +483,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 					</div>
@@ -581,6 +559,40 @@ onBeforeUnmount(() => {
 							</div>
 						</template>
 					</template>
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -609,10 +621,7 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
 						/>
 						<AgentChatMemoryUsed
@@ -707,6 +716,28 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
 }
 
 .chatMessage {

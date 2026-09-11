@@ -87,6 +87,36 @@ describe('data-tables tool', () => {
 		},
 	);
 
+	it.each([
+		{ condition: 'like', value: 'Alice', description: 'contains "Alice" (matching case)' },
+		{ condition: 'ilike', value: 'Alice', description: 'contains "Alice" (ignoring case)' },
+		{ condition: 'like', value: 'Alice%', description: 'matches the text pattern "Alice%"' },
+		{
+			condition: 'ilike',
+			value: '%Alice',
+			description: 'matches the text pattern (ignoring case) "%Alice"',
+		},
+	])(
+		'describes $condition filters with value=$value',
+		async ({ condition, value, description }) => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTablesTool(context),
+				{
+					action: 'delete-rows',
+					dataTableId: 'dt-1',
+					filter: { type: 'and', filters: [{ columnName: 'name', condition, value }] },
+				},
+				{ suspend },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: `Delete rows where "name" ${description}` }),
+			);
+			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+		},
+	);
+
 	it('builds the approval card from the input without a table lookup', async () => {
 		const context = createMockContext();
 		context.dataTableService.resolveTableReference = vi.fn();
