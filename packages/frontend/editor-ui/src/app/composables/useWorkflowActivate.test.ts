@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useWorkflowActivate } from './useWorkflowActivate';
+import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
 
 // --- hoisted mocks ---
 // vi.hoisted callbacks run before any imports, so only plain JS is usable there.
@@ -55,26 +56,43 @@ vi.mock('@/app/stores/workflows.store', () => ({
 	}),
 }));
 
+const mockGetWorkflowById = vi.hoisted(() =>
+	vi.fn().mockReturnValue({ activeVersion: null as unknown }),
+);
+
 vi.mock('@/app/stores/workflowsList.store', () => ({
 	useWorkflowsListStore: vi.fn().mockReturnValue({
-		getWorkflowById: vi.fn().mockReturnValue({ activeVersion: null }),
+		getWorkflowById: mockGetWorkflowById,
 		fetchWorkflow: vi.fn(),
 	}),
 }));
 
 // useSettingsStore is called at publish time (not at composable init), so we
 // control the return value per-test via the mockSettingsImpl variable below.
-const mockSettingsImpl = vi.hoisted(() => ({ isWorkflowPublicationServiceEnabled: false }));
+const mockSettingsImpl = vi.hoisted(() => ({
+	isWorkflowPublicationServiceEnabled: false,
+	isMultiMain: false,
+}));
 
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsImpl),
 }));
 
+const mockOpenModal = vi.hoisted(() => vi.fn());
+
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({
-		openModal: vi.fn(),
+		openModal: mockOpenModal,
 		openModalWithData: vi.fn(),
 	}),
+}));
+
+const mockRegisterPendingActivationModal = vi.hoisted(() => vi.fn());
+const mockClearPendingActivationModal = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/workflowPublicationConfirmation', () => ({
+	registerPendingActivationModal: mockRegisterPendingActivationModal,
+	clearPendingActivationModal: mockClearPendingActivationModal,
 }));
 
 vi.mock('@/features/collaboration/collaboration/collaboration.store', () => ({
@@ -95,8 +113,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
+// Models the "Don't show again" flag of the activation success modal.
+const mockActivationStorageFlag = vi.hoisted(() => ({ value: undefined as string | undefined }));
+
 vi.mock('@n8n/composables/useStorage', () => ({
-	useStorage: vi.fn().mockReturnValue({ value: undefined }),
+	useStorage: vi.fn().mockReturnValue(mockActivationStorageFlag),
 }));
 
 vi.mock('@/app/composables/useActivationError', () => ({
@@ -136,6 +157,9 @@ describe('useWorkflowActivate', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockSettingsImpl.isWorkflowPublicationServiceEnabled = false;
+		mockSettingsImpl.isMultiMain = false;
+		mockActivationStorageFlag.value = undefined;
+		mockGetWorkflowById.mockReturnValue({ activeVersion: null });
 		mockDocumentStore.hydrated = false;
 		mockDocumentStore.checksum = undefined;
 		otherDocumentStore.hydrated = false;
@@ -253,6 +277,94 @@ describe('useWorkflowActivate', () => {
 			expect(mockSetActiveState).not.toHaveBeenCalled();
 			expect(mockSetVersionData).not.toHaveBeenCalled();
 			expect(mockSetChecksum).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('publishWorkflow() — activation success modal (ADO-4969)', () => {
+		it('defers the modal to the confirming push when the publication service is ON', async () => {
+			mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: true });
+			expect(mockRegisterPendingActivationModal).toHaveBeenCalledWith(WORKFLOW_ID, VERSION_ID);
+			expect(mockOpenModal).not.toHaveBeenCalled();
+		});
+
+		it('registers the intent before the publish request, so an early push is not missed', async () => {
+			mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+			const callOrder: string[] = [];
+			mockRegisterPendingActivationModal.mockImplementationOnce(() => {
+				callOrder.push('register');
+			});
+			mockPublishWorkflow.mockImplementationOnce(async () => {
+				callOrder.push('request');
+				return makePublishedWorkflowResponse();
+			});
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(callOrder).toEqual(['register', 'request']);
+		});
+
+		it('defers the modal in multi-main setups even when the publication service is OFF', async () => {
+			mockSettingsImpl.isMultiMain = true;
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockRegisterPendingActivationModal).toHaveBeenCalledWith(WORKFLOW_ID, VERSION_ID);
+			expect(mockOpenModal).not.toHaveBeenCalled();
+		});
+
+		it('opens the modal right away on legacy single-main, where no push will come', async () => {
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockOpenModal).toHaveBeenCalledWith(WORKFLOW_ACTIVE_MODAL_KEY);
+			expect(mockRegisterPendingActivationModal).not.toHaveBeenCalled();
+		});
+
+		it('does nothing modal-related when the workflow already had a published version', async () => {
+			mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+			mockGetWorkflowById.mockReturnValue({ activeVersion: { versionId: 'v-0' } });
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockRegisterPendingActivationModal).not.toHaveBeenCalled();
+			expect(mockOpenModal).not.toHaveBeenCalled();
+		});
+
+		it('does nothing modal-related when the user opted out via "Don\'t show again"', async () => {
+			mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+			mockActivationStorageFlag.value = 'true';
+			mockPublishWorkflow.mockResolvedValueOnce(makePublishedWorkflowResponse());
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockRegisterPendingActivationModal).not.toHaveBeenCalled();
+			expect(mockOpenModal).not.toHaveBeenCalled();
+		});
+
+		it('clears the pending intent when the publish request fails', async () => {
+			mockSettingsImpl.isWorkflowPublicationServiceEnabled = true;
+			mockPublishWorkflow.mockRejectedValueOnce(new Error('network error'));
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockClearPendingActivationModal).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(mockOpenModal).not.toHaveBeenCalled();
 		});
 	});
 

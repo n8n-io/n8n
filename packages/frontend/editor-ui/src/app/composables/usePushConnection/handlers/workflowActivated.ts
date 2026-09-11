@@ -5,6 +5,8 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { consumePendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
+import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowActivated(
@@ -18,6 +20,9 @@ export async function workflowActivated(
 	const uiStore = useUIStore();
 
 	const { workflowId, activeVersionId } = data;
+
+	// Publication confirmed - resolve the intent in this tab
+	const showActivationModal = consumePendingActivationModal(workflowId, activeVersionId);
 
 	const workflowIsBeingViewed = workflowDocumentStore.workflowId === workflowId;
 	const activeVersionChanged = workflowDocumentStore.activeVersionId !== activeVersionId;
@@ -42,5 +47,10 @@ export async function workflowActivated(
 			workflowDocumentStore.setPublicationStatus({ status: 'published', failures: [] });
 		}
 		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
+
+		// First publish initiated in this tab: how the one-time success modal (ADO-4969).
+		if (showActivationModal) {
+			uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+		}
 	}
 }
