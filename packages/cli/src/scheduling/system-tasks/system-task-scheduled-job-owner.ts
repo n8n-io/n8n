@@ -53,6 +53,11 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return existing;
 	}
 
+	/** Whether any instance stored a durable job for the task. */
+	async isProvisioned(taskName: string): Promise<boolean> {
+		return (await this.jobs.countByOwner(this.owner(taskName))) > 0;
+	}
+
 	/** The stored jobs this instance does not run durably and no newer version stamped, as read. */
 	async findStale(): Promise<StaleSystemTaskJob[]> {
 		const rows = await this.jobs.findPayloadsByOwnerType(this.ownerType);

@@ -361,9 +361,17 @@ export class SystemTaskRunner {
 	}
 
 	private async runOnce(routed: RoutedTask): Promise<void> {
+		const { task } = routed;
+		if (task.durable && (await this.isProvisionedElsewhere(task))) {
+			this.logger.debug('Skipped an in-memory system task run, its durable job is provisioned', {
+				name: task.name,
+			});
+			return;
+		}
+
 		const { signal } = this.inMemoryRunsController;
 		try {
-			await routed.task.run(signal);
+			await task.run(signal);
 		} catch (error) {
 			// A rejection after the run's signal aborted is the task honoring the
 			// abort, not a failure.
@@ -371,6 +379,22 @@ export class SystemTaskRunner {
 				this.reportFailure('A system task run failed', routed.task, error);
 				this.scheduleRetry(routed);
 			}
+		}
+	}
+
+	/**
+	 * Whether another instance handed this task to the durable scheduler. Never
+	 * throws: a store this instance cannot read must not silence its timer.
+	 */
+	private async isProvisionedElsewhere(task: SystemTask): Promise<boolean> {
+		try {
+			return await this.systemTaskOwner.isProvisioned(task.name);
+		} catch (error) {
+			this.logger.warn('Could not check for the durable job of a system task, so it runs', {
+				name: task.name,
+				error,
+			});
+			return false;
 		}
 	}
 

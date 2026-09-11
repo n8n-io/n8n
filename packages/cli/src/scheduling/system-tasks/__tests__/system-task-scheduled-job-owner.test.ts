@@ -146,4 +146,19 @@ describe('SystemTaskScheduledJobOwner', () => {
 			await expect(owner.findStale()).rejects.toBe(error);
 		});
 	});
+
+	describe('isProvisioned', () => {
+		it('reports a task with a stored job as provisioned', async () => {
+			jobs.countByOwner.mockResolvedValue(1);
+
+			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(true);
+			expect(jobs.countByOwner).toHaveBeenCalledExactlyOnceWith(owner.owner('prune-executions'));
+		});
+
+		it('reports a task without a stored job as not provisioned', async () => {
+			jobs.countByOwner.mockResolvedValue(0);
+
+			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(false);
+		});
+	});
 });
