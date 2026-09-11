@@ -827,9 +827,9 @@ describe('AppDetailsView', () => {
 				{ ...supportBinding, key: 'faq', permissions: ['chat'] },
 				{ ...supportBinding, key: 'log', permissions: ['history'] },
 			];
-			const { getByRole, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId, queryByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			const rows = getAllByTestId('app-connection');
 			expect(rows).toHaveLength(3);
@@ -854,9 +854,9 @@ describe('AppDetailsView', () => {
 			appsStore.bindingWarnings = [
 				`Binding 'support': agent "Support" is not published. The app gets an error until it is published.`,
 			];
-			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			expect(getByTestId('app-connection-not-published')).toHaveTextContent(
 				'Not published — the app cannot chat yet',
@@ -868,9 +868,9 @@ describe('AppDetailsView', () => {
 		it('disconnects an agent after confirmation with the agent copy', async () => {
 			appsStore.bindings = [supportBinding];
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getByTestId } = await renderApp(makeApp());
+			const { getByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
 			await userEvent.click(getByTestId('app-connection-delete'));
 
 			expect(confirm).toHaveBeenCalledWith(
