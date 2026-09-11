@@ -52,7 +52,7 @@ describe('ExecuteWorkflow', () => {
 		expect(mappingPatterns).toContain("type: 'number'");
 		expect(mappingPatterns).toContain('matchingColumns: []');
 		expect(mappingPatterns).toContain('attemptToConvertTypes: false');
-		expect(mappingPatterns).toContain('convertFieldsToString: true');
+		expect(mappingPatterns).not.toContain('convertFieldsToString');
 	});
 
 	test('should execute workflow in "each" mode and wait for sub-workflow completion', async () => {
