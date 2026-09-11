@@ -30,9 +30,15 @@ export function assertSupportedFlags(
 	allowedFlags: ReadonlySet<Pcre2Flag | Pcre2JsFlag>,
 	flags: string,
 ): void {
+	// Native RegExp rejects a repeated flag character (e.g. 'ii') with a SyntaxError.
+	const seen = new Set<string>();
 	for (const flag of flags) {
 		if (!allowedFlags.has(flag as Pcre2Flag | Pcre2JsFlag)) {
 			throw new Pcre2CompileError(`Unsupported regex flag: '${flag}'`, '', flags, 0, 0);
 		}
+		if (seen.has(flag)) {
+			throw new Pcre2CompileError(`Duplicate regex flag: '${flag}'`, '', flags, 0, 0);
+		}
+		seen.add(flag);
 	}
 }
