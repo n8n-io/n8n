@@ -127,30 +127,28 @@ if (launcher !== 'claude') args.shift();
 
 // Keep the remote terminal interface available while local clients become the default.
 if (launcher === 'opencode' && !args.includes('--legacy')) {
-	try {
-		const { connectOpenCode, parseOpenCodeArgs } = await import('./cloud-session-opencode.mjs');
-		const options = parseOpenCodeArgs(args);
-		if (options.help) {
-			console.log(`Usage: pnpm session:opencode [name] [--web] [--new] [--port PORT]
+	if (args.includes('--help') || args.includes('-h')) {
+		console.log(`Usage: pnpm session:opencode [name] [--web] [--new] [--port PORT]
        pnpm session:opencode [name] --legacy [OpenCode flags]
 
 The local TUI requires the same OpenCode version as the server.
 Web mode needs a browser only and uses local port 4096 by default.
 Use --port to override it. Use Ctrl-C to close the local connection.`);
-		} else {
-			await connectOpenCode(options, ensureCodespace);
-		}
+		process.exit();
+	}
+	try {
+		const { connectOpenCode, parseOpenCodeArgs } = await import('./cloud-session-opencode.mjs');
+		await connectOpenCode(parseOpenCodeArgs(args), ensureCodespace);
 	} catch (error) {
 		console.error(error.message);
 		process.exitCode = 1;
 	}
 	// Do not interpret OpenCode options as legacy session names.
-	process.exit(process.exitCode ?? 0);
+	process.exit();
 }
-if (launcher === 'opencode') {
-	args.splice(args.indexOf('--legacy'), 1);
-	if (args[0]?.startsWith('-')) args.unshift('agent');
-}
+if (launcher === 'opencode') args.splice(args.indexOf('--legacy'), 1);
+// Flags without a session name apply to the main checkout.
+if (args[0]?.startsWith('-')) args.unshift('agent');
 const [cmd = 'agent', ...rest] = args;
 
 switch (cmd) {
@@ -225,7 +223,7 @@ switch (cmd) {
 	}
 	default: {
 		// treat cmd as the session name; each name = an independent agent in its own worktree
-		if (!/^[\w-]+$/.test(cmd)) {
+		if (!/^\w[\w-]*$/.test(cmd)) {
 			console.error(`Invalid session name '${cmd}' — use letters, digits, - or _`);
 			process.exit(1);
 		}

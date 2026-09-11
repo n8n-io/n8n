@@ -128,9 +128,7 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
-              .devcontainer/codespaces/agent-worker*.mjs
-              .devcontainer/codespaces/cloud-session.test.mjs
-              .devcontainer/codespaces/opencode*.mjs
+              .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
               scripts/cloud-session*.mjs

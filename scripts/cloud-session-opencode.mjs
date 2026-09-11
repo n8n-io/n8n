@@ -2,33 +2,33 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
+import { parseArgs } from 'node:util';
 
-import { openCodeProxy } from './cloud-session-opencode-proxy.mjs';
+import { basicAuth, openCodeProxy } from './cloud-session-opencode-proxy.mjs';
+
+const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
 export function parseOpenCodeArgs(args) {
-	const options = { name: 'agent', web: false, fresh: false, port: 0, help: false };
-	let named = false;
-	for (let index = 0; index < args.length; index++) {
-		const arg = args[index];
-		if (arg === '--web') options.web = true;
-		else if (arg === '--new') options.fresh = true;
-		else if (arg === '--help' || arg === '-h') options.help = true;
-		else if (arg === '--port') {
-			const value = args[++index];
-			if (!/^\d+$/.test(value ?? '') || +value < 1 || +value > 65535)
-				throw new Error('--port must be 1–65535.');
-			options.port = +value;
-		} else if (!named && /^[\w-]+$/.test(arg) && !arg.startsWith('-')) {
-			options.name = arg;
-			named = true;
-		} else {
-			throw new Error(
-				`Unknown argument: ${arg}. Use --help. Use --legacy for remote OpenCode CLI flags.`,
-			);
-		}
+	let parsed;
+	try {
+		parsed = parseArgs({
+			args,
+			allowPositionals: true,
+			options: { web: { type: 'boolean' }, new: { type: 'boolean' }, port: { type: 'string' } },
+		});
+	} catch (error) {
+		throw new Error(`${error.message}. Use --help. Use --legacy for remote OpenCode CLI flags.`);
 	}
-	if (options.web && !options.port) options.port = 4096;
-	return options;
+	const { positionals, values } = parsed;
+	if (positionals.length > 1 || (positionals[0] && !/^\w[\w-]*$/.test(positionals[0])))
+		throw new Error('Use one workspace name with letters, digits, - or _.');
+	let port = values.web ? 4096 : 0;
+	if (values.port !== undefined) {
+		if (!/^\d+$/.test(values.port) || +values.port < 1 || +values.port > 65535)
+			throw new Error('--port must be 1–65535.');
+		port = +values.port;
+	}
+	return { name: positionals[0] ?? 'agent', web: !!values.web, fresh: !!values.new, port };
 }
 
 function localVersion() {
@@ -41,19 +41,15 @@ function localVersion() {
 	return version;
 }
 
-export async function freePort(excludedPort) {
+async function freePort() {
 	const server = createServer();
 	await new Promise((resolve, reject) => {
 		server.once('error', reject);
 		server.listen(0, '127.0.0.1', resolve);
 	});
 	const { port } = server.address();
-	try {
-		// Keep a conflicting port reserved while the OS selects another one.
-		return port === excludedPort ? await freePort() : port;
-	} finally {
-		await new Promise((resolve) => server.close(resolve));
-	}
+	await new Promise((resolve) => server.close(resolve));
+	return port;
 }
 
 function startChild(command, args, options = {}) {
@@ -86,6 +82,7 @@ function startChild(command, args, options = {}) {
 			return finished;
 		},
 		async stop() {
+			if (finished) return;
 			// gh starts ssh as a child. Terminate the process group to close the tunnel too.
 			kill('SIGTERM');
 			await Promise.race([done, delay(2000, undefined, { ref: false })]);
@@ -126,24 +123,21 @@ async function bootstrap(codespace, options, signal) {
 		} catch {
 			throw new Error('Invalid OpenCode server response.');
 		}
+		// The server owns the workspace layout and the credential format. Check the shape only.
+		const text = (value) => typeof value === 'string' && value.length > 0;
 		if (
 			!state ||
 			!Number.isInteger(state.port) ||
-			state.port < 1 ||
-			state.port > 65535 ||
-			typeof state.password !== 'string' ||
-			!/^[a-f0-9]{64}$/.test(state.password) ||
-			typeof state.sessionID !== 'string' ||
-			!/^ses_[\w]+$/.test(state.sessionID) ||
-			state.directory !==
-				(options.name === 'agent' ? '/workspaces/n8n' : `/workspaces/wt-${options.name}`)
+			!text(state.password) ||
+			!text(state.sessionID) ||
+			!text(state.directory)
 		) {
 			throw new Error('Invalid OpenCode server response.');
 		}
 		return state;
 	} finally {
 		signal.removeEventListener('abort', abort);
-		if (!remote.finished) await remote.stop();
+		await remote.stop();
 	}
 }
 
@@ -155,9 +149,7 @@ async function waitForTunnel(url, password, tunnel, signal) {
 		let response;
 		try {
 			response = await fetch(`${url}/global/health`, {
-				headers: {
-					authorization: `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`,
-				},
+				headers: { authorization: basicAuth(password) },
 				signal: AbortSignal.any([signal, AbortSignal.timeout(1000)]),
 			});
 		} catch {
@@ -194,16 +186,16 @@ export async function connectOpenCode(options, ensureCodespace) {
 	const version = options.web ? undefined : localVersion();
 	const controller = new AbortController();
 	const interrupt = () => controller.abort();
-	process.on('SIGINT', interrupt);
-	process.on('SIGTERM', interrupt);
-	process.on('SIGHUP', interrupt);
+	for (const signal of SIGNALS) process.on(signal, interrupt);
 	let tunnel;
 	let client;
 	let proxy;
 	try {
 		const codespace = ensureCodespace();
 		const state = await bootstrap(codespace, options, controller.signal);
-		const port = !options.web && options.port ? options.port : await freePort(options.port);
+		// Bind the browser port first so the tunnel cannot receive the same port.
+		if (options.web) proxy = await openCodeProxy({ password: state.password, port: options.port });
+		const port = !options.web && options.port ? options.port : await freePort();
 		const url = `http://127.0.0.1:${port}`;
 		tunnel = startChild(
 			'gh',
@@ -235,12 +227,8 @@ export async function connectOpenCode(options, ensureCodespace) {
 			controller.signal.addEventListener('abort', () => resolve('interrupted'), { once: true }),
 		);
 		controller.signal.throwIfAborted();
-		if (options.web) {
-			proxy = await openCodeProxy({
-				targetPort: port,
-				password: state.password,
-				port: options.port,
-			});
+		if (proxy) {
+			proxy.targetPort = port;
 			const webUrl = `${proxy.origin}/${Buffer.from(state.directory).toString('base64url')}/session/${state.sessionID}`;
 			console.log(
 				`OpenCode: ${webUrl}\nKeep this command running. Press Ctrl-C to disconnect. The remote server stays running.`,
@@ -278,10 +266,7 @@ export async function connectOpenCode(options, ensureCodespace) {
 		if (!controller.signal.aborted) throw error;
 	} finally {
 		proxy?.close();
-		if (client && !client.finished) await client.stop();
-		if (tunnel) await tunnel.stop();
-		process.removeListener('SIGINT', interrupt);
-		process.removeListener('SIGTERM', interrupt);
-		process.removeListener('SIGHUP', interrupt);
+		await Promise.all([client?.stop(), tunnel?.stop()]);
+		for (const signal of SIGNALS) process.removeListener(signal, interrupt);
 	}
 }

@@ -1,28 +1,19 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { Server } from 'node:net';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { freePort, parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
+import { fakeBinaries } from './fake-bin.mjs';
+import { parseOpenCodeArgs } from '../../scripts/cloud-session-opencode.mjs';
 
 const script = fileURLToPath(new URL('../../scripts/cloud-session.mjs', import.meta.url));
 const secret = 'a'.repeat(64);
 
 function fixture(t, env = {}) {
-	const dir = mkdtempSync(join(tmpdir(), 'opencode-client-'));
-	t.after(() => rmSync(dir, { recursive: true, force: true }));
-	const common = `
-const fs = require('node:fs');
-const args = process.argv.slice(2);
-const log = (event) => fs.appendFileSync(process.env.TEST_LOG, JSON.stringify(event) + '\\n');
-`;
-	const bin = (name, body) =>
-		writeFileSync(join(dir, name), `#!${process.execPath}\n${common}\n${body}`, { mode: 0o755 });
+	const { root, bin, calls, env: binEnv } = fakeBinaries('opencode-client-');
+	t.after(() => rmSync(root, { recursive: true, force: true }));
 	bin(
 		'gh',
 		`
@@ -41,7 +32,7 @@ if (args[0] === 'codespace' && args[1] === 'list') {
     const expected = 'Basic ' + Buffer.from('opencode:' + '${secret}').toString('base64');
     if (process.env.TEST_UNAUTHORIZED || req.headers.authorization !== expected) { res.writeHead(401).end(); return; }
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ healthy: true, version: process.env.TEST_SERVER_VERSION || '1.18.30' }));
+    res.end(JSON.stringify({ healthy: true, version: process.env.TEST_SERVER_VERSION || '1.2.3' }));
   });
   server.listen(port, '127.0.0.1');
   if (process.env.TEST_TUNNEL_DROP) setTimeout(() => process.exit(1), 500);
@@ -64,7 +55,7 @@ if (args[0] === 'codespace' && args[1] === 'list') {
 		`
 if (args[0] === '--version') {
   if (process.env.TEST_NO_CLIENT) process.exit(1);
-  console.log(process.env.TEST_CLIENT_VERSION || '1.18.30');
+  console.log(process.env.TEST_CLIENT_VERSION || '1.2.3');
 } else {
   log({ command: 'opencode', args, password: process.env.OPENCODE_SERVER_PASSWORD });
   if (process.env.TEST_CLIENT_WAIT) setInterval(() => {}, 1000);
@@ -72,24 +63,11 @@ if (args[0] === '--version') {
 `,
 	);
 	for (const opener of ['open', 'xdg-open']) bin(opener, `log({ command: 'browser', args });`);
-	const logFile = join(dir, 'calls.jsonl');
-	writeFileSync(logFile, '');
-	const calls = () =>
-		readFileSync(logFile, 'utf8')
-			.trim()
-			.split('\n')
-			.filter(Boolean)
-			.map((line) => JSON.parse(line));
 	return {
 		calls,
 		start(args) {
 			const child = spawn(process.execPath, [script, '--opencode', ...args], {
-				env: {
-					...process.env,
-					PATH: `${dir}:${process.env.PATH}`,
-					TEST_LOG: logFile,
-					...env,
-				},
+				env: { ...process.env, ...binEnv, ...env },
 				stdio: ['ignore', 'pipe', 'pipe'],
 			});
 			let output = '';
@@ -115,17 +93,6 @@ async function waitFor(check) {
 	throw new Error('Fixture did not become ready.');
 }
 
-test('selects another tunnel port when the first candidate is the browser port', async (t) => {
-	const address = Server.prototype.address;
-	let candidates = 0;
-	t.mock.method(Server.prototype, 'address', function () {
-		const result = address.call(this);
-		return ++candidates === 1 ? { ...result, port: 4096 } : result;
-	});
-	assert.notEqual(await freePort(4096), 4096);
-	assert.equal(candidates, 2);
-});
-
 test('parses options before or after the workspace and rejects unsupported flags', () => {
 	assert.equal(parseOpenCodeArgs(['--web']).port, 4096);
 	assert.equal(parseOpenCodeArgs([]).port, 0);
@@ -135,7 +102,6 @@ test('parses options before or after the workspace and rejects unsupported flags
 		web: true,
 		fresh: true,
 		port: 4100,
-		help: false,
 	});
 	for (const args of [
 		['--port'],

@@ -18,10 +18,8 @@ test('proxies uploads and event streams with authentication and rejects other or
 		backend.closeAllConnections();
 		backend.close();
 	});
-	const proxy = await openCodeProxy({
-		targetPort: backend.address().port,
-		password: 'test-secret',
-	});
+	const proxy = await openCodeProxy({ password: 'test-secret' });
+	proxy.targetPort = backend.address().port;
 	t.after(proxy.close);
 	const response = await fetch(`${proxy.origin}/session`, {
 		method: 'POST',
@@ -73,10 +71,8 @@ test('forwards WebSocket upgrades and closes their sockets', async (t) => {
 		for (const peer of peers) peer.destroy();
 		backend.close();
 	});
-	const proxy = await openCodeProxy({
-		targetPort: backend.address().port,
-		password: 'test-secret',
-	});
+	const proxy = await openCodeProxy({ password: 'test-secret' });
+	proxy.targetPort = backend.address().port;
 	t.after(proxy.close);
 	const socket = await new Promise((resolve, reject) => {
 		const req = request(`${proxy.origin}/pty/test/connect`, {
@@ -109,7 +105,8 @@ test(
 			backend.closeAllConnections();
 			backend.close();
 		});
-		const proxy = await openCodeProxy({ targetPort: backend.address().port, password: 'test' });
+		const proxy = await openCodeProxy({ password: 'test' });
+		proxy.targetPort = backend.address().port;
 		t.after(proxy.close);
 		const signal = AbortSignal.timeout(3000);
 		const response = await fetch(proxy.origin, { signal });
@@ -123,12 +120,12 @@ test(
 );
 
 test('rejects an occupied browser port and reports a closed upstream', async (t) => {
-	const proxy = await openCodeProxy({ targetPort: 1, password: 'test' });
+	const proxy = await openCodeProxy({ password: 'test' });
+	proxy.targetPort = 1;
 	t.after(proxy.close);
-	await assert.rejects(
-		openCodeProxy({ targetPort: 1, password: 'test', port: +new URL(proxy.origin).port }),
-		{ code: 'EADDRINUSE' },
-	);
+	await assert.rejects(openCodeProxy({ password: 'test', port: +new URL(proxy.origin).port }), {
+		code: 'EADDRINUSE',
+	});
 	const response = await fetch(proxy.origin);
 	assert.equal(response.status, 502);
 	await response.text();

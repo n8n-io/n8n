@@ -65,16 +65,18 @@ pnpm session:opencode --web --port 4100      # override the default browser port
 pnpm session:opencode --help
 ```
 
-For the TUI, install the same OpenCode version as the remote server. New images
-use version `1.18.30`:
+For the TUI, install the same OpenCode version as the remote server. The
+`OPENCODE_VERSION` argument in the [Dockerfile](Dockerfile) pins the version
+for new images:
 
 ```bash
-pnpm add --global opencode-ai@1.18.30
+pnpm add --global opencode-ai@<version>
 ```
 
-The launcher checks both versions. It reports a mismatch before it opens the
-TUI. An existing Codespace can have a different version. Install that version
-locally, or use `--web`. Browser mode does not need a local OpenCode install.
+The launcher checks both versions. It reports a mismatch with both version
+numbers before it opens the TUI. An existing Codespace can have a different
+version. Install that version locally, or use `--web`. Browser mode does not
+need a local OpenCode install.
 The launcher sends its bootstrap code over SSH, so an existing Codespace does
 not need a rebuild to use this connection method.
 

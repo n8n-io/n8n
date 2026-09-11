@@ -1,12 +1,24 @@
 // Keep browser authentication in this process. The browser URL contains no password.
 import { createServer, request } from 'node:http';
 
-export async function openCodeProxy({ targetPort, password, port = 0 }) {
+export const basicAuth = (password) =>
+	`Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
+
+// Set `targetPort` on the result once the tunnel port is known. Requests before that fail with 502.
+export async function openCodeProxy({ password, port = 0 }) {
 	const sockets = new Set();
-	const authorization = `Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
+	const authorization = basicAuth(password);
+	let host;
 	let origin;
+	const proxy = {
+		targetPort: undefined,
+		close: () => {
+			for (const socket of sockets) socket.destroy();
+			server.close();
+		},
+	};
 	const allowed = (req) =>
-		req.headers.host === new URL(origin).host &&
+		req.headers.host === host &&
 		(!req.headers.origin || req.headers.origin === origin) &&
 		(!req.headers['sec-fetch-site'] ||
 			['same-origin', 'none'].includes(req.headers['sec-fetch-site'])) &&
@@ -15,7 +27,7 @@ export async function openCodeProxy({ targetPort, password, port = 0 }) {
 	const upstream = (req) =>
 		request({
 			hostname: '127.0.0.1',
-			port: targetPort,
+			port: proxy.targetPort,
 			path: req.url,
 			method: req.method,
 			headers: { ...req.headers, authorization },
@@ -81,12 +93,8 @@ export async function openCodeProxy({ targetPort, password, port = 0 }) {
 		server.once('error', reject);
 		server.listen(port, '127.0.0.1', resolve);
 	});
-	origin = `http://127.0.0.1:${server.address().port}`;
-	return {
-		origin,
-		close: () => {
-			for (const socket of sockets) socket.destroy();
-			server.close();
-		},
-	};
+	host = `127.0.0.1:${server.address().port}`;
+	origin = `http://${host}`;
+	proxy.origin = origin;
+	return proxy;
 }

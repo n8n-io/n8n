@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// The laptop sends this file over SSH. It also works in an older Codespace checkout.
+// The laptop sends this file over SSH as one standalone module. Do not import sibling files.
+// It also works in an older Codespace checkout.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -78,6 +79,8 @@ async function ensureServer({ stateDir, mainDirectory, workspaces }) {
 		);
 	}
 
+	// Fail before tmux starts when OpenCode is missing on the Codespace.
+	execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	const server = { port: await freePort(), password: randomBytes(32).toString('hex') };
 	const launcher = join(stateDir, 'serve.sh');
 	// Read secrets when the server starts. Do not store provider keys in the launcher.
@@ -188,11 +191,10 @@ export async function prepareOpenCode({
 } = {}) {
 	const stateDir = join(workspaces, '.n8n-opencode');
 	const mainDirectory = join(workspaces, 'n8n');
-	if (!/^[\w-]+$/.test(name)) throw new Error('Invalid OpenCode workspace name.');
+	if (!/^\w[\w-]*$/.test(name)) throw new Error('Invalid OpenCode workspace name.');
 	mkdirSync(stateDir, { recursive: true, mode: 0o700 });
 	const directory = name === 'agent' ? mainDirectory : join(workspaces, `wt-${name}`);
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });
-	execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	const server = await ensureServer({ stateDir, mainDirectory, workspaces });
 	const sessionID = await ensureSession({ name, fresh, directory, stateDir, server });
 	// Only the parent process reads stdout. Never send this record to terminal output.

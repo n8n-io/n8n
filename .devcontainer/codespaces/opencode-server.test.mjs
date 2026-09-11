@@ -1,34 +1,25 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { fakeBinaries } from './fake-bin.mjs';
 import { prepareOpenCode } from './opencode-server.mjs';
 
 function fixture(t) {
-	const dir = mkdtempSync(join(tmpdir(), 'opencode-server-'));
-	const binDir = join(dir, 'bin');
-	mkdirSync(binDir);
+	const fake = fakeBinaries('opencode-server-');
+	const dir = fake.root;
 	mkdirSync(join(dir, 'n8n', 'node_modules'), { recursive: true });
 	const savedEnv = { ...process.env };
-	process.env.PATH = `${binDir}:${process.env.PATH}`;
-	process.env.TEST_ROOT = dir;
-	process.env.AGENT_WORKER_TOKEN = 'test-worker';
-	process.env.N8N_DEQUEUE_URL = 'test-queue';
-	process.env.SLACK_BOT_TOKEN = 'test-slack';
-	const common = `
-const fs = require('node:fs');
-const path = require('node:path');
-const args = process.argv.slice(2);
-const root = process.env.TEST_ROOT;
-const file = name => path.join(root, name);
-const log = event => fs.appendFileSync(file('commands.jsonl'), JSON.stringify(event) + '\\n');
-log({command: path.basename(process.argv[1]), args});
-`;
+	// prepareOpenCode spawns the shims in this process. Log every call before the shim body runs.
+	Object.assign(process.env, fake.env, {
+		AGENT_WORKER_TOKEN: 'test-worker',
+		N8N_DEQUEUE_URL: 'test-queue',
+		SLACK_BOT_TOKEN: 'test-slack',
+	});
 	const bin = (name, body) =>
-		writeFileSync(join(binDir, name), `#!${process.execPath}\n${common}\n${body}`, { mode: 0o755 });
+		fake.bin(name, `log({ command: ${JSON.stringify(name)}, args });\n${body}`);
 	bin(
 		'git',
 		`
@@ -57,7 +48,7 @@ if (args[0] === 'has-session') {
 	bin(
 		'opencode',
 		`
-if (args[0] === '--version') { console.log('1.18.30'); process.exit(0); }
+if (args[0] === '--version') { console.log('1.2.3'); process.exit(0); }
 fs.writeFileSync(file('server-env.json'), JSON.stringify({
   worker: !!process.env.AGENT_WORKER_TOKEN, queue: !!process.env.N8N_DEQUEUE_URL, slack: !!process.env.SLACK_BOT_TOKEN,
   cache: process.env.TURBO_CACHE_DIR, config: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT),
@@ -67,7 +58,7 @@ const server = require('node:http').createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json');
   const expected = 'Basic ' + Buffer.from('opencode:' + process.env.OPENCODE_SERVER_PASSWORD).toString('base64');
   if (req.headers.authorization !== expected) { res.writeHead(401).end('{}'); return; }
-  if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.18.30' })); return; }
+  if (req.url === '/global/health') { res.end(JSON.stringify({ healthy:true, version:'1.2.3' })); return; }
   if (req.method === 'POST' && req.url === '/session') {
     for await (const chunk of req) {}
     const id = 'ses_' + (Object.keys(sessions).length + 1);
@@ -110,11 +101,7 @@ server.listen(+args[args.indexOf('--port') + 1], '127.0.0.1');
 		dir,
 		stop,
 		prepare: (options = {}) => prepareOpenCode({ workspaces: dir, ...options }),
-		commands: () =>
-			readFileSync(join(dir, 'commands.jsonl'), 'utf8')
-				.trim()
-				.split('\n')
-				.map((line) => JSON.parse(line)),
+		commands: fake.calls,
 	};
 }
 
