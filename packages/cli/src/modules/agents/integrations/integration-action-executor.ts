@@ -18,6 +18,7 @@ import {
 	integrationError,
 	normalizePlatformId,
 	unsupportedAction,
+	rateLimitExceeded,
 } from './integration-helpers';
 import type {
 	IntegrationAction,
@@ -26,6 +27,8 @@ import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
+import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-limit';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.
@@ -67,6 +70,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	constructor(
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
 	async execute(params: {
@@ -83,7 +87,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		if (params.action === 'do_not_respond') {
 			return this.doNotRespond(params);
 		}
-
+		if (this.channelRateLimitGuard.isBlocked(params.descriptor.integrationConnectionId)) {
+			return rateLimitExceeded(channelRateLimitMessage(params.descriptor.integration.type));
+		}
 		const unsupportedAction = () =>
 			integrationError(
 				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
@@ -105,10 +111,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {
-				return integrationError(
-					INTEGRATION_ERROR_CODES.ACTION_FAILED,
-					error instanceof Error ? error.message : String(error),
-				);
+				return caughtIntegrationError(error, {
+					connectionId: params.descriptor.integrationConnectionId,
+					platform: params.descriptor.integration.type,
+					guard: this.channelRateLimitGuard,
+					failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				});
 			}
 		}
 
@@ -157,10 +165,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 			return unsupportedAction();
 		} catch (error) {
-			return integrationError(
-				INTEGRATION_ERROR_CODES.ACTION_FAILED,
-				error instanceof Error ? error.message : String(error),
-			);
+			return caughtIntegrationError(error, {
+				connectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				guard: this.channelRateLimitGuard,
+				failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+			});
 		}
 	}
 

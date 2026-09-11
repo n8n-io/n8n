@@ -150,7 +150,7 @@ export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): s
 		item.hitlToolDisplayName ??
 		item.workflowName ??
 		item.nodeDisplayName ??
-		resolveToolNameForDisplay(item.toolName, i18n)
+		resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput)
 	);
 }
 
@@ -361,9 +361,9 @@ export function chartBlockColor(kind: EventKind): string {
 
 export function builtinToolLabelKey(
 	toolName: string | undefined,
-	_output?: unknown,
+	output?: unknown,
 ): BaseTextKey | null {
-	return getToolNameTranslationKey(toolName) ?? null;
+	return getToolNameTranslationKey(toolName, output) ?? null;
 }
 
 export function formatDuration(ms: number): string {

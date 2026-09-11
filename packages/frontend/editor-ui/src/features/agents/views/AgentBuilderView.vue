@@ -42,7 +42,7 @@ import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrations
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
-	AgentFixWithAssistantEvent,
+	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
@@ -89,6 +89,7 @@ import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/use
 import { INSTANCE_AI_PENDING_AGENT_ID_STATE } from '@/features/ai/instanceAi/constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { hasBlockingIssues } from '../utils/validationIssues';
 
@@ -242,7 +243,7 @@ watch(
 	{ immediate: true },
 );
 
-async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
+async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 	const session = sessionsStore.threads.find(({ id }) => id === threadId);
@@ -256,32 +257,39 @@ async function onSendPreviewToAssistant(event?: AgentFixWithAssistantEvent) {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle,
-		...(event
-			? {
-					executionId: event.executionId,
-					initialDraft: buildAgentFixWithAssistantPrompt(
-						{
-							projectId: projectId.value,
-							agentId: agentId.value,
-							agentName: agentName.value || undefined,
-							threadId,
-							sessionTitle,
-							...(sessionNumber !== undefined ? { sessionNumber } : {}),
-							executionId: event.executionId,
-							failures: event.failures,
-						},
-						locale,
-					),
-				}
-			: {}),
+		...(!event
+			? {}
+			: 'failures' in event
+				? {
+						executionId: event.executionId,
+						initialDraft: buildAgentFixWithAssistantPrompt(
+							{
+								projectId: projectId.value,
+								agentId: agentId.value,
+								agentName: agentName.value || undefined,
+								threadId,
+								sessionTitle,
+								...(sessionNumber !== undefined ? { sessionNumber } : {}),
+								executionId: event.executionId,
+								failures: event.failures,
+							},
+							locale,
+						),
+					}
+				: { initialDraft: buildAgentChangeRequestPrompt(event.changeRequest, locale) }),
 	};
 
 	if (isArtifactMode.value) {
+		// The host closes the dock — only it knows whether the hand-off went
+		// through (it refuses one while its composer holds a draft).
 		emit('assistant-handoff', params);
 		return;
 	}
 
-	await sendPreviewSessionToInstanceAi(params);
+	// Close the preview once the assistant has the request: coming back to an
+	// open preview chat beside the assistant reads as two places to ask.
+	// No route push — the hand-off already navigated to the assistant.
+	if (await sendPreviewSessionToInstanceAi(params)) persistedPreviewOpen.value = false;
 }
 
 /**
@@ -2152,6 +2160,7 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
+					@open-preview="onOpenPreview"
 				/>
 
 				<AgentVersionHistoryPanel

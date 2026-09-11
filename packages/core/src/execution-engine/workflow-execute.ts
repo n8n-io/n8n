@@ -156,12 +156,16 @@ export class WorkflowExecute {
 			throw new UserError('No node to start the workflow from could be found');
 		}
 
-		// If a destination node is given we only run the direct parent nodes and no others
+		// Include non-main parents for the destination and each main ancestor.
+		// Agents use the engine to run tools through non-main connections.
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
+			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 			runNodeFilter = [
-				...workflow.getParentNodes(destinationNode.nodeName),
-				...workflow.getParentNodes(destinationNode.nodeName, 'ALL_NON_MAIN'),
+				...parentNodes,
+				...[destinationNode.nodeName, ...parentNodes].flatMap((nodeName) =>
+					workflow.getParentNodes(nodeName, 'ALL_NON_MAIN'),
+				),
 			];
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
@@ -2095,7 +2099,7 @@ export class WorkflowExecute {
 				this.runExecutionData.resultData.runData[executionNode.name][runIndex]?.inputOverride || {};
 			taskData.data = {
 				[executionNode.rewireOutputLogTo]: [[{ json: { error: executionError.message } }]],
-			} as ITaskDataConnections;
+			};
 		}
 
 		this.upsertTaskData(executionNode.name, runIndex, taskData);
@@ -2167,7 +2171,7 @@ export class WorkflowExecute {
 			this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]?.inputOverride || {};
 		taskData.data = {
 			[executionNode.rewireOutputLogTo]: nodeSuccessData,
-		} as ITaskDataConnections;
+		};
 	}
 
 	/** True while there are nodes queued for execution. */

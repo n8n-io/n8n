@@ -19,6 +19,7 @@ import type {
 	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiPromptConfiguration,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
@@ -60,10 +61,13 @@ import type {
 import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
+	VerificationClaim,
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationEvidence,
+	WorkflowTriggerVerificationProgress,
 	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
@@ -166,10 +170,27 @@ export interface ExecutionResult {
 	finishedAt?: string;
 }
 
+export interface NodeOutputBranch {
+	/** Position of the output on the node; 0 is the first output. */
+	index: number;
+	/** Label the node's output pane shows for the output, e.g. a Filter's "Kept" / "Discarded". */
+	name?: string;
+	/** Item count on this output, before pagination. */
+	totalItems: number;
+	items: unknown[];
+}
+
 export interface NodeOutputResult {
 	nodeName: string;
-	items: unknown[];
+	/**
+	 * One entry per output of the node's last run, in output order. Multi-output
+	 * nodes (Filter, IF, Switch) keep each output separate, so their items are
+	 * never merged into one list.
+	 */
+	outputs: NodeOutputBranch[];
+	/** Item count across all outputs. */
 	totalItems: number;
+	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
 }
 
@@ -566,6 +587,9 @@ export interface InstanceAiExecutionService {
 export interface CredentialTypeSearchResult {
 	type: string;
 	displayName: string;
+	/** The type's own n8n docs page, so a scope/setup answer can be grounded in one
+	 *  `n8n-docs` lookup instead of recalled. Absent when the class won't load. */
+	documentationUrl?: string;
 }
 
 /** An HTTP-usable credential type with the API host(s) it authenticates against,
@@ -1322,6 +1346,8 @@ export interface InstanceAiContext {
 	 * that land on the active trace. Absent outside a traced run.
 	 */
 	tracing?: InstanceAiTraceContext;
+	/** Selected skill source for inline tool guidance. */
+	runtimeSkillCatalog?: RuntimeSkillSource;
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
@@ -1908,6 +1934,15 @@ export interface WorkflowTaskService {
 		runId: string,
 	): Promise<boolean>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+	startVerification(
+		workItemId: string,
+		triggerNodeName?: string,
+	): Promise<WorkflowTriggerVerificationProgress | undefined>;
+	recordVerification(
+		workItemId: string,
+		verification: WorkflowVerificationEvidence & { claim: VerificationClaim },
+		previousProgress?: WorkflowTriggerVerificationProgress,
+	): Promise<VerificationClaim | undefined>;
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
@@ -1918,6 +1953,9 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** The selected prompt profile owns its skill and tool exclusions. */
+	promptConfiguration?: InstanceAiPromptConfiguration;
+	disabledToolNames?: ReadonlySet<string>;
 	/** Setup panel v2 flag, mirrored from the domain context's `setupItemsEmitter` presence. */
 	setupPanelEnabled?: boolean;
 	orchestratorAgentId: string;

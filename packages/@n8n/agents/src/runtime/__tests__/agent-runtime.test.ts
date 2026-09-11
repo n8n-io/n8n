@@ -9,6 +9,9 @@ import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { createRuntimeSkillSource } from '../../skills/registry';
+import { createRuntimeSkillTools } from '../../skills/tools';
+import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
@@ -38,10 +41,27 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 // Mock provider packages so createModel() doesn't fail when no API key is set
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
-		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
-			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
-			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
-		}),
+		Object.assign(
+			() => ({
+				provider: 'openai',
+				modelId: 'mock',
+				specificationVersion: 'v3',
+				supportedUrls: {},
+			}),
+			{
+				chat: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v3',
+					supportedUrls: {},
+				}),
+				embeddingModel: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
 vi.mock('@ai-sdk/anthropic', () => ({
@@ -6174,7 +6194,7 @@ describe('promptCaching', () => {
 		}
 	});
 
-	it('adds a tool cache breakpoint on recall_memory for an episodic Anthropic agent (no deferred tools)', async () => {
+	it('adds a tool cache breakpoint on flag_memory for an episodic Anthropic agent', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -6192,12 +6212,11 @@ describe('promptCaching', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 
-		// recall_memory is static within a run, so it is eligible to anchor the
-		// tool breakpoint (it is the last tool in getCurrentTools).
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
 		expect(tools).toHaveProperty('recall_memory');
-		expect(tools.recall_memory.providerOptions).toEqual({
+		expect(tools).toHaveProperty('flag_memory');
+		expect(tools.flag_memory.providerOptions).toEqual({
 			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
@@ -6311,13 +6330,20 @@ describe('AgentRuntime — observation log jobs', () => {
 		]);
 	});
 
-	it('indexes episodic memory after observation jobs complete', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Remembered response'));
+	it('processes agent-flagged episodic memory without observations', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
+					content: 'User chose Postgres for memory storage.',
+					evidence: 'Please remember the Postgres decision.',
+					kind: 'decision',
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
 		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } });
 		embedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } });
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
-		const observationLockSpy = vi.spyOn(memory, 'acquireObservationLogTaskLock');
 		const episodicLockSpy = vi.spyOn(memory.episodic.taskLock!, 'acquire');
 
 		const runtime = new AgentRuntime({
@@ -6326,28 +6352,12 @@ describe('AgentRuntime — observation log jobs', () => {
 			instructions: 'You are a test assistant.',
 			memory,
 			observationalMemory: {
-				observerThresholdTokens: 1,
+				observerThresholdTokens: 8_000,
 				observationLogTailLimit: 20,
 				observe: async () =>
 					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
 			},
-			episodicMemory: {
-				embedder: fakeEmbedder,
-				extract: async ({ observations }) =>
-					await Promise.resolve({
-						entries: [
-							{
-								content: 'User chose Postgres for memory storage.',
-								sources: [
-									{
-										observationId: observations[0].id,
-										evidence: 'User chose Postgres',
-									},
-								],
-							},
-						],
-					}),
-			},
+			episodicMemory: { embedder: fakeEmbedder },
 		});
 
 		await runtime.generate('Please remember the Postgres decision.', {
@@ -6362,66 +6372,70 @@ describe('AgentRuntime — observation log jobs', () => {
 		);
 		expect(entries).toHaveLength(1);
 		expect(entries[0].content).toBe('User chose Postgres for memory storage.');
-		const cursor = await memory.episodic.getCursor({
-			observationScopeId: 'thread-1',
-		});
-		expect(typeof cursor?.lastIndexedObservationId).toBe('string');
+		await expect(
+			memory.getActiveObservationLog({ observationScopeId: 'thread-1' }),
+		).resolves.toEqual([]);
+		await expect(
+			memory.episodic.getEntrySources(entries.map((entry) => entry.id)),
+		).resolves.toEqual([
+			expect.objectContaining({
+				candidateId: expect.any(String),
+				threadId: 'thread-1',
+			}),
+		]);
 		const firstLockCall = episodicLockSpy.mock.calls.at(0);
 		if (!firstLockCall) throw new Error('Expected episodic memory lock acquisition');
 		const [lockedResourceId, lockOptions] = firstLockCall;
 		expect(lockedResourceId).toBe('resource-1');
 		expect(typeof lockOptions.holderId).toBe('string');
 		expect(typeof lockOptions.ttlMs).toBe('number');
-		const observationLockTaskKinds = observationLockSpy.mock.calls.map((call) => String(call[1]));
-		expect(observationLockTaskKinds).not.toContain('episodic-indexer');
 	});
 
-	it('skips episodic indexing when the episodic task lock is held', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+	it('drains pending candidates in the background without blocking the run', async () => {
 		const memory = new InMemoryMemory();
-		const observationScope = {
-			observationScopeId: 'thread-1',
-		};
-		const [observation] = await memory.appendObservationLogEntries([
-			{
-				...observationScope,
-				marker: 'critical',
-				text: 'User chose Postgres for memory storage.',
-				createdAt: new Date('2026-05-20T12:00:00Z'),
-			},
-		]);
-		const extract = vi.fn(async () => {
-			await Promise.resolve();
-
-			return {
-				entries: [
-					{
-						content: 'User chose Postgres for memory storage.',
-						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
-					},
-				],
-			};
-		});
-		vi.spyOn(memory.episodic.taskLock!, 'acquire').mockResolvedValue(null);
-
+		for (const toolCallId of ['tc-pending-1', 'tc-pending-2']) {
+			await memory.episodic.enqueueCaptureCandidate({
+				resourceId: 'resource-1',
+				threadId: 'thread-1',
+				sourceMessageId: null,
+				runId: `run-${toolCallId}`,
+				toolCallId,
+				content: `Remember ${toolCallId}.`,
+				evidenceText: toolCallId,
+				kind: 'fact',
+			});
+		}
+		let resolveFirstEmbedding!: (value: unknown) => void;
+		embedMany
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirstEmbedding = resolve)))
+			.mockResolvedValue({ embeddings: [[0, 1]], usage: { tokens: 1 } });
+		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
 		const runtime = new AgentRuntime({
 			name: 'observing-agent',
 			model: 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
 			memory,
-			episodicMemory: {
-				embedder: { specificationVersion: 'v2' } as never,
-				extract,
-			},
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never, maxEntriesPerRun: 1 },
 		});
 
-		await runtime.generate('Please remember this.', {
+		const result = await runtime.generate('Hello.', {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
-		await runtime.dispose();
 
-		expect(extract).not.toHaveBeenCalled();
-		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
+		// The turn completed while the first batch was still embedding.
+		expect(result.finishReason).toBe('stop');
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+		).resolves.toHaveLength(2);
+
+		resolveFirstEmbedding({ embeddings: [[1, 0]], usage: { tokens: 1 } });
+		await runtime.dispose();
+		await expect(
+			memory.episodic.getPendingCaptureCandidates({ resourceId: 'resource-1' }),
+		).resolves.toEqual([]);
+		await expect(
+			memory.episodic.searchEntries({ resourceId: 'resource-1' }, 'Remember', { topK: 10 }),
+		).resolves.toHaveLength(2);
 	});
 
 	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
@@ -6751,11 +6765,19 @@ describe('AgentRuntime — observation log jobs', () => {
 		);
 	});
 
-	it('emits one error event when an episodic indexer background task fails', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess('Plain response'));
+	it('emits one error event when episodic candidate processing fails', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-memory', 'flag_memory', {
+					content: 'Remember this detail.',
+					evidence: 'Please remember this.',
+					kind: 'explicit_remember',
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Remembered response'));
 		const memory = new InMemoryMemory();
 		const bus = new AgentEventBus();
-		const error = new Error('episodic extraction failed');
+		const error = new Error('embedding failed');
 		const errorEvents: AgentEventData[] = [];
 		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
 		const runtime = new AgentRuntime({
@@ -6764,28 +6786,20 @@ describe('AgentRuntime — observation log jobs', () => {
 			instructions: 'You are a test assistant.',
 			eventBus: bus,
 			memory,
-			observationalMemory: {
-				observerThresholdTokens: 1,
-				observationLogTailLimit: 20,
-				observe: async () =>
-					await Promise.resolve('* CRITICAL (14:30) User chose Postgres for memory storage.'),
-			},
-			episodicMemory: {
-				embedder: { specificationVersion: 'v2' } as never,
-				extract: async () => await Promise.reject(error),
-			},
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never },
 		});
+		embedMany.mockRejectedValue(error);
 
-		await runtime.generate('please remember this', {
+		await runtime.generate('Please remember this.', {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 		await runtime.dispose();
 
 		expect(errorEvents).toEqual([
 			expect.objectContaining({
-				error,
+				error: expect.objectContaining({ cause: error }),
 				source: 'episodic-memory',
-				message: 'Episodic memory indexing task failed',
+				message: 'Episodic memory processing task failed',
 			}),
 		]);
 	});
@@ -6831,6 +6845,7 @@ describe('AgentRuntime — mid-run observation', () => {
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
 		extra?: {
+			skillSource?: RuntimeSkillSource;
 			tools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
@@ -6842,6 +6857,7 @@ describe('AgentRuntime — mid-run observation', () => {
 			instructions: 'You are a test assistant.',
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
+			...(extra?.skillSource ? { skillSource: extra.skillSource } : {}),
 			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
 			observationalMemory: {
 				observerThresholdTokens: 1,
@@ -6881,6 +6897,130 @@ describe('AgentRuntime — mid-run observation', () => {
 		});
 		expect(observations.length).toBeGreaterThanOrEqual(1);
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('persists full skill content when the memory adapter has no skill state store', async () => {
+		const instructions = 'Wait for a real execution before extending the workflow.';
+		const source = createRuntimeSkillSource([
+			{ id: 'builder', name: 'builder', description: 'Build workflows.', instructions },
+		]);
+		const memory = new InMemoryMemory();
+		Object.defineProperty(memory, 'skillState', { value: undefined });
+		const runtime = buildMidRunRuntime(memory, {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const messages = await memory.getMessages(PERSISTENCE.threadId);
+		const loads = messages
+			.flatMap((message) => (isLlmMessage(message) ? message.content : []))
+			.filter((part) => part.type === 'tool-call' && part.toolName === 'load_skill');
+		expect(loads).toEqual([
+			expect.objectContaining({
+				output: {
+					type: 'content',
+					value: [{ type: 'text', text: expect.stringContaining(instructions) }],
+				},
+			}),
+		]);
+		expect(await memory.getCursor(PERSISTENCE.threadId)).not.toBeNull();
+		expect(flattenInstructions(capturedCall(1).instructions)).not.toContain('<active_skills>');
+	});
+
+	it('retains loaded skills through compaction and a new user turn', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const memory = new InMemoryMemory();
+		const options = { skillSource: source, tools: createRuntimeSkillTools(source) };
+		const runtime = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		expect(capturedCall(1).messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
+			'Wait for a real execution',
+		);
+		const next = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('The live test is still needed.'));
+		await next.generate('Continue', { persistence: PERSISTENCE });
+		await next.dispose();
+		expect(flattenInstructions(capturedCall(2).instructions)).toContain(
+			'Wait for a real execution',
+		);
+		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
+	});
+
+	it('restores active skills from a checkpoint with the newly selected content', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Old workflow policy.',
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const first = buildMidRunRuntime(memory, {
+			skillSource: source,
+			tools: [...createRuntimeSkillTools(source), makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Set up?' }),
+			);
+		const result = await first.generate('Build it', { persistence: PERSISTENCE });
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a setup confirmation');
+
+		const current = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Current workflow policy.',
+			},
+		]);
+		const resumed = buildMidRunRuntime(memory, {
+			skillSource: current,
+			tools: [...createRuntimeSkillTools(current), makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		});
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Ready.'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await first.dispose();
+		await resumed.dispose();
+		expect(flattenInstructions(capturedCall(2).instructions)).toContain('Current workflow policy.');
+		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {

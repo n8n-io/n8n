@@ -13,6 +13,7 @@ import {
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
+import type { ParameterCheckRun } from './resolved-parameter-warnings';
 import type { ExecutionRunResult } from './types';
 import type { OrchestrationContext } from '../../../types';
 import type {
@@ -39,6 +40,7 @@ export interface ScriptedGateRunArgs {
 	runId: string;
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	verificationScope?: ReadonlySet<string>;
 }
 
 interface DecisionPass {
@@ -47,9 +49,11 @@ interface DecisionPass {
 	analysis: VerificationAnalysis;
 }
 
-export async function runScriptedGateVerification(
-	args: ScriptedGateRunArgs,
-): Promise<{ result: ExecutionRunResult; analysis: VerificationAnalysis }> {
+export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Promise<{
+	result: ExecutionRunResult;
+	analysis: VerificationAnalysis;
+	parameterCheckRuns: ParameterCheckRun[];
+}> {
 	const {
 		script,
 		prepared,
@@ -82,11 +86,19 @@ export async function runScriptedGateVerification(
 			runId,
 			chatModelRelatedNodeNames,
 			chatModelRecovery,
+			verificationScope: args.verificationScope,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}
 
-	return { result: mergeResults(passes), analysis: mergeAnalyses(script, prepared, passes) };
+	return {
+		result: mergeResults(passes),
+		analysis: mergeAnalyses(script, prepared, passes),
+		parameterCheckRuns: passes.map(({ result, analysis }) => ({
+			executionId: result.executionId,
+			nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+		})),
+	};
 }
 
 function mergeResults(passes: DecisionPass[]): ExecutionRunResult {

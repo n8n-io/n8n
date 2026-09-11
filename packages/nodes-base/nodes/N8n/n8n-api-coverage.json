@@ -8,16 +8,16 @@
 		"GET /roles": {
 			"status": "gap"
 		},
-		"GET /roles/{slug}": {
+		"GET /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"POST /roles": {
 			"status": "gap"
 		},
-		"PUT /roles/{slug}": {
+		"PUT /roles/{roleSlug}": {
 			"status": "gap"
 		},
-		"DELETE /roles/{slug}": {
+		"DELETE /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"GET /role-mapping-rules": {
@@ -155,7 +155,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
-		"GET /workflows/{workflowId}/versions/{versionId}": {
+		"GET /workflows/{workflowId}/versions/{workflowVersionId}": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {
@@ -235,13 +235,13 @@
 		"POST /promotions/providers": {
 			"status": "gap"
 		},
-		"GET /promotions/providers/{id}": {
+		"GET /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/providers/{id}": {
+		"PUT /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/providers/{id}": {
+		"DELETE /promotions/providers/{promotionProviderId}": {
 			"status": "gap"
 		},
 		"GET /promotions/connections": {
@@ -250,43 +250,43 @@
 		"POST /promotions/connections": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{id}": {
+		"GET /promotions/connections/{promotionConnectionId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{id}": {
+		"PUT /promotions/connections/{promotionConnectionId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{id}": {
+		"DELETE /promotions/connections/{promotionConnectionId}": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{id}/configs/apply": {
+		"PUT /promotions/connections/{promotionConnectionId}/configs/apply": {
 			"status": "gap"
 		},
-		"PUT /promotions/connections/{id}/configs/promote": {
+		"PUT /promotions/connections/{promotionConnectionId}/configs/promote": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{id}/configs/{direction}": {
+		"DELETE /promotions/connections/{promotionConnectionId}/configs/{direction}": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{id}/{direction}/clone": {
+		"POST /promotions/connections/{promotionConnectionId}/{direction}/clone": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{id}/{direction}/disconnect": {
+		"POST /promotions/connections/{promotionConnectionId}/{direction}/disconnect": {
 			"status": "gap"
 		},
-		"GET /promotions/connections/{id}/projects": {
+		"GET /promotions/connections/{promotionConnectionId}/projects": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{id}/projects/{projectId}": {
+		"POST /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"DELETE /promotions/connections/{id}/projects/{projectId}": {
+		"DELETE /promotions/connections/{promotionConnectionId}/projects/{projectId}": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{id}/promote": {
+		"POST /promotions/connections/{promotionConnectionId}/promote": {
 			"status": "gap"
 		},
-		"POST /promotions/connections/{id}/apply": {
+		"POST /promotions/connections/{promotionConnectionId}/apply": {
 			"status": "gap"
 		},
 		"GET /settings/security-policy": {

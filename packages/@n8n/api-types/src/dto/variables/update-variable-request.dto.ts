@@ -10,7 +10,7 @@ import { Z } from '../../zod-class';
  */
 const VARIABLE_KEY_REGEX = /^[A-Za-z0-9_]+$/;
 
-const variableKeySchema = z
+export const variableKeySchema = z
 	.string()
 	.min(1, 'key must be at least 1 character long')
 	.max(VARIABLE_KEY_MAX_LENGTH, 'key cannot be longer than 50 characters')

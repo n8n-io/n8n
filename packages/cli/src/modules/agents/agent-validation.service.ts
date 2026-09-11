@@ -191,7 +191,7 @@ export class AgentValidationService {
 			{
 				agentId: agent.id,
 				projectId,
-				config: agent.schema as unknown as AgentJsonConfig | null,
+				config: agent.schema,
 				skills: agent.skills ?? {},
 				customTools: agent.tools ?? {},
 				integrations: agent.integrations ?? [],
@@ -226,7 +226,7 @@ export class AgentValidationService {
 			{
 				agentId,
 				projectId,
-				config: history.schema as unknown as AgentJsonConfig | null,
+				config: history.schema,
 				skills: history.skills ?? {},
 				customTools: history.tools ?? {},
 				integrations: currentIntegrations,

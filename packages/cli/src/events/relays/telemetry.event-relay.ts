@@ -1221,7 +1221,7 @@ export class TelemetryEventRelay extends EventRelay {
 			// Emit the effective resolver id: the override if set, otherwise the system
 			// resolver (so cleared overrides report the implicit fallback rather than null).
 			credentialResolverId =
-				(settingsChanged.credentialResolverId.to as JsonValue | undefined) ??
+				settingsChanged.credentialResolverId.to ??
 				this.dynamicCredentialsProxy.getSystemResolverId() ??
 				undefined;
 		}
@@ -1396,10 +1396,10 @@ export class TelemetryEventRelay extends EventRelay {
 					workflow_id: workflow.id,
 					status: executionStatus,
 					executionStatus: runData?.status ?? 'unknown',
-					error_message: telemetryProperties.error_message as string,
+					error_message: telemetryProperties.error_message,
 					error_node_type: telemetryProperties.error_node_type,
-					node_graph_string: telemetryProperties.node_graph_string as string,
-					error_node_id: telemetryProperties.error_node_id as string,
+					node_graph_string: telemetryProperties.node_graph_string,
+					error_node_id: telemetryProperties.error_node_id,
 					webhook_domain: null,
 					sharing_role: userRole,
 					credential_type: null,
@@ -1866,7 +1866,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.identify(
 			{
 				user_role: user?.role?.slug,
-				user_email: user.email,
+				...(this.globalConfig.deployment.type === 'cloud' && { user_email: user.email }),
 			},
 			user.id,
 		);
