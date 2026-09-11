@@ -1,7 +1,7 @@
 import '../../openapi-extend';
 import { z } from 'zod';
 
-import { createTagReadOnlyFieldDocs, tagFieldDocs } from './tag-public.openapi';
+import { tagFieldDocs, tagRequestReadOnlyFieldDocs } from './tag-public.openapi';
 import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 
@@ -25,10 +25,10 @@ export class TagListPublicDto extends Z.class({
  */
 export class CreateTagPublicDto extends Z.class(
 	{
-		id: readOnlyPublicSchema(createTagReadOnlyFieldDocs.id),
+		id: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.id),
 		name: z.string().openapi(tagFieldDocs.name),
-		createdAt: readOnlyPublicSchema(createTagReadOnlyFieldDocs.createdAt),
-		updatedAt: readOnlyPublicSchema(createTagReadOnlyFieldDocs.updatedAt),
+		createdAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.createdAt),
+		updatedAt: readOnlyPublicSchema(tagRequestReadOnlyFieldDocs.updatedAt),
 	},
 	{ strict: true },
 ) {}
