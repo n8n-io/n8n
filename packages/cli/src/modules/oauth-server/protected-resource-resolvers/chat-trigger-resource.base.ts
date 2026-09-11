@@ -3,7 +3,6 @@ import type { GlobalConfig } from '@n8n/config';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
 
-import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -15,9 +14,9 @@ import {
 	CHAT_TRIGGER_CONSENT_HINTS,
 	CHAT_TRIGGER_SCOPES,
 	isOAuthProtectedChatTrigger,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 } from './utils';
 
 /** The trigger a chat path resolves to, however the subclass found it. */
@@ -59,19 +58,12 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 	protected abstract findChatTrigger(path: string): Promise<ChatTriggerLookupResult | undefined>;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.baseUrl);
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
+		const pathname = webhookPathFromResourceUrl(resourceUrl, this.baseUrl, this.logger);
+		if (pathname === undefined) return undefined;
 		return await this.resolveByPath(pathname);
 	}
 
 	async resolveByPath(pathname: string): Promise<ProtectedResource | undefined> {
-		if (!isChatOAuth2Enabled()) {
-			return undefined;
-		}
-
 		const { endpoint } = this;
 		if (!pathname.startsWith(`/${endpoint}/`)) {
 			return undefined;
@@ -101,8 +93,8 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 		const resourceUrl = `${trimTrailingSlash(this.baseUrl)}/${endpoint}/${path}`;
 		const audiences = [resourceUrl];
 		// Opt-in, unlike the MCP/webhook resolvers' `!== false`: defaulting off preserves the
-		// existing any-authenticated-visitor behaviour, so turning the chat OAuth2 flag on does
-		// not change who may chat with an already-published workflow.
+		// existing any-authenticated-visitor behaviour for a workflow that never touched this
+		// setting.
 		const requireExecute = node.parameters.requireExecuteAccess === true;
 		return {
 			// Path included, like the webhook resolver's id: one workflow can hold several chat

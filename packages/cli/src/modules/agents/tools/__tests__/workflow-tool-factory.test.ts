@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -19,6 +20,10 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
 import {
 	executeWorkflow,
@@ -28,6 +33,8 @@ import {
 import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
+
+const parentPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
 const triggerNode: INode = {
 	id: 'trigger-1',
@@ -758,6 +765,26 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		});
 	});
 
+	// The preview marker cannot be inferred on wake-up: MCP and AI Assistant test
+	// runs are `n8n_chat` too, so it has to travel on the marker itself.
+	it('stamps the preview marker so the wake-up resumes in preview mode', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE, previewChat: true },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
+	});
+
+	it('omits the preview marker for every other draft surface', async () => {
+		const executionData = await runToolWith(
+			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE },
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).not.toHaveProperty('previewChat');
+	});
+
 	it('omits the integration type for a run with no chat platform', async () => {
 		const executionData = await runToolWith({ agentId: 'agent-1' }, agentCtx);
 
@@ -866,7 +893,14 @@ describe('workflow tool → background job handoff', () => {
 				suspend,
 				runId: 'run-1',
 				toolCallId: 'call-1',
-				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({
+						projectId: 'p1',
+						principalHash: parentPrincipalHash,
+					}),
+				},
 			} as never,
 			suspend,
 		};
@@ -895,6 +929,8 @@ describe('workflow tool → background job handoff', () => {
 			id: expect.any(String),
 			parentAgentId: 'agent-1',
 			parentThreadId: 'thread-1',
+			parentResourceId: 'resource-1',
+			parentPrincipalHash,
 			title: 'Approval workflow',
 			workflowId: 'wf-1',
 			executionId: 'exec-1',
@@ -934,12 +970,42 @@ describe('workflow tool → background job handoff', () => {
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			status: 'success',
 			jobId: 'job-1',
 			data: { Result: [{ approved: true }] },
 		});
 		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('returns the inline result when marking it as delivered fails', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.markMailConsumed.mockRejectedValue(new Error('database unavailable'));
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it('marks the inline result as delivered even if the settle hook settled the job first', async () => {
+		setPersistence(settledInDb());
+		const jobService = setJobService();
+		jobService.settle.mockResolvedValue(false);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({}, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 	});
 
 	it('settles a failed inline finish with its error and no result', async () => {
@@ -958,6 +1024,38 @@ describe('workflow tool → background job handoff', () => {
 			result: null,
 			error: 'boom',
 		});
+	});
+
+	it.each([
+		[
+			'the host scope belongs to another project',
+			{
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'p-other',
+					principalHash: parentPrincipalHash,
+				}),
+			},
+		],
+		['the thread carries no host metadata', { hostMetadata: undefined }],
+		['the thread has no memory resource', { resourceId: undefined }],
+		['the session belongs to a task run', { resourceId: 'task:task-1' }],
+	])('falls back to suspending when %s', async (_name, persistenceOverrides) => {
+		setPersistence({
+			status: 'waiting',
+			data: createRunExecutionData({ resultData: { runData: {} } }),
+		});
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const persistence = {
+			...(ctx as { persistence: object }).persistence,
+			...persistenceOverrides,
+		};
+
+		await tool.handler?.({}, { ...(ctx as object), persistence } as never);
+
+		expect(jobService.registerWorkflowJob).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledTimes(1);
 	});
 
 	it('falls back to suspending when the run has no parent identity', async () => {
@@ -1005,6 +1103,7 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			error: expect.stringContaining('outcome is unknown'),
 		});
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
 			executionId: 'exec-1',
 			status: 'unknown',
@@ -1043,5 +1142,7 @@ describe('workflow tool → background job handoff', () => {
 			jobId: 'job-1',
 			note: expect.stringContaining('check_background_jobs'),
 		});
+		// The settle hook recorded the actual outcome. Leave it pending for delivery.
+		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
 	});
 });

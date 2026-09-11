@@ -61,7 +61,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 	it('should have correct static properties', () => {
 		expect(credential.name).toBe('microsoftEntraServicePrincipalApi');
 		expect(credential.displayName).toBe('Microsoft Entra Service Principal');
-		expect(credential.documentationUrl).toBe('microsoftentra');
+		expect(credential.documentationUrl).toBe('microsoftentraserviceprincipal');
 		expect(credential.icon).toBe('file:icons/Microsoft.svg');
 
 		const accessToken = credential.properties.find(

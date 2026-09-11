@@ -1,7 +1,8 @@
-import type { WorkflowGraph } from '@n8n/engine';
+import type { StepExecutionContext, WorkflowGraph } from '@n8n/engine';
 import { describe, expect, it } from 'vitest';
 
-import { toV1Execution, toV1Sources } from '../v1-adapters';
+import type { V1NodeStepConfig } from '../types';
+import { toV1ExecuteMode, toV1Execution, toV1Node, toV1Sources } from '../v1-adapters';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import { items, v1Workflow } from './fixtures';
 
@@ -51,6 +52,17 @@ describe('toV1Execution', () => {
 			type: 'test.echoParam',
 			typeVersion: 1,
 			continueOnFail: false,
+		});
+	});
+
+	it('restores the credential references a node was converted with', () => {
+		const credentials = { httpHeaderAuth: { id: 'cred-1', name: 'Header Auth account' } };
+		const [graphNode] = converter.convert(
+			v1Workflow([{ id: 'http', name: 'HTTP', type: 'test.echoParam', credentials }]),
+		).nodes;
+
+		expect(toV1Node(graphNode, graphNode.config as V1NodeStepConfig)).toMatchObject({
+			credentials,
 		});
 	});
 
@@ -192,5 +204,31 @@ describe('toV1Execution', () => {
 
 			expect(execution.runData.B).toBeUndefined();
 		});
+	});
+});
+
+describe('toV1ExecuteMode', () => {
+	const context = (overrides: Partial<StepExecutionContext>): StepExecutionContext => ({
+		executionId: 'exec-1',
+		stepId: 'step-1',
+		workflowId: 'wf-1',
+		mode: 'production',
+		iteration: 0,
+		callerContext: {},
+		...overrides,
+	});
+
+	it('returns the host mode when v1 knows it', () => {
+		expect(toV1ExecuteMode(context({ callerContext: { hostMode: 'webhook' } }))).toBe('webhook');
+	});
+
+	it('throws when the caller context has no host mode', () => {
+		expect(() => toV1ExecuteMode(context({}))).toThrow('no v1 execution mode');
+	});
+
+	it('throws when the host mode is not one v1 knows', () => {
+		expect(() => toV1ExecuteMode(context({ callerContext: { hostMode: 'production' } }))).toThrow(
+			'unknown v1 execution mode',
+		);
 	});
 });

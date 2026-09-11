@@ -2,7 +2,6 @@ import { isAgentFeatureEnabled } from '../utils/agent-feature-enabled';
 
 export const DOMAIN_TOOL_IDS = {
 	WORKFLOWS: 'workflows',
-	EVALS: 'evals',
 	EVAL_CONFIG: 'eval-config',
 	EXECUTIONS: 'executions',
 	CREDENTIALS: 'credentials',
@@ -19,6 +18,7 @@ export const DOMAIN_TOOL_IDS = {
 	CONVERSATION_HISTORY: 'conversation-history',
 	APPS: 'apps',
 	APP_BLUEPRINT: 'app-blueprint',
+	ACTIVITY: 'activity',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -34,8 +34,6 @@ export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 export const ORCHESTRATION_TOOL_IDS = {
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
-	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
-	EVAL_DATA: 'eval-data',
 	COMPLETE_CHECKPOINT: 'complete-checkpoint',
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
@@ -86,6 +84,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.APPS,
 	// The blueprint step precedes every app create; loaded together with `apps`.
 	DOMAIN_TOOL_IDS.APP_BLUEPRINT,
+	// The instance-context block hands the agent ids and tells it to expand them, so deferring
+	// this would price every expand at search_tools + load_tool. It is only registered when the
+	// reader is enabled, so an instance without the feature pays nothing for the entry.
+	DOMAIN_TOOL_IDS.ACTIVITY,
 	'web-search',
 	'fetch-url',
 	// build-agent is the primary route for agent-anchored intents; deferring it

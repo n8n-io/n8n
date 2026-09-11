@@ -1,4 +1,5 @@
 import type { ConsentUiHints } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -102,6 +103,19 @@ export function resourceUrlToWebhookPath(
 	}
 
 	return url.pathname.slice(basePath.length);
+}
+
+/** `resourceUrlToWebhookPath`, plus the debug log every resolver writes on a miss. */
+export function webhookPathFromResourceUrl(
+	resourceUrl: string,
+	webhookBaseUrl: string,
+	logger: Logger,
+): string | undefined {
+	const pathname = resourceUrlToWebhookPath(resourceUrl, webhookBaseUrl);
+	if (pathname === undefined) {
+		logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
+	}
+	return pathname;
 }
 
 /**

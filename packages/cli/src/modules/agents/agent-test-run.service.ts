@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
-	zodToJsonSchema,
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
@@ -11,6 +10,7 @@ import {
 	APPROVAL_SUSPEND_SCHEMA,
 	type ApprovalSuspendPayload,
 } from '@n8n/agents/tool';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -44,6 +44,8 @@ interface StreamDraftRunInput {
 	sessionId: string;
 	attachments?: StoredAttachmentRef[];
 	source?: string;
+	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
+	previewChat?: boolean;
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
 }
@@ -64,6 +66,8 @@ interface ResumeDraftRunInput {
 	resumeData: unknown;
 	user: User;
 	source?: string;
+	/** Set by the in-app preview chat only — see `ExecuteForChatConfig.previewChat`. */
+	previewChat?: boolean;
 	response: string;
 	abortSignal?: AbortSignal;
 }
@@ -189,6 +193,7 @@ export class AgentTestRunService {
 		sessionId,
 		attachments,
 		source,
+		previewChat,
 		onExecutionRecorded,
 		abortSignal,
 	}: StreamDraftRunInput): AsyncGenerator<StreamChunk> {
@@ -203,6 +208,7 @@ export class AgentTestRunService {
 			},
 			attachments,
 			source,
+			previewChat,
 			onExecutionRecorded,
 			abortSignal,
 		});
@@ -245,6 +251,7 @@ export class AgentTestRunService {
 				resourceId: draftChatMemoryResourceId(input.user.id),
 			},
 			source: input.source,
+			previewChat: input.previewChat,
 			onExecutionRecorded: (id) => {
 				executionId = id;
 			},

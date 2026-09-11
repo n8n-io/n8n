@@ -26,7 +26,7 @@ async function writeImageOfSize(filePath: string, bytes: number): Promise<void> 
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI oversized attachments @capability:proxy',
+	'Instance AI oversized attachments',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

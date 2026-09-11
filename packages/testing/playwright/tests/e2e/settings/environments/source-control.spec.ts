@@ -45,7 +45,7 @@ async function disconnectRepository(n8n: n8nPage) {
 // Exercises global source-control preferences, so keep the cases serialized.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Source Control Settings @capability:source-control @licensed',
+	'Source Control Settings @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},

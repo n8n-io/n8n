@@ -44,14 +44,7 @@ describe('episodic memory integration', () => {
 		}
 	});
 
-	/**
-	 * Creates two agents sharing one memory store:
-	 * - `setupAgent` observes eagerly (1-token threshold) so every setup turn
-	 *   feeds the observation log and episodic capture immediately.
-	 * - `recallAgent` uses a production-like threshold so mid-run observation
-	 *   never masks the recall question between the recall_memory tool batch
-	 *   and the final answer.
-	 */
+	/** Creates two agents that share one store and use the production observation threshold. */
 	function createEpisodicAgents(name: string): {
 		setupAgent: Agent;
 		recallAgent: Agent;
@@ -65,10 +58,11 @@ describe('episodic memory integration', () => {
 			'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
 			'Use exact identifiers verbatim.',
 			'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
-			'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
+			'When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence.',
+			'After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
 		].join(' ');
 
-		const buildAgent = (observerThresholdTokens: number) =>
+		const buildAgent = () =>
 			new Agent(name)
 				.model(EPISODIC_MEMORY_MODEL)
 				.instructions(instructions)
@@ -76,15 +70,15 @@ describe('episodic memory integration', () => {
 					new Memory()
 						.storage(memory)
 						.observationalMemory({
-							observerThresholdTokens,
+							observerThresholdTokens: 8_000,
 							reflectorThresholdTokens: 10_000,
 							observationLogTailLimit: 20,
 						})
 						.episodicMemory({ topK: EPISODIC_MEMORY_TEST_RECALL_LIMIT }),
 				);
 
-		const setupAgent = buildAgent(1);
-		const recallAgent = buildAgent(100_000);
+		const setupAgent = buildAgent();
+		const recallAgent = buildAgent();
 
 		cleanups.push(async () => {
 			await setupAgent.close();
@@ -102,8 +96,9 @@ describe('episodic memory integration', () => {
 	it('recalls exact artifacts across threads when explicitly asked for prior context', async () => {
 		const { setupAgent, recallAgent, memory } = createEpisodicAgents('episodic-cross-thread');
 		const resourceId = uniqueId('resource-cross-thread');
+		const setupThreadId = uniqueId('thread-acme-setup');
 
-		await generateSuccessfully(
+		const setupResult = await generateSuccessfully(
 			setupAgent,
 			[
 				'IMPORTANT durable prior decision for future sessions.',
@@ -111,10 +106,17 @@ describe('episodic memory integration', () => {
 				'Customer Acme Harbor tracker title exactly Acme Harbor Vendor Intake - Pilot, Slack channel exactly #vendor-acme-harbor, and status definition exactly Waiting on Vendor Info means the vendor or requester owes missing details.',
 				'This should be remembered for future conversations about Acme Harbor.',
 			].join('\n'),
-			{ persistence: { threadId: uniqueId('thread-acme-setup'), resourceId } },
+			{ persistence: { threadId: setupThreadId, resourceId } },
 		);
+		expect(toolNames(setupResult.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
 		await setupAgent.close();
+
+		await expect(
+			memory.getActiveObservationLog({
+				observationScopeId: setupThreadId,
+			}),
+		).resolves.toEqual([]);
 
 		const entries = await searchEpisodicEntries(
 			memory,
@@ -127,6 +129,12 @@ describe('episodic memory integration', () => {
 			normalizedText('Acme Harbor Vendor Intake - Pilot'),
 		);
 		expect(storedText).toContain('#vendor-acme-harbor');
+		const sources = await memory.episodic.getEntrySources(entries.map((entry) => entry.id));
+		expect(sources.length).toBeGreaterThan(0);
+		expect(sources.every((source) => source.threadId === setupThreadId)).toBe(true);
+		expect(sources.every((source) => Boolean(source.candidateId))).toBe(true);
+		expect(sources.every((source) => !source.observationId)).toBe(true);
+		await expect(memory.episodic.getPendingCaptureCandidates({ resourceId })).resolves.toEqual([]);
 
 		const result = await generateSuccessfully(
 			recallAgent,
@@ -155,33 +163,29 @@ describe('episodic memory integration', () => {
 		const redwoodThreadId = uniqueId('thread-redwood');
 		const cedarThreadId = uniqueId('thread-cedar');
 
-		await generateSuccessfully(
+		const redwoodSetup = await generateSuccessfully(
 			setupAgent,
 			[
-				'These are final durable Redwood Clinics details for future conversations.',
-				'Customer: Redwood Clinics.',
-				'Tracker title exactly: Redwood Clinic Intake Board.',
-				'Slack channel exactly: #redwood-intake.',
-				'Owner rule exactly: Clinic Ops owns New and Needs Clinic Review.',
+				'Please remember these details for future conversations.',
+				'Final Redwood Clinics details: tracker title exactly Redwood Clinic Intake Board; Slack channel exactly #redwood-intake; owner rule exactly Clinic Ops owns New and Needs Clinic Review.',
 				'This owner rule is Redwood-specific and must not be generalized.',
 			].join('\n'),
 			{ persistence: { threadId: redwoodThreadId, resourceId } },
 		);
+		expect(toolNames(redwoodSetup.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
 		await setupAgent.close();
 
-		await generateSuccessfully(
+		const cedarSetup = await generateSuccessfully(
 			setupAgent,
 			[
-				'These are final durable Cedar Labs details for future conversations.',
-				'Customer: Cedar Labs.',
-				'Tracker title exactly: Cedar Lab Partner Queue.',
-				'Slack channel exactly: #cedar-lab-queue.',
-				'Owner rule exactly: Lab Success owns New, and Finance owns Terms Review.',
+				'Please remember these details for future conversations.',
+				'Final Cedar Labs details: tracker title exactly Cedar Lab Partner Queue; Slack channel exactly #cedar-lab-queue; owner rule exactly Lab Success owns New, and Finance owns Terms Review.',
 				'Do not reuse Redwood owner rules for Cedar Labs.',
 			].join('\n'),
 			{ persistence: { threadId: cedarThreadId, resourceId } },
 		);
+		expect(toolNames(cedarSetup.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
 		await setupAgent.close();
 
@@ -226,17 +230,19 @@ describe('episodic memory integration', () => {
 		const { setupAgent, recallAgent } = createEpisodicAgents('episodic-correction');
 		const resourceId = uniqueId('resource-correction');
 
-		await generateSuccessfully(
+		const initialSetup = await generateSuccessfully(
 			setupAgent,
 			'Please remember this Orion Export setup for a future conversation: the initial tracker title is Orion Vendor Intake Draft. Repeat it back once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
+		expect(toolNames(initialSetup.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
-		await generateSuccessfully(
+		const correctionSetup = await generateSuccessfully(
 			setupAgent,
 			'Correction for Orion Export: please remember that the final tracker title is exactly Orion Vendor Command Center. Orion Vendor Intake Draft is outdated and must not be treated as current. Repeat the corrected value once.',
 			{ persistence: { threadId: uniqueId('thread-orion-setup'), resourceId } },
 		);
+		expect(toolNames(correctionSetup.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
 		await setupAgent.close();
 
@@ -260,11 +266,12 @@ describe('episodic memory integration', () => {
 		const resourceB = uniqueId('resource-beta');
 		const privateIdentifier = 'QUARTZ-RIVER-91';
 
-		await generateSuccessfully(
+		const alphaSetup = await generateSuccessfully(
 			setupAgent,
 			`Please remember this Resource Alpha detail for a future conversation, then repeat it back once: the exact deployment codename is ${privateIdentifier}.`,
 			{ persistence: { threadId: uniqueId('thread-alpha'), resourceId: resourceA } },
 		);
+		expect(toolNames(alphaSetup.messages)).toContain('flag_memory');
 		await waitForEpisodicMemoryCapture();
 		await setupAgent.close();
 
@@ -288,45 +295,6 @@ describe('episodic memory integration', () => {
 			{ persistence: { threadId: uniqueId('thread-beta-recall'), resourceId: resourceB } },
 		);
 		expect(normalizedAnswer(result.messages)).not.toContain(privateIdentifier.toLowerCase());
-	});
-
-	it('keeps indexed entries source-backed with source thread evidence', async () => {
-		const { setupAgent, memory } = createEpisodicAgents('episodic-source-backed');
-		const resourceId = uniqueId('resource-source-backed');
-		const threadId = uniqueId('thread-lumen');
-
-		await generateSuccessfully(
-			setupAgent,
-			[
-				'IMPORTANT durable prior decision for future sessions.',
-				'Please remember these final Lumen Trail details for future conversations.',
-				'Customer: Lumen Trail.',
-				'Tracker title exactly: Lumen Trail Renewal Ledger.',
-				'Slack channel exactly: #lumen-renewals.',
-				'Owner rule exactly: Renewals Ops owns Renewal Review.',
-				'These exact details must remain source-backed to this thread.',
-			].join('\n'),
-			{ persistence: { threadId, resourceId } },
-		);
-		await waitForEpisodicMemoryCapture();
-		await setupAgent.close();
-
-		const observations = await memory.getActiveObservationLog({
-			observationScopeId: threadId,
-		});
-		expect(observations.length).toBeGreaterThan(0);
-
-		const entries = await searchEpisodicEntries(
-			memory,
-			resourceId,
-			'Lumen Trail Renewal Ledger #lumen-renewals Renewals Ops',
-		);
-		expect(entries.length).toBeGreaterThan(0);
-
-		const sources = await memory.episodic.getEntrySources(entries.map((entry) => entry.id));
-		expect(sources.length).toBeGreaterThanOrEqual(entries.length);
-		expect(sources.every((source) => source.threadId === threadId)).toBe(true);
-		expect(sources.every((source) => source.evidenceText.trim().length > 0)).toBe(true);
 	});
 });
 
@@ -366,7 +334,7 @@ function toolNames(messages: Parameters<typeof findAllToolCalls>[0]): string[] {
 
 function resolvedToolOutput(messages: Parameters<typeof findAllToolCalls>[0], toolName: string) {
 	const toolCall = findAllToolCalls(messages).find((call) => call.toolName === toolName);
-	if (!toolCall || toolCall.state !== 'resolved') {
+	if (toolCall?.state !== 'resolved') {
 		throw new Error(`${toolName} did not resolve`);
 	}
 	return toolCall.output;

@@ -9,7 +9,6 @@ import type { ZodType } from 'zod';
 
 import { domainGatingResumeSchema } from '../../domain-access';
 import { credentialsResumeSchema } from '../../tools/credentials.tool';
-import { evalsResumeSchema } from '../../tools/evals/evals.tool';
 import { gatewayConfirmationResumeSchema } from '../../tools/filesystem/create-tools-from-mcp-server';
 import { planResumeSchema } from '../../tools/orchestration/plan.tool';
 import { askUserResumeSchema } from '../../tools/shared/ask-user.tool';
@@ -66,7 +65,6 @@ describe('confirmation payload → tool resume schema contract', () => {
 			instanceAiApprovalResumeSchema,
 		],
 		['plan', planResumeSchema],
-		['evals', evalsResumeSchema],
 	];
 
 	/** Cards rendered by a dedicated component, all of which offer a whole-card
@@ -115,10 +113,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [
-				['ask-user', askUserResumeSchema],
-				['evals', evalsResumeSchema],
-			],
+			targets: [['ask-user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',

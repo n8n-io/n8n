@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'email' });
 
 test(
-	'EmailSend node sends via SMTP @capability:email',
+	'EmailSend node sends via SMTP',
 	{
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},

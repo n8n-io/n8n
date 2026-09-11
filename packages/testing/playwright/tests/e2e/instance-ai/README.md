@@ -1,10 +1,8 @@
 # Instance AI Playwright tests
 
-These tests cover the `/instance-ai` UI and exercise the end-to-end agent flow
-(chat, tool calls, workflow preview). They're tagged
-`@capability:proxy` because the standard CI run uses a MockServer proxy to
-record/replay LLM traffic instead of hitting the real Anthropic API. The shared
-fixture also brings in the sandbox service that the workflow builder requires.
+These tests cover the `/instance-ai` UI and the end-to-end agent flow. The
+shared fixture starts a MockServer proxy for LLM replay. It also starts the
+sandbox service that the workflow builder requires.
 
 ### Sandbox service: hosted or local
 
@@ -98,12 +96,12 @@ From the isolated runner you get:
   invocations don't collide.
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir, cleaned up on exit.
   `~/.n8n/database.sqlite` is never touched.
-- **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so the `@capability:proxy` tag
-  is honoured locally.
-- **Self-managed n8n** with a real `/rest/e2e/reset` readiness check (not the
-  racy default favicon poll), `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop
-  Playwright from spawning a duplicate, and process-group cleanup so
-  `node ./n8n` doesn't get orphaned.
+- **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so container-tagged (`@mode:*`,
+  `@licensed`, and `@db:reset`) tests are selected by the local `e2e` project.
+- **Self-managed n8n** with a `/rest/e2e/reset` readiness check that waits for
+  the E2E controller, `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop Playwright from
+  spawning a duplicate, and process-group cleanup so `node ./n8n` doesn't get
+  orphaned.
 
 The `instanceAiProxySetup` fixture (`fixtures.ts`) detects the missing
 `n8nContainer` and short-circuits all proxy + tool-trace setup, so every LLM

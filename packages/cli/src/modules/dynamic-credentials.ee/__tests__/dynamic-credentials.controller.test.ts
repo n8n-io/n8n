@@ -67,31 +67,128 @@ describe('DynamicCredentialsController', () => {
 		});
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 
-		// Default: caller can access the credential
-		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
+		// Default: the credential exists and is an end-user (resolvable) credential.
+		enterpriseCredentialsService.getOne.mockResolvedValue(
+			mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api', isResolvable: true }),
+		);
 	});
 
 	describe('in-app access control', () => {
-		it('returns 404 when an authenticated user cannot access the credential', async () => {
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
-			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
-			const req = mock<AuthenticatedRequest>({
-				user,
-				params: { id: 'foreign-credential' },
+		const resolverEntity: DynamicCredentialResolver = {
+			id: 'resolver-123',
+			name: 'Test Resolver',
+			type: 'oauth2-introspection-identifier',
+			config: 'encrypted-config',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			generateId: vi.fn(),
+			setUpdateDate: vi.fn(),
+		};
+
+		const resolver = {
+			metadata: {
+				name: 'oauth2-introspection-identifier',
+				description: 'OAuth2 Introspection Identifier',
+			},
+			getSecret: vi.fn(),
+			setSecret: vi.fn(),
+			validateOptions: vi.fn(),
+			deleteSecret: vi.fn().mockResolvedValue(undefined),
+		};
+
+		const sessionRequest = (credentialId: string) =>
+			mock<AuthenticatedRequest>({
+				user: mock<AuthenticatedRequest['user']>({ id: 'user-123' }),
+				params: { id: credentialId },
 				query: { resolverId: 'resolver-123' },
 				headers: { authorization: 'Bearer token123' },
 			});
+
+		const credential = (id: string, isResolvable: boolean) =>
+			mock<CredentialsEntity>({ id, type: 'googleOAuth2Api', isResolvable });
+
+		// Connecting an end-user credential carries no scope check, and the resolver
+		// keys every read and write on the caller's own identity — so disconnecting
+		// and reconnecting must not need one either. A user with no project role can
+		// only ever reach their own stored token.
+		it('lets a session user with no scopes authorize a resolvable credential', async () => {
+			const req = sessionRequest('someone-elses-credential');
 			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(
+				credential('someone-elses-credential', true),
+			);
+			resolverRepository.findOneBy.mockResolvedValueOnce(resolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValueOnce(resolver);
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await expect(controller.authorizeCredential(req, res)).resolves.toContain(
+				'https://example.domain/oauth2/auth',
+			);
+			expect(enterpriseCredentialsService.getOne).toHaveBeenCalledWith('someone-elses-credential');
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		});
+
+		it('lets a session user with no scopes revoke a resolvable credential', async () => {
+			const req = sessionRequest('someone-elses-credential');
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(
+				credential('someone-elses-credential', true),
+			);
+			resolverRepository.findOneBy.mockResolvedValueOnce(resolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValueOnce(resolver);
+			cipher.decryptV2.mockResolvedValueOnce('{}');
+
+			await controller.revokeCredential(req, res);
+
+			expect(resolver.deleteSecret).toHaveBeenCalledTimes(1);
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		});
+
+		it('rejects an authorize for a credential that is not resolvable', async () => {
+			const req = sessionRequest('fixed-credential');
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(
+				credential('fixed-credential', false),
+			);
 
 			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
 				'Credential not found',
 			);
-			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
-				'foreign-credential',
-				user,
-				['credential:update'],
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('rejects a revoke for a credential that is not resolvable', async () => {
+			const req = sessionRequest('fixed-credential');
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(
+				credential('fixed-credential', false),
 			);
-			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
+
+			await expect(controller.revokeCredential(req, res)).rejects.toThrow('Credential not found');
+			expect(resolver.deleteSecret).not.toHaveBeenCalled();
+		});
+
+		it('reports an unknown id the same way as a credential that is not resolvable', async () => {
+			const req = sessionRequest('no-such-credential');
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(null);
+
+			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
+				'Credential not found',
+			);
+
+			enterpriseCredentialsService.getOne.mockResolvedValueOnce(null);
+
+			await expect(controller.revokeCredential(req, res)).rejects.toThrow('Credential not found');
 		});
 	});
 
@@ -137,6 +234,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -154,6 +252,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'httpBasicAuth',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -174,6 +273,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -195,6 +295,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -219,6 +320,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -260,6 +362,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'twitterOAuth1Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -301,6 +404,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const mockResolverWithValidation = {
 				...mockResolver,
@@ -345,6 +449,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -366,7 +471,11 @@ describe('DynamicCredentialsController', () => {
 		});
 
 		it('sets the state userId when the resolver binds the link to a user', async () => {
-			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 			const req = mock<Request>({
 				params: { id: '1' },
 				query: { resolverId: 'resolver-123' },
@@ -396,7 +505,11 @@ describe('DynamicCredentialsController', () => {
 		});
 
 		it('leaves the state userId unset when the link is unbound', async () => {
-			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 			const req = mock<Request>({
 				params: { id: '1' },
 				query: { resolverId: 'resolver-123' },
@@ -469,7 +582,11 @@ describe('DynamicCredentialsController', () => {
 		it('materializes the OAuth2 flow and redirects to the provider for a valid intent', async () => {
 			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 
 			authorizeIntentService.get.mockResolvedValue({
 				credentialId: 'cred-1',
@@ -502,7 +619,11 @@ describe('DynamicCredentialsController', () => {
 		it('materializes the OAuth1 flow for an OAuth1 credential', async () => {
 			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'twitterOAuth1Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'twitterOAuth1Api',
+				isResolvable: true,
+			});
 
 			authorizeIntentService.get.mockResolvedValue({
 				credentialId: 'cred-1',
@@ -525,7 +646,11 @@ describe('DynamicCredentialsController', () => {
 		it('renders an error when materializing the provider URL fails', async () => {
 			const req = mock<Request>({ params: { id: 'cred-1' }, query: { token: 'tok' } });
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 
 			authorizeIntentService.get.mockResolvedValue({
 				credentialId: 'cred-1',
@@ -549,7 +674,11 @@ describe('DynamicCredentialsController', () => {
 				user: mock<AuthenticatedRequest['user']>({ id: 'user-1' }),
 			});
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 
 			authorizeIntentService.get.mockResolvedValue({
 				credentialId: 'cred-1',
@@ -580,7 +709,11 @@ describe('DynamicCredentialsController', () => {
 				user: mock<AuthenticatedRequest['user']>({ id: 'user-1' }),
 			});
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'twitterOAuth1Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'twitterOAuth1Api',
+				isResolvable: true,
+			});
 
 			authorizeIntentService.get.mockResolvedValue({
 				credentialId: 'cred-1',
@@ -700,7 +833,11 @@ describe('DynamicCredentialsController', () => {
 				user: mock<AuthenticatedRequest['user']>({ id: 'some-other-user' }),
 			});
 			const res = mock<Response>();
-			const mockCredential = mock<CredentialsEntity>({ id: 'cred-1', type: 'googleOAuth2Api' });
+			const mockCredential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				type: 'googleOAuth2Api',
+				isResolvable: true,
+			});
 
 			// No userId on the intent → link is unbound.
 			authorizeIntentService.get.mockResolvedValue({
@@ -749,6 +886,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -770,6 +908,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const mockResolver = {
 				metadata: {
@@ -815,6 +954,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const mockResolver = {
 				metadata: {
@@ -850,6 +990,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: 'cred-456',
 				type: 'googleOAuth2Api',
+				isResolvable: true,
 			});
 			const mockResolver = {
 				metadata: {
@@ -901,6 +1042,7 @@ describe('DynamicCredentialsController', () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
 				type: 'twitterOAuth1Api',
+				isResolvable: true,
 			});
 			const mockResolver = {
 				metadata: {

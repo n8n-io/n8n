@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.37.0",
+  "version": "1.39.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -24,7 +24,6 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/json-schema": "catalog:",
     "@vitest/coverage-v8": "catalog:",

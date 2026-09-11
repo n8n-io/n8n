@@ -9,10 +9,14 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowEditorLockedError } = await import(
 		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
 	);
+	const { FolderResolutionError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/folder-resolution.error.js'
+	);
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
+		FolderResolutionError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -46,14 +50,16 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import type { PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
-import { Expression } from 'n8n-workflow';
+import { Expression, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeParameters,
+	INodeTypeDescription,
 	IPinData,
 	IRunExecutionData,
 	ITaskData,
@@ -64,9 +70,12 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -135,6 +144,9 @@ function createMockExecutionRepository(
 	};
 }
 
+/** The subset of a workflow node the adapter helpers read. */
+type WorkflowNode = { name: string; type: string; onError?: string };
+
 /** Build a minimal execution object that satisfies the shape read by the adapter helpers. */
 function makeExecution(
 	overrides: {
@@ -144,7 +156,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
+		workflowNodes?: WorkflowNode[];
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -155,6 +167,7 @@ function makeExecution(
 		stoppedAt: overrides.stoppedAt ?? new Date('2026-01-01T00:01:00Z'),
 		workflowData: {
 			nodes: overrides.workflowNodes ?? [],
+			connections: {},
 		},
 		data: {
 			resultData: {
@@ -187,6 +200,41 @@ function makeTaskData(
 		...(opts?.error ? { error: opts.error } : {}),
 		...(opts?.executionStatus ? { executionStatus: opts.executionStatus } : {}),
 	} as unknown as ITaskData;
+}
+
+const FILTER_NODE: WorkflowNode = { name: 'Filter', type: 'n8n-nodes-base.filter' };
+
+/**
+ * Mock an execution where `node` ran once and emitted `outputs`, one item list
+ * per output. `null` marks an output that never received data.
+ */
+function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_NODE) {
+	const main = outputs.map((items) => items?.map((json) => ({ json })) ?? null);
+	createMockExecutionRepository(
+		makeExecution({
+			workflowNodes: [node],
+			runData: { [node.name]: [{ ...makeTaskData([]), data: { main } }] },
+		}),
+	);
+}
+
+/** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
+function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
+	const nodeTypes = mock<NodeTypes>();
+	nodeTypes.getByNameAndVersion.mockReturnValue({
+		description: { properties: [], ...description },
+	} as never);
+	return nodeTypes;
+}
+
+/** Node types that resolve every node to a Filter: one declared output, two output names. */
+function filterNodeTypes(): NodeTypes {
+	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
+}
+
+/** Parse the JSON the adapter wrapped in untrusted-data boundary tags. */
+function unwrapJson(wrapped: unknown): unknown {
+	return JSON.parse(String(wrapped).split('\n').slice(1, -1).join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +370,34 @@ describe('extractExecutionResult', () => {
 		expect(result.data!['Set Node']).toContain('<untrusted_data');
 		expect(result.data!['Set Node']).toContain('"id": 1');
 		expect(result.data!['Set Node']).toContain('"name": "Alice"');
+	});
+
+	it('groups the output data of a multi-output node per output', async () => {
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+
+		const result = await extractExecutionResult('exec-1', true, filterNodeTypes());
+
+		expect(unwrapJson(result.data!.Filter)).toEqual({
+			outputs: [
+				{ index: 0, name: 'Kept', items: [{ text: '$TSLA' }] },
+				{ index: 1, name: 'Discarded', items: [{ text: 'plain' }] },
+			],
+			totalItems: 2,
+		});
+	});
+
+	it('reports a null output as empty', async () => {
+		mockMultiOutputRun([null, [{ id: 1 }]]);
+
+		const result = await extractExecutionResult('exec-1', true);
+
+		expect(unwrapJson(result.data!.Filter)).toEqual({
+			outputs: [
+				{ index: 0, items: [] },
+				{ index: 1, items: [{ id: 1 }] },
+			],
+			totalItems: 1,
+		});
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
@@ -707,6 +783,33 @@ describe('truncateResultData', () => {
 		const result = truncateResultData(data);
 
 		expect(result['Empty Node']).toEqual([]);
+	});
+
+	it('collapses the item arrays of each output for a multi-output node', () => {
+		const bigItems = Array.from({ length: 200 }, (_, i) => ({ id: i, data: 'x'.repeat(300) }));
+		const data: Record<string, unknown> = {
+			Filter: {
+				outputs: [
+					{ index: 0, name: 'Kept', items: bigItems },
+					{ index: 1, name: 'Discarded', items: [] },
+				],
+				totalItems: 200,
+			},
+		};
+
+		const result = truncateResultData(data);
+
+		expect(result.Filter).toEqual({
+			outputs: [
+				{
+					index: 0,
+					name: 'Kept',
+					items: { _itemCount: 200, _truncated: true, _firstItemPreview: bigItems[0] },
+				},
+				{ index: 1, name: 'Discarded', items: [] },
+			],
+			totalItems: 200,
+		});
 	});
 });
 
@@ -1140,7 +1243,7 @@ describe('extractNodeOutput', () => {
 
 		expect(result.nodeName).toBe('Set Node');
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(10); // default maxItems
+		expect(result.outputs[0].items).toHaveLength(10); // default maxItems
 		expect(result.returned).toEqual({ from: 0, to: 10 });
 	});
 
@@ -1156,11 +1259,11 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Set Node', { startIndex: 10, maxItems: 5 });
 
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(5);
+		expect(result.outputs[0].items).toHaveLength(5);
 		expect(result.returned).toEqual({ from: 10, to: 15 });
 		// Items are wrapped in untrusted-data boundary tags
-		expect(result.items[0]).toContain('<untrusted_data');
-		expect(result.items[0]).toContain('"id": 10');
+		expect(result.outputs[0].items[0]).toContain('<untrusted_data');
+		expect(result.outputs[0].items[0]).toContain('"id": 10');
 	});
 
 	it('caps maxItems at 50', async () => {
@@ -1174,7 +1277,7 @@ describe('extractNodeOutput', () => {
 
 		const result = await extractNodeOutput('exec-1', 'Set Node', { maxItems: 100 });
 
-		expect(result.items).toHaveLength(50);
+		expect(result.outputs[0].items).toHaveLength(50);
 		expect(result.returned).toEqual({ from: 0, to: 50 });
 	});
 
@@ -1190,9 +1293,9 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Big Node');
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(1);
+		expect(result.outputs[0].items).toHaveLength(1);
 		// Items are wrapped in untrusted-data boundary tags after truncation
-		const wrapped = result.items[0] as string;
+		const wrapped = result.outputs[0].items[0] as string;
 		expect(wrapped).toContain('<untrusted_data');
 		expect(wrapped).toContain('_truncatedItem');
 		expect(wrapped).toContain('"originalLength"');
@@ -1230,8 +1333,122 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Node', { startIndex: 100 });
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(0);
+		expect(result.outputs[0].items).toHaveLength(0);
 		expect(result.returned).toEqual({ from: 100, to: 100 });
+	});
+
+	it('reports each output of a multi-output node separately, with the node type labels', async () => {
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', undefined, filterNodeTypes());
+
+		expect(result.totalItems).toBe(2);
+		expect(result.returned).toEqual({ from: 0, to: 2 });
+		expect(result.outputs).toEqual([
+			{
+				index: 0,
+				name: 'Kept',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "$TSLA"')],
+			},
+			{
+				index: 1,
+				name: 'Discarded',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "plain"')],
+			},
+		]);
+	});
+
+	it('lists empty and null outputs as empty, and omits names without node types', async () => {
+		mockMultiOutputRun([[], null, [{ id: 1 }, { id: 2 }]]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter');
+
+		expect(result.totalItems).toBe(2);
+		expect(result.outputs).toEqual([
+			{ index: 0, totalItems: 0, items: [] },
+			{ index: 1, totalItems: 0, items: [] },
+			{
+				index: 2,
+				totalItems: 2,
+				items: [expect.stringContaining('"id": 1'), expect.stringContaining('"id": 2')],
+			},
+		]);
+	});
+
+	it('paginates across outputs as one sequence', async () => {
+		mockMultiOutputRun([
+			[{ id: 0 }, { id: 1 }],
+			[{ id: 2 }, { id: 3 }],
+		]);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', { startIndex: 1, maxItems: 2 });
+
+		expect(result.returned).toEqual({ from: 1, to: 3 });
+		expect(result.outputs[0].items).toEqual([expect.stringContaining('"id": 1')]);
+		expect(result.outputs[1].items).toEqual([expect.stringContaining('"id": 2')]);
+	});
+
+	it.each<{
+		name: string;
+		node?: Partial<WorkflowNode>;
+		description: Partial<INodeTypeDescription>;
+		names: string[];
+	}>([
+		{
+			name: 'prefers the displayName of a declared output over outputNames',
+			description: {
+				outputs: [
+					{ type: NodeConnectionTypes.Main, displayName: 'Premium' },
+					{ type: NodeConnectionTypes.Main, displayName: 'Fallback' },
+				],
+				outputNames: ['a', 'b'],
+			},
+			names: ['Premium', 'Fallback'],
+		},
+		{
+			name: 'resolves an outputs expression to its display names',
+			description: {
+				outputs: "={{ [{ type: 'main', displayName: 'A' }, { type: 'main', displayName: 'B' }] }}",
+			},
+			names: ['A', 'B'],
+		},
+		{
+			name: 'labels the outputs Success and Error when the node routes errors to an extra output',
+			node: { onError: 'continueErrorOutput' },
+			description: { outputs: [NodeConnectionTypes.Main] },
+			names: ['Success', 'Error'],
+		},
+	])('$name', async ({ node, description, names }) => {
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], { ...FILTER_NODE, ...node });
+
+		const result = await extractNodeOutput(
+			'exec-1',
+			'Filter',
+			undefined,
+			nodeTypesWith(description),
+		);
+
+		expect(result.outputs.map((output) => output.name)).toEqual(names);
+	});
+
+	it('returns index-only outputs when the node type is unknown', async () => {
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], {
+			name: 'Filter',
+			type: 'n8n-nodes-community.missing',
+		});
+		const nodeTypes = mock<NodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('Unrecognized node type');
+		});
+
+		const result = await extractNodeOutput('exec-1', 'Filter', undefined, nodeTypes);
+
+		expect(result.outputs).toEqual([
+			{ index: 0, totalItems: 1, items: [expect.stringContaining('"id": 1')] },
+			{ index: 1, totalItems: 1, items: [expect.stringContaining('"id": 2')] },
+		]);
 	});
 });
 
@@ -1935,9 +2152,16 @@ function createWorkflowAdapterForTests(overrides?: {
 	foldersLicensed?: boolean;
 	branchReadOnly?: boolean;
 	sharingEnabled?: boolean;
+	folderExploration?: boolean;
+	// Builds the adapter without the folder subtree finder, as an instance that
+	// runs an older module set would.
+	omitFolderFinderService?: boolean;
 	// Defaults to a bound project (every production run has one). Pass `null` to
 	// simulate a run with no bound project.
 	projectId?: string | null;
+	// Mirrors `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES`, which defaults to true in
+	// production. This harness leaves it off, so opt in to read real parameters.
+	allowSendingParameterValues?: boolean;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2000,6 +2224,18 @@ function createWorkflowAdapterForTests(overrides?: {
 		preventTampering: vi.fn(async (data: unknown) => data),
 	};
 	const mockTelemetry = { track: vi.fn() };
+	const mockFolderRepository = {
+		getFolderPathsToRoot: vi.fn().mockResolvedValue(new Map<string, string[]>()),
+		getMany: vi.fn().mockResolvedValue([]),
+		findManyByExactName: vi.fn().mockResolvedValue([]),
+		findOneOrFailFolderInProject: vi.fn().mockRejectedValue(new Error('not found')),
+	};
+	const mockFolderFinderService = {
+		findFolderFilterIdsWithoutAccessCheck: vi.fn().mockResolvedValue([]),
+	};
+	const mockProjectService = {
+		getAccessibleProjects: vi.fn().mockResolvedValue([{ id: 'team-project-id' }, { id: 'p2' }]),
+	};
 	const mockLogger = {
 		error: vi.fn(),
 		warn: vi.fn(),
@@ -2013,7 +2249,7 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		globalConfigStub(),
+		globalConfigStub({ allowSendingParameterValues: overrides?.allowSendingParameterValues }),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2036,7 +2272,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		mockProjectService as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
 			isReadOnly: vi.fn().mockReturnValue(overrides?.branchReadOnly ?? false),
@@ -2072,6 +2308,16 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockPolicyEnforcementService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		mockFolderRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[40],
+		overrides?.omitFolderFinderService
+			? undefined
+			: (mockFolderFinderService as unknown as ConstructorParameters<
+					typeof InstanceAiAdapterService
+				>[41]),
 	);
 
 	const boundProjectId =
@@ -2079,6 +2325,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	const context = service.createContext(mockUser, {
 		threadId: 'thread-1',
 		projectId: boundProjectId,
+		folderExplorationEnabled: overrides?.folderExploration ?? false,
 	});
 	const adapter = context.workflowService;
 
@@ -2097,6 +2344,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockCollaborationService,
 		mockPolicyEnforcementService,
 		mockTelemetry,
+		mockFolderRepository,
+		mockFolderFinderService,
+		mockProjectService,
 		mockLogger,
 		mockUser,
 	};
@@ -2160,8 +2410,12 @@ describe('createWorkflowAdapter', () => {
 					notesInFlow: true,
 					executeOnce: true,
 					retryOnFail: true,
+					maxTries: 5,
+					waitBetweenTries: 2500,
 					alwaysOutputData: true,
 					onError: 'continueErrorOutput',
+					extendsCredential: 'httpHeaderAuth',
+					customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 				},
 			],
 			connections: {},
@@ -2176,10 +2430,142 @@ describe('createWorkflowAdapter', () => {
 				notesInFlow: true,
 				executeOnce: true,
 				retryOnFail: true,
+				maxTries: 5,
+				waitBetweenTries: 2500,
 				alwaysOutputData: true,
 				onError: 'continueErrorOutput',
+				extendsCredential: 'httpHeaderAuth',
+				customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
 			}),
 		);
+	});
+
+	// The agent reads a workflow with `get-as-code`, edits the file and saves it with
+	// `build-workflow`, which writes the parsed nodes over the saved ones. A field this
+	// read path drops is therefore not just missing from the code — it is erased from the
+	// user's workflow on the next save.
+	it('keeps every node-level setting through a get-as-code / build-workflow round trip', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests({
+			allowSendingParameterValues: true,
+		});
+		const savedNode = {
+			id: 'http-id',
+			name: 'Download Image',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [208, 0] as [number, number],
+			parameters: { url: 'https://example.com/image', options: {} },
+			credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Feishu Header' } },
+			notes: 'Downloads the message image',
+			notesInFlow: true,
+			executeOnce: true,
+			retryOnFail: true,
+			maxTries: 4,
+			waitBetweenTries: 1500,
+			alwaysOutputData: true,
+			onError: 'continueRegularOutput',
+			extendsCredential: 'httpHeaderAuth',
+			customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
+		};
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-roundtrip',
+			name: 'Round Trip',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'trigger-id',
+					name: 'Every Hour',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				savedNode,
+			],
+			connections: {
+				'Every Hour': { main: [[{ node: 'Download Image', type: 'main', index: 0 }]] },
+			},
+			settings: {},
+		});
+
+		const json = await adapter.getAsWorkflowJSON('wf-roundtrip');
+		// Same options `get-as-code` uses: ids in so node identity survives, positions out.
+		const code = generateWorkflowCode({
+			workflow: json,
+			includeNodeIds: true,
+			includePositions: false,
+		});
+		const rebuilt = parseWorkflowCode(code);
+
+		const rebuiltNode = rebuilt.nodes.find((n) => n.name === 'Download Image');
+		expect(rebuiltNode).toEqual(
+			expect.objectContaining({
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Feishu Header' } },
+				parameters: savedNode.parameters,
+				notes: savedNode.notes,
+				notesInFlow: true,
+				executeOnce: true,
+				retryOnFail: true,
+				maxTries: 4,
+				waitBetweenTries: 1500,
+				alwaysOutputData: true,
+				onError: 'continueRegularOutput',
+				extendsCredential: 'httpHeaderAuth',
+				customTelemetryTags: { tag: [{ key: 'team', value: 'growth' }] },
+			}),
+		);
+	});
+
+	it.each([
+		{
+			name: 'reads a legacy continueOnFail node as its onError equivalent',
+			node: { continueOnFail: true },
+			expected: 'continueRegularOutput',
+		},
+		{
+			name: 'lets an explicit onError win over continueOnFail',
+			node: { continueOnFail: true, onError: 'continueErrorOutput' },
+			expected: 'continueErrorOutput',
+		},
+		{
+			name: 'leaves onError unset when the node continues on neither',
+			node: {},
+			expected: undefined,
+		},
+	])('$name', async ({ node, expected }) => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-legacy',
+			name: 'Legacy',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'legacy-id',
+					name: 'Legacy Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0],
+					parameters: {},
+					...node,
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-legacy');
+
+		expect(result.nodes[0].onError).toBe(expected);
 	});
 
 	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
@@ -2350,6 +2736,609 @@ describe('createWorkflowAdapter', () => {
 		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
 		expect(result.total).toBe(1);
 		expect(result.totalInScope).toBe(1);
+	});
+
+	describe('folder attribution', () => {
+		it('ignores folder options and adds no folder while folder exploration is off', async () => {
+			const { adapter, mockWorkflowService, mockUser, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests();
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{ ...savedWorkflow, parentFolder: { id: 'f1', name: 'Triggers', parentFolderId: null } },
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list({ folderPath: 'Triggers' });
+
+			expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+				take: 50,
+				filter: { isArchived: false, projectId: 'team-project-id' },
+			});
+			expect(result.workflows[0]).not.toHaveProperty('folder');
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+
+		it('attributes each row to its folder with a root-relative path when on', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						id: 'wf-nested',
+						homeProject: { id: 'team-project-id', name: 'Team' },
+						parentFolder: { id: 'acme', name: 'Acme', parentFolderId: 'clients' },
+					},
+					{
+						...savedWorkflow,
+						id: 'wf-root',
+						homeProject: { id: 'team-project-id', name: 'Team' },
+						parentFolder: null,
+					},
+				],
+				count: 2,
+			});
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([['acme', ['Clients', 'Acme']]]),
+			);
+
+			const result = await adapter.list();
+
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledTimes(1);
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledWith(['acme']);
+			expect(result.workflows[0].folder).toEqual({
+				id: 'acme',
+				name: 'Acme',
+				path: 'Clients/Acme',
+			});
+			expect(result.workflows[1].folder).toBeUndefined();
+		});
+
+		it('withholds folder attribution when the caller cannot list folders in the workflow project', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
+			mockedUserHasScopes.mockImplementation(
+				async (_user, scopes) => !scopes.includes('folder:list'),
+			);
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						id: 'wf-nested',
+						parentFolder: { id: 'acme', name: 'Acme', parentFolderId: 'clients' },
+					},
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list();
+
+			expect(result.workflows[0].folder).toBeUndefined();
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+
+		it('chunks the path lookup and merges the chunks on a large page', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: true });
+			const rows = Array.from({ length: 1001 }, (_, index) => ({
+				...savedWorkflow,
+				id: `wf-${index}`,
+				homeProject: { id: 'team-project-id', name: 'Team' },
+				parentFolder: { id: `f-${index}`, name: `F${index}`, parentFolderId: null },
+			}));
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: rows, count: rows.length });
+			mockFolderRepository.getFolderPathsToRoot.mockImplementation(
+				async (folderIds: string[]) => new Map(folderIds.map((id) => [id, ['Root', id]])),
+			);
+
+			const result = await adapter.list({ limit: 1001 });
+
+			expect(mockFolderRepository.getFolderPathsToRoot).toHaveBeenCalledTimes(3);
+			expect(
+				mockFolderRepository.getFolderPathsToRoot.mock.calls.map(
+					([folderIds]: [string[]]) => folderIds.length,
+				),
+			).toEqual([500, 500, 1]);
+			// Every chunk lands in the merged map, so the last row still has its path.
+			expect(result.workflows.at(-1)?.folder?.path).toBe('Root/f-1000');
+		});
+
+		it('skips the path lookup when no row on the page is in a folder', async () => {
+			const { adapter, mockFolderRepository } = createWorkflowAdapterForTests({
+				folderExploration: true,
+			});
+
+			await adapter.list();
+
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('folder scoping', () => {
+		const folders = [
+			{
+				id: 'clients',
+				name: 'Clients',
+				parentFolderId: null,
+				homeProject: { id: 'team-project-id' },
+			},
+			{
+				id: 'acme',
+				name: 'Acme',
+				parentFolderId: 'clients',
+				homeProject: { id: 'team-project-id' },
+			},
+		];
+		const paths = new Map([
+			['clients', ['Clients']],
+			['acme', ['Clients', 'Acme']],
+		]);
+
+		function withFolders(overrides?: {
+			foldersLicensed?: boolean;
+			omitFolderFinderService?: boolean;
+		}) {
+			const fixture = createWorkflowAdapterForTests({
+				folderExploration: true,
+				foldersLicensed: true,
+				...overrides,
+			});
+			fixture.mockFolderRepository.getMany.mockResolvedValue(folders);
+			fixture.mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(paths);
+			fixture.mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue([
+				'acme',
+				'acme-child',
+			]);
+			return fixture;
+		}
+
+		describe('folder placement on create', () => {
+			const minimalJson = { name: 'Placed workflow', nodes: [], connections: {} } as never;
+
+			it('creates the workflow inside the resolved folder', async () => {
+				const { adapter, mockWorkflowService, mockUser } = withFolders();
+
+				await adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients/Acme' });
+
+				expect(mockWorkflowService.update).toHaveBeenCalledWith(
+					mockUser,
+					expect.anything(),
+					'wf-new',
+					{ source: 'n8n-ai', parentFolderId: 'acme' },
+				);
+			});
+
+			it('refuses to create the workflow when the folder does not resolve', async () => {
+				const { adapter, mockWorkflowRepository, mockWorkflowService } = withFolders();
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Globex' }),
+				).rejects.toMatchObject({
+					folderResolution: {
+						requested: 'Globex',
+						reason: 'not-found',
+						candidates: ['Clients', 'Clients/Acme'],
+					},
+				});
+				// Nothing was written: an unplaced workflow at the root is the silent
+				// degradation this option exists to remove.
+				expect(mockWorkflowRepository.runInTransaction).not.toHaveBeenCalled();
+				expect(mockWorkflowService.update).not.toHaveBeenCalled();
+			});
+
+			it('refuses with an ambiguous resolution when two folders match', async () => {
+				const { adapter, mockFolderRepository } = withFolders();
+				// A second nested "Acme" — neither path is exactly "Acme", so the name
+				// stage matches both and the request must not pick one.
+				mockFolderRepository.getMany.mockResolvedValue([
+					...folders,
+					{
+						id: 'acme-2',
+						name: 'Acme',
+						parentFolderId: 'partners',
+						homeProject: { id: 'team-project-id' },
+					},
+				]);
+				mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+					new Map([...paths, ['acme-2', ['Partners', 'Acme']]]),
+				);
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Acme' }),
+				).rejects.toMatchObject({ folderResolution: { reason: 'ambiguous' } });
+			});
+
+			it('reports folders as unsupported when the instance is not licensed for them', async () => {
+				const { adapter } = withFolders({ foldersLicensed: false });
+
+				await expect(
+					adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients' }),
+				).rejects.toMatchObject({ folderResolution: { reason: 'unsupported' } });
+			});
+
+			it('ignores a folder target while folder exploration is off', async () => {
+				const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+				await adapter.createFromWorkflowJSON(minimalJson, { folderPath: 'Clients/Acme' });
+
+				expect(mockWorkflowService.update).toHaveBeenCalledWith(
+					mockUser,
+					expect.anything(),
+					'wf-new',
+					{ source: 'n8n-ai' },
+				);
+			});
+		});
+
+		it('finds a folder beyond the candidate scan cap by querying its exact name', async () => {
+			const { adapter, mockFolderRepository, mockFolderFinderService, mockWorkflowService } =
+				withFolders();
+			// The capped scan would return other folders; only the exact-name query knows "Deep".
+			mockFolderRepository.findManyByExactName.mockResolvedValue([{ id: 'deep', name: 'Deep' }]);
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([...paths, ['deep', ['Archive', 'Deep']]]),
+			);
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['deep']);
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			const result = await adapter.list({ folderPath: 'Archive/Deep' });
+
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.findManyByExactName).toHaveBeenCalledWith(
+				'team-project-id',
+				'deep',
+				200,
+			);
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'deep',
+				true,
+			);
+		});
+
+		it('resolves an explicit folderId with a targeted in-project lookup', async () => {
+			const { adapter, mockFolderRepository, mockFolderFinderService, mockWorkflowService } =
+				withFolders();
+			mockFolderRepository.getMany.mockResolvedValue([]);
+			mockFolderRepository.findOneOrFailFolderInProject.mockResolvedValue({
+				id: 'deep',
+				name: 'Deep',
+				parentFolderId: 'archive',
+			});
+			mockFolderRepository.getFolderPathsToRoot.mockResolvedValue(
+				new Map([['deep', ['Archive', 'Deep']]]),
+			);
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['deep']);
+			mockWorkflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
+
+			const result = await adapter.list({ folderId: 'deep' });
+
+			expect(result).not.toHaveProperty('folderResolution');
+			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
+				'deep',
+				'team-project-id',
+			);
+		});
+
+		it("checks folder:list against the workflow's home project, not the listing target, for a shared workflow", async () => {
+			const { adapter, mockWorkflowService, savedWorkflow } = withFolders();
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{
+						...savedWorkflow,
+						homeProject: { id: 'home-project-id', name: 'Home' },
+						parentFolder: { id: 'f1', name: 'Secret', parentFolderId: null },
+					},
+				],
+				count: 1,
+			});
+			// Granted on the project the caller listed, not on the workflow's actual
+			// home project, where its parentFolder actually lives.
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _globalOnly, { projectId }) => projectId === 'p2',
+			);
+
+			const result = await adapter.list({ projectId: 'p2' });
+
+			expect(result.workflows[0]).not.toHaveProperty('folder');
+		});
+
+		it('adds no folder attribution while the flag is on but folders are unlicensed', async () => {
+			const { adapter, mockWorkflowService, mockFolderRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ folderExploration: true, foldersLicensed: false });
+			mockWorkflowService.getMany.mockResolvedValue({
+				workflows: [
+					{ ...savedWorkflow, parentFolder: { id: 'f1', name: 'Triggers', parentFolderId: null } },
+				],
+				count: 1,
+			});
+
+			const result = await adapter.list();
+
+			expect(result.workflows[0]).not.toHaveProperty('folder');
+			expect(mockFolderRepository.getFolderPathsToRoot).not.toHaveBeenCalled();
+		});
+
+		it('scopes the listing to the resolved folder and its subtree by default', async () => {
+			const { adapter, mockWorkflowService, mockUser, mockFolderFinderService } = withFolders();
+			mockWorkflowService.getMany
+				.mockResolvedValueOnce({ workflows: [], count: 0 })
+				.mockResolvedValueOnce({ workflows: [], count: 0 });
+
+			await adapter.list({ folderPath: 'Clients/Acme', query: 'inbound' });
+
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'acme',
+				true,
+			);
+			expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(1, mockUser, {
+				take: 50,
+				filter: {
+					isArchived: false,
+					projectId: 'team-project-id',
+					parentFolderIds: ['acme', 'acme-child'],
+					query: 'inbound',
+				},
+			});
+			// The "in scope" re-count stays folder-scoped, so totalInScope describes the folder.
+			expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+				take: 1,
+				filter: {
+					isArchived: false,
+					projectId: 'team-project-id',
+					parentFolderIds: ['acme', 'acme-child'],
+				},
+			});
+		});
+
+		it('reads one level only with recursive: false', async () => {
+			const { adapter, mockFolderFinderService } = withFolders();
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue(['acme']);
+
+			await adapter.list({ folderId: 'acme', recursive: false });
+
+			expect(mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck).toHaveBeenCalledWith(
+				'acme',
+				false,
+			);
+		});
+
+		it('returns no rows and a folderResolution when the folder does not resolve', async () => {
+			const { adapter, mockWorkflowService } = withFolders();
+
+			const result = await adapter.list({ folderPath: 'Globex' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflows: [],
+				total: 0,
+				totalInScope: 0,
+				folderResolution: {
+					requested: 'Globex',
+					reason: 'not-found',
+					candidates: ['Clients', 'Clients/Acme'],
+				},
+			});
+		});
+
+		it('reports folders as unsupported when the instance is not licensed for them', async () => {
+			const { adapter, mockFolderRepository } = withFolders({ foldersLicensed: false });
+
+			const result = await adapter.list({ folderPath: 'Clients' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients',
+				reason: 'unsupported',
+				candidates: [],
+			});
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+		});
+
+		it('scans only the named project for folders when projectId is given', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+			mockFolderRepository.findManyByExactName.mockResolvedValue([
+				{ id: 'clients', name: 'Clients' },
+			]);
+
+			await adapter.list({ projectId: 'p2', folderPath: 'Clients' });
+
+			// The exact-name lookup found it, so no candidate scan was needed.
+			expect(mockFolderRepository.findManyByExactName).toHaveBeenCalledWith('p2', 'clients', 200);
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+		});
+
+		it('scans every accessible project for folders on an instance-wide listing', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+
+			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(2);
+		});
+
+		it('skips a project the user cannot list folders in, and never offers its folders', async () => {
+			const { adapter, mockFolderRepository } = withFolders();
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _globalOnly, { projectId }) => projectId !== 'p2',
+			);
+			mockFolderRepository.getMany.mockImplementation(
+				async ({ filter }: { filter: { projectId: string } }) =>
+					filter.projectId === 'p2'
+						? [{ id: 'secret', name: 'Secret', parentFolderId: null, homeProject: { id: 'p2' } }]
+						: folders,
+			);
+
+			const result = await adapter.list({ scope: 'instance', folderPath: 'Nope' });
+
+			expect(mockFolderRepository.getMany).toHaveBeenCalledTimes(1);
+			expect(mockFolderRepository.getMany).toHaveBeenCalledWith({
+				filter: { projectId: 'team-project-id' },
+				select: { name: true },
+				take: 200,
+			});
+			expect(result.folderResolution?.reason).toBe('not-found');
+			expect(result.folderResolution?.candidates).not.toContain('Secret');
+		});
+
+		it('asks for a projectId instead of scanning when too many projects are in scope', async () => {
+			const { adapter, mockFolderRepository, mockWorkflowService, mockProjectService } =
+				withFolders();
+			mockProjectService.getAccessibleProjects.mockResolvedValue(
+				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
+			);
+
+			const result = await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockFolderRepository.getMany).not.toHaveBeenCalled();
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflows: [],
+				total: 0,
+				totalInScope: 0,
+				folderResolution: { requested: 'Clients', reason: 'scope-too-wide', candidates: [] },
+			});
+		});
+
+		it('tracks a too-wide scope with no candidates', async () => {
+			const { adapter, mockTelemetry, mockProjectService } = withFolders();
+			mockProjectService.getAccessibleProjects.mockResolvedValue(
+				Array.from({ length: 21 }, (_, index) => ({ id: `p${index}` })),
+			);
+
+			await adapter.list({ scope: 'instance', folderPath: 'Clients' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_scope: 'path',
+					folder_resolution: 'scope_too_wide',
+					candidate_count: 0,
+					scope: 'instance',
+					result_count: 0,
+				}),
+			);
+		});
+
+		it('reports folders as unsupported when the subtree finder is missing', async () => {
+			const { adapter, mockWorkflowService } = withFolders({ omitFolderFinderService: true });
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients/Acme',
+				reason: 'unsupported',
+				candidates: [],
+			});
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+		});
+
+		it('reports the folderId as requested when a path and an id are both given', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme', folderId: 'ghost' });
+
+			expect(result.folderResolution).toEqual({
+				requested: 'ghost',
+				reason: 'not-found',
+				candidates: ['Clients', 'Clients/Acme'],
+			});
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({ folder_scope: 'id' }),
+			);
+		});
+
+		it('reports a miss instead of widening when the folder expansion comes back empty', async () => {
+			const { adapter, mockWorkflowService, mockFolderFinderService } = withFolders();
+			// The finder returns no ids for a folder that no longer exists.
+			mockFolderFinderService.findFolderFilterIdsWithoutAccessCheck.mockResolvedValue([]);
+
+			const result = await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result.workflows).toEqual([]);
+			expect(result.folderResolution).toEqual({
+				requested: 'Clients/Acme',
+				reason: 'not-found',
+				candidates: ['Clients', 'Clients/Acme'],
+			});
+		});
+
+		it('reports a miss for an empty folderPath rather than listing everything', async () => {
+			const { adapter, mockWorkflowService } = withFolders();
+
+			const result = await adapter.list({ folderPath: '' });
+
+			expect(mockWorkflowService.getMany).not.toHaveBeenCalled();
+			expect(result.folderResolution?.reason).toBe('not-found');
+		});
+
+		it('tracks every list call with the folder outcome, without folder names', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			await adapter.list({ folderPath: 'Clients/Acme' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				{
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					folder_exploration_enabled: true,
+					folder_scope: 'path',
+					recursive: true,
+					folder_resolution: 'resolved',
+					scope: 'project',
+					has_query: false,
+					result_count: 1,
+					total: 1,
+				},
+			);
+			const [, props] = mockTelemetry.track.mock.calls.at(-1) as [unknown, Record<string, unknown>];
+			expect(JSON.stringify(props)).not.toContain('Acme');
+		});
+
+		it('tracks list calls with the flag off too, so folder-scoped calls have a denominator', async () => {
+			const { adapter, mockTelemetry } = createWorkflowAdapterForTests();
+
+			await adapter.list({ query: 'x' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_exploration_enabled: false,
+					folder_scope: 'none',
+					has_query: true,
+				}),
+			);
+		});
+
+		it('tracks an unresolved folder with the candidate count', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+
+			await adapter.list({ folderPath: 'Globex' });
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Builder listed workflows' }),
+				expect.objectContaining({
+					folder_scope: 'path',
+					folder_resolution: 'not_found',
+					candidate_count: 2,
+					result_count: 0,
+				}),
+			);
+		});
+
+		it('does not fail the read when telemetry throws', async () => {
+			const { adapter, mockTelemetry } = withFolders();
+			mockTelemetry.track.mockImplementation(() => {
+				throw new Error('rudderstack down');
+			});
+
+			await expect(adapter.list({ folderPath: 'Clients/Acme' })).resolves.toMatchObject({
+				total: 1,
+			});
+		});
 	});
 
 	it('lists archived workflows when requested', async () => {
@@ -4211,11 +5200,11 @@ function createAdapterWithGatewayMock(
 		typeof InstanceAiAdapterService
 	>[32];
 	if (overrides?.appsService) {
-		args[40] = overrides.appsService as ConstructorParameters<typeof InstanceAiAdapterService>[40];
-		args[41] = overrides.urlService as ConstructorParameters<typeof InstanceAiAdapterService>[41];
-		args[42] = (overrides.appPublishService ?? {}) as ConstructorParameters<
+		args[43] = overrides.appsService as ConstructorParameters<typeof InstanceAiAdapterService>[43];
+		args[44] = overrides.urlService as ConstructorParameters<typeof InstanceAiAdapterService>[44];
+		args[45] = (overrides.appPublishService ?? {}) as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[42];
+		>[45];
 	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
@@ -4429,6 +5418,26 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 		});
 	});
 
+	it('reads a node description without fetching Gateway metadata when requested', async () => {
+		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		const nodeService = makeContext().nodeService;
+		// Exclude the adapter's initial Gateway availability check.
+		getGatewayConfig.mockClear();
+		const description = await nodeService.getDescription('openAi', undefined, {
+			includeGatewayMetadata: false,
+		});
+
+		expect(description.name).toBe('openAi');
+		expect(description.properties).toEqual(openAiNode.properties);
+		expect(description.aiGateway).toBeUndefined();
+		expect(getGatewayConfig).not.toHaveBeenCalled();
+	});
+
 	it('preserves the __operation_only__ marker for nodes without a resource dimension', async () => {
 		const pdfCoNode = {
 			name: 'pdfCo',
@@ -4478,17 +5487,21 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
+		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
 	};
 
-	it('resolves every gate from one flag fetch', async () => {
+	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
 		const getFeatureFlags = stubContainer(allEnabled);
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: true,
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
+			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
+			folderExplorationEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -4499,14 +5512,18 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
+			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 		});
 	});
 
@@ -4517,7 +5534,23 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
+		});
+	});
+
+	it('fails every gate closed, rather than rejecting, if getFeatureFlags rejects unexpectedly', async () => {
+		const getFeatureFlags = stubContainer(allEnabled);
+		getFeatureFlags.mockRejectedValueOnce(new Error('PostHog unreachable'));
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
+			configEvalsEnabled: false,
+			mcpConnectionsEnabled: false,
+			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
+			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 		});
 	});
 
@@ -4880,11 +5913,17 @@ describe('createContext — builder delegate wiring', () => {
 		mockBuilderModuleActive(delegate);
 
 		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
-		const created = await context.builderDelegate?.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
+		const created = await context.builderDelegate?.createAgent('New agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+			adoptOnCollision: true,
+		});
 
 		expect(created).toEqual({ agentId: 'agent-9', projectId: 'proj-1' });
 		// No wrapper means no re-declared signature that could drop an argument.
-		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', 'aBcDeFgHiJkLmNoP');
+		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+			adoptOnCollision: true,
+		});
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
 	});
 
@@ -5341,6 +6380,56 @@ describe('createCredentialAdapter', () => {
 			}).credentialService;
 
 			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('unknown');
+		});
+	});
+
+	// A scope/setup answer has to be grounded in the credential's own docs page rather
+	// than recalled, so every search result carries the URL to look up (AGENT-743).
+	describe('searchCredentialTypes', () => {
+		/** An adapter over one credential type declaring `documentationUrl`. */
+		const adapterFor = (documentationUrl: string | undefined, { loadable = true } = {}) =>
+			createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: () => {
+						if (!loadable) throw new Error('not loadable');
+						return { type: { name: 'slackApi', displayName: 'Slack API', documentationUrl } };
+					},
+					knownCredentials: { slackApi: {} },
+				},
+			}).credentialService;
+
+		it('resolves a docs slug to the credential docs URL', async () => {
+			const results = await adapterFor('slack').searchCredentialTypes!('slack');
+
+			expect(results).toEqual([
+				{
+					type: 'slackApi',
+					displayName: 'Slack API',
+					documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/slack/',
+				},
+			]);
+		});
+
+		// A few classes declare a full URL instead of a slug; it must not be re-prefixed.
+		it('passes a full documentation URL through unchanged', async () => {
+			const url = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
+			const results = await adapterFor(url).searchCredentialTypes!('slack');
+
+			expect(results[0].documentationUrl).toBe(url);
+		});
+
+		it('omits the URL when the type declares none', async () => {
+			const results = await adapterFor(undefined).searchCredentialTypes!('slack');
+
+			expect(results[0]).not.toHaveProperty('documentationUrl');
+		});
+
+		it('still returns a match when the class will not load, without a URL', async () => {
+			const results = await adapterFor('slack', { loadable: false }).searchCredentialTypes!(
+				'slack',
+			);
+
+			expect(results).toEqual([{ type: 'slackApi', displayName: 'slackApi' }]);
 		});
 	});
 

@@ -14,6 +14,7 @@ import type { AgentJsonConfig } from '../types';
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
+const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
@@ -80,6 +81,26 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useMessage', function mockUseMessage() {
+	return {
+		useMessage: function useMessage() {
+			return { confirm: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
+	return {
+		useAgentSessionsStore: function useAgentSessionsStore() {
+			return { deleteThread: vi.fn() };
+		},
+	};
+});
+
+vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+	return { default: { template: '<button />' } };
+});
+
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 	useAgentSessionLangSmithExport: () => ({
 		isEnabled: false,
@@ -99,7 +120,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
 		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
-		emits: ['submit', 'stop', 'update:modelValue'],
+		emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 		methods: { focus: vi.fn() },
 	},
 }));
@@ -127,6 +148,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
 			loadHistory: loadHistoryMock,
+			refresh: refreshMock,
 			sendMessage: sendMessageMock,
 			stopGenerating: stopGeneratingMock,
 			resume: vi.fn(),
@@ -165,6 +187,7 @@ describe('AgentChatPanel', () => {
 
 	function mountPanel(
 		overrides: Partial<{
+			visible: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
@@ -181,6 +204,49 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('refreshes history when the preview reopens', async () => {
+		isStreamingMock.value = true;
+		const wrapper = mountPanel({ visible: false });
+		expect(refreshMock).not.toHaveBeenCalled();
+		await wrapper.setProps({ visible: true });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
+		await wrapper.setProps({ visible: false });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
+		expect(stopGeneratingMock).not.toHaveBeenCalled();
+		isStreamingMock.value = false;
+		wrapper.unmount();
+	});
+
+	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: '  Hello  ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '\n**Welcome**\n', status: 'success' },
+			{ id: 'assistant-2', role: 'assistant', content: ' \n ', status: 'success' },
+			{ id: 'user-2', role: 'user', content: 'Next question', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe(
+			'**User:**\n\nHello\n\n---\n\n**Agent:**\n\n**Welcome**\n\n---\n\n**User:**\n\nNext question',
+		);
+	});
+
+	it('returns empty markdown without messages', function formatsEmptyConversation() {
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
+
+	it('returns empty markdown when messages contain only whitespace', function skipsBlankMessages() {
+		messagesMock.value = [
+			{ id: 'user-1', role: 'user', content: ' \n\t ', status: 'success' },
+			{ id: 'assistant-1', role: 'assistant', content: '', status: 'success' },
+		];
+		const wrapper = mountPanel();
+
+		expect(wrapper.vm.getConversationMarkdown()).toBe('');
+	});
 
 	it('uses the live agent name in the normal chat placeholder', async () => {
 		const wrapper = mountPanel();
@@ -347,6 +413,48 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 
 		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ state: 'streaming', busy: isStreamingMock },
+		{ state: 'cancellation', busy: isCancellingMock },
+	])('keeps the draft when $state starts during telemetry preparation', async ({ busy }) => {
+		const fingerprint = Promise.withResolvers<AgentConfigFingerprint>();
+		vi.mocked(buildAgentConfigFingerprint).mockReturnValueOnce(fingerprint.promise);
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		const draft = '  keep this draft  ';
+		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		chatInput.vm.$emit('update:modelValue', draft);
+		chatInput.vm.$emit('files-selected', [file]);
+		chatInput.vm.$emit('submit');
+		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
+
+		busy.value = true;
+		fingerprint.resolve({
+			instructions: '',
+			tools: [],
+			skills: [],
+			tasks: [],
+			triggers: [],
+			vector_stores: [],
+			memory: null,
+			model: null,
+			config_version: 'test-version',
+		});
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(chatInput.props('modelValue')).toBe(draft);
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		busy.value = false;
+		await flushPromises();
+		expect(chatInput.props('canSubmit')).toBe(true);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(draft.trim(), [file]);
+		expect(chatInput.props('modelValue')).toBe('');
+		wrapper.unmount();
 	});
 
 	it('keeps the draft while suspended-run cancellation is pending', async () => {
@@ -683,7 +791,6 @@ describe('AgentChatPanel', () => {
 describe('AgentPreviewDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		messagesMock.value = [];
 		isStreamingMock.value = true;
 		isCancellingMock.value = false;

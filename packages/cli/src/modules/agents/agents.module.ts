@@ -35,8 +35,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
-		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
-		Container.get(AgentCredentialIndexListener).init();
+		const { AgentDependencyIndexListener } = await import('./agent-dependency-index.listener.js');
+		Container.get(AgentDependencyIndexListener).init();
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -61,6 +61,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
+		registerAgentUsageProvider();
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
@@ -118,6 +121,7 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.instanceType === 'main') {
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
+			await import('./background/agent-wake.service.js');
 
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
@@ -146,8 +150,7 @@ export class AgentsModule implements ModuleInterface {
 			channelReconciler.init();
 		}
 
-		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
-		// TODO: migrate to the durable scheduler
+		// In-memory task crons are leader-only. Only the leader reconnects them on startup.
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -157,6 +160,42 @@ export class AgentsModule implements ModuleInterface {
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
+
+		// Durable scheduling for agent tasks runs on mains only. The handler is
+		// registered before DurableScheduler starts, because module init precedes
+		// its start() in the start command. A main with the flag off registers no
+		// handler, so the executor never claims a leftover agent-task row. The
+		// reconcile runs with the flag in either state: it backfills jobs when the
+		// flag is on and removes them when it is off. It is awaited, so that the
+		// executor cannot claim an occurrence of a job it is about to redefine or
+		// remove.
+		if (instanceSettings.instanceType === 'main') {
+			const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+			const registrar = Container.get(AgentTaskJobRegistrar);
+
+			if (registrar.isEnabled()) {
+				const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+				const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+				const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+				Container.get(DurableScheduler).registerTaskHandler(
+					agentTaskHandler.taskType,
+					agentTaskHandler,
+				);
+			}
+
+			try {
+				await registrar.reconcileAll();
+			} catch (error) {
+				logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	async systemTasks() {
+		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
+		return [AgentCheckpointPruningTask];
 	}
 
 	@OnShutdown()
@@ -197,6 +236,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
 		);
+		const { AgentWorkflowDependency } = await import(
+			'./entities/agent-workflow-dependency.entity.js'
+		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
@@ -208,14 +250,14 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-observation-lock.entity.js'
 		);
 		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity.js');
+		const { AgentMemoryEntryCandidateEntity } = await import(
+			'./entities/agent-memory-entry-candidate.entity.js'
+		);
 		const { AgentMemoryEntryLockEntity } = await import(
 			'./entities/agent-memory-entry-lock.entity.js'
 		);
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
-		);
-		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity.js'
 		);
 
 		return [
@@ -233,6 +275,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
+			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,
@@ -240,9 +283,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
 			AgentMemoryEntryEntity,
+			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			AgentMemoryEntryCursorEntity,
 		];
 	}
 

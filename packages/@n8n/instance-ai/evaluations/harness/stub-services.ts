@@ -80,7 +80,22 @@ export async function createStubServices(
 	const capturedWorkflows: WorkflowJSON[] = [];
 
 	const workflowService: InstanceAiWorkflowService = {
-		async list() {
+		async list(options) {
+			// A folder request gets a realistic miss so the transcript shows what the
+			// agent does with `folderResolution`, instead of an empty success.
+			const requestedFolder = options?.folderId ?? options?.folderPath;
+			if (requestedFolder !== undefined) {
+				return {
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: requestedFolder,
+						reason: 'not-found',
+						candidates: ['Clients/Acme', 'Clients/Globex'],
+					},
+				};
+			}
 			return { workflows: [], total: 0, totalInScope: 0 };
 		},
 		async get(workflowId: string) {
@@ -238,7 +253,7 @@ export async function createStubServices(
 		async getNodeOutput(_executionId: string, nodeName: string) {
 			return {
 				nodeName,
-				items: [],
+				outputs: [],
 				totalItems: 0,
 				returned: { from: 0, to: 0 },
 			};
