@@ -2,16 +2,15 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-# Unreleased
+# 3.0.0
 
-## n8n Packages (preview)
+### What changed?
 
-Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
-The `usedByWorkflows` field is no longer supported.
-Re-export packages after upgrading.
-Regenerate existing Promotions snapshots.
-Package import errors also use `usedBy` for resource consumers.
-Update API clients to read each consumer's `kind` and `id`.
+n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
+
+### When is action necessary?
+
+If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
 
 The package import API now uses `conflictPolicy` for both Agents and workflows.
 Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api/v1/n8n-packages/import-selection`.
