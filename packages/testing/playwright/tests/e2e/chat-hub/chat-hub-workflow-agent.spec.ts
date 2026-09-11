@@ -5,7 +5,7 @@ import { n8nPage } from '../../../pages/n8nPage';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Workflow agent @capability:proxy',
+	'Workflow agent',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

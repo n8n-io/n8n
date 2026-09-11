@@ -197,6 +197,12 @@ describe('arg-parser', () => {
 			const result = parseArgs();
 			expect(result.testCommand).toBe('pnpm test');
 		});
+
+		it('parses --groups-file=path', () => {
+			setArgs(['distribute', '--groups-file=/tmp/groups.json']);
+			const result = parseArgs();
+			expect(result.groupsFile).toBe('/tmp/groups.json');
+		});
 	});
 
 	describe('combined arguments', () => {
