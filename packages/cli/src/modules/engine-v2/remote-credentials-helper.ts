@@ -31,6 +31,12 @@ import type { ResolveCredentialRequest } from './engine-credentials.contract';
  *
  * One instance per execution: the constructor context names the execution the
  * requests are for.
+ *
+ * Known limitation: the control plane resolves credential expressions without
+ * the execution data of the step. A credential field that reads `$vars`,
+ * `$secrets` or `$env` resolves as in v1. A field that reads execution data,
+ * such as `$json`, `$input` or another node's output, resolves without it.
+ * Sending the resolve context to the control plane is tracked in CAT-4532.
  */
 export class RemoteCredentialsHelper extends ICredentialsHelper {
 	constructor(
@@ -56,7 +62,7 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		type: string,
 		_mode: WorkflowExecuteMode,
 		executeData?: IExecuteData,
-		_raw?: boolean,
+		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		if (nodeCredentials.__aiGatewayManaged) {
@@ -76,6 +82,14 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		// `executeData.node` from its parent, so the node in
 		// `expressionResolveValues` is the one that asks for the credential.
 		const consumerNode = expressionResolveValues?.node ?? executeData?.node;
+
+		// The OAuth2 token refresh in core is the one caller that reads the raw
+		// data with no node: it re-reads the stored token before it writes the
+		// refreshed one, and that write throws below. Fail here with the same
+		// error, so the step reports the unsupported refresh and not a missing node.
+		if (!consumerNode && raw === true) {
+			throw this.oauthRefreshUnsupported(type);
+		}
 
 		if (!consumerNode) {
 			throw new UnexpectedError(
@@ -143,7 +157,11 @@ export class RemoteCredentialsHelper extends ICredentialsHelper {
 		_data: ICredentialDataDecryptedObject,
 		_additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void> {
-		throw new UnexpectedError('Engine 2.0 does not support OAuth token refresh yet', {
+		throw this.oauthRefreshUnsupported(type);
+	}
+
+	private oauthRefreshUnsupported(type: string): UnexpectedError {
+		return new UnexpectedError('Engine 2.0 does not support OAuth token refresh yet', {
 			tags: { credentialType: type },
 		});
 	}
