@@ -1,6 +1,8 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	DATA_TABLE_SYSTEM_COLUMNS,
+	EVALUATION_TRIGGER_METADATA_FIELDS,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	getParentNodes,
 	mapConnectionsByDestination,
