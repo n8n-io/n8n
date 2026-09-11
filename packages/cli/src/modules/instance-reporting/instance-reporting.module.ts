@@ -15,10 +15,6 @@ import { UserError } from 'n8n-workflow';
  * The daily figure comes from the insights module, but the receiver only sees
  * data points, so that source is an implementation detail of
  * `InstanceReportingService` rather than part of the reporting contract.
- *
- * Both entrypoints check the receiver first and import nothing further when it
- * is unset: an operator who loads the module without configuring it gets
- * neither the reporting dependency graph nor a claimed report time.
  */
 @BackendModule({ name: 'instance-reporting', instanceTypes: ['main'] })
 export class InstanceReportingModule implements ModuleInterface {
@@ -49,10 +45,12 @@ export class InstanceReportingModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape is `{ enabled: boolean, reportTime?: string }`. A
-	 * consumer reads the three states as: key absent, so the module is not
+	 * The response shape is
+	 * `{ enabled: boolean, reportTime?: string, lastSuccessfulReport: string | null }`.
+	 * A consumer reads the three states as: key absent, so the module is not
 	 * enabled on this instance; `enabled: false`, so it is loaded but has no
 	 * receiver; `enabled: true`, so it reports daily at `reportTime`.
+	 * `lastSuccessfulReport` is `null` until the receiver accepts a report.
 	 */
 	async settings() {
 		if (!(await this.isConfigured())) return { enabled: false };
@@ -60,13 +58,22 @@ export class InstanceReportingModule implements ModuleInterface {
 		const { InstanceReportingSettingsService } = await import(
 			'./instance-reporting-settings.service.js'
 		);
+		const { InstanceMonitoringReportRepository } = await import(
+			'./database/repositories/instance-monitoring-report.repository.js'
+		);
 
-		return {
-			enabled: true,
+		const [reportTime, lastDelivery] = await Promise.all([
 			// Resolved on every main, not only the leader. The claim is conditional
 			// and the compaction heal is derived from the stored value, so concurrent
 			// mains settle on one time.
-			reportTime: await Container.get(InstanceReportingSettingsService).getReportTime(),
+			Container.get(InstanceReportingSettingsService).getReportTime(),
+			Container.get(InstanceMonitoringReportRepository).findLastDeliveryTime(),
+		]);
+
+		return {
+			enabled: true,
+			reportTime,
+			lastSuccessfulReport: lastDelivery?.toISOString() ?? null,
 		};
 	}
 

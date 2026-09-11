@@ -105,12 +105,22 @@ first; it shifts itself later, logging a warning, if
 is enabled on this instance:
 
 ```json
-{ "instance-reporting": { "enabled": true, "reportTime": "07:42" } }
+{
+  "instance-reporting": {
+    "enabled": true,
+    "reportTime": "07:42",
+    "lastSuccessfulReport": "2026-03-25T07:42:13.000Z"
+  }
+}
 ```
 
 `enabled` says whether a receiver is configured. Without one the key reads
-`{ "enabled": false }` and carries no `reportTime`, since no time is claimed. A
-missing key means the module is not enabled at all.
+`{ "enabled": false }` and carries neither `reportTime`, since no time is
+claimed, nor `lastSuccessfulReport`, since nothing is read. A missing key means
+the module is not enabled at all.
+
+`lastSuccessfulReport` is the UTC instant the receiver last accepted a report,
+or `null` when it never did.
 
 See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
 for the full design.

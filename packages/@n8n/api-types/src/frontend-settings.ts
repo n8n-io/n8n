@@ -345,6 +345,11 @@ export type FrontendModuleSettings = {
 		enabled: boolean;
 		/** Minute of the UTC day the daily report fires at, as `HH:mm`. Absent when disabled. */
 		reportTime?: string;
+		/**
+		 * When the receiver last accepted a report, as an ISO 8601 UTC string, or
+		 * `null` when it never did. Absent when module disabled.
+		 */
+		lastSuccessfulReport?: string | null;
 	};
 
 	/**
