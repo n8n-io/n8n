@@ -1,4 +1,3 @@
-import type { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,8 +7,6 @@ import type { TagService } from '@/services/tag.service';
 import { TagImporter } from '../tag-importer';
 import type { TagImportPlan, TagImportRequest } from '../tag.types';
 import type { ImportContext } from '../../../n8n-packages.types';
-
-const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 
 function contextFor(scopes: Array<'tag:create' | 'tag:update'>): ImportContext {
 	return {
@@ -23,7 +20,7 @@ function makeImporter() {
 	const tagService = mock<TagService>();
 	tagService.getByIds.mockResolvedValue([]);
 	tagService.getByNames.mockResolvedValue([]);
-	return { importer: new TagImporter(tagService, globalConfig), tagService };
+	return { importer: new TagImporter(tagService), tagService };
 }
 
 const request: TagImportRequest = {

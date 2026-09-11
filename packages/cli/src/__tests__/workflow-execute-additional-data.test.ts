@@ -1055,34 +1055,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
 
-		it('should load activeVersion relation when tags are disabled', async () => {
-			const globalConfig = Container.get(GlobalConfig);
-			globalConfig.tags.disabled = true;
-
-			workflowRepository.get.mockResolvedValue(
-				mock<WorkflowEntity>({
-					id: 'workflow-123',
-					active: true,
-					activeVersionId: 'active-version-id',
-					nodes: [],
-					connections: {},
-					activeVersion: {
-						nodes: [],
-						connections: {},
-					},
-				}),
-			);
-
-			await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
-
-			expect(workflowRepository.get).toHaveBeenCalledWith(
-				{ id: 'workflow-123' },
-				{ relations: ['activeVersion'] },
-			);
-
-			globalConfig.tags.disabled = false;
-		});
-
 		it('should throw error when workflow does not exist', async () => {
 			workflowRepository.get.mockResolvedValue(null);
 

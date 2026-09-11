@@ -48,7 +48,6 @@ import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
-import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
@@ -218,9 +217,6 @@ export class GlobalConfig {
 
 	@Nested
 	aiBuilder: AiBuilderConfig;
-
-	@Nested
-	tags: TagsConfig;
 
 	@Nested
 	workflowHistory: WorkflowHistoryConfig;

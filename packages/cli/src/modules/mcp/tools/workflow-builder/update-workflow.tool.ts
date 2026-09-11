@@ -773,12 +773,11 @@ const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWork
 
 /**
  * Rejects operations this instance cannot serve, before anything is loaded or
- * applied. Throw order is part of the contract: gated group ops first, then
- * tag ops.
+ * applied.
  */
 function assertOperationsSupported(
 	strictOperations: PartialUpdateOperation[],
-	{ canvasGroupsEnabled, tagsDisabled }: { canvasGroupsEnabled: boolean; tagsDisabled: boolean },
+	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
 ): void {
 	// Defense in depth: with the flag off, the published schema already
 	// rejects these op types at the enum level; this guards against the
@@ -788,10 +787,6 @@ function assertOperationsSupported(
 		throw new Error(
 			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
 		);
-	}
-
-	if (tagsDisabled && strictOperations.some(isTagOperation)) {
-		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
 	}
 }
 
@@ -1183,10 +1178,7 @@ export const createUpdateWorkflowTool = (
 				const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 
-				assertOperationsSupported(strictOperations, {
-					canvasGroupsEnabled,
-					tagsDisabled: globalConfig.tags.disabled,
-				});
+				assertOperationsSupported(strictOperations, { canvasGroupsEnabled });
 
 				const existingWorkflow = await getMcpWorkflow(
 					workflowId,

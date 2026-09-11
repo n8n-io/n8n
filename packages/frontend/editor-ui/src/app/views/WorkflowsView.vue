@@ -2436,7 +2436,6 @@ const onNameSubmit = async (name: string) => {
 					:data-resourcename="(data as WorkflowResource).name"
 					:show-ownership-badge="showCardsBadge"
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
-					:are-tags-enabled="settingsStore.areTagsEnabled"
 					:is-mcp-enabled="mcpEnabled"
 					:is-mcp-module-active="mcpModuleActive"
 					:can-manage-instance-mcp="canManageInstanceMcp"
@@ -2474,7 +2473,7 @@ const onNameSubmit = async (name: string) => {
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
-			<div v-if="settingsStore.areTagsEnabled" class="mb-s">
+			<div class="mb-s">
 				<N8nInputLabel
 					:label="i18n.baseText('workflows.filters.tags')"
 					:bold="false"

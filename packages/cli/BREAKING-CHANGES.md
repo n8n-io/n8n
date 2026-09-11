@@ -12,6 +12,14 @@ n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.
 
 If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
 
+### What changed?
+
+The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags are always enabled. n8n now ignores the variable.
+
+### When is action necessary?
+
+No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
+
 # 2.0.0
 
 ### What changed?
