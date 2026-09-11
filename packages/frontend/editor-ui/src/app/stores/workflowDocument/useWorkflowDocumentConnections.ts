@@ -1,10 +1,14 @@
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { IConnection, IConnections, INodeConnections } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import * as workflowUtils from 'n8n-workflow/common';
+import {
+	useWorkflowDocumentStructure,
+	type WorkflowDocumentStructure,
+} from './useWorkflowDocumentStructure';
 
 // --- Event types ---
 
@@ -22,6 +26,7 @@ export type ConnectionsChangeEvent =
 export interface WorkflowDocumentConnectionsDeps {
 	getNodeById: (id: string) => INodeUi | undefined;
 	syncWorkflowObject: (connections: IConnections) => void;
+	structure?: WorkflowDocumentStructure;
 }
 
 // --- Composable ---
@@ -31,7 +36,8 @@ export interface WorkflowDocumentConnectionsDeps {
 // private state owned by workflowDocumentStore. Once that happens, the direct import
 // (and the import-cycle warning it causes) will go away.
 export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnectionsDeps) {
-	const connections = ref<IConnections>({});
+	const structure = deps.structure ?? useWorkflowDocumentStructure();
+	const connections = computed(() => structure.state.value.connections);
 
 	const onConnectionsChange = createEventHook<ConnectionsChangeEvent>();
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -42,7 +48,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	// -----------------------------------------------------------------------
 
 	function applySetConnections(value: IConnections) {
-		connections.value = value;
+		structure.setConnections(value);
 		deps.syncWorkflowObject(connections.value);
 	}
 
@@ -180,7 +186,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	}
 
 	function applyRemoveAllConnections() {
-		connections.value = {};
+		structure.setConnections({});
 		deps.syncWorkflowObject(connections.value);
 	}
 

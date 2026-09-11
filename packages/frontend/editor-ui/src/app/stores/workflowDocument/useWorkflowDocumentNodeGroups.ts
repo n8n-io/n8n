@@ -1,31 +1,20 @@
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
 import { normalizeGroupDescription, type IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
+import {
+	useWorkflowDocumentStructure,
+	type WorkflowDocumentStructure,
+} from './useWorkflowDocumentStructure';
 
-export type NodeGroupPayload = {
-	group: IWorkflowGroup;
-};
-
-export type NodeGroupAddedPayload = NodeGroupPayload & {
-	startCollapsed?: boolean;
-};
-
-export type NodeGroupRemovedPayload = {
-	id: string;
-};
-
-export type NodeGroupsSetPayload = {
-	groups: IWorkflowGroup[];
-};
-
-// Discriminated by `action` so subscribers can narrow `payload` without casts.
-export type NodeGroupChangeEvent =
-	| { action: typeof CHANGE_ACTION.SET; payload: NodeGroupsSetPayload }
-	| { action: typeof CHANGE_ACTION.ADD; payload: NodeGroupAddedPayload }
-	| { action: typeof CHANGE_ACTION.UPDATE; payload: NodeGroupPayload }
-	| { action: typeof CHANGE_ACTION.DELETE; payload: NodeGroupRemovedPayload };
+export type {
+	NodeGroupAddedPayload,
+	NodeGroupChangeEvent,
+	NodeGroupPayload,
+	NodeGroupRemovedPayload,
+	NodeGroupsSetPayload,
+} from './useWorkflowDocumentStructure';
 
 type NodeGroupMutationOptions = {
 	markDirty?: boolean;
@@ -38,10 +27,11 @@ type NodeGroupCreateOptions = NodeGroupMutationOptions & {
 	description?: string;
 };
 
-export function useWorkflowDocumentNodeGroups() {
-	const groups = ref<Map<string, IWorkflowGroup>>(new Map());
+export function useWorkflowDocumentNodeGroups({
+	structure = useWorkflowDocumentStructure(),
+}: { structure?: WorkflowDocumentStructure } = {}) {
+	const groups = computed(() => structure.state.value.groups);
 
-	const onNodeGroupsChange = createEventHook<NodeGroupChangeEvent>();
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	const onStateDirty = createEventHook<void>();
 
@@ -58,11 +48,7 @@ export function useWorkflowDocumentNodeGroups() {
 	});
 
 	function applySetNodeGroups(nextGroups: IWorkflowGroup[]) {
-		groups.value = new Map(nextGroups.map((group) => [group.id, group]));
-		void onNodeGroupsChange.trigger({
-			action: CHANGE_ACTION.SET,
-			payload: { groups: nextGroups },
-		});
+		structure.setNodeGroups(nextGroups);
 	}
 
 	function applyUpsertGroup(
@@ -71,10 +57,15 @@ export function useWorkflowDocumentNodeGroups() {
 		{ markDirty = true, startCollapsed }: NodeGroupCreateOptions = {},
 	) {
 		groups.value.set(group.id, group);
+		const reactiveGroup = groups.value.get(group.id);
+		if (!reactiveGroup) return;
 		if (action === CHANGE_ACTION.ADD) {
-			void onNodeGroupsChange.trigger({ action, payload: { group, startCollapsed } });
+			structure.emitNodeGroupsChange({
+				action,
+				payload: { group: reactiveGroup, startCollapsed },
+			});
 		} else {
-			void onNodeGroupsChange.trigger({ action, payload: { group } });
+			structure.emitNodeGroupsChange({ action, payload: { group: reactiveGroup } });
 		}
 		if (markDirty) {
 			void onStateDirty.trigger();
@@ -83,7 +74,7 @@ export function useWorkflowDocumentNodeGroups() {
 
 	function applyDeleteGroup(id: string) {
 		groups.value.delete(id);
-		void onNodeGroupsChange.trigger({
+		structure.emitNodeGroupsChange({
 			action: CHANGE_ACTION.DELETE,
 			payload: { id },
 		});
@@ -227,7 +218,7 @@ export function useWorkflowDocumentNodeGroups() {
 		getGroupForNode,
 		removeNodeFromGroups,
 		clearNodeGroups,
-		onNodeGroupsChange: onNodeGroupsChange.on,
+		onNodeGroupsChange: structure.onNodeGroupsChange,
 		onStateDirty: onStateDirty.on,
 	};
 }

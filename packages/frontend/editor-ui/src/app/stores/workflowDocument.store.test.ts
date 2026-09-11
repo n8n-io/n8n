@@ -8,7 +8,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections } from 'n8n-workflow';
+import type {
+	IConnections,
+	IWorkflowGroup,
+	IWorkflowGroupVisualLink,
+	IWorkflowGroupVisualLinkGroupEndpoint,
+	IWorkflowGroupVisualLinkNodeEndpoint,
+} from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import {
@@ -19,7 +25,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, watch } from 'vue';
 import { mount } from '@vue/test-utils';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -46,6 +52,31 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
+}
+
+function nodeEndpoint(id: string): IWorkflowGroupVisualLinkNodeEndpoint {
+	return { kind: 'node', id, port: { type: NodeConnectionTypes.Main, index: 0 } };
+}
+
+function groupEndpoint(id: string): IWorkflowGroupVisualLinkGroupEndpoint {
+	return { kind: 'group', id, port: { type: NodeConnectionTypes.Main, index: 0 } };
+}
+
+function visualLink(
+	source: IWorkflowGroupVisualLink['source'],
+	target: IWorkflowGroupVisualLink['target'],
+): IWorkflowGroupVisualLink {
+	return { source, target };
+}
+
+function createEmptyGroup(visualLinks: IWorkflowGroupVisualLink[] = []): IWorkflowGroup {
+	return {
+		id: 'group-empty',
+		name: 'Empty group',
+		nodeIds: [],
+		frame: { position: [100, 200], size: [320, 160] },
+		visualLinks,
+	};
 }
 
 describe('workflowDocument.store orchestration', () => {
@@ -136,6 +167,161 @@ describe('workflowDocument.store orchestration', () => {
 		});
 
 		expect(uiStore.stateIsDirty).toBe(true);
+	});
+
+	describe('empty-group structural transactions', () => {
+		it('creates the canonical connection when G to B completes A to G', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+
+			const incompleteResult = store.applyNodeGroupConnectionState([createEmptyGroup([inputLink])]);
+			expect(incompleteResult.success).toBe(true);
+			expect(store.connectionsBySourceNode).toEqual({});
+
+			const completeResult = store.applyNodeGroupConnectionState([
+				createEmptyGroup([inputLink, outputLink]),
+			]);
+
+			expect(completeResult.success).toBe(true);
+			expect(store.connectionsBySourceNode).toEqual({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+			expect(store.getChildNodes('A', NodeConnectionTypes.Main)).toEqual(['B']);
+		});
+
+		it('removes the canonical connection when a visual link is deleted', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+			store.applyNodeGroupConnectionState([createEmptyGroup([inputLink, outputLink])]);
+
+			const result = store.applyNodeGroupConnectionState([createEmptyGroup([inputLink])]);
+
+			expect(result.success).toBe(true);
+			expect(store.connectionsBySourceNode.A?.main?.[0] ?? []).toEqual([]);
+			expect(store.getChildNodes('A', NodeConnectionTypes.Main)).toEqual([]);
+		});
+
+		it('leaves both projections byte-identical when canonical connection ownership collides', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const uiStore = useUIStore();
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			store.setConnections({
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+			});
+			store.setNodeGroups([createEmptyGroup()]);
+			uiStore.markStateClean();
+			const groupChangeSpy = vi.fn();
+			store.onNodeGroupsChange(groupChangeSpy);
+			const before = JSON.stringify({
+				connections: store.connectionsBySourceNode,
+				groups: store.allGroups,
+			});
+
+			const result = store.applyNodeGroupConnectionState([
+				createEmptyGroup([
+					visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty')),
+					visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b')),
+				]),
+			]);
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.issues[0].code).toBe('canonical-connection-collision');
+			}
+			expect(
+				JSON.stringify({ connections: store.connectionsBySourceNode, groups: store.allGroups }),
+			).toBe(before);
+			expect(groupChangeSpy).not.toHaveBeenCalled();
+			expect(uiStore.stateIsDirty).toBe(false);
+		});
+
+		it('rejects a projection from a prototype-shadowing node name without publishing it', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'hasOwnProperty' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+
+			const result = store.applyNodeGroupConnectionState([
+				createEmptyGroup([inputLink, outputLink]),
+			]);
+
+			expect(result).toMatchObject({
+				success: false,
+				issues: [{ code: 'unsupported-node-name', groupId: 'group-empty' }],
+			});
+			expect(store.connectionsBySourceNode).toEqual({});
+			expect(store.allGroups).toEqual([]);
+			expect(store.getChildNodes('hasOwnProperty', NodeConnectionTypes.Main)).toEqual([]);
+		});
+
+		it('shows a complete pair to synchronous observers and marks the state dirty once', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			const uiStore = useUIStore();
+			store.setNodes([
+				createNode({ id: 'node-a', name: 'A' }),
+				createNode({ id: 'node-b', name: 'B' }),
+			]);
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			const outputLink = visualLink(groupEndpoint('group-empty'), nodeEndpoint('node-b'));
+			store.applyNodeGroupConnectionState([createEmptyGroup([inputLink])]);
+			uiStore.markStateClean();
+			const markDirtySpy = vi.spyOn(uiStore, 'markStateDirty');
+			const observations: string[] = [];
+			const recordPair = () => {
+				const projectedChildren = store.getChildNodes('A', NodeConnectionTypes.Main);
+				observations.push(
+					JSON.stringify({
+						connections: store.connectionsBySourceNode,
+						groups: store.allGroups,
+						projectedChildren,
+					}),
+				);
+			};
+			const stopConnections = watch(() => store.connectionsBySourceNode, recordPair, {
+				flush: 'sync',
+			});
+			const stopGroups = watch(() => store.allGroups, recordPair, { flush: 'sync' });
+			let eventObservation = '';
+			store.onNodeGroupsChange(() => {
+				eventObservation = JSON.stringify({
+					connections: store.connectionsBySourceNode,
+					groups: store.allGroups,
+					projectedChildren: store.getChildNodes('A', NodeConnectionTypes.Main),
+				});
+			});
+
+			store.applyNodeGroupConnectionState([createEmptyGroup([inputLink, outputLink])]);
+			stopConnections();
+			stopGroups();
+
+			const completePair = JSON.stringify({
+				connections: {
+					A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				groups: [createEmptyGroup([inputLink, outputLink])],
+				projectedChildren: ['B'],
+			});
+			expect(observations.length).toBeGreaterThan(0);
+			expect(observations.every((observation) => observation === completePair)).toBe(true);
+			expect(eventObservation).toBe(completePair);
+			expect(markDirtySpy).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('nodeValidationIssues', () => {
@@ -304,6 +490,24 @@ describe('workflowDocument.store orchestration', () => {
 			});
 
 			expect(data.connections).not.toHaveProperty('C');
+		});
+
+		it('deep-copies nested empty-group data in serialized data and snapshots', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const inputLink = visualLink(nodeEndpoint('node-a'), groupEndpoint('group-empty'));
+			store.setNodeGroups([createEmptyGroup([inputLink])]);
+			const serialized = store.serialize();
+			const snapshot = store.getSnapshot();
+
+			const liveGroup = store.getGroupById('group-empty');
+			if (!liveGroup?.frame || !liveGroup.visualLinks) throw new Error('Expected empty-group data');
+			liveGroup.frame.position[0] = 999;
+			liveGroup.visualLinks[0].source.id = 'changed';
+
+			expect(serialized.nodeGroups?.[0].frame?.position).toEqual([100, 200]);
+			expect(serialized.nodeGroups?.[0].visualLinks?.[0].source.id).toBe('node-a');
+			expect(snapshot.nodeGroups?.[0].frame?.position).toEqual([100, 200]);
+			expect(snapshot.nodeGroups?.[0].visualLinks?.[0].source.id).toBe('node-a');
 		});
 	});
 
