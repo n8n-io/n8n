@@ -122,7 +122,18 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { FavoriteResourceType } from './schemas/favorites.schema';
 export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
-export { CONTEXT_PREFERENCES_FLAG } from './schemas/ai-preference.schema';
+export {
+	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	aiPreferenceContentSchema,
+	aiPreferenceScopeSchema,
+	CONTEXT_PREFERENCES_FLAG,
+} from './schemas/ai-preference.schema';
+export type {
+	AiPreferenceDto,
+	AiPreferenceListDto,
+	AiPreferenceProjectDto,
+	AiPreferenceScope,
+} from './schemas/ai-preference.schema';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';

@@ -3,6 +3,11 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 export const RESOURCES = {
 	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
+	// Free-text instructions injected into AI prompts. `aiPreference` covers the
+	// instance-wide ones; `projectAiPreference` covers the ones a project shares.
+	// A user's own preferences need neither: they are theirs to manage.
+	aiPreference: [...DEFAULT_OPERATIONS] as const,
+	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,

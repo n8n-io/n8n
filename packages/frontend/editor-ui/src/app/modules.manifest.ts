@@ -9,6 +9,7 @@ import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
 import { PromotionsModule } from '@/features/integrations/promotions.ee/module.descriptor';
+import { ContextModule } from '@/features/settings/context/module.descriptor';
 
 /**
  * Hard-coding modules list until we have a dynamic way to load modules.
@@ -24,4 +25,5 @@ export const modules: FrontendModuleDescription[] = [
 	InstanceRegistryModule,
 	InsightsModule,
 	PromotionsModule,
+	ContextModule,
 ];
