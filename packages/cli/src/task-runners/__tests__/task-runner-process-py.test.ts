@@ -29,7 +29,6 @@ describe('PyTaskRunnerProcess', () => {
 
 	const logger = mockInstance(Logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
-	runnerConfig.mode = 'internal';
 	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new PyTaskRunnerProcess(logger, runnerConfig, authService, mock());
 

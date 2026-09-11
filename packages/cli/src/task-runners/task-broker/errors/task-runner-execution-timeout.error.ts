@@ -1,23 +1,12 @@
-import type { TaskRunnerMode } from '@n8n/config';
 import { OperationalError } from 'n8n-workflow';
 
 export class TaskRunnerExecutionTimeoutError extends OperationalError {
 	description: string;
 
-	constructor({
-		taskTimeout,
-		isSelfHosted,
-		mode,
-	}: { taskTimeout: number; isSelfHosted: boolean; mode: TaskRunnerMode }) {
+	constructor({ taskTimeout, isSelfHosted }: { taskTimeout: number; isSelfHosted: boolean }) {
 		super(
 			`Task execution timed out after ${taskTimeout} ${taskTimeout === 1 ? 'second' : 'seconds'}`,
 		);
-
-		const subtitles = {
-			internal:
-				'The task runner was taking too long on this task, so it was suspected of being unresponsive and restarted, and the task was aborted.',
-			external: 'The task runner was taking too long on this task, so the task was aborted.',
-		};
 
 		const fixes = {
 			optimizeScript:
@@ -35,7 +24,7 @@ export class TaskRunnerExecutionTimeoutError extends OperationalError {
 			.map((suggestion, index) => `${index + 1}. ${suggestion}`)
 			.join('<br/>');
 
-		const description = `${mode === 'internal' ? subtitles.internal : subtitles.external} You can try the following:<br/><br/>${suggestionsText}`;
+		const description = `The task runner was taking too long on this task, so the task was aborted. You can try the following:<br/><br/>${suggestionsText}`;
 
 		this.description = description;
 	}

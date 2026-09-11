@@ -12,6 +12,14 @@ n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.
 
 If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
 
+### What changed?
+
+Task runners no longer run inside the n8n process. `N8N_RUNNERS_MODE` defaults to `external` and n8n exits on start when it is set to `internal`. `N8N_RUNNERS_AUTH_TOKEN` is required. The `start`, `worker`, `execute` and `execute-batch` commands all need an external task runner. When no runner has connected within `N8N_RUNNERS_TASK_REQUEST_TIMEOUT` seconds (default 60) after start, Code node executions fail at once instead of waiting for the request timeout. During that first window they wait as before. `N8N_RUNNERS_MAX_OLD_SPACE_SIZE` has no effect.
+
+### When is action necessary?
+
+If you rely on the default runner mode or set `N8N_RUNNERS_MODE=internal`, run the task runner launcher (the `n8nio/runners` image) next to n8n, set `N8N_RUNNERS_MODE=external` and share `N8N_RUNNERS_AUTH_TOKEN` between n8n and the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners
+
 # 2.0.0
 
 ### What changed?

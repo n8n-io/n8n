@@ -11,7 +11,7 @@ import {
 } from '@n8n/backend-common';
 import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, readEnvValue } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -226,6 +226,13 @@ export abstract class BaseCommand<F = never> {
 		this.instanceSettings.setMultiMainLicensed(isMultiMainEnabled); // no license check here, as the start command already implements that
 
 		const taskRunnersConfig = this.globalConfig.taskRunners;
+
+		if (readEnvValue('N8N_RUNNERS_MODE') === 'internal') {
+			this.logger.error(
+				'N8N_RUNNERS_MODE=internal is no longer supported. Run the task runner launcher as a separate process or container, set N8N_RUNNERS_MODE=external and share N8N_RUNNERS_AUTH_TOKEN between n8n and the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners',
+			);
+			process.exit(1);
+		}
 
 		if (this.needsTaskRunner) {
 			if (taskRunnersConfig.insecureMode) {

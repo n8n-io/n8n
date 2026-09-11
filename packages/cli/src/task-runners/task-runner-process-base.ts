@@ -89,10 +89,6 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		return this._runPromise;
 	}
 
-	get isInternal() {
-		return this.runnerConfig.mode === 'internal';
-	}
-
 	async start() {
 		assert(!this.process, `${this.name} already running`);
 		this.isShuttingDown = false;

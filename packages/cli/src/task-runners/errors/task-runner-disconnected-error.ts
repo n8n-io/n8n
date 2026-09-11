@@ -14,7 +14,7 @@ export class TaskRunnerDisconnectedError extends UnexpectedError {
 			reduceItems:
 				'Reduce the number of items processed at a time, by batching them using a loop node',
 			increaseMemory:
-				"Increase the memory available to the task runner with 'N8N_RUNNERS_MAX_OLD_SPACE_SIZE' environment variable",
+				'Increase the memory available to the task runner by setting NODE_OPTIONS=--max-old-space-size=<MB> on the task runner launcher',
 			upgradePlan: 'Upgrade your cloud plan to increase the available memory',
 		};
 

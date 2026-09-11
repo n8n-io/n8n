@@ -37,16 +37,17 @@ import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
  */
 const venvPresent = existsSync(PyTaskRunnerProcess.getVenvPath());
 
-describe.skipIf(!venvPresent)('Python TaskRunner execution on internal mode', () => {
+describe.skipIf(!venvPresent)('Python TaskRunner execution', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
-	runnerConfig.mode = 'internal';
 	runnerConfig.port = 45679;
+	runnerConfig.authToken = 'test-token';
 	// n8n forwards these to the runner as it spawns. The whole point of the test is
 	// that the runner then enforces exactly this.
 	process.env.N8N_RUNNERS_STDLIB_ALLOW = 'json';
 	process.env.N8N_RUNNERS_EXTERNAL_ALLOW = '';
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
+	const runnerProcess = Container.get(PyTaskRunnerProcess);
 	const taskRequester = Container.get(LocalTaskRequester);
 
 	const runPythonCode = async (pythonCode: string) => {
@@ -147,9 +148,11 @@ describe.skipIf(!venvPresent)('Python TaskRunner execution on internal mode', ()
 
 	beforeAll(async () => {
 		await taskRunnerModule.start();
+		await runnerProcess.start();
 	});
 
 	afterAll(async () => {
+		await runnerProcess.stop();
 		await taskRunnerModule.stop();
 	});
 
