@@ -80,8 +80,9 @@ Pattern flags string:
 | `x` | extended (whitespace/comments ignored) | always accepted |
 | `g` | global | `jsFlags: ['g']` |
 | `u` | turns on `PCRE2_UTF`: a surrogate pair is one code point. Without it, every UTF-16 code unit (lone surrogates included) is one character, as a native `RegExp` without `u` treats it. | `jsFlags: ['u']` |
+| `y` | sticky: match must start exactly at the search position, no forward scanning (`PCRE2_ANCHORED`) | `jsFlags: ['y']` |
 
-Any other flag character (e.g. `y`, `d`) always throws `Pcre2CompileError`.
+Any other flag character (e.g. `d`) always throws `Pcre2CompileError`.
 
 `compileOptions` (all off by default):
 
