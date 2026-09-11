@@ -149,6 +149,8 @@ const tooltipPlacement = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
+
 .menuItemWrapper {
 	position: relative;
 	width: 100%;
@@ -193,7 +195,7 @@ const tooltipPlacement = computed(() => {
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color--secondary);
+	@include focus.focus-ring;
 	outline-offset: -1px;
 }
 
