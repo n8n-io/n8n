@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
-import { AGENT_ARTIFACT_RUN_CAP_BYTES } from '../harness/artifacts/agent-artifact';
+import { AGENT_ARTIFACT_CASE_CAP_BYTES } from '../harness/artifacts/agent-artifact';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -341,15 +341,31 @@ describe('eval-results.json — dispatcher contract', () => {
 			skills: {},
 		});
 		const evaluation = aggregateResults(
-			[0, 1, 2].map((index) => [{ ...iteration1(), agentArtifact: largeArtifact(index) }]),
-			3,
+			[
+				...[0, 1, 2].map((index) => [{ ...iteration1(), agentArtifact: largeArtifact(index) }]),
+				[
+					{
+						...iteration1(),
+						agentArtifact: {
+							agentId: 'agent-3',
+							config: {
+								name: 'Small agent',
+								model: 'anthropic/claude-sonnet-4-5',
+								instructions: 'Keep the digest concise.',
+							},
+							skills: {},
+						},
+					},
+				],
+			],
+			4,
 		);
 		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
 		const { jsonPath } = writeEvalResults(
 			evaluation,
 			1234,
 			dir,
-			'exp-agent-artifact-run-cap',
+			'exp-agent-artifact-case-cap',
 			undefined,
 			undefined,
 			new Map([[testCase, 'daily-digest']]),
@@ -363,6 +379,7 @@ describe('eval-results.json — dispatcher contract', () => {
 		expect(tc.agentArtifactPerRun[0]).toMatchObject({ agentId: 'agent-0' });
 		expect(tc.agentArtifactPerRun[1]).toMatchObject({ agentId: 'agent-1' });
 		expect(tc.agentArtifactPerRun[2]).toBeNull();
+		expect(tc.agentArtifactPerRun[3]).toMatchObject({ agentId: 'agent-3' });
 
 		const formattedArtifactFields = JSON.stringify(
 			{ agentArtifactPerRun: tc.agentArtifactPerRun },
@@ -370,7 +387,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			2,
 		);
 		expect(new TextEncoder().encode(formattedArtifactFields).byteLength).toBeLessThanOrEqual(
-			AGENT_ARTIFACT_RUN_CAP_BYTES,
+			AGENT_ARTIFACT_CASE_CAP_BYTES,
 		);
 	});
 

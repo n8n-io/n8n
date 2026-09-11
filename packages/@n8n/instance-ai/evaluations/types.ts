@@ -186,7 +186,7 @@ export interface ArtifactRef {
 	id: string;
 }
 
-/** Structured agent preview persisted for external eval-result consumers. */
+/** Structured agent preview. Capture redacts it; persistence validates and caps it. */
 export interface AgentArtifact {
 	agentId?: string;
 	config: unknown;
@@ -361,7 +361,7 @@ export interface WorkflowTestCaseResult {
 	agentId?: string;
 	/** Rendered agent config + skills, used by the local HTML report. */
 	agentArtifactContext?: string;
-	/** Structured, redacted agent config + skills for external preview consumers. */
+	/** Structured, redacted agent config and skills. Persistence validates and caps this value. */
 	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;

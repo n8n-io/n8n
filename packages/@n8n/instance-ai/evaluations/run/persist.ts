@@ -19,7 +19,7 @@ import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import {
-	AGENT_ARTIFACT_RUN_CAP_BYTES,
+	AGENT_ARTIFACT_CASE_CAP_BYTES,
 	sanitizeAgentArtifact,
 } from '../harness/artifacts/agent-artifact';
 import type { EvalLogger } from '../harness/logger';
@@ -382,17 +382,16 @@ function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 	);
 	if (!agentAnchored) return {};
 
-	let overflowed = false;
 	const agentArtifactPerRun = runs.map((): AgentArtifact | null => null);
 	for (const [index, run] of runs.entries()) {
-		if (overflowed) continue;
 		const artifact = sanitizeAgentArtifact(run.agentArtifact);
 		if (!artifact) continue;
 
 		agentArtifactPerRun[index] = artifact;
-		if (formattedAgentArtifactFieldsBytes({ agentArtifactPerRun }) > AGENT_ARTIFACT_RUN_CAP_BYTES) {
+		if (
+			formattedAgentArtifactFieldsBytes({ agentArtifactPerRun }) > AGENT_ARTIFACT_CASE_CAP_BYTES
+		) {
 			agentArtifactPerRun[index] = null;
-			overflowed = true;
 		}
 	}
 
@@ -400,7 +399,7 @@ function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 	if (!agentArtifact) return { agentArtifactPerRun };
 
 	const withCompatibility = { agentArtifact, agentArtifactPerRun };
-	return formattedAgentArtifactFieldsBytes(withCompatibility) <= AGENT_ARTIFACT_RUN_CAP_BYTES
+	return formattedAgentArtifactFieldsBytes(withCompatibility) <= AGENT_ARTIFACT_CASE_CAP_BYTES
 		? withCompatibility
 		: { agentArtifactPerRun };
 }

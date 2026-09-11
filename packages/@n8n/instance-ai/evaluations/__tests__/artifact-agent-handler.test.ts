@@ -1,5 +1,6 @@
+import * as aiUtilities from '@n8n/ai-utilities';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
-import type { Mock } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
 import {
@@ -36,9 +37,9 @@ describe('agentHandler', () => {
 		]);
 	});
 
-	it('fetch() resolves the personal project and returns a redacted structured preview artifact', async () => {
+	it('fetches a structured preview and renders a redacted judge context', async () => {
 		const projectId = 'project-123';
-		// Future fields must survive in the raw preview even when this checkout's
+		// Future fields must survive in the redacted preview even when this checkout's
 		// AgentJsonConfig type does not know them yet.
 		const rawConfig = {
 			...validConfig,
@@ -78,26 +79,65 @@ describe('agentHandler', () => {
 		expect(result.agentId).toBe('agent-1');
 		expect(result.config).toMatchObject({
 			name: 'My Agent',
-			instructions: 'Use [REDACTED] when needed.',
 			futureDisplayMode: { density: 'compact' },
 		});
 		expect(result.skills['skill-1']).toMatchObject({
-			instructions: 'Send [REDACTED]',
 			references: [
 				{
 					path: 'references/guide.md',
-					content: 'Authorization: [REDACTED]',
 					futureFormat: 'markdown-v2',
 				},
 			],
 			futurePolicy: { mode: 'strict' },
 		});
+
 		const serialized = JSON.stringify(result);
 		expect(serialized).not.toContain('skill-secret');
 		expect(serialized).not.toContain('abcdef1234567890');
+
+		const rendered = agentHandler.renderArtifact(result);
+		expect(rendered).toContain('Use [REDACTED] when needed.');
+		expect(rendered).toContain('Send [REDACTED]');
+		expect(rendered).toContain('Authorization: [REDACTED]');
+		expect(rendered).not.toContain('skill-secret');
+		expect(rendered).not.toContain('abcdef1234567890');
 	});
 
-	it('rejects an artifact when a configured skill body is missing', async () => {
+	it('keeps node-tool credential configs available to the judge and redacts them for export', async () => {
+		const config = {
+			...validConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Read Gmail',
+					node: {
+						nodeType: 'n8n-nodes-base.gmail',
+						nodeTypeVersion: 2.1,
+						nodeParameters: { resource: 'message' },
+						credentials: {
+							gmailOAuth2: { id: 'credential-1', name: 'Support Inbox' },
+						},
+					},
+				},
+			],
+		};
+		const client = {
+			getPersonalProjectId: vi.fn().mockResolvedValue('project-123'),
+			getAgentConfig: vi.fn().mockResolvedValue(config),
+			getAgentSkills: vi.fn().mockResolvedValue({}),
+		} as unknown as N8nClient;
+
+		const artifact = await agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client);
+		const sanitized = sanitizeAgentArtifact(artifact);
+
+		expect(sanitized).not.toBeNull();
+		expect(sanitized?.config).toMatchObject({
+			tools: [{ node: { credentials: '[REDACTED]' } }],
+		});
+		expect(agentHandler.renderArtifact(artifact)).toContain('"credentials": "[REDACTED]"');
+	});
+
+	it('keeps an artifact with a missing skill body available to the judge but rejects its export', async () => {
 		const projectId = 'project-123';
 		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue(projectId);
 		const getAgentConfig: Mock = vi.fn().mockResolvedValue({
@@ -111,18 +151,27 @@ describe('agentHandler', () => {
 			getAgentSkills,
 		} as unknown as N8nClient;
 
-		await expect(agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client)).rejects.toThrow(
-			'Agent agent-1 preview could not be sanitized',
-		);
+		const artifact = await agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client);
+		const rendered = agentHandler.renderArtifact(artifact);
+
+		expect(rendered).toContain('missing-skill');
+		expect(rendered).toContain('(no skills authored)');
+		expect(sanitizeAgentArtifact(artifact)).toBeNull();
 	});
 
-	it('rejects malformed known config fields', () => {
-		expect(
-			sanitizeAgentArtifact({
-				config: { ...validConfig, model: { provider: 'anthropic' } },
-				skills: {},
-			}),
-		).toBeNull();
+	it('keeps malformed config available to the judge but rejects its export', async () => {
+		const client = {
+			getPersonalProjectId: vi.fn().mockResolvedValue('project-123'),
+			getAgentConfig: vi
+				.fn()
+				.mockResolvedValue({ ...validConfig, model: { provider: 'anthropic' } }),
+			getAgentSkills: vi.fn().mockResolvedValue({}),
+		} as unknown as N8nClient;
+
+		const artifact = await agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client);
+
+		expect(agentHandler.renderArtifact(artifact)).toContain('"provider": "anthropic"');
+		expect(sanitizeAgentArtifact(artifact)).toBeNull();
 	});
 
 	it('rejects artifacts over the per-iteration UTF-8 byte cap', () => {
@@ -133,6 +182,29 @@ describe('agentHandler', () => {
 				skills: {},
 			}),
 		).toBeNull();
+	});
+
+	it('keeps artifacts over the export cap available to the judge', async () => {
+		const instructions = '界'.repeat(Math.ceil(AGENT_ARTIFACT_ITERATION_CAP_BYTES / 3));
+		const client = {
+			getPersonalProjectId: vi.fn().mockResolvedValue('project-123'),
+			getAgentConfig: vi.fn().mockResolvedValue({ ...validConfig, instructions }),
+			getAgentSkills: vi.fn().mockResolvedValue({}),
+		} as unknown as N8nClient;
+
+		const artifact = await agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client);
+
+		expect(agentHandler.renderArtifact(artifact)).toContain(instructions);
+		expect(sanitizeAgentArtifact(artifact)).toBeNull();
+	});
+
+	it('surfaces unexpected sanitization errors', () => {
+		const error = new Error('sanitizer unavailable');
+		vi.spyOn(aiUtilities, 'sanitizeCredentialShapedValues').mockImplementationOnce(() => {
+			throw error;
+		});
+
+		expect(() => sanitizeAgentArtifact({ config: validConfig, skills: {} })).toThrow(error);
 	});
 
 	it('renderArtifact() surfaces skill instructions and reference content for the judge', () => {

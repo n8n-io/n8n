@@ -78,7 +78,7 @@ const targetOutputSchema = z.object({
 	agentEvalResult: z.unknown().optional(),
 	/** Rendered agent config + skills — attached to every agent row, deduped on reshape (first write wins). */
 	agentContext: z.string().optional(),
-	/** Structured, redacted agent preview artifact. */
+	/** Structured, redacted agent preview. Persistence validates and caps it for export. */
 	agentArtifact: z.unknown().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),

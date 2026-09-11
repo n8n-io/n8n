@@ -4,7 +4,7 @@
 // builder authored, so the shared assertion judge can grade both.
 // ---------------------------------------------------------------------------
 
-import { sanitizeAgentArtifact } from './agent-artifact';
+import { redactAgentArtifact } from './agent-artifact';
 import { renderAgentArtifact } from './render-agent';
 import type { AgentArtifact, ArtifactHandler } from './types';
 
@@ -23,11 +23,9 @@ export const agentHandler: ArtifactHandler<AgentArtifact> = {
 			client.getAgentConfig(projectId, ref.id),
 			client.getAgentSkills(projectId, ref.id),
 		]);
-		const artifact = sanitizeAgentArtifact({ agentId: ref.id, config, skills });
-		if (!artifact) throw new Error(`Agent ${ref.id} preview could not be sanitized`);
-		return artifact;
+		return redactAgentArtifact({ agentId: ref.id, config, skills });
 	},
 	renderArtifact(artifact) {
-		return renderAgentArtifact(artifact);
+		return renderAgentArtifact(redactAgentArtifact(artifact));
 	},
 };
