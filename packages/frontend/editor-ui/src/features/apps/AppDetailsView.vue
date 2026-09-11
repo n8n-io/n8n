@@ -516,6 +516,13 @@ watch(showPreviewPane, (next, previous) => {
 	if (next && !previous) mode.value = 'preview';
 });
 
+// A later build is what the user was waiting for too, not just the first —
+// so an agent-driven change always surfaces the result instead of leaving
+// the user staring at Build, even if a preview was already showing.
+watch(versionId, (next, previous) => {
+	if (next && next !== previous) mode.value = 'preview';
+});
+
 // Fetched on demand: the list changes with every assistant turn and publish.
 watch(buildTab, async (tab) => {
 	if (tab === 'versions') await refreshVersions();
@@ -523,9 +530,16 @@ watch(buildTab, async (tab) => {
 
 // The turn's snapshot decides whether the draft has unpublished changes and
 // which pages the app has: routes are derived from the newest snapshot.
+//
+// A live-preview edit lands here without ever touching `versionId` (it
+// updates the draft, not the published version), so this is also where an
+// agent-driven change on that path surfaces its result — same as the
+// versionId watcher above, unconditionally, even if the user had switched
+// away from Preview.
 watch(
 	() => props.refreshKey,
 	async () => {
+		mode.value = 'preview';
 		try {
 			const [updated] = await Promise.all([
 				appsStore.getApp(props.projectId, props.appId),

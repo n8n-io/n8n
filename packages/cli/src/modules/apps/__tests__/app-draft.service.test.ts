@@ -34,8 +34,8 @@ function createDraft(files: Record<string, string>) {
 		exists: vi.fn(async (file: string) =>
 			Object.keys(files).some((f) => `/home/user/workspace/apps/greeter/${f}` === file),
 		),
-		readFile: vi.fn(async (file: string) =>
-			files[file.replace('/home/user/workspace/apps/greeter/', '')],
+		readFile: vi.fn(
+			async (file: string) => files[file.replace('/home/user/workspace/apps/greeter/', '')],
 		),
 		writeFile: vi.fn().mockResolvedValue(undefined),
 	};
@@ -109,7 +109,12 @@ describe('AppDraftService', () => {
 				return { appId: 'app-1' } as never;
 			});
 
-			const result = await service.write('app-1', USER, async () => ({ 'src/main.ts': 'x' }), draft);
+			const result = await service.write(
+				'app-1',
+				USER,
+				async () => ({ 'src/main.ts': 'x' }),
+				draft,
+			);
 
 			expect(restoreAppMock).toHaveBeenCalledWith(
 				expect.objectContaining({ appWorkspace: expect.anything() }),
@@ -130,7 +135,12 @@ describe('AppDraftService', () => {
 			const { draft, filesystem } = createDraft({});
 			restoreAppMock.mockResolvedValue({ error: true, stage: 'restore', message: 'unpack failed' });
 
-			const result = await service.write('app-1', USER, async () => ({ 'src/main.ts': 'x' }), draft);
+			const result = await service.write(
+				'app-1',
+				USER,
+				async () => ({ 'src/main.ts': 'x' }),
+				draft,
+			);
 
 			expect(result).toEqual({ error: true, message: 'unpack failed' });
 			expect(filesystem.writeFile).not.toHaveBeenCalled();
