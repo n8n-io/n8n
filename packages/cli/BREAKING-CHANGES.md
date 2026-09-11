@@ -12,6 +12,14 @@ n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.
 
 If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
 
+### What changed?
+
+n8n enforces a Content-Security-Policy on its own HTML pages. The policy was served as `Content-Security-Policy-Report-Only` before, which reported violations but blocked nothing. The enforced policy is `script-src <nonce> 'strict-dynamic' 'unsafe-eval'; object-src 'none'; base-uri 'none'`: only scripts that carry the response nonce run, `<object>` and `<embed>` are blocked, and a `<base>` tag cannot repoint relative URLs. `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` no longer sends a header by default. Webhook and form pages keep their own sandbox policy and are not affected.
+
+### When is action necessary?
+
+If you inject your own scripts into n8n's pages. Test the instance before you update, because a script without the response nonce no longer runs. Set `N8N_CONTENT_SECURITY_POLICY` to `{}` to enforce nothing, or to your own policy. To try a policy before you enforce it, put it in `N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY` instead.
+
 # 2.0.0
 
 ### What changed?

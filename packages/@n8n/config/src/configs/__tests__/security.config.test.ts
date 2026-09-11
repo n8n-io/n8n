@@ -50,11 +50,13 @@ describe('SecurityConfig', () => {
 		// serving every HTML page. It has to warn and leave the declared default instead.
 		const unservable = `script-src 'self'${String.fromCharCode(10)}X-Injected: yes`;
 
-		test('warns and enforces nothing when the enforced policy is unservable', () => {
+		test("warns and keeps n8n's own policy when the enforced policy is unservable", () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			process.env = { N8N_CONTENT_SECURITY_POLICY: unservable };
-			expect(Container.get(SecurityConfig).contentSecurityPolicy).toBeUndefined();
+			expect(Container.get(SecurityConfig).contentSecurityPolicy).toBe(
+				DEFAULT_CONTENT_SECURITY_POLICY,
+			);
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining('N8N_CONTENT_SECURITY_POLICY'),
 			);
@@ -62,13 +64,11 @@ describe('SecurityConfig', () => {
 			consoleWarnSpy.mockRestore();
 		});
 
-		test("warns and keeps n8n's own policy when the report-only policy is unservable", () => {
+		test('warns and reports on nothing when the report-only policy is unservable', () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			process.env = { N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY: unservable };
-			expect(Container.get(SecurityConfig).contentSecurityPolicyReportOnly).toBe(
-				DEFAULT_CONTENT_SECURITY_POLICY,
-			);
+			expect(Container.get(SecurityConfig).contentSecurityPolicyReportOnly).toBeUndefined();
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY'),
 			);
