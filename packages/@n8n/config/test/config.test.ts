@@ -540,6 +540,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			awsSystemCredentialsSdkSources: 'all',
+			azureStorageCustomEndpoints: false,
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
 			postMessageAllowedOrigins: '',
