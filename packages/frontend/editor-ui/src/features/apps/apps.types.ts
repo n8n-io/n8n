@@ -26,6 +26,8 @@ export interface AppVersion {
 	isActive: boolean;
 	/** A build whose dist was pruned reads as a snapshot. */
 	kind: 'publish' | 'snapshot';
+	/** Short summary of what changed, or null when none was generated. */
+	label: string | null;
 }
 
 /** Answer of `POST /apps/:appId/publish`; a failed build is a 200 with `error`, like the agent's tool result. */

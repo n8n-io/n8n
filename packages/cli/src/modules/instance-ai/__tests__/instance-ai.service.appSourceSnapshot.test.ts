@@ -44,6 +44,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
 		sandboxService: { getCachedWorkspaceEntry: ReturnType<typeof vi.fn> };
 		logger: { debug: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
+		runState: { getActiveRun: ReturnType<typeof vi.fn> };
 		pendingAppSnapshots: Map<string, Promise<void>>;
 		appIdByThread: Map<string, string>;
 		awaitPendingSnapshot: (threadId: string) => Promise<void>;
@@ -69,6 +70,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		service.refineTitleIfNeeded = vi.fn(async () => {});
 		service.sandboxService = { getCachedWorkspaceEntry: vi.fn(() => cachedEntry) };
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
+		service.runState = { getActiveRun: vi.fn(() => undefined) };
 		service.pendingAppSnapshots = new Map();
 		service.appIdByThread = new Map([['thread-1', 'app-1']]);
 		return service;

@@ -41,6 +41,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.ai_preference](public.ai_preference.md) | 7 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
+| [public.app](public.app.md) | 9 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -85,7 +87,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
-| [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
+| [public.instance_ai_threads](public.instance_ai_threads.md) | 8 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
 | [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
 | [public.instance_monitoring_report](public.instance_monitoring_report.md) | 9 |  | BASE TABLE |
@@ -97,6 +99,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 8 |  | BASE TABLE |
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
+| [public.page](public.page.md) | 8 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
@@ -230,6 +233,9 @@ erDiagram
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.ai_preference" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.app" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
+"public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.auth_identity" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id)"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES chat_hub_agents(id) ON DELETE CASCADE"
 "public.chat_hub_agent_tools" }o--|| "public.chat_hub_tools" : "FOREIGN KEY (#quot;toolId#quot;) REFERENCES chat_hub_tools(id) ON DELETE CASCADE"
@@ -296,6 +302,7 @@ erDiagram
 "public.instance_ai_thread_grants" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_thread_grants" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.instance_ai_threads" }o--o| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE SET NULL"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
@@ -305,6 +312,9 @@ erDiagram
 "public.oauth_refresh_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_user_consents" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_user_consents" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
+"public.page" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;dataWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE SET NULL"
+"public.page" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.page" }o--o| "public.page" : "FOREIGN KEY (#quot;parentPageId#quot;) REFERENCES page(id) ON DELETE CASCADE"
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -752,6 +762,29 @@ erDiagram
   varchar_24_ name
   timestamp_3__with_time_zone updatedAt
 }
+"public.app" {
+  varchar_36_ activeVersionId FK
+  json bindings
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_128_ name
+  varchar_128_ namespace
+  varchar_36_ projectId FK
+  json theme
+  timestamp_3__with_time_zone updatedAt
+}
+"public.app_version" {
+  varchar_36_ appId FK
+  timestamp_3__with_time_zone createdAt
+  integer distSizeBytes
+  varchar_255_ distStorageKey
+  varchar_36_ id
+  varchar_128_ label
+  integer sourceSizeBytes
+  varchar_255_ sourceStorageKey
+  varchar_8_ storedAt
+  timestamp_3__with_time_zone updatedAt
+}
 "public.auth_identity" {
   timestamp_3__with_time_zone createdAt
   varchar_255_ providerId
@@ -1182,6 +1215,7 @@ erDiagram
   uuid userId FK
 }
 "public.instance_ai_threads" {
+  varchar_36_ appId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   json metadata
@@ -1284,6 +1318,16 @@ erDiagram
   integer id
   json scope
   uuid userId FK
+}
+"public.page" {
+  varchar_36_ appId FK
+  json content
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ dataWorkflowId FK
+  varchar_36_ id
+  varchar_36_ parentPageId FK
+  varchar_255_ route
+  timestamp_3__with_time_zone updatedAt
 }
 "public.poller_state" {
   timestamp_3__with_time_zone backoffUntil

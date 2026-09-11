@@ -5205,6 +5205,7 @@ function createAdapterWithGatewayMock(
 		args[45] = (overrides.appPublishService ?? {}) as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[45];
+		args[46] = {} as ConstructorParameters<typeof InstanceAiAdapterService>[46];
 	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
