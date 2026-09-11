@@ -2,7 +2,6 @@ import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/a
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
-	Folder,
 	Project,
 	TagEntity,
 	User,
@@ -29,7 +28,6 @@ import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
-import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import glob from 'fast-glob';
@@ -271,7 +269,7 @@ export class SourceControlImportService {
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
 			};
-		}) as SourceControlWorkflowVersionId[];
+		});
 	}
 
 	async getLocalVersionIdsFromDb(
@@ -1211,7 +1209,7 @@ export class SourceControlImportService {
 				}
 
 				const tagCopy = this.tagRepository.create(tag);
-				await this.tagRepository.upsert(tagCopy as QueryDeepPartialEntity<TagEntity>, {
+				await this.tagRepository.upsert(tagCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});
@@ -1298,7 +1296,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy as QueryDeepPartialEntity<Folder>, {
+				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});

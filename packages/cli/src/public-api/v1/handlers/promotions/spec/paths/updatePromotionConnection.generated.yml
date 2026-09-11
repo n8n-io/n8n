@@ -1,0 +1,66 @@
+operationId: updatePromotionConnection
+tags:
+  - Promotions
+summary: Update a promotion connection
+description: Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion connection.
+    name: promotionConnectionId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          target:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              remoteUrl:
+                type: string
+                minLength: 1
+            required:
+              - schemaVersion
+              - remoteUrl
+            additionalProperties: false
+          providerId:
+            type: string
+            minLength: 1
+            maxLength: 36
+        additionalProperties: false
+        minProperties: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionConnectionPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

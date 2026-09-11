@@ -62,9 +62,9 @@ jobs:
         run: node .github/scripts/docker/kafka-native-smoke-check.mjs
 
       # cli is the only backend package wired into janitor scoping today, so
-      # the workspace bulk run excludes it and a dedicated step invokes the
-      # scoped variant. This avoids turbo silently no-op'ing `test:unit:changed`
-      # for every backend package that hasn't yet added the script.
+      # the workspace bulk run excludes it. A dedicated sharded job invokes
+      # the scoped variant below. This avoids turbo silently no-op'ing
+      # `test:unit:changed` for backend packages that haven't added the script.
       # nodes-base is excluded too: it has its own (change-scoped) unit-test-nodes
       # job, so its `test:unit` script must only run in the full nightly, not here.
       #
@@ -74,10 +74,6 @@ jobs:
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       - name: Test Unit (backend, except cli and nodes-base)
         run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
-
-      - name: Test Unit (cli, scoped)
-        if: ${{ !cancelled() }}
-        run: pnpm turbo test:unit:changed --filter=n8n --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -102,6 +98,55 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-unit
           name: backend-unit
+          files: ./packages/**/coverage/lcov.info
+
+  unit-test-cli:
+    name: CLI Unit Tests (${{ matrix.shard }}/2)
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+      AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
+      CHANGED_FILES: ${{ inputs.changedFiles }}
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Test Unit (cli, scoped)
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          name: cli-unit-tests-${{ matrix.shard }}
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend-unit
+          name: cli-unit-${{ matrix.shard }}
           files: ./packages/**/coverage/lcov.info
 
   integration-test-backend:
@@ -263,9 +308,10 @@ jobs:
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: [unit-test-backend, integration-test-backend, unit-test-nodes, unit-test-frontend]
+    needs:
+      [unit-test-backend, unit-test-cli, integration-test-backend, unit-test-nodes, unit-test-frontend]
     if: always()
     steps:
       - name: Fail if tests failed
-        if: needs.unit-test-backend.result == 'failure' || needs.integration-test-backend.result == 'failure' || needs.unit-test-nodes.result == 'failure' || needs.unit-test-frontend.result == 'failure'
+        if: needs.unit-test-backend.result == 'failure' || needs.unit-test-cli.result == 'failure' || needs.integration-test-backend.result == 'failure' || needs.unit-test-nodes.result == 'failure' || needs.unit-test-frontend.result == 'failure'
         run: exit 1

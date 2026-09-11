@@ -326,7 +326,10 @@ describe('SourceControlGitService', () => {
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
-			const expectedCredentialScript = `!f() { echo username='${credentials.username}'; echo password='${credentials.password}'; }; f`;
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const expectedCredentialScript =
+				'!f() { printf \'%s\\n\' "username=$N8N_GIT_USERNAME" "password=$N8N_GIT_PASSWORD"; }; f';
 			expect(simpleGit).toHaveBeenCalledWith(
 				expect.objectContaining({
 					binary: 'git',
@@ -343,9 +346,8 @@ describe('SourceControlGitService', () => {
 			);
 		});
 
-		it('should escape https credentials to prevent command injection', async () => {
-			// simulate credentials that would try to inject an rm -rf command by breaking out of the echo command with single quotes inside them
-			const credentials = { username: "user'; rm -rf /", password: "pass'; rm -rf /" };
+		it('passes literal HTTPS credentials through the Git environment', async () => {
+			const credentials = { username: "user's name", password: 'pass\'"$word' };
 
 			mockSourceControlPreferencesService.getPreferences.mockReturnValue({
 				connectionType: 'https',
@@ -360,18 +362,11 @@ describe('SourceControlGitService', () => {
 			await sourceControlGitService.setGitCommand();
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
-			const expectedCredentialScript =
-				"!f() { echo username='user'\"'\"'; rm -rf /'; echo password='pass'\"'\"'; rm -rf /'; }; f";
-			expect(simpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [
-						`credential.helper=${expectedCredentialScript}`,
-						'credential.useHttpPath=true',
-						'http.lowSpeedLimit=1000',
-						'http.lowSpeedTime=30',
-					],
-				}),
-			);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_USERNAME', credentials.username);
+			expect(mockGitInstance.env).toHaveBeenCalledWith('N8N_GIT_PASSWORD', credentials.password);
+			const options = JSON.stringify((simpleGit as Mock).mock.calls);
+			expect(options).not.toContain(credentials.username);
+			expect(options).not.toContain(credentials.password);
 		});
 
 		it('should setup git client for ssh connection', async () => {

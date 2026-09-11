@@ -61,6 +61,14 @@ describe('InstanceAiInputMenu', () => {
 		vi.clearAllMocks();
 	});
 
+	it('renders the non-send button as a labeled ghost button', () => {
+		const { getByRole } = renderComponent();
+		const button = getByRole('button', { name: /Add .*files/ });
+
+		expect(button.className).toContain('ghost');
+		expect(button).toHaveAccessibleName();
+	});
+
 	it('tracks clicking the plus button', async () => {
 		const { getByRole } = renderComponent();
 

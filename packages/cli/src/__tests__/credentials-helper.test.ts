@@ -18,6 +18,7 @@ import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.cr
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
+	ICredentialsExpressionResolveValues,
 	ICredentialType,
 	IExecuteData,
 	IHttpRequestHelper,
@@ -1453,6 +1454,69 @@ describe('CredentialsHelper', () => {
 
 			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ node: executeData.node }),
+			);
+		});
+
+		it('prefers expressionResolveValues.node over a stale executeData.node from a parent orchestrator node', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+				policyEnforcementService,
+			);
+
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({ apiKey: 'mock-jwt' });
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: undefined,
+				projectId: undefined,
+				executionId: undefined,
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+			const parentNode: INode = {
+				id: 'node-chain',
+				name: 'Basic LLM Chain',
+				type: '@n8n/n8n-nodes-langchain.chainLlm',
+				typeVersion: 1.5,
+				parameters: {},
+				position: [0, 0],
+			};
+			const subNode: INode = {
+				id: 'node-anthropic',
+				name: 'Anthropic Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+				typeVersion: 1.3,
+				parameters: {},
+				position: [0, 0],
+			};
+			const executeData = mock<IExecuteData>({ node: parentNode });
+			const expressionResolveValues = mock<ICredentialsExpressionResolveValues>({
+				node: subNode,
+			});
+
+			await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'anthropicApi',
+				'manual',
+				executeData,
+				false,
+				expressionResolveValues,
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ node: subNode }),
 			);
 		});
 	});

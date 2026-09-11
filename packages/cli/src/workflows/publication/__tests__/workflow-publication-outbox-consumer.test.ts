@@ -626,6 +626,61 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
 		});
 
+		test('releases the workflow lock after the lease when abandoned trigger operations never settle', async () => {
+			const record = makeRecord({ id: 1, workflowId: 'wf-1' });
+			applier.apply.mockImplementationOnce(async (_record, abort) => {
+				abort?.onDetached(new Promise(() => {}));
+				return { type: 'failed', error: new Error('deadline') };
+			});
+			const controller = new AbortController();
+
+			const processing = consumer.processRecord(record, controller.signal);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			// Just short of the bound the lock is still held...
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000 - 1);
+			expect(lifecycleLock.isLocked('wf-1')).toBe(true);
+
+			// ...and at the bound it is released, with the orphan reported.
+			await vi.advanceTimersByTimeAsync(1);
+			await processing;
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('trigger operations still pending'),
+				}),
+				{ shouldBeLogged: true },
+			);
+		});
+
+		test('a later record for a workflow whose abandoned trigger operation never settles is applied once the lock is released', async () => {
+			const first = makeRecord({ id: 1, workflowId: 'wf-1' });
+			applier.apply.mockImplementationOnce(async (_record, abort) => {
+				abort?.onDetached(new Promise(() => {}));
+				return { type: 'failed', error: new Error('deadline') };
+			});
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(first).mockResolvedValue(null);
+			consumer.startPolling();
+
+			// The first drain settles once the lock is released at the bound.
+			const firstDrain = consumer.drainPending();
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+			await firstDrain;
+			expect(lifecycleLock.isLocked('wf-1')).toBe(false);
+
+			// The user republishes wf-1: the record applies normally.
+			const second = makeRecord({ id: 2, workflowId: 'wf-1' });
+			outboxRepository.claimNextPendingRecord.mockResolvedValueOnce(second).mockResolvedValue(null);
+			await consumer.drainPending();
+
+			expect(applier.apply).toHaveBeenCalledTimes(2);
+			expect(reporter.report).toHaveBeenCalledWith(
+				second,
+				expect.objectContaining({ type: 'completed' }),
+			);
+		});
+
 		test('fails a record whose abort fires before it could start applying', async () => {
 			const record = makeRecord({ id: 7, workflowId: 'wf-7' });
 			const controller = new AbortController();
