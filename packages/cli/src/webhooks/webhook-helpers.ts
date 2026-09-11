@@ -1123,24 +1123,16 @@ export async function executeWebhook(
 
 		const activeExecutions = Container.get(ActiveExecutions);
 
-		// Get a promise which resolves when the workflow did execute and send then response.
-		// Capture runId with the promise so a later parent-resume DB fallback finalizes
-		// THIS run, not a replacement that may already own the same execution id.
-		const { promise: executePromise, runId: childRunId } =
-			activeExecutions.getPostExecutePromiseWithRunId(executionId);
+		// Get a promise which resolves when the workflow did execute and send then response
+		const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void Container.get(WaitTracker).resumeParentExecution(
-				parentExecution,
-				executePromise,
-				{
-					executionId,
-					workflowId: workflowData.id,
-				},
-				childRunId,
-			);
+			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
+				executionId,
+				workflowId: workflowData.id,
+			});
 		}
 
 		if (!didSendResponse) {

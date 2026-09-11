@@ -482,21 +482,16 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns `true` if the caller may proceed to claim the parent, `false` if this child does
- * not own the parent's current wait and the caller must stop without claiming. A child owns a
- * wait when its execution id is in that wait's `waitingChildExecutionIds` tag. For parks
- * written before tagging existed (no tag key), the Execute Workflow node's own `subExecution`
- * — on task metadata (single-item mode) or on the waiting task's output items (per-item mode)
- * — identifies the child; a wait that names the child nowhere (a plain Wait node, or a
- * sibling's wait) is never this child's wait.
+ * @returns Promise that resolves when the parent execution has been updated
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<boolean> {
+): Promise<void> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
+	if (!subworkflowError && !lastExecutedNodeData?.data) return;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -504,50 +499,15 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return true;
+		return;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return true;
+		return;
 	}
-
-	// A child resume may find the parent parked at a LATER wait: a sibling already resumed
-	// the wait this child belongs to, and the parent moved on to another Execute Workflow /
-	// Agent node or to a plain Wait node. Each child-caused park tags the ids that caused it
-	// (see `BaseExecuteContext.executeWorkflow`); a plain Wait node has no tag. A child must
-	// only patch and claim a wait that names it — never an untagged one, or a sibling's
-	// output would land on the wrong node and resume a wait it never satisfied.
-	if (childExecution?.executionId) {
-		const { executionId: childId } = childExecution;
-		const metadata = nodeExecutionStack[0].metadata;
-		let ownsWait: boolean;
-		if (metadata?.waitingChildExecutionIds !== undefined) {
-			ownsWait = metadata.waitingChildExecutionIds.includes(childId);
-		} else {
-			// Legacy park (before tagging). Single-item mode names its child on task metadata;
-			// per-item mode names each child on the waiting task's output items. Both are
-			// checked, not either/or: a failed sibling's patch writes `subExecution` onto the
-			// stack entry below, which must not lock out the remaining siblings.
-			const waitingTasks = parent.data.resultData?.runData?.[nodeExecutionStack[0].node.name];
-			const waitingTask = waitingTasks?.[waitingTasks.length - 1];
-			const namedOnOutput = Object.values(waitingTask?.data ?? {}).some((outputs) =>
-				outputs.some((items) =>
-					items?.some((item) => item.metadata?.subExecution?.executionId === childId),
-				),
-			);
-			ownsWait = metadata?.subExecution?.executionId === childId || namedOnOutput;
-		}
-		if (!ownsWait) return false;
-	}
-
-	// Nothing to patch: the child reported no error and its last node produced no output.
-	// This is checked only after the ownership test above, because a child that owns no
-	// wait must be stopped whatever it produced — an empty result is not a licence to
-	// claim a sibling's wait.
-	if (!subworkflowError && !lastExecutedNodeData?.data) return true;
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
@@ -609,7 +569,6 @@ export async function updateParentExecutionWithChildResults(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
-	return true;
 }
 
 /**

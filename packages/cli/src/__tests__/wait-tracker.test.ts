@@ -197,14 +197,12 @@ describe('WaitTracker', () => {
 				workflowRunner.run.mockReset();
 			});
 
-			/** A parent stack parked at an Execute Sub-workflow node, tagged with the given child ids. */
-			const taggedParentStack = (childExecutionIds: string[]): IExecuteData[] => [
+			/** A parent stack parked at an Execute Sub-workflow node. */
+			const parentStack = (): IExecuteData[] => [
 				{
 					node: mock<INode>({ name: 'Execute Sub Workflow' }),
 					data: { main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]] },
 					source: { main: [{ previousNode: 'Manual Trigger' }] },
-					// The park is tagged with the child that caused it (see BaseExecuteContext).
-					metadata: { waitingChildExecutionIds: childExecutionIds },
 				},
 			];
 
@@ -251,9 +249,9 @@ describe('WaitTracker', () => {
 					.calledWith(parentExecution.id)
 					.mockResolvedValue(parentExecution);
 				const postExecutePromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromiseWithRunId
+				activeExecutions.getPostExecutePromise
 					.calledWith(execution.id)
-					.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
+					.mockReturnValue(postExecutePromise.promise);
 
 				return { parentExecution, subworkflowResults, postExecutePromise };
 			};
@@ -375,7 +373,7 @@ describe('WaitTracker', () => {
 					workflowId: 'parent_workflow_id',
 					storedAt: 'db',
 					data: createRunExecutionData({
-						executionData: { nodeExecutionStack: taggedParentStack([execution.id]) },
+						executionData: { nodeExecutionStack: parentStack() },
 					}),
 				};
 
@@ -416,9 +414,9 @@ describe('WaitTracker', () => {
 				// Mock updateExistingExecution to always succeed
 				executionPersistence.updateExistingExecution.mockResolvedValue(true);
 				const subExecutionPromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromiseWithRunId
+				activeExecutions.getPostExecutePromise
 					.calledWith(execution.id)
-					.mockReturnValue({ promise: subExecutionPromise.promise, runId: 'child-run-id' });
+					.mockReturnValue(subExecutionPromise.promise);
 
 				// ACT 1
 				await waitTracker.startExecution(execution.id);
@@ -516,9 +514,9 @@ describe('WaitTracker', () => {
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
 				const postExecutePromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromiseWithRunId
+				activeExecutions.getPostExecutePromise
 					.calledWith(childExecution.id)
-					.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
+					.mockReturnValue(postExecutePromise.promise);
 
 				// ACT
 				await waitTracker.startExecution(childExecution.id);
@@ -597,7 +595,7 @@ describe('WaitTracker', () => {
 						workflowId: 'parent_workflow_id',
 						storedAt: 'db',
 						data: createRunExecutionData({
-							executionData: { nodeExecutionStack: taggedParentStack([execution.id]) },
+							executionData: { nodeExecutionStack: parentStack() },
 						}),
 					};
 					execution.data.parentExecution = {
@@ -638,9 +636,9 @@ describe('WaitTracker', () => {
 						new Error('connection terminated unexpectedly'),
 					);
 					const postExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromiseWithRunId
+					activeExecutions.getPostExecutePromise
 						.calledWith(execution.id)
-						.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
+						.mockReturnValue(postExecutePromise.promise);
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
@@ -883,261 +881,6 @@ describe('WaitTracker', () => {
 					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + single claim attempt
 					expect(logger.error).not.toHaveBeenCalled();
 				});
-
-				it.each<{ laterWait: string; executeData: IExecuteData }>([
-					{
-						laterWait: 'another sub-workflow node tagged with a sibling',
-						executeData: {
-							node: mock<INode>({ name: 'Execute Sub Workflow' }),
-							data: { main: [[{ json: { data: 'Parent input data' } }]] },
-							source: { main: [{ previousNode: 'Manual Trigger' }] },
-							// Tagged with a sibling's id — this child (`execution.id` '123') is NOT in it.
-							metadata: { waitingChildExecutionIds: ['sibling_child_id'] },
-						},
-					},
-					{
-						laterWait: 'an untagged plain Wait node',
-						executeData: {
-							node: mock<INode>({ name: 'Wait' }),
-							data: { main: [[{ json: { data: 'Parent input data' } }]] },
-							source: { main: [{ previousNode: 'Execute Sub Workflow' }] },
-							// A plain Wait node's park carries no child tag at all.
-						},
-					},
-				])(
-					'bails without patching or claiming when the parent parked at $laterWait',
-					async ({ executeData }) => {
-						// A late-finishing sibling whose wait was already resumed by another child finds
-						// the parent parked at a LATER wait. A child owns a wait only if that wait's tag
-						// names it: a wait tagged with a different sibling, or a plain Wait node with no
-						// tag, is never this child's wait, so it must stop instead of patching the wrong
-						// stack entry and claiming a wait it never satisfied.
-						workflowRunner.run.mockResolvedValue(execution.id); // child run only — no claim
-						executionPersistence.updateExistingExecution.mockResolvedValue(true);
-
-						const parentExecution: IExecutionResponse = {
-							id: 'parent_execution_id',
-							finished: false,
-							status: 'waiting',
-							waitTill: WAIT_INDEFINITELY,
-							workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
-							customData: {},
-							annotation: { tags: [] },
-							createdAt: new Date(),
-							startedAt: new Date(),
-							mode: 'manual',
-							workflowId: 'parent_workflow_id',
-							storedAt: 'db',
-							data: createRunExecutionData({
-								executionData: { nodeExecutionStack: [executeData] },
-							}),
-						};
-
-						execution.data.parentExecution = {
-							executionId: parentExecution.id,
-							workflowId: parentExecution.workflowData.id,
-							shouldResume: true,
-						};
-
-						const finalNodeName = 'Final Node';
-						const subworkflowResults: IRun = {
-							mode: 'manual',
-							startedAt: new Date(),
-							status: 'success',
-							data: createRunExecutionData({
-								resultData: {
-									runData: {
-										[finalNodeName]: [
-											{
-												startTime: new Date().getTime(),
-												executionTime: 5,
-												executionIndex: 0,
-												source: [{ previousNode: 'Wait Node' }],
-												data: { main: [[{ json: { data: 'Late sibling output' } }]] },
-											},
-										],
-									},
-									lastNodeExecuted: finalNodeName,
-								},
-							}),
-							storedAt: 'db',
-						};
-
-						executionPersistence.findSingleExecution.mockImplementation(async (id) =>
-							id === parentExecution.id ? parentExecution : execution,
-						);
-						const postExecutePromise = createDeferredPromise<IRun | undefined>();
-						activeExecutions.getPostExecutePromiseWithRunId
-							.calledWith(execution.id)
-							.mockReturnValue({ promise: postExecutePromise.promise, runId: 'child-run-id' });
-
-						await waitTracker.startExecution(execution.id);
-						postExecutePromise.resolve(subworkflowResults);
-						await vi.advanceTimersByTimeAsync(1000);
-						await vi.advanceTimersByTimeAsync(1000);
-
-						// The patch was NOT applied (the child doesn't own this wait) and no claim was
-						// attempted — only the child run occurred.
-						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
-						expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only, no claim
-						expect(logger.error).not.toHaveBeenCalled();
-					},
-				);
-
-				it('resumes the parent from DB when the child post-execute promise never settles', async () => {
-					// In queue mode `postExecutePromise` only settles after Bull's
-					// `job.finished()`. A lost completion leaves it pending forever even when the
-					// child row is already terminal — recover by loading the run from the DB.
-					const parentExecution: IExecutionResponse = {
-						id: 'parent_execution_id',
-						finished: false,
-						status: 'waiting',
-						waitTill: WAIT_INDEFINITELY,
-						workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
-						customData: {},
-						annotation: { tags: [] },
-						createdAt: new Date(),
-						startedAt: new Date(),
-						mode: 'manual',
-						workflowId: 'parent_workflow_id',
-						storedAt: 'db',
-						data: createRunExecutionData({
-							executionData: { nodeExecutionStack: taggedParentStack([execution.id]) },
-						}),
-					};
-
-					execution.data.parentExecution = {
-						executionId: parentExecution.id,
-						workflowId: parentExecution.workflowData.id,
-						shouldResume: true,
-					};
-
-					const finalNodeName = 'Final Node';
-					const childRunData = createRunExecutionData({
-						resultData: {
-							runData: {
-								[finalNodeName]: [
-									{
-										startTime: new Date().getTime(),
-										executionTime: 5,
-										executionIndex: 0,
-										source: [{ previousNode: 'Wait Node' }],
-										data: { main: [[{ json: { data: 'Recovered from DB' } }]] },
-									},
-								],
-							},
-							lastNodeExecuted: finalNodeName,
-						},
-					});
-
-					const terminalChild: IExecutionResponse = {
-						...execution,
-						id: execution.id,
-						finished: true,
-						status: 'success',
-						waitTill: undefined,
-						data: childRunData,
-						workflowData: execution.workflowData,
-						storedAt: 'db',
-						mode: 'manual',
-						startedAt: new Date(),
-						createdAt: new Date(),
-						customData: {},
-						annotation: { tags: [] },
-						workflowId: execution.workflowData.id,
-					};
-
-					workflowRunner.run.mockResolvedValue(execution.id);
-					executionPersistence.updateExistingExecution.mockResolvedValue(true);
-
-					let childReads = 0;
-					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
-						if (id === parentExecution.id) return parentExecution;
-						if (id === execution.id) {
-							childReads += 1;
-							// First read is startExecution (child still waiting); later polls see it done.
-							return childReads === 1 ? execution : terminalChild;
-						}
-						return undefined;
-					});
-
-					// Promise never resolves — simulates a lost Bull job.finished() signal.
-					// Capture run identity with the promise; a later getRunId could return a
-					// replacement's id, so finalize must use the captured one.
-					const postExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromiseWithRunId.calledWith(execution.id).mockReturnValue({
-						promise: postExecutePromise.promise,
-						runId: 'original-child-run-id',
-					});
-					// If read live, this would be the wrong (replacement) identity.
-					activeExecutions.getRunId.mockReturnValue('replacement-run-id');
-					activeExecutions.has.mockReturnValue(true);
-
-					await waitTracker.startExecution(execution.id);
-					await vi.advanceTimersByTimeAsync(1000);
-					await vi.advanceTimersByTimeAsync(1000);
-
-					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
-						execution.id,
-						expect.objectContaining({
-							status: 'success',
-							data: childRunData,
-						}),
-						'original-child-run-id',
-					);
-					expect(activeExecutions.getRunId).not.toHaveBeenCalled();
-					expect(logger.warn).toHaveBeenCalledWith(
-						'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
-						expect.objectContaining({
-							parentExecutionId: parentExecution.id,
-							childExecutionId: execution.id,
-							childStatus: 'success',
-						}),
-					);
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-						parentExecution.id,
-						expect.objectContaining({
-							data: expect.objectContaining({
-								executionData: expect.objectContaining({
-									nodeExecutionStack: [
-										expect.objectContaining({
-											data: { main: [[{ json: { data: 'Recovered from DB' } }]] },
-										}),
-									],
-								}),
-							}),
-						}),
-					);
-					expect(workflowRunner.run).toHaveBeenCalledTimes(2); // child + parent claim
-					expect(logger.error).not.toHaveBeenCalled();
-				});
-
-				it('logs an error and does not claim the parent when the child never finishes', async () => {
-					const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
-					workflowRunner.run.mockResolvedValue(execution.id);
-
-					executionPersistence.findSingleExecution.mockImplementation(async (id) => {
-						if (id === parentExecution.id) return parentExecution;
-						// Child stays non-terminal for every poll (and for startExecution).
-						return execution;
-					});
-
-					await waitTracker.startExecution(execution.id);
-					// Never resolve postExecutePromise. Advance past the child settle budget.
-					await vi.advanceTimersByTimeAsync(60 * 60 * 1000 + 1000);
-
-					expect(logger.error).toHaveBeenCalledWith(
-						'Timed out waiting for child execution to complete before resuming parent',
-						expect.objectContaining({
-							parentExecutionId: parentExecution.id,
-							childExecutionId: execution.id,
-						}),
-					);
-					expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
-					expect(workflowRunner.run).toHaveBeenCalledTimes(1); // child only
-					// Keep the dangling promise from leaking into later tests.
-					postExecutePromise.resolve(undefined);
-				});
 			});
 
 			describe('leader stepdown does not affect in-flight resumes', () => {
@@ -1151,7 +894,7 @@ describe('WaitTracker', () => {
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 
 					parentExecution.data = createRunExecutionData({
-						executionData: { nodeExecutionStack: taggedParentStack([execution.id]) },
+						executionData: { nodeExecutionStack: parentStack() },
 					});
 
 					// Parent is still running when the child finishes; it parks after stepdown.
@@ -1207,7 +950,7 @@ describe('WaitTracker', () => {
 						workflowId: 'grandparent_workflow_id',
 						storedAt: 'db',
 						data: createRunExecutionData({
-							executionData: { nodeExecutionStack: taggedParentStack([parentExecution.id]) },
+							executionData: { nodeExecutionStack: parentStack() },
 						}),
 					};
 					parentExecution.data.parentExecution = {
@@ -1217,12 +960,9 @@ describe('WaitTracker', () => {
 					};
 
 					const parentPostExecutePromise = createDeferredPromise<IRun | undefined>();
-					activeExecutions.getPostExecutePromiseWithRunId
+					activeExecutions.getPostExecutePromise
 						.calledWith(parentExecution.id)
-						.mockReturnValue({
-							promise: parentPostExecutePromise.promise,
-							runId: 'parent-run-id',
-						});
+						.mockReturnValue(parentPostExecutePromise.promise);
 
 					workflowRunner.run.mockResolvedValue(execution.id);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
@@ -1249,7 +989,6 @@ describe('WaitTracker', () => {
 						},
 						postExecutePromise.promise,
 						{ executionId: execution.id, workflowId: execution.workflowData.id },
-						'child-run-id',
 					);
 					postExecutePromise.resolve(subworkflowResults);
 					// Let the outer resume claim the parent and the nested resume start.

@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, type IExecutionBase, type IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository, type IExecutionBase } from '@n8n/db';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -39,13 +39,6 @@ const MAX_PARENT_RESUME_ATTEMPTS = 3;
  */
 const PARENT_RESUME_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
 
-/**
- * How long we wait for the child's in-memory `postExecutePromise` before giving up.
- * In queue mode that promise only settles after `job.finished()` to
- * `finalizeExecution`. Polling the DB during this window recovers the cascade.
- */
-const CHILD_RUN_SETTLE_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
-
 /** Delay before the resume loops re-check the parent / child row in the DB the first time. */
 const RESUME_POLL_INTERVAL_MS = 1000;
 
@@ -80,20 +73,6 @@ function resumePollDelay(attempt: number): number {
  */
 function isRetryableResumeError(error: unknown): boolean {
 	return !(error instanceof UserError || error instanceof UnexpectedError);
-}
-
-/** Project a persisted execution onto the `IRun` shape `resumeParentExecution` consumes. */
-function executionResponseToRun(execution: IExecutionResponse): IRun {
-	return {
-		data: execution.data,
-		mode: execution.mode,
-		startedAt: execution.startedAt,
-		stoppedAt: execution.stoppedAt,
-		status: execution.status,
-		finished: execution.finished,
-		waitTill: execution.waitTill,
-		storedAt: execution.storedAt,
-	};
 }
 
 @Service()
@@ -232,8 +211,11 @@ export class WaitTracker {
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			const { promise, runId } = this.activeExecutions.getPostExecutePromiseWithRunId(executionId);
-			void this.resumeParentExecution(parentExecution, promise, { executionId, workflowId }, runId);
+			void this.resumeParentExecution(
+				parentExecution,
+				this.activeExecutions.getPostExecutePromise(executionId),
+				{ executionId, workflowId },
+			);
 		}
 	}
 
@@ -248,18 +230,10 @@ export class WaitTracker {
 	 * early-returns on a non-`waiting` parent) and the parent then strands at
 	 * `WAIT_INDEFINITELY`, which the waiting-executions sweep never picks up.
 	 *
-	 * In queue mode the child's `postExecutePromise` only settles after
-	 * `job.finished()` to `finalizeExecution`. A lost completion event leaves that
-	 * promise pending forever even when the child row is already terminal, so we
-	 * race the promise against DB polls and resume from the persisted run when needed.
-	 *
 	 * So this retries the resume until the parent parks, then patches its stack
 	 * and claims it. It bails when the parent is gone/terminal, when a sibling
 	 * already claimed it (`ExecutionAlreadyResumingError`, expected in "run once
-	 * for each item" mode), when the parent parked at a LATER wait than the one
-	 * this child belongs to (`updateParentExecutionWithChildResults` reports the
-	 * child isn't in the wait's tagged set — a sibling already resumed its wait),
-	 * or when the timeout elapses.
+	 * for each item" mode), or when the timeout elapses.
 	 * Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS` for transient
 	 * failures so a flaky DB write recovers. This never rejects, so callers can
 	 * invoke it fire and forget.
@@ -276,20 +250,9 @@ export class WaitTracker {
 		parentExecution: RelatedExecution,
 		executePromise: Promise<IRun | undefined>,
 		childExecution?: RelatedExecution,
-		/**
-		 * Identity of the child run that owns `executePromise`, captured atomically
-		 * with the promise via `getPostExecutePromiseWithRunId`. Required for the DB
-		 * fallback finalize so a later replacement's runId is not used by mistake.
-		 */
-		childRunId?: string,
 	): Promise<void> {
 		try {
-			const subworkflowResults = await this.awaitChildRunOrLoadFromDb(
-				childExecution?.executionId,
-				executePromise,
-				parentExecution.executionId,
-				childRunId,
-			);
+			const subworkflowResults = await executePromise;
 			if (!subworkflowResults) return;
 			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
@@ -316,7 +279,7 @@ export class WaitTracker {
 
 				if (parent?.status === 'waiting') {
 					// Parent parked — patch its stack, then claim and resume it.
-					const belongsToThisWait = await this.withRetry(
+					await this.withRetry(
 						async () =>
 							await updateParentExecutionWithChildResults(
 								parentExecution.executionId,
@@ -326,11 +289,6 @@ export class WaitTracker {
 						MAX_PARENT_RESUME_ATTEMPTS,
 						isRetryableResumeError,
 					);
-
-					// The parent is parked at a LATER wait — a sibling already resumed the one
-					// this child belongs to. Stop instead of patching the wrong stack entry
-					// and claiming a wait this child never satisfied.
-					if (!belongsToThisWait) return;
 
 					try {
 						await this.withRetry(
@@ -374,119 +332,21 @@ export class WaitTracker {
 	}
 
 	/**
-	 * Wait for the child's in-memory `postExecutePromise`, or load a terminal run
-	 * from the DB if that promise never settles (queue-mode completion loss).
-	 * On the DB fallback, identity-checks `finalizeExecution` with `childRunId`
-	 * (captured with the promise) so the child's capacity is released without
-	 * resolving a replacement run that may already own this execution id.
-	 * Returns `undefined` when the deadline elapses with no terminal child.
-	 */
-	private async awaitChildRunOrLoadFromDb(
-		childExecutionId: string | undefined,
-		executePromise: Promise<IRun | undefined>,
-		parentExecutionId: string,
-		childRunId?: string,
-	): Promise<IRun | undefined> {
-		if (!childExecutionId) {
-			return await executePromise;
-		}
-
-		const deadline = Date.now() + CHILD_RUN_SETTLE_TIMEOUT_MS;
-		let lastKnownChildStatus: string | undefined;
-		let pollAttempt = 0;
-
-		// Prefer the in-memory promise (fast path). Race it against poll ticks so a
-		// settled promise is not delayed by the full interval, while a lost Bull
-		// completion can still be recovered from the DB.
-		const settled = executePromise.then(
-			(run) => ({ kind: 'promise' as const, run }),
-			(error: unknown) => ({ kind: 'rejected' as const, error }),
-		);
-
-		for (;;) {
-			const remaining = deadline - Date.now();
-			if (remaining <= 0) {
-				this.logger.error(
-					'Timed out waiting for child execution to complete before resuming parent',
-					{
-						parentExecutionId,
-						childExecutionId,
-						lastKnownChildStatus,
-					},
-				);
-				return undefined;
-			}
-
-			const winner = await Promise.race([
-				settled,
-				sleep(Math.min(resumePollDelay(++pollAttempt), remaining)).then(
-					() => ({ kind: 'tick' as const }) as const,
-				),
-			]);
-
-			if (winner.kind === 'rejected') throw winner.error;
-			if (winner.kind === 'promise') return winner.run;
-
-			try {
-				// Lightweight status check — avoid loading the full run data every tick.
-				// Only refetch with data when the child is terminal, so a 60min wait at
-				// 1s intervals does at most one heavy query instead of ~3600.
-				const childStatus = await this.executionPersistence.findSingleExecution(childExecutionId, {
-					includeData: false,
-				});
-				lastKnownChildStatus = childStatus?.status;
-				if (childStatus && isTerminalExecutionStatus(childStatus.status)) {
-					const child = await this.executionPersistence.findSingleExecution(childExecutionId, {
-						includeData: true,
-						unflattenData: true,
-					});
-					// Defensive: every write path creates, updates and deletes the row and its
-					// data together, so a terminal row always carries a data object. A row
-					// without one means data loss outside this code, not a race to handle.
-					if (child?.data) {
-						const run = executionResponseToRun(child);
-						// The in-memory promise never settled, so neither did the capacity-releasing
-						// `.finally` on that run. Finalize with the runId captured alongside the
-						// promise: a live `getRunId` could return a replacement's identity.
-						if (childRunId !== undefined) {
-							this.activeExecutions.finalizeExecution(childExecutionId, run, childRunId);
-						}
-						this.logger.warn(
-							'Child execution finished in DB but post-execute promise did not settle; resuming parent from DB',
-							{
-								parentExecutionId,
-								childExecutionId,
-								childStatus: child.status,
-							},
-						);
-						return run;
-					}
-				}
-			} catch (error) {
-				this.logger.debug('Failed to poll child execution status while waiting to resume parent', {
-					parentExecutionId,
-					childExecutionId,
-					error: ensureError(error).message,
-				});
-			}
-		}
-	}
-
-	/**
 	 * Run an operation up to `maxAttempts` times with exponential backoff, returning
 	 * on the first success and rethrowing the last error if they all fail. Generic
 	 * (not specific to parent resume) — the caller passes the attempt count and an
 	 * optional `shouldRetry` predicate; an error it rejects is rethrown immediately
 	 * instead of being retried.
 	 */
-	private async withRetry<T>(
-		operation: () => Promise<T>,
+	private async withRetry(
+		operation: () => Promise<void>,
 		maxAttempts: number,
 		shouldRetry: (error: unknown) => boolean = () => true,
-	): Promise<T> {
+	): Promise<void> {
 		for (let attempt = 1; ; attempt++) {
 			try {
-				return await operation();
+				await operation();
+				return;
 			} catch (error) {
 				if (attempt >= maxAttempts || !shouldRetry(error)) throw error;
 				await sleep(100 * 2 ** (attempt - 1));

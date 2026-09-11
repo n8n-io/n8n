@@ -560,10 +560,6 @@ async function startExecution(
 
 	const startTime = Date.now();
 
-	// Identity of this run, captured at attach time and threaded through every
-	// `finalizeExecution` so a run only ever resolves its own postExecutePromise
-	// (see `ActiveExecutions.finalizeExecution`).
-	let runId: string | undefined;
 	let data;
 	try {
 		if (isInlineSubworkflow && additionalData.userId) {
@@ -644,7 +640,6 @@ async function startExecution(
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
-		runId = activeExecutions.getRunId(executionId);
 		data = await execution;
 	} catch (error) {
 		const executionError = error as ExecutionError;
@@ -673,7 +668,7 @@ async function startExecution(
 			fullExecutionData.workflowId = workflowData.id;
 		}
 
-		activeExecutions.finalizeExecution(executionId, fullRunData, runId);
+		activeExecutions.finalizeExecution(executionId, fullRunData);
 
 		await Container.get(ExecutionPersistence).updateExistingExecution(
 			executionId,
@@ -701,7 +696,7 @@ async function startExecution(
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
-		activeExecutions.finalizeExecution(executionId, data, runId);
+		activeExecutions.finalizeExecution(executionId, data);
 
 		return {
 			executionId,
@@ -711,7 +706,7 @@ async function startExecution(
 			...summarizeDynamicCredentialsUsage(data.data),
 		};
 	}
-	activeExecutions.finalizeExecution(executionId, data, runId);
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// Workflow did fail
 	const { error } = data.data.resultData;
