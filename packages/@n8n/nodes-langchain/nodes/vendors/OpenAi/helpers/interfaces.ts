@@ -85,23 +85,12 @@ export type ChatCompletion = {
 };
 
 /**
- * Shape of the responses returned by the `/images/generations` and `/images/edits`
- * endpoints. Note that the images API reports usage as `input_tokens` /
+ * Response shape of the `/images/generations` and `/images/edits` endpoints, including
+ * the `usage` block the images API returns. Note that it reports `input_tokens` /
  * `output_tokens`, unlike the Chat Completions naming (`prompt_tokens` /
  * `completion_tokens`) used by `ChatCompletion` above.
  */
-export type ImageResponse = {
-	data?: IDataObject[];
-	usage?: {
-		input_tokens: number;
-		output_tokens: number;
-		total_tokens?: number;
-		input_tokens_details?: {
-			text_tokens?: number;
-			image_tokens?: number;
-		};
-	};
-};
+export type ImageResponse = OpenAIClient.Images.ImagesResponse;
 
 export type ThreadMessage = {
 	id: string;
