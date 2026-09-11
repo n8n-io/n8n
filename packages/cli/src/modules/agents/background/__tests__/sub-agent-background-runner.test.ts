@@ -1,9 +1,19 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import type {
+	AgentSandboxRuntime,
+	AgentSandboxRuntimeService,
+} from '../../agent-sandbox-runtime.service';
+import type { AgentWorkspaceService } from '../../agent-workspace.service';
+import type {
+	AgentBackgroundJob,
+	AgentBackgroundJobSuspension,
+} from '../../entities/agent-background-job.entity';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
 import { SUB_AGENT_BACKGROUND_TIMEOUT_MS } from '../agent-background-job.service';
@@ -26,6 +36,27 @@ function completedRunResult(overrides: Partial<SubAgentRunResult> = {}): SubAgen
 	} as SubAgentRunResult;
 }
 
+function suspendedRunResult(suspendPayload: unknown = { type: 'approval', toolName: 'http' }) {
+	return completedRunResult({
+		status: 'suspended',
+		resumeContext: { agentId: 'sub-1' },
+		result: {
+			runId: 'run-1',
+			messages: [],
+			pendingSuspend: [
+				{
+					runId: 'run-1',
+					toolCallId: 'c1',
+					toolName: 'approval',
+					input: {},
+					suspendPayload,
+				},
+			],
+			getState: () => ({}),
+		},
+	} as unknown as Partial<SubAgentRunResult>);
+}
+
 const request: BackgroundSpawnRequest = {
 	subAgentId: 'sub-1',
 	source: { agentId: 'sub-1' },
@@ -36,9 +67,13 @@ const request: BackgroundSpawnRequest = {
 	parentSandboxPrincipalHash: 'principal-hash',
 };
 
+const parentPrincipalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+
 function setup() {
 	const runner = mock<SubAgentRunner>();
 	const jobService = mock<AgentBackgroundJobService>();
+	const agentWorkspaceService = mock<AgentWorkspaceService>();
+	const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 
@@ -47,16 +82,33 @@ function setup() {
 		jobId: id,
 	}));
 	jobService.settle.mockResolvedValue(true);
+	jobService.park.mockResolvedValue(true);
+	jobService.settleSuspended.mockResolvedValue(true);
 	runner.run.mockResolvedValue(completedRunResult());
+	runner.resumeForeground.mockResolvedValue(completedRunResult());
+	agentSandboxRuntimeService.isEnabled.mockReturnValue(false);
 
-	const backgroundRunner = new SubAgentBackgroundRunner(runner, jobService, logger);
+	const backgroundRunner = new SubAgentBackgroundRunner(
+		runner,
+		jobService,
+		agentWorkspaceService,
+		agentSandboxRuntimeService,
+		logger,
+	);
 	const context = {
 		projectId: 'project-1',
 		parentAgentId: 'agent-1',
 		credentialProvider: mock<CredentialProvider>(),
 		runType: 'production' as const,
 	};
-	return { backgroundRunner, runner, jobService, context };
+	return {
+		backgroundRunner,
+		runner,
+		jobService,
+		agentWorkspaceService,
+		agentSandboxRuntimeService,
+		context,
+	};
 }
 
 async function flushDetachedRun() {
@@ -173,26 +225,37 @@ describe('spawn', () => {
 		});
 	});
 
-	it('settles a suspended child as failed — background runs cannot answer HITL', async () => {
+	it('parks a suspended child with its resume context', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
-		runner.run.mockResolvedValue(
-			completedRunResult({
-				status: 'suspended',
-				result: {
-					runId: 'run-1',
-					messages: [],
-					pendingSuspend: [{ runId: 'run-1', toolCallId: 'c1', toolName: 't', input: {} }],
-					getState: () => ({}),
-				},
-			} as unknown as Partial<SubAgentRunResult>),
-		);
+		runner.run.mockResolvedValue(suspendedRunResult());
 
 		await backgroundRunner.spawn(request, context);
 		await flushDetachedRun();
 
-		expect(jobService.settle).toHaveBeenCalledWith(
+		expect(jobService.park).toHaveBeenCalledWith(
 			expect.any(String),
-			expect.objectContaining({ status: 'failed', error: expect.stringContaining('human input') }),
+			expect.objectContaining({
+				childRunId: 'run-1',
+				childToolCallId: 'c1',
+				suspendPayload: { type: 'approval', toolName: 'http' },
+				resumeContext: { agentId: 'sub-1' },
+			}),
+		);
+		expect(jobService.settle).not.toHaveBeenCalled();
+	});
+
+	it('fails a suspended child whose request is not an approval', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		runner.run.mockResolvedValue(suspendedRunResult({ type: 'question', message: 'Choose' }));
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(jobService.park).not.toHaveBeenCalled();
+		expect(jobService.settleSuspended).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ status: 'failed' }),
+			{ runId: 'run-1', agentId: 'sub-1' },
 		);
 	});
 
@@ -227,5 +290,115 @@ describe('spawn', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe('resume', () => {
+	const job = mock<AgentBackgroundJob>({
+		id: 'job-1',
+		parentAgentId: 'agent-1',
+		parentThreadId: 'thread-1',
+		title: 'research',
+		subAgentId: 'sub-1',
+		childThreadId: 'child-thread-1',
+		parentPrincipalHash,
+	});
+	const suspension: AgentBackgroundJobSuspension = {
+		childRunId: 'run-1',
+		childToolCallId: 'c1',
+		childAgentId: 'sub-1',
+		suspendPayload: { type: 'approval', toolName: 'http' },
+		taskPath: '/root/research_0',
+		resumeContext: { agentId: 'sub-1' },
+		goal: 'find things',
+	};
+
+	it('continues the child from its checkpoint with the parent context and settles the answer', async () => {
+		const {
+			backgroundRunner,
+			runner,
+			jobService,
+			agentWorkspaceService,
+			agentSandboxRuntimeService,
+			context,
+		} = setup();
+		const user = { id: 'user-1' } as User;
+		const parentWorkspaceHandle = mock<AgentSandboxRuntime>();
+		agentSandboxRuntimeService.isEnabled.mockReturnValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace: {} as never,
+			handle: parentWorkspaceHandle,
+		});
+
+		backgroundRunner.resume(job, suspension, { approved: true }, { ...context, user });
+		await flushDetachedRun();
+
+		expect(agentWorkspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			parentPrincipalHash,
+		);
+		expect(runner.resumeForeground).toHaveBeenCalledWith(
+			expect.objectContaining({
+				childRunId: 'run-1',
+				childToolCallId: 'c1',
+				childThreadId: 'child-thread-1',
+				resumeContext: { agentId: 'sub-1' },
+				resumeData: { approved: true },
+			}),
+			expect.objectContaining({
+				projectId: 'project-1',
+				runType: 'production',
+				credentialProvider: context.credentialProvider,
+				user,
+				parentWorkspaceHandle,
+			}),
+		);
+		expect(jobService.settle).toHaveBeenCalledWith('job-1', {
+			status: 'completed',
+			result: 'the answer',
+		});
+	});
+
+	it('does not acquire a workspace when the sandbox is disabled', async () => {
+		const { backgroundRunner, runner, agentWorkspaceService, context } = setup();
+
+		backgroundRunner.resume(job, suspension, { approved: true }, context);
+		await flushDetachedRun();
+
+		expect(agentWorkspaceService.getAgentWorkspace).not.toHaveBeenCalled();
+		expect(runner.resumeForeground).toHaveBeenCalled();
+		expect(runner.resumeForeground.mock.calls[0][1]).not.toHaveProperty('parentWorkspaceHandle');
+	});
+
+	it('continues without a parent workspace handle when acquisition fails', async () => {
+		const { backgroundRunner, runner, agentWorkspaceService, agentSandboxRuntimeService, context } =
+			setup();
+		agentSandboxRuntimeService.isEnabled.mockReturnValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockRejectedValue(new Error('sandbox unavailable'));
+
+		backgroundRunner.resume(job, suspension, { approved: true }, context);
+		await flushDetachedRun();
+
+		expect(runner.resumeForeground).toHaveBeenCalled();
+		expect(runner.resumeForeground.mock.calls[0][1]).not.toHaveProperty('parentWorkspaceHandle');
+	});
+
+	it('parks the child again when it suspends after resume', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		runner.resumeForeground.mockResolvedValue(
+			suspendedRunResult({ type: 'approval', toolName: 'email' }),
+		);
+
+		backgroundRunner.resume(job, suspension, { approved: true }, context);
+		await flushDetachedRun();
+
+		expect(jobService.park).toHaveBeenCalledWith(
+			'job-1',
+			expect.objectContaining({
+				childRunId: 'run-1',
+				suspendPayload: { type: 'approval', toolName: 'email' },
+			}),
+		);
 	});
 });

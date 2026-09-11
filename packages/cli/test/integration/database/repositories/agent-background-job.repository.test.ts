@@ -27,6 +27,8 @@ describe('AgentBackgroundJobRepository', () => {
 	let repository: AgentBackgroundJobRepository;
 	let agentRepository: AgentRepository;
 	let agentId: string;
+	const suspension = {} as NonNullable<AgentBackgroundJob['suspension']>;
+	const parkedJob = { status: 'running', settledAt: null, suspension } as const;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['agents']);
@@ -75,30 +77,34 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	}
 
-	it('returns unconsumed settled rows of one thread, oldest settlement first', async () => {
+	it('returns unconsumed mail of one thread, oldest settlement first', async () => {
 		const olderId = uuid();
 		const newerId = uuid();
+		const parkedId = uuid();
 		await insertJob({ id: newerId, parentThreadId: 'thread-1', settledAt: new Date() });
 		await insertJob({
 			id: olderId,
 			parentThreadId: 'thread-1',
 			settledAt: new Date(Date.now() - 60_000),
 		});
+		await insertJob({ id: parkedId, parentThreadId: 'thread-1', ...parkedJob });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', notifiedAt: new Date() });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', status: 'running', settledAt: null });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });
 
-		const pending = await repository.findWakeableUnconsumedSettled('thread-1');
+		const pending = await repository.findUnconsumedMail('thread-1');
 
-		expect(pending.map((job) => job.id)).toEqual([olderId, newerId]);
+		expect(pending.map((job) => job.id)).toEqual([olderId, newerId, parkedId]);
 	});
 
-	it('consumes only selected settled rows from the requested thread', async () => {
+	it('consumes only selected mail from the requested thread', async () => {
 		const selectedId = uuid();
 		const otherId = uuid();
+		const parkedId = uuid();
 		const runningId = uuid();
 		await insertJob({ id: selectedId, parentThreadId: 'thread-1' });
 		await insertJob({ id: otherId, parentThreadId: 'thread-1' });
+		await insertJob({ id: parkedId, parentThreadId: 'thread-1', ...parkedJob });
 		await insertJob({
 			id: runningId,
 			parentThreadId: 'thread-1',
@@ -111,17 +117,56 @@ describe('AgentBackgroundJobRepository', () => {
 
 		await expect(repository.markMailConsumed('thread-1', [])).resolves.toBe(0);
 		await expect(
-			repository.markMailConsumed('thread-1', [selectedId, runningId, foreignId]),
-		).resolves.toBe(1);
+			repository.markMailConsumed('thread-1', [selectedId, parkedId, runningId, foreignId]),
+		).resolves.toBe(2);
 
 		const selected = await repository.findById(selectedId);
 		const other = await repository.findById(otherId);
+		const parked = await repository.findById(parkedId);
 		const running = await repository.findById(runningId);
 		const foreign = await repository.findById(foreignId);
 		expect(selected?.notifiedAt).toBeInstanceOf(Date);
 		expect(other?.notifiedAt).toBeNull();
+		expect(parked?.notifiedAt).toBeInstanceOf(Date);
 		expect(running?.notifiedAt).toBeNull();
 		expect(foreign?.notifiedAt).toBeNull();
+	});
+
+	it('clears delivery state when a suspended job is claimed', async () => {
+		const jobId = uuid();
+		const timeoutAt = new Date(Date.now() + 60_000);
+		await insertJob({
+			id: jobId,
+			parentThreadId: 'thread-1',
+			...parkedJob,
+			notifiedAt: new Date(),
+		});
+
+		await expect(repository.claimSuspended(jobId, timeoutAt)).resolves.toBe(true);
+
+		const job = await repository.findById(jobId);
+		expect(job?.notifiedAt).toBeNull();
+	});
+
+	it('makes an expired parked job fresh mail even when its parked mail was already consumed', async () => {
+		const jobId = uuid();
+		await insertJob({
+			id: jobId,
+			parentThreadId: 'thread-1',
+			...parkedJob,
+			notifiedAt: new Date(),
+		});
+
+		await expect(
+			repository.settleSuspendedIfRunning(jobId, {
+				status: 'failed',
+				result: null,
+				error: 'Approval expired',
+			}),
+		).resolves.toBe(true);
+
+		const pending = await repository.findUnconsumedMail('thread-1');
+		expect(pending.map((job) => job.id)).toEqual([jobId]);
 	});
 
 	it('deletes old settled jobs only if their results are marked as delivered', async () => {
@@ -150,11 +195,17 @@ describe('AgentBackgroundJobRepository', () => {
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentResourceId: resourceId });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentResourceId: resourceId });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2', parentResourceId: resourceId });
+		await insertJob({
+			id: uuid(),
+			parentThreadId: 'parked-thread',
+			parentResourceId: resourceId,
+			...parkedJob,
+		});
 		await insertJob({ id: uuid(), parentThreadId: 'consumed-thread', notifiedAt: new Date() });
 
 		const threadIds = await repository.findThreadsWithUnconsumedMail();
-		expect(threadIds.sort()).toEqual(['thread-1', 'thread-2']);
-		const [job] = await repository.findWakeableUnconsumedSettled('thread-1');
+		expect(threadIds.sort()).toEqual(['parked-thread', 'thread-1', 'thread-2']);
+		const [job] = await repository.findUnconsumedMail('thread-1');
 		expect(job?.parentResourceId).toHaveLength(255);
 	});
 
@@ -220,6 +271,7 @@ describe('AgentBackgroundJobRepository', () => {
 				executionRepository,
 				mock<ExecutionPersistence>(),
 				publisher,
+				checkpointStorage,
 				logger,
 				agentsConfig,
 			);

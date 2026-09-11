@@ -24,6 +24,7 @@ const i18n = useI18n();
 const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'all', name: i18n.baseText('agentSessions.filters.anyStatus') },
 	{ id: 'running', name: i18n.baseText('agentSessions.status.running') },
+	{ id: 'waiting', name: i18n.baseText('agentSessions.status.waiting') },
 	{ id: 'succeeded', name: i18n.baseText('agentSessions.status.succeeded') },
 	{ id: 'error', name: i18n.baseText('agentSessions.status.error') },
 	{ id: 'cancelled', name: i18n.baseText('agentSessions.status.cancelled') },

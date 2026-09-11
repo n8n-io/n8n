@@ -1,3 +1,4 @@
+import type { ApprovalSuspendPayload } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,7 +10,11 @@ import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow'
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
+import type {
+	AgentBackgroundJob,
+	AgentBackgroundJobSuspension,
+} from '../entities/agent-background-job.entity';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
@@ -39,7 +44,23 @@ export type BackgroundJobView = Pick<
 	| 'timeoutAt'
 	| 'settledAt'
 	| 'childExecutionId'
->;
+> & { suspendPayload: ApprovalSuspendPayload | null };
+
+function toBackgroundJobView(job: AgentBackgroundJob): BackgroundJobView {
+	return {
+		id: job.id,
+		kind: job.kind,
+		title: job.title,
+		status: job.status,
+		result: job.result,
+		error: job.error,
+		createdAt: job.createdAt,
+		timeoutAt: job.timeoutAt,
+		settledAt: job.settledAt,
+		childExecutionId: job.childExecutionId,
+		suspendPayload: job.suspension?.suspendPayload ?? null,
+	};
+}
 
 /** Cap on the result text persisted on a workflow job row. */
 export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
@@ -124,6 +145,7 @@ export class AgentBackgroundJobService {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly publisher: Publisher,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
 	) {
@@ -217,18 +239,41 @@ export class AgentBackgroundJobService {
 			jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
 		}
 
-		return jobs.map((job) => ({
-			id: job.id,
-			kind: job.kind,
-			title: job.title,
-			status: job.status,
-			result: job.result,
-			error: job.error,
-			createdAt: job.createdAt,
-			timeoutAt: job.timeoutAt,
-			settledAt: job.settledAt,
-			childExecutionId: job.childExecutionId,
-		}));
+		return jobs.map(toBackgroundJobView);
+	}
+
+	async park(jobId: string, suspension: AgentBackgroundJobSuspension): Promise<boolean> {
+		try {
+			const parked = await this.jobRepository.parkIfRunning(jobId, suspension);
+			if (parked) await this.requestWakeSafely(jobId);
+			else await this.discardChildCheckpoint(jobId, suspension);
+			return parked;
+		} finally {
+			this.abortControllers.delete(jobId);
+		}
+	}
+
+	async findJob(jobId: string): Promise<AgentBackgroundJob | null> {
+		return await this.jobRepository.findById(jobId);
+	}
+
+	async claimSuspendedForResume(jobId: string): Promise<boolean> {
+		return await this.jobRepository.claimSuspended(
+			jobId,
+			new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
+		);
+	}
+
+	async settleSuspended(
+		jobId: string,
+		settlement: AgentBackgroundJobSettlement,
+		checkpoint: { runId: string; agentId: string } | undefined,
+	): Promise<boolean> {
+		try {
+			return await this.settle(jobId, settlement);
+		} finally {
+			if (checkpoint) await this.discardCheckpoint(jobId, checkpoint);
+		}
 	}
 
 	/**
@@ -268,6 +313,7 @@ export class AgentBackgroundJobService {
 			} catch (error) {
 				this.logger.warn('Failed to relay background job cancellation', { jobId, error });
 			}
+			if (job.suspension) await this.discardChildCheckpoint(job.id, job.suspension);
 		}
 
 		await this.consumeCancelledMail(parentThreadId, jobId);
@@ -283,7 +329,7 @@ export class AgentBackgroundJobService {
 			const { AgentWakeService } = await import('./agent-wake.service.js');
 			await Container.get(AgentWakeService).requestWake(job.parentThreadId);
 		} catch (error) {
-			this.logger.warn('Failed to request a parent wake for a settled background job', {
+			this.logger.warn('Failed to request a parent wake for a background job', {
 				jobId,
 				error,
 			});
@@ -307,6 +353,7 @@ export class AgentBackgroundJobService {
 	 */
 	async reconcile(): Promise<void> {
 		await this.failJobsPastTimeout();
+		await this.failExpiredSuspensions();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
 		await this.reconcileWorkflowJobs();
 	}
@@ -507,6 +554,7 @@ export class AgentBackgroundJobService {
 		const orphans = jobs.flatMap((job) =>
 			job.kind === 'subagent' &&
 			job.status === 'running' &&
+			job.suspension === null &&
 			job.childThreadId !== null &&
 			!this.abortControllers.has(job.id)
 				? [{ job, childThreadId: job.childThreadId }]
@@ -519,7 +567,7 @@ export class AgentBackgroundJobService {
 		);
 		let settledAny = false;
 		for (const { job, childThreadId } of orphans) {
-			const childStatus = statuses.get(childThreadId);
+			const childStatus = statuses.get(childThreadId)?.status;
 			if (childStatus !== 'interrupted' && childStatus !== 'error') continue;
 			const settled = await this.settle(job.id, {
 				status: 'failed',
@@ -528,5 +576,52 @@ export class AgentBackgroundJobService {
 			settledAny ||= settled;
 		}
 		return settledAny;
+	}
+
+	private async failExpiredSuspensions(): Promise<void> {
+		for (const job of await this.jobRepository.findParkedJobs()) {
+			if (!job.suspension) continue;
+			try {
+				const checkpoint = await this.checkpointStorage.getStatus(
+					job.suspension.childRunId,
+					job.suspension.childAgentId,
+				);
+				if (checkpoint.status === 'active') continue;
+				const settled = await this.jobRepository.settleSuspendedIfRunning(job.id, {
+					status: 'failed',
+					error: 'Sub-agent request for human input expired before anyone answered',
+				});
+				if (settled) await this.requestWakeSafely(job.id);
+			} catch (error) {
+				this.logger.error('Failed to reconcile a background sub-agent suspension', {
+					jobId: job.id,
+					error,
+				});
+			}
+		}
+	}
+
+	private async discardChildCheckpoint(
+		jobId: string,
+		suspension: AgentBackgroundJobSuspension,
+	): Promise<void> {
+		await this.discardCheckpoint(jobId, {
+			runId: suspension.childRunId,
+			agentId: suspension.childAgentId,
+		});
+	}
+
+	private async discardCheckpoint(
+		jobId: string,
+		checkpoint: { runId: string; agentId: string },
+	): Promise<void> {
+		try {
+			await this.checkpointStorage.delete(checkpoint.runId, checkpoint.agentId);
+		} catch (error) {
+			this.logger.warn('Failed to discard the checkpoint of a background sub-agent job', {
+				jobId,
+				error,
+			});
+		}
 	}
 }

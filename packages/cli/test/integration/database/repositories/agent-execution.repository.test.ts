@@ -255,6 +255,7 @@ describe('AgentExecutionRepository', () => {
 			const succeeded = await createThread({ sessionNumber: 2 });
 			const recovered = await createThread({ sessionNumber: 3 });
 			const errored = await createThread({ sessionNumber: 4 });
+			const waiting = await createThread({ sessionNumber: 5 });
 			const olderFailure = {
 				count: 1,
 				latest: { kind: 'tool' as const, name: 'Lookup', message: 'failed', occurredAt: 10 },
@@ -279,6 +280,12 @@ describe('AgentExecutionRepository', () => {
 				failureSummary: olderFailure,
 			});
 			await createExecution({ threadId: errored.id, status: 'error', failureSummary: null });
+			await createExecution({
+				threadId: waiting.id,
+				status: 'success',
+				hitlStatus: 'suspended',
+				failureSummary: olderFailure,
+			});
 
 			const idsFor = async (status: AgentSessionStatus) =>
 				(
@@ -288,11 +295,19 @@ describe('AgentExecutionRepository', () => {
 				).threads.map(({ id }) => id);
 
 			expect(await idsFor('running')).toEqual([running.id]);
+			expect(await idsFor('waiting')).toEqual([waiting.id]);
 			expect(await idsFor('succeeded')).toEqual([succeeded.id]);
 			expect(new Set(await idsFor('error'))).toEqual(new Set([recovered.id, errored.id]));
 
-			const latestStatuses = await repository.findLatestStatusesByThreadIds([running.id]);
-			expect(latestStatuses.get(running.id)).toBe('running');
+			const latestStatuses = await repository.findLatestStatusesByThreadIds([
+				running.id,
+				waiting.id,
+			]);
+			expect(latestStatuses.get(running.id)).toEqual({ status: 'running', hitlStatus: null });
+			expect(latestStatuses.get(waiting.id)).toEqual({
+				status: 'success',
+				hitlStatus: 'suspended',
+			});
 		});
 
 		it('mirrors the displayed origin precedence', async () => {

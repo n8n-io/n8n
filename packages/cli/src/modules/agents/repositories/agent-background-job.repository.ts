@@ -6,6 +6,7 @@ import {
 	AgentBackgroundJob,
 	type AgentBackgroundJobKind,
 	type AgentBackgroundJobStatus,
+	type AgentBackgroundJobSuspension,
 } from '../entities/agent-background-job.entity';
 
 type NewAgentBackgroundJobBase = {
@@ -87,14 +88,35 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return await this.findOneBy({ id });
 	}
 
-	/** Settled rows the parent thread has not consumed yet, oldest first. */
-	async findWakeableUnconsumedSettled(parentThreadId: string): Promise<AgentBackgroundJob[]> {
-		// Use IS NOT NULL directly so SQLite can use the partial index.
+	async parkIfRunning(id: string, suspension: AgentBackgroundJobSuspension): Promise<boolean> {
+		const result = await this.update({ id, status: 'running' }, { suspension, timeoutAt: null });
+		return result.affected === 1;
+	}
+
+	async claimSuspended(id: string, timeoutAt: Date): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'running', suspension: Not(IsNull()) },
+			{ suspension: null, timeoutAt, notifiedAt: null },
+		);
+		return result.affected === 1;
+	}
+
+	async findParkedJobs(parentThreadId?: string): Promise<AgentBackgroundJob[]> {
+		return await this.find({
+			where:
+				parentThreadId === undefined
+					? { status: 'running', suspension: Not(IsNull()) }
+					: { parentThreadId, status: 'running', suspension: Not(IsNull()) },
+		});
+	}
+
+	/** Settled or parked rows the parent thread has not consumed yet, oldest first. */
+	async findUnconsumedMail(parentThreadId: string): Promise<AgentBackgroundJob[]> {
 		return await this.createQueryBuilder('job')
 			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
-			.andWhere('job.settledAt IS NOT NULL')
+			.andWhere('(job.settledAt IS NOT NULL OR job.suspension IS NOT NULL)')
 			.andWhere('job.notifiedAt IS NULL')
-			.orderBy('job.settledAt', 'ASC')
+			.orderBy('COALESCE(job.settledAt, job.updatedAt)', 'ASC')
 			.addOrderBy('job.createdAt', 'ASC')
 			.getMany();
 	}
@@ -106,21 +128,33 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 			.update()
 			.set({ notifiedAt: new Date() })
 			.where({ parentThreadId, id: In(ids) })
-			.andWhere('settledAt IS NOT NULL')
+			.andWhere('(settledAt IS NOT NULL OR suspension IS NOT NULL)')
 			.andWhere('notifiedAt IS NULL')
 			.execute();
 		return result.affected ?? 0;
 	}
 
-	/** Threads with settled rows their parent has not consumed yet. */
+	/** Threads with settled or parked rows their parent has not consumed yet. */
+	// Two queries instead of one OR so each branch can use its partial index.
 	async findThreadsWithUnconsumedMail(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('job')
-			.select('DISTINCT job.parentThreadId', 'parentThreadId')
-			.where('job.settledAt IS NOT NULL')
-			.andWhere('job.notifiedAt IS NULL')
-			.getRawMany<{ parentThreadId: string }>();
+		const [settledRows, parkedRows] = await Promise.all([
+			this.createQueryBuilder('job')
+				.select('DISTINCT job.parentThreadId', 'parentThreadId')
+				.where('job.settledAt IS NOT NULL')
+				.andWhere('job.notifiedAt IS NULL')
+				.getRawMany<{ parentThreadId: string }>(),
+			this.createQueryBuilder('job')
+				.select('DISTINCT job.parentThreadId', 'parentThreadId')
+				.where('job.status = :status', { status: 'running' })
+				.andWhere('job.suspension IS NOT NULL')
+				.andWhere('job.notifiedAt IS NULL')
+				.getRawMany<{ parentThreadId: string }>(),
+		]);
 
-		return rows.map(({ parentThreadId }) => parentThreadId);
+		const parentThreadIds = new Set(
+			[...settledRows, ...parkedRows].map(({ parentThreadId }) => parentThreadId),
+		);
+		return [...parentThreadIds];
 	}
 
 	async findRunningWorkflowJobByExecutionId(
@@ -153,6 +187,26 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				result: settlement.result ?? null,
 				error: settlement.error ?? null,
 				settledAt: new Date(),
+				suspension: null,
+			},
+		);
+		return result.affected === 1;
+	}
+
+	async settleSuspendedIfRunning(
+		id: string,
+		settlement: AgentBackgroundJobSettlement,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id, status: 'running', suspension: Not(IsNull()) },
+			{
+				status: settlement.status,
+				result: settlement.result ?? null,
+				error: settlement.error ?? null,
+				settledAt: new Date(),
+				suspension: null,
+				// A wake may have consumed the parked mail, so the failure is fresh mail.
+				notifiedAt: null,
 			},
 		);
 		return result.affected === 1;
