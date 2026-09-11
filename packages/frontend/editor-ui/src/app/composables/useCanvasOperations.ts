@@ -3465,11 +3465,7 @@ export function useCanvasOperations() {
 				historyStore.stopRecordingUndo();
 			}
 
-			if (warnRestrictedNodes) {
-				warnIfImportHasRestrictedNodes(importResult.nodes ?? []);
-			}
-
-			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
+			if (importTags && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
 			}
 

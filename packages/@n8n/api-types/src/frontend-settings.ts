@@ -177,7 +177,6 @@ export interface FrontendSettings {
 			enabled: boolean;
 		};
 	};
-	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;

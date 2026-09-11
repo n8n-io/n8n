@@ -142,7 +142,6 @@ const initialState = {
 				},
 			},
 		},
-		areTagsEnabled: true,
 	},
 	[STORES.TAGS]: {
 		tagsById: {
