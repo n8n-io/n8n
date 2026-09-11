@@ -14,7 +14,7 @@ import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import { entityFilePath, workflowLifecycleFilePath } from '../io/manifest-entry';
+import { entityFilePath, workflowMetadataFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
@@ -27,9 +27,9 @@ import {
 	type SerializedVariable,
 } from '../spec/serialized/variable.schema';
 import {
-	serializedWorkflowLifecycleSchema,
-	type SerializedWorkflowLifecycle,
-} from '../spec/serialized/workflow-lifecycle.schema';
+	serializedWorkflowMetadataSchema,
+	type SerializedWorkflowMetadata,
+} from '../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -120,13 +120,11 @@ export class N8nPackageParser {
 	): Promise<PreparedWorkflow> {
 		const path = entityFilePath('workflows', entry.target);
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
-		const lifecycle = await this.readWorkflowLifecycle(reader, entry);
-		const sourceArchived = lifecycle.isArchived;
+		const metadata = await this.readWorkflowMetadata(reader, entry);
 
 		let entity: WorkflowEntity;
 		try {
-			const partial = this.workflowSerializer.deserialize(wire);
-			entity = Object.assign(new WorkflowEntity(), partial, { isArchived: sourceArchived });
+			entity = Object.assign(new WorkflowEntity(), this.workflowSerializer.deserialize(wire));
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
@@ -140,38 +138,37 @@ export class N8nPackageParser {
 		this.normalizeNodeGroups(entity, path);
 
 		// Read from `wire` only past `deserialize`, which is what validates it.
-		const sourcePublished = derivePublishedState(lifecycle, wire.versionId);
+		const sourcePublished = derivePublishedState(metadata, wire.versionId);
 
 		return {
 			entity,
 			sourceWorkflowId: entry.id,
 			parentFolderId,
-			sourceArchived,
+			sourceArchived: entity.isArchived,
 			...(sourcePublished !== undefined ? { sourcePublished } : {}),
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
 
-	private async readWorkflowLifecycle(
+	private async readWorkflowMetadata(
 		reader: PackageReader,
 		entry: ManifestEntry,
-	): Promise<SerializedWorkflowLifecycle> {
-		const path = workflowLifecycleFilePath(entry.target);
+	): Promise<SerializedWorkflowMetadata> {
+		const path = workflowMetadataFilePath(entry.target);
 		const wire = await this.readJson(
 			reader,
 			path,
-			'workflow lifecycle',
-			`Package workflow lifecycle file is missing at ${path}. Export the package again from an instance that runs this version.`,
+			'workflow metadata',
+			`Package workflow metadata file is missing at ${path}. Export the package again from an instance that runs this version.`,
 		);
 
 		try {
-			return serializedWorkflowLifecycleSchema.parse(wire);
+			return serializedWorkflowMetadataSchema.parse(wire);
 		} catch (cause) {
 			if (cause instanceof ZodError) {
-				throw new UserError(
-					`Package workflow lifecycle file at ${path} failed schema validation.`,
-					{ cause },
-				);
+				throw new UserError(`Package workflow metadata file at ${path} failed schema validation.`, {
+					cause,
+				});
 			}
 			throw cause;
 		}

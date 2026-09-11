@@ -3,6 +3,7 @@ import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -68,6 +69,12 @@ export const AgentsModule: FrontendModuleDescription = {
 				{
 					name: AGENT_BUILDER_VIEW,
 					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
 					props: true,
 					component: AgentBuilderView,
 				},

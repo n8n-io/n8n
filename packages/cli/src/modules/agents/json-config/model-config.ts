@@ -43,7 +43,7 @@ export async function resolveCredentialAwareModelConfig(
 			// factory's "a baseURL means an OpenAI-compatible server" heuristic —
 			// /chat/completions rejects reasoning effort once tools are attached.
 			...(provider === 'openai' ? { apiStyle: 'responses' } : {}),
-		} as ModelConfig;
+		};
 	}
 
 	const raw = await credentialProvider.resolve(credential);
@@ -52,5 +52,5 @@ export async function resolveCredentialAwareModelConfig(
 		id: model,
 		...mapped,
 		...(provider === 'azure-openai' && deploymentName ? { deploymentName } : {}),
-	} as ModelConfig;
+	};
 }

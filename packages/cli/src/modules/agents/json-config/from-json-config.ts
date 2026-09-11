@@ -429,6 +429,7 @@ async function resolveToolRef(
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
@@ -563,11 +564,9 @@ async function resolveEpisodicMemoryJsonConfig(
 	credentialProvider: CredentialProvider,
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
-	const {
-		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-		createEpisodicMemoryExtractFn,
-		createEpisodicMemoryReflectFn,
-	} = await import('@n8n/agents');
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
+		'@n8n/agents'
+	);
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
 	const embeddingProviderOptions =
 		config.credential === MANAGED_CREDENTIAL_TOKEN
@@ -584,11 +583,6 @@ async function resolveEpisodicMemoryJsonConfig(
 
 	return {
 		enabled: true,
-		...(config.extractorModel !== undefined && {
-			extract: createEpisodicMemoryExtractFn(
-				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
-			),
-		}),
 		...(config.reflectorModel !== undefined && {
 			reflect: createEpisodicMemoryReflectFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),

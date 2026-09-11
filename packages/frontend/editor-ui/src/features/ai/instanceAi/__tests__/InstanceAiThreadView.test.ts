@@ -945,7 +945,7 @@ describe('InstanceAiThreadView', () => {
 
 			renderView({ props: { threadId: 'thread-1' } });
 
-			expect(document.title).toBe('AI Assistant - n8n');
+			expect(document.title).toBe('n8n Assistant - n8n');
 		});
 
 		it('renames the tab when the thread gets a title', async () => {

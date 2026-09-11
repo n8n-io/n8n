@@ -152,7 +152,7 @@ export class AgentWorkflowExecutionService {
 			}
 			reconstructed.tool(extraTools);
 		}
-		return { ok: true, agent: reconstructed as BuiltAgent };
+		return { ok: true, agent: reconstructed };
 	}
 
 	/**

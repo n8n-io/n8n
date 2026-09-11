@@ -31,6 +31,11 @@ export function formatClaimHeadline(claim: VerificationClaim): string {
 
 export function describeClaimCoverage(claim: VerificationClaim): string[] {
 	const facts: string[] = [];
+	if ((claim.pendingTriggers?.length ?? 0) > 0) {
+		facts.push(
+			`Verification evidence is incomplete for these triggers: ${formatClaimNodeList(claim.pendingTriggers ?? [])}.`,
+		);
+	}
 
 	if (claim.nodesNotReached.length > 0) {
 		facts.push(
