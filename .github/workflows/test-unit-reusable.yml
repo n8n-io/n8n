@@ -122,7 +122,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit (cli, scoped)
-        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100%
+        run: pnpm turbo test:unit:changed --filter=n8n --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
