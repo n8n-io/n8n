@@ -192,7 +192,7 @@ waiting-with-output-as-success fallback.
 | Trigger | Pass | Adapter emits on `$json` |
 |---|---|---|
 | Form Trigger | flat field map, e.g. `{name: "Alice", email: "a@b.c"}` | `{ submittedAt, formMode: "instanceAi", name, email, ... }` — matches production. Do NOT wrap in `formFields`. |
-| Webhook | body payload, e.g. `{event: "signup", userId: "..."}` | `{ headers, query, body: { event, userId, ... } }` |
+| Webhook | body payload, e.g. `{event: "signup", userId: "..."}`, **or** the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` when any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*` | flat payload → `{ headers: {}, query: {}, params: {}, body: { event, userId, ... } }`; envelope → passed through as-is |
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
@@ -211,7 +211,26 @@ record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt 
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
-**Returns**: `{ executionId?, success, status?, data?, error? }`
+**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
+
+**Simulated-node parameter check**: a simulated node's preview is fixture data, so
+an expression that resolved to empty leaves no trace in the run. After the run the
+tool replays parameter resolution (`getResolvedNodeParameters`) for every reached
+simulated node and returns `resolvedParameterWarnings`, one entry per parameter
+that resolved to `null`/`undefined`/`""` or threw (`{ nodeName, executionId, path, raw, issue:
+'empty' | 'failed', detail? }`), with a summary appended to `simulationNote`.
+For scripted gates, it checks each node against every pass that reached it.
+Each warning identifies the execution used for that check.
+Expressions that need live-only context (`$secrets`, `$response`, …) are excluded.
+The check is advisory and does not change execution success. Suppressed parameter
+values, replay failures, and missing executions produce `skippedParameterChecks`
+entries (`{ nodeName, executionId?, reason }`) and a note in `simulationNote`.
+The list contains at most 20 entries across all passes. `skippedParameterCheckCount`
+reports the total. When entries are omitted, the note states how many are shown.
+Omitted checks also leave dynamic fields unverified.
+The reasons are `parameter-values-disabled`, `replay-failed`, and
+`execution-unavailable`. Skipped checks expose no parameter values or replay
+error details. Their dynamic fields remain unverified.
 
 ### `report-verification-verdict` *(conditional)*
 
@@ -538,7 +557,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 **Type-aware pin data**: Constructs proper pin data per trigger type:
 - **Chat trigger**: `{ chatInput, sessionId, action }`
 - **Form trigger**: `{ submittedAt, formMode: 'instanceAi', ...inputData }`
-- **Webhook trigger**: `{ headers: {}, query: {}, body: inputData }`
+- **Webhook trigger**: flat `inputData` → `{ headers: {}, query: {}, params: {}, body: inputData }`; an envelope whose keys are only `body`/`query`/`headers`/`params` is passed through, so query- and header-driven expressions can be exercised
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
 

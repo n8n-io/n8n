@@ -24,6 +24,12 @@ import {
 import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import {
+	buildResolvedParameterNote,
+	collectResolvedParameterWarnings,
+	resolvedParameterWarningSchema,
+	skippedParameterCheckSchema,
+} from './verification/resolved-parameter-warnings';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import {
 	executionNodeErrorSchema,
@@ -47,7 +53,11 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.describe(
 			"Input data for the workflow trigger. Shape MUST match the trigger's real-world output: " +
 				'Form Trigger -> flat field map like {name: "Alice", email: "a@b.c"} (do NOT wrap in formFields); ' +
-				'Webhook -> the body payload like {event: "signup", userId: "..."} (adapter wraps it under body); ' +
+				'Webhook -> a flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
+				'`query`, `headers` and `params` EMPTY. When any expression reads $json.query.*, $json.headers.* or ' +
+				'$json.params.*, pass the request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
+				'headers: {"x-github-event": "issues"}, params: {...}}. A flat payload cannot exercise those fields, they resolve ' +
+				'empty, and a simulated downstream node still looks green; ' +
 				'Chat Trigger -> {chatInput: "user message"}; ' +
 				'Schedule Trigger -> omit inputData. ' +
 				"If you wrap a form payload in {formFields: {...}} the adapter will reject the call; the builder's " +
@@ -140,6 +150,9 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 		.optional(),
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
+	resolvedParameterWarnings: z.array(resolvedParameterWarningSchema).optional(),
+	skippedParameterChecks: z.array(skippedParameterCheckSchema).optional(),
+	skippedParameterCheckCount: z.number().int().nonnegative().optional(),
 	lastNodeExecuted: z.string().optional(),
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
@@ -238,7 +251,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis } = prepared.gateScript
+			const { result, analysis, parameterCheckRuns } = prepared.gateScript
 				? await runScriptedGateVerification({
 						script: prepared.gateScript,
 						prepared,
@@ -267,20 +280,27 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								abortSignal: context.abortSignal,
 							},
 						);
+						const analysis = analyzeVerificationResult({
+							result: runResult,
+							buildOutcome,
+							simulatedNodes: prepared.simulatedNodes,
+							haltedGateNames: prepared.haltedGateNames,
+							triggerNodeName: resolvedInput.triggerNodeName,
+							stateBefore: target.stateBefore,
+							runId: context.runId,
+							chatModelRelatedNodeNames,
+							chatModelRecovery,
+							verificationScope,
+						});
 						return {
 							result: runResult,
-							analysis: analyzeVerificationResult({
-								result: runResult,
-								buildOutcome,
-								simulatedNodes: prepared.simulatedNodes,
-								haltedGateNames: prepared.haltedGateNames,
-								triggerNodeName: resolvedInput.triggerNodeName,
-								stateBefore: target.stateBefore,
-								runId: context.runId,
-								chatModelRelatedNodeNames,
-								chatModelRecovery,
-								verificationScope,
-							}),
+							analysis,
+							parameterCheckRuns: [
+								{
+									executionId: runResult.executionId,
+									nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+								},
+							],
 						};
 					})();
 
@@ -317,6 +337,29 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				claim: runClaim,
 			});
 
+			// A simulated node's preview is fixture data, so an expression that resolved
+			// to empty (e.g. `$json.query.x` on a body-only input) leaves no trace in the
+			// run. Replay the parameters of every reached simulated node and surface it.
+			const {
+				warnings: resolvedParameterWarnings,
+				skipped: skippedParameterChecks,
+				skippedCount: skippedParameterCheckCount,
+			} = await collectResolvedParameterWarnings({
+				executionService: target.domainContext.executionService,
+				runs: parameterCheckRuns,
+				logger: context.logger,
+			});
+			const simulationNote = [
+				analysis.simulationNote,
+				buildResolvedParameterNote(
+					resolvedParameterWarnings,
+					skippedParameterChecks,
+					skippedParameterCheckCount,
+				),
+			]
+				.filter((note): note is string => note !== undefined)
+				.join(' ');
+
 			const maxDataChars = resolvedInput.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
 			const simulatedNames = new Set(analysis.reachedSimulatedNodes.map((n) => n.nodeName));
 			return {
@@ -330,7 +373,13 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
 				simulatedNodes:
 					analysis.reachedSimulatedNodes.length > 0 ? analysis.reachedSimulatedNodes : undefined,
-				simulationNote: analysis.simulationNote,
+				simulationNote: simulationNote.length > 0 ? simulationNote : undefined,
+				resolvedParameterWarnings:
+					resolvedParameterWarnings.length > 0 ? resolvedParameterWarnings : undefined,
+				skippedParameterChecks:
+					skippedParameterChecks.length > 0 ? skippedParameterChecks : undefined,
+				skippedParameterCheckCount:
+					skippedParameterCheckCount > 0 ? skippedParameterCheckCount : undefined,
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
