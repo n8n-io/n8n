@@ -15,17 +15,23 @@ live in `src/tools/tool-ids.ts`.
 
 ### Approval copy
 
-An approval card has two lines. The title names the asset without its ID, for
-example `Assistant wants to edit CRM Lead enrichment`. The line below it is a
-plain-language description of the change. Tools send the asset name as
-`resourceName` on the suspend payload and the description as `message`. The
+An approval card has a title and a description. The title names the asset without
+its ID, for example `Assistant wants to edit CRM Lead enrichment`. The text below
+it is a plain-language description of the change. Tools send the asset name as
+`resourceName` on the suspend payload and structured `approvalDetails`. The
 frontend builds the title from `resourceName` and the
 `instanceAi.tools.{tool}.{action}.imperativeWithResource` i18n key.
+It renders the details with `instanceAi.approval.*` keys in the current UI locale.
+This includes row and column previews, filters, workflow actions, and publish
+verification notices. Counts use locale plural rules. Names and data values stay
+unchanged. Add locale translations for these keys; missing translations fall back
+to English. The backend retains `message` for older clients and saved approvals
+that have no structured details.
 
 `build-workflow`, `workflows(action="publish")`,
 and `executions(action="run")` accept `approvalSummary`. The agent supplies one
-line that describes the concrete change or effect of the call, for example
-`Add a Slack notification after the payment check`. Live execution summaries
+line in the user’s language that describes the concrete change or effect of the
+call, for example `Add a Slack notification after the payment check`. Live execution summaries
 describe the external actions that the workflow will perform. The field is
 optional so older saved tool calls can still resume. Calls without the field
 show a generic description such as `Save the changes to this workflow`.

@@ -30,6 +30,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.confirmation.credentialDestination.deny': "Don't use destination",
 				'instanceAi.confirmation.allowPrompt': 'Allow n8n Assistant to {action}?',
 				'instanceAi.confirmation.details': 'Approval details',
+				'instanceAi.approval.deleteTable': 'Eliminar la tabla y todas sus filas',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
 				'instanceAi.tools.workflows.delete.imperative': 'archive workflow',
 				'instanceAi.tools.build-workflow.imperative': 'edit workflow',
@@ -256,6 +257,25 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 
 			expect(getByText('Assistant wants to add a column to Contacts')).toBeVisible();
+		});
+
+		it('renders translated details instead of the legacy backend message', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'localized',
+					severity: 'destructive',
+					message: 'Permanently delete the table and all its rows',
+					approvalDetails: { action: 'delete-table' },
+					resourceName: 'Contacts',
+				},
+				{ action: 'delete', dataTableId: 'dt-1' },
+				'data-tables',
+			);
+			const { getByRole } = renderComponent({ props: { kind: 'floating' } });
+			expect(getByRole('region', { name: 'Approval details' }).textContent).toBe(
+				'Eliminar la tabla y todas sus filas',
+			);
 		});
 
 		it('keeps the full description in a keyboard-accessible region', async () => {

@@ -1882,6 +1882,25 @@ describe('workflows tool', () => {
 				expect(message).toContain('\n\n');
 				expect(message).toContain('NOT fully verified');
 				expect(message).toContain('Send Email, Log Row');
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						approvalDetails: {
+							action: 'publish-workflow',
+							summary: approvalSummary,
+							selectedVersion: false,
+							supportingCount: 0,
+							verification: {
+								level: partialClaim.level,
+								unprovenTargets: partialClaim.unprovenTargets,
+								pendingTriggers: [],
+								nodesNotReached: partialClaim.nodesNotReached,
+								plannedNodeCount: partialClaim.plannedNodeCount,
+								simulatedNodes: partialClaim.simulatedNodes.map((node) => node.nodeName),
+								pinnedNodes: partialClaim.pinnedNodes,
+							},
+						},
+					}),
+				);
 			},
 		);
 

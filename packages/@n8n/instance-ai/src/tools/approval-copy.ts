@@ -9,7 +9,7 @@ export const approvalSummarySchema = z
 	.describe(
 		'Always provide a short, plain-language summary for the approval card. ' +
 			'Describe the concrete changes or effects of this call, including affected nodes or external actions. ' +
-			'Use one line. Do not repeat the workflow name or ID. Do not include unrelated future actions. ' +
+			'Use the same language as the user. Use one line. Do not repeat the workflow name or ID. Do not include unrelated future actions. ' +
 			'For example: "Add a Slack notification after the payment check". ' +
 			'For a live execution, describe what it will do, not just "test the workflow".',
 	);

@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
+import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -235,7 +236,8 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
 			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
 		});
 	}
-	return item.toolCall.confirmation.message ?? '';
+	const details = item.toolCall.confirmation.approvalDetails;
+	return details ? formatApprovalDetails(details) : (item.toolCall.confirmation.message ?? '');
 }
 
 /**

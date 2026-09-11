@@ -1197,6 +1197,20 @@ describe('data-tables tool', () => {
 				expect(suspend).toHaveBeenCalledWith(
 					expect.objectContaining({
 						message: expect.stringContaining(`Add ${rowCount} rows\n\n`),
+						approvalDetails: {
+							action: 'insert-rows',
+							count: rowCount,
+							rows: rows.slice(0, 3).map((row) => ({
+								values: [
+									{ column: 'email', value: JSON.stringify(row.email) },
+									{ column: 'notes', value: '"' + 'x'.repeat(99) + '…' },
+									{ column: 'age', value: '42' },
+									{ column: 'active', value: 'true' },
+									{ column: 'company', value: '"Acme"' },
+								],
+								remainingColumns: 1,
+							})),
+						},
 					}),
 				);
 				const message: unknown = suspend.mock.calls[0][0].message;

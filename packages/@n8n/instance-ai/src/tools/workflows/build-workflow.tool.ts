@@ -1,8 +1,9 @@
-import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import { Tool, type RuntimeSkillSource, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import {
 	dropInvalidWorkflowJsonGroups,
@@ -106,6 +107,7 @@ const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 	/** Workflow name shown in the approval card title. */
 	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
@@ -748,6 +750,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							input.approvalSummary,
 						),
 						resourceName: workflowName,
+						approvalDetails: { action: 'edit-workflow', summary: input.approvalSummary },
 						severity: 'warning',
 						workflowId: targetWorkflowId,
 					});

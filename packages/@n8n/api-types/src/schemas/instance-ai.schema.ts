@@ -1,3 +1,4 @@
+import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
@@ -715,6 +716,7 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 	resourceName: z
 		.string()
 		.optional()

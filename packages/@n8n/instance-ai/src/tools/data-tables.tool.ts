@@ -2,12 +2,14 @@
  * Consolidated data-tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	buildDataTablesSessionGrantKey,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -48,6 +50,7 @@ const filterSchemaWithMinOne = z.object({
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
@@ -148,16 +151,22 @@ function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
 const MAX_DESCRIBED_COLUMNS = 5;
 const MAX_DESCRIBED_ROWS = 3;
 
-function describeRowChanges(data: Record<string, unknown>): string {
+function previewRow(data: Record<string, unknown>) {
 	const entries = Object.entries(data);
-	const described = entries.slice(0, MAX_DESCRIBED_COLUMNS).map(([column, value]) => {
-		if (value === null || value === undefined) return `"${column}" to no value`;
-		const text = JSON.stringify(value);
-		return `"${column}" to ${text.length > 100 ? `${text.slice(0, 100)}…` : text}`;
-	});
-	const remaining = entries.length - described.length;
-	if (remaining > 0) {
-		described.push(`${remaining} more ${remaining === 1 ? 'column' : 'columns'}`);
+	return {
+		values: entries.slice(0, MAX_DESCRIBED_COLUMNS).map(([column, value]) => {
+			const text = value === null || value === undefined ? null : JSON.stringify(value);
+			return { column, value: text && text.length > 100 ? `${text.slice(0, 100)}…` : text };
+		}),
+		remainingColumns: Math.max(0, entries.length - MAX_DESCRIBED_COLUMNS),
+	};
+}
+
+function describeRowChanges(data: Record<string, unknown>): string {
+	const { values, remainingColumns } = previewRow(data);
+	const described = values.map(({ column, value }) => `"${column}" to ${value ?? 'no value'}`);
+	if (remainingColumns > 0) {
+		described.push(`${remainingColumns} more ${remainingColumns === 1 ? 'column' : 'columns'}`);
 	}
 	return described.join(', ');
 }
@@ -533,6 +542,7 @@ async function handleDelete(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: 'Permanently delete the table and all its rows',
+			approvalDetails: { action: 'delete-table' } satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
@@ -570,6 +580,11 @@ async function handleAddColumn(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Add column "${input.columnName}" (${input.type})`,
+			approvalDetails: {
+				action: 'add-column',
+				column: input.columnName,
+				columnType: input.type,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
@@ -611,6 +626,10 @@ async function handleDeleteColumn(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
+			approvalDetails: {
+				action: 'delete-column',
+				column: input.currentColumnName ?? input.columnId,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
@@ -650,6 +669,11 @@ async function handleRenameColumn(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
+			approvalDetails: {
+				action: 'rename-column',
+				column: input.currentColumnName ?? input.columnId,
+				newName: input.newName,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
@@ -697,6 +721,11 @@ async function handleInsertRows(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}\n\n${rowDescriptions.join('\n\n')}`,
+			approvalDetails: {
+				action: 'insert-rows',
+				count: input.rows.length,
+				rows: input.rows.slice(0, MAX_DESCRIBED_ROWS).map(previewRow),
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
@@ -738,6 +767,11 @@ async function handleUpdateRows(
 				input.filter.filters.length === 0
 					? `Set ${describeRowChanges(input.data)} in all rows`
 					: `Set ${describeRowChanges(input.data)} in rows where ${describeRowFilter(input.filter)}`,
+			approvalDetails: {
+				action: 'update-rows',
+				changes: previewRow(input.data),
+				filter: input.filter,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
@@ -776,6 +810,10 @@ async function handleDeleteRows(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete rows where ${describeRowFilter(input.filter)}`,
+			approvalDetails: {
+				action: 'delete-rows',
+				filter: input.filter,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});

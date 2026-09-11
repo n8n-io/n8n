@@ -3,12 +3,14 @@
  * unarchive, setup, publish, unpublish, list-versions, restore-version,
  * update-version.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -368,6 +370,7 @@ const confirmationSuspendSchema = setupSuspendSchema
 	.partial({ workflowId: true })
 	.extend({
 		resourceName: z.string().optional(),
+		approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 		credentialDestination: credentialDestinationSchema.optional(),
 	});
 
@@ -899,6 +902,11 @@ async function handleDelete(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Archive ${workflowName} (ID: ${input.workflowId})`,
+			approvalDetails: {
+				action: 'archive-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -931,6 +939,11 @@ async function handleUnarchive(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore ${workflowName} (ID: ${input.workflowId})`,
+			approvalDetails: {
+				action: 'restore-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -1400,22 +1413,56 @@ async function resolveSetupScopeNodeNames(
 async function resolveUnverifiedPublishDisclosure(
 	context: InstanceAiContext,
 	workflowId: string,
-): Promise<string | undefined> {
+): Promise<
+	| {
+			message: string;
+			details: NonNullable<
+				Extract<InstanceAiApprovalDetails, { action: 'publish-workflow' }>['verification']
+			>;
+	  }
+	| undefined
+> {
 	const workflowTaskService = context.workflowBuildContext?.workflowTaskService;
 	if (!workflowTaskService) return undefined;
 	try {
 		const outcome = await workflowTaskService.getLatestBuildOutcomeForWorkflow(workflowId);
 		const verification = outcome?.verification;
 		const claim = verification?.claim;
-		if (claim) return claim.publishReady ? undefined : formatClaimDisclosure(claim);
+		if (claim) {
+			const message = claim.publishReady ? undefined : formatClaimDisclosure(claim);
+			if (!message || claim.level === 'verified') return undefined;
+			return {
+				message,
+				details: {
+					level: claim.level,
+					unprovenTargets: claim.unprovenTargets,
+					pendingTriggers: claim.pendingTriggers ?? [],
+					nodesNotReached: claim.nodesNotReached,
+					plannedNodeCount: claim.plannedNodeCount,
+					simulatedNodes: claim.simulatedNodes.map((node) => node.nodeName),
+					pinnedNodes: claim.pinnedNodes,
+				},
+			};
+		}
 
 		// A running or attempted verification must not pass as an absent record.
 		if (verification?.attempted || verification?.status === 'running') {
 			const cause = verification.failureSignature ?? verification.evidence?.errorMessage;
-			return (
-				'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
-				(cause ? ` It reported: ${cause}` : '')
-			);
+			return {
+				message:
+					'Verification ran but produced no verdict, so nothing about this workflow is proven.' +
+					(cause ? ` It reported: ${cause}` : ''),
+				details: {
+					level: 'no-verdict',
+					cause,
+					unprovenTargets: [],
+					pendingTriggers: [],
+					nodesNotReached: [],
+					plannedNodeCount: 0,
+					simulatedNodes: [],
+					pinnedNodes: [],
+				},
+			};
 		}
 
 		// No record at all: the workflow is unknown, not unverified. Blocking here
@@ -1808,7 +1855,8 @@ async function handlePublish(
 	}
 
 	const supportingWorkflowIds = await resolveSupportingWorkflowIds(context, input.workflowId);
-	const unverifiedDisclosure = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
+	const unverifiedDisclosure = verification?.message;
 
 	const needsApproval =
 		context.permissions?.publishWorkflow !== 'always_allow' || unverifiedDisclosure !== undefined;
@@ -1840,6 +1888,13 @@ async function handlePublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: [summary, dependencyNote, unverifiedDisclosure].filter(Boolean).join('\n\n'),
+			approvalDetails: {
+				action: 'publish-workflow',
+				summary: input.approvalSummary,
+				selectedVersion: !!input.versionId,
+				supportingCount: supportingWorkflowIds.length,
+				verification: verification?.details,
+			} satisfies InstanceAiApprovalDetails,
 			resourceName: workflowName,
 			severity: 'warning' as const,
 		});
@@ -1989,6 +2044,11 @@ async function handleUnpublish(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Unpublish ${workflowName} (ID: ${input.workflowId})`,
+			approvalDetails: {
+				action: 'unpublish-workflow',
+				name: workflowName,
+				id: input.workflowId,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -2046,6 +2106,11 @@ async function handleRestoreVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Restore to version ${versionLabel}`,
+			approvalDetails: {
+				action: 'restore-version',
+				version: version?.name || input.versionId,
+				createdAt: version?.createdAt,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}
@@ -2092,6 +2157,12 @@ async function handleUpdateVersion(
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update version ${input.versionId} — set ${summary}`,
+			approvalDetails: {
+				action: 'update-version',
+				version: input.versionId,
+				name: input.name,
+				description: input.description,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'info' as const,
 		});
 	}

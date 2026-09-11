@@ -2,12 +2,14 @@
  * Consolidated executions tool — list, get, run, debug, get-node-output,
  * get-resolved-node-parameters, stop.
  */
-import { Tool } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
+import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -155,6 +157,7 @@ type Input = z.infer<typeof inputSchema>;
 const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
 	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
@@ -288,6 +291,11 @@ async function handleRun(
 				input.approvalSummary,
 			),
 			resourceName: workflowName,
+			approvalDetails: {
+				action: 'run-workflow',
+				summary: input.approvalSummary,
+				trigger: input.triggerNodeName,
+			} satisfies InstanceAiApprovalDetails,
 			severity: 'warning' as const,
 		});
 	}

@@ -342,6 +342,11 @@ describe('mapAgentChunkToEvent', () => {
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
 					resourceName: 'CRM Lead enrichment',
+					approvalDetails: {
+						action: 'insert-rows',
+						count: 1,
+						rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+					},
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -381,6 +386,11 @@ describe('mapAgentChunkToEvent', () => {
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
 				resourceName: 'CRM Lead enrichment',
+				approvalDetails: {
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+				},
 				questions: [
 					{
 						id: 'q1',
@@ -435,6 +445,7 @@ describe('mapAgentChunkToEvent', () => {
 			toolCallId: 'tc-1',
 			suspendPayload: {
 				severity: 'unknown',
+				approvalDetails: { action: 'insert-rows', count: -1 },
 				credentialRequests: [{ invalid: true }],
 				inputType: 'bad-input-type',
 				questions: [{ invalid: true }],

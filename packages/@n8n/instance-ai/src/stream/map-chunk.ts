@@ -1,5 +1,6 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
+	instanceAiApprovalDetailsSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -347,6 +348,10 @@ function mapSuspendedChunk(
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
 	const resourceName = presentString(suspendPayload.resourceName);
+	const approvalDetails = parseSchemaRecord(
+		suspendPayload.approvalDetails,
+		instanceAiApprovalDetailsSchema,
+	);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -394,6 +399,7 @@ function mapSuspendedChunk(
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
 			...(resourceName ? { resourceName } : {}),
+			...(approvalDetails ? { approvalDetails } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(tasks ? { tasks } : {}),
