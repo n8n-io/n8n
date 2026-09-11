@@ -54,14 +54,6 @@ import {
 	Box as BrandBox,
 	Calendar as BrandCalendar,
 	Check as BrandCheck,
-	ChevronDown as BrandChevronDown,
-	ChevronLeft as BrandChevronLeft,
-	ChevronRight as BrandChevronRight,
-	ChevronUp as BrandChevronUp,
-	ChevronsDownUp as BrandChevronsDownUp,
-	ChevronsLeft as BrandChevronsLeft,
-	ChevronsRight as BrandChevronsRight,
-	ChevronsUpDown as BrandChevronsUpDown,
 	Circle as BrandCircle,
 	CircleAlert as BrandCircleAlert,
 	CircleCheck as BrandCircleCheck,
@@ -166,7 +158,9 @@ import IconLucideChevronDown from '~icons/lucide/chevron-down';
 import IconLucideChevronLeft from '~icons/lucide/chevron-left';
 import IconLucideChevronRight from '~icons/lucide/chevron-right';
 import IconLucideChevronUp from '~icons/lucide/chevron-up';
+import IconLucideChevronsDownUp from '~icons/lucide/chevrons-down-up';
 import IconLucideChevronsLeft from '~icons/lucide/chevrons-left';
+import IconLucideChevronsRight from '~icons/lucide/chevrons-right';
 import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
@@ -655,14 +649,14 @@ export const updatedIconSet = {
 	'chart-column-decreasing': IconLucideChartColumnDecreasing,
 	check: BrandCheck,
 	'check-check': IconLucideCheckCheck,
-	'chevron-down': BrandChevronDown,
-	'chevron-left': BrandChevronLeft,
-	'chevron-right': BrandChevronRight,
-	'chevron-up': BrandChevronUp,
-	'chevrons-left': BrandChevronsLeft,
-	'chevrons-right': BrandChevronsRight,
-	'chevrons-down-up': BrandChevronsDownUp,
-	'chevrons-up-down': BrandChevronsUpDown,
+	'chevron-down': IconLucideChevronDown,
+	'chevron-left': IconLucideChevronLeft,
+	'chevron-right': IconLucideChevronRight,
+	'chevron-up': IconLucideChevronUp,
+	'chevrons-left': IconLucideChevronsLeft,
+	'chevrons-right': IconLucideChevronsRight,
+	'chevrons-down-up': IconLucideChevronsDownUp,
+	'chevrons-up-down': IconLucideChevronsUpDown,
 	circle: BrandCircle,
 	'circle-alert': BrandCircleAlert,
 	'circle-check': BrandCircleCheck,
