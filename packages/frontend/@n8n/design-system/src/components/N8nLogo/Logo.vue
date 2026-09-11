@@ -40,25 +40,23 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	if (!releaseChannel || releaseChannel === 'stable' || !('createObjectURL' in URL)) {
+	if (releaseChannel !== 'dev' || !('createObjectURL' in URL)) {
 		return;
 	}
 
 	const logoEl = svg.value!.$el;
 
-	// Change the logo fill color inline, so that favicon can also use it
-	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
-	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
-
-	// Reuse the SVG as favicon
-	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
+	/** Reuse the SVG as the favicon. These must use HEX values. */
+	const hexColor = releaseChannel === 'dev' ? '#898989' : '#ff91ac';
+	const faviconSvg = logoEl.outerHTML.replace('>', `><style>path { fill: ${hexColor}; }</style>`);
+	const blob = new Blob([faviconSvg], { type: 'image/svg+xml' });
 	useFavicon(URL.createObjectURL(blob));
 });
 </script>
 
 <template>
 	<div :class="containerClasses" data-test-id="n8n-logo">
-		<LogoIcon ref="logo" :class="$style.logo" />
+		<LogoIcon ref="logo" :class="[$style.logo, { [$style.dev]: releaseChannel === 'dev' }]" />
 		<LogoText v-if="showLogoText" :class="$style.logoText" />
 		<slot />
 	</div>
@@ -69,37 +67,35 @@ onMounted(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	gap: var(--spacing--3xs);
+	fill: var(--text-color--subtler);
 }
 
+.logo,
 .logoText {
-	margin-left: var(--spacing--5xs);
-	path {
-		fill: var(--color--text--shade-1);
+	width: auto;
+	height: 16px;
+	max-width: 100%;
+}
+
+.logo {
+	--logo-icon-fill: var(--background--brand);
+
+	&.dev {
+		--logo-icon-fill: var(--text-color--subtler);
 	}
+
+	path {
+		fill: var(--logo-icon-fill);
+	}
+}
+
+.logoText path {
+	fill: var(--text-color);
 }
 
 .large {
-	transform: scale(2);
 	margin-bottom: var(--spacing--xl);
-
-	.logo,
-	.logoText {
-		transform: scale(1.3) translateY(-2px);
-	}
-
-	.logoText {
-		margin-left: var(--spacing--xs);
-		margin-right: var(--spacing--3xs);
-	}
-}
-
-.sidebarExpanded .logo {
-	margin-left: var(--spacing--2xs);
-}
-
-.sidebarCollapsed .logo {
-	width: 40px;
-	height: 30px;
-	padding: 0 var(--spacing--4xs);
+	height: 20px;
 }
 </style>
