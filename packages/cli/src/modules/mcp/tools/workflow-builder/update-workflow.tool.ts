@@ -3,40 +3,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import isEqual from 'lodash/isEqual';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
-
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
-import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
-import { validateCredentialReferences } from './credential-validation';
-import {
-	autoPopulateNodeCredentials,
-	trackAutoassignOutcomes,
-	type AutoAssignResult,
-} from './credentials-auto-assign';
-import { validateDataTableReferencesForUpdate } from './data-table-validation';
-import { getErrorCode } from './error-code.utils';
-import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
-import {
-	buildUpdateVersionMetadata,
-	resolveVersionMetadata,
-	versionDescriptionInputSchema,
-	versionNameInputSchema,
-} from './version-metadata';
-
-import {
-	applyOperations,
-	NON_FATAL_OPERATION_TYPES,
-	partialUpdateOperationSchema,
-	toWorkflowSlice,
-	workflowSettingsObjectSchema,
-	type ApplyOperationsSuccess,
-	type PartialUpdateOperation,
-	type SkippedOperation,
-} from './workflow-operations';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { getMcpWorkflow } from '../workflow-validation.utils';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -58,6 +27,37 @@ import {
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
+
+import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
+import { validateCredentialReferences } from './credential-validation';
+import {
+	autoPopulateNodeCredentials,
+	trackAutoassignOutcomes,
+	type AutoAssignResult,
+} from './credentials-auto-assign';
+import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { getErrorCode } from './error-code.utils';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildUpdateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
+import {
+	applyOperations,
+	NON_FATAL_OPERATION_TYPES,
+	partialUpdateOperationSchema,
+	toWorkflowSlice,
+	workflowSettingsObjectSchema,
+	type ApplyOperationsSuccess,
+	type PartialUpdateOperation,
+	type SkippedOperation,
+} from './workflow-operations';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
 const normalize = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
