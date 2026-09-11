@@ -1,14 +1,21 @@
 # @n8n/app-sdk
 
-Browser client for the workflows bound to a built n8n app. It posts to the
-app's runtime API, `/apps/<namespace>/api/workflows/<key>`, with no
-dependencies.
+Browser client for the workflows and data tables bound to a built n8n app. It
+calls the app's runtime API, `/apps/<namespace>/api/workflows/<key>` and
+`/apps/<namespace>/api/tables/<key>/rows`, with no dependencies.
 
 ```ts
 import { n8n, N8nAppError } from '@n8n/app-sdk';
 
 const result = await n8n.workflows.run('submit', { email: 'a@b.c' });
 ```
+
+`n8n.tables.<key>` reads and writes the rows of a bound data table:
+`list({ filter, search, sortBy, take, skip })` returns `{ count, data }`;
+`insert(rows)`, `update(filter, data)` and `delete(filter)` return the affected
+rows as `{ data }`. Filters use the n8n data table filter shape
+(`{ type?: 'and' | 'or', filters: [{ columnName, condition?, value }] }`). A
+read-only binding answers writes with a `403 permission_denied` `N8nAppError`.
 
 The app-builder skill in `@n8n/instance-ai` documents the API, the error codes
 and the generated `src/n8n-bindings.d.ts` that types the bound keys.

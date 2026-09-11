@@ -32,8 +32,8 @@ back into the app sandbox when it is missing, or lays down the starter template
 for an empty app; `add-component` copies a component from this skill's own catalog
 (built on `@ark-ui/vue`) into an app — `create` uses it for the two the
 starter page needs, and every other component goes through it too — and
-`bind`/`unbind`/`bindings` manage the n8n workflows the app may call (see
-"Calling n8n workflows").
+`bind`/`unbind`/`bindings` manage the n8n workflows and data tables the app
+may use (see "Connecting n8n workflows and data tables").
 
 The user sees a live preview of the source in the workspace. n8n runs a dev
 server for it: every file you write appears in the preview by itself (hot
@@ -63,10 +63,10 @@ also publish with the Publish button above the preview, without you.
    work. Tell the user what changed and stop; the preview shows it.
 3. Preview errors (compile errors, uncaught exceptions) arrive as context on
    the user's next message. Fix them before anything else. A
-   `binding_not_found` or `invalid_input` error from `n8n.workflows.run`
-   means the key is not bound or the input does not match the workflow's
-   fields: read the `bind` result or call `apps(action="bindings", appId)`,
-   then fix the call or re-bind. You cannot see the page: do not claim visual
+   `binding_not_found` or `invalid_input` error from `n8n.workflows.run` or
+   `n8n.tables.<key>` means the key is not bound or the input does not match
+   the workflow's fields or the table's columns: read the `bind` result or
+   call `apps(action="bindings", appId)`, then fix the call or re-bind. You cannot see the page: do not claim visual
    results.
 4. Publish only when the user asks to publish, deploy, share or go live:
    `apps(action="publish", appId)`. The user sees a confirmation card first
@@ -112,6 +112,12 @@ directory already has files; edit them instead.
 
 - Static export only. No server code, no SSR, no API routes, no server
   functions. Everything runs in the browser.
+- Store data in an n8n data table. When the app keeps lists, records or
+  state that must survive a reload or be shared between visitors, create a
+  table with `data-tables(action="create")` if none fits, bind it with
+  `apps(action="bind")` and use `n8n.tables.<key>` (see "Data tables"
+  below). Do not use `localStorage` or in-memory arrays for data the user
+  expects to persist.
 - Never call `/rest` or other n8n internal endpoints from the app.
 - The app is served under a base path. Every asset and route URL is relative
   or built from the base: `APP_BASE` is set during the build (with a trailing
@@ -143,10 +149,14 @@ directory already has files; edit them instead.
   every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
-## Calling n8n workflows
+## Connecting n8n workflows and data tables
 
-An app calls an n8n workflow only through `@n8n/app-sdk` and only by a key you
-bound first. Bind before you write the code that calls it.
+An app calls an n8n workflow or reads a data table only through `@n8n/app-sdk`
+and only by a key you bound first. Bind before you write the code that uses it.
+Workflows and data tables go in separate `bind` calls; each call asks the user
+for approval with its own card.
+
+### Workflows
 
 1. Find the workflow. It must be published and start with the trigger "When
    Executed by Another Workflow" (`n8n-nodes-base.executeWorkflowTrigger`) in
@@ -206,29 +216,75 @@ bound first. Bind before you write the code that calls it.
    it is still running. See `references/app-sdk.md` for the full API and the
    error codes.
 4. `apps(action="unbind", appId, key)` removes a binding;
-   `apps(action="bindings", appId)` lists them. Both keep
-   `src/n8n-bindings.d.ts` current.
+   `apps(action="bindings", appId)` lists them. Both rewrite
+   `src/n8n-bindings.d.ts` from the current bindings.
+
+### Data tables
+
+A data table is the storage of an app. Use one for every list, record or
+state that must survive a reload or be shared between visitors (tasks,
+entries, settings); `localStorage` and in-memory arrays lose that data.
+
+1. Find the table in the app's project with `data-tables(action="list",
+   projectId)`. If it does not exist, create it first:
+   `data-tables(action="create", name, projectId, columns=[{ name, type }])`
+   with column types `string`, `number`, `boolean` or `date`. The result
+   carries `table.id`.
+2. `apps(action="bind", appId, bindings=[{ key: "tasks", kind: "dataTable",
+   dataTableId, permissions: ["read", "write"] }])`. Request `write` only
+   when the app inserts, updates or deletes rows; a display needs `read`
+   only. The result lists the binding with `name`, `columns` and `row` (the
+   JSON Schema of one row) and rewrites `src/n8n-bindings.d.ts` with
+   `tables.<key>.row`: `{ id: number; createdAt: string; updatedAt: string;
+   <column>: <type> | null }`, where a `date` column is an ISO string.
+   `{ denied, reason }` means the table is in another project, the user lacks
+   access to it, or they said no: read `reason`.
+3. Call it from the app:
+
+   ```ts
+   import { n8n } from '@n8n/app-sdk';
+
+   const { data: tasks } = await n8n.tables.tasks.list({ take: 250, sortBy: 'createdAt:desc' });
+   const { data: [created] } = await n8n.tables.tasks.insert([{ title, status: 'todo' }]);
+   await n8n.tables.tasks.update({ filters: [{ columnName: 'id', value: task.id }] }, { status: 'done' });
+   await n8n.tables.tasks.delete({ filters: [{ columnName: 'id', value: task.id }] });
+   ```
+
+   `list` returns `{ count, data }` with at most 250 rows per call (`take`,
+   default 10; page with `skip`). `insert`, `update` and `delete` return the
+   affected rows as `{ data }`. Errors are `N8nAppError` as for workflows:
+   `permission_denied` (403) when the binding lacks `write`,
+   `table_not_found` (404) when the table was deleted, `invalid_input` (400)
+   for a value or filter the columns reject. See `references/app-sdk.md`.
+4. After `data-tables(action="add-column" | "delete-column" |
+   "rename-column")` on a bound table, call `apps(action="bindings", appId)`
+   before you touch the code that uses it: it rewrites `src/n8n-bindings.d.ts`
+   from the current columns.
 
 Rules:
 
 - Only bound keys. Never `fetch` `/rest`, `/webhook`, `/api`, or
-  `/apps/<namespace>/api` by hand; never put a workflow id in the app.
+  `/apps/<namespace>/api` by hand; never put a workflow or table id in the
+  app.
 - `src/n8n-bindings.d.ts` and `vendor/n8n-app-sdk.tgz` are generated by
-  `apps`. Do not edit them; re-run `bind` to change the types.
-- The workflow runs as the app's project, with the project's credentials.
-  All apps are public: a bound workflow is callable by anyone with the app
-  URL. Do not bind a workflow the user would not expose.
+  `apps`. Do not edit them; re-run `bind` or `bindings` to change the types.
+- The workflow runs, and the table is read and written, as the app's
+  project, with the project's credentials. All apps are public: a bound
+  workflow is callable, and a bound table is readable (and with `write`,
+  changeable), by anyone with the app URL. Do not bind a workflow or table
+  the user would not expose.
 - A passthrough trigger (no declared fields) accepts any input: the app
   cannot type-check it and the server does not validate it. Prefer triggers
   with declared fields; the `bind` result warns about each passthrough one.
 
 ## Who may open the app
 
-All apps are public: anyone with the URL opens the app and can run its bound
-workflows; `result.principal` is `null`. The runtime API is callable from the
-app's own page only (CORS; another site's page gets `403 forbidden_origin`).
-Like a public webhook, anyone who can reach the instance can call a bound
-workflow, so bind only workflows that may be public.
+All apps are public: anyone with the URL opens the app and can use its bound
+workflows and tables; `result.principal` is `null`. The runtime API is
+callable from the app's own page only (CORS; another site's page gets
+`403 forbidden_origin`). Like a public webhook, anyone who can reach the
+instance can call a bound workflow or table, so bind only workflows and tables
+that may be public.
 
 ## Template
 
@@ -260,7 +316,7 @@ apps/<namespace>/
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route
-  src/n8n-bindings.d.ts    types for n8n.workflows.run, written by bind (do not edit)
+  src/n8n-bindings.d.ts    types for n8n.workflows.run and n8n.tables, written by bind (do not edit)
   src/components/ui/       catalog components (button, switch from create; more via add-component)
   src/lib/utils.ts         cn() helper every component imports
 ```

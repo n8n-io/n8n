@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { dataTablePermissionSchema } from './app-binding.schema';
 import { appNameSchema, appNamespaceSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -275,14 +276,29 @@ export const webSearchMetaSchema = z.object({
 export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
 
 /** What the `apps` tool is about to connect, for the bind approval card. */
-export const appBindingMetaSchema = z.object({
-	appId: z.string(),
-	appName: z.string(),
-	appNamespace: z.string(),
-	workflowId: z.string(),
-	workflowName: z.string(),
-	key: z.string(),
-});
+export const appBindingMetaSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('workflow'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		workflowId: z.string(),
+		workflowName: z.string(),
+		key: z.string(),
+	}),
+	z.object({
+		kind: z.literal('dataTable'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		dataTableId: z.string(),
+		dataTableName: z.string(),
+		key: z.string(),
+		permissions: z.array(dataTablePermissionSchema).min(1).max(2),
+		// For the link to the data table in the approval card.
+		projectId: z.string(),
+	}),
+]);
 export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -1890,6 +1906,7 @@ const instanceAiPermissionsSchema = z.object({
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
 	bindAppWorkflow: instanceAiPermissionModeSchema,
+	bindAppDataTable: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1917,6 +1934,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	restoreWorkflowVersion: 'require_approval',
 	executeMcpTool: 'require_approval',
 	bindAppWorkflow: 'require_approval',
+	bindAppDataTable: 'require_approval',
 };
 
 /**

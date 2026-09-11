@@ -368,7 +368,9 @@ describe('OPTIONS /apps/:namespace/api/*', () => {
 
 		expect(response.headers['access-control-allow-origin']).toBe('null');
 		expect(response.headers.vary).toContain('Origin');
-		expect(response.headers['access-control-allow-methods']).toBe('POST, OPTIONS');
+		expect(response.headers['access-control-allow-methods']).toBe(
+			'GET, POST, PATCH, DELETE, OPTIONS',
+		);
 		expect(response.headers['access-control-allow-headers']).toBe('Content-Type');
 		expect(response.headers['access-control-allow-credentials']).toBeUndefined();
 	});

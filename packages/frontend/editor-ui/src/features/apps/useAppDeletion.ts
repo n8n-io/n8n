@@ -42,11 +42,15 @@ export function useAppDeletion() {
 		appId: string,
 		binding: DescribedBinding,
 	): Promise<boolean> => {
+		const copy =
+			binding.kind === 'dataTable'
+				? 'apps.connections.delete.confirm.dataTable'
+				: 'apps.connections.delete.confirm';
 		const response = await message.confirm(
-			i18n.baseText('apps.connections.delete.confirm.message', {
+			i18n.baseText(`${copy}.message`, {
 				interpolate: { name: escapeHtml(binding.name) },
 			}),
-			i18n.baseText('apps.connections.delete.confirm.title'),
+			i18n.baseText(`${copy}.title`),
 			{
 				confirmButtonText: i18n.baseText('generic.disconnect'),
 				cancelButtonText: i18n.baseText('generic.cancel'),

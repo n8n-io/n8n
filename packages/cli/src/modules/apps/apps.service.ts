@@ -6,15 +6,17 @@ import {
 	type CreateAppDto,
 	type CreatePageDto,
 	type DescribedBinding,
+	type DescribedWorkflowBinding,
 	type UpdateAppDto,
 	type UpdatePageDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7 } from 'json-schema';
-import { UnexpectedError, type INode } from 'n8n-workflow';
+import { UnexpectedError, type DataTableColumnType, type INode } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -25,6 +27,8 @@ import {
 } from '@/modules/agents/tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AppVersionService } from './app-version.service';
@@ -33,6 +37,7 @@ import { AppRepository } from './app.repository';
 import { deriveRoutesFromRouterSource } from './derive-routes';
 import { AppNotFoundError } from './errors/app-not-found.error';
 import { AppQuotaExceededError } from './errors/app-quota-exceeded.error';
+import { BindingDataTableNotFoundError } from './errors/binding-data-table-not-found.error';
 import { BindingIncompatibleError } from './errors/binding-incompatible.error';
 import { BindingNotFoundError } from './errors/binding-not-found.error';
 import { BindingProjectMismatchError } from './errors/binding-project-mismatch.error';
@@ -49,6 +54,31 @@ import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './i
 import { PageRepository } from './page.repository';
 
 const PASSTHROUGH_INPUT_SCHEMA: JSONSchema7 = { type: 'object', additionalProperties: true };
+
+type WorkflowBinding = Extract<AppBinding, { kind: 'workflow' }>;
+type DataTableBinding = Extract<AppBinding, { kind: 'dataTable' }>;
+type Described = { binding: DescribedBinding; warnings: string[] };
+
+/** Dates leave the runtime as ISO strings (JSON); every user column may hold `null`. */
+function rowColumnSchema(type: DataTableColumnType): JSONSchema7 {
+	if (type === 'date') return { type: ['string', 'null'], format: 'date-time' };
+	return { type: [type, 'null'] };
+}
+
+function rowJsonSchema(columns: Array<{ name: string; type: DataTableColumnType }>): JSONSchema7 {
+	const properties: Record<string, JSONSchema7> = {
+		id: { type: 'number' },
+		createdAt: { type: 'string', format: 'date-time' },
+		updatedAt: { type: 'string', format: 'date-time' },
+		...Object.fromEntries(columns.map(({ name, type }) => [name, rowColumnSchema(type)])),
+	};
+	return {
+		type: 'object',
+		properties,
+		required: Object.keys(properties),
+		additionalProperties: false,
+	};
+}
 
 /** `zod-to-json-schema` types its result as its own union; what it emits is draft-07. */
 const isJsonSchema = (value: unknown): value is JSONSchema7 => isRecord(value);
@@ -74,6 +104,7 @@ export class AppsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowLoader: WorkflowToolWorkflowLoader,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly dataTableService: DataTableService,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -144,10 +175,11 @@ export class AppsService {
 	}
 
 	/**
-	 * Replaces the whole binding list. Each workflow is checked with the acting user's
-	 * `workflow:execute` scope now; at call time the app acts as its project, so the
-	 * workflow must also be owned by that project. Unpublished workflows are accepted
-	 * (reported as a warning) so an agent can bind first and publish later.
+	 * Replaces the whole binding list. Each resource is checked with the acting user's
+	 * scopes now (`workflow:execute`; `dataTable:readRow` plus `dataTable:writeRow` for a
+	 * `write` binding); at call time the app acts as its project, so the resource must also
+	 * be owned by that project. Unpublished workflows are accepted (reported as a warning)
+	 * so an agent can bind first and publish later.
 	 */
 	async setBindings(appId: string, bindings: AppBinding[], user: User) {
 		const parsed = appBindingsSchema.safeParse(bindings);
@@ -157,26 +189,49 @@ export class AppsService {
 		const app = await this.getApp(appId);
 
 		for (const binding of parsed.data) {
-			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				binding.workflowId,
-				user,
-				['workflow:execute'],
-			);
-			if (!workflow) throw new BindingWorkflowNotFoundError(binding.key, binding.workflowId);
-
-			const ownerProjectId = workflow.shared.find((s) => s.role === 'workflow:owner')?.projectId;
-			if (ownerProjectId !== app.projectId) {
-				throw new BindingProjectMismatchError(binding.key, workflow.name);
-			}
-
-			const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
-			if (incompatibility) {
-				throw new BindingIncompatibleError(binding.key, workflow.name, incompatibility);
+			if (binding.kind === 'dataTable') {
+				await this.checkDataTableBinding(binding, app.projectId, user);
+			} else {
+				await this.checkWorkflowBinding(binding, app.projectId, user);
 			}
 		}
 
 		const updated = await this.appRepository.updateBindings(app, parsed.data);
 		return await this.describeBindings(updated);
+	}
+
+	private async checkWorkflowBinding(binding: WorkflowBinding, projectId: string, user: User) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			binding.workflowId,
+			user,
+			['workflow:execute'],
+		);
+		if (!workflow) throw new BindingWorkflowNotFoundError(binding.key, binding.workflowId);
+
+		const ownerProjectId = workflow.shared.find((s) => s.role === 'workflow:owner')?.projectId;
+		if (ownerProjectId !== projectId) {
+			throw new BindingProjectMismatchError(binding.key, 'workflow', workflow.name);
+		}
+
+		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+		if (incompatibility) {
+			throw new BindingIncompatibleError(binding.key, workflow.name, incompatibility);
+		}
+	}
+
+	private async checkDataTableBinding(binding: DataTableBinding, projectId: string, user: User) {
+		const scopes: Scope[] = binding.permissions.includes('write')
+			? ['dataTable:readRow', 'dataTable:writeRow']
+			: ['dataTable:readRow'];
+		const [table] = await this.dataTableService.findDataTablesByIdsForUser(
+			[binding.dataTableId],
+			user,
+			scopes,
+		);
+		if (!table) throw new BindingDataTableNotFoundError(binding.key, binding.dataTableId);
+		if (table.projectId !== projectId) {
+			throw new BindingProjectMismatchError(binding.key, 'data table', table.name);
+		}
 	}
 
 	/** Drops one binding by key; the others are not re-checked. Returns the remaining ones described. */
@@ -188,53 +243,82 @@ export class AppsService {
 	}
 
 	/**
-	 * Resolves each binding against the workflow the runtime will run: the published
-	 * version, or the draft with a warning while none is published. Its trigger declares
-	 * the input fields, so the generated types match what the runtime validates. A binding
-	 * whose workflow left the project or lost its trigger since bind time is left out and
-	 * reported as a warning, so the remaining bindings stay usable. The output schema comes
-	 * from the latest successful execution; without one the items stay open, with a warning.
+	 * Resolves each binding against the resource the runtime will use. A workflow binding
+	 * resolves to the published version, or the draft with a warning while none is
+	 * published; its trigger declares the input fields, so the generated types match what
+	 * the runtime validates, and the output schema comes from the latest successful
+	 * execution (open items with a warning without one). A data table binding resolves to
+	 * its columns. A binding whose resource left the project, or whose workflow lost its
+	 * trigger, since bind time stays in the list as `missing` with a warning, so the UI can
+	 * still show and remove it while the others stay usable.
 	 */
 	async describeBindings(
 		app: Pick<App, 'projectId' | 'bindings'>,
 	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }> {
-		const bindings: DescribedBinding[] = [];
-		const warnings: string[] = [];
+		const described: Described[] = [];
 		for (const binding of app.bindings) {
-			const loaded = await this.loadBoundWorkflow(app.projectId, binding.workflowId);
-			if (!loaded) {
-				warnings.push(
+			described.push(
+				binding.kind === 'dataTable'
+					? await this.describeDataTableBinding(app.projectId, binding)
+					: await this.describeWorkflowBinding(app.projectId, binding),
+			);
+		}
+		return {
+			bindings: described.map(({ binding }) => binding),
+			warnings: described.flatMap(({ warnings }) => warnings),
+		};
+	}
+
+	private async describeWorkflowBinding(
+		projectId: string,
+		binding: WorkflowBinding,
+	): Promise<Described> {
+		const missing = {
+			key: binding.key,
+			kind: binding.kind,
+			name: binding.key,
+			missing: true as const,
+		};
+		const loaded = await this.loadBoundWorkflow(projectId, binding.workflowId);
+		if (!loaded) {
+			return {
+				binding: missing,
+				warnings: [
 					`Binding '${binding.key}': workflow '${binding.workflowId}' no longer exists in the app's project.`,
-				);
-				continue;
-			}
-			const { workflow, published } = loaded;
-			if (getWorkflowToolIncompatibilityReason(workflow) !== null) {
-				warnings.push(
+				],
+			};
+		}
+		const { workflow, published } = loaded;
+		if (getWorkflowToolIncompatibilityReason(workflow) !== null) {
+			return {
+				binding: missing,
+				warnings: [
 					`Binding '${binding.key}': workflow "${workflow.name}" no longer starts with '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' or contains nodes an app cannot run.`,
-				);
-				continue;
-			}
-			if (!published) {
-				warnings.push(
-					`Binding '${binding.key}': workflow "${workflow.name}" is not published. Types for "${binding.key}" come from the unpublished draft; the app gets an error until it is published.`,
-				);
-			}
-			// `inferInputSchema` also treats a trigger without declared fields as passthrough.
-			const trigger = detectTriggerNode(workflow);
-			const passthrough = listWorkflowInputFields(trigger.node).length === 0;
-			if (passthrough) {
-				warnings.push(
-					`Binding '${binding.key}': workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
-				);
-			}
-			const { output, outputSource } = await this.inferOutput(workflow.id);
-			if (outputSource.kind === 'unknown') {
-				warnings.push(
-					`Binding '${binding.key}': output is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
-				);
-			}
-			bindings.push({
+				],
+			};
+		}
+		const warnings: string[] = [];
+		if (!published) {
+			warnings.push(
+				`Binding '${binding.key}': workflow "${workflow.name}" is not published. Types for "${binding.key}" come from the unpublished draft; the app gets an error until it is published.`,
+			);
+		}
+		// `inferInputSchema` also treats a trigger without declared fields as passthrough.
+		const trigger = detectTriggerNode(workflow);
+		const passthrough = listWorkflowInputFields(trigger.node).length === 0;
+		if (passthrough) {
+			warnings.push(
+				`Binding '${binding.key}': workflow "${workflow.name}" accepts any input (trigger has no declared fields): the app cannot type-check its input and the server does not validate it. Declare fields on the trigger to get typed input.`,
+			);
+		}
+		const { output, outputSource } = await this.inferOutput(workflow.id);
+		if (outputSource.kind === 'unknown') {
+			warnings.push(
+				`Binding '${binding.key}': output is untyped. Run the workflow once (executions run) and call \`apps bindings\` to type it from the result.`,
+			);
+		}
+		return {
+			binding: {
 				key: binding.key,
 				kind: binding.kind,
 				workflowId: workflow.id,
@@ -245,10 +329,45 @@ export class AppsService {
 					: inputJsonSchema(trigger.node, trigger.triggerType),
 				output,
 				outputSource,
-			});
-		}
+			},
+			warnings,
+		};
+	}
 
-		return { bindings, warnings };
+	/** Scoped to the app's project, like the runtime: a table moved elsewhere reads as missing. */
+	private async describeDataTableBinding(
+		projectId: string,
+		binding: DataTableBinding,
+	): Promise<Described> {
+		try {
+			const table = await this.dataTableService.validateDataTableExists(
+				binding.dataTableId,
+				projectId,
+			);
+			const columns = (await this.dataTableService.getColumns(binding.dataTableId, projectId)).map(
+				({ name, type }) => ({ name, type }),
+			);
+			return {
+				binding: {
+					key: binding.key,
+					kind: binding.kind,
+					dataTableId: binding.dataTableId,
+					name: table.name,
+					permissions: binding.permissions,
+					columns,
+					row: rowJsonSchema(columns),
+				},
+				warnings: [],
+			};
+		} catch (error) {
+			if (!(error instanceof DataTableNotFoundError)) throw error;
+			return {
+				binding: { key: binding.key, kind: binding.kind, name: binding.key, missing: true },
+				warnings: [
+					`Binding '${binding.key}': data table '${binding.dataTableId}' no longer exists in the app's project.`,
+				],
+			};
+		}
 	}
 
 	/**
@@ -259,7 +378,7 @@ export class AppsService {
 	 */
 	private async inferOutput(
 		workflowId: string,
-	): Promise<Pick<DescribedBinding, 'output' | 'outputSource'>> {
+	): Promise<Pick<DescribedWorkflowBinding, 'output' | 'outputSource'>> {
 		const [execution] = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],

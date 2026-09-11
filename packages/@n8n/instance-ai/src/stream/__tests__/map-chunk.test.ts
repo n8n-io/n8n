@@ -558,6 +558,7 @@ describe('mapAgentChunkToEvent', () => {
 
 	it('maps the app binding details of a bind approval and drops an invalid one', () => {
 		const appBinding = {
+			kind: 'workflow',
 			appId: 'app-1',
 			appName: 'Runner',
 			appNamespace: 'runner',

@@ -258,6 +258,12 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
 		expect(result.bindAppWorkflow).toBe('blocked');
+		expect(result.bindAppDataTable).toBe('blocked');
+	});
+
+	it('requires approval for app bindings by default', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppWorkflow).toBe('require_approval');
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppDataTable).toBe('require_approval');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -317,9 +323,10 @@ describe('confirmationRequestPayloadSchema', () => {
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
 	});
 
-	it('preserves the app binding details of a bind approval', () => {
+	it('preserves the app binding details of a workflow bind approval', () => {
 		const payload = makeConfirmation({
 			appBinding: {
+				kind: 'workflow',
 				appId: 'app-1',
 				appName: 'Runner',
 				appNamespace: 'runner',
@@ -330,6 +337,41 @@ describe('confirmationRequestPayloadSchema', () => {
 		});
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of a data table bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				kind: 'dataTable',
+				appId: 'app-1',
+				appName: 'Board',
+				appNamespace: 'board',
+				dataTableId: 'dt-1',
+				dataTableName: 'Tasks',
+				key: 'tasks',
+				permissions: ['read', 'write'],
+				projectId: 'proj-1',
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('rejects an app binding without a kind', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				appBinding: {
+					appId: 'app-1',
+					appName: 'Runner',
+					appNamespace: 'runner',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+				} as unknown as InstanceAiConfirmationRequestPayload['appBinding'],
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 
 	it('requires a credential destination to be an exact HTTP origin', () => {
