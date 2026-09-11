@@ -52,6 +52,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { countAttachedNodes } from './utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
+import { ResponseError } from '@n8n/rest-api-client';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -889,7 +890,7 @@ function reconnectThreadAfterHydration(): void {
 	});
 }
 
-// Validate the route's :threadId against the loaded thread list, then connect
+// Resolve the route's thread independently of the paginated history, then connect
 // this route-scoped runtime. Route changes remount this component, so no
 // store-level "active thread" state is needed here.
 async function syncRouteToStore() {
@@ -898,16 +899,24 @@ async function syncRouteToStore() {
 	// submit cannot race past it while the thread list is still loading.
 	pendingComposerContext.value = getPendingHandoffContext(requestedThreadId);
 	pendingComposerDraft.value = getPendingComposerDraft(requestedThreadId);
-	if (!store.threads.length) {
-		await store.loadThreads();
-	}
-	// User may have navigated elsewhere while we awaited
-	if (requestedThreadId !== props.threadId) return;
 	if (!store.threads.some((t) => t.id === requestedThreadId)) {
-		clearPendingThreadHandoff(requestedThreadId);
-		void router.replace({ name: INSTANCE_AI_VIEW });
-		return;
+		try {
+			await store.loadThread(requestedThreadId);
+		} catch (error) {
+			if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
+			if (
+				error instanceof ResponseError &&
+				(error.httpStatusCode === 403 || error.httpStatusCode === 404)
+			) {
+				clearPendingThreadHandoff(requestedThreadId);
+				void router.replace({ name: INSTANCE_AI_VIEW });
+			} else {
+				toast.showError(error, i18n.baseText('generic.error'));
+			}
+			return;
+		}
 	}
+	if (router.currentRoute.value.params.threadId !== requestedThreadId) return;
 	if (thread.sseState === 'disconnected') {
 		reconnectThreadAfterHydration();
 	}

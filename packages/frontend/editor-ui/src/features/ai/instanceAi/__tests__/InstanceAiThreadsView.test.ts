@@ -1,7 +1,7 @@
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { InstanceAiThreadListResponse, InstanceAiThreadSummary } from '@n8n/api-types';
+import type { InstanceAiThreadHistoryResponse, InstanceAiThreadSummary } from '@n8n/api-types';
 import InstanceAiThreadsView from '../InstanceAiThreadsView.vue';
 
 const mocks = vi.hoisted(() => ({ load: vi.fn(), scrollToTop: vi.fn() }));
@@ -16,7 +16,7 @@ vi.mock('@vueuse/core', async (original) => ({
 	useIntersectionObserver: vi.fn(),
 }));
 
-function page(ids: string[], index = 0, hasMore = false): InstanceAiThreadListResponse {
+function page(ids: string[], index = 0, hasMore = false): InstanceAiThreadHistoryResponse {
 	return {
 		threads: ids.map((id) => ({
 			id,
@@ -25,8 +25,7 @@ function page(ids: string[], index = 0, hasMore = false): InstanceAiThreadListRe
 			createdAt: '2026-01-01',
 			updatedAt: '2026-01-01',
 		})),
-		total: 60,
-		page: index,
+		nextCursor: hasMore ? `cursor-${index + 1}` : null,
 		hasMore,
 	};
 }
@@ -65,7 +64,7 @@ describe('chat history pagination', () => {
 		const wrapper = render();
 		await flushPromises();
 		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ page: 0, limit: 30, search: '' },
+			{ cursor: undefined, limit: 30, search: '' },
 			expect.any(Function),
 		);
 		const button = wrapper
@@ -75,7 +74,7 @@ describe('chat history pagination', () => {
 		button!.vm.$emit('click');
 		await flushPromises();
 		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ page: 1, limit: 30, search: '' },
+			{ cursor: 'cursor-1', limit: 30, search: '' },
 			expect.any(Function),
 		);
 		expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(2);
@@ -93,17 +92,17 @@ describe('chat history pagination', () => {
 			.vm.$emit('click');
 		await flushPromises();
 		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ page: 0, limit: 30, search: '' },
+			{ cursor: undefined, limit: 30, search: '' },
 			expect.any(Function),
 		);
 		expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
 		wrapper.unmount();
 	});
 	it('debounces server search and ignores an older response', async () => {
-		let resolveOld!: (value: InstanceAiThreadListResponse) => void;
+		let resolveOld!: (value: InstanceAiThreadHistoryResponse) => void;
 		mocks.load
 			.mockReturnValueOnce(
-				new Promise<InstanceAiThreadListResponse>((resolve) => {
+				new Promise<InstanceAiThreadHistoryResponse>((resolve) => {
 					resolveOld = resolve;
 				}),
 			)
@@ -113,7 +112,7 @@ describe('chat history pagination', () => {
 		await vi.advanceTimersByTimeAsync(1000);
 		await flushPromises();
 		expect(mocks.load).toHaveBeenLastCalledWith(
-			{ page: 0, limit: 30, search: 'match' },
+			{ cursor: undefined, limit: 30, search: 'match' },
 			expect.any(Function),
 		);
 		resolveOld(page(['a'], 0, true));

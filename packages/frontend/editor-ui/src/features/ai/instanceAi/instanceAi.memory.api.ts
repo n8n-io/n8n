@@ -3,6 +3,8 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiThreadsQuery,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
@@ -16,6 +18,20 @@ export async function fetchThreads(
 	query?: Partial<InstanceAiThreadsQuery>,
 ): Promise<InstanceAiThreadListResponse> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads', query);
+}
+
+export async function fetchThreadHistory(
+	context: IRestApiContext,
+	query: InstanceAiThreadHistoryQuery,
+): Promise<InstanceAiThreadHistoryResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads/history', query);
+}
+
+export async function fetchThread(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}`);
 }
 
 export async function deleteThread(context: IRestApiContext, threadId: string): Promise<void> {

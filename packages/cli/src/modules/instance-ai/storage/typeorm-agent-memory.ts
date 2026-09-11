@@ -258,6 +258,15 @@ export class TypeORMAgentMemory
 		return thread ? toThread(thread) : null;
 	}
 
+	async listThreadHistory(
+		resourceId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	): Promise<Thread[]> {
+		return (await this.threadRepo.listHistoryPage(resourceId, limit, search, before)).map(toThread);
+	}
+
 	async listThreads(args: {
 		filter?: { resourceId?: string };
 		search?: string;

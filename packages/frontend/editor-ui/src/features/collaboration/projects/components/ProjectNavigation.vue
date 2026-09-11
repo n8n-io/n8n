@@ -48,15 +48,6 @@ const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
 
-let instanceAiThreadsRequested = false;
-
-function requestInstanceAiThreads() {
-	if (instanceAiThreadsRequested) return;
-
-	instanceAiThreadsRequested = true;
-	void instanceAiStore.loadThreads();
-}
-
 const {
 	favoriteGroups,
 	activeTabId,
@@ -73,13 +64,6 @@ const isChatLinkAvailable = computed(
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
 const isInstanceAiNavVisible = useInstanceAiAvailable();
-watch(
-	isInstanceAiNavVisible,
-	(isVisible) => {
-		if (isVisible) requestInstanceAiThreads();
-	},
-	{ immediate: true },
-);
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
@@ -92,6 +76,16 @@ const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY.valu
 const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
 const instanceAiChatsCollapsed = ref(
 	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
+);
+
+watch(
+	[isInstanceAiNavVisible, () => props.collapsed, instanceAiChatsCollapsed],
+	([visible, collapsed, chatsCollapsed]) => {
+		if (visible && !collapsed && !chatsCollapsed) {
+			void instanceAiStore.loadThreads({ limit: 5, once: true });
+		}
+	},
+	{ immediate: true },
 );
 
 watch(favoritesCollapsed, (val) =>

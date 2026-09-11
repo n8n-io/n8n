@@ -12,7 +12,6 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -157,7 +156,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const inputFocusSpy = vi.fn();
 const inputSetTextSpy = vi.fn();
-const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -433,9 +431,6 @@ const InstanceAiArtifactsPanelStub = defineComponent({
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
-		provide: {
-			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
-		},
 		stubs: {
 			InstanceAiSetupPanel: defineComponent({
 				props: { workflowId: String, projectId: String },
@@ -609,7 +604,6 @@ describe('InstanceAiThreadView', () => {
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
-		mockSidebarCollapsed.value = false;
 		history.replaceState({}, '');
 		testAgentOfferState.evalsFlagEnabled = false;
 		testAgentOfferState.capabilitySummary = null;
@@ -1125,13 +1119,13 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('prefills pending composer state before the thread list finishes loading', async () => {
+	it('prefills pending composer state before the thread finishes loading', async () => {
 		store.threads = [];
-		let resolveThreadList!: (loaded: boolean) => void;
-		store.loadThreads.mockImplementation(
+		let resolveThread!: () => void;
+		store.loadThread.mockImplementation(
 			() =>
 				new Promise((resolve) => {
-					resolveThreadList = resolve;
+					resolveThread = resolve;
 				}),
 		);
 		localStorageState.store.set(
@@ -1147,7 +1141,7 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
@@ -1160,7 +1154,7 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		resolveThreadList(true);
+		resolveThread();
 		await flushPromises();
 	});
 
@@ -1651,6 +1645,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
+		mockRouteState.params.threadId = 'thread-2';
 		thread.sseState = 'disconnected';
 		store.threads = [
 			...store.threads,

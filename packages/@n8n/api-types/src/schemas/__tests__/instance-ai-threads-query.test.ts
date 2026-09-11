@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { InstanceAiThreadsQuery } from '../instance-ai.schema';
 
 describe('InstanceAiThreadsQuery', () => {

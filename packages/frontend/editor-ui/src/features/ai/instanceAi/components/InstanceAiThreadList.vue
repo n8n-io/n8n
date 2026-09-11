@@ -23,21 +23,16 @@ import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
+import { useToast } from '@n8n/composables/useToast';
 
 const props = withDefaults(
 	defineProps<{
 		maxHeight?: string;
 		maxThreads?: number;
-		showActions?: boolean;
-		showHeader?: boolean;
-		showSearch?: boolean;
 	}>(),
 	{
 		maxHeight: undefined,
 		maxThreads: undefined,
-		showActions: true,
-		showHeader: true,
-		showSearch: true,
 	},
 );
 
@@ -50,9 +45,11 @@ const store = useInstanceAiStore();
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
+const toast = useToast();
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
+const savingRename = ref(false);
 const searchQuery = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
 const threadListRef = ref<InstanceType<typeof N8nScrollArea>>();
@@ -136,10 +133,14 @@ watch(
 	async () => {
 		await nextTick();
 		updateOverflowCue();
-		comboboxRef.value?.highlightFirstItem?.();
 	},
 	{ flush: 'post' },
 );
+
+watch(searchQuery, async () => {
+	await nextTick();
+	comboboxRef.value?.highlightFirstItem?.();
+});
 
 onMounted(() => {
 	void nextTick(() => {
@@ -181,6 +182,10 @@ function openAllThreads() {
 	void router.push({ name: INSTANCE_AI_THREADS_VIEW });
 }
 
+function setRenameInput(element: unknown) {
+	renameInput.value = element instanceof HTMLInputElement ? element : null;
+}
+
 function startRename(threadId: string, currentTitle: string) {
 	editingThreadId.value = threadId;
 	editingTitle.value = currentTitle;
@@ -191,13 +196,18 @@ function startRename(threadId: string, currentTitle: string) {
 }
 
 async function confirmRename(threadId: string) {
+	if (savingRename.value || editingThreadId.value !== threadId) return;
 	const title = editingTitle.value.trim();
+	savingRename.value = true;
 	try {
 		if (title && title !== store.threads.find((t) => t.id === threadId)?.title) {
 			await store.renameThread(threadId, title);
 		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {
-		editingThreadId.value = null;
+		savingRename.value = false;
+		if (editingThreadId.value === threadId) editingThreadId.value = null;
 	}
 }
 
@@ -227,7 +237,7 @@ function handleThreadAction(action: string, threadId: string) {
 		:reset-search-term-on-select="false"
 	>
 		<div :class="$style.container" data-test-id="instance-ai-thread-list">
-			<div v-if="props.showHeader" :class="$style.header">
+			<div :class="$style.header">
 				<N8nText :class="$style.title" tag="div" size="medium" bold>
 					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 				</N8nText>
@@ -241,7 +251,7 @@ function handleThreadAction(action: string, threadId: string) {
 					{{ i18n.baseText('instanceAi.threads.viewAll') }}
 				</N8nButton>
 			</div>
-			<form v-if="props.showSearch" :class="$style.search" role="search" @submit.prevent>
+			<form :class="$style.search" role="search" @submit.prevent>
 				<div :class="$style.searchControl">
 					<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
 					<ComboboxInput
@@ -290,7 +300,7 @@ function handleThreadAction(action: string, threadId: string) {
 								<!-- Inline rename mode -->
 								<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
 									<input
-										ref="renameInput"
+										:ref="setRenameInput"
 										v-model="editingTitle"
 										:class="$style.renameInput"
 										type="text"
@@ -316,7 +326,6 @@ function handleThreadAction(action: string, threadId: string) {
 										</RouterLink>
 									</ComboboxItem>
 									<N8nActionDropdown
-										v-if="props.showActions"
 										:items="threadActions"
 										:class="$style.actionDropdown"
 										placement="bottom-start"

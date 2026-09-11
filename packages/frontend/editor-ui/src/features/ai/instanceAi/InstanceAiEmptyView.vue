@@ -164,7 +164,6 @@ const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyState
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
-const hasSubmittedFirstPrompt = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
 	isTreatmentVariant: isPersonalizedPromptSuggestionsTreatmentVariant,
@@ -498,7 +497,6 @@ async function handleSubmit(
 	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
 
 	const threadId = uuidv4();
-	hasSubmittedFirstPrompt.value = true;
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
@@ -510,7 +508,6 @@ async function handleSubmit(
 			origin: 'internal',
 		});
 	} catch {
-		hasSubmittedFirstPrompt.value = false;
 		isStartingThread.value = false;
 		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
@@ -525,7 +522,6 @@ async function handleSubmit(
 	// reason, so restore what was typed and stay put.
 	const sent = await thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
 	if (!sent) {
-		hasSubmittedFirstPrompt.value = false;
 		isStartingThread.value = false;
 		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
@@ -564,7 +560,6 @@ async function handleSubmit(
 	} catch (error) {
 		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {
-		hasSubmittedFirstPrompt.value = false;
 		isStartingThread.value = false;
 	}
 }
@@ -593,7 +588,7 @@ function handleShelfSuggestionInsert(payload: {
 	<div :class="$style.chatArea">
 		<InstanceAiViewHeader
 			v-if="!isSplitLayoutActive"
-			:show-thread-history-label="!hasSubmittedFirstPrompt"
+			:show-thread-history-label="!isStartingThread"
 		/>
 
 		<div :class="$style.contentArea">
@@ -636,7 +631,7 @@ function handleShelfSuggestionInsert(payload: {
 				@example-change="(_i, key) => (splitPreviewPromptKey = key)"
 			>
 				<template #header>
-					<InstanceAiViewHeader :show-thread-history-label="!hasSubmittedFirstPrompt" />
+					<InstanceAiViewHeader :show-thread-history-label="!isStartingThread" />
 				</template>
 				<template #input>
 					<div :class="$style.centeredInput">

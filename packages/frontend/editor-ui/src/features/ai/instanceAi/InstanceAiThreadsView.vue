@@ -36,7 +36,7 @@ const loadError = ref(false);
 const hasMore = ref(true);
 const loadMoreRef = ref<HTMLElement>();
 const scrollArea = ref<InstanceType<typeof N8nScrollArea>>();
-let nextPage = 0;
+let nextCursor: string | undefined;
 let requestVersion = 0;
 const searchPending = ref(false);
 
@@ -48,7 +48,7 @@ async function loadMore() {
 	try {
 		const result = await store.loadThreadPage(
 			{
-				page: nextPage,
+				cursor: nextCursor,
 				limit: 30,
 				search: searchQuery.value.trim(),
 			},
@@ -58,7 +58,7 @@ async function loadMore() {
 		threadIds.value = [
 			...new Set([...threadIds.value, ...result.threads.map((thread) => thread.id)]),
 		];
-		nextPage = result.page + 1;
+		nextCursor = result.nextCursor ?? undefined;
 		hasMore.value = result.hasMore;
 	} catch {
 		if (version === requestVersion) loadError.value = true;
@@ -69,7 +69,7 @@ async function loadMore() {
 
 function resetHistory() {
 	requestVersion++;
-	nextPage = 0;
+	nextCursor = undefined;
 	threadIds.value = [];
 	loading.value = false;
 	loadError.value = false;
@@ -147,7 +147,6 @@ async function saveRename() {
 	if (!title || !renamingThreadId.value || saving.value) return;
 	const thread = store.threads.find((item) => item.id === renamingThreadId.value);
 	if (!thread) return;
-	const previousTitle = thread.title;
 	saving.value = true;
 	renameError.value = false;
 	try {
@@ -158,7 +157,6 @@ async function saveRename() {
 			void loadMore();
 		}
 	} catch {
-		thread.title = previousTitle;
 		renameError.value = true;
 	} finally {
 		saving.value = false;
@@ -204,6 +202,7 @@ function openThread(threadId: string) {
 							type="text"
 							size="small"
 							clearable
+							:maxlength="500"
 							autocomplete="off"
 							:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
 							data-test-id="instance-ai-threads-search"

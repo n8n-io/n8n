@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nButton, N8nCallout, N8nIcon, N8nPopover } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -24,6 +24,10 @@ const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 const threadMenuOpen = ref(false);
+
+watch(threadMenuOpen, (open) => {
+	if (open) void store.loadThreads({ limit: 50, once: true });
+});
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 

@@ -261,6 +261,9 @@ const tooltipPlacement = computed(() => {
 
 .menuItemText {
 	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	line-height: var(--font-size--lg);
 	min-width: 0;
 }
@@ -271,6 +274,7 @@ const tooltipPlacement = computed(() => {
 
 	.menuItemText {
 		display: inline-block;
+		overflow: visible;
 		max-width: none;
 		transition: transform 0s linear;
 		@include motion.reduced-motion;

@@ -1,7 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ensureThread } from '../instanceAi.api';
-import { deleteThread as deleteThreadApi, fetchThreads } from '../instanceAi.memory.api';
+import { deleteThread as deleteThreadApi, fetchThreadHistory } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 
@@ -47,7 +47,7 @@ vi.mock('../instanceAi.api', () => ({
 }));
 
 vi.mock('../instanceAi.memory.api', () => ({
-	fetchThreads: vi.fn().mockResolvedValue({ threads: [], total: 0, page: 1, hasMore: false }),
+	fetchThreadHistory: vi.fn().mockResolvedValue({ threads: [], nextCursor: null, hasMore: false }),
 	fetchThreadMessages: vi
 		.fn()
 		.mockResolvedValue({ threadId: 'thread-1', messages: [], nextEventId: 0 }),
@@ -96,7 +96,7 @@ describe('useInstanceAiStore - runtime registry', () => {
 		store.threads = [
 			{ id: 'recent', title: 'Recent', createdAt: '2026-02-01', updatedAt: '2026-02-01' },
 		];
-		vi.mocked(fetchThreads).mockResolvedValueOnce({
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
 			threads: [
 				{
 					id: 'older',
@@ -106,13 +106,12 @@ describe('useInstanceAiStore - runtime registry', () => {
 					updatedAt: '2026-01-01',
 				},
 			],
-			total: 2,
-			page: 1,
+			nextCursor: null,
 			hasMore: false,
 		});
-		await store.loadThreadPage({ page: 1, limit: 30, search: 'Older' });
+		await store.loadThreadPage({ cursor: 'older-cursor', limit: 30, search: 'Older' });
 		expect(store.threads.map((thread) => thread.id)).toEqual(['recent', 'older']);
-		vi.mocked(fetchThreads).mockResolvedValueOnce({
+		vi.mocked(fetchThreadHistory).mockResolvedValueOnce({
 			threads: [
 				{
 					id: 'recent',
@@ -122,8 +121,7 @@ describe('useInstanceAiStore - runtime registry', () => {
 					updatedAt: '2026-02-01',
 				},
 			],
-			total: 2,
-			page: 0,
+			nextCursor: null,
 			hasMore: true,
 		});
 		await store.loadThreads();
