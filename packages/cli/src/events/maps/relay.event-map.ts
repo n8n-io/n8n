@@ -93,6 +93,12 @@ export type RelayEventMap = {
 		credentialId?: string;
 	};
 
+	// Delivery outcome of an instance usage report. No payload: the event name is
+	// the whole signal a log-streaming consumer needs.
+	'instance-report-delivered': {};
+
+	'instance-report-failed': {};
+
 	// #endregion
 
 	// #region Workflow
