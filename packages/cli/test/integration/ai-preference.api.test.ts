@@ -164,19 +164,9 @@ describe('POST /ai-preferences', () => {
 			userId: null,
 			projectId: project.id,
 			project: { id: project.id, name: 'Marketing' },
+			// An editor holds every write on it, so the row says so.
+			scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 		});
-	});
-
-	test('reports the scopes the author holds on the row it just created', async () => {
-		const response = await memberAgent
-			.post('/ai-preferences')
-			.send({ content: 'Marketing rule.', scope: 'project', projectId: project.id });
-
-		expect(response.body.data.scopes).toEqual([
-			'aiPreference:read',
-			'aiPreference:update',
-			'aiPreference:delete',
-		]);
 	});
 
 	test('refuses a project preference from a viewer and from a non-member', async () => {
