@@ -106,12 +106,16 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(ctx.getCredentials).not.toHaveBeenCalled();
 	});
 
-	it('responds 401 without resuming when no signing secret is configured', async () => {
+	it('verifies against the signing-secret credential and falls back to the Slack API credential', async () => {
 		const { ctx, status } = createContext({ interaction: true, signatureSecret: undefined });
-		verifySignature.mockResolvedValue(true);
+		verifySignature.mockResolvedValue(false);
 
 		const result = await slackSendAndWaitWebhook.call(ctx);
 
+		expect(verifySignature).toHaveBeenCalledWith('slackSigningSecretApi', {
+			requireSecret: true,
+			legacyCredentialType: 'slackApi',
+		});
 		expect(status).toHaveBeenCalledWith(401);
 		expect(result).toEqual({ noWebhookResponse: true });
 		// Must not fall back to the query-param approval path.
@@ -131,9 +135,8 @@ describe('slackSendAndWaitWebhook', () => {
 	});
 
 	it('rejects an unsigned interaction-route POST with 401 instead of resuming as approved', async () => {
-		// An interaction-route request with no signature at all (verifySignature never even called
-		// because there is no secret) must fail closed, not fall through to the shared handler
-		// where an attacker-controlled `?approved=true` would resume the execution as approved.
+		// An interaction-route request that fails verification must fail closed, not fall through to
+		// the shared handler where a user-controlled `?approved=true` would resume the execution.
 		const { ctx, status } = createContext({
 			interaction: true,
 			signatureSecret: undefined,
@@ -148,8 +151,7 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(status).toHaveBeenCalledWith(401);
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
-		// verifySignature is short-circuited by the missing secret, so no resume data is produced.
-		expect(verifySignature).not.toHaveBeenCalled();
+		expect(verifySignature).toHaveBeenCalledTimes(1);
 	});
 
 	it('resumes with the responder, channel and message id, and locks the message via response_url', async () => {
@@ -211,7 +213,7 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(lockBody).toContain('Approved');
 	});
 
-	it('verifies against the OAuth2 credential when the node uses OAuth2 auth', async () => {
+	it('falls back to the OAuth2 credential when the node uses OAuth2 auth', async () => {
 		const { ctx } = createContext({
 			interaction: true,
 			signatureSecret: 'secret',
@@ -231,8 +233,10 @@ describe('slackSendAndWaitWebhook', () => {
 
 		await slackSendAndWaitWebhook.call(ctx);
 
-		expect(ctx.getCredentials).toHaveBeenCalledWith('slackOAuth2Api');
-		expect(verifySignature).toHaveBeenCalledWith('slackOAuth2Api');
+		expect(verifySignature).toHaveBeenCalledWith('slackSigningSecretApi', {
+			requireSecret: true,
+			legacyCredentialType: 'slackOAuth2Api',
+		});
 	});
 
 	it('treats a decline action as not approved', async () => {

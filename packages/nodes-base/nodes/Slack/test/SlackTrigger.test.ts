@@ -2,6 +2,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, IWebhookFunctions, INodeType } from 'n8n-workflow';
 
 import { SlackTrigger } from '../SlackTrigger.node';
+import { verifySignature } from '../SlackTriggerHelpers';
 import * as GenericFunctions from '../V2/GenericFunctions';
 
 // Mock the helper functions
@@ -20,6 +21,7 @@ describe('SlackTrigger Node', () => {
 		vi.clearAllMocks();
 		slackTrigger = new SlackTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		vi.mocked(verifySignature).mockResolvedValue(true);
 
 		// Mock helpers
 		mockWebhookFunctions.helpers = {
@@ -706,6 +708,49 @@ describe('SlackTrigger Node', () => {
 			expect(mockWebhookFunctions.getResponseObject().json).toHaveBeenCalledWith({
 				challenge: 'test_challenge_123',
 			});
+		});
+	});
+
+	describe('webhook method - signature verification', () => {
+		const eventRequest = {
+			body: {
+				type: 'event_callback',
+				event: { type: 'message', channel: 'C123', user: 'U456', text: 'Hello' },
+			},
+		};
+
+		beforeEach(() => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(eventRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['message'];
+					case 'watchWorkspace':
+						return true;
+					default:
+						return {};
+				}
+			});
+		});
+
+		it('should require the signing-secret credential and fall back to the Slack API credential', async () => {
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(verifySignature).toHaveBeenCalledTimes(1);
+			expect(verifySignature).toHaveBeenCalledWith('slackSigningSecretApi', {
+				requireSecret: true,
+				legacyCredentialType: 'slackApi',
+			});
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should respond with 401 and not start the workflow when verification fails', async () => {
+			vi.mocked(verifySignature).mockResolvedValue(false);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(mockWebhookFunctions.getResponseObject().status).toHaveBeenCalledWith(401);
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 

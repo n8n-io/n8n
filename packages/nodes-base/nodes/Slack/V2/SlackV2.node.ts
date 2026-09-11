@@ -92,6 +92,19 @@ export class SlackV2 implements INodeType {
 						},
 					},
 				},
+				{
+					// Verifies the interactive approval callbacks that Slack signs.
+					name: 'slackSigningSecretApi',
+					required: true,
+					displayOptions: {
+						show: {
+							resource: ['message'],
+							operation: [SEND_AND_WAIT_OPERATION],
+							responseType: ['approval'],
+							captureResponder: [true],
+						},
+					},
+				},
 			],
 			waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 			webhooks: sendAndWaitWebhooksDescription,
