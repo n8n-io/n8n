@@ -154,7 +154,7 @@ test.describe(
 			// Publish the workflow and close the success modal, which opens once the
 			// publication is confirmed via push — it must not linger over the list view
 			await n8n.canvas.publishWorkflow();
-			await n8n.workflowActivationModal.close();
+			await n8n.workflowActivationModal.dismiss();
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
 			// Go back to workflows list

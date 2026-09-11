@@ -155,7 +155,7 @@ test.describe(
 			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.canvas.publishWorkflow();
 			// The success modal opens once the publication is confirmed via push
-			await n8n.workflowActivationModal.close();
+			await n8n.workflowActivationModal.dismiss();
 
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 			await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
@@ -220,7 +220,7 @@ test.describe(
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.publishWorkflow();
 			// The success modal opens once the publication is confirmed via push
-			await n8n.workflowActivationModal.close();
+			await n8n.workflowActivationModal.dismiss();
 
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
@@ -239,7 +239,7 @@ test.describe(
 			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.canvas.publishWorkflow();
 			// The success modal opens once the publication is confirmed via push
-			await n8n.workflowActivationModal.close();
+			await n8n.workflowActivationModal.dismiss();
 
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
@@ -265,7 +265,7 @@ test.describe(
 
 			await n8n.canvas.publishWorkflow();
 			// The success modal opens once the publication is confirmed via push
-			await n8n.workflowActivationModal.close();
+			await n8n.workflowActivationModal.dismiss();
 
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 			await expect(n8n.canvas.getOpenPublishModalButton()).toBeVisible();

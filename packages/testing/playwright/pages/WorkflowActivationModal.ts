@@ -24,4 +24,12 @@ export class WorkflowActivationModal extends BasePage {
 
 		await this.getGotItButton().click();
 	}
+
+	/**
+	 * Closes the modal without persisting the "Don't show again" preference,
+	 * so the modal opens again on a later publish in the same context.
+	 */
+	async dismiss(): Promise<void> {
+		await this.getGotItButton().click();
+	}
 }
