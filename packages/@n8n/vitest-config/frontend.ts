@@ -24,6 +24,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 				// ~980 files in every test file (about 0.25 s each); the bundle has the same 432 exports.
 				// A bare replacement resolves from the importer, so a package without `element-plus`
 				// is not affected. `vue` stays external to the bundle, so there is one Vue instance.
+				// `patches/element-plus@2.4.3.patch` applies the same lockscreen guard to this bundle.
 				{ find: /^element-plus$/, replacement: 'element-plus/dist/index.full.mjs' },
 			],
 			silent: true,
