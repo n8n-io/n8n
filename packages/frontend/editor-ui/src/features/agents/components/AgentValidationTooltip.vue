@@ -17,6 +17,8 @@ const props = withDefaults(
 	{ issues: () => [] },
 );
 
+const MAX_VISIBLE_DETAILS = 5;
+
 const i18n = useI18n();
 
 const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
@@ -276,6 +278,16 @@ const details = computed(() => {
 		),
 	];
 });
+
+const visibleDetails = computed(() => details.value.slice(0, MAX_VISIBLE_DETAILS));
+const hiddenDetailsCount = computed(() => Math.max(details.value.length - MAX_VISIBLE_DETAILS, 0));
+const overflowLabel = computed(() =>
+	hiddenDetailsCount.value > 0
+		? i18n.baseText('agents.validationTooltip.more' as BaseTextKey, {
+				interpolate: { count: hiddenDetailsCount.value },
+			})
+		: '',
+);
 </script>
 
 <template>
@@ -284,7 +296,8 @@ const details = computed(() => {
 			<div v-if="details.length > 0" :class="$style.content">
 				<div :class="$style.heading">{{ props.fallback }}</div>
 				<div :class="$style.previewDetails">
-					<div v-for="detail in details" :key="detail">{{ detail }}</div>
+					<div v-for="detail in visibleDetails" :key="detail">{{ detail }}</div>
+					<div v-if="hiddenDetailsCount > 0">{{ overflowLabel }}</div>
 				</div>
 			</div>
 			<span v-else>{{ props.fallback }}</span>

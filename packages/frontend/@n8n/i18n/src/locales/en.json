@@ -8047,6 +8047,7 @@
 	"agents.builder.preview.issue.mcpServer.invalidCredential": "Select a valid credential for this MCP server before you preview this agent.",
 	"agents.builder.preview.issue.mcpServer.incompatibleCredential": "Select a credential that matches this MCP server's authentication method before you preview this agent.",
 	"agents.builder.preview.issue.vectorStore.invalidValue": "Rename this vector store so its generated tool name is unique.",
+	"agents.validationTooltip.more": "And {count} more issues.",
 	"agents.builder.preview.layout.change": "Change layout",
 	"agents.builder.preview.layout.floating": "Floating",
 	"agents.builder.preview.layout.floating.ariaLabel": "Use floating preview",

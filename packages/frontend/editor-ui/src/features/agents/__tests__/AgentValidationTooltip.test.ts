@@ -4,7 +4,10 @@ import { mount } from '@vue/test-utils';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: { count?: number } }) =>
+			typeof options?.interpolate?.count === 'number' ? `${key}:${options.interpolate.count}` : key,
+	}),
 }));
 
 vi.mock('../utils/workflowToolTriggers', () => ({
@@ -165,6 +168,143 @@ describe('AgentValidationTooltip', () => {
 
 		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).toContain(
 			'agents.publish.issue.tool.workflow.notPublished',
+		);
+	});
+
+	it('shows at most five preview messages and adds a hidden-count label', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+				{
+					code: 'missing_reference',
+					path: 'skill:ghost',
+					capability: { kind: 'skill', id: 'ghost' },
+				},
+				{
+					code: 'missing_reference',
+					path: 'subAgents.agents.0.agentId',
+					capability: { kind: 'subAgent', id: 'sub-1', index: 0 },
+				},
+				{
+					code: 'missing_credential',
+					path: 'mcpServers.0.credential',
+					capability: { kind: 'mcpServer', id: 'github', index: 0 },
+				},
+			],
+		});
+
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
+
+		expect(content).toContain('agents.builder.preview.issue.agent.instructions.missingRequired');
+		expect(content).toContain('agents.builder.preview.issue.agent.model.missingRequired');
+		expect(content).toContain('agents.builder.preview.issue.agent.credential.missingCredential');
+		expect(content).toContain('agents.builder.preview.issue.skill.missingReference');
+		expect(content).toContain('agents.builder.preview.issue.subAgent.missingReference');
+		expect(content).not.toContain('agents.builder.preview.issue.mcpServer.missingCredential');
+		expect(content).toContain('agents.validationTooltip.more:1');
+	});
+
+	it('shows at most five publish messages and adds a hidden-count label', () => {
+		const wrapper = mountTooltip({
+			action: 'publish',
+			fallback: 'agents.publish.button.invalidConfigTooltip',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+				{
+					code: 'missing_credential',
+					path: 'integrations.0.credentialId',
+					capability: { kind: 'channel', id: 'slack', index: 0 },
+				},
+				{
+					code: 'invalid_value',
+					path: 'tasks.0',
+					capability: { kind: 'task', id: 'task-1', index: 0 },
+				},
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', toolType: 'workflow', id: 'Draft Flow', index: 0 },
+					reason: 'not_published',
+				},
+				{
+					code: 'missing_credential',
+					path: 'mcpServers.0.credential',
+					capability: { kind: 'mcpServer', id: 'github', index: 0 },
+				},
+			],
+		});
+
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
+
+		expect(content).toContain('agents.publish.issue.agent.instructions.missingRequired');
+		expect(content).toContain('agents.publish.issue.agent.model.missingRequired');
+		expect(content).toContain('agents.publish.issue.agent.credential.missingCredential');
+		expect(content).toContain('agents.publish.issue.channel.missingCredential');
+		expect(content).toContain('agents.publish.issue.task.invalidValue');
+		expect(content).not.toContain('agents.publish.issue.tool.workflow.notPublished');
+		expect(content).not.toContain('agents.publish.issue.mcpServer.missingCredential');
+		expect(content).toContain('agents.validationTooltip.more:2');
+	});
+
+	it('computes the hidden count after deduping rendered messages', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+				{
+					code: 'missing_reference',
+					path: 'skill:ghost',
+					capability: { kind: 'skill', id: 'ghost' },
+				},
+				{
+					code: 'missing_reference',
+					path: 'subAgents.agents.0.agentId',
+					capability: { kind: 'subAgent', id: 'sub-1', index: 0 },
+				},
+				{
+					code: 'missing_credential',
+					path: 'mcpServers.0.credential',
+					capability: { kind: 'mcpServer', id: 'github', index: 0 },
+				},
+			],
+		});
+
+		const content = wrapper.get('[data-testid="stub-tooltip-content"]').text();
+
+		expect(content).toContain('agents.validationTooltip.more:1');
+		expect(content).not.toContain('agents.builder.preview.issue.mcpServer.missingCredential');
+	});
+
+	it('does not show the overflow label when exactly five messages are visible', () => {
+		const wrapper = mountTooltip({
+			action: 'preview',
+			issues: [
+				{ code: 'missing_required', path: 'instructions', capability: { kind: 'agent' } },
+				{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } },
+				{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+				{
+					code: 'missing_reference',
+					path: 'skill:ghost',
+					capability: { kind: 'skill', id: 'ghost' },
+				},
+				{
+					code: 'missing_reference',
+					path: 'subAgents.agents.0.agentId',
+					capability: { kind: 'subAgent', id: 'sub-1', index: 0 },
+				},
+			],
+		});
+
+		expect(wrapper.get('[data-testid="stub-tooltip-content"]').text()).not.toContain(
+			'agents.validationTooltip.more',
 		);
 	});
 });
