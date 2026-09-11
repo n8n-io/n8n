@@ -1,11 +1,9 @@
-import type { IWorkflowGroup } from 'n8n-workflow';
-import { validateNodeSelectionForGrouping } from 'n8n-workflow';
+import { dropInvalidWorkflowGroups, type IWorkflowGroup } from 'n8n-workflow';
 import { escapeHtml } from 'xss';
 
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -27,30 +25,6 @@ export function useInvalidNodeGroupCleanup() {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
-
-	function isGroupValid(
-		store: WorkflowDocumentStore,
-		group: IWorkflowGroup,
-		allGroups: IWorkflowGroup[],
-	): boolean {
-		// The backend rejects memberless groups
-		if (group.nodeIds.length === 0) return false;
-
-		const nodes: INodeUi[] = [];
-		for (const nodeId of group.nodeIds) {
-			const node = store.getNodeById(nodeId);
-			// The backend rejects groups referencing nodes that don't exist
-			if (!node) return false;
-			nodes.push(node);
-		}
-
-		return validateNodeSelectionForGrouping({
-			nodes,
-			connectionsBySourceNode: store.connectionsBySourceNode,
-			getNodeType: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion),
-			existingNodeGroups: allGroups.filter((other) => other.id !== group.id),
-		}).valid;
-	}
 
 	function showGroupsRemovedToast(removedGroups: IWorkflowGroup[]) {
 		// Toast messages render as sanitized HTML, so the group names can be
@@ -78,8 +52,23 @@ export function useInvalidNodeGroupCleanup() {
 		const groups = store.allGroups;
 		if (groups.length === 0) return [];
 
-		const invalidGroups = groups.filter((group) => !isGroupValid(store, group, groups));
+		const candidate = {
+			nodes: store.allNodes,
+			connections: store.connectionsBySourceNode,
+			nodeGroups: groups,
+		};
+		dropInvalidWorkflowGroups(candidate, (node) =>
+			nodeTypesStore.getNodeType(node.type, node.typeVersion),
+		);
+		const retainedGroupIds = new Set(candidate.nodeGroups.map((group) => group.id));
+		const invalidGroups = groups.filter((group) => !retainedGroupIds.has(group.id));
 		if (invalidGroups.length === 0) return [];
+
+		// The shared cleanup strips links to removed groups. Apply those changes
+		// before deletion so no change event observes a dangling group endpoint.
+		for (const group of candidate.nodeGroups) {
+			if (store.getGroupById(group.id) !== group) store.restoreGroup(group);
+		}
 
 		for (const group of invalidGroups) {
 			store.deleteGroup(group.id);

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IWorkflowGroup,
+	IWorkflowGroupVisualLinkEndpoint,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { useInvalidNodeGroupCleanup } from './useInvalidNodeGroupCleanup';
@@ -29,6 +34,38 @@ function createConnection(from: string, to: string): IConnections {
 		[from]: {
 			[NodeConnectionTypes.Main]: [[{ node: to, type: NodeConnectionTypes.Main, index: 0 }]],
 		},
+	};
+}
+
+const emptyGroupFrame = { position: [100, 200], size: [240, 160] } as const;
+
+function nodeEndpoint(id: string) {
+	return { kind: 'node', id, port: { type: NodeConnectionTypes.Main, index: 0 } } as const;
+}
+
+function groupEndpoint(id: string) {
+	return {
+		kind: 'group',
+		id,
+		port: { type: NodeConnectionTypes.Main, index: 0 },
+	} as const;
+}
+
+function visualLink(
+	source: IWorkflowGroupVisualLinkEndpoint,
+	target: IWorkflowGroupVisualLinkEndpoint,
+) {
+	return { source, target };
+}
+
+function makeEmptyGroup(overrides: Partial<IWorkflowGroup> = {}): IWorkflowGroup {
+	return {
+		id: 'group-1',
+		name: 'Empty Group',
+		nodeIds: [],
+		frame: { position: [...emptyGroupFrame.position], size: [...emptyGroupFrame.size] },
+		visualLinks: [],
+		...overrides,
 	};
 }
 
@@ -69,6 +106,44 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(store.allGroups).toHaveLength(1);
 		expect(showMessageSpy).not.toHaveBeenCalled();
 		expect(trackSpy).not.toHaveBeenCalled();
+	});
+
+	it('keeps a standalone empty group with a valid frame', () => {
+		const store = setupDocumentStore({
+			nodes: [],
+			nodeGroups: [makeEmptyGroup()],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toEqual([]);
+		expect(store.allGroups).toEqual([makeEmptyGroup()]);
+		expect(showMessageSpy).not.toHaveBeenCalled();
+	});
+
+	it('keeps a complete empty-group path with its canonical connection', () => {
+		const store = setupDocumentStore({
+			nodes: [
+				createTestNode({ id: 'node-a', name: 'Node A' }),
+				createTestNode({ id: 'node-b', name: 'Node B' }),
+			],
+			connections: createConnection('Node A', 'Node B'),
+			nodeGroups: [
+				makeEmptyGroup({
+					visualLinks: [
+						visualLink(nodeEndpoint('node-a'), groupEndpoint('group-1')),
+						visualLink(groupEndpoint('group-1'), nodeEndpoint('node-b')),
+					],
+				}),
+			],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+		expect(removeInvalidNodeGroups(store)).toEqual([]);
+		expect(store.allGroups).toHaveLength(1);
+		expect(showMessageSpy).not.toHaveBeenCalled();
 	});
 
 	it('keeps a group with a sticky note member and shows no toast', () => {
@@ -133,7 +208,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 		});
 	});
 
-	it('removes a group that has no members', () => {
+	it('removes an empty group that has no frame', () => {
 		const store = setupDocumentStore({
 			nodes: [createTestNode({ id: 'node-a', name: 'Node A' })],
 			nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: [] }],
@@ -144,6 +219,55 @@ describe('useInvalidNodeGroupCleanup', () => {
 
 		expect(removed.map((group) => group.id)).toEqual(['group-1']);
 		expect(store.allGroups).toHaveLength(0);
+	});
+
+	it('removes an empty group with malformed visual-link data', () => {
+		const store = setupDocumentStore({
+			nodes: [createTestNode({ id: 'node-a', name: 'Node A' })],
+			nodeGroups: [
+				makeEmptyGroup({
+					visualLinks: [
+						{
+							source: { kind: 'node', id: 'node-a' },
+							target: groupEndpoint('group-1'),
+						} as never,
+					],
+				}),
+			],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+		expect(removeInvalidNodeGroups(store).map((group) => group.id)).toEqual(['group-1']);
+		expect(store.allGroups).toEqual([]);
+	});
+
+	it('removes links in retained groups that refer to a removed empty group', () => {
+		const source = makeEmptyGroup({
+			id: 'group-1',
+			name: 'Source',
+			visualLinks: [visualLink(groupEndpoint('group-1'), groupEndpoint('group-2'))],
+		});
+		const malformedTarget = makeEmptyGroup({
+			id: 'group-2',
+			name: 'Target',
+			frame: undefined,
+		});
+		const connections = createConnection('Node A', 'Node B');
+		const store = setupDocumentStore({
+			nodes: [
+				createTestNode({ id: 'node-a', name: 'Node A' }),
+				createTestNode({ id: 'node-b', name: 'Node B' }),
+			],
+			connections,
+			nodeGroups: [source, malformedTarget],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+		expect(removeInvalidNodeGroups(store).map((group) => group.id)).toEqual(['group-2']);
+		expect(store.allGroups).toEqual([{ ...source, visualLinks: [] }]);
+		expect(store.connectionsBySourceNode).toEqual(connections);
 	});
 
 	it('removes a group referencing a node that does not exist', () => {
