@@ -227,14 +227,12 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	private instanceReportDelivered() {
 		void this.eventBus.send(
-			new EventMessageGeneric({ eventName: 'n8n.airgappedReporting.success' }),
+			new EventMessageGeneric({ eventName: 'n8n.instanceReporting.success' }),
 		);
 	}
 
 	private instanceReportFailed() {
-		void this.eventBus.send(
-			new EventMessageGeneric({ eventName: 'n8n.airgappedReporting.failed' }),
-		);
+		void this.eventBus.send(new EventMessageGeneric({ eventName: 'n8n.instanceReporting.failed' }));
 	}
 
 	@Redactable()

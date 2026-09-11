@@ -101,9 +101,8 @@ describe('LogStreamingStore', () => {
 
 	describe('event group boundaries', () => {
 		it('should not put a longer group under one that only shares leading characters', () => {
-			logStreamingStore.addEventName('n8n.ai.tool.called');
-			logStreamingStore.addEventName('n8n.airgappedReporting.success');
-			logStreamingStore.addEventName('n8n.airgappedReporting.failed');
+			logStreamingStore.addEventName('n8n.foo.created');
+			logStreamingStore.addEventName('n8n.foobar.created');
 
 			logStreamingStore.addDestination({
 				id: 'boundaryDestination',
@@ -114,16 +113,13 @@ describe('LogStreamingStore', () => {
 			});
 
 			const groups = logStreamingStore.items.boundaryDestination.eventGroups;
-			const aiGroup = groups.find((group) => group.name === 'n8n.ai');
-			const reportingGroup = groups.find((group) => group.name === 'n8n.airgappedReporting');
+			const fooGroup = groups.find((group) => group.name === 'n8n.foo');
+			const foobarGroup = groups.find((group) => group.name === 'n8n.foobar');
 
-			// `n8n.airgappedReporting` starts with `n8n.ai`, but the two are distinct
-			// groups: neither must swallow the other's events.
-			expect(aiGroup!.children.map((c) => c.name)).toEqual(['n8n.ai.tool.called']);
-			expect(reportingGroup!.children.map((c) => c.name)).toEqual([
-				'n8n.airgappedReporting.success',
-				'n8n.airgappedReporting.failed',
-			]);
+			// `n8n.foobar` starts with `n8n.foo`, but the two are distinct groups on a
+			// segment boundary: neither must swallow the other's events.
+			expect(fooGroup!.children.map((c) => c.name)).toEqual(['n8n.foo.created']);
+			expect(foobarGroup!.children.map((c) => c.name)).toEqual(['n8n.foobar.created']);
 		});
 	});
 });

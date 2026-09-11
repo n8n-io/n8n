@@ -67,8 +67,8 @@ export const eventNamesWorkflow = [
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
 export const eventNamesInstanceReporting = [
-	'n8n.airgappedReporting.success',
-	'n8n.airgappedReporting.failed',
+	'n8n.instanceReporting.success',
+	'n8n.instanceReporting.failed',
 ] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesExecution = [

@@ -3364,7 +3364,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('instance-report-delivered');
 
 			expect(eventBus.send).toHaveBeenCalledWith(
-				expect.objectContaining({ eventName: 'n8n.airgappedReporting.success' }),
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.success' }),
 			);
 		});
 
@@ -3372,7 +3372,7 @@ describe('LogStreamingEventRelay', () => {
 			eventService.emit('instance-report-failed');
 
 			expect(eventBus.send).toHaveBeenCalledWith(
-				expect.objectContaining({ eventName: 'n8n.airgappedReporting.failed' }),
+				expect.objectContaining({ eventName: 'n8n.instanceReporting.failed' }),
 			);
 		});
 	});
