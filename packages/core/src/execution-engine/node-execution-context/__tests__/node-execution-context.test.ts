@@ -86,8 +86,18 @@ describe('NodeExecutionContext', () => {
 
 	describe('getChildNodes', () => {
 		it('should return an array of NodeTypeAndVersion objects for the child nodes of the given node', () => {
-			const childNode1 = mock<INode>({ name: 'Child Node 1', type: 'testType1', typeVersion: 1 });
-			const childNode2 = mock<INode>({ name: 'Child Node 2', type: 'testType2', typeVersion: 2 });
+			const childNode1 = mock<INode>({
+				id: 'child-id-1',
+				name: 'Child Node 1',
+				type: 'testType1',
+				typeVersion: 1,
+			});
+			const childNode2 = mock<INode>({
+				id: 'child-id-2',
+				name: 'Child Node 2',
+				type: 'testType2',
+				typeVersion: 2,
+			});
 			workflow.getChildNodes.mockReturnValue(['Child Node 1', 'Child Node 2']);
 			workflow.nodes = {
 				'Child Node 1': childNode1,
@@ -97,16 +107,26 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getChildNodes('Test Node');
 
 			expect(result).toMatchObject([
-				{ name: 'Child Node 1', type: 'testType1', typeVersion: 1 },
-				{ name: 'Child Node 2', type: 'testType2', typeVersion: 2 },
+				{ id: 'child-id-1', name: 'Child Node 1', type: 'testType1', typeVersion: 1 },
+				{ id: 'child-id-2', name: 'Child Node 2', type: 'testType2', typeVersion: 2 },
 			]);
 		});
 	});
 
 	describe('getParentNodes', () => {
 		it('should return an array of NodeTypeAndVersion objects for the parent nodes of the given node', () => {
-			const parentNode1 = mock<INode>({ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 });
-			const parentNode2 = mock<INode>({ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 });
+			const parentNode1 = mock<INode>({
+				id: 'parent-id-1',
+				name: 'Parent Node 1',
+				type: 'testType1',
+				typeVersion: 1,
+			});
+			const parentNode2 = mock<INode>({
+				id: 'parent-id-2',
+				name: 'Parent Node 2',
+				type: 'testType2',
+				typeVersion: 2,
+			});
 			workflow.getParentNodes.mockReturnValue(['Parent Node 1', 'Parent Node 2']);
 			workflow.nodes = {
 				'Parent Node 1': parentNode1,
@@ -116,8 +136,8 @@ describe('NodeExecutionContext', () => {
 			const result = testContext.getParentNodes('Test Node');
 
 			expect(result).toMatchObject([
-				{ name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
-				{ name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
+				{ id: 'parent-id-1', name: 'Parent Node 1', type: 'testType1', typeVersion: 1 },
+				{ id: 'parent-id-2', name: 'Parent Node 2', type: 'testType2', typeVersion: 2 },
 			]);
 		});
 	});
