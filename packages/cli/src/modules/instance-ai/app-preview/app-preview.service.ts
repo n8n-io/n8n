@@ -366,11 +366,15 @@ export class AppPreviewService {
 	): Promise<StartOutcome> {
 		if (entry.kind === 'built') return await this.runBuild(entry, input);
 
+		// Checked before the sandbox: a scaffold the agent has not edited yet is
+		// never stored, so "no stored source" means there is nothing to show even
+		// when the app directory exists.
+		const tarball = await input.getSourceTarball();
+		if (!tarball) return { status: { status: 'no-source' }, entry };
+
 		const client = this.client(entry.sandbox);
 		const runner = this.clientRunner(client, entry.sandboxId);
 		if (await this.needsRestore(client, entry)) {
-			const tarball = await input.getSourceTarball();
-			if (!tarball) return { status: { status: 'no-source' }, entry };
 			if (!(await input.getWorkspace())) {
 				return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
 			}
@@ -400,13 +404,14 @@ export class AppPreviewService {
 		entry: AppPreviewBuiltEntry,
 		input: EnsureAppPreviewInput,
 	): Promise<StartOutcome> {
+		const tarball = await input.getSourceTarball();
+		if (!tarball) return { status: { status: 'no-source' }, entry };
+
 		const workspace = await input.getWorkspace();
 		const runner = workspace ? await this.workspaceRunner(workspace) : undefined;
 		if (!runner) return { status: { status: 'unavailable', reason: 'sandbox' }, entry };
 
 		if (!(await runner.filesystem.exists(`${runner.root}/apps/${entry.namespace}/package.json`))) {
-			const tarball = await input.getSourceTarball();
-			if (!tarball) return { status: { status: 'no-source' }, entry };
 			const restored = await this.restore(runner, entry, tarball.data);
 			if (restored) return { status: restored, entry };
 		}

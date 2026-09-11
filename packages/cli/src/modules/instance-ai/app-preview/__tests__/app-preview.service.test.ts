@@ -160,7 +160,7 @@ describe('AppPreviewService', () => {
 				`${APP_DIR}/package.json`,
 			);
 			expect(getWorkspace).not.toHaveBeenCalled();
-			expect(getSourceTarball).not.toHaveBeenCalled();
+			expect(getSourceTarball).toHaveBeenCalledTimes(1);
 			expect(sandboxClient.exec).toHaveBeenCalledTimes(1);
 			const startCommand = sandboxClient.exec.mock.calls[0][1].command;
 			expect(startCommand).toBe(
@@ -318,7 +318,7 @@ describe('AppPreviewService', () => {
 				status: 'unavailable',
 				reason: 'sandbox',
 			});
-			expect(getSourceTarball).not.toHaveBeenCalled();
+			expect(getSourceTarball).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns unavailable/start-failed with the log tail when the start script exits non-zero', async () => {
@@ -578,11 +578,11 @@ describe('AppPreviewService', () => {
 			expect(sandboxClient.writeFile).not.toHaveBeenCalled();
 		});
 
-		it('returns no-source when the app directory is missing and nothing is stored', async () => {
-			workspaceFs.exists.mockResolvedValueOnce(false);
+		it('returns no-source when nothing is stored, even when the app directory exists', async () => {
 			getSourceTarball.mockResolvedValue(null);
 
 			await expect(service.ensure(builtInput)).resolves.toEqual({ status: 'no-source' });
+			expect(getWorkspace).not.toHaveBeenCalled();
 			expect(workspaceExec).not.toHaveBeenCalled();
 		});
 
@@ -806,7 +806,7 @@ describe('AppPreviewService', () => {
 				expect(workspaceCommands()).toEqual([
 					buildPreviewBuildScript({ namespace: 'greeter', token: tokenOf(result) }),
 				]);
-				expect(getSourceTarball).not.toHaveBeenCalled();
+				expect(getSourceTarball).toHaveBeenCalledTimes(2);
 			});
 		});
 	});
