@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 
 /**
  * Keep this file import-light: types and the SDK only. Views load lazily
@@ -6,7 +6,7 @@ import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
  * referenced inside route guards or handlers, never at module scope — a
  * top-level store import pulls the whole module in even when it is disabled.
  */
-export const {{PascalName}}Module: FrontendModuleDescription = {
+export const {{PascalName}}Module = defineFrontendModule({
 	// Must match the backend module id: both gate off `/rest/module-settings`.
 	id: '{{name}}',
 	name: '{{TitleName}}',
@@ -26,4 +26,4 @@ export const {{PascalName}}Module: FrontendModuleDescription = {
 
 	// The SDK types the fields below, but no host in the shell reads them yet.
 	// A value here does nothing at runtime: locales, shortcuts, banners, setup.
-};
+});

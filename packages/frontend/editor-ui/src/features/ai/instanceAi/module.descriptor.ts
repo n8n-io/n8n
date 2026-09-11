@@ -1,5 +1,5 @@
 import { i18n } from '@n8n/i18n';
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_MODALS } from './modals';
 import {
@@ -49,7 +49,7 @@ const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue'
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
-export const InstanceAiModule: FrontendModuleDescription = {
+export const InstanceAiModule = defineFrontendModule({
 	id: 'instance-ai',
 	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
@@ -215,4 +215,4 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			},
 		},
 	],
-};
+});

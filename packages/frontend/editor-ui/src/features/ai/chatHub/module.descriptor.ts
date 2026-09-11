@@ -1,4 +1,4 @@
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
@@ -23,7 +23,7 @@ const ChatPersonalAgentsView = async () =>
 const SettingsChatHubView = async () =>
 	await import('@/features/ai/chatHub/SettingsChatHubView.vue');
 
-export const ChatModule: FrontendModuleDescription = {
+export const ChatModule = defineFrontendModule({
 	id: 'chat-hub',
 	name: 'Chat',
 	description: 'Chat with LLM models or your n8n AI agents.',
@@ -205,4 +205,4 @@ export const ChatModule: FrontendModuleDescription = {
 			},
 		},
 	],
-};
+});
