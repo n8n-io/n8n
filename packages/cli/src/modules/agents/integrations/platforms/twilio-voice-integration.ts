@@ -1,7 +1,8 @@
 import type { AgentIntegrationConfig, AgentTwilioVoiceIntegrationSettings } from '@n8n/api-types';
 import { Logger, LockService } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import { Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from '@/services/cache/cache.service';
@@ -15,6 +16,7 @@ import {
 } from '../agent-chat-integration';
 import { loadChatSdk } from '../esm-loader';
 import { TwilioVoiceAdapter, TwilioVoiceClient, VoiceTurnStore } from './twilio-voice-adapter';
+import { TwilioVoiceSessionStore } from './twilio-voice-session-store';
 
 @Service()
 export class TwilioVoiceIntegration extends AgentChatIntegration {
@@ -141,6 +143,13 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 		const settings = this.settings(ctx.integration);
 		const { accountSid, authToken } = this.auth(ctx.credential);
 		const chatSdk = await loadChatSdk();
+		const relay = Container.get(AgentsConfig).twilioConversationRelayEnabled
+			? {
+					agentId: ctx.agentId,
+					credentialId: ctx.credentialId,
+					sessions: Container.get(TwilioVoiceSessionStore),
+				}
+			: undefined;
 		return new TwilioVoiceAdapter({
 			accountSid,
 			authToken,
@@ -154,6 +163,7 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 				this.lockService,
 				`${ctx.agentId}:${this.type}:${ctx.credentialId}`,
 			),
+			relay,
 			logger: this.logger,
 			chatSdk,
 		});

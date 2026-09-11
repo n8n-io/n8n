@@ -14,8 +14,14 @@ import type {
 } from 'chat';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { setTimeout as sleep } from 'timers/promises';
+import type { RawData, WebSocket } from 'ws';
 
 import type { CacheService } from '@/services/cache/cache.service';
+
+import type {
+	TwilioVoiceSessionStore,
+	TwilioVoiceSessionTicket,
+} from './twilio-voice-session-store';
 
 const TWILIO_API_BASE = 'https://api.twilio.com/2010-04-01';
 const XML_CONTENT_TYPE = { 'content-type': 'text/xml; charset=utf-8' };
@@ -50,6 +56,14 @@ const TURN_TTL_MS = 5 * 60_000;
 const DRAIN_POLL_MS = 250;
 
 const TURN_KEY_PREFIX = 'agents:twilio-voice-turn';
+export const TWILIO_VOICE_RELAY_PATH_SUFFIX = '/conversation-relay';
+const MAX_RELAY_BUFFERED_BYTES = 1024 * 1024;
+
+interface TwilioVoiceRelayOptions {
+	agentId: string;
+	credentialId: string;
+	sessions: TwilioVoiceSessionStore;
+}
 
 interface TwilioVoiceWebhook {
 	AccountSid: string;
@@ -85,6 +99,7 @@ interface TwilioVoiceAdapterOptions {
 	webhookUrl: string;
 	verifySignature: boolean;
 	turns: VoiceTurnStore;
+	relay?: TwilioVoiceRelayOptions;
 	logger: Logger;
 	chatSdk: Pick<
 		typeof import('chat'),
@@ -121,6 +136,10 @@ function gatherTwiml(webhookUrl: string, prompt?: string, emptyAttempt = 0): str
 	action.searchParams.set('turn', randomUUID());
 	if (emptyAttempt > 0) action.searchParams.set('empty', String(emptyAttempt));
 	return `${prompt ? sayTwiml(prompt) : ''}<Gather input="speech" action="${escapeXml(action.toString())}" method="POST" speechTimeout="auto" actionOnEmptyResult="true"/>`;
+}
+
+function conversationRelayTwiml(websocketUrl: string): string {
+	return `<Connect><ConversationRelay url="${escapeXml(websocketUrl)}" welcomeGreeting="Hello. How can I help you?" welcomeGreetingInterruptible="none" interruptible="none"/></Connect>`;
 }
 
 function streamRedirectTwiml(webhookUrl: string, silentHops: number): string {
@@ -530,13 +549,22 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 	/** Turns this main is producing text for, with timings for the debug log. */
 	private readonly producing = new Map<string, ProducingTurn>();
 
+	private readonly relaySockets = new Map<string, WebSocket>();
+
+	private readonly relayTurns = new Map<string, Promise<void>>();
+
 	constructor(private readonly options: TwilioVoiceAdapterOptions) {}
 
 	async initialize(chat: ChatInstance): Promise<void> {
 		this.chat = chat;
 	}
 
-	async disconnect(): Promise<void> {}
+	async disconnect(): Promise<void> {
+		this.chat = undefined;
+		for (const socket of this.relaySockets.values()) socket.close(1001, 'Channel disconnected');
+		this.relaySockets.clear();
+		this.relayTurns.clear();
+	}
 
 	async handleWebhook(request: Request, options?: WebhookOptions): Promise<Response> {
 		const form = await request.formData();
@@ -570,6 +598,8 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 
 		const speech = payload.SpeechResult?.trim();
 		if (!url.searchParams.has('turn')) {
+			const relayResponse = await this.startConversationRelay(payload);
+			if (relayResponse) return relayResponse;
 			return twiml(gatherTwiml(this.options.webhookUrl, 'Hello. How can I help you?'));
 		}
 		if (!speech) {
@@ -590,6 +620,145 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 
 		await this.startTurn(payload.CallSid, turnId, this.parseMessage(payload, turnId), options);
 		return await this.speakNext(payload.CallSid, 0, true);
+	}
+
+	conversationRelayUrl(sessionId: string): string {
+		const url = new URL(this.options.webhookUrl);
+		url.protocol = 'wss:';
+		url.pathname = `${url.pathname.replace(/\/$/, '')}${TWILIO_VOICE_RELAY_PATH_SUFFIX}`;
+		url.search = '';
+		url.searchParams.set('session', sessionId);
+		return url.toString();
+	}
+
+	verifyConversationRelaySignature(url: string, signature: string): boolean {
+		return verifyTwilioSignature(url, new FormData(), signature, this.options.authToken);
+	}
+
+	handleConversationRelay(socket: WebSocket, ticket: TwilioVoiceSessionTicket): void {
+		let setupComplete = false;
+		const removeSocket = () => {
+			if (this.relaySockets.get(ticket.callSid) === socket) {
+				this.relaySockets.delete(ticket.callSid);
+			}
+		};
+
+		socket.on('message', (data: RawData, isBinary: boolean) => {
+			if (isBinary) {
+				socket.close(1003, 'Text messages required');
+				return;
+			}
+
+			let message: unknown;
+			try {
+				message = JSON.parse(data.toString());
+			} catch {
+				socket.close(1007, 'Invalid JSON');
+				return;
+			}
+			if (!isRecord(message) || typeof message.type !== 'string') {
+				socket.close(1007, 'Invalid message');
+				return;
+			}
+
+			if (!setupComplete) {
+				if (!this.isValidRelaySetup(message, ticket)) {
+					socket.close(1008, 'Invalid setup');
+					return;
+				}
+				setupComplete = true;
+				this.relaySockets.set(ticket.callSid, socket);
+				return;
+			}
+
+			if (
+				message.type === 'prompt' &&
+				message.last === true &&
+				typeof message.voicePrompt === 'string' &&
+				message.voicePrompt.trim()
+			) {
+				this.queueRelayTurn(socket, ticket, message.voicePrompt.trim());
+			} else if (message.type === 'error') {
+				this.options.logger.warn('[TwilioVoice] ConversationRelay reported an error', {
+					callSid: ticket.callSid,
+					description: typeof message.description === 'string' ? message.description : undefined,
+				});
+			}
+		});
+
+		socket.on('close', removeSocket);
+		socket.on('error', (error) => {
+			removeSocket();
+			this.options.logger.warn('[TwilioVoice] ConversationRelay socket failed', {
+				callSid: ticket.callSid,
+				error,
+			});
+		});
+	}
+
+	private async startConversationRelay(payload: TwilioVoiceWebhook): Promise<Response | undefined> {
+		const relay = this.options.relay;
+		if (!relay || !this.options.webhookUrl.startsWith('https://')) return undefined;
+
+		const sessionId = await relay.sessions.create({
+			agentId: relay.agentId,
+			credentialId: relay.credentialId,
+			accountSid: payload.AccountSid,
+			callSid: payload.CallSid,
+			from: payload.From,
+			to: payload.To,
+		});
+		return twiml(conversationRelayTwiml(this.conversationRelayUrl(sessionId)));
+	}
+
+	private isValidRelaySetup(
+		message: Record<string, unknown>,
+		ticket: TwilioVoiceSessionTicket,
+	): boolean {
+		return (
+			message.type === 'setup' &&
+			message.accountSid === ticket.accountSid &&
+			message.callSid === ticket.callSid &&
+			message.from === ticket.from &&
+			message.to === ticket.to
+		);
+	}
+
+	private queueRelayTurn(
+		socket: WebSocket,
+		ticket: TwilioVoiceSessionTicket,
+		prompt: string,
+	): void {
+		const previous = this.relayTurns.get(ticket.callSid) ?? Promise.resolve();
+		const turn = previous
+			.then(async () => {
+				if (this.relaySockets.get(ticket.callSid) !== socket || !this.chat) return;
+				const raw: TwilioVoiceWebhook = {
+					AccountSid: ticket.accountSid,
+					CallSid: ticket.callSid,
+					From: ticket.from,
+					To: ticket.to,
+					SpeechResult: prompt,
+				};
+				await this.chat.processMessage(
+					this,
+					this.encodeThreadId({ callSid: ticket.callSid }),
+					this.parseMessage(raw),
+				);
+			})
+			.catch((error: unknown) => {
+				this.options.logger.error('[TwilioVoice] ConversationRelay turn failed', {
+					error,
+					callSid: ticket.callSid,
+				});
+				this.sendRelayText(socket, TURN_FAILED_SPEECH, true);
+			})
+			.finally(() => {
+				if (this.relayTurns.get(ticket.callSid) === turn) {
+					this.relayTurns.delete(ticket.callSid);
+				}
+			});
+		this.relayTurns.set(ticket.callSid, turn);
 	}
 
 	private async startTurn(
@@ -729,6 +898,16 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		_options?: unknown,
 	): Promise<RawMessage<TwilioVoiceWebhook>> {
 		const { callSid } = this.decodeThreadId(threadId);
+		const relaySocket = this.relaySockets.get(callSid);
+		if (relaySocket) {
+			for await (const chunk of textStream) {
+				const delta = typeof chunk === 'string' ? chunk : this.chunkText(chunk);
+				if (delta) this.sendRelayText(relaySocket, delta, false);
+			}
+			this.sendRelayText(relaySocket, '', true);
+			return this.sentMessage(callSid, threadId);
+		}
+
 		for await (const chunk of textStream) {
 			const delta = typeof chunk === 'string' ? chunk : this.chunkText(chunk);
 			if (delta) await this.queueSentences(callSid, (turn) => turn.accumulator.push(delta), false);
@@ -755,8 +934,27 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		const { callSid } = this.decodeThreadId(threadId);
 		const { text, endCall } = postableText(message);
 		const spoken = this.options.chatSdk.markdownToPlainText(text);
+		const relaySocket = this.relaySockets.get(callSid);
+		if (relaySocket) {
+			if (spoken) this.sendRelayText(relaySocket, spoken, true);
+			if (endCall) this.sendRelayMessage(relaySocket, { type: 'end' });
+			return this.sentMessage(callSid, threadId);
+		}
 		await this.queueSentences(callSid, (turn) => turn.accumulator.whole(spoken), endCall);
 		return this.sentMessage(callSid, threadId);
+	}
+
+	private sendRelayText(socket: WebSocket, token: string, last: boolean): void {
+		this.sendRelayMessage(socket, { type: 'text', token, last });
+	}
+
+	private sendRelayMessage(socket: WebSocket, message: Record<string, unknown>): void {
+		if (socket.readyState !== 1) return;
+		if (socket.bufferedAmount > MAX_RELAY_BUFFERED_BYTES) {
+			socket.close(1011, 'Output buffer exceeded');
+			return;
+		}
+		socket.send(JSON.stringify(message));
 	}
 
 	/** Queue sentences for a live turn, recording when the first one lands. */

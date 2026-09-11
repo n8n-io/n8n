@@ -79,6 +79,10 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
 
+	/** Use Twilio ConversationRelay for low-latency agent voice calls. */
+	@Env('N8N_AGENTS_TWILIO_CONVERSATION_RELAY_ENABLED')
+	twilioConversationRelayEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

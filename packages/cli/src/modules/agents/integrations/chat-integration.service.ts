@@ -692,6 +692,12 @@ export class ChatIntegrationService {
 		return this.findConnection(agentId)?.chat;
 	}
 
+	getAdapter(agentId: string, integrationType: string, credentialId: string): unknown {
+		return this.connections
+			.get(this.connectionKey(agentId, integrationType, credentialId))
+			?.chat.getAdapter(integrationType);
+	}
+
 	/**
 	 * Every main builds its own bridge, so whichever one handles a resume can drive
 	 * the reply. Only ingress connections carry one, hence the predicate.

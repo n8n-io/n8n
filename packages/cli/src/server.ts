@@ -75,6 +75,7 @@ import '@/webhooks/webhooks.controller';
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
+import { TwilioVoiceServer } from './modules/agents/integrations/platforms/twilio-voice-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from './services/auth-strategy.registry';
@@ -547,6 +548,9 @@ export class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		Container.get(Push).setupPushServer(restEndpoint, server, app);
 		Container.get(ChatServer).setup(server, app);
+		if (Container.get(ModuleRegistry).isActive('agents')) {
+			Container.get(TwilioVoiceServer).setup(server);
+		}
 		if (Container.get(ModuleRegistry).isActive('instance-ai')) {
 			Container.get(BrowserUseServer).setup(server, app);
 		}
