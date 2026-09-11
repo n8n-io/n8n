@@ -136,7 +136,6 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	excludeNodes: [],
-	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	workflowsGroupsWithTriggersEnabled: false,
 	workflowsGroupsWithManyBoundariesEnabled: false,
