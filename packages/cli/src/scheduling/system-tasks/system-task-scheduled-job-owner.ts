@@ -48,4 +48,9 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 	isAlive(ownerId: string, payload: Record<string, unknown>): boolean {
 		return this.durableTaskNames.has(ownerId) || stampedByNewerVersion(payload);
 	}
+
+	/** Whether any instance stored a durable job for the task. */
+	async isProvisioned(taskName: string): Promise<boolean> {
+		return (await this.jobs.countByOwner(this.owner(taskName))) > 0;
+	}
 }
