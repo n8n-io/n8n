@@ -11,6 +11,31 @@ export interface RegexEngine {
 	split(pattern: string, input: string, flags?: string): string[];
 }
 
+/**
+ * The result of a match by an engine whose dialect is not the JS one. A non-participating
+ * capture group is `undefined`, which `RegExpExecArray` claims cannot happen.
+ */
+export type RegexExecArray = Array<string | undefined> & {
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- numeric index key, mirrors RegExpExecArray's own shape
+	0: string;
+	index?: number;
+	input?: string;
+	groups?: Record<string, string | undefined>;
+};
+
+/**
+ * An engine for patterns a user wrote, which the instance can point at another regex
+ * dialect. Its results are wider than `RegexEngine`'s, because another dialect need not
+ * share the guarantees the JS types encode.
+ */
+export interface UserRegexEngine {
+	exec(pattern: string, input: string, flags?: string): RegexExecArray | null;
+	test(pattern: string, input: string, flags?: string): boolean;
+	replace(pattern: string, input: string, flags: string | undefined, replacement: string): string;
+	matchAll(pattern: string, input: string, flags?: string): RegexExecArray[];
+	split(pattern: string, input: string, flags?: string): Array<string | undefined>;
+}
+
 export interface RegexEngineAsync {
 	exec(pattern: string, input: string, flags?: string): Promise<RegExpExecArray | null>;
 	test(pattern: string, input: string, flags?: string): Promise<boolean>;
@@ -45,6 +70,7 @@ type VmModule = typeof import('node:vm');
 
 let warnedAboutBrowserFallback = false;
 let engine: RegexEngine;
+let userEngine: UserRegexEngine;
 
 export function parseRegexLiteral(value: string): RegexLiteral {
 	const literal = value.toString();
@@ -186,7 +212,16 @@ export function resetSafeRegexEngine(): void {
 	engine = createDefaultEngine();
 }
 
+export function setUserRegexEngine(regexEngine: UserRegexEngine): void {
+	userEngine = regexEngine;
+}
+
+export function resetUserRegexEngine(): void {
+	userEngine = createDefaultEngine();
+}
+
 engine = createDefaultEngine();
+userEngine = createDefaultEngine();
 
 export const safeRegex: RegexEngine = {
 	exec: (pattern, input, flags) => engine.exec(pattern, input, flags),
@@ -195,4 +230,20 @@ export const safeRegex: RegexEngine = {
 		engine.replace(pattern, input, flags, replacement),
 	matchAll: (pattern, input, flags) => engine.matchAll(pattern, input, flags),
 	split: (pattern, input, flags) => engine.split(pattern, input, flags),
+};
+
+/**
+ * For a pattern a user wrote. Runs under the dialect the instance selects, so callers must
+ * treat its results as this engine's own, not as the JS engine's.
+ *
+ * A pattern n8n itself authored belongs on `safeRegex` instead: it is written in the JS
+ * dialect and must keep those semantics whatever the instance selects.
+ */
+export const safeUserRegex: UserRegexEngine = {
+	exec: (pattern, input, flags) => userEngine.exec(pattern, input, flags),
+	test: (pattern, input, flags) => userEngine.test(pattern, input, flags),
+	replace: (pattern, input, flags, replacement) =>
+		userEngine.replace(pattern, input, flags, replacement),
+	matchAll: (pattern, input, flags) => userEngine.matchAll(pattern, input, flags),
+	split: (pattern, input, flags) => userEngine.split(pattern, input, flags),
 };
