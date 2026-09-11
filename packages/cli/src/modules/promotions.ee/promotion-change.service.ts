@@ -1,6 +1,6 @@
 import type { PromotableResource } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository, type User } from '@n8n/db';
+import { WorkflowRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
@@ -19,6 +19,7 @@ import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { SerializedWorkflow } from '@/modules/n8n-packages/spec/serialized/workflow.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -59,6 +60,65 @@ export class PromotionChangeService {
 		}
 		const base = await this.promotionsService.listBaseBranchFiles(projectId);
 		const previewId = randomUUID();
+		const {
+			files: desired,
+			manifest,
+			archiveState,
+		} = await this.exportDesiredSnapshot(user, projectId);
+		const changes = diffPackageFiles(base, desired);
+		const changedIds = new Set<string>();
+		const renamedIds = new Set<string>();
+		const modifiedIds = new Set<string>();
+		const changedPaths = new Set<string>();
+		for (const fileChange of changes) {
+			if (fileChange.change !== 'added') changedPaths.add(fileChange.base.path);
+			if (fileChange.change !== 'deleted') changedPaths.add(fileChange.desired.path);
+			const file = fileChange.change === 'deleted' ? fileChange.base : fileChange.desired;
+			if (file.type === 'workflow') {
+				changedIds.add(file.entityId);
+				if (fileChange.change === 'renamed' || fileChange.change === 'renamed-and-modified') {
+					renamedIds.add(file.entityId);
+				}
+				if (fileChange.change !== 'renamed') modifiedIds.add(file.entityId);
+			}
+			this.logger.debug('Promotion file change', { previewId, projectId, ...fileChange });
+		}
+		const { affectedWorkflowIds, dependencyCounts } = calculateDependencyImpact({
+			base,
+			manifest,
+			changedPaths,
+			projectId,
+		});
+		for (const workflowId of affectedWorkflowIds) {
+			changedIds.add(workflowId);
+			modifiedIds.add(workflowId);
+		}
+		const desiredWorkflows = new Map(manifest.workflows?.map((entry) => [entry.id, entry]));
+		this.logger.debug('Promotion change preview', {
+			previewId,
+			projectId,
+			baseFileCount: base.length,
+			desiredFileCount: desired.length,
+			fileChangeCount: changes.length,
+			workflowIds: [...changedIds],
+		});
+		const metadata = await this.workflowRepository.findByIds(
+			[...changedIds].filter((id) => desiredWorkflows.has(id)),
+			{ fields: ['updatedAt', 'versionCounter'] },
+		);
+		return buildPromotableResources({
+			base,
+			desiredWorkflows,
+			archiveState,
+			changedIds,
+			renamedIds,
+			modifiedIds,
+			metadata,
+			dependencyCounts,
+		});
+	}
+
+	private async exportDesiredSnapshot(user: User, projectId: string) {
 		const writer = new HashingPackageWriter();
 		const archiveState = new Map<string, boolean>();
 		const { manifest } = await this.packagesService.exportPackageToWriter(
@@ -82,115 +142,118 @@ export class PromotionChangeService {
 				},
 			},
 		);
-		const desired = parsePackageFiles(
+		const files = parsePackageFiles(
 			writer.finalize().map((file) => ({
 				...file,
 				path: `${PACKAGE_SUBFOLDER}/${file.path}`,
 			})),
 			{ exportRoot: PACKAGE_SUBFOLDER, projectId },
 		);
-		const changes = diffPackageFiles(base, desired);
-		const changedIds = new Set<string>();
-		const renamedIds = new Set<string>();
-		const modifiedIds = new Set<string>();
-		const changedPaths = new Set<string>();
-		for (const fileChange of changes) {
-			if (fileChange.change !== 'added') changedPaths.add(fileChange.base.path);
-			if (fileChange.change !== 'deleted') changedPaths.add(fileChange.desired.path);
-			const file = fileChange.change === 'deleted' ? fileChange.base : fileChange.desired;
-			if (file.type === 'workflow') {
-				changedIds.add(file.entityId);
-				if (fileChange.change === 'renamed' || fileChange.change === 'renamed-and-modified') {
-					renamedIds.add(file.entityId);
-				}
-				if (fileChange.change !== 'renamed') modifiedIds.add(file.entityId);
-			}
-			this.logger.debug('Promotion file change', { previewId, projectId, ...fileChange });
-		}
-		const baseDependencies = new Map<string, PackageFile[]>();
-		for (const file of base) {
-			const key = JSON.stringify([
-				file.fileName,
-				file.type === 'variable' ? file.slug : file.entityId,
-			]);
-			const group = baseDependencies.get(key) ?? [];
-			group.push(file);
-			baseDependencies.set(key, group);
-		}
-		const dependencyCounts = new Map<string, number>();
-		for (const collection of Object.values(DEPENDENCY_COLLECTIONS)) {
-			if (collection === null) continue;
-			const entries = new Map(
-				manifest[collection]?.map((entry) => [
-					collection === 'variables' ? entry.name : entry.id,
-					entry,
-				]),
-			);
-			for (const requirement of manifest.requirements?.[collection] ?? []) {
-				const key = 'id' in requirement ? requirement.id : requirement.name;
-				const entry = entries.get(key);
-				const baseKey = collection === 'variables' ? generateSlug(key, 'variable') : key;
-				const group =
-					baseDependencies.get(
-						JSON.stringify([PACKAGE_ENTITY_LAYOUT[collection].fileName, baseKey]),
-					) ?? [];
-				const projectFiles = group.filter((file) => file.projectId === projectId);
-				const scopedFiles = projectFiles.length ? projectFiles : group;
-				const sameId = entry ? scopedFiles.filter(({ entityId }) => entityId === entry.id) : [];
-				const previous = sameId.length ? sameId : scopedFiles;
-				const currentPath = entry
-					? `${PACKAGE_SUBFOLDER}/${entityFilePath(collection, entry.target)}`
-					: undefined;
-				const dependencyChanged =
-					collection !== 'workflows' &&
-					(previous.some(({ path }) => changedPaths.has(path)) ||
-						(currentPath !== undefined && changedPaths.has(currentPath)));
-				for (const workflowId of requirement.usedByWorkflows) {
-					dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
-					if (dependencyChanged) {
-						changedIds.add(workflowId);
-						modifiedIds.add(workflowId);
-					}
-				}
-			}
-		}
-		const desiredWorkflows = new Map(manifest.workflows?.map((entry) => [entry.id, entry]));
-		this.logger.debug('Promotion change preview', {
-			previewId,
-			projectId,
-			baseFileCount: base.length,
-			desiredFileCount: desired.length,
-			fileChangeCount: changes.length,
-			workflowIds: [...changedIds],
-		});
-		const metadata = await this.workflowRepository.findByIds(
-			[...changedIds].filter((id) => desiredWorkflows.has(id)),
-			{ fields: ['updatedAt', 'versionCounter'] },
-		);
-		const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
-		const baseWorkflowSlugs = new Map(
-			base.filter(({ type }) => type === 'workflow').map(({ entityId, slug }) => [entityId, slug]),
-		);
-		return [...changedIds].map((id) => {
-			const entry = desiredWorkflows.get(id);
-			const workflow = metadataById.get(id);
-			let status: PromotableResource['status'] = 'modified';
-			if (!entry) status = 'deleted';
-			else if (!baseWorkflowSlugs.has(id)) status = 'new';
-			else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
-			else if (renamedIds.has(id)) {
-				status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
-			}
-			return {
-				id,
-				name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
-				type: 'workflow',
-				status,
-				version: workflow?.versionCounter ?? null,
-				updatedAt: workflow?.updatedAt.toISOString() ?? null,
-				updatedBy: null,
-				dependencyCount: dependencyCounts.get(id) ?? 0,
-			};
-		});
+		return { files, manifest, archiveState };
 	}
+}
+
+function calculateDependencyImpact({
+	base,
+	manifest,
+	changedPaths,
+	projectId,
+}: {
+	base: readonly PackageFile[];
+	manifest: PackageManifest;
+	changedPaths: ReadonlySet<string>;
+	projectId: string;
+}) {
+	const baseDependencies = new Map<string, PackageFile[]>();
+	for (const file of base) {
+		const key = JSON.stringify([
+			file.fileName,
+			file.type === 'variable' ? file.slug : file.entityId,
+		]);
+		const group = baseDependencies.get(key) ?? [];
+		group.push(file);
+		baseDependencies.set(key, group);
+	}
+	const affectedWorkflowIds = new Set<string>();
+	const dependencyCounts = new Map<string, number>();
+	for (const collection of Object.values(DEPENDENCY_COLLECTIONS)) {
+		if (collection === null) continue;
+		const entries = new Map(
+			manifest[collection]?.map((entry) => [
+				collection === 'variables' ? entry.name : entry.id,
+				entry,
+			]),
+		);
+		for (const requirement of manifest.requirements?.[collection] ?? []) {
+			const key = 'id' in requirement ? requirement.id : requirement.name;
+			const entry = entries.get(key);
+			const baseKey = collection === 'variables' ? generateSlug(key, 'variable') : key;
+			const group =
+				baseDependencies.get(
+					JSON.stringify([PACKAGE_ENTITY_LAYOUT[collection].fileName, baseKey]),
+				) ?? [];
+			const projectFiles = group.filter((file) => file.projectId === projectId);
+			const scopedFiles = projectFiles.length ? projectFiles : group;
+			const sameId = entry ? scopedFiles.filter(({ entityId }) => entityId === entry.id) : [];
+			const previous = sameId.length ? sameId : scopedFiles;
+			const currentPath = entry
+				? `${PACKAGE_SUBFOLDER}/${entityFilePath(collection, entry.target)}`
+				: undefined;
+			const dependencyChanged =
+				collection !== 'workflows' &&
+				(previous.some(({ path }) => changedPaths.has(path)) ||
+					(currentPath !== undefined && changedPaths.has(currentPath)));
+			for (const workflowId of requirement.usedByWorkflows) {
+				dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
+				if (dependencyChanged) affectedWorkflowIds.add(workflowId);
+			}
+		}
+	}
+	return { affectedWorkflowIds, dependencyCounts };
+}
+
+function buildPromotableResources({
+	base,
+	desiredWorkflows,
+	archiveState,
+	changedIds,
+	renamedIds,
+	modifiedIds,
+	metadata,
+	dependencyCounts,
+}: {
+	base: readonly PackageFile[];
+	desiredWorkflows: ReadonlyMap<string, ManifestEntry>;
+	archiveState: ReadonlyMap<string, boolean>;
+	changedIds: ReadonlySet<string>;
+	renamedIds: ReadonlySet<string>;
+	modifiedIds: ReadonlySet<string>;
+	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'updatedAt' | 'versionCounter'>>;
+	dependencyCounts: ReadonlyMap<string, number>;
+}): PromotableResource[] {
+	const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
+	const baseWorkflowSlugs = new Map(
+		base.filter(({ type }) => type === 'workflow').map(({ entityId, slug }) => [entityId, slug]),
+	);
+	return [...changedIds].map((id) => {
+		const entry = desiredWorkflows.get(id);
+		const workflow = metadataById.get(id);
+		let status: PromotableResource['status'] = 'modified';
+		if (!entry) status = 'deleted';
+		else if (!baseWorkflowSlugs.has(id)) status = 'new';
+		else if (archiveState.get(entityFilePath('workflows', entry.target))) status = 'archived';
+		else if (renamedIds.has(id)) {
+			status = modifiedIds.has(id) ? 'renamed-and-modified' : 'renamed';
+		}
+		return {
+			id,
+			name: entry?.name ?? baseWorkflowSlugs.get(id) ?? id,
+			type: 'workflow',
+			status,
+			version: workflow?.versionCounter ?? null,
+			updatedAt: workflow?.updatedAt.toISOString() ?? null,
+			updatedBy: null,
+			dependencyCount: dependencyCounts.get(id) ?? 0,
+		};
+	});
 }
