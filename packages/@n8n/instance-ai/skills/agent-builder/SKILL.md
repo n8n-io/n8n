@@ -1,12 +1,12 @@
 ---
 name: agent-builder
 description: >-
-  Load immediately after an Agent intent and before ask-user. Then call
-  build-agent with the user's request. Agent Builder owns setup and
-  implementation questions. Governs prerequisite creation, faithful handoff,
-  targeting, testing, and publishing. Use directly for routine Agent
-  follow-ups; rerun intent-recognition only when the requested artifact is no
-  longer clear.
+  Load immediately after an Agent intent. Then call build-agent with the user's
+  request after any required orchestrator-owned prerequisites are ready. Agent
+  Builder owns Agent setup and implementation questions. Governs prerequisite
+  creation, faithful handoff, targeting, testing, and publishing. Use directly
+  for routine Agent follow-ups; rerun intent-recognition only when the requested
+  artifact is no longer clear.
 recommended_tools:
   - build-agent
   - build-workflow
@@ -23,10 +23,13 @@ build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
 For a new Agent request, make the first `build-agent` call with a faithful copy
-of the request before calling `ask-user`. Do not collect model, service, tool,
-topic, schedule, credential, or other implementation choices first. The
-embedded Agent Builder asks its own questions through the `build-agent` call.
-The unsupported-channel check below is the only pre-build exception.
+of the request as soon as any required orchestrator-owned prerequisites are
+ready. Before that call, use `ask-user` only to choose a supported channel or to
+define a workflow or data-table prerequisite that the orchestrator must create.
+Only ask about the channel after `list-agent-capabilities` shows that the
+requested channel is unsupported. Do not collect model, service, tool, topic,
+schedule, credential, or other Agent implementation choices first. The embedded
+Agent Builder asks those questions through the `build-agent` call.
 
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored

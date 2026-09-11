@@ -120,7 +120,10 @@ jobs:
           suite=baseline
           if grep -q '^packages/cli/src/modules/agents/' <<< "$changed_files"; then
             suite=agents
-            tier="${INPUT_TIER:-agents}"
+            if [ -n "$INPUT_TIER" ] && [ "$INPUT_TIER" != "agents" ]; then
+              echo "::notice::Agent Builder changes always run the agents tier. Ignoring tier '$INPUT_TIER'."
+            fi
+            tier=agents
           fi
           {
             echo "branch=$branch"
@@ -133,7 +136,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   run-evals:
-    name: Instance AI Evals (${{ needs.resolve.outputs.suite }})
+    name: Instance AI Workflow Evals
     needs: resolve
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:

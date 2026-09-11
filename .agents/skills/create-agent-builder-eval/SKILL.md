@@ -110,7 +110,7 @@ eval instance and environment file.
 From `packages/@n8n/instance-ai`:
 
 ```bash
-pnpm exec tsx -e "import { loadAgentEvalTestCasesWithFiles } from './evaluations/data/agents/index.ts'; console.log(loadAgentEvalTestCasesWithFiles('<slug>')[0]?.fileSlug)"
+pnpm exec tsx -e "import { loadAgentEvalTestCasesWithFiles } from './evaluations/data/agents/index.ts'; const matches = loadAgentEvalTestCasesWithFiles('<slug>'); if (matches.length !== 1) throw new Error('Expected exactly one Agent eval case, found ' + matches.length); console.log(matches[0].fileSlug)"
 
 pnpm eval:instance-ai \
   --base-url http://localhost:5680 \
@@ -132,7 +132,9 @@ Do not weaken an expectation to hide a real Agent Builder defect.
 
 The Instance AI PR gate checks the files changed by the PR. A change under
 `packages/cli/src/modules/agents/` selects the `Instance AI capabilities — agents`
-suite through its `agents` slug. It also selects the `agents` dataset. Other
+suite through its `agents` slug. It also selects the `agents` dataset and uses
+an absolute pass gate. The run uses a suite-scoped LangSmith cohort. It does not
+write to the workflow dataset or compare against the workflow baseline. Other
 Instance AI changes select the `baseline` suite and its `pr` dataset.
 
 The gate runs when a PR opens, reopens, or becomes ready for review. It does not

@@ -47,8 +47,12 @@ throwaway direct run. This keeps the run out of the shared LangSmith dataset.
 From the repository root:
 
 ```bash
-pnpm --filter n8n... build > build.log 2>&1
-tail -n 20 build.log
+(
+  pnpm --filter n8n... build > build.log 2>&1
+  build_status=$?
+  tail -n 20 build.log
+  exit "$build_status"
+)
 ```
 
 Restart the instance after each build. A running process keeps the old code in

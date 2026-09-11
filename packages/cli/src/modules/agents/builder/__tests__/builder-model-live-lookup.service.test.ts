@@ -102,6 +102,25 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(aiGatewayService.getSyntheticCredential).not.toHaveBeenCalled();
 		});
 
+		it('uses a deterministic fallback when the credential default belongs to another provider', async () => {
+			const { service, credentialsService, credentialsHelper } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+				usable('cred-1', 'anthropicApi'),
+			);
+
+			const result = await service.lookup(user, projectId, 'cred-1', 'anthropicApi', 'openai', {
+				useEvalModelCatalog: true,
+			});
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'curated',
+				models: [{ name: 'eval-openai-model', value: 'eval-openai-model' }],
+			});
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(listModelsForProvider).not.toHaveBeenCalled();
+		});
+
 		it('returns endpoint-only models and forwards OpenAI credential request options', async () => {
 			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(

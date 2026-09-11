@@ -111,6 +111,7 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 describe('isGatedTier', () => {
 	it('is true only for known gated tiers', () => {
 		expect(isGatedTier('pr')).toBe(true);
+		expect(isGatedTier('agents')).toBe(true);
 		expect(isGatedTier('mcp-gate')).toBe(true);
 		expect(isGatedTier('full')).toBe(false);
 		expect(isGatedTier('mcp')).toBe(false);

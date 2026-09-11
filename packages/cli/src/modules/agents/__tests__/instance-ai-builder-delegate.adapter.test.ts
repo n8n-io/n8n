@@ -274,6 +274,36 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			);
 		});
 
+		it('enables deterministic model catalogs when an eval session resumes', async () => {
+			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.resumeBuild(
+				'agent-1',
+				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
+				{
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
+				},
+			);
+
+			expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				'run-1',
+				'call-1',
+				{ approved: true },
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ useEvalModelCatalog: true }),
+			);
+		});
+
 		it('rejects when the user lacks agent:update scope', async () => {
 			const { delegate, agentsBuilderService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
