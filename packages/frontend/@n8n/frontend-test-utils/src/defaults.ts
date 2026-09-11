@@ -135,7 +135,6 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'workflowsFromSameOwner',
 	excludeNodes: [],
-	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
@@ -146,7 +145,7 @@ export const defaultSettings: FrontendSettings = {
 	banners: {
 		dismissed: [],
 	},
-	binaryDataMode: 'default',
+	binaryDataMode: 'filesystem',
 	previewMode: false,
 	mfa: {
 		enabled: false,

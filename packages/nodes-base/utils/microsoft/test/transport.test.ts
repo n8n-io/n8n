@@ -314,6 +314,7 @@ describe('Microsoft Graph transport kernel', () => {
 						// proves the SPECIFIC 401/402/403 messages fire in production (the status
 						// is read from NodeApiError.httpCode, not the absent statusCode/error.error)
 						expect(error.message).toBe(expectedMessage);
+						expect((error as NodeApiError).httpCode).toBe(String(statusCode));
 						// The raw body must not leak through the surfaced message…
 						expect(error.message).not.toContain('request-id');
 						expect(error.message).not.toContain('token=');

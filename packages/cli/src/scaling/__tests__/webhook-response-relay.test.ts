@@ -52,7 +52,6 @@ const buildRelay = ({
 	const relay = new WebhookResponseRelay(
 		logger,
 		binaryDataService,
-		mock<BinaryDataConfig>({ mode }),
 		mock<ExecutionsConfig>({
 			webhookResponseRelaySizeMaxMiB: SIZE_MAX_IN_MIB,
 			webhookResponseRelayOffloadEnabled: offloadEnabled,
@@ -342,40 +341,6 @@ describe('WebhookResponseRelay', () => {
 
 			expect(bodyOf(prepared)).toEqual({ [ENCODED_BUFFER_KEY]: 'aGVsbG8=' });
 			expect(binaryDataService.store).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('prepare, over the limit without a store', () => {
-		it.each([
-			['a Buffer body', Buffer.alloc(3 * ONE_MIB)],
-			['a string body', 'x'.repeat(3 * ONE_MIB)],
-			['a multi-byte string body', 'é'.repeat(2 * ONE_MIB)],
-			['a JSON body', { blob: 'x'.repeat(3 * ONE_MIB) }],
-			['a JSON body nested in an array', { items: [{ blob: 'x'.repeat(3 * ONE_MIB) }] }],
-		])('rejects %s where bytes are only kept in memory', async (_label, body) => {
-			const { relay, binaryDataService } = buildRelay({ mode: 'default' });
-
-			await expect(relay.prepare(fullResponse(body), ctx)).rejects.toThrow(
-				WebhookResponseTooLargeError,
-			);
-			expect(binaryDataService.store).not.toHaveBeenCalled();
-		});
-
-		it('names the limit and both ways out', async () => {
-			const { relay } = buildRelay({ mode: 'default' });
-
-			const error = await relay
-				.prepare(fullResponse('x'.repeat(3 * ONE_MIB)), ctx)
-				.catch((e: WebhookResponseTooLargeError) => e);
-
-			expect((error as WebhookResponseTooLargeError).message).not.toContain('MiB');
-			expect((error as WebhookResponseTooLargeError).description).toContain('The limit is 2 MiB');
-			expect((error as WebhookResponseTooLargeError).description).toContain(
-				'N8N_DEFAULT_BINARY_DATA_MODE',
-			);
-			expect((error as WebhookResponseTooLargeError).description).toContain(
-				'N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX',
-			);
 		});
 	});
 

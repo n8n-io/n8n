@@ -35,9 +35,9 @@ export class Evaluation implements INodeType {
 		description: 'Runs an evaluation',
 		eventTriggerDescription: '',
 		subtitle: '={{$parameter["operation"]}}',
+		iconColor: 'neutral',
 		defaults: {
 			name: 'Evaluation',
-			color: '#c3c9d5',
 		},
 		// Pass function explicitly since expression context doesn't allow imports in getInputConnectionTypes
 		inputs: `={{(${getInputConnectionTypes})($parameter, ${metricRequiresModelConnection})}}`,

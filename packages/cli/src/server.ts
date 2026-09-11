@@ -142,9 +142,7 @@ export class Server extends AbstractServer {
 			await import('@/controllers/cta.controller.js');
 		}
 
-		if (!this.globalConfig.tags.disabled) {
-			await import('@/controllers/tags.controller.js');
-		}
+		await import('@/controllers/tags.controller.js');
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller.js');

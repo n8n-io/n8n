@@ -38,7 +38,7 @@
 			},
 			"id": "364b8576-cb5d-4ca5-b497-e3437b45831a",
 			"name": "Item Lists",
-			"type": "n8n-nodes-base.itemLists",
+			"type": "n8n-nodes-base.splitOut",
 			"typeVersion": 1,
 			"position": [520, 420]
 		},

@@ -175,7 +175,6 @@ describe('update-workflow MCP tool', () => {
 			getByNames: getByNamesMock,
 		});
 		globalConfig = mockInstance(GlobalConfig, {
-			tags: { disabled: false },
 			executions: { maxTimeout: 3600, timeout: -1 },
 			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 			workflows: { useWorkflowPublicationService: false },
@@ -1221,6 +1220,90 @@ describe('update-workflow MCP tool', () => {
 		});
 	});
 
+	describe('connection operations', () => {
+		// Validates through the schema the MCP SDK serves to clients, not just the
+		// handler: unknown keys are stripped there, so a handler-only call cannot
+		// see what a client actually sent.
+		const validateInput = (input: unknown, tool = createTool()) =>
+			shapeToStandardSchema(tool.config.inputSchema!)['~standard'].validate(input) as {
+				value?: { operations: unknown[] };
+				issues?: Array<{ message: string; path?: readonly unknown[] }>;
+			};
+
+		const workflowWithErrorOutput = () =>
+			Object.assign(new WorkflowEntity(), {
+				id: 'wf-1',
+				name: 'Existing',
+				settings: { availableInMCP: true },
+				nodes: [
+					makeNode({
+						id: 'a',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						parameters: { url: 'https://example.com' },
+						onError: 'continueErrorOutput',
+					}),
+					makeNode({ id: 'b', name: 'Log', position: [200, 0] }),
+				],
+				connections: {} as IConnections,
+			});
+
+		test('sourceIndex wires the connection from the error output', async () => {
+			findWorkflowMock.mockResolvedValue(workflowWithErrorOutput());
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [
+					{ type: 'addConnection', source: 'HTTP Request', target: 'Log', sourceIndex: 1 },
+				],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.connections['HTTP Request']?.main?.[0] ?? []).toEqual([]);
+			expect(saved.connections['HTTP Request']?.main?.[1]).toEqual([
+				{ node: 'Log', type: 'main', index: 0 },
+			]);
+		});
+
+		test.each(['sourceOutputIndex', 'sourceOutput', 'outputIndex'])(
+			'rejects an unknown connection field (%s) instead of dropping it',
+			(unknownKey) => {
+				const { value, issues } = validateInput({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'addConnection', source: 'HTTP Request', target: 'Log', [unknownKey]: 1 },
+					],
+				});
+
+				expect(value).toBeUndefined();
+				expect(issues?.[0]?.message).toContain(unknownKey);
+			},
+		);
+
+		test('the served schema tells clients that an operation takes no extra fields', () => {
+			const tool = createTool();
+			const served = shapeToStandardSchema(tool.config.inputSchema!)['~standard'].jsonSchema.input({
+				target: 'draft-2020-12',
+			}) as { properties: { operations: { items: { additionalProperties?: boolean } } } };
+
+			expect(served.properties.operations.items.additionalProperties).toBe(false);
+		});
+
+		test('the published sourceIndex description points at the error output', () => {
+			const tool = createTool();
+			const operations = tool.config.inputSchema!.operations as z.ZodTypeAny;
+			const sourceIndex = (
+				operations as unknown as {
+					element: { shape: { sourceIndex: z.ZodTypeAny } };
+				}
+			).element.shape.sourceIndex;
+
+			expect(sourceIndex.description).toContain('error output');
+		});
+	});
+
 	describe('appliedOperations count', () => {
 		test('excludes an operation skipped for a basic validation failure (Part A)', async () => {
 			const result = await callHandler(
@@ -1470,7 +1553,6 @@ describe('update-workflow MCP tool', () => {
 			test('honors a custom error trigger type (NODES_ERROR_TRIGGER_TYPE)', async () => {
 				const customType = 'n8n-nodes-base.customErrorTrigger';
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: customType },
 				});
@@ -1535,7 +1617,6 @@ describe('update-workflow MCP tool', () => {
 
 			test('with publication service enabled, validates the service-published version', async () => {
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 					workflows: { useWorkflowPublicationService: true },
@@ -1575,7 +1656,6 @@ describe('update-workflow MCP tool', () => {
 
 			test('with publication service enabled, ignores a stale activeVersion when the service reports none', async () => {
 				globalConfig = mockInstance(GlobalConfig, {
-					tags: { disabled: false },
 					executions: { maxTimeout: 3600, timeout: -1 },
 					nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 					workflows: { useWorkflowPublicationService: true },
@@ -3157,20 +3237,6 @@ describe('update-workflow MCP tool', () => {
 					['workflow:update'],
 					expect.objectContaining({ includeTags: false }),
 				);
-			});
-
-			test('rejects tag operations when tags are disabled instance-wide', async () => {
-				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
-
-				const result = await callHandler({
-					workflowId: 'wf-1',
-					operations: [{ type: 'addTags', names: ['anything'] }],
-				});
-
-				expect(result.isError).toBe(true);
-				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
-				expect(workflowService.update).not.toHaveBeenCalled();
-				expect(findWorkflowMock).not.toHaveBeenCalled();
 			});
 
 			test('without tag:create scope, attaches only existing tags', async () => {

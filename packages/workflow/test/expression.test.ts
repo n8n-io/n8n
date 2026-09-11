@@ -1296,7 +1296,7 @@ describe('Expression', () => {
 		});
 	});
 
-	describe('$getPairedItem through expression engine (engine parity)', () => {
+	describe('$getPairedItem removal (engine parity)', () => {
 		const nodeTypes = Helpers.NodeTypes();
 
 		const workflow = new Workflow({
@@ -1369,27 +1369,20 @@ describe('Expression', () => {
 				},
 			);
 
-		it('resolves the upstream item via the ancestry chain (parity)', () => {
-			// Build the `incomingSourceData` literal inside the expression so the
-			// argument is constructed in-isolate under the VM engine. Both
-			// engines walk back from `consumer` to `source` and return the
-			// matching item.
+		it('throws instead of walking the ancestry chain (parity)', () => {
+			// The helper was removed from the expression API in v3. Both engines
+			// bind the name to a thrower so a call fails with the replacement
+			// named, rather than resolving to undefined and feeding that into
+			// the workflow's data.
 			const expr =
 				"={{ JSON.stringify($getPairedItem('source', { previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }, { item: 0 })) }}";
-			expect(evaluate(expr)).toBe(
-				JSON.stringify({ json: { city: 'Prague' }, pairedItem: { item: 0 } }),
-			);
+			expect(() => evaluate(expr)).toThrow('$getPairedItem was removed');
 		});
 
-		it('throws when `incomingSourceData` is null (parity)', () => {
-			// Both engines surface the host's "paired item not found"
-			// ExpressionError. The legacy engine throws directly from
-			// `getPairedItem`. The VM engine sends the typed-RPC envelope with
-			// `incomingSourceData: null`; the host throws and the sentinel
-			// round-trips back into the isolate, where tournament's `E()`
-			// re-throws it.
-			const expr = "={{ $getPairedItem('source', null, { item: 0 }) }}";
-			expect(() => evaluate(expr)).toThrow(ExpressionError);
+		it('names the replacement in the error (parity)', () => {
+			expect(() => evaluate("={{ $getPairedItem('source', {}, { item: 0 }) }}")).toThrow(
+				"Use $('Node').item, $('Node').itemMatching(n), or $('Node').pairedItem(n) instead",
+			);
 		});
 	});
 
