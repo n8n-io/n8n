@@ -191,15 +191,19 @@ const i18n = useI18n();
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
 					/>
-
-					<AgentVectorStoresPanel
-						:vector-stores="localConfig?.vectorStores ?? []"
-						:disabled="childrenDisabled"
-						data-testid="agent-vector-stores-card"
-						@connect="emit('add-vector-store')"
-						@edit="emit('edit-vector-store', $event)"
-						@remove="emit('remove-vector-store', $event)"
-					/>
+					<div>
+						<N8nText bold :class="$style.title" data-testid="agent-knowledge-tab-content-advanced">
+							{{ i18n.baseText('agents.builder.knowledge.advanced.title') }}
+						</N8nText>
+						<AgentVectorStoresPanel
+							:vector-stores="localConfig?.vectorStores ?? []"
+							:disabled="childrenDisabled"
+							data-testid="agent-vector-stores-card"
+							@connect="emit('add-vector-store')"
+							@edit="emit('edit-vector-store', $event)"
+							@remove="emit('remove-vector-store', $event)"
+						/>
+					</div>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
@@ -282,6 +286,14 @@ const i18n = useI18n();
 </template>
 
 <style lang="scss" module>
+.title {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	padding: 10px 0;
+	font-weight: 500;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
