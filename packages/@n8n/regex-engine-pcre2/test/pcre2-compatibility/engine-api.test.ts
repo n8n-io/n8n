@@ -208,3 +208,78 @@ describe('handle caching', () => {
 		}
 	});
 });
+
+// The native match/depth/heap limits bound one pcre2_match() call. These cover the
+// separate budget on the whole matchAll/replace/split loop over many such calls.
+describe('operation budget', () => {
+	// Each individual match here stays well inside the native step budget; only the
+	// total cost of matching all 300 of them is pathological (~10s unbudgeted).
+	const pathological = '(a+)+b';
+	const input = ('a'.repeat(15) + 'cab').repeat(300);
+
+	it('rejects a many-matches operation via matchAll() instead of running to completion', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'], operationTimeoutMs: 200 });
+		const startedAt = performance.now();
+
+		expect(() => budgeted.matchAll(pathological, input)).toThrow(Pcre2BudgetExceededError);
+		expect(performance.now() - startedAt).toBeLessThan(3_000);
+	});
+
+	it('rejects a many-matches operation via a global replace()', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'], operationTimeoutMs: 200 });
+
+		expect(() => budgeted.replace(pathological, input, 'g', 'X')).toThrow(Pcre2BudgetExceededError);
+	});
+
+	it('rejects a many-matches operation via split()', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'], operationTimeoutMs: 200 });
+
+		expect(() => budgeted.split(pathological, input)).toThrow(Pcre2BudgetExceededError);
+	});
+
+	it('reports the operation-limit kind, not a per-match budget kind', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'], operationTimeoutMs: 200 });
+
+		try {
+			budgeted.matchAll(pathological, input);
+			expect.unreachable('expected matchAll to throw');
+		} catch (error) {
+			expect(error).toBeInstanceOf(Pcre2BudgetExceededError);
+			expect((error as Pcre2BudgetExceededError).kind).toBe('operation-limit');
+		}
+	});
+
+	it('caps the total match count of one operation', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'], maxMatchesPerOperation: 5 });
+
+		expect(() => budgeted.matchAll('a', 'a'.repeat(100))).toThrow(Pcre2BudgetExceededError);
+		expect(budgeted.matchAll('a', 'aaa')).toHaveLength(3);
+	});
+
+	it('does not fire on an ordinary operation with many cheap matches', () => {
+		const budgeted = createPcre2RegexEngine({ jsFlags: ['g'] });
+
+		expect(budgeted.matchAll('\\w+', 'word '.repeat(5_000))).toHaveLength(5_000);
+	});
+});
+
+describe('handle cache bounding', () => {
+	it('evicts least-recently-used patterns past maxCachedPatterns and keeps matching', () => {
+		const bounded = createPcre2RegexEngine({ maxCachedPatterns: 4 });
+
+		for (let i = 0; i < 50; i++) {
+			expect(bounded.test(`pattern${i}`, `xx pattern${i} xx`)).toBe(true);
+		}
+		// An evicted pattern recompiles transparently on its next use.
+		expect(bounded.test('pattern0', 'xx pattern0 xx')).toBe(true);
+	});
+});
+
+describe('dispose', () => {
+	it('frees the cached handles', () => {
+		const disposable = createPcre2RegexEngine();
+
+		expect(disposable.test('a+b', 'aab')).toBe(true);
+		expect(() => disposable.dispose()).not.toThrow();
+	});
+});

@@ -3,12 +3,20 @@ import * as LoggerProxy from './logger-proxy';
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 
+// A RegExpExecArray/RegExpMatchArray-like result, but with non-participating
+// capture groups honestly typed as `undefined` (lib.es types claim `string`).
+export type RegexExecArray = Array<string | undefined> & {
+	index?: number;
+	input?: string;
+	groups?: Record<string, string | undefined>;
+};
+
 export interface RegexEngine {
-	exec(pattern: string, input: string, flags?: string): RegExpExecArray | null;
+	exec(pattern: string, input: string, flags?: string): RegexExecArray | null;
 	test(pattern: string, input: string, flags?: string): boolean;
 	replace(pattern: string, input: string, flags: string | undefined, replacement: string): string;
-	matchAll(pattern: string, input: string, flags?: string): RegExpMatchArray[];
-	split(pattern: string, input: string, flags?: string): string[];
+	matchAll(pattern: string, input: string, flags?: string): RegexExecArray[];
+	split(pattern: string, input: string, flags?: string): Array<string | undefined>;
 }
 
 export interface RegexEngineAsync {

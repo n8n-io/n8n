@@ -15,6 +15,7 @@ EMSCRIPTEN_BINDINGS(pcre2_wrapper) {
         .value("HeapLimitExceeded", MatchStatus::HeapLimitExceeded)
         .value("CompileError", MatchStatus::CompileError)
         .value("OtherError", MatchStatus::OtherError)
+        .value("WallClockExceeded", MatchStatus::WallClockExceeded)
         ;
 
     value_object<MatchResult>("MatchResult")
@@ -39,15 +40,20 @@ EMSCRIPTEN_BINDINGS(pcre2_wrapper) {
         .field("index", &NamedGroup::index)
         ;
 
-    register_vector<std::string>("StringVector");
+    register_vector<std::u16string>("StringVector");
     register_vector<int>("IntVector");
     register_vector<NamedGroup>("NamedGroupVector");
 
+    // Exposed so TS derives its native-flag validation set from here instead of hand-duplicating
+    // the chars the constructor's flag-parsing loop understands (see kNativeFlagTable).
+    function("nativeFlagChars", &nativeFlagChars);
+
     class_<Pcre2Wrapper>("Pcre2Wrapper")
-        .constructor<const std::string&, const std::string&, uint32_t, uint32_t, size_t, uint32_t, uint32_t, uint32_t>()
+        .constructor<const std::u16string&, const std::string&, uint32_t, uint32_t, size_t, uint32_t, uint32_t, uint32_t, uint32_t>()
         .function("compileStatus", &Pcre2Wrapper::compileStatus)
         .function("namedGroups", &Pcre2Wrapper::namedGroups)
-        .function("match", &Pcre2Wrapper::match)
+        .function("setSubject", &Pcre2Wrapper::setSubject)
+        .function("matchAt", &Pcre2Wrapper::matchAt)
         ;
 
     // Exposed so the TS layer can build option bitmasks without duplicating pcre2.h's constants.
