@@ -302,6 +302,7 @@ describe('PromotionsGitService (git operations)', () => {
 	});
 
 	describe('commitAndPush', () => {
+		const onCheckoutDirty = vi.fn(async () => {});
 		const call = async (over: Record<string, unknown> = {}) =>
 			await gitService.commitAndPush({
 				remoteUrl,
@@ -313,6 +314,7 @@ describe('PromotionsGitService (git operations)', () => {
 				commitMessage: 'sync',
 				force: false,
 				stagePathspec: 'n8n-export',
+				onCheckoutDirty,
 				...over,
 			});
 
@@ -365,6 +367,7 @@ describe('PromotionsGitService (git operations)', () => {
 				branchName: 'main',
 				targetBranchName: 'n8n-promotion/x',
 			});
+			expect(onCheckoutDirty).toHaveBeenCalled();
 		});
 
 		it('keeps the push error when the local reset also fails', async () => {
@@ -377,6 +380,7 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
 				ServiceUnavailableError,
 			);
+			expect(onCheckoutDirty).toHaveBeenCalled();
 		});
 
 		it('reports a stalled push as a retryable 503', async () => {

@@ -75,6 +75,14 @@ export class PromotionWorkingDirectoryService {
 		);
 	}
 
+	/**
+	 * Marks the checkout unusable without removing it, so the next operation must
+	 * clone again. Used when a checkout is left in a state we cannot repair.
+	 */
+	async invalidateDescriptor(configId: string): Promise<void> {
+		await rm(this.paths(configId).descriptorFile, { force: true });
+	}
+
 	/** Drops the checkout and its descriptor. Keeps the pinned SSH host keys. */
 	async resetCheckout(configId: string): Promise<void> {
 		const { repositoryFolder, nextRepositoryFolder, descriptorFile } = this.paths(configId);

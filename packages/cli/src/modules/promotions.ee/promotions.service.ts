@@ -209,6 +209,8 @@ export class PromotionsService {
 				// A promotion branch must be new, so force does not apply.
 				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
+				onCheckoutDirty: async () =>
+					await this.workingDirectory.invalidateDescriptor(input.configId),
 			});
 
 			return {
