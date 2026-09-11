@@ -1,3 +1,11 @@
+## [2.39.3](https://github.com/n8n-io/n8n/compare/n8n@2.39.2...n8n@2.39.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **core:** Trust the CA from GIT_SSL_CAINFO for source control HTTPS remotes ([#38296](https://github.com/n8n-io/n8n/issues/38296)) ([bd794f7](https://github.com/n8n-io/n8n/commit/bd794f7a39befe12797eaab4db3e82d4e7463965))
+
+
 ## [2.39.2](https://github.com/n8n-io/n8n/compare/n8n@2.39.1...n8n@2.39.2) (2026-09-10)
 
 
