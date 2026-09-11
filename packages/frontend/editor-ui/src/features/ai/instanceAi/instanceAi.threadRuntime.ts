@@ -203,9 +203,10 @@ function collectPendingConfirmations(
 			// would block the chat input on a confirmation the user can no
 			// longer act on.
 			!tc.confirmation.expired &&
-			// Plan review and the MCP connect card render inline in the timeline, not
-			// in the confirmation panel
+			// Plan review, the MCP connect card and the app blueprint render inline
+			// in the timeline, not in the confirmation panel
 			tc.confirmation.inputType !== 'plan-review' &&
+			tc.confirmation.inputType !== 'app-blueprint' &&
 			!tc.confirmation.mcpConnectRequest
 		) {
 			out.push({

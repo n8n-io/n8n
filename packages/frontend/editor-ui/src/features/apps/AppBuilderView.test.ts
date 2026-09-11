@@ -7,7 +7,7 @@ import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 
 import AppBuilderView from './AppBuilderView.vue';
-import { APP_DETAILS } from './apps.constants';
+import { APP_DETAILS, APP_NEW } from './apps.constants';
 import { useAppsStore } from './apps.store';
 import type { App } from './apps.types';
 
@@ -25,6 +25,8 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
 	useInstanceAiHandoff: () => ({ createAppArtifactThread }),
 }));
+
+vi.mock('uuid', () => ({ v4: () => 't-unbound' }));
 
 const app: App = {
 	id: 'app-1',
@@ -75,6 +77,7 @@ describe('AppBuilderView', () => {
 		instanceAiStore = mockedStore(useInstanceAiStore);
 		instanceAiStore.loadThreads.mockResolvedValue(true);
 		instanceAiStore.fetchCredits.mockResolvedValue(undefined);
+		instanceAiStore.getOrCreateRuntime.mockReturnValue({ producedArtifacts: new Map() } as never);
 		const settingsStore = mockedStore(useInstanceAiSettingsStore);
 		settingsStore.refreshModuleSettings.mockResolvedValue(undefined);
 		settingsStore.ensurePreferencesLoaded.mockResolvedValue(undefined);
@@ -154,6 +157,31 @@ describe('AppBuilderView', () => {
 			expect(getByTestId('thread-view-stub')).toHaveAttribute('data-thread-id', 't-mine'),
 		);
 		expect(createAppArtifactThread).not.toHaveBeenCalled();
+	});
+
+	describe('without an app (new-app page)', () => {
+		it('starts a plain project thread, hides the sidebar and puts the thread in the URL', async () => {
+			instanceAiStore.syncThread.mockResolvedValue(undefined);
+			instanceAiStore.threads = [];
+			const { getByTestId, queryByTestId } = renderView({
+				props: { projectId: 'proj-1', appId: undefined },
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('thread-view-stub')).toHaveAttribute('data-thread-id', 't-unbound'),
+			);
+			expect(instanceAiStore.syncThread).toHaveBeenCalledWith('t-unbound', 'proj-1', {
+				source: 'app_builder_page',
+				origin: 'internal',
+			});
+			expect(appsStore.getApp).not.toHaveBeenCalled();
+			expect(queryByTestId('thread-list-stub')).toBeNull();
+			expect(routerReplace).toHaveBeenCalledWith({
+				name: APP_NEW,
+				params: { projectId: 'proj-1' },
+				query: { thread: 't-unbound' },
+			});
+		});
 	});
 
 	it('scopes the thread list to the app', async () => {

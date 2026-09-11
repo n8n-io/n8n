@@ -33,14 +33,15 @@ Rules:
   colors, no inline styles, no `dark:` variants: dark mode comes from the
   `.dark` class `src/theme-mode.ts` sets, not a Tailwind variant.
 - You can edit any theme variable directly: write it into `src/theme-overrides.css`'s
-  `:root { }` block (create the file's content if it is empty) — a rebuild picks
+  `:root { }` block, or its `.dark { }` block for dark-mode-only values
+  (create the file's content if it is empty) — a rebuild picks
   it up like any other source change. Do not edit `src/style.css`'s `:root`/`.dark`
   blocks (the template defaults); put overrides in `theme-overrides.css`
-  instead. A later Theme-tab save merges its own keys (`--primary`,
-  `--primary-foreground`, `--ring`, `--secondary`, `--secondary-foreground`,
-  `--accent`, `--accent-foreground`, `--radius`, `--font-sans`) onto whatever is
-  already in the file rather than replacing it, so it never erases a variable
-  you set here. `src/theme-mode.ts` is different: the Theme tab's mode control
+  instead. A Theme-tab save (and the `theme` passed to `apps(create)`) owns
+  these keys and rewrites them in both blocks: `--primary`,
+  `--primary-foreground`, `--ring`, `--radius`, `--font-sans`, `--space-unit`,
+  `--background`, `--card`, `--popover`, `--secondary`, `--muted`, `--accent`,
+  `--border`, `--input`. Every other variable you set survives a save. `src/theme-mode.ts` is different: the Theme tab's mode control
   always overwrites it on save, so edit it directly only when the user won't
   also be using that tab for this app.
 
@@ -120,10 +121,15 @@ covered below.
 | `border`, `input`, `ring` | `--border`, `--input`, `--ring` | borders, input borders, focus rings |
 | `chart-1` … `chart-5` | `--chart-1` … `--chart-5` | data-visualization palette |
 
-Font and radius: `font-sans` reads `--font-sans` (the Theme tab's font
+Font, radius and density: `font-sans` reads `--font-sans` (the Theme tab's font
 picker); `rounded`, `rounded-sm`, `rounded-md`, `rounded-lg`, `rounded-xl`
 read `--radius` (the Theme tab's corner-radius slider) via the `@theme
-inline` mapping's `calc()` offsets.
+inline` mapping's `calc()` offsets. Every spacing utility (`p-4`, `gap-2`,
+`w-64`, `h-10`) is a multiple of `--space-unit` (the Theme tab's density:
+0.2rem compact, 0.25rem comfortable, 0.3rem spacious), so use the utilities
+and never fixed px paddings. The `tinted` background tone derives
+`--background`, `--card`, `--secondary`, `--muted`, `--accent`, `--border`
+and `--input` from the primary's hue in both modes.
 
 ## Headless primitives: @ark-ui/vue
 

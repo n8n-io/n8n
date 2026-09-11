@@ -10,7 +10,7 @@ export type PageAssistantAction = 'add-root' | 'add-child' | 'edit' | 'delete';
  * Pages are derived from the app's own source, not a DB row: there is
  * nothing here to create/update/delete directly. Instead, +/edit/delete
  * hand the change off to Instance AI as a pre-filled (unsent) prompt — the
- * same mechanism `AddAppModal` already uses for creating an app.
+ * same mechanism the app page uses for its own threads.
  */
 export function useAppPageAssistant() {
 	const i18n = useI18n();

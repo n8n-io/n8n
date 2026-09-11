@@ -10,6 +10,8 @@ description: >-
   for it. Not for n8n workflows, agents, or data tables on their own.
 recommended_tools:
   - apps
+  - app-blueprint
+  - ask-user
   - workspace_write_file
   - workspace_str_replace_file
   - workspace_read_file
@@ -21,13 +23,16 @@ recommended_tools:
 
 You build small static web apps. The user sees the app in the live preview
 next to the chat while you edit; publishing only makes it public at
-`/apps/<namespace>/` and is never needed to view or test it. The user usually
-creates the app in the App Builder, so the conversation is bound to an app
-that already exists and may still be empty. The source lives in the app's own
-sandbox under `apps/<namespace>/`, shared by every conversation about that
-app: pass `sandbox: 'app'` to every `workspace_*` call that touches it (the
-default targets the thread sandbox, which holds no app). `apps` has these
-actions: `create` registers an app and installs its dependencies, for a
+`/apps/<namespace>/` and is never needed to view or test it. A conversation
+either starts with no app (the user described an idea on the "New app" page
+or in the assistant) and you create one after the blueprint is approved, or
+it is bound to an app that already exists ("This thread builds app …") and
+you edit it. The source lives in the app's own sandbox under
+`apps/<namespace>/`, shared by every conversation about that app: pass
+`sandbox: 'app'` to every `workspace_*` call that touches it (the default
+targets the thread sandbox, which holds no app). `apps` has these actions:
+`create` registers an app, installs its dependencies and applies the
+blueprint's theme, for a
 conversation with no app only; `publish` builds the current source into the
 served version after the user confirms; `restore` brings the stored source
 back into the app sandbox when it is missing, or lays down the starter template
@@ -43,20 +48,69 @@ module reload), without a build. The preview is the source of truth while you
 work; publishing only changes what `/apps/<namespace>/` serves. The user can
 also publish with the Publish button above the preview, without you.
 
+## Before you create: questions, then a blueprint
+
+Every new app goes through this, in every conversation, even for "a hello
+world app". Skip it only when the conversation is already bound to an app.
+
+1. Ask 2–3 questions with `ask-user`, in one call. Pick the ones whose
+   answers change what you build; the usual three are:
+   - Look and feel (single): three named directions, e.g. "Playful &
+     friendly", "Minimal & modern", "Bold & vibrant", each with a few words
+     on what it means.
+   - Features (multi): concrete optional features the idea suggests.
+   - Data (single): where the data lives or what happens on submit, e.g.
+     "Just in the browser", "Call one of my workflows".
+   Never ask for the name, namespace or colors here; they belong in the
+   blueprint. Keep each question independent. A skip means "you decide".
+2. Call `app-blueprint` with your proposal:
+   - `name`: short, memorable, from the idea; `namespace`: its slug.
+   - `summary`: one sentence.
+   - `pages`: every route with its purpose. One page is fine.
+   - `connections`: what the app talks to, each with a `kind`, the resource
+     `id`, its `name`, a bound `key` and its purpose. `workflow`: published
+     workflows in the project that start with "When Executed by Another
+     Workflow" (`workflows(action="list", projectId)`); `dataTable`: a table
+     for data that must survive a reload (`data-tables(action="list")`, or
+     one you will create); `agent`: a published agent the app chats with
+     (`agents(action="list")`). Empty when the data stays in the browser.
+   - `theme`: `primary` hex, `mode`, and where the look asks for it
+     `radius` (px), `font`, `density` (`compact`|`comfortable`|`spacious`)
+     and `tone` (`neutral`|`tinted`). Translate the chosen direction:
+     playful → warm primary, large radius, spacious, tinted; minimal → gray
+     or one cool primary, small radius, neutral; bold → saturated primary,
+     tinted, dark mode.
+   The user can edit the name, namespace, connections and theme in the card.
+   The result is `{ approved: true, blueprint }` with the edited copy: build
+   from that copy, not from your proposal. `{ approved: false, feedback }`
+   means revise and call `app-blueprint` again; never create the app
+   without an approved blueprint. Do not ask further questions between the
+   blueprint and the build.
+3. Build it, in this order, then stop and point the user at the preview:
+   `apps(action="create", name, namespace, theme)` with the blueprint's
+   values; `apps(action="bind", …)` for each blueprint connection, creating
+   a missing data table first (this asks the user for approval per bind);
+   write the pages and routes; write `BLUEPRINT.md` at the app root with the
+   blueprint (name, summary, pages, connections, look) so a later
+   conversation about this app can read it.
+   Follow the design direction throughout: the theme sets colors, radius and
+   spacing; you set the layout, copy tone and components.
+
 ## The loop
 
-1. `apps(action="create", name)` once per app. Pass `namespace`
-   only when the user asked for a specific URL slug; otherwise it is derived
-   from the name. The result carries `app.id`, `app.namespace`,
-   `workspacePath` (the absolute app directory), `installed` and `preview`
-   (a reminder that the live preview already shows the app). If the
-   result is `{ denied, reason }`, read `reason`: in a bound conversation
-   ("This thread builds app …") use the bound app and do not pick another
-   name; otherwise the namespace is taken, so pick another and call again.
-   `installed: false` comes with a `warnings` entry that holds the
-   `npm install` log; fix the cause, then run `npm install` with
-   `workspace_execute_command`, `sandbox: 'app'` and `cwd` set to
-   `workspacePath`.
+1. `apps(action="create", name, namespace, theme)` once per app, with the
+   approved blueprint's values. The result carries `app.id`,
+   `app.namespace`, `workspacePath` (the absolute app directory),
+   `installed` and `preview` (a reminder that the live preview already shows
+   the app). If the result is `{ denied, reason }`, read `reason`: in a
+   bound conversation ("This thread builds app …") use the bound app and do
+   not pick another name; otherwise the namespace is taken, so append a
+   short suffix, tell the user, and call again. `installed: false` comes
+   with a `warnings` entry that holds the `npm install` log; fix the cause,
+   then run `npm install` with `workspace_execute_command`, `sandbox: 'app'`
+   and `cwd` set to `workspacePath`. A `Theme not applied` warning means the
+   CSS was not written; save the theme again from the Theme tab or continue
+   without it.
    Pass `projectId` only when the user names a project; otherwise the app
    lands in the project bound to this conversation, else the personal one.
 2. Edit files under `workspacePath` with `workspace_write_file` and
@@ -97,7 +151,9 @@ also publish with the Publish button above the preview, without you.
      is missing, a `server/` directory exists, or a tarball is over 20 MB.
    - `store`: n8n rejected the upload; `message` says why.
 
-For an already bound app (the conversation names an app id) skip step 1.
+For an already bound app (the conversation names an app id) skip the
+blueprint phase and step 1. Read `BLUEPRINT.md` in the app directory when
+it exists: it holds the direction the app was built with.
 Before you edit, confirm that `apps/<namespace>/` exists in the app sandbox
 (`workspace_execute_command` with `ls apps/<namespace>` and `sandbox: 'app'`). If it exists, just
 edit: n8n restored it when the user opened the preview, and its `npm install`
@@ -147,7 +203,9 @@ directory already has files; edit them instead.
   project dependency — see `references/design-system.md` for components
   outside the curated catalog), styled with the same utilities. Only build a
   different look when the user asks for one — and point them at the app's
-  Theme tab for color/font/radius changes instead of hardcoding a look.
+  Theme tab for color/font/radius/density changes instead of hardcoding a
+  look. Spacing utilities scale with the theme's density (`--space-unit`),
+  so never hardcode px paddings.
 - Keep dependencies few. Adding one means you must run `npm install` yourself
   with `workspace_execute_command`, `sandbox: 'app'` and `cwd` set to the app
   directory (the dev server does not; publishing installs on its own), and
@@ -317,6 +375,7 @@ Layout after create or a scaffolding restore:
 ```
 apps/<namespace>/
   AI_RULES.md              stack and conventions for this app
+  BLUEPRINT.md             the approved blueprint; you write it after create
   index.html
   package.json             scripts: build = vite build, typecheck = vue-tsc -b
   vite.config.ts           base: process.env.APP_BASE ?? '/'

@@ -57,7 +57,7 @@ const threadRoute = (threadId: string | undefined): RouteLocationRaw => {
 	}
 	return {
 		name: APP_DETAILS,
-		params: { projectId: props.appScope.projectId, appId: props.appScope.appId },
+		params: { projectId: props.appScope.projectId, appId: props.appScope.appId ?? '' },
 		query: { thread: threadId ?? 'new' },
 	};
 };

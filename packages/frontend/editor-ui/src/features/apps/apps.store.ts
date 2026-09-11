@@ -25,7 +25,13 @@ import {
 } from '@/features/apps/apps.api';
 import type { AppBindingPatch } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
-import type { App, AppTheme, AppVersion, Page, UpdateAppInput } from '@/features/apps/apps.types';
+import type {
+	App,
+	AppThemeSettings,
+	AppVersion,
+	Page,
+	UpdateAppInput,
+} from '@/features/apps/apps.types';
 
 export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
@@ -56,8 +62,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		return updated;
 	};
 
-	const applyAppTheme = async (projectId: string, appId: string, theme: AppTheme) => {
-		const updated = await applyAppThemeApi(rootStore.restApiContext, projectId, appId, theme);
+	const applyAppTheme = async (projectId: string, appId: string, settings: AppThemeSettings) => {
+		const updated = await applyAppThemeApi(rootStore.restApiContext, projectId, appId, settings);
 		apps.value = apps.value.map((a) => (a.id === appId ? updated : a));
 		return updated;
 	};

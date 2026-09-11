@@ -41,6 +41,9 @@ const loadN8nDocsTool = lazyMod(
 );
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
 const loadAppsTool = lazyMod(() => require('./apps.tool') as typeof import('./apps.tool'));
+const loadAppBlueprintTool = lazyMod(
+	() => require('./app-blueprint.tool') as typeof import('./app-blueprint.tool'),
+);
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
@@ -128,6 +131,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
 	if (context.appService && context.appWorkspace) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
+		tools.push([DOMAIN_TOOL_IDS.APP_BLUEPRINT, loadAppBlueprintTool().createAppBlueprintTool()]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -183,6 +187,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	// The adapter only wires appService when the `apps` module is active; the tool needs a sandbox to scaffold and build.
 	if (context.appService && context.appWorkspace) {
 		tools.push([DOMAIN_TOOL_IDS.APPS, loadAppsTool().createAppsTool(context)]);
+		tools.push([DOMAIN_TOOL_IDS.APP_BLUEPRINT, loadAppBlueprintTool().createAppBlueprintTool()]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

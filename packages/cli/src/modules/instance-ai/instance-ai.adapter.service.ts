@@ -145,6 +145,7 @@ import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-crede
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from '@/modules/apps/app-sdk-tarball';
 import { AppPublishService } from '@/modules/apps/app-publish.service';
+import { AppThemeService, deriveAppTheme } from '@/modules/apps/app-theme.service';
 import { AppsService } from '@/modules/apps/apps.service';
 import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -363,6 +364,7 @@ export class InstanceAiAdapterService {
 		private readonly appsService?: AppsService,
 		private readonly urlService?: UrlService,
 		private readonly appPublishService?: AppPublishService,
+		private readonly appThemeService?: AppThemeService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -460,6 +462,7 @@ export class InstanceAiAdapterService {
 			...(this.appsService &&
 			this.urlService &&
 			this.appPublishService &&
+			this.appThemeService &&
 			Container.get(ModuleRegistry).isActive('apps')
 				? {
 						appService: this.createAppAdapter(
@@ -467,6 +470,7 @@ export class InstanceAiAdapterService {
 								appsService: this.appsService,
 								urlService: this.urlService,
 								appPublishService: this.appPublishService,
+								appThemeService: this.appThemeService,
 							},
 							user,
 							{ boundProjectId: projectId, threadId, getAppWorkspace, onAppTouched },
@@ -3181,6 +3185,7 @@ export class InstanceAiAdapterService {
 			appsService: AppsService;
 			urlService: UrlService;
 			appPublishService: AppPublishService;
+			appThemeService: AppThemeService;
 		},
 		user: User,
 		run: {
@@ -3190,7 +3195,7 @@ export class InstanceAiAdapterService {
 			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiAppService {
-		const { appsService, urlService, appPublishService } = services;
+		const { appsService, urlService, appPublishService, appThemeService } = services;
 		// Best effort: a failed binding must not fail the tool call that did the real work.
 		const noteAppTouched = async (app: { id: string; projectId: string; name: string }) => {
 			try {
@@ -3289,6 +3294,17 @@ export class InstanceAiAdapterService {
 				return await appPublishService.publish(app.id, user, {
 					draft: run.getAppWorkspace?.(app.id),
 				});
+			},
+
+			async applyTheme(appId, settings) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const theme = deriveAppTheme(settings);
+				await appsService.updateApp(app.id, { theme });
+				const result = await appThemeService.applyTheme(app.id, theme, user, {
+					draft: run.getAppWorkspace?.(app.id),
+				});
+				return 'error' in result ? { error: result.message } : undefined;
 			},
 		};
 	}

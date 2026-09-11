@@ -14,6 +14,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
@@ -131,7 +132,8 @@ const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
 // On the app page the app panel is the point of the view: it stays open, the
 // artifacts sidebar is dropped, and the chat collapses behind the panel instead.
-const isAppPage = useAppThreadScope() !== null;
+const appScope = useAppThreadScope();
+const isAppPage = appScope !== null;
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -208,6 +210,21 @@ watch(
 
 // Show the input disclaimer only once the AI has produced a visible response.
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
+
+// The new-app page: a bound app does not exist yet, so the composer asks for the idea first.
+const isNewAppPage = computed(() => isAppPage && !appScope?.value.appId);
+const NEW_APP_EXAMPLES = [
+	{ key: 'instanceAi.newApp.example.todo', icon: 'square-check' },
+	{ key: 'instanceAi.newApp.example.form', icon: 'file-text' },
+	{ key: 'instanceAi.newApp.example.agentChat', icon: 'message-circle' },
+] as const;
+const showNewAppExamples = computed(
+	() => isNewAppPage.value && displayedMessages.length === 0 && !thread.isStreaming,
+);
+function useNewAppExample(key: (typeof NEW_APP_EXAMPLES)[number]['key']) {
+	chatInputRef.value?.setText(i18n.baseText(key));
+	chatInputRef.value?.focus();
+}
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
@@ -1447,6 +1464,23 @@ async function dismissComposerContextChip() {
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>
+										<div
+											v-if="showNewAppExamples"
+											:class="$style.newAppExamples"
+											data-test-id="instance-ai-new-app-examples"
+										>
+											<button
+												v-for="(example, index) in NEW_APP_EXAMPLES"
+												:key="example.key"
+												type="button"
+												:class="$style.newAppExample"
+												:style="{ animationDelay: `${index * 50}ms` }"
+												@click="useNewAppExample(example.key)"
+											>
+												<N8nIcon :icon="example.icon" :size="12" :class="$style.newAppExampleIcon" />
+												<span>{{ i18n.baseText(example.key) }}</span>
+											</button>
+										</div>
 										<div :class="$style.inputSwap">
 											<Transition name="input-swap">
 												<InstanceAiConfirmationPanel
@@ -1467,6 +1501,9 @@ async function dismissComposerContextChip() {
 													:amend-context="thread.amendContext"
 													:context-chip="composerContextChip"
 													:contextual-suggestion="thread.contextualSuggestion"
+													:placeholder-key="
+														isNewAppPage ? 'instanceAi.input.newAppPlaceholder' : undefined
+													"
 													@submit="handleSubmit"
 													@stop="handleStop"
 													@cancel-plan-edit="thread.cancelPlanEdit"
@@ -1616,6 +1653,7 @@ async function dismissComposerContextChip() {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion' as motion;
+@use '../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
 
 @property --instance-ai-artifacts-layout-width {
 	syntax: '<length>';
@@ -1875,6 +1913,27 @@ async function dismissComposerContextChip() {
 // The leaving child is detached from layout (see `.input-swap-leave-active`
 // below) so the slot follows the entering child's intrinsic height during
 // the cross-fade.
+.newAppExamples {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+}
+
+.newAppExample {
+	@include promptSuggestions.prompt-suggestion-button;
+}
+
+.newAppExampleIcon {
+	@include promptSuggestions.prompt-suggestion-icon;
+
+	.newAppExample:hover &,
+	.newAppExample:focus-visible & {
+		opacity: 1;
+	}
+}
+
 .inputSwap {
 	position: relative;
 }

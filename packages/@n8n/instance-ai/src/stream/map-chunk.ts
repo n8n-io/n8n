@@ -1,6 +1,7 @@
 import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	appBindingMetaSchema,
+	appBlueprintSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
 	taskListSchema,
@@ -221,7 +222,8 @@ type ConfirmationInputType =
 	| 'questions'
 	| 'plan-review'
 	| 'resource-decision'
-	| 'continue';
+	| 'continue'
+	| 'app-blueprint';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -258,6 +260,7 @@ function parseInputType(value: unknown): ConfirmationInputType | undefined {
 		'plan-review',
 		'resource-decision',
 		'continue',
+		'app-blueprint',
 	] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
@@ -341,6 +344,7 @@ function mapSuspendedChunk(
 	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
 	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
 	const appBinding = parseSchemaRecord(suspendPayload.appBinding, appBindingMetaSchema);
+	const appBlueprint = parseSchemaRecord(suspendPayload.appBlueprint, appBlueprintSchema);
 	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
 	const credentialDestination = parseSchemaRecord(
 		suspendPayload.credentialDestination,
@@ -391,6 +395,7 @@ function mapSuspendedChunk(
 			...(domainAccess ? { domainAccess } : {}),
 			...(webSearch ? { webSearch } : {}),
 			...(appBinding ? { appBinding } : {}),
+			...(appBlueprint ? { appBlueprint } : {}),
 			...(credentialFlow ? { credentialFlow } : {}),
 			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),

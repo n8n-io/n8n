@@ -6,18 +6,16 @@ import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { useAppDeletion } from '@/features/apps/useAppDeletion';
-import { ADD_APP_MODAL_KEY, APP_DETAILS } from '@/features/apps/apps.constants';
+import { APP_DETAILS, APP_NEW } from '@/features/apps/apps.constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
-const uiStore = useUIStore();
 const documentTitle = useDocumentTitle();
 const { confirmAndDeleteApp } = useAppDeletion();
 
@@ -41,8 +39,8 @@ const fetchApps = async () => {
 	}
 };
 
-const openAddAppModal = () => {
-	uiStore.openModalWithData({ name: ADD_APP_MODAL_KEY, data: { projectId: projectId() } });
+const openNewApp = async () => {
+	await router.push({ name: APP_NEW, params: { projectId: projectId() } });
 };
 
 const openApp = async (appId: string) => {
@@ -60,7 +58,7 @@ onMounted(() => {
 		<template #header>
 			<div :class="$style.header">
 				<N8nHeading bold tag="h1" size="2xlarge">{{ i18n.baseText('apps.apps') }}</N8nHeading>
-				<N8nButton data-test-id="apps-new" @click="openAddAppModal">
+				<N8nButton data-test-id="apps-new" @click="openNewApp">
 					{{ i18n.baseText('apps.add.button.label') }}
 				</N8nButton>
 			</div>

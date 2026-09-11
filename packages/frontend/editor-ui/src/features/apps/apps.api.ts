@@ -12,7 +12,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	App,
 	AppPublishResult,
-	AppTheme,
+	AppThemeSettings,
 	AppVersion,
 	Page,
 	UpdateAppInput,
@@ -54,13 +54,13 @@ export const applyAppThemeApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
-	theme: AppTheme,
+	settings: AppThemeSettings,
 ) => {
 	return await makeRestApiRequest<App>(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/theme`,
-		{ theme },
+		{ settings },
 	);
 };
 

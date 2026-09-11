@@ -16,6 +16,7 @@ import type {
 	AgentJsonConfig,
 	AgentSkill,
 	AppBinding,
+	AppThemeSettings,
 	ChatIntegrationDescriptor,
 	DescribedBinding,
 	EvaluationMetric,
@@ -1076,6 +1077,11 @@ export interface InstanceAiAppService {
 	 * n8n's own build sandbox and makes the result the served version.
 	 */
 	publish(appId: string): Promise<AppPublishResult>;
+	/**
+	 * Persists the theme choices and writes the derived CSS into the app's
+	 * draft source (the app sandbox when it holds the app, else a new snapshot).
+	 */
+	applyTheme(appId: string, settings: AppThemeSettings): Promise<{ error: string } | undefined>;
 }
 
 export type AppPublishResult =
