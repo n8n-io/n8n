@@ -14,12 +14,22 @@ export type ContentSecurityPolicies = {
 };
 
 /**
+ * Send one header when both policies are the same, as they are by default. A report-only
+ * copy of the enforced policy reports the violations the enforced header already reports,
+ * so it only adds bytes to every HTML response.
+ */
+const dropRedundantReportOnly = (policies: ContentSecurityPolicies): ContentSecurityPolicies =>
+	policies.enforced !== undefined && policies.enforced === policies.reportOnly
+		? { enforced: policies.enforced, reportOnly: undefined }
+		: policies;
+
+/**
  * Decide which CSP headers to send from the two parsed settings. `@n8n/config` has
- * already read each variable on its own; the only decision left is the one that needs
- * both, namely the boolean the report-only variable used to hold.
+ * already read each variable on its own; the decisions left are the ones that need
+ * both: the boolean the report-only variable used to hold, and the pair being equal.
  *
- * Only the report-only variable carries a policy by default, so a new instance reports
- * violations but cannot break on them.
+ * Both variables carry the same policy by default, which the instance then enforces:
+ * a new instance is protected without configuration.
  */
 export const resolveContentSecurityPolicies = (
 	policy: ContentSecurityPolicySetting,
@@ -31,14 +41,17 @@ export const resolveContentSecurityPolicies = (
 			'N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY is deprecated as a boolean: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honoring the old meaning for now - set it to a policy, or to `{}` to report on nothing.',
 		);
 
-		// Read as a policy, `true` would start enforcing a policy that the instance
-		// deliberately kept report-only.
-		return reportOnly.legacyBoolean
-			? { reportOnly: policy ?? DEFAULT_CONTENT_SECURITY_POLICY }
-			: { enforced: policy, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY };
+		// `true` used to mean "report, never block". Enforcing the default policy here
+		// would break an instance that deliberately asked for report-only.
+		if (reportOnly.legacyBoolean) return { reportOnly: policy };
+
+		return dropRedundantReportOnly({
+			enforced: policy,
+			reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+		});
 	}
 
-	return { enforced: policy, reportOnly };
+	return dropRedundantReportOnly({ enforced: policy, reportOnly });
 };
 
 export const renderContentSecurityPolicy = (policy: string, nonce: string) =>

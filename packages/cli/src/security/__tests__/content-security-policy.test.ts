@@ -28,8 +28,11 @@ describe('resolveContentSecurityPolicies', () => {
 	) => resolveContentSecurityPolicies(policy, reportOnly, logger);
 
 	/** What each setting holds when the operator sets neither variable. */
-	const UNSET_POLICY = undefined;
+	const UNSET_POLICY = DEFAULT_CONTENT_SECURITY_POLICY;
 	const UNSET_REPORT_ONLY = DEFAULT_CONTENT_SECURITY_POLICY;
+
+	/** What a setting holds when the operator turns that header off with `{}`. */
+	const NO_POLICY = undefined;
 
 	const A = "script-src <nonce> 'strict-dynamic' 'unsafe-eval'";
 	const B = "script-src <nonce> 'strict-dynamic'";
@@ -44,16 +47,16 @@ describe('resolveContentSecurityPolicies', () => {
 
 		const rows: Row[] = [
 			[
-				'neither set: report on the default policy, enforce nothing',
+				'neither set: enforce the default policy, send no redundant report-only copy',
 				UNSET_POLICY,
 				UNSET_REPORT_ONLY,
-				{ enforced: undefined, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+				{ enforced: DEFAULT_CONTENT_SECURITY_POLICY, reportOnly: undefined },
 			],
 			[
-				'report-only set: report on that policy, enforce nothing',
+				'report-only set: enforce the default policy, report on the other',
 				UNSET_POLICY,
 				B,
-				{ enforced: undefined, reportOnly: B },
+				{ enforced: DEFAULT_CONTENT_SECURITY_POLICY, reportOnly: B },
 			],
 			[
 				'policy set: enforce it, keep reporting on the default',
@@ -65,15 +68,22 @@ describe('resolveContentSecurityPolicies', () => {
 			[
 				'policy set, reporting off: enforce only',
 				A,
-				undefined,
+				NO_POLICY,
 				{ enforced: A, reportOnly: undefined },
 			],
 			[
+				'enforcement off: report on the default policy, enforce nothing',
+				NO_POLICY,
+				UNSET_REPORT_ONLY,
+				{ enforced: undefined, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+			[
 				'both off: no CSP headers at all',
-				UNSET_POLICY,
-				undefined,
+				NO_POLICY,
+				NO_POLICY,
 				{ enforced: undefined, reportOnly: undefined },
 			],
+			['the same policy in both: enforce it once', A, A, { enforced: A, reportOnly: undefined }],
 			[
 				'legacy `true`: the configured policy stays report-only',
 				A,
@@ -81,16 +91,28 @@ describe('resolveContentSecurityPolicies', () => {
 				{ enforced: undefined, reportOnly: A },
 			],
 			[
-				'legacy `true` with no policy configured: report on the default',
+				'legacy `true` with neither policy configured: report on the default, enforce nothing',
 				UNSET_POLICY,
 				{ legacyBoolean: true },
 				{ enforced: undefined, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+			[
+				'legacy `true` with enforcement off: no CSP headers at all',
+				NO_POLICY,
+				{ legacyBoolean: true },
+				{ enforced: undefined, reportOnly: undefined },
 			],
 			[
 				'legacy `false`: the configured policy is enforced',
 				A,
 				{ legacyBoolean: false },
 				{ enforced: A, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY },
+			],
+			[
+				'legacy `false` with no policy configured: enforce the default policy',
+				UNSET_POLICY,
+				{ legacyBoolean: false },
+				{ enforced: DEFAULT_CONTENT_SECURITY_POLICY, reportOnly: undefined },
 			],
 		];
 
@@ -126,6 +148,13 @@ describe('resolveContentSecurityPolicies', () => {
 
 			expect(enforced).not.toBe('true');
 			expect(reportOnly).not.toBe('true');
+		});
+
+		// The variable was the only way to keep the policy report-only, so honoring `true`
+		// has to beat the enforced default an upgrade now brings in.
+		it('should enforce nothing for `true`, whatever the enforced setting holds', () => {
+			expect(resolve(UNSET_POLICY, { legacyBoolean: true }).enforced).toBeUndefined();
+			expect(resolve(A, { legacyBoolean: true }).enforced).toBeUndefined();
 		});
 	});
 });
