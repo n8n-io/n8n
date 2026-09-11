@@ -4,6 +4,7 @@ import { history } from '@codemirror/commands';
 import { css } from '@codemirror/lang-css';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
+import { vue } from '@codemirror/lang-vue';
 import { foldGutter } from '@codemirror/language';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
@@ -19,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:content': [string] }>();
 
-/** No CodeMirror language mode covers Vue SFCs (or other unrecognized types) today; they fall back to plain text. */
+/** Unrecognized file types fall back to plain text. */
 function languageExtension(path: string): Extension[] {
 	const extension = path.split('.').pop() ?? '';
 	switch (extension) {
@@ -34,6 +35,8 @@ function languageExtension(path: string): Extension[] {
 			return [css()];
 		case 'html':
 			return [html()];
+		case 'vue':
+			return [vue()];
 		default:
 			return [];
 	}

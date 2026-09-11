@@ -62,24 +62,27 @@ describe('AppCodeViewer', () => {
 		confirm.mockReset().mockResolvedValue('confirm');
 	});
 
-	it('shows an empty state and fetches nothing when the app has no active version', async () => {
+	it('shows an empty state when the app has no source yet', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue(null);
 		const { getByText } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: undefined },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
-		expect(getByText('Build this app to see its source files here')).toBeInTheDocument();
-		expect(appsStore.fetchAppVersionFiles).not.toHaveBeenCalled();
+		expect(
+			getByText('Ask the AI Assistant to create this app to see its source files here'),
+		).toBeInTheDocument();
+		expect(appsStore.fetchAppVersionFileContent).not.toHaveBeenCalled();
 	});
 
 	it('lists the files in a tree and shows a placeholder before any file is selected', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts', 'index.html']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts', 'index.html'] });
 		const { getByText, queryByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
-		expect(appsStore.fetchAppVersionFiles).toHaveBeenCalledWith('proj-1', 'app-1', 'v-1');
+		expect(appsStore.fetchAppDraftFiles).toHaveBeenCalledWith('proj-1', 'app-1');
 		expect(getByText('main.ts')).toBeInTheDocument();
 		expect(getByText('index.html')).toBeInTheDocument();
 		expect(getByText('Select a file to view its contents')).toBeInTheDocument();
@@ -87,10 +90,10 @@ describe('AppCodeViewer', () => {
 	});
 
 	it("loads a clicked file's content into the viewer", async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
@@ -107,13 +110,13 @@ describe('AppCodeViewer', () => {
 	});
 
 	it("never pairs the new file's path with the previous file's content while its fetch is pending", async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['a.ts', 'b.ts'] });
 		let resolveA: (content: string) => void = () => {};
 		appsStore.fetchAppVersionFileContent.mockImplementationOnce(
 			async () => await new Promise((resolve) => (resolveA = resolve)),
 		);
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('a.ts'));
@@ -137,19 +140,19 @@ describe('AppCodeViewer', () => {
 	});
 
 	it('shows an error toast when listing the files fails', async () => {
-		appsStore.fetchAppVersionFiles.mockRejectedValue(new Error('boom'));
-		renderViewer({ props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' } });
+		appsStore.fetchAppDraftFiles.mockRejectedValue(new Error('boom'));
+		renderViewer({ props: { projectId: 'proj-1', appId: 'app-1' } });
 		await waitAllPromises();
 
 		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Error loading file');
 	});
 
 	it('enables Save only once the file is edited, and disables it again after a successful save', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
-		appsStore.saveAppVersionFileContent.mockResolvedValue(makeApp({ activeVersionId: 'v-3' }));
+		appsStore.saveAppDraftFile.mockResolvedValue(makeApp({ activeVersionId: 'v-3' }));
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('main.ts'));
@@ -163,10 +166,9 @@ describe('AppCodeViewer', () => {
 		await userEvent.click(getByTestId('app-code-save'));
 		await waitAllPromises();
 
-		expect(appsStore.saveAppVersionFileContent).toHaveBeenCalledWith(
+		expect(appsStore.saveAppDraftFile).toHaveBeenCalledWith(
 			'proj-1',
 			'app-1',
-			'v-2',
 			'main.ts',
 			'export {};!',
 		);
@@ -174,12 +176,12 @@ describe('AppCodeViewer', () => {
 	});
 
 	it('emits saved with the updated app on a successful save', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		const updated = makeApp({ activeVersionId: 'v-3' });
-		appsStore.saveAppVersionFileContent.mockResolvedValue(updated);
+		appsStore.saveAppDraftFile.mockResolvedValue(updated);
 		const { getByText, getByTestId, emitted } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('main.ts'));
@@ -192,12 +194,12 @@ describe('AppCodeViewer', () => {
 		expect(emitted().saved[0]).toEqual([updated]);
 	});
 
-	it('shows the build error and keeps the edited content when saving fails', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+	it('shows the save error and keeps the edited content when saving fails', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
-		appsStore.saveAppVersionFileContent.mockRejectedValue(new Error('Build failed: syntax error'));
+		appsStore.saveAppDraftFile.mockRejectedValue(new Error("Could not find the file: 'main.ts'"));
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('main.ts'));
@@ -207,19 +209,19 @@ describe('AppCodeViewer', () => {
 		await userEvent.click(getByTestId('app-code-save'));
 		await waitAllPromises();
 
-		expect(getByTestId('app-code-build-error')).toHaveTextContent('Build failed: syntax error');
+		expect(getByTestId('app-code-save-error')).toHaveTextContent("Could not find the file: 'main.ts'");
 		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};!');
 		expect(getByTestId('app-code-save')).not.toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('keeps the current file when the user cancels the discard confirmation', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['a.ts', 'b.ts'] });
 		appsStore.fetchAppVersionFileContent.mockImplementation(async (_p, _a, _v, path) =>
 			path === 'a.ts' ? 'a content' : 'b content',
 		);
 		confirm.mockResolvedValue('cancel');
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('a.ts'));
@@ -235,13 +237,13 @@ describe('AppCodeViewer', () => {
 	});
 
 	it('switches files once the user confirms discarding unsaved changes', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['a.ts', 'b.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['a.ts', 'b.ts'] });
 		appsStore.fetchAppVersionFileContent.mockImplementation(async (_p, _a, _v, path) =>
 			path === 'a.ts' ? 'a content' : 'b content',
 		);
 		confirm.mockResolvedValue('confirm');
 		const { getByText, getByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('a.ts'));
@@ -256,10 +258,10 @@ describe('AppCodeViewer', () => {
 	});
 
 	it('clears the buffer immediately when appId changes, before the new app has loaded', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		const { getByText, getByTestId, queryByTestId, rerender } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('main.ts'));
@@ -267,23 +269,21 @@ describe('AppCodeViewer', () => {
 		await userEvent.click(getByTestId('fcv-edit'));
 		expect(getByTestId('file-code-viewer-stub')).toBeInTheDocument();
 
-		// Same versionId as before — a real app switch keeps versionId stale for
-		// a moment too, so this isolates that the reset is keyed off `appId`.
-		await rerender({ projectId: 'proj-2', appId: 'app-2', versionId: 'v-1' });
+		await rerender({ projectId: 'proj-2', appId: 'app-2' });
 
 		expect(queryByTestId('file-code-viewer-stub')).not.toBeInTheDocument();
 		expect(getByText('Select a file to view its contents')).toBeInTheDocument();
 	});
 
 	it('does not apply an in-flight save result after appId changes before it resolves', async () => {
-		appsStore.fetchAppVersionFiles.mockResolvedValue(['main.ts']);
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
 		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
 		let resolveSave: (app: App) => void = () => {};
-		appsStore.saveAppVersionFileContent.mockImplementation(
+		appsStore.saveAppDraftFile.mockImplementation(
 			async () => await new Promise((resolve) => (resolveSave = resolve)),
 		);
 		const { getByText, getByTestId, emitted, rerender } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 		await userEvent.click(getByText('main.ts'));
@@ -292,7 +292,7 @@ describe('AppCodeViewer', () => {
 		await userEvent.click(getByTestId('app-code-save'));
 
 		// Switch apps while app-1's save is still in flight.
-		await rerender({ projectId: 'proj-2', appId: 'app-2', versionId: undefined });
+		await rerender({ projectId: 'proj-2', appId: 'app-2' });
 		resolveSave(makeApp({ id: 'app-1', activeVersionId: 'v-99' }));
 		await waitAllPromises();
 
@@ -301,19 +301,20 @@ describe('AppCodeViewer', () => {
 
 	it('ignores an older file-list response that resolves after a newer one', async () => {
 		let resolveV1: (files: string[]) => void = () => {};
-		appsStore.fetchAppVersionFiles.mockImplementationOnce(
-			async () => await new Promise((resolve) => (resolveV1 = resolve)),
+		const draft = (files: string[]) => ({ versionId: 'v-1', files });
+		appsStore.fetchAppDraftFiles.mockImplementationOnce(
+			async () => await new Promise<string[]>((resolve) => (resolveV1 = resolve)).then(draft),
 		);
 		const { queryByText, rerender } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1', refreshKey: 0 },
 		});
 		await waitAllPromises();
 
 		let resolveV2: (files: string[]) => void = () => {};
-		appsStore.fetchAppVersionFiles.mockImplementationOnce(
-			async () => await new Promise((resolve) => (resolveV2 = resolve)),
+		appsStore.fetchAppDraftFiles.mockImplementationOnce(
+			async () => await new Promise<string[]>((resolve) => (resolveV2 = resolve)).then(draft),
 		);
-		await rerender({ projectId: 'proj-1', appId: 'app-1', versionId: 'v-2' });
+		await rerender({ projectId: 'proj-1', appId: 'app-1', refreshKey: 1 });
 
 		// Resolve out of order: the newer request first, then the stale one.
 		resolveV2(['v2-file.ts']);
@@ -327,11 +328,15 @@ describe('AppCodeViewer', () => {
 
 	it('shows a loading indicator instead of an empty tree while the first file list request is pending', async () => {
 		let resolveFiles: (files: string[]) => void = () => {};
-		appsStore.fetchAppVersionFiles.mockImplementationOnce(
-			async () => await new Promise((resolve) => (resolveFiles = resolve)),
+		appsStore.fetchAppDraftFiles.mockImplementationOnce(
+			async () =>
+				await new Promise<string[]>((resolve) => (resolveFiles = resolve)).then((files) => ({
+					versionId: 'v-1',
+					files,
+				})),
 		);
 		const { getByTestId, queryByTestId } = renderViewer({
-			props: { projectId: 'proj-1', appId: 'app-1', versionId: 'v-1' },
+			props: { projectId: 'proj-1', appId: 'app-1' },
 		});
 		await waitAllPromises();
 
@@ -343,5 +348,28 @@ describe('AppCodeViewer', () => {
 
 		expect(queryByTestId('app-code-tree-loading')).not.toBeInTheDocument();
 		expect(getByTestId('app-code-tree')).toBeInTheDocument();
+	});
+
+	it('reloads the list on refreshKey but keeps unsaved edits in the open file', async () => {
+		appsStore.fetchAppDraftFiles.mockResolvedValue({ versionId: 'v-1', files: ['main.ts'] });
+		appsStore.fetchAppVersionFileContent.mockResolvedValue('export {};');
+		const { getByText, getByTestId, rerender } = renderViewer({
+			props: { projectId: 'proj-1', appId: 'app-1', refreshKey: 0 },
+		});
+		await waitAllPromises();
+		await userEvent.click(getByText('main.ts'));
+		await waitAllPromises();
+		await userEvent.click(getByTestId('fcv-edit'));
+
+		appsStore.fetchAppDraftFiles.mockResolvedValue({
+			versionId: 'v-2',
+			files: ['main.ts', 'new.ts'],
+		});
+		await rerender({ projectId: 'proj-1', appId: 'app-1', refreshKey: 1 });
+		await waitAllPromises();
+
+		expect(getByText('new.ts')).toBeInTheDocument();
+		expect(appsStore.fetchAppVersionFileContent).toHaveBeenCalledTimes(1);
+		expect(getByTestId('fcv-content')).toHaveTextContent('main.ts:export {};!');
 	});
 });

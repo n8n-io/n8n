@@ -7,7 +7,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview/app-source-snapshot.service';
 
-import { AppThemeService, patchTarball } from '../app-theme.service';
+import { AppDraftService, patchTarball } from '../app-draft.service';
+import type { AppPublishService } from '../app-publish.service';
+import { AppThemeService } from '../app-theme.service';
 import type { App } from '../app.entity';
 import type { AppsService } from '../apps.service';
 
@@ -73,13 +75,15 @@ function createService() {
 	appsService.getApp.mockResolvedValue(APP);
 	appsService.listVersions.mockResolvedValue([]);
 	const snapshotService = mock<AppSourceSnapshotService>();
-	const service = new AppThemeService(appsService, snapshotService);
+	const service = new AppThemeService(
+		new AppDraftService(appsService, mock<AppPublishService>(), snapshotService),
+	);
 	return { service, appsService, snapshotService };
 }
 
-function createDraft(overrides: { exists?: boolean; existing?: string } = {}) {
+function createDraft(overrides: { existing?: string } = {}) {
 	const filesystem = {
-		exists: vi.fn().mockResolvedValue(overrides.exists ?? true),
+		exists: vi.fn().mockResolvedValue(true),
 		readFile: vi.fn().mockResolvedValue(overrides.existing ?? ''),
 		writeFile: vi.fn().mockResolvedValue(undefined),
 	};
@@ -88,7 +92,7 @@ function createDraft(overrides: { exists?: boolean; existing?: string } = {}) {
 }
 
 describe('AppThemeService', () => {
-	describe('with the thread sandbox', () => {
+	describe('with the app sandbox', () => {
 		it('writes both theme files into the app directory and snapshots the draft', async () => {
 			const { service, appsService, snapshotService } = createService();
 			const { draft, filesystem } = createDraft();
@@ -130,26 +134,9 @@ describe('AppThemeService', () => {
 			expect(written).toContain('--primary: oklch(0.6 0.2 280);');
 			expect(written).not.toContain('#000000');
 		});
-
-		it('falls back to the stored source when the sandbox does not hold the app', async () => {
-			const { service, appsService, snapshotService } = createService();
-			const { draft, filesystem } = createDraft({ exists: false });
-			appsService.getSourceTarball.mockResolvedValue({
-				versionId: 'v-3',
-				data: await tgz({ 'package.json': '{}', 'src/main.ts': 'export {};' }),
-			});
-			appsService.createSourceSnapshot.mockResolvedValue({ id: 's-4' } as never);
-
-			const result = await service.applyTheme('app-1', THEME, USER, { draft });
-
-			expect(filesystem.writeFile).not.toHaveBeenCalled();
-			expect(snapshotService.snapshotAfterRun).not.toHaveBeenCalled();
-			expect(appsService.createSourceSnapshot).toHaveBeenCalledWith('app-1', expect.any(Buffer));
-			expect(result).toEqual({ versionId: 's-4' });
-		});
 	});
 
-	describe('without a thread sandbox', () => {
+	describe('without a sandbox', () => {
 		it('patches the theme files into the newest stored source and stores it as a snapshot', async () => {
 			const { service, appsService, snapshotService } = createService();
 			const original = {
@@ -180,7 +167,7 @@ describe('AppThemeService', () => {
 		});
 
 		it('adds the theme files to a source that has none', async () => {
-			const patched = await patchTarball(await tgz({ 'package.json': '{}' }), () => ({
+			const patched = await patchTarball(await tgz({ 'package.json': '{}' }), async () => ({
 				'src/theme-overrides.css': ':root {}\n',
 				'src/theme-mode.ts': 'export const THEME_MODE = "system";\n',
 			}));

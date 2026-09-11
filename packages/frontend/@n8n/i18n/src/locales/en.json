@@ -5178,7 +5178,7 @@
 	"apps.builder.openInAssistant": "Open in AI Assistant",
 	"apps.builder.inspect": "Select an element",
 	"apps.builder.code": "Code",
-	"apps.builder.code.empty": "Build this app to see its source files here",
+	"apps.builder.code.empty": "Ask the AI Assistant to create this app to see its source files here",
 	"apps.builder.code.selectFile": "Select a file to view its contents",
 	"apps.builder.code.loading": "Loading files…",
 	"apps.builder.code.error": "Error loading file",

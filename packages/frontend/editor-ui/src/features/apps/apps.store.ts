@@ -11,14 +11,14 @@ import {
 	fetchAppThreadsApi,
 	fetchAppVersionsApi,
 	fetchAppsApi,
+	fetchAppDraftFilesApi,
 	fetchBindingsApi,
 	fetchAppVersionFileContentApi,
-	fetchAppVersionFilesApi,
 	fetchRoutesApi,
 	getAppApi,
 	publishAppApi,
 	setActiveAppVersionApi,
-	saveAppVersionFileContentApi,
+	saveAppDraftFileApi,
 	updateAppApi,
 } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
@@ -103,8 +103,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
 	};
 
-	const fetchAppVersionFiles = async (projectId: string, appId: string, versionId: string) => {
-		return await fetchAppVersionFilesApi(rootStore.restApiContext, projectId, appId, versionId);
+	const fetchAppDraftFiles = async (projectId: string, appId: string) => {
+		return await fetchAppDraftFilesApi(rootStore.restApiContext, projectId, appId);
 	};
 
 	const fetchAppVersionFileContent = async (
@@ -122,18 +122,16 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		);
 	};
 
-	const saveAppVersionFileContent = async (
+	const saveAppDraftFile = async (
 		projectId: string,
 		appId: string,
-		versionId: string,
 		filePath: string,
 		content: string,
 	) => {
-		const updated = await saveAppVersionFileContentApi(
+		const updated = await saveAppDraftFileApi(
 			rootStore.restApiContext,
 			projectId,
 			appId,
-			versionId,
 			filePath,
 			content,
 		);
@@ -160,8 +158,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		fetchPages,
 		fetchBindings,
 		deleteBinding,
-		fetchAppVersionFiles,
+		fetchAppDraftFiles,
 		fetchAppVersionFileContent,
-		saveAppVersionFileContent,
+		saveAppDraftFile,
 	};
 });

@@ -81,8 +81,12 @@ export class AppPublishService {
 		return this.sandboxService;
 	}
 
-	/** Thin, unscoped adapter: the caller already checked the user's `app:update` on the project. */
-	private createAppServiceAdapter(): InstanceAiAppService {
+	/**
+	 * Thin, unscoped adapter for the `apps` tool handlers (`buildApp`,
+	 * `restoreApp`): the caller already checked the user's `app:update` on
+	 * the project.
+	 */
+	createAppServiceAdapter(): InstanceAiAppService {
 		const { appsService, urlService } = this;
 		const unsupported = (action: string) => () => {
 			throw new UnexpectedError(`${action} is not supported by the publish pipeline`);

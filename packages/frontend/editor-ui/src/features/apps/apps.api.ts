@@ -165,18 +165,26 @@ export const deleteBindingApi = async (
 	);
 };
 
-export const fetchAppVersionFilesApi = async (
+/**
+ * Files of the app's draft and the version that holds them. The app sandbox's
+ * current edits are stored first, so the list is what the live preview shows.
+ * `null` when the app has no source yet.
+ */
+export const fetchAppDraftFilesApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
-	versionId: string,
 ) => {
-	return await makeRestApiRequest<string[]>(
+	return await makeRestApiRequest<{ versionId: string; files: string[] } | null>(
 		context,
 		'GET',
-		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files`,
+		`/projects/${projectId}/apps/${appId}/draft/files`,
 	);
 };
+
+// Each segment is encoded on its own so a `/` inside the path keeps routing
+// to the right file, not a `%2F` the server would reject.
+const encodePath = (filePath: string) => filePath.split('/').map(encodeURIComponent).join('/');
 
 export const fetchAppVersionFileContentApi = async (
 	context: IRestApiContext,
@@ -185,31 +193,26 @@ export const fetchAppVersionFileContentApi = async (
 	versionId: string,
 	filePath: string,
 ) => {
-	// Each segment is encoded on its own so a `/` inside the path keeps routing
-	// to the right file, not a `%2F` the server would reject.
-	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 	const { content } = await makeRestApiRequest<{ content: string }>(
 		context,
 		'GET',
-		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodePath(filePath)}`,
 	);
 	return content;
 };
 
-/** Overwrites one existing source file and rebuilds the app; returns the app with its new active version. */
-export const saveAppVersionFileContentApi = async (
+/** Overwrites one existing file of the draft; nothing is built. Returns the app with its draft state. */
+export const saveAppDraftFileApi = async (
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
-	versionId: string,
 	filePath: string,
 	content: string,
 ) => {
-	const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
 	return await makeRestApiRequest<App>(
 		context,
 		'PUT',
-		`/projects/${projectId}/apps/${appId}/versions/${versionId}/files/${encodedPath}`,
+		`/projects/${projectId}/apps/${appId}/draft/files/${encodePath(filePath)}`,
 		{ content },
 	);
 };
