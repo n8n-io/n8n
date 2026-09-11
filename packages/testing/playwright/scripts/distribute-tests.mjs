@@ -21,21 +21,28 @@
  *
  * Usage:
  *   node distribute-tests.mjs --matrix <shards> --orchestrate  # GitHub Actions matrix with images
+ *   node distribute-tests.mjs --matrix <shards> --orchestrate --include-metadata
  *   node distribute-tests.mjs --matrix <shards>                # Simple matrix (no distribution)
  *   node distribute-tests.mjs <shards> <index>                 # Specs for a single shard
  */
 
 import { execFileSync } from 'child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+import { buildDistributionGroups, filterDistributionSpecs } from './distribution-groups.mjs';
+import { getRequiredImages } from './distribution-images.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
 const SELECT_AFFECTED_E2E = path.resolve(__dirname, 'select-affected-e2e.mjs');
+const DISTRIBUTION_REPORTER = path.resolve(__dirname, 'distribution-counter-reporter.ts');
+const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve('@playwright/test/cli');
 const PLAYWRIGHT_PREFIX = path.relative(REPO_ROOT, PLAYWRIGHT_DIR) + path.sep;
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
@@ -48,28 +55,6 @@ const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 // removed from PR shards too and cannot gate a PR. If a shard's whole spec list
 // is quarantined it becomes the `skip` sentinel below (never the full suite).
 const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
-
-const CAPABILITY_IMAGES = {
-	email: ['mailpit'],
-	kafka: ['kafka'],
-	observability: ['victoriaLogs', 'victoriaMetrics', 'vector', 'jaeger', 'n8nTracer'],
-	oidc: ['keycloak'],
-	proxy: ['mockserver'],
-	'source-control': ['gitea'],
-};
-
-const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
-
-function getRequiredImages(capabilities) {
-	const images = new Set(BASE_IMAGES);
-	for (const cap of capabilities) {
-		const capImages = CAPABILITY_IMAGES[cap];
-		if (capImages) {
-			for (const img of capImages) images.add(img);
-		}
-	}
-	return [...images].sort();
-}
 
 /**
  * Partition CSV of changed files into (a) inside the playwright package,
@@ -195,12 +180,47 @@ function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['distribute', `--shards=${numShards}`];
 	const includeFile = options.includeSpecsFile;
 	if (includeFile) cliArgs.push(`--include-specs-file=${includeFile}`);
+	const groupsFile = options.groupsFile;
+	if (groupsFile) cliArgs.push(`--groups-file=${groupsFile}`);
 	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
 		cwd: PLAYWRIGHT_DIR,
 		encoding: 'utf-8',
 		stdio: ['pipe', 'pipe', 'inherit'],
 	});
 	return JSON.parse(output);
+}
+
+function generateDistributionGroups(project, grepInvert) {
+	const temp = mkdtempSync(path.join(tmpdir(), 'distribution-groups-'));
+	const reportPath = path.join(temp, 'playwright-profiles.json');
+	const groupsPath = path.join(temp, 'groups.json');
+	execFileSync(
+		process.execPath,
+		[
+			PLAYWRIGHT_CLI,
+			'test',
+			'--list',
+			`--project=${project}`,
+			'--workers=1',
+			`--reporter=${DISTRIBUTION_REPORTER}`,
+			...(grepInvert ? [`--grep-invert=${grepInvert}`] : []),
+		],
+		{
+			cwd: PLAYWRIGHT_DIR,
+			env: { ...process.env, DISTRIBUTION_COUNTER_OUTPUT: reportPath },
+			stdio: ['ignore', 'ignore', 'inherit'],
+		},
+	);
+	const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+	const groups = buildDistributionGroups(report);
+	writeFileSync(groupsPath, JSON.stringify(groups));
+	return { groupsPath, specs: Object.keys(groups), temp };
+}
+
+function writeRunnableSpecs(temp, specs) {
+	const includePath = path.join(temp, 'include-specs.txt');
+	writeFileSync(includePath, specs.join('\n'));
+	return includePath;
 }
 
 /**
@@ -243,6 +263,12 @@ const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
 const impactMode = args.includes('--impact');
+const includeMetadata = args.includes('--include-metadata');
+const project =
+	args.find((a) => a.startsWith('--project='))?.slice('--project='.length) ?? 'multi-main:e2e';
+const grepInvert =
+	args.find((a) => a.startsWith('--grep-invert='))?.slice('--grep-invert='.length) ??
+	process.env.PLAYWRIGHT_GREP_INVERT;
 const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
 const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
@@ -260,6 +286,18 @@ if (impactMode && filesArg) {
 	if (includeSpecsFile) cleanupPaths.push(path.dirname(includeSpecsFile));
 } else if (impactMode) {
 	console.error('Impact: no --files provided — running full suite');
+}
+
+let groupsFile;
+if (orchestrateMode || !matrixMode) {
+	const generated = generateDistributionGroups(project, grepInvert);
+	groupsFile = generated.groupsPath;
+	const candidates = includeSpecsFile
+		? readFileSync(includeSpecsFile, 'utf8').split('\n').filter(Boolean)
+		: generated.specs;
+	const selectedSpecs = filterDistributionSpecs(candidates, generated.specs, QUARANTINE);
+	includeSpecsFile = writeRunnableSpecs(generated.temp, selectedSpecs);
+	cleanupPaths.push(generated.temp);
 }
 
 function cleanup() {
@@ -281,18 +319,9 @@ if (matrixMode) {
 		}));
 		console.log(JSON.stringify(matrix));
 	} else {
-		const result = getOrchestration(shards, { includeSpecsFile });
+		const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 
-		// Apply the quarantine BEFORE the empty check and drop any shard it
-		// empties out. A shard whose only specs are quarantined must become the
-		// `skip` sentinel — not an empty spec list, which the e2e job would
-		// silently expand to `--shard=1/1` and run the entire suite (DEVP-671).
-		const shardsWithSpecs = result.shards
-			.map((shard) => ({
-				...shard,
-				specs: shard.specs.filter((s) => !QUARANTINE.has(s)),
-			}))
-			.filter((shard) => shard.specs.length > 0);
+		const shardsWithSpecs = result.shards;
 
 		if (shardsWithSpecs.length === 0) {
 			console.error(
@@ -308,9 +337,10 @@ if (matrixMode) {
 				maxShardTime = Math.max(maxShardTime, totalTime);
 				const testMins = (shard.testTime / 60_000).toFixed(1);
 				const totalMins = (totalTime / 60_000).toFixed(1);
-				const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+				const requirements = [...shard.capabilities, ...shard.services];
+				const suffix = requirements.length > 0 ? ` [${requirements.join(', ')}]` : '';
 				console.error(
-					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
+					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${suffix}`,
 				);
 			}
 			const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
@@ -322,7 +352,16 @@ if (matrixMode) {
 			const matrix = shardsWithSpecs.map((shard) => ({
 				shard: shard.shard,
 				specs: shard.specs.join(' '),
-				images: getRequiredImages(shard.capabilities).join(' '),
+				images: getRequiredImages(shard.capabilities, shard.services).join(' '),
+				...(includeMetadata
+					? {
+							capabilities: shard.capabilities,
+							services: shard.services,
+							fixturePools: shard.fixturePools,
+							fixtureCount: shard.fixtureCount,
+							testTime: shard.testTime,
+						}
+					: {}),
 			}));
 			console.log(JSON.stringify(matrix));
 		}
@@ -334,10 +373,10 @@ if (matrixMode) {
 		cleanup();
 		process.exit(1);
 	}
-	const result = getOrchestration(shards, { includeSpecsFile });
+	const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 	const shard = result.shards[index];
 	if (shard) {
-		console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));
+		console.log(shard.specs.join('\n'));
 	}
 }
 

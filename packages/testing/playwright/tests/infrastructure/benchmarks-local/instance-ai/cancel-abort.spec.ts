@@ -7,7 +7,7 @@ test.use(instanceAiTestConfig);
 const CANCEL_ITERATIONS = 5;
 
 test.describe(
-	'Instance-AI Memory: Cancel/Abort Cleanup @capability:observability',
+	'Instance-AI Memory: Cancel/Abort Cleanup',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
