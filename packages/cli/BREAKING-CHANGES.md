@@ -20,13 +20,13 @@ The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags
 
 No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
 
-Package imports now check the `workflow:activate` and `workflow:deactivate` API key scopes.
-An import that publishes or republishes a workflow requires `workflow:activate`.
-This includes a republish under the default `preserve-published-state` policy.
-It also includes the fixed `match-source` policy of selection imports.
-An import that unpublishes a workflow requires `workflow:deactivate`.
-An import that archives a published workflow requires only `workflow:delete`.
-If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
+### What changed?
+
+The Execute Sub-workflow node no longer supports the "Local File" and "URL" sources. Executions of nodes that still use these sources fail with an error.
+
+### When is action necessary?
+
+If your workflows use an Execute Sub-workflow node with the "Local File" or "URL" source. Save the sub-workflow on the instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source. The migration report on v2 lists every affected node.
 
 # 2.0.0
 
