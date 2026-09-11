@@ -2,7 +2,7 @@ import { Pcre2BudgetExceededError, Pcre2InternalError, Pcre2MatchError } from '.
 import type { Pcre2BudgetKind } from './errors.js';
 import type { EnumValue, Pcre2Wrapper } from './generated/pcre2_wrapper.js';
 import { MATCH_LIMIT, DEPTH_LIMIT, HEAP_LIMIT_KB, WALL_CLOCK_LIMIT_MS } from './handle-cache.js';
-import { getModule, isWasmTrap, reinitModuleAfterTrap } from './wasm-module.js';
+import { getModule, isWasmTrap, reinitModuleAfterTrap, invalidatedHandles } from './wasm-module.js';
 
 /** A RegExpExecArray-like result: an array of matched groups plus `index`/`input`/`groups`. */
 export type Pcre2ExecArray = Array<string | undefined> & {
@@ -48,8 +48,12 @@ function ensureSubjectSet(handle: Pcre2Wrapper, input: string): void {
 // later ensureSubjectSet() would wrongly believe the native side still has it set.
 export function releaseSubject(handle: Pcre2Wrapper): void {
 	if (!lastSubjectByHandle.has(handle)) return;
-	handle.clearSubject();
 	lastSubjectByHandle.delete(handle);
+	// A trap between the match and this cleanup already tore this handle's wasm object
+	// down (reinitModuleAfterTrap) -- calling clearSubject() on it would throw again or
+	// mask the Pcre2InternalError the caller is already propagating.
+	if (invalidatedHandles.has(handle)) return;
+	handle.clearSubject();
 }
 
 // Budget exhaustion or an unexpected PCRE2 error throws, so callers don't re-check status codes.

@@ -1,10 +1,16 @@
 import { Pcre2NotInitializedError } from './errors.js';
 import createPcre2WrapperModule from './generated/pcre2_wrapper.js';
-import type { Pcre2WrapperModule } from './generated/pcre2_wrapper.js';
+import type { Pcre2WrapperModule, Pcre2Wrapper } from './generated/pcre2_wrapper.js';
 import type { CompiledPattern } from './handle-cache.js';
 
 // Lets reinitModuleAfterTrap invalidate every live engine's handle cache.
 export const liveCaches = new Set<Map<string, CompiledPattern>>();
+
+// Handles a trap has already torn down -- their native object belonged to the wasm
+// instance reinitModuleAfterTrap() just discarded. A caller may still hold one of these
+// (e.g. runMatch()'s own `handle` argument, mid-call when the trap happened) after this
+// runs; checked by releaseSubject() so its cleanup doesn't call into a dead object.
+export const invalidatedHandles = new WeakSet<Pcre2Wrapper>();
 
 let loadPromise: Promise<Pcre2WrapperModule> | undefined;
 let loadedModule: Pcre2WrapperModule | undefined;
@@ -42,7 +48,10 @@ export function isWasmTrap(error: unknown): boolean {
 // A trap leaves memory unspecified: drop every handle cache (not freed -- could crash it) and reload.
 export function reinitModuleAfterTrap(): void {
 	loadedModule = undefined;
-	for (const cache of liveCaches) cache.clear();
+	for (const cache of liveCaches) {
+		for (const compiled of cache.values()) invalidatedHandles.add(compiled.handle);
+		cache.clear();
+	}
 	loadPromise = createPcre2WrapperModule().then((module) => {
 		loadedModule = module;
 		return module;
