@@ -196,6 +196,30 @@ describe('Execution Metadata functions', () => {
 			expect(logger.error).not.toHaveBeenCalled();
 			expect(metadata).toEqual({ test1: value });
 		});
+
+		test('should warn, not error, and truncate a value over the limit', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			const value = 'a'.repeat(513);
+
+			setWorkflowExecutionMetadata(executionData, 'test1', value);
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(metadata).toEqual({ test1: value.slice(0, 512) });
+		});
+
+		test('should warn, not error, and truncate a key over the limit', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			const key = 'a'.repeat(51);
+
+			setWorkflowExecutionMetadata(executionData, key, 'value1');
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(metadata).toEqual({ [key.slice(0, 50)]: 'value1' });
+		});
 	});
 
 	// GHC-8254: AI Agent node with Chinese name fails with "Custom date key can only contain characters A-Za-z0-9_"
