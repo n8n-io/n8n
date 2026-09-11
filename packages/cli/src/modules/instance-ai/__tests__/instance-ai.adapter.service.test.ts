@@ -199,11 +199,14 @@ function makeTaskData(
 	} as unknown as ITaskData;
 }
 
-/** Build a task data entry for a multi-output node, one item list per output. */
-function makeMultiOutputTaskData(outputs: IDataObject[][]): ITaskData {
+/**
+ * Build a task data entry for a multi-output node, one item list per output.
+ * `null` marks an output that never received data.
+ */
+function makeMultiOutputTaskData(outputs: Array<IDataObject[] | null>): ITaskData {
 	return {
 		...makeTaskData([]),
-		data: { main: outputs.map((items) => items.map((json) => ({ json }))) },
+		data: { main: outputs.map((items) => items?.map((json) => ({ json })) ?? null) },
 	};
 }
 
@@ -408,6 +411,26 @@ describe('extractExecutionResult', () => {
 				{ index: 1, name: 'Error', items: [{ error: 'timeout' }] },
 			],
 			totalItems: 2,
+		});
+	});
+
+	it('reports a null output as empty', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { Filter: [makeMultiOutputTaskData([null, [{ id: 1 }]])] },
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', true);
+
+		const wrapped = result.data!.Filter as string;
+		expect(JSON.parse(wrapped.split('\n').slice(1, -1).join('\n'))).toEqual({
+			outputs: [
+				{ index: 0, items: [] },
+				{ index: 1, items: [{ id: 1 }] },
+			],
+			totalItems: 1,
 		});
 	});
 
@@ -1386,6 +1409,21 @@ describe('extractNodeOutput', () => {
 		expect(result.outputs[1]).toMatchObject({ index: 1, totalItems: 2 });
 		expect(result.outputs[1].items).toHaveLength(2);
 		expect(result.outputs[1]).not.toHaveProperty('name');
+	});
+
+	it('lists a null output as empty', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { Filter: [makeMultiOutputTaskData([null, [{ id: 1 }]])] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Filter');
+
+		expect(result.totalItems).toBe(1);
+		expect(result.outputs[0]).toEqual({ index: 0, totalItems: 0, items: [] });
+		expect(result.outputs[1].items[0]).toContain('"id": 1');
 	});
 
 	it('paginates across outputs as one sequence', async () => {
