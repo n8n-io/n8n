@@ -2,10 +2,23 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SystemTaskMetadata } from '@n8n/decorators';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
+import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PostHogClient } from '@/posthog';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TelemetryBufferFlushTask } from '@/telemetry/telemetry-buffer-flush.task';
 
 import { BaseCommand } from '../base-command';
@@ -47,6 +60,156 @@ describe('logError', () => {
 			'Something went wrong',
 			'the stack',
 		]);
+	});
+});
+
+describe('needsRegexEngine', () => {
+	const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+	const dbConnection = mockInstance(DbConnection);
+	const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+	mockInstance(EncryptionBootstrapService);
+	mockInstance(MessageEventBus);
+	const posthogClient = mockInstance(PostHogClient);
+	const telemetryEventRelay = mockInstance(TelemetryEventRelay);
+	mockInstance(ActivityEventRelay);
+	mockInstance(WorkflowFailureNotificationEventRelay);
+	mockInstance(ExpressionObservabilityProvider);
+	mockInstance(ErrorReporter);
+	mockInstance(ShutdownService);
+	const regexEngineService = mockInstance(RegexEngineService);
+	const originalGlobalConfig = Container.get(GlobalConfig);
+
+	afterEach(() => {
+		Container.set(GlobalConfig, originalGlobalConfig);
+	});
+
+	class RegexEngineCommand extends BaseCommand {
+		override get needsRegexEngine() {
+			return true;
+		}
+
+		async run() {}
+	}
+
+	class PlainCommand extends BaseCommand {
+		async run() {}
+	}
+
+	class ExpressionOnlyCommand extends BaseCommand {
+		override needsExpressionEngine = true;
+
+		override get needsRegexEngine() {
+			return false;
+		}
+
+		async run() {}
+	}
+
+	beforeEach(() => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'js' },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		loadNodesAndCredentials.init.mockResolvedValue(undefined);
+		dbConnection.init.mockResolvedValue(undefined);
+		dbConnection.migrate.mockResolvedValue(undefined);
+		deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+		deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+		posthogClient.init.mockResolvedValue();
+		telemetryEventRelay.init.mockResolvedValue();
+		regexEngineService.init.mockResolvedValue(undefined);
+	});
+
+	it('initializes the engine for a command that opts in', async () => {
+		await new RegexEngineCommand().init();
+
+		expect(regexEngineService.init).toHaveBeenCalled();
+	});
+
+	it('does not initialize the engine for a command that does not', async () => {
+		await new PlainCommand().init();
+
+		expect(regexEngineService.init).not.toHaveBeenCalled();
+	});
+
+	it('crashes the process when the engine cannot start', async () => {
+		const exitSpy = vi
+			// @ts-expect-error Protected method
+			.spyOn(BaseCommand.prototype, 'exitWithCrash')
+			.mockResolvedValue(undefined);
+		regexEngineService.init.mockRejectedValue(new Error('module failed to load'));
+
+		await new RegexEngineCommand().init();
+
+		expect(exitSpy).toHaveBeenCalledWith(
+			expect.stringContaining('regular expression engine'),
+			expect.any(Error),
+		);
+	});
+
+	it('shuts the engine down on a successful exit', async () => {
+		const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+		const cmd = new RegexEngineCommand();
+		await cmd.init();
+
+		// @ts-expect-error Protected method
+		await cmd.exitSuccessFully();
+
+		expect(regexEngineService.shutdown).toHaveBeenCalled();
+		expect(exitSpy).toHaveBeenCalled();
+	});
+
+	it('does not crash a command that never evaluates expressions or regexes when a non-default engine is configured', async () => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'bogus-engine' as never },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		const exitSpy = vi
+			// @ts-expect-error Protected method
+			.spyOn(BaseCommand.prototype, 'exitWithCrash')
+			.mockResolvedValue(undefined);
+
+		await new PlainCommand().init();
+
+		expect(exitSpy).not.toHaveBeenCalled();
+		expect(regexEngineService.init).not.toHaveBeenCalled();
+	});
+
+	it('crashes a command that evaluates expressions but diverges on regex-engine support when a non-default engine is configured', async () => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				regexEngine: { engine: 'bogus-engine' as never },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		const exitSpy = vi
+			// @ts-expect-error Protected method
+			.spyOn(BaseCommand.prototype, 'exitWithCrash')
+			.mockResolvedValue(undefined);
+
+		await new ExpressionOnlyCommand().init();
+
+		expect(exitSpy).toHaveBeenCalledWith(
+			expect.stringContaining('bogus-engine'),
+			expect.any(Error),
+		);
+		expect(regexEngineService.init).not.toHaveBeenCalled();
 	});
 });
 
