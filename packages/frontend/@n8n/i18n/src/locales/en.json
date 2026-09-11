@@ -5237,6 +5237,7 @@
 	"apps.builder.live.startFailed": "Live preview couldn't start.",
 	"apps.builder.live.lastBuild": "This is the last build.",
 	"apps.connections.connect": "Connect",
+	"apps.connections.add": "Add connection",
 	"apps.connections.picker.title": "Connect to app",
 	"apps.connections.picker.search": "Search...",
 	"apps.connections.picker.connected": "Connected. Ask the assistant to use \"{name}\" in the app.",

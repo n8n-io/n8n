@@ -903,12 +903,16 @@ describe('AppDetailsView', () => {
 			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
 		});
 
-		it('opens the connections picker from the header button', async () => {
+		it('opens the connections picker from the plus button in the Connect card header', async () => {
 			const uiStore = mockedStore(useUIStore);
-			const { getByRole, getByTestId } = await renderApp(makeApp());
+			const { getByTestId } = await renderApp(makeApp());
 
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
-			await userEvent.click(getByTestId('app-connection-add'));
+			await userEvent.click(getByTestId('app-builder-mode-build'));
+			const add = getByTestId('app-connections').querySelector(
+				'[data-test-id="app-connection-add"]',
+			);
+			expect(add).toHaveAttribute('aria-label', 'Add connection');
+			await userEvent.click(add!);
 
 			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 				name: APP_CONNECTIONS_MODAL_KEY,
