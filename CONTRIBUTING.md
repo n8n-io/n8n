@@ -14,7 +14,6 @@ Great that you are here and you want to contribute to n8n
 			- [Node.js](#nodejs)
 			- [pnpm](#pnpm)
 				- [pnpm workspaces](#pnpm-workspaces)
-			- [corepack](#corepack)
 			- [Build tools](#build-tools)
 		- [Actual n8n setup](#actual-n8n-setup)
 		- [Start](#start)
