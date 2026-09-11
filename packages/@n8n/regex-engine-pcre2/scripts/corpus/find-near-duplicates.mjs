@@ -219,9 +219,6 @@ function classify(tuple, resolveSubject) {
 function loadSubjects(dir, parsed) {
 	if (Array.isArray(parsed)) return [];
 	if ('subjects' in parsed) return parsed.subjects;
-	if ('subjectsRef' in parsed) {
-		return JSON.parse(fs.readFileSync(path.join(dir, parsed.subjectsRef), 'utf8'));
-	}
 	return [];
 }
 
@@ -272,7 +269,7 @@ const targets = [
 		dir: path.join(FIXTURES_DIR, 'rust-regex'),
 		hasSubjects: 'subjects',
 	},
-	{ file: 'realistic-patterns.json', dir: FIXTURES_DIR, hasSubjects: 'subjectsRef' },
+	{ file: 'realistic-patterns.json', dir: FIXTURES_DIR, hasSubjects: 'subjects' },
 	{ file: 'curated-cases.json', dir: FIXTURES_DIR, hasSubjects: 'subjects', hasDivergences: true },
 ];
 
@@ -283,7 +280,7 @@ for (const target of targets) {
 	if (ONLY_FILES && !ONLY_FILES.has(target.file)) continue;
 	const filePath = path.join(FIXTURES_DIR, target.file);
 	const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-	const subjects = loadSubjects(target.hasSubjects === 'subjectsRef' ? FIXTURES_DIR : target.dir, parsed);
+	const subjects = loadSubjects(target.dir, parsed);
 
 	const { kept, classCount, classesOverLimit } = dedupCases(parsed.cases, subjects);
 	totalBefore += parsed.cases.length;
@@ -301,12 +298,6 @@ for (const target of targets) {
 		const { remapped, newSubjects } = compactSubjects(kept, subjects);
 		parsed.cases = remapped;
 		parsed.subjects = newSubjects;
-	} else if (target.hasSubjects === 'subjectsRef') {
-		// realistic-subjects.json is only ever referenced from here (confirmed via
-		// grep), so it's safe to compact alongside the cases that use it.
-		const { remapped, newSubjects } = compactSubjects(kept, subjects);
-		parsed.cases = remapped;
-		fs.writeFileSync(path.join(FIXTURES_DIR, parsed.subjectsRef), JSON.stringify(newSubjects));
 	} else {
 		parsed.cases = kept;
 	}

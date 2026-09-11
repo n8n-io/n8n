@@ -218,8 +218,8 @@ async function main() {
   const RUST_REGEX_OUT_DIR = path.join(OUT_DIR, 'rust-regex');
   fs.mkdirSync(RUST_REGEX_OUT_DIR, { recursive: true });
 
-  // Tracks only the files THIS generator writes (never realistic-patterns.json or
-  // realistic-subjects.json, both hand-curated). If a category disappears or every one of
+  // Tracks only the files THIS generator writes (never realistic-patterns.json,
+  // hand-curated). If a category disappears or every one of
   // its cases gets excluded between runs, its old file would otherwise linger on disk and
   // corpus.test.ts would keep exercising stale, no-longer-generated data.
   const manifestFile = path.join(OUT_DIR, '.generated-manifest.json');

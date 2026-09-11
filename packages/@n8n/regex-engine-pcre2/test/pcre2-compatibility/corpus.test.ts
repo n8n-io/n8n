@@ -24,32 +24,15 @@ type CorpusCaseTuple = [
 	CorpusCase['esAgree'],
 	CorpusCase['expected'],
 ];
-type CorpusFile =
-	| CorpusCaseTuple[]
-	| { subjects: string[]; cases: CorpusCaseTuple[] }
-	| { subjectsRef: string; cases: CorpusCaseTuple[] };
+type CorpusFile = CorpusCaseTuple[] | { subjects: string[]; cases: CorpusCaseTuple[] };
 
 const FIXTURES_DIR = path.join(__dirname, '../fixtures/corpus');
 const RUST_REGEX_DIR = path.join(FIXTURES_DIR, 'rust-regex');
 
-const subjectsRefCache = new Map<string, string[]>();
-function resolveSubjectsRef(ref: string): string[] {
-	let subjects = subjectsRefCache.get(ref);
-	if (!subjects) {
-		subjects = JSON.parse(fs.readFileSync(path.join(FIXTURES_DIR, ref), 'utf8'));
-		subjectsRefCache.set(ref, subjects as string[]);
-	}
-	return subjects as string[];
-}
-
 function loadCategory(file: string): CorpusCase[] {
 	const parsed: CorpusFile = JSON.parse(fs.readFileSync(file, 'utf8'));
 	const tuples = Array.isArray(parsed) ? parsed : parsed.cases;
-	const subjects = Array.isArray(parsed)
-		? []
-		: 'subjectsRef' in parsed
-			? resolveSubjectsRef(parsed.subjectsRef)
-			: parsed.subjects;
+	const subjects = Array.isArray(parsed) ? [] : parsed.subjects;
 	return tuples.map(([pattern, flags, input, esAgree, expected]) => ({
 		pattern,
 		flags,
@@ -59,11 +42,10 @@ function loadCategory(file: string): CorpusCase[] {
 	}));
 }
 
-const NON_CATEGORY_FILES = new Set(['realistic-subjects.json']);
 const categoryFiles = [
 	...fs
 		.readdirSync(FIXTURES_DIR)
-		.filter((f) => f.endsWith('.json') && !NON_CATEGORY_FILES.has(f))
+		.filter((f) => f.endsWith('.json'))
 		.map((f) => ({ category: f.replace(/\.json$/, ''), file: path.join(FIXTURES_DIR, f) })),
 	...fs
 		.readdirSync(RUST_REGEX_DIR)
