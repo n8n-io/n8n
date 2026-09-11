@@ -1,3 +1,5 @@
+import { isEnvFeatureEnabled } from '@n8n/backend-common';
+
 /**
  * Whether encryption-key rotation is enabled: with it on, `getActiveKey()`
  * hands the cipher the active data-encryption key (prefixed output) instead
@@ -9,5 +11,5 @@
  * `EncryptionKeyManagerModule`).
  */
 export function isKeyRotationEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true';
+	return isEnvFeatureEnabled('N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION');
 }

@@ -8,7 +8,7 @@ export interface ExecutionResult {
 	finishedAt?: string;
 	/**
 	 * Nodes whose output in this execution was simulated (fabricated fixture
-	 * data) during AI Assistant verification. Used to label that data in the
+	 * data) during n8n Assistant verification. Used to label that data in the
 	 * editor and guard against pinning it as if it were real.
 	 */
 	simulatedNodeNames?: string[];

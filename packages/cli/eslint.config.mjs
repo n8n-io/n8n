@@ -163,7 +163,6 @@ export default defineConfig(
 		files: [
 			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
 			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 		],
 		rules: {
 			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
@@ -190,7 +189,6 @@ export default defineConfig(
 			'./src/public-api/v1/handlers/otel/otel.handler.ts',
 			'./src/public-api/v1/handlers/projects/projects.handler.ts',
 			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
-			'./src/public-api/v1/handlers/source-control/source-control.handler.ts',
 			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
 			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
 			'./src/public-api/v1/handlers/tags/tags.handler.ts',
@@ -408,6 +406,7 @@ export default defineConfig(
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
 			'./src/modules/agents/integrations/platforms/discord-integration.ts',
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
@@ -416,12 +415,9 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/license.ts',
 			'./src/modules/instance-reporting/instance-reporting-scheduler.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
-			'./src/services/pruning/workflow-history-compaction.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
-			'./src/workflows/publication/workflow-publication-outbox-cleanup.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},

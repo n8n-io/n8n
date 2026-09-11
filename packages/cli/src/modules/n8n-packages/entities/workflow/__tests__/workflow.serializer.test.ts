@@ -1,3 +1,5 @@
+import { WorkflowEntity } from '@n8n/db';
+
 import type { SerializedWorkflow } from '../../../spec/serialized/workflow.schema';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -17,7 +19,6 @@ const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow =
 	connections: {},
 	versionId: 'version-from-source',
 	parentFolderId: 'folder-from-source',
-	isPublished: true,
 	isArchived: false,
 	...overrides,
 });
@@ -40,14 +41,6 @@ describe('WorkflowSerializer.deserialize', () => {
 			},
 		]);
 		expect(result.connections).toEqual({});
-	});
-
-	it('preserves the wire isArchived flag', () => {
-		const archived = serializer.deserialize(wire({ isArchived: true }));
-		const live = serializer.deserialize(wire({ isArchived: false }));
-
-		expect(archived.isArchived).toBe(true);
-		expect(live.isArchived).toBe(false);
 	});
 
 	it('includes settings when present in the wire', () => {
@@ -87,7 +80,43 @@ describe('WorkflowSerializer.deserialize', () => {
 		expect(partial).not.toHaveProperty('versionId');
 		expect(partial).not.toHaveProperty('parentFolder');
 		expect(partial).not.toHaveProperty('parentFolderId');
-		expect(partial).not.toHaveProperty('isPublished');
 		expect(partial).not.toHaveProperty('activeVersionId');
+	});
+
+	it('does not carry the published version, which lives in its own file', () => {
+		expect(serializer.deserialize(wire())).not.toHaveProperty('publishedVersionId');
+	});
+
+	it('carries the archived flag', () => {
+		expect(serializer.deserialize(wire({ isArchived: true })).isArchived).toBe(true);
+		expect(serializer.deserialize(wire({ isArchived: false })).isArchived).toBe(false);
+	});
+});
+
+describe('WorkflowSerializer.serializeMetadata', () => {
+	const serializer = new WorkflowSerializer();
+
+	const workflow = (overrides: Partial<WorkflowEntity> = {}) =>
+		Object.assign(new WorkflowEntity(), {
+			versionId: 'version-2',
+			activeVersionId: 'version-2',
+			isArchived: false,
+			...overrides,
+		});
+
+	it('names the exported version when it is the live one', () => {
+		expect(serializer.serializeMetadata(workflow()).publishedVersionId).toBe('version-2');
+	});
+
+	it('names the live version when the export carries a later draft', () => {
+		const draft = workflow({ versionId: 'version-3', activeVersionId: 'version-2' });
+
+		expect(serializer.serializeMetadata(draft).publishedVersionId).toBe('version-2');
+	});
+
+	it('names no version when the workflow has no live one', () => {
+		const neverPublished = workflow({ activeVersionId: null });
+
+		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
 	});
 });

@@ -35,6 +35,7 @@ import { WorkflowRequirementExporter } from './entities/workflow/workflow-requir
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { DirectoryPackageReader } from './io/directory/directory-package-reader';
 import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import { formatEntityFile } from './io/entity-file-format';
 import type { PackageReader } from './io/package-reader';
 import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
@@ -64,6 +65,7 @@ import {
 import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
+	manifest: PackageManifest;
 	counts: ExportPackageEventCounts;
 	workflowIds: string[];
 	folderIds: string[];
@@ -124,9 +126,17 @@ export class N8nPackagesService {
 		target: { targetDir: string },
 	): Promise<ExportPackageSummary> {
 		const writer = new DirectoryPackageWriter(target.targetDir);
-		const result = await this.writeExport(writer, request);
+		const result = await this.exportPackageToWriter(request, writer);
 		await writer.finalize();
 		return { counts: result.counts };
+	}
+
+	async exportPackageToWriter(
+		request: ExportPackageRequest,
+		writer: PackageWriter,
+	): Promise<ExportPackageSummary & { manifest: PackageManifest }> {
+		const { manifest, counts } = await this.writeExport(writer, request);
+		return { manifest, counts };
 	}
 
 	private async writeExport(
@@ -342,7 +352,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
+		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
@@ -354,6 +364,7 @@ export class N8nPackagesService {
 		};
 
 		return {
+			manifest,
 			counts,
 			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
 			folderIds: allFolders.map(({ id }) => id),

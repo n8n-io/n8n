@@ -36,7 +36,7 @@ function deepMerge(target: INodeParameters, source: INodeParameters): INodeParam
 
 	if (isRecord(target) && isRecord(source)) {
 		Object.keys(source).forEach((key) => {
-			if (isRecord(source[key] as INodeParameters)) {
+			if (isRecord(source[key])) {
 				if (!target || !(key in target) || !target[key]) {
 					Object.assign(output, { [key]: source[key] });
 				} else {

@@ -5,7 +5,7 @@
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
  */
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
-import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions, toEngineConnections } from '@n8n/workflow-sdk';
 import type {
 	IConnections,
@@ -196,7 +196,7 @@ async function evaluateCredentialEntry(
 	if (credentialTypeDescription.displayOptions) {
 		const visible = matchesDisplayOptions(
 			{ parameters, nodeVersion: typeVersion },
-			credentialTypeDescription.displayOptions as DisplayOptions,
+			credentialTypeDescription.displayOptions,
 		);
 		if (!visible) return null;
 	}
@@ -472,7 +472,7 @@ async function computeNodeParameterIssues(
 	if (!context.nodeService.getParameterIssues) return null;
 	const parameterIssues = await context.nodeService
 		.getParameterIssues(node.type, typeVersion, parameters)
-		.catch(() => ({}) as Record<string, string[]>);
+		.catch(() => ({}));
 	return Object.keys(parameterIssues).length > 0 ? parameterIssues : null;
 }
 

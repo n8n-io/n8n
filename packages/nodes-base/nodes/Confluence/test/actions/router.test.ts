@@ -298,11 +298,10 @@ describe('Confluence router', () => {
 	});
 
 	it('fans an array response out into one item per page', async () => {
-		apiRequest.mockImplementation(async (_method: string, url: string) =>
-			url.endsWith('/descendants')
-				? { results: [{ id: '2', type: 'page', depth: 1 }] }
-				: { results: [{ id: '1' }, { id: '2' }] },
-		);
+		apiRequest.mockImplementation(async (_method: string, url: string) => {
+			if (url.endsWith('/descendants')) return { results: [{ id: '2', type: 'page', depth: 1 }] };
+			return url === '/wiki/api/v2/pages' ? { results: [{ id: '2' }] } : { id: '1' };
+		});
 
 		const result = await router.call(
 			mockExecuteCtx({ ...getParams, includeDescendants: true, maxPages: 100 }),
