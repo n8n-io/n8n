@@ -3,13 +3,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
-import {
-	meetingRequest,
-	requiredText,
-	throwIfOnlineMeetingUnsupported,
-	toGraphUtc,
-} from './shared';
-import { SP_HIDE } from '../../transport';
+import { meetingRequest, meetingsPath, requiredText, toGraphUtc } from './shared';
 
 const properties: INodeProperties[] = [
 	{
@@ -61,17 +55,12 @@ const displayOptions = {
 		resource: ['onlineMeeting'],
 		operation: ['create'],
 	},
-	hide: {
-		...SP_HIDE,
-	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/application-post-onlinemeetings?view=graph-rest-1.0&tabs=http
-	throwIfOnlineMeetingUnsupported.call(this);
-
 	const options = this.getNodeParameter('options', i);
 	const body: IDataObject = {
 		subject: requiredText.call(this, 'subject', i, 'Subject'),
@@ -83,5 +72,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.joinMeetingIdSettings = { isPasscodeRequired: options.passcodeRequired };
 	}
 
-	return await meetingRequest.call(this, 'POST', '/v1.0/me/onlineMeetings', body);
+	return await meetingRequest.call(this, 'POST', await meetingsPath.call(this, i), body);
 }

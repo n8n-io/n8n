@@ -192,16 +192,45 @@ waiting-with-output-as-success fallback.
 | Trigger | Pass | Adapter emits on `$json` |
 |---|---|---|
 | Form Trigger | flat field map, e.g. `{name: "Alice", email: "a@b.c"}` | `{ submittedAt, formMode: "instanceAi", name, email, ... }` — matches production. Do NOT wrap in `formFields`. |
-| Webhook | body payload, e.g. `{event: "signup", userId: "..."}` | `{ headers, query, body: { event, userId, ... } }` |
+| Webhook | body payload, e.g. `{event: "signup", userId: "..."}`, **or** the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` when any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*` | flat payload → `{ headers: {}, query: {}, params: {}, body: { event, userId, ... } }`; envelope → passed through as-is |
 | Chat Trigger | `{chatInput: "..."}` | `{ sessionId, action, chatInput }` |
 | Schedule | omit | synthetic timestamp fields |
 
+For reusable workflows with multiple enabled triggers, pass `triggerNodeName`
+and run verification once for each trigger. Successful runs accumulate node
+coverage per trigger. Each retry reserves an attempt and clears that trigger's
+old pass before execution. A successful result restores the combined coverage.
+If either write fails, the tool reports an error. The attempt limit still applies.
+
+The returned and saved `claim` use the same cumulative evidence. Pending triggers
+and nodes without real coverage prevent a `verified` claim. Publishing during a
+retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
+
 **Writes on success/failure**: the tool persists a structured `verification`
-record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) onto
+record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
-**Returns**: `{ executionId?, success, status?, data?, error? }`
+**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
+
+**Simulated-node parameter check**: a simulated node's preview is fixture data, so
+an expression that resolved to empty leaves no trace in the run. After the run the
+tool replays parameter resolution (`getResolvedNodeParameters`) for every reached
+simulated node and returns `resolvedParameterWarnings`, one entry per parameter
+that resolved to `null`/`undefined`/`""` or threw (`{ nodeName, executionId, path, raw, issue:
+'empty' | 'failed', detail? }`), with a summary appended to `simulationNote`.
+For scripted gates, it checks each node against every pass that reached it.
+Each warning identifies the execution used for that check.
+Expressions that need live-only context (`$secrets`, `$response`, …) are excluded.
+The check is advisory and does not change execution success. Suppressed parameter
+values, replay failures, and missing executions produce `skippedParameterChecks`
+entries (`{ nodeName, executionId?, reason }`) and a note in `simulationNote`.
+The list contains at most 20 entries across all passes. `skippedParameterCheckCount`
+reports the total. When entries are omitted, the note states how many are shown.
+Omitted checks also leave dynamic fields unverified.
+The reasons are `parameter-values-disabled`, `replay-failed`, and
+`execution-unavailable`. Skipped checks expose no parameter values or replay
+error details. Their dynamic fields remain unverified.
 
 ### `report-verification-verdict` *(conditional)*
 
@@ -392,6 +421,39 @@ confirmation card.
 `nodesStillNeedingSetup` is what nobody has configured yet, `skippedByUser` what the user
 actively dismissed and the agent must not re-open (see `reopenSkipped`).
 
+**Setup panel** (`N8N_INSTANCE_AI_SETUP_PANEL_ENABLED`): the normal setup call
+analyzes the whole workflow, including bound slots. It publishes the `setup-items`
+snapshot and confirms that it reached storage. It then saves the build's setup
+routing marker. Only after both steps succeed does it return
+`{ success: true, announced: true, workflowId, open, configured, validationWarnings, message }`.
+The agent summarizes the result and ends its turn. `open` lists pending items.
+`configured` lists stored bindings. Configuration does not prove that a connection
+test or workflow execution passed. Failed connection checks appear in `validationWarnings`.
+
+Validation and destination approval run before the announcement. The agent follows
+the returned guidance for errors, denials, or approvals. Explicit
+`preferNewCredentials` requests use the selection card. Existing cards keep their
+`apply`, `test-trigger`, and decline paths.
+
+Each new user turn carries a `<workflow-setup-state>` block with current saved
+state and items that settled since the previous look. This observation does not
+publish snapshots or change the current workflow target. It preserves announced
+recipes and does not count temporary credential replacement requests as user progress.
+This observation reads saved bindings and checks required values and placeholders.
+It does not test credentials or fetch provider resource lists. It does not produce
+fresh connection-test warnings. Live checks remain part of setup and verification.
+
+When setup items settle between turns, none remain open, and there are no
+validation warnings, the agent verifies the current configuration on the next
+user turn. Setup changes do not start an agent run by themselves.
+The panel's Execute action sends a normal chat message with
+`context: { source: 'setup-panel-execute', workflowId }`. With the flag on,
+the host adds a private `workflow-test-request` block that identifies the target.
+If required setup remains open, the agent reports those items and ends the turn
+without a run. Otherwise, it runs the saved workflow through `executions(action="run")`, inspects
+the output, and reports the test result in chat. Execution approval policy still
+applies. The new panel does not use the wizard's trigger-test resume loop.
+
 ### `workflows(action="publish")`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
@@ -495,7 +557,7 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 **Type-aware pin data**: Constructs proper pin data per trigger type:
 - **Chat trigger**: `{ chatInput, sessionId, action }`
 - **Form trigger**: `{ submittedAt, formMode: 'instanceAi', ...inputData }`
-- **Webhook trigger**: `{ headers: {}, query: {}, body: inputData }`
+- **Webhook trigger**: flat `inputData` → `{ headers: {}, query: {}, params: {}, body: inputData }`; an envelope whose keys are only `body`/`query`/`headers`/`params` is passed through, so query- and header-driven expressions can be exercised
 - **Schedule trigger**: current datetime information
 - **Unknown trigger**: `{ json: inputData }` (generic fallback)
 

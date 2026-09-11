@@ -51,6 +51,7 @@ withDefaults(defineProps<TagProps>(), {
 
 .text {
 	min-width: 0;
+	line-height: normal;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

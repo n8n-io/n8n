@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { Not, IsNull } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
-import { BinaryDataService, FileLocation } from 'n8n-core';
+import { BinaryDataService, FileLocation, TEMP_EXECUTION_ID } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
@@ -187,7 +187,7 @@ export class ChatHubAttachmentService {
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofExecution(workflowId, 'temp'),
+			FileLocation.ofExecution(workflowId, TEMP_EXECUTION_ID),
 			buffer,
 			binaryData,
 		);

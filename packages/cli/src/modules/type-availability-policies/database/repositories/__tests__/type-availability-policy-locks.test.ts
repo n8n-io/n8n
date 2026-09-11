@@ -137,6 +137,41 @@ describe('row locks depend on the driver', () => {
 			expect(entityManager.increment).toHaveBeenCalledTimes(2);
 		});
 
+		describe('containsProjectScope', () => {
+			it('is false for an empty id list without querying', async () => {
+				expect(await repository.containsProjectScope([], ROOT)).toBe(false);
+				expect(entityManager.count).not.toHaveBeenCalled();
+			});
+
+			it('counts only rows with a non-null projectId', async () => {
+				entityManager.count.mockResolvedValue(0);
+
+				expect(await repository.containsProjectScope(['a', 'b'], ROOT)).toBe(false);
+
+				expect(entityManager.count).toHaveBeenCalledWith(TypeAvailabilityPolicyScope, {
+					where: { id: expect.anything(), projectId: expect.anything() },
+				});
+			});
+
+			it('stops at the first batch that contains a project scope', async () => {
+				entityManager.count.mockResolvedValueOnce(1);
+				const ids = Array.from({ length: 10_001 }, (_, i) => `id-${i}`);
+
+				expect(await repository.containsProjectScope(ids, ROOT)).toBe(true);
+
+				expect(entityManager.count).toHaveBeenCalledTimes(1);
+			});
+
+			it('checks every batch when none contains a project scope', async () => {
+				entityManager.count.mockResolvedValue(0);
+				const ids = Array.from({ length: 10_001 }, (_, i) => `id-${i}`);
+
+				expect(await repository.containsProjectScope(ids, ROOT)).toBe(false);
+
+				expect(entityManager.count).toHaveBeenCalledTimes(2);
+			});
+		});
+
 		describe('createScopeIfAbsent', () => {
 			const queryBuilder = {
 				insert: vi.fn().mockReturnThis(),
@@ -241,7 +276,53 @@ describe('row locks depend on the driver', () => {
 
 		it('returns an empty list without querying for an empty id list', async () => {
 			expect(await repository.findManyByIds([], ROOT)).toEqual([]);
-			expect(entityManager.findBy).not.toHaveBeenCalled();
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('does not lock findManyByIds without forUpdate, even on Postgres', async () => {
+			setDriver(entityManager, 'postgres');
+			entityManager.find.mockResolvedValue([]);
+
+			await repository.findManyByIds(['b', 'a'], ROOT);
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				TypeAvailabilityPolicy,
+				expect.not.objectContaining({ lock: expect.anything() }),
+			);
+		});
+
+		it('locks findManyByIds in id order on Postgres when forUpdate is requested', async () => {
+			setDriver(entityManager, 'postgres');
+			entityManager.find.mockResolvedValue([]);
+
+			await repository.findManyByIds(['b', 'a'], ROOT, true);
+
+			expect(entityManager.find).toHaveBeenCalledWith(TypeAvailabilityPolicy, {
+				where: { id: expect.anything() },
+				order: { id: 'ASC' },
+				lock: { mode: 'pessimistic_write' },
+			});
+		});
+
+		it('does not lock findManyByIds on SQLite even when forUpdate is requested', async () => {
+			setDriver(entityManager, 'sqlite');
+			entityManager.find.mockResolvedValue([]);
+
+			await repository.findManyByIds(['a'], ROOT, true);
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				TypeAvailabilityPolicy,
+				expect.not.objectContaining({ lock: expect.anything() }),
+			);
+		});
+
+		it('reads every batch when more ids are named than fit in one query', async () => {
+			entityManager.find.mockResolvedValue([]);
+			const ids = Array.from({ length: 10_001 }, (_, i) => `id-${i}`);
+
+			await repository.findManyByIds(ids, ROOT, true);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
 		});
 	});
 });

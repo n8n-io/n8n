@@ -117,7 +117,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.set({
 				cursor,
 				updatedAt: () => dbNowLiteral(this.isPostgres),
-			} as QueryDeepPartialEntity<PollerState>)
+			})
 			.where({ workflowId, nodeId });
 
 		if (fence) {
@@ -197,7 +197,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				backoffUntil: () =>
 					laterOfColumnAndNowPlusMsLiteral(this.isPostgres, '"backoffUntil"', delayMs),
 				updatedAt: () => dbNowLiteral(this.isPostgres),
-			} as QueryDeepPartialEntity<PollerState>)
+			})
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
 			.execute();
 
@@ -221,7 +221,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				consecutiveErrors: 0,
 				backoffUntil: null,
 				updatedAt: () => dbNowLiteral(this.isPostgres),
-			} as QueryDeepPartialEntity<PollerState>)
+			})
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
 			.andWhere('("consecutiveErrors" <> 0 OR "backoffUntil" IS NOT NULL)')
 			.execute();

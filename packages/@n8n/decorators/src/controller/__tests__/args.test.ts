@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { z } from 'zod';
 
 import { Body, Query, Param } from '../args';
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
@@ -60,6 +61,34 @@ describe('Args Decorators', () => {
 			);
 
 			expect(routeMetadata.args[parameterIndex]).toEqual({ type: 'param', key: 'id' });
+		});
+
+		it('should attach an optional Zod schema to the param arg', () => {
+			const schema = z.string();
+
+			class TestController {
+				testMethod(@Param('id', schema) _id: string) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({ type: 'param', key: 'id', schema });
+		});
+
+		it('should leave the schema unset when none is given', () => {
+			class TestController {
+				testMethod(@Param('id') _id: string) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).not.toHaveProperty('schema');
 		});
 
 		it('should handle multiple Param decorators with different keys', () => {

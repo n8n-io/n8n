@@ -1310,6 +1310,904 @@
 				"message": "A bare `eslint-disable` directive silences every lint rule in its range, including the encryption guardrails.",
 				"hash": "7d9779f96d99"
 			}
+		],
+		"packages/core/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 14,
+				"message": "packages/core turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "f6d9c62ac3fa"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 15,
+				"message": "packages/core turns 'no-ex-assign' down to 'warn' for the whole package.",
+				"hash": "1bb332c34de8"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 16,
+				"message": "packages/core turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "8c7b005323e5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 17,
+				"message": "packages/core turns '@typescript-eslint/no-require-imports' down to 'warn' for the whole package.",
+				"hash": "efdd5147a463"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 18,
+				"message": "packages/core turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "5328912625c6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 19,
+				"message": "packages/core turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
+				"hash": "eddccedaafb7"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 20,
+				"message": "packages/core turns '@typescript-eslint/no-array-delete' down to 'warn' for the whole package.",
+				"hash": "c05a6f2ae2f1"
+			}
+		],
+		"packages/cli/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 90,
+				"message": "packages/cli turns '@typescript-eslint/ban-ts-comment' down to 'off' for the whole package.",
+				"hash": "7e7e5e67871c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 91,
+				"message": "packages/cli turns 'import-x/no-cycle' down to 'warn' for the whole package.",
+				"hash": "e53210bcd5e5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 92,
+				"message": "packages/cli turns 'import-x/extensions' down to 'off' for the whole package.",
+				"hash": "e9ac61307734"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 93,
+				"message": "packages/cli turns 'no-ex-assign' down to 'warn' for the whole package.",
+				"hash": "9555ecb54f1c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 94,
+				"message": "packages/cli turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "ac66463536bc"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 95,
+				"message": "packages/cli turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "d27fa33c682d"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 96,
+				"message": "packages/cli turns 'no-unsafe-optional-chaining' down to 'warn' for the whole package.",
+				"hash": "ea7a4933c714"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 97,
+				"message": "packages/cli turns 'no-async-promise-executor' down to 'warn' for the whole package.",
+				"hash": "af41798867ce"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 98,
+				"message": "packages/cli turns 'complexity' down to 'off' for the whole package.",
+				"hash": "55ccec6cbe85"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 99,
+				"message": "packages/cli turns '@typescript-eslint/prefer-promise-reject-errors' down to 'warn' for the whole package.",
+				"hash": "27aa46ca0c89"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 100,
+				"message": "packages/cli turns '@typescript-eslint/no-explicit-any' down to 'warn' for the whole package.",
+				"hash": "ec58ba458ff5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 101,
+				"message": "packages/cli turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "ada384a6c58c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 102,
+				"message": "packages/cli turns '@typescript-eslint/no-redundant-type-constituents' down to 'warn' for the whole package.",
+				"hash": "fb40bae42683"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 103,
+				"message": "packages/cli turns '@typescript-eslint/no-restricted-types' down to 'warn' for the whole package.",
+				"hash": "ee8be51f48f3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 104,
+				"message": "packages/cli turns '@typescript-eslint/no-unsafe-enum-comparison' down to 'warn' for the whole package.",
+				"hash": "e1d09e3cb444"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 105,
+				"message": "packages/cli turns '@typescript-eslint/no-unsafe-declaration-merging' down to 'warn' for the whole package.",
+				"hash": "abf613bdcbec"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 106,
+				"message": "packages/cli turns '@typescript-eslint/only-throw-error' down to 'warn' for the whole package.",
+				"hash": "f6b9cb56f2da"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 107,
+				"message": "packages/cli turns '@typescript-eslint/no-require-imports' down to 'warn' for the whole package.",
+				"hash": "ce5c4ddb8b21"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 108,
+				"message": "packages/cli turns '@typescript-eslint/array-type' down to 'warn' for the whole package.",
+				"hash": "06eb8c68c0e3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 109,
+				"message": "packages/cli turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "581e9d0a38b0"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 110,
+				"message": "packages/cli turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
+				"hash": "60a340796f69"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 111,
+				"message": "packages/cli turns '@typescript-eslint/no-duplicate-type-constituents' down to 'warn' for the whole package.",
+				"hash": "499e9bcc262e"
+			}
+		],
+		"packages/node-dev/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 7,
+				"message": "packages/node-dev turns 'unicorn/filename-case' down to 'warn' for the whole package.",
+				"hash": "55a9d5b897d9"
+			}
+		],
+		"packages/nodes-base/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/nodes-base turns 'no-ex-assign' down to 'warn' for the whole package.",
+				"hash": "405b1823ac6e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 28,
+				"message": "packages/nodes-base turns 'no-control-regex' down to 'warn' for the whole package.",
+				"hash": "be29a0fb44a3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 29,
+				"message": "packages/nodes-base turns 'no-constant-condition' down to 'warn' for the whole package.",
+				"hash": "f7df4e39eb2e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 30,
+				"message": "packages/nodes-base turns 'no-dupe-else-if' down to 'warn' for the whole package.",
+				"hash": "f5be7d5a7f26"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 31,
+				"message": "packages/nodes-base turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "c899a707272e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 33,
+				"message": "packages/nodes-base turns 'import-x/export' down to 'warn' for the whole package.",
+				"hash": "9ed273bfcc65"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 34,
+				"message": "packages/nodes-base turns 'import-x/no-extraneous-dependencies' down to 'warn' for the whole package.",
+				"hash": "5eb27aed13a1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 38,
+				"message": "packages/nodes-base turns '@typescript-eslint/ban-ts-comment' down to 'off' for the whole package.",
+				"hash": "496821aa3902"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 40,
+				"message": "packages/nodes-base turns '@typescript-eslint/prefer-promise-reject-errors' down to 'warn' for the whole package.",
+				"hash": "2d61f9d00a79"
+			}
+		],
+		"packages/workflow/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 12,
+				"message": "packages/workflow turns 'id-denylist' down to 'warn' for the whole package.",
+				"hash": "03927870bdf1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 13,
+				"message": "packages/workflow turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "cd442ee0d22b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 14,
+				"message": "packages/workflow turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "b0c2a209531b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 15,
+				"message": "packages/workflow turns 'no-extra-boolean-cast' down to 'warn' for the whole package.",
+				"hash": "f1b59e9a9170"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 16,
+				"message": "packages/workflow turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "e0313976c4b5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 17,
+				"message": "packages/workflow turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "974eaf5efe54"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 18,
+				"message": "packages/workflow turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "d3d0cc6967be"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 19,
+				"message": "packages/workflow turns '@typescript-eslint/no-redundant-type-constituents' down to 'warn' for the whole package.",
+				"hash": "39ee215cccec"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 20,
+				"message": "packages/workflow turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
+				"hash": "155e0b154873"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 22,
+				"message": "packages/workflow turns '@typescript-eslint/no-duplicate-type-constituents' down to 'warn' for the whole package.",
+				"hash": "b3f813b386ed"
+			}
+		],
+		"packages/@n8n/ai-node-sdk/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 6,
+				"message": "packages/@n8n/ai-node-sdk turns '@typescript-eslint/no-explicit-any' down to 'warn' for the whole package.",
+				"hash": "8e1ddde4bb6d"
+			}
+		],
+		"packages/@n8n/ai-utilities/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/ai-utilities turns '@typescript-eslint/no-explicit-any' down to 'warn' for the whole package.",
+				"hash": "d5a8d7cd9636"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/ai-utilities turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "b95bfb2a3056"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 17,
+				"message": "packages/@n8n/ai-utilities turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "de46ec6eb650"
+			}
+		],
+		"packages/@n8n/backend-common/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/backend-common turns '@typescript-eslint/no-wrapper-object-types' down to 'warn' for the whole package.",
+				"hash": "c1e3aa8a2e1c"
+			}
+		],
+		"packages/@n8n/codemirror-lang/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 6,
+				"message": "packages/@n8n/codemirror-lang turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "98b3e5d89db4"
+			}
+		],
+		"packages/@n8n/codemirror-lang-sql/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 6,
+				"message": "packages/@n8n/codemirror-lang-sql turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "b03974f4c1da"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 7,
+				"message": "packages/@n8n/codemirror-lang-sql turns '@typescript-eslint/no-unsafe-enum-comparison' down to 'off' for the whole package.",
+				"hash": "3ee104dc1cd2"
+			}
+		],
+		"packages/@n8n/db/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 25,
+				"message": "packages/@n8n/db turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "21a54ac84b21"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 26,
+				"message": "packages/@n8n/db turns '@typescript-eslint/no-restricted-types' down to 'warn' for the whole package.",
+				"hash": "1b7a8eee4264"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/@n8n/db turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "aa31a2b9878a"
+			}
+		],
+		"packages/@n8n/decorators/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/decorators turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "b4aab632b998"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/decorators turns 'import-x/export' down to 'warn' for the whole package.",
+				"hash": "efaf9102fe79"
+			}
+		],
+		"packages/@n8n/engine/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 11,
+				"message": "packages/@n8n/engine turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "2455a576216c"
+			}
+		],
+		"packages/@n8n/eslint-plugin-community-nodes/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 18,
+				"message": "packages/@n8n/eslint-plugin-community-nodes turns 'eslint-plugin/require-meta-docs-url' down to 'off' for the whole package.",
+				"hash": "160308f43107"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 20,
+				"message": "packages/@n8n/eslint-plugin-community-nodes turns 'eslint-plugin/require-meta-default-options' down to 'off' for the whole package.",
+				"hash": "fb3cdbc0b797"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 22,
+				"message": "packages/@n8n/eslint-plugin-community-nodes turns '@typescript-eslint/naming-convention' down to 'off' for the whole package.",
+				"hash": "b9b7b80295d3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 24,
+				"message": "packages/@n8n/eslint-plugin-community-nodes turns 'import-x/no-default-export' down to 'off' for the whole package.",
+				"hash": "3f7dfc88d2cc"
+			}
+		],
+		"packages/@n8n/extension-sdk/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 7,
+				"message": "packages/@n8n/extension-sdk turns '@typescript-eslint/no-unnecessary-boolean-literal-compare' down to 'warn' for the whole package.",
+				"hash": "1358f2270558"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/extension-sdk turns '@typescript-eslint/no-floating-promises' down to 'warn' for the whole package.",
+				"hash": "a01fcd4e7fd1"
+			}
+		],
+		"packages/@n8n/imap/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/imap turns '@typescript-eslint/no-unnecessary-boolean-literal-compare' down to 'warn' for the whole package.",
+				"hash": "c01451c28a03"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/imap turns '@typescript-eslint/no-floating-promises' down to 'warn' for the whole package.",
+				"hash": "9466b50c2cbc"
+			}
+		],
+		"packages/@n8n/instance-ai/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 100,
+				"message": "packages/@n8n/instance-ai turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "b76f6179d75b"
+			}
+		],
+		"packages/@n8n/json-schema-to-zod/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/json-schema-to-zod turns 'import-x/no-cycle' down to 'off' for the whole package.",
+				"hash": "bd1fd9f55f2e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 12,
+				"message": "packages/@n8n/json-schema-to-zod turns 'no-constant-condition' down to 'warn' for the whole package.",
+				"hash": "e7995ba65bba"
+			}
+		],
+		"packages/@n8n/node-cli/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 21,
+				"message": "packages/@n8n/node-cli turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "450dc7735f37"
+			}
+		],
+		"packages/@n8n/task-runner/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/task-runner turns '@typescript-eslint/no-require-imports' down to 'warn' for the whole package.",
+				"hash": "9eab9fc92af8"
+			}
+		],
+		"packages/@n8n/tournament/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/tournament turns '@typescript-eslint/no-restricted-types' down to 'off' for the whole package.",
+				"hash": "a7bd4d72aeaa"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/tournament turns '@typescript-eslint/no-implied-eval' down to 'off' for the whole package.",
+				"hash": "38c062765f50"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/tournament turns '@typescript-eslint/no-explicit-any' down to 'off' for the whole package.",
+				"hash": "228a8d26e7bf"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 17,
+				"message": "packages/@n8n/tournament turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "a8dd0ff69014"
+			}
+		],
+		"packages/@n8n/utils/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 7,
+				"message": "packages/@n8n/utils turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "cc7739fda55b"
+			}
+		],
+		"packages/frontend/editor-ui/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 55,
+				"message": "packages/frontend/editor-ui turns 'no-restricted-syntax' down to 'off' for the whole package.",
+				"hash": "991d49a8245c"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 234,
+				"message": "packages/frontend/editor-ui turns 'n8n-local-rules/no-internal-package-import' down to 'warn' for the whole package.",
+				"hash": "4b3a85b06980"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 235,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/ban-ts-comment' down to 'off' for the whole package.",
+				"hash": "e8c5a011088f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 236,
+				"message": "packages/frontend/editor-ui turns 'id-denylist' down to 'warn' for the whole package.",
+				"hash": "bd2977006e41"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 237,
+				"message": "packages/frontend/editor-ui turns 'no-case-declarations' down to 'warn' for the whole package.",
+				"hash": "e305144fdb0f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 238,
+				"message": "packages/frontend/editor-ui turns 'no-useless-escape' down to 'warn' for the whole package.",
+				"hash": "9280bef13c13"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 239,
+				"message": "packages/frontend/editor-ui turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "352fae23e0d1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 240,
+				"message": "packages/frontend/editor-ui turns 'no-fallthrough' down to 'warn' for the whole package.",
+				"hash": "db7c8593f721"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 241,
+				"message": "packages/frontend/editor-ui turns 'no-extra-boolean-cast' down to 'warn' for the whole package.",
+				"hash": "0cbbb7983686"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 242,
+				"message": "packages/frontend/editor-ui turns 'no-sparse-arrays' down to 'warn' for the whole package.",
+				"hash": "750f119df597"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 243,
+				"message": "packages/frontend/editor-ui turns 'no-control-regex' down to 'warn' for the whole package.",
+				"hash": "5f096c4e5a30"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 244,
+				"message": "packages/frontend/editor-ui turns 'import-x/extensions' down to 'warn' for the whole package.",
+				"hash": "301322f12ba8"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 245,
+				"message": "packages/frontend/editor-ui turns 'import-x/no-cycle' down to 'warn' for the whole package.",
+				"hash": "3f9ee03a211f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 246,
+				"message": "packages/frontend/editor-ui turns 'import-x/no-duplicates' down to 'warn' for the whole package.",
+				"hash": "7ff9cd71e584"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 247,
+				"message": "packages/frontend/editor-ui turns 'no-unsafe-optional-chaining' down to 'warn' for the whole package.",
+				"hash": "29c386f9afa1"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 248,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-restricted-types' down to 'warn' for the whole package.",
+				"hash": "674bc7c925bb"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 249,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/dot-notation' down to 'warn' for the whole package.",
+				"hash": "b01af73ed4af"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 250,
+				"message": "packages/frontend/editor-ui turns '@stylistic/lines-between-class-members' down to 'warn' for the whole package.",
+				"hash": "abd5d6c83376"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 251,
+				"message": "packages/frontend/editor-ui turns '@stylistic/member-delimiter-style' down to 'warn' for the whole package.",
+				"hash": "c48bcd875f1a"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 252,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-empty-interface' down to 'warn' for the whole package.",
+				"hash": "271c5309b542"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 253,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-for-in-array' down to 'warn' for the whole package.",
+				"hash": "249d350f8066"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 254,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-loop-func' down to 'warn' for the whole package.",
+				"hash": "fa39d584681d"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 255,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-non-null-assertion' down to 'warn' for the whole package.",
+				"hash": "875c5c8d162e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 256,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-shadow' down to 'warn' for the whole package.",
+				"hash": "b4bfbb79e513"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 257,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-this-alias' down to 'warn' for the whole package.",
+				"hash": "cd21cdd292fa"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 258,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unnecessary-boolean-literal-compare' down to 'warn' for the whole package.",
+				"hash": "59d1ce2379ac"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 259,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "2eb8b8a9ba23"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 260,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unused-expressions' down to 'warn' for the whole package.",
+				"hash": "27661db19f4f"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 261,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-var-requires' down to 'warn' for the whole package.",
+				"hash": "32b4b7a30c8e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 262,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
+				"hash": "8379fe8350b5"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 263,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/restrict-plus-operands' down to 'warn' for the whole package.",
+				"hash": "f41881f25dad"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 264,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-redundant-type-constituents' down to 'warn' for the whole package.",
+				"hash": "edfe82c98ea3"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 265,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-unsafe-enum-comparison' down to 'warn' for the whole package.",
+				"hash": "577beb091f06"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 266,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/prefer-promise-reject-errors' down to 'warn' for the whole package.",
+				"hash": "cb1d57707d43"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 267,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/no-base-to-string' down to 'warn' for the whole package.",
+				"hash": "96f813e59fa6"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 268,
+				"message": "packages/frontend/editor-ui turns 'vue/attribute-hyphenation' down to 'warn' for the whole package.",
+				"hash": "33e956db8dec"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 269,
+				"message": "packages/frontend/editor-ui turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
+				"hash": "affee27335fc"
+			}
+		],
+		"packages/@n8n/workflow-sdk/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 71,
+				"message": "packages/@n8n/workflow-sdk turns 'n8n-local-rules/no-interpolation-in-regular-string' down to 'off' for the whole package.",
+				"hash": "e5999d7c77a9"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 73,
+				"message": "packages/@n8n/workflow-sdk turns 'id-denylist' down to 'off' for the whole package.",
+				"hash": "0f94a71d5ae8"
+			}
+		],
+		"packages/testing/playwright/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 21,
+				"message": "packages/testing/playwright turns '@typescript-eslint/no-unused-expressions' down to 'off' for the whole package.",
+				"hash": "e2f93b5b591a"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 22,
+				"message": "packages/testing/playwright turns '@typescript-eslint/no-use-before-define' down to 'off' for the whole package.",
+				"hash": "75d3ec1677ba"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 23,
+				"message": "packages/testing/playwright turns '@typescript-eslint/promise-function-async' down to 'off' for the whole package.",
+				"hash": "35dbe9e44ada"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 24,
+				"message": "packages/testing/playwright turns 'playwright/expect-expect' down to 'warn' for the whole package.",
+				"hash": "e8b5f4b0f0dd"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 25,
+				"message": "packages/testing/playwright turns 'playwright/max-nested-describe' down to 'warn' for the whole package.",
+				"hash": "77d82ee8a802"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/testing/playwright turns 'playwright/no-skipped-test' down to 'warn' for the whole package.",
+				"hash": "14eb9eecd1b4"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 78,
+				"message": "packages/testing/playwright turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "de86b9645930"
+			}
+		],
+		"packages/frontend/@n8n/design-system/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 12,
+				"message": "packages/frontend/@n8n/design-system turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "f7e604999631"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 13,
+				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
+				"hash": "e6d8e187bb0b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 14,
+				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
+				"hash": "86a0b84b8415"
+			}
+		],
+		"packages/frontend/@n8n/i18n/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 6,
+				"message": "packages/frontend/@n8n/i18n turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "5836fd4581b2"
+			}
+		],
+		"packages/frontend/@n8n/stores/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 6,
+				"message": "packages/frontend/@n8n/stores turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "63e2dd35dc47"
+			}
+		],
+		"packages/modules/insights/frontend/eslint.config.mjs": [
+			{
+				"rule": "lint-config-layering",
+				"line": 24,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/naming-convention' down to 'warn' for the whole package.",
+				"hash": "3da608aa064b"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 25,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-argument' down to 'warn' for the whole package.",
+				"hash": "e9ae1f320e01"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 26,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-assignment' down to 'warn' for the whole package.",
+				"hash": "a488f2f44a8e"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 27,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-call' down to 'warn' for the whole package.",
+				"hash": "58fd1d708522"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 28,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-member-access' down to 'warn' for the whole package.",
+				"hash": "7de9b4bde334"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 29,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/no-unsafe-return' down to 'warn' for the whole package.",
+				"hash": "14aa32c2f578"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 30,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/await-thenable' down to 'warn' for the whole package.",
+				"hash": "f6b34bf81039"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 31,
+				"message": "packages/modules/insights/frontend turns '@typescript-eslint/require-await' down to 'warn' for the whole package.",
+				"hash": "b857963c49d1"
+			}
 		]
 	}
 }
