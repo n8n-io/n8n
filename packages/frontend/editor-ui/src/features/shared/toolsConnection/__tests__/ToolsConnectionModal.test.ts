@@ -39,7 +39,7 @@ vi.mock('@n8n/design-system', async () => {
 			scrollTo: scrollToMock,
 		},
 		template: `
-			<div>
+			<div class="recycle-scroller-wrapper">
 				<div v-for="item in items" :key="item[itemKey]">
 					<slot :item="item" :update-item-size="() => {}" />
 				</div>
@@ -102,6 +102,9 @@ function renderWith(
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			allowWorkflowCreation: props.allowWorkflowCreation,
+		},
+		slots: {
+			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
 		},
 		pinia: createTestingPinia(),
 	});
@@ -197,7 +200,7 @@ describe('ToolsConnectionModal', () => {
 		});
 
 		const tab = getByTestId('tab-n8n-connect');
-		expect(tab.textContent).toContain('n8n credits');
+		expect(tab.textContent).toContain('Gateway credits');
 		expect(tab.textContent).toContain('(1)');
 		// First tab is active, so the gateway item is visible immediately.
 		expect(queryByText('Slack')).toBeTruthy();
@@ -223,8 +226,32 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	it('shows the empty state when items is empty', () => {
-		const { getByTestId } = renderWith({ items: [] });
+		const { getByTestId } = renderWith({ items: [], categories: ['mcp'] });
 		expect(getByTestId('tools-connection-empty')).toBeTruthy();
+		expect(getByTestId('suggest-tool-footer')).toBeTruthy();
+	});
+
+	it('renders the suggestion footer after the tool rows inside the scroller', () => {
+		const { getByTestId, getAllByTestId, container } = renderWith({
+			items: makeLargeMcpList(20),
+			categories: ['mcp'],
+		});
+		const scroller = container.querySelector('.recycle-scroller-wrapper');
+		const footer = getByTestId('suggest-tool-footer');
+		const rows = getAllByTestId('tools-connection-row');
+
+		expect(scroller).toContainElement(footer);
+		expect(rows.at(-1)?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+	});
+
+	it('does not render the suggestion footer outside the MCP category', async () => {
+		const { getByTestId, queryByTestId } = renderWith({
+			categories: ['mcp', 'ai'],
+		});
+
+		expect(queryByTestId('suggest-tool-footer')).toBeTruthy();
+		await fireEvent.click(getByTestId('tab-ai'));
+		expect(queryByTestId('suggest-tool-footer')).toBeNull();
 	});
 
 	it('offers workflow creation when the workflows category is empty', async () => {

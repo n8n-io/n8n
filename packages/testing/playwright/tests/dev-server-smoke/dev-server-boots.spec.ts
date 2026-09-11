@@ -1,6 +1,6 @@
 import type { ConsoleMessage, Page } from '@playwright/test';
 
-import { test } from '../../fixtures/base';
+import { expect, test } from '../../fixtures/base';
 
 /**
  * Smoke tests that catch app-wide regressions where the editor-ui fails to boot —
@@ -123,6 +123,22 @@ test.describe(
 			await navigateAndAssertNoErrors(n8n.page, 'home', async () => {
 				await n8n.start.fromHome();
 			});
+		});
+
+		// The dev frontend derives its REST base from N8N_PORT. "Boots cleanly" is
+		// not enough on its own: on the default ports a hardcoded 5678 would be
+		// indistinguishable from correct derivation, so assert the origin directly.
+		test('REST calls go to the configured backend', async ({ n8n }) => {
+			const restOrigins = new Set<string>();
+			n8n.page.on('request', (request) => {
+				const url = new URL(request.url());
+				if (url.pathname.startsWith('/rest/')) restOrigins.add(url.origin);
+			});
+
+			await n8n.start.fromHome();
+
+			const backendOrigin = new URL(process.env.N8N_BASE_URL!).origin;
+			expect([...restOrigins]).toEqual([backendOrigin]);
 		});
 
 		test('blank canvas boots cleanly', async ({ n8n }) => {

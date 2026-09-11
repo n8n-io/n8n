@@ -10,7 +10,8 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -18,9 +19,9 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
+	const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
 	const { balance } = useAiGateway();
 	const { openTopUp } = useAiGatewayTopUp();
-	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -120,6 +121,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
 			},
 			{
+				id: 'settings-promotions',
+				icon: 'git-branch',
+				label: i18n.baseText('settings.promotions.title'),
+				position: 'top',
+				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
+				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+			},
+			{
 				id: 'settings-sso',
 				icon: 'user-lock',
 				label: i18n.baseText('settings.sso'),
@@ -133,7 +142,7 @@ export function useSettingsItems() {
 				label: i18n.baseText('settings.encryptionKeys'),
 				position: 'top',
 				available:
-					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					settingsStore.moduleSettings['encryption-key-manager']?.rotationEnabled === true &&
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},

@@ -21,11 +21,8 @@ export function createCredentialTools(connection: BrowserConnection): ToolDefini
 	return [browserCaptureSecret(connection), browserCreateCredential(connection)];
 }
 
-const CREATE_CREDENTIAL_RESOURCE: AffectedResource = {
-	toolGroup: 'browser',
-	resource: 'credentials',
-	description: 'Browser: credentials',
-};
+/** Display/approval id reported by `browser_create_credential`. Not a hostname. */
+const BROWSER_CREDENTIALS_RESOURCE = 'credentials';
 
 // ---------------------------------------------------------------------------
 // browser_capture_secret
@@ -175,8 +172,17 @@ function browserCreateCredential(
 
 			return formatCallToolResult({ ok: true, credentialId: credential.credentialId });
 		},
-		getAffectedResources() {
-			return [CREATE_CREDENTIAL_RESOURCE];
+		getAffectedResources(args): AffectedResource[] {
+			// The confirmation card shows this description, so name the credential being
+			// created rather than the tool doing it.
+			return [
+				{
+					toolGroup: 'browser',
+					kind: 'credential-write',
+					resource: BROWSER_CREDENTIALS_RESOURCE,
+					description: `Create credential "${args.name}" (${args.type})`,
+				},
+			];
 		},
 	};
 }

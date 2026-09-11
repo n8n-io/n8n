@@ -1,16 +1,21 @@
 import { computed, ref } from 'vue';
 
+import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
 import { VIEWS } from '../constants';
 
 const isAiGatewayCloudUbbEnabled = ref(false);
 const isAiGatewayEnabled = ref(true);
 const balance = ref<number>();
+const moduleSettings = ref<Record<string, unknown>>({});
+const activeModules = ref<string[]>([]);
+const promotionsFlag = ref('false');
+const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
 const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
 vi.mock('./useUserHelpers', () => ({
-	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName: vi.fn(() => true) })),
+	useUserHelpers: vi.fn(() => ({ canUserAccessRouteByName })),
 }));
 vi.mock('./useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({ balance: computed(() => balance.value) })),
@@ -31,13 +36,16 @@ vi.mock('@n8n/stores/settings.store', () => ({
 		},
 		isPublicApiEnabled: false,
 		isQueueModeEnabled: false,
-		isModuleActive: vi.fn(() => false),
+		isModuleActive: (name: string) => activeModules.value.includes(name),
+		get settings() {
+			return { envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: promotionsFlag.value } };
+		},
+		get moduleSettings() {
+			return moduleSettings.value;
+		},
 	})),
 }));
 vi.mock('../utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => false) }));
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: vi.fn(() => ({ check: computed(() => () => false) })),
-}));
 
 describe('useSettingsItems', () => {
 	beforeEach(() => {
@@ -45,6 +53,69 @@ describe('useSettingsItems', () => {
 		isAiGatewayEnabled.value = true;
 		isAiGatewayCloudUbbEnabled.value = false;
 		balance.value = undefined;
+		moduleSettings.value = {};
+		activeModules.value = [];
+		promotionsFlag.value = 'false';
+		canUserAccessRouteByName.mockReturnValue(true);
+	});
+
+	describe('Environments v2', () => {
+		beforeEach(() => {
+			activeModules.value = ['promotions'];
+			promotionsFlag.value = 'true';
+		});
+
+		it('appears directly after Environments when enabled', () => {
+			const items = useSettingsItems().settingsItems.value;
+			const environmentsIndex = items.findIndex(({ id }) => id === 'settings-source-control');
+
+			expect(items[environmentsIndex + 1]).toMatchObject({
+				id: 'settings-promotions',
+				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+			});
+		});
+
+		it('is hidden when the feature flag is off', () => {
+			promotionsFlag.value = 'false';
+
+			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
+				'settings-promotions',
+			);
+		});
+
+		it('is hidden when the promotions module is inactive', () => {
+			activeModules.value = ['source-control'];
+
+			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
+				'settings-promotions',
+			);
+		});
+
+		it('is hidden when route access is denied', () => {
+			canUserAccessRouteByName.mockImplementation((name) => name !== PROMOTIONS_SETTINGS_VIEW);
+
+			expect(useSettingsItems().settingsItems.value.map(({ id }) => id)).not.toContain(
+				'settings-promotions',
+			);
+		});
+	});
+
+	it('hides the encryption keys item while rotation is disabled', () => {
+		const item = useSettingsItems().settingsItems.value.find(
+			({ id }) => id === 'settings-encryption-keys',
+		);
+
+		expect(item).toBeUndefined();
+	});
+
+	it('shows the encryption keys item when the module reports rotation as enabled', () => {
+		moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
+
+		const item = useSettingsItems().settingsItems.value.find(
+			({ id }) => id === 'settings-encryption-keys',
+		);
+
+		expect(item?.available).toBe(true);
 	});
 
 	it('links to the n8n Connect settings page for the legacy cohort', () => {

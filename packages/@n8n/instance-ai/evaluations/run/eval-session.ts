@@ -145,6 +145,9 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							client: lane.client,
 							conversation: buildArgs.conversation,
 							messageBudget: buildArgs.messageBudget,
+							buildMode: buildArgs.buildMode,
+							promptVersion: buildArgs.promptVersion,
+							allowUserExecution: buildArgs.allowUserExecution,
 							credentials: buildArgs.credentials,
 							seed: buildArgs.seed,
 							executionScenarios: buildArgs.executionScenarios,
@@ -160,6 +163,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							// launches and no port opens.
 							credentialSetupSelection: await resolveCredentialSetupFixture(buildArgs),
 							credentialSetupType: buildArgs.credentials?.[0]?.type,
+							caseIdentity: { fileSlug: buildArgs.fileSlug, iteration: buildArgs.iteration },
 						}),
 					),
 			),

@@ -75,7 +75,14 @@ onMounted(async () => {
 				:show-length="true"
 			/>
 			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
+			<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
+			<iframe
+				v-else
+				:src="embedSource"
+				class="binary-data"
+				:class="embedClass"
+				:title="i18n.baseText('binaryDataDisplay.filePreview')"
+			/>
 		</span>
 	</span>
 </template>
@@ -87,6 +94,8 @@ video {
 	max-width: 100%;
 }
 .binary-data {
+	border: 0;
+
 	&.other,
 	&.pdf {
 		height: 100%;

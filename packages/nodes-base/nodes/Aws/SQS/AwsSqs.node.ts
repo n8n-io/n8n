@@ -316,12 +316,12 @@ export class AwsSqs implements INodeType {
 						'',
 					) as string;
 					if (messageDeduplicationId) {
-						params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
+						params.push(`MessageDeduplicationId=${encodeURIComponent(messageDeduplicationId)}`);
 					}
 
 					const messageGroupId = this.getNodeParameter('messageGroupId', i) as string;
 					if (messageGroupId) {
-						params.push(`MessageGroupId=${messageGroupId}`);
+						params.push(`MessageGroupId=${encodeURIComponent(messageGroupId)}`);
 					}
 				}
 
@@ -331,8 +331,12 @@ export class AwsSqs implements INodeType {
 					this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]
 				).forEach((attribute) => {
 					attributeCount++;
-					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+					params.push(
+						`MessageAttribute.${attributeCount}.Name=${encodeURIComponent(attribute.name as string)}`,
+					);
+					params.push(
+						`MessageAttribute.${attributeCount}.Value.StringValue=${encodeURIComponent(attribute.value as string)}`,
+					);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=String`);
 				});
 
@@ -345,8 +349,12 @@ export class AwsSqs implements INodeType {
 					const dataPropertyName = attribute.dataPropertyName as string;
 					const binaryData = this.helpers.assertBinaryData(i, dataPropertyName);
 
-					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData.data}`);
+					params.push(
+						`MessageAttribute.${attributeCount}.Name=${encodeURIComponent(attribute.name as string)}`,
+					);
+					params.push(
+						`MessageAttribute.${attributeCount}.Value.BinaryValue=${encodeURIComponent(binaryData.data)}`,
+					);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
 				});
 
@@ -355,8 +363,12 @@ export class AwsSqs implements INodeType {
 					this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]
 				).forEach((attribute) => {
 					attributeCount++;
-					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
+					params.push(
+						`MessageAttribute.${attributeCount}.Name=${encodeURIComponent(attribute.name as string)}`,
+					);
+					params.push(
+						`MessageAttribute.${attributeCount}.Value.StringValue=${encodeURIComponent(attribute.value as number)}`,
+					);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Number`);
 				});
 

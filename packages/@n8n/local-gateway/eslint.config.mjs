@@ -1,12 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	globalIgnores(['electron-builder.config.js','scripts/**']),
-	nodeConfig,
-	{
-		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-		},
-	},
+	globalIgnores(['electron-builder.config.js', 'scripts/**']),
+	backendConfig,
 );

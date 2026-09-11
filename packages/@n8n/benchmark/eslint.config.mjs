@@ -1,16 +1,12 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	nodeConfig,
+	backendConfig,
 	globalIgnores(['scenarios/**', 'scripts/**']),
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-			'n8n-local-rules/no-plain-errors': 'off',
 			complexity: 'error',
-			'@typescript-eslint/naming-convention': 'warn',
-			'no-empty': 'warn',
 		},
 	},
 	{

@@ -82,13 +82,43 @@
                 }
             }
         },
+        "httpStatus": {
+            "type": "integer"
+        },
+        "httpStatusText": {
+            "type": "string"
+        },
         "metadata": {
             "type": "object",
             "properties": {
+                "CreationDate": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
+                "IsAcroFormPresent": {
+                    "type": "boolean"
+                },
+                "IsCollectionPresent": {
+                    "type": "boolean"
+                },
+                "IsLinearized": {
+                    "type": "boolean"
+                },
+                "IsSignaturesPresent": {
+                    "type": "boolean"
+                },
+                "IsXFAPresent": {
+                    "type": "boolean"
+                },
                 "lang": {
+                    "type": "string"
+                },
+                "ModDate": {
+                    "type": "string"
+                },
+                "og:description": {
                     "type": "string"
                 },
                 "og:image": {
@@ -97,16 +127,43 @@
                 "og:locale": {
                     "type": "string"
                 },
+                "og:site_name": {
+                    "type": "string"
+                },
+                "og:title": {
+                    "type": "string"
+                },
                 "og:type": {
                     "type": "string"
                 },
                 "og:url": {
                     "type": "string"
                 },
+                "PDFFormatVersion": {
+                    "type": "string"
+                },
+                "Producer": {
+                    "type": "string"
+                },
                 "robots": {
+                    "type": "string"
+                },
+                "twitter:card": {
+                    "type": "string"
+                },
+                "twitter:description": {
+                    "type": "string"
+                },
+                "twitter:image": {
+                    "type": "string"
+                },
+                "twitter:title": {
                     "type": "string"
                 }
             }
+        },
+        "publishedTime": {
+            "type": "string"
         },
         "title": {
             "type": "string"
@@ -123,5 +180,5 @@
             }
         }
     },
-    "version": 6
+    "version": 8
 }

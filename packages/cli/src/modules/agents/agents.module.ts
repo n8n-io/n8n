@@ -35,8 +35,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
-		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
-		Container.get(AgentCredentialIndexListener).init();
+		const { AgentDependencyIndexListener } = await import('./agent-dependency-index.listener.js');
+		Container.get(AgentDependencyIndexListener).init();
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
@@ -61,6 +61,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
+		registerAgentUsageProvider();
 
 		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService);
@@ -92,24 +95,32 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
-		// Reconnect Chat and Task services on startup so this main resumes its
-		// integrations and tasks for the role it currently holds.
+		// Resume Chat and Task services on startup so this main runs what its
+		// current role calls for.
 		//
-		// Chat integrations run on every main: webhook-driven platforms (Slack,
-		// Linear, Telegram in webhook mode) need to be connected on every main
-		// because inbound webhooks are load-balanced. Polling-driven integrations
-		// (Telegram in polling mode) are filtered to leader-only inside the
-		// service via `AgentChatIntegration.requiresLeader()`.
+		// Chat channels are reconciled on a loop rather than reconnected once:
+		// startup is only the first pass, and every later pass is what lets a
+		// channel that failed to start recover without a republish. Webhook-driven
+		// platforms (Slack, Linear, Telegram in webhook mode) run on every main
+		// because inbound webhooks are load-balanced; polling-driven ones
+		// (Telegram in polling mode) are filtered to the leader via
+		// `AgentChatIntegration.requiresLeader()`.
 		//
 		// Tasks remain leader-only by design — a cron firing on multiple
 		// mains would run the agent twice for the same tick.
-		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
+		const { AgentChannelReconciler } = await import(
+			'./integrations/agent-channel-reconciler.service.js'
+		);
 		const { AgentTaskService } = await import('./agent-task.service.js');
-		const chatService = Container.get(ChatIntegrationService);
+		const channelReconciler = Container.get(AgentChannelReconciler);
 		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			// Loaded for its pubsub decorator
+			await import('./background/agent-background-job.service.js');
+			await import('./background/agent-wake.service.js');
+
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
@@ -127,11 +138,17 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
-		void chatService.reconnectAll().catch((error) => {
-			logger.error('[Agents] Failed to reconnect integrations on startup', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		});
+
+		// Workers never receive inbound platform events: no webhook route, no polling
+		// loop. Holding channels there would connect adapters nothing reads and, now
+		// that startups are reported, publish status rows for a process that cannot
+		// serve the channel either way. Webhook instances do serve the agent webhook
+		// route, so they keep their channels.
+		if (instanceSettings.instanceType !== 'worker') {
+			channelReconciler.init();
+		}
+
+		// In-memory task crons are leader-only. Only the leader reconnects them on startup.
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {
@@ -141,6 +158,42 @@ export class AgentsModule implements ModuleInterface {
 		} else {
 			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
+
+		// Durable scheduling for agent tasks runs on mains only. The handler is
+		// registered before DurableScheduler starts, because module init precedes
+		// its start() in the start command. A main with the flag off registers no
+		// handler, so the executor never claims a leftover agent-task row. The
+		// reconcile runs with the flag in either state: it backfills jobs when the
+		// flag is on and removes them when it is off. It is awaited, so that the
+		// executor cannot claim an occurrence of a job it is about to redefine or
+		// remove.
+		if (instanceSettings.instanceType === 'main') {
+			const { AgentTaskJobRegistrar } = await import('./scheduling/agent-task-job-registrar.js');
+			const registrar = Container.get(AgentTaskJobRegistrar);
+
+			if (registrar.isEnabled()) {
+				const { AgentTaskTaskHandler } = await import('./scheduling/agent-task-task-handler.js');
+				const { DurableScheduler } = await import('@/scheduling/durable-scheduler.js');
+				const agentTaskHandler = Container.get(AgentTaskTaskHandler);
+				Container.get(DurableScheduler).registerTaskHandler(
+					agentTaskHandler.taskType,
+					agentTaskHandler,
+				);
+			}
+
+			try {
+				await registrar.reconcileAll();
+			} catch (error) {
+				logger.error('[Agents] Failed to reconcile durable agent-task jobs on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	async systemTasks() {
+		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
+		return [AgentCheckpointPruningTask];
 	}
 
 	@OnShutdown()
@@ -169,15 +222,20 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
+		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
+		);
+		const { AgentWorkflowDependency } = await import(
+			'./entities/agent-workflow-dependency.entity.js'
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
@@ -190,14 +248,14 @@ export class AgentsModule implements ModuleInterface {
 			'./entities/agent-observation-lock.entity.js'
 		);
 		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity.js');
+		const { AgentMemoryEntryCandidateEntity } = await import(
+			'./entities/agent-memory-entry-candidate.entity.js'
+		);
 		const { AgentMemoryEntryLockEntity } = await import(
 			'./entities/agent-memory-entry-lock.entity.js'
 		);
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
-		);
-		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity.js'
 		);
 
 		return [
@@ -205,14 +263,17 @@ export class AgentsModule implements ModuleInterface {
 			AgentFile,
 			AgentChatAttachment,
 			AgentChatSubscription,
+			AgentChannelStatus,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
+			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
 			AgentTaskSnapshot,
@@ -220,9 +281,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
 			AgentMemoryEntryEntity,
+			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
-			AgentMemoryEntryCursorEntity,
 		];
 	}
 

@@ -25,12 +25,19 @@ import type {
 	ReplyExpectation,
 } from './integration-tools';
 
-/** Per-connection context handed to AgentChatIntegration hooks. */
-export interface AgentChatIntegrationContext {
+/**
+ * Channel identity, without the decrypted credential. Enough for checks that
+ * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
+ */
+export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
-	integration: AgentIntegrationConfig;
 	credentialId: string;
+}
+
+/** Per-connection context handed to AgentChatIntegration hooks. */
+export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
+	integration: AgentIntegrationConfig;
 	credential: Record<string, unknown>;
 	/** Whether this connection may receive events from the external platform. */
 	ingressEnabled: boolean;
@@ -319,6 +326,19 @@ export abstract class AgentChatIntegration {
 	 * credential isn't already claimed elsewhere. Throwing aborts the connect.
 	 */
 	onBeforeConnect?(ctx: AgentChatIntegrationContext): Promise<void>;
+
+	/**
+	 * The deterministic part of {@link onBeforeConnect}: a check that reads only
+	 * our own state, so it always answers the same way and never depends on the
+	 * platform being reachable.
+	 *
+	 * Publishing runs this as a preflight, before it writes anything, so a
+	 * conflict a user has to resolve fails the publish outright instead of
+	 * leaving an agent published with a channel that never started. Anything
+	 * that calls the platform belongs in `onBeforeConnect` only — a platform
+	 * outage is transient, and must never block a publish.
+	 */
+	assertStartupPreconditions?(ctx: AgentChannelPreconditionContext): Promise<void>;
 
 	/** Optional hook run AFTER `chat.initialize()`. Throwing triggers cleanup. */
 	onAfterConnect?(ctx: AgentChatIntegrationContext): Promise<void>;

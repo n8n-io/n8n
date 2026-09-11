@@ -104,6 +104,37 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
+		);
+	});
+
+	it('keeps task runtimes separate and disables their background tools', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(makeRuntime())
+			.mockResolvedValueOnce(makeRuntime());
+
+		await service.getRuntime({ agentId, projectId });
+		// An explicit `true` is the default and shares the default runtime.
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: true });
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
+		await service.getRuntime({ agentId, projectId, allowBackgroundTasks: false });
+
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ allowBackgroundTasks: false },
 		);
 	});
 
@@ -132,6 +163,208 @@ describe('AgentRuntimeCacheService', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it('keeps an actively accessed runtime cached past the absolute TTL and still evicts idle ones', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const runtime = makeRuntime();
+			const rebuiltRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(runtime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+
+			await service.getRuntime({ agentId, projectId });
+
+			// Access at t+20min slides the 30min TTL forward.
+			vi.setSystemTime(Date.now() + 20 * 60 * 1000);
+			await service.getRuntime({ agentId, projectId });
+
+			// t+40min — past the original t+30min deadline, still cached thanks to the slide.
+			vi.setSystemTime(Date.now() + 20 * 60 * 1000);
+			const stillCached = await service.getRuntime({ agentId, projectId });
+			expect(stillCached.agent).toBe(runtime.agent);
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
+
+			// 30min without any access — evicted and reconstructed on next request.
+			vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);
+			const fresh = await service.getRuntime({ agentId, projectId });
+			expect(fresh.agent).toBe(rebuiltRuntime.agent);
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('re-checks baked-in tool access after the debounce window and rebuilds when a grant is revoked', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const snapshot = { credentialIds: ['cred-1'], workflowIds: ['wf-1'] };
+			const originalRuntime = { ...makeRuntime(), userToolAccessSnapshot: snapshot };
+			const rebuiltRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(originalRuntime)
+				.mockResolvedValueOnce(rebuiltRuntime);
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(true);
+
+			const first = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(first.agent);
+
+			// Inside the debounce window: served without any re-check.
+			vi.setSystemTime(Date.now() + 30 * 1000);
+			const second = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(second.agent);
+			expect(second.agent).toBe(originalRuntime.agent);
+			expect(reconstructionService.userStillHasToolAccess).not.toHaveBeenCalled();
+
+			// Past the window with grants intact: re-checked, same instance kept.
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const third = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(third.agent);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledWith(
+				snapshot,
+				projectId,
+				user,
+			);
+			expect(third.agent).toBe(originalRuntime.agent);
+
+			// Grant revoked: the next re-check retires the runtime and rebuilds it.
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(false);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const fourth = await service.getRuntime({ agentId, projectId, user });
+
+			expect(fourth.agent).toBe(rebuiltRuntime.agent);
+			expect(originalRuntime.agent.close).toHaveBeenCalledOnce();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the cached runtime when a tool-access re-check fails and retries after the debounce window', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const runtime = {
+				...makeRuntime(),
+				userToolAccessSnapshot: { credentialIds: ['cred-1'], workflowIds: ['wf-1'] },
+			};
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			reconstructionService.userStillHasToolAccess.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+
+			const initial = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(initial.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+
+			const afterFailedRecheck = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(afterFailedRecheck.agent);
+
+			expect(afterFailedRecheck).toBe(initial);
+			expect(afterFailedRecheck.agent).toBe(runtime.agent);
+			expect(runtime.agent.close).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledOnce();
+
+			const withinDebounceWindow = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(withinDebounceWindow.agent);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledOnce();
+
+			reconstructionService.userStillHasToolAccess.mockResolvedValue(true);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+			const afterRetry = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(afterRetry.agent);
+
+			expect(afterRetry).toBe(initial);
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledTimes(2);
+			expect(runtime.agent.close).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('shares an in-flight tool-access re-check across concurrent cache hits', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const user = mock<User>({ id: 'user-a' });
+			const runtime = {
+				...makeRuntime(),
+				userToolAccessSnapshot: { credentialIds: ['cred-1'], workflowIds: ['wf-1'] },
+			};
+			let resolveAccessCheck: (stillGranted: boolean) => void = () => {};
+			const pendingAccessCheck = new Promise<boolean>((resolve) => {
+				resolveAccessCheck = resolve;
+			});
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			reconstructionService.userStillHasToolAccess.mockReturnValue(pendingAccessCheck);
+
+			const initial = await service.getRuntime({ agentId, projectId, user });
+			service.releaseRuntimeLease(initial.agent);
+			vi.setSystemTime(Date.now() + 2 * 60 * 1000);
+
+			const first = service.getRuntime({ agentId, projectId, user });
+			const second = service.getRuntime({ agentId, projectId, user });
+
+			expect(reconstructionService.userStillHasToolAccess).toHaveBeenCalledOnce();
+			resolveAccessCheck(true);
+			const [firstRuntime, secondRuntime] = await Promise.all([first, second]);
+
+			expect(firstRuntime).toBe(secondRuntime);
+			expect(firstRuntime.agent).toBe(runtime.agent);
+			service.releaseRuntimeLease(firstRuntime.agent);
+			service.releaseRuntimeLease(secondRuntime.agent);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the preview runtime separate and flags it for reconstruction', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const plainRuntime = makeRuntime();
+		const previewRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(plainRuntime)
+			.mockResolvedValueOnce(previewRuntime);
+
+		const plain = await service.getRuntime({ agentId, projectId });
+		const preview = await service.getRuntime({ agentId, projectId, previewChat: true });
+
+		expect(plain.agent).toBe(plainRuntime.agent);
+		expect(preview.agent).toBe(previewRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			{ previewChat: true },
+		);
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {
@@ -165,6 +398,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 	});
 
@@ -199,6 +433,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -210,6 +445,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
+			{},
 		);
 	});
 
@@ -382,6 +618,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
+			{},
 		);
 	});
 

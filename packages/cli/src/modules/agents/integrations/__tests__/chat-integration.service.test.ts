@@ -14,6 +14,7 @@ import type { UrlService } from '@/services/url.service';
 
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { Agent } from '../../entities/agent.entity';
+import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -126,6 +127,7 @@ function buildServiceWith(
 		publisher?: ReturnType<typeof mock<Publisher>>;
 		urlService?: ReturnType<typeof mock<UrlService>>;
 		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
+		statusReporter?: ReturnType<typeof mock<AgentChannelStatusReporter>>;
 		leaderChannelRelay?: ReturnType<typeof mock<LeaderChannelRelayService>>;
 	} = {},
 ) {
@@ -136,6 +138,7 @@ function buildServiceWith(
 	const urlService = opts.urlService ?? mock<UrlService>();
 	const chatSubscriptionStateService =
 		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
+	const statusReporter = opts.statusReporter ?? mock<AgentChannelStatusReporter>();
 	const leaderChannelRelay = opts.leaderChannelRelay ?? mock<LeaderChannelRelayService>();
 	const logger = mockLogger();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
@@ -153,6 +156,7 @@ function buildServiceWith(
 		publisher,
 		globalConfig,
 		chatSubscriptionStateService,
+		statusReporter,
 		leaderChannelRelay,
 	);
 
@@ -164,6 +168,7 @@ function buildServiceWith(
 		publisher,
 		urlService,
 		chatSubscriptionStateService,
+		statusReporter,
 		leaderChannelRelay,
 		instanceSettings,
 		logger,
@@ -275,6 +280,7 @@ describe('ChatIntegrationService', () => {
 			mock(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
 			mock<AgentChatSubscriptionStateService>(),
+			mock<AgentChannelStatusReporter>(),
 			mock<LeaderChannelRelayService>(),
 		);
 
@@ -914,103 +920,56 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		Container.reset();
 	});
 
-	describe('reconnectAll', () => {
-		it('skips integrations that require the leader when this main is a follower', async () => {
+	describe('startChannel', () => {
+		it('runs external hooks on the leader, because cluster-wide setup happens once', async () => {
 			const registry = new ChatIntegrationRegistry();
-			registry.register(new FakeIntegration('telegram', true));
 			registry.register(new FakeIntegration('linear', false));
 
-			const agentRepository = mock<AgentRepository>();
-			agentRepository.findPublished.mockResolvedValue([
-				makeAgent({
-					integrations: [
-						{ type: 'telegram', credentialId: 'c1' },
-						{ type: 'linear', credentialId: 'c2' },
-					],
-				}),
-			]);
-
-			const { service } = buildServiceWith({
-				isLeader: false,
-				registry,
-				agentRepository,
-			});
-
+			const { service } = buildServiceWith({ isLeader: true, registry });
 			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 
-			await service.reconnectAll();
+			await service.startChannel(makeAgent(), { type: 'linear', credentialId: 'c1' });
 
-			expect(connectSpy).toHaveBeenCalledTimes(1);
-			// Followers must not run external hooks during startup reconnect. The
-			// leader owns external setup; followers only build local runtime state.
 			expect(connectSpy).toHaveBeenCalledWith(
 				'agent-1',
-				{ type: 'linear', credentialId: 'c2' },
+				{ type: 'linear', credentialId: 'c1' },
+				'project-1',
+				{ skipExternalHooks: false },
+			);
+		});
+
+		it('skips external hooks on a follower, which only builds local runtime state', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('linear', false));
+
+			const { service } = buildServiceWith({ isLeader: false, registry });
+			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+
+			await service.startChannel(makeAgent(), { type: 'linear', credentialId: 'c1' });
+
+			expect(connectSpy).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'linear', credentialId: 'c1' },
 				'project-1',
 				{ skipExternalHooks: true },
 			);
 		});
+	});
 
-		it('connects every integration when this main is the leader and runs external hooks', async () => {
-			const registry = new ChatIntegrationRegistry();
-			registry.register(new FakeIntegration('telegram', true));
-			registry.register(new FakeIntegration('linear', false));
-
-			const agentRepository = mock<AgentRepository>();
-			agentRepository.findPublished.mockResolvedValue([
-				makeAgent({
-					integrations: [
-						{ type: 'telegram', credentialId: 'c1' },
-						{ type: 'linear', credentialId: 'c2' },
-					],
-				}),
-			]);
-
-			const { service } = buildServiceWith({
-				isLeader: true,
-				registry,
-				agentRepository,
-			});
-
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
-
-			await service.reconnectAll();
-
-			expect(connectSpy).toHaveBeenCalledTimes(2);
-			for (const call of connectSpy.mock.calls) {
-				expect(call[3]).toEqual({ skipExternalHooks: false });
-			}
-		});
-
-		it('skips integrations that are already connected', async () => {
+	describe('listLiveChannels / hasLiveChannel', () => {
+		it('reports the channels this main is running', async () => {
 			const registry = new ChatIntegrationRegistry();
 			registry.register(new FakeIntegration('linear', false));
 
-			const agentRepository = mock<AgentRepository>();
-			agentRepository.findPublished.mockResolvedValue([
-				makeAgent({
-					integrations: [{ type: 'linear', credentialId: 'c1' }],
-				}),
-			]);
-
-			const { service } = buildServiceWith({
-				isLeader: true,
-				registry,
-				agentRepository,
-			});
-
-			// Pretend this integration is already connected (e.g. leader-takeover
-			// scenario where webhook integrations were already running on the
-			// former-follower).
+			const { service } = buildServiceWith({ registry });
+			const ref = { agentId: 'agent-1', integrationType: 'linear', credentialId: 'c1' };
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const internal = service as any;
-			internal.connections.set('agent-1:linear:c1', {});
+			internal.connections.set('agent-1:linear:c1', { ref });
 
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
-
-			await service.reconnectAll();
-
-			expect(connectSpy).not.toHaveBeenCalled();
+			expect(service.listLiveChannels()).toEqual([ref]);
+			expect(service.hasLiveChannel(ref)).toBe(true);
+			expect(service.hasLiveChannel({ ...ref, credentialId: 'c2' })).toBe(false);
 		});
 	});
 
@@ -1753,6 +1712,251 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			await expect(
 				service.broadcastIntegrationChange('a1', { type: 'linear', credentialId: 'c1' }, 'connect'),
 			).resolves.toBeUndefined();
+		});
+	});
+});
+
+describe('ChatIntegrationService — channel status recording', () => {
+	const slackRef = {
+		agentId: 'agent-1',
+		integrationType: 'slack',
+		credentialId: 'cred-1',
+	};
+
+	function buildForConnect(opts: { chatConstructionFails?: boolean } = {}) {
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: () => Promise<unknown> }).createAdapter =
+			async () => ({ name: 'slack' });
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+
+		const state = mock<StateAdapter>();
+		state.disconnect.mockResolvedValue(undefined);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		chatSubscriptionStateService.createStateAdapter.mockReturnValue(state);
+
+		// An ingress connect builds a bridge, which pulls half the module out of the
+		// container; none of it is what these tests are about.
+		vi.spyOn(AgentChatBridge, 'create').mockReturnValue(mock<AgentChatBridge>());
+
+		vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: vi.fn(() => mock<StateAdapter>()),
+		} as never);
+		vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+			Chat: vi.fn(function ChatMock() {
+				if (opts.chatConstructionFails) throw new Error('chat construction failed');
+				return {
+					initialize: vi.fn().mockResolvedValue(undefined),
+					shutdown: vi.fn().mockResolvedValue(undefined),
+					webhooks: { slack: vi.fn() },
+					onNewMention: vi.fn(),
+					onSubscribedMessage: vi.fn(),
+					onAction: vi.fn(),
+					getAdapter: vi.fn(),
+					openDM: vi.fn(),
+					thread: vi.fn(),
+					channel: vi.fn(),
+					getUser: vi.fn(),
+				};
+			}),
+		} as never);
+
+		return buildServiceWith({
+			registry,
+			credentialsService,
+			urlService,
+			chatSubscriptionStateService,
+		});
+	}
+
+	beforeEach(() => {
+		Container.reset();
+		Container.set(AgentExecutionOrchestratorService, mock<AgentExecutionOrchestratorService>());
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('records a channel that started', async () => {
+		const { service, statusReporter } = buildForConnect();
+
+		await service.connect('agent-1', slackIntegration, 'project-1');
+
+		expect(statusReporter.recordConnected).toHaveBeenCalledWith(slackRef);
+		expect(statusReporter.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('records why a channel failed to start, and still reports the failure to the caller', async () => {
+		const { service, statusReporter } = buildForConnect({ chatConstructionFails: true });
+
+		await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+			'chat construction failed',
+		);
+
+		expect(statusReporter.recordFailure).toHaveBeenCalledWith(slackRef, expect.any(Error));
+	});
+
+	it('records nothing for an outbound Preview connection, which is not a channel', async () => {
+		const { service, statusReporter } = buildForConnect();
+
+		await service.connect('agent-1', slackIntegration, 'project-1', { ingressEnabled: false });
+
+		expect(statusReporter.recordConnected).not.toHaveBeenCalled();
+		expect(statusReporter.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('withdraws its own account whenever it stops running the channel', async () => {
+		// Every teardown means the same thing for this instance's row, so they all
+		// converge here: removal, unpublish, leader stepdown, a peer applying a
+		// broadcast, and the reconciler releasing a ghost.
+		const { service, statusReporter } = buildForConnect();
+		await service.connect('agent-1', slackIntegration, 'project-1');
+
+		await service.disconnect('agent-1', slackIntegration, { skipExternalHooks: true });
+
+		expect(statusReporter.withdraw).toHaveBeenCalledWith(slackRef);
+	});
+
+	it('withdraws its own account when the channel is removed outright', async () => {
+		const { service, statusReporter } = buildForConnect();
+		await service.connect('agent-1', slackIntegration, 'project-1');
+
+		await service.disconnectChannel('agent-1', slackIntegration);
+
+		expect(statusReporter.withdraw).toHaveBeenCalledWith(slackRef);
+	});
+
+	it('has nothing to withdraw when it was not running the channel', async () => {
+		const { service, statusReporter } = buildServiceWith();
+
+		await service.disconnect('agent-1', slackIntegration);
+
+		expect(statusReporter.withdraw).not.toHaveBeenCalled();
+	});
+});
+
+describe('ChatIntegrationService — reporting failures from every startup step', () => {
+	const slackRef = { agentId: 'agent-1', integrationType: 'slack', credentialId: 'cred-1' };
+
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('records a credential that cannot be decrypted, which happens before the adapter is built', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('slack', false));
+		// No project credential configured, so `decryptCredentialForProject` throws.
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+			/not found or not accessible/,
+		);
+
+		expect(statusReporter.recordFailure).toHaveBeenCalledWith(slackRef, expect.any(Error));
+	});
+
+	it('records a pre-connect rejection, so a claimed credential is reported rather than only thrown', async () => {
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { onBeforeConnect: () => Promise<void> }).onBeforeConnect =
+			async () => {
+				throw new Error('already connected to agent "Other"');
+			};
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+			'already connected to agent "Other"',
+		);
+
+		expect(statusReporter.recordFailure).toHaveBeenCalledWith(slackRef, expect.any(Error));
+	});
+
+	it('does not report an outbound Preview connection that fails, since it is not a channel', async () => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new FakeIntegration('slack', false));
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
+		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+
+		const { service, statusReporter } = buildServiceWith({ registry, credentialsService });
+
+		await expect(
+			service.connect('agent-1', slackIntegration, 'project-1', { ingressEnabled: false }),
+		).rejects.toThrow();
+
+		expect(statusReporter.recordFailure).not.toHaveBeenCalled();
+	});
+});
+
+describe('ChatIntegrationService.assertStartupPreconditions', () => {
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	it('does not re-run the platform config check, so a legacy entry can still publish', async () => {
+		// Publishing already validates the whole configuration. Re-running a
+		// platform's own check here would newly reject an agent whose persisted
+		// channel predates a later-added required setting — a Telegram entry with no
+		// `settings` could no longer be republished.
+		const integration = new FakeIntegration('telegram', false);
+		const validateConfig = vi.fn(() => {
+			throw new Error('Telegram integration settings are required');
+		});
+		(integration as unknown as { validateConfig: typeof validateConfig }).validateConfig =
+			validateConfig;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const { service } = buildServiceWith({ registry });
+
+		await expect(
+			service.assertStartupPreconditions(
+				'agent-1',
+				{ type: 'telegram', credentialId: 'c1' },
+				'project-1',
+			),
+		).resolves.toBeUndefined();
+		expect(validateConfig).not.toHaveBeenCalled();
+	});
+
+	it('runs the platform’s own deterministic claim check', async () => {
+		const integration = new FakeIntegration('telegram', false);
+		const assertStartupPreconditions = vi.fn().mockResolvedValue(undefined);
+		(
+			integration as unknown as { assertStartupPreconditions: typeof assertStartupPreconditions }
+		).assertStartupPreconditions = assertStartupPreconditions;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const { service } = buildServiceWith({ registry });
+
+		await service.assertStartupPreconditions(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'c1' },
+			'project-1',
+		);
+
+		// No decrypted credential: the check reads our own state only, which is what
+		// makes it safe to run before a publish.
+		expect(assertStartupPreconditions).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'c1',
 		});
 	});
 });

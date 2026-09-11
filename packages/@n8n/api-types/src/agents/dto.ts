@@ -8,7 +8,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
-import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
+import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -117,21 +117,29 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 	allAgents: z.literal(true).optional(),
 }) {}
 
+/**
+ * Client-minted agent id, so a surface can reference the agent (an artifact tab,
+ * a thread binding) before it decides to persist it. Matches the nanoid shape the
+ * entity would otherwise generate.
+ */
+export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
+
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
-	/**
-	 * Client-minted agent id, so a surface can reference the agent (an artifact
-	 * tab, a thread binding) before it decides to persist it. Must match the
-	 * nanoid shape the entity would otherwise generate.
-	 */
-	id: z
-		.string()
-		.regex(/^[0-9A-Za-z]{16}$/)
+	id: clientMintedAgentIdSchema.optional(),
+	schema: AgentJsonConfigSchema.optional(),
+	tools: z
+		.record(
+			z.object({ code: z.string(), descriptor: z.object({ name: z.string() }).passthrough() }),
+		)
 		.optional(),
+	skills: z.record(agentSkillSchema).optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({
 	config: z.record(z.unknown()),
+	/** Hash of the config the edit was made against (`null` when the agent had none). */
+	baseConfigHash: z.string().nullable(),
 }) {}
 
 export class CreateAgentTaskDto extends Z.class({
@@ -157,6 +165,7 @@ const updateAgentSkillShape = {
 	instructions: agentSkillShape.instructions.optional(),
 	allowedTools: agentSkillShape.allowedTools.optional(),
 	references: agentSkillShape.references.optional(),
+	baseSkillHash: z.string().optional(),
 };
 
 const updateAgentSkillSchema = z.object(updateAgentSkillShape).strict();

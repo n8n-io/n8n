@@ -150,7 +150,7 @@ export function linkedToolDisplayName(item: TimelineItem, i18n: TimelineI18n): s
 		item.hitlToolDisplayName ??
 		item.workflowName ??
 		item.nodeDisplayName ??
-		resolveToolNameForDisplay(item.toolName, i18n)
+		resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput)
 	);
 }
 
@@ -349,8 +349,8 @@ const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	agent: 'var(--color--purple-600)',
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
-	workflow: 'var(--color--orange-600)',
-	'execution-error': 'var(--color--red-400)',
+	workflow: 'var(--color--pink-600)',
+	'execution-error': 'var(--color--red-600)',
 	suspension: 'var(--color--yellow-600)',
 	'hitl-response': 'var(--color--blue-600)',
 };
@@ -361,9 +361,9 @@ export function chartBlockColor(kind: EventKind): string {
 
 export function builtinToolLabelKey(
 	toolName: string | undefined,
-	_output?: unknown,
+	output?: unknown,
 ): BaseTextKey | null {
-	return getToolNameTranslationKey(toolName) ?? null;
+	return getToolNameTranslationKey(toolName, output) ?? null;
 }
 
 export function formatDuration(ms: number): string {

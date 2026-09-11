@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -124,6 +124,7 @@
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
       "dist/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.js",
       "dist/nodes/llms/LmChatCohere/LmChatCohere.node.js",
+      "dist/nodes/llms/LmChatDatabricks/LmChatDatabricks.node.js",
       "dist/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.js",
       "dist/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.js",
       "dist/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.js",
@@ -212,7 +213,7 @@
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@typescript-eslint/typescript-estree": "^8.35.0",
+    "@typescript-eslint/typescript-estree": "catalog:",
     "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/express": "catalog:",
@@ -227,7 +228,6 @@
     "@types/sanitize-html": "catalog:",
     "@types/temp": "^0.9.1",
     "@vitest/coverage-v8": "catalog:",
-    "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
     "typescript": "catalog:typescript-tooling",
@@ -281,7 +281,6 @@
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
-    "@n8n/errors": "workspace:*",
     "@n8n/json-schema-to-zod": "workspace:*",
     "@n8n/typeorm": "0.3.20-16",
     "@n8n/typescript-config": "workspace:*",

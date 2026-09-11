@@ -31,6 +31,13 @@ export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+// Fields the Evaluation Trigger adds to its output alongside dataset columns,
+// regardless of source (Data table or Google Sheets). `row_id` and the Data
+// table system columns (id/createdAt/updatedAt) are NOT here — those are only
+// added by the Data table source, so callers needing that distinction should
+// combine this with `DATA_TABLE_SYSTEM_COLUMNS` (from './data-table.types')
+// and `row_id` themselves, only when they know the trigger's source.
+export const EVALUATION_TRIGGER_METADATA_FIELDS = ['row_number', '_rowsLeft'] as const;
 export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
@@ -108,6 +115,8 @@ export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolW
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
+/** Trailing segment of the path a Chat trigger registers its webhooks under: `{webhookId}/chat`. */
+export const CHAT_TRIGGER_PATH_SUFFIX = 'chat';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';

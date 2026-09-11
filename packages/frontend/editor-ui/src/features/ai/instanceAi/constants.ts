@@ -6,6 +6,13 @@ export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /**
+ * Query flag for the new-agent view: `mode=manual` skips the Instance AI flow
+ * and opens the standalone builder directly. A mode switch only — the agent id
+ * still travels exclusively in history state.
+ */
+export const INSTANCE_AI_CREATE_AGENT_MODE_QUERY = 'mode';
+export const INSTANCE_AI_CREATE_AGENT_MODE_MANUAL = 'manual';
+/**
  * History-state key for the agent id minted at the click. Carried to the
  * new-agent view so the "clicked" and "created" events share a join key even
  * though no agent exists yet. Kept out of the URL so a hand-authored query
@@ -62,6 +69,12 @@ const INSTANCE_AI_CHAT_ROUTE_NAMES: ReadonlySet<string> = new Set([
  */
 export function isInstanceAiChatRoute(name: unknown): boolean {
 	return typeof name === 'string' && INSTANCE_AI_CHAT_ROUTE_NAMES.has(name);
+}
+
+const NODE_CHIP_REMOVAL_KEYS: ReadonlySet<string> = new Set(['Delete', 'Backspace', 'x']);
+
+export function isNodeChipRemovalKey(key: string): boolean {
+	return NODE_CHIP_REMOVAL_KEYS.has(key);
 }
 
 export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';

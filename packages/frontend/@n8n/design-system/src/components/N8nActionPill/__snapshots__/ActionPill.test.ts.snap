@@ -67,7 +67,7 @@ exports[`N8nActionPill > snapshots > renders info type correctly 1`] = `
     class="root info"
   >
     
-    n8n credits
+    Gateway credits
     
   </span>
 </div>

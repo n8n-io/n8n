@@ -3,6 +3,7 @@ import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import { ErrorReporter } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -14,8 +15,12 @@ import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
 	next();
 });
+const mockEnabledMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
+	next();
+});
 const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
 mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
+mcpServerMiddlewareService.getEnabledMiddleware.mockReturnValue(mockEnabledMiddleware);
 
 // The controller's route decorator resolves McpServerMiddlewareService via DI at
 // module-evaluation time, so it must be registered before the controller module
@@ -24,27 +29,46 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
-import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import {
+	MCP_CLIENT_INFO_META_KEY,
+	MCP_DISCOVER_METHOD,
+	MCP_PROTOCOL_VERSION_META_KEY,
+} from '../mcp.constants';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
+
+type MockMcpHandler = { factory: () => Promise<unknown>; onerror?: (error: Error) => void };
+
 // The controller wires createMcpHandler (per-request server factory) through
 // toNodeHandler. The mocks run the factory when the node handler is invoked,
 // mirroring the real flow: getServer is only called for requests that reach
-// the transport, and factory errors propagate to the controller's catch.
+// the transport, and a failure there is reported through `onerror` and answered
+// with an error status rather than rethrown — the SDK's handler never throws at
+// the caller, which is why the controller judges the outcome by status code.
 vi.mock('@modelcontextprotocol/server', () => ({
-	createMcpHandler: vi.fn((factory: () => Promise<unknown>) => ({ factory })),
+	createMcpHandler: vi.fn(
+		(factory: () => Promise<unknown>, options?: { onerror?: (error: Error) => void }) => ({
+			factory,
+			onerror: options?.onerror,
+		}),
+	),
 }));
 vi.mock('@modelcontextprotocol/node', () => ({
 	toNodeHandler: vi.fn(
-		(handler: { factory: () => Promise<unknown> }) =>
-			async (req: unknown, res: unknown, body?: unknown) => {
+		(handler: MockMcpHandler) => async (req: unknown, res: unknown, body?: unknown) => {
+			try {
 				await handler.factory();
-				await mockHandleRequest(req, res, body);
-			},
+			} catch (error) {
+				handler.onerror?.(error as Error);
+				(res as FlushableResponse).statusCode = 500;
+				return;
+			}
+			await mockHandleRequest(req, res, body);
+		},
 	),
 }));
 
@@ -60,6 +84,9 @@ const createRes = (): FlushableResponse => {
 	const res = mock<FlushableResponse>();
 	res.status.mockReturnThis();
 	res.json.mockReturnThis();
+	// Express defaults to 200 until something writes a status; the connection
+	// event reads this to tell a served handshake from a rejected one.
+	res.statusCode = 200;
 	return res;
 };
 
@@ -67,6 +94,7 @@ describe('McpController', () => {
 	let McpController: typeof McpControllerType;
 	let controller: McpControllerType;
 	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
 	const telemetry = { track: vi.fn() } as unknown as Telemetry;
 	const mcpService = {
 		getServer: vi.fn(),
@@ -94,6 +122,7 @@ describe('McpController', () => {
 		});
 
 		Container.set(Logger, logger);
+		Container.set(ErrorReporter, errorReporter);
 		Container.set(Telemetry, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
@@ -106,47 +135,12 @@ describe('McpController', () => {
 		controller = Container.get(McpController);
 	});
 
-	test('returns 403 if MCP access is disabled', async () => {
-		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
-		const res = createRes();
-		await controller.build(createReq(), res);
-		expect(res.status).toHaveBeenCalledWith(403);
-		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
-		expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
-		// Feature-flag resolution is skipped for rejected requests to
-		// avoid an unnecessary PostHog lookup.
-		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
-	});
-
-	test('tracks disabled-access init errors without feature-flag fields', async () => {
-		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
-		const res = createRes();
-
-		await controller.build(
-			createReq({
-				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
-				body: {
-					jsonrpc: '2.0',
-					method: 'initialize',
-					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
-				},
-			}),
-			res,
-		);
-
-		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
-			user_id: 'user-1',
-			client_name: 'Claude',
-			client_version: '1.0.0',
-			auth_type: 'oauth',
-			mcp_connection_status: 'error',
-			error: 'MCP access is disabled',
-		});
-		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
-	});
-
 	test('advertises the MCP routing headers in the CORS allow-list', async () => {
-		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
 		const res = createRes();
 		res.header = vi.fn().mockReturnThis();
 
@@ -250,6 +244,111 @@ describe('McpController', () => {
 		});
 	});
 
+	// A handshake the SDK refuses (unsupported protocol revision, missing
+	// Mcp-Method header, unsupported media type) comes back as an error response,
+	// not a throw. Tracking it as a connection would count users who never got a
+	// working session, inflating the connect-to-use funnel.
+	test('tracks a handshake the SDK answered with an error status as an error', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		mockHandleRequest.mockImplementationOnce((_req: unknown, res: FlushableResponse) => {
+			res.statusCode = 400;
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '3.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				user_id: 'user-1',
+				client_name: 'Claude',
+				protocol_version: '2026-07-28',
+				mcp_connection_status: 'error',
+				error: 'MCP handshake failed',
+				http_status: 400,
+			}),
+		);
+	});
+
+	// `server/discover` exists only on the modern leg. Without a protocol version
+	// in the `_meta` envelope the request classifies as legacy, where the method is
+	// unknown, and the handler answers method-not-found inside a 200. Verified
+	// against a running instance: the response is an SSE frame carrying
+	// {"error":{"code":-32601}} with HTTP 200, so the status alone reads as success.
+	test('tracks a discover handshake with no declared protocol version as an error', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
+				body: { jsonrpc: '2.0', method: 'server/discover', params: {} },
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				mcp_connection_status: 'error',
+				error: 'MCP handshake failed: no protocol version declared',
+				http_status: 200,
+			}),
+		);
+	});
+
+	test('reports the handler error when building the MCP server fails', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockRejectedValue(
+			new Error('tool schema conversion failed'),
+		);
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'Claude', version: '1.0.0' } },
+				},
+			}),
+			res,
+		);
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			'User connected to MCP server',
+			expect.objectContaining({
+				mcp_connection_status: 'error',
+				error: 'tool schema conversion failed',
+				http_status: 500,
+			}),
+		);
+	});
+
 	test('reports the env_override variant when the flag is forced on by an operator', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
@@ -311,6 +410,49 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: true },
+		);
+	});
+
+	// The 2026-07-28 revision drops `initialize`, so a modern client opens with
+	// `server/discover`. It is the other branch of `isConnectionHandshake`, and the
+	// one that has to reach `getServer` for the handshake-only reads to happen.
+	test('forwards server/discover to getServer as the connection handshake', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
+			aiPreferencesEnabled: true,
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: {
+					jsonrpc: '2.0',
+					id: 1,
+					method: MCP_DISCOVER_METHOD,
+					params: {
+						_meta: {
+							[MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28',
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '1.0.0' },
+						},
+					},
+				},
+			}),
+			res,
+		);
+
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			expect.objectContaining({ aiPreferencesEnabled: true }),
+			{ name: 'Claude', version: '1.0.0' },
+			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: true },
 		);
 	});
 
@@ -344,6 +486,7 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
+			{ isConnectionHandshake: false },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -377,6 +520,7 @@ describe('McpController', () => {
 				caller: { authType: 'oauth', clientId: 'client-abc' },
 				grantedScopes: ['workflow:read'],
 			},
+			{ isConnectionHandshake: false },
 		);
 	});
 
@@ -394,6 +538,20 @@ describe('McpController', () => {
 		);
 		expect(res.status).toHaveBeenCalledWith(401);
 		expect(res.end).toHaveBeenCalled();
+	});
+
+	describe('MCP access gate', () => {
+		test.each(['discoverAuthSchemeHead', 'handleGet', 'build'])(
+			'runs before authentication on %s',
+			(handlerName) => {
+				const { middlewares } = Container.get(ControllerRegistryMetadata).getRouteMetadata(
+					McpController as unknown as Controller,
+					handlerName,
+				);
+
+				expect(middlewares[0]).toBe(mockEnabledMiddleware);
+			},
+		);
 	});
 
 	// The route decorators read `McpConfig.rateLimitServer` at import time, so
@@ -417,14 +575,6 @@ describe('McpController', () => {
 	});
 
 	describe('GET /http', () => {
-		test('returns 403 if MCP access is disabled', async () => {
-			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
-			const res = createRes();
-			await controller.handleGet(createReq(), res);
-			expect(res.status).toHaveBeenCalledWith(403);
-			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
-		});
-
 		// The listen stream is unsupported in stateless mode: a GET routed into
 		// the transport would hang forever, so the route must answer 405 itself.
 		test('returns 405 without touching the MCP transport', async () => {

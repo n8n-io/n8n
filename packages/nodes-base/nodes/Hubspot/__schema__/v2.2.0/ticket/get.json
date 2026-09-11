@@ -16,6 +16,67 @@
         "properties": {
             "type": "object",
             "properties": {
+                "content": {
+                    "type": "object",
+                    "properties": {
+                        "isEncrypted": {
+                            "type": "boolean"
+                        },
+                        "requestId": {
+                            "type": "string"
+                        },
+                        "sensitivityLevel": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "timestamp": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        },
+                        "versions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "persistenceTimestamp": {
+                                        "type": "integer"
+                                    },
+                                    "requestId": {
+                                        "type": "string"
+                                    },
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "sourceId": {
+                                        "type": "string"
+                                    },
+                                    "sourceUpstreamDeployable": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "updatedByUserId": {
+                                        "type": "integer"
+                                    },
+                                    "useTimestampAsPersistenceTimestamp": {
+                                        "type": "boolean"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "subject": {
                     "type": "object",
                     "properties": {
@@ -92,5 +153,5 @@
             }
         }
     },
-    "version": 3
+    "version": 5
 }

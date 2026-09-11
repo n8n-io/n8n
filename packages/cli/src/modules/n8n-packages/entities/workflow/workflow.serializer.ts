@@ -3,6 +3,10 @@ import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
 import {
+	serializedWorkflowMetadataSchema,
+	type SerializedWorkflowMetadata,
+} from '../../spec/serialized/workflow-metadata.schema';
+import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
@@ -48,6 +52,20 @@ const serializePayload = definePackageSerializationPayload<
 	WorkflowPackageKeyHandling
 >();
 
+/** The same decisions from the metadata file's side. */
+type WorkflowMetadataKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'activeVersionId'>,
+	'exclude'
+> & {
+	activeVersionId: 'transform';
+};
+
+const serializeMetadataPayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflowMetadata,
+	WorkflowMetadataKeyHandling
+>();
+
 @Service()
 export class WorkflowSerializer {
 	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
@@ -66,7 +84,6 @@ export class WorkflowSerializer {
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
 				versionId: workflow.versionId,
 				parentFolderId: workflow.parentFolder?.id ?? null,
-				isPublished: workflow.activeVersionId === workflow.versionId,
 				isArchived: workflow.isArchived,
 				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
@@ -74,14 +91,16 @@ export class WorkflowSerializer {
 		);
 	}
 
+	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
+		return serializedWorkflowMetadataSchema.parse(
+			serializeMetadataPayload({ publishedVersionId: workflow.activeVersionId }),
+		);
+	}
+
 	/**
-	 * Turns a workflow from a package back into something we can save on
-	 * the target instance.
-	 *
-	 * We drop anything the target owns — its id, versionId, where it lives,
-	 * whether it's published, timestamps — so the caller can set those fresh.
-	 * The content of the workflow comes along, and we keep whichever
-	 * archived state the source had it in.
+	 * Turns a workflow from a package back into something we can save on the
+	 * target instance. We drop anything the target owns — its id, versionId,
+	 * where it lives, timestamps — so the caller can set those fresh.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);

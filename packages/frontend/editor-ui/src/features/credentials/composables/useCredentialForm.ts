@@ -508,6 +508,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 				? { acceptedStatusCodes: JSON.stringify(setupHint.acceptedStatusCodes) }
 				: {}),
 			...(setupHint.serviceHost ? { serviceHost: setupHint.serviceHost } : {}),
+			...(setupHint.serviceOrigin ? { serviceOrigin: setupHint.serviceOrigin } : {}),
 		};
 	}
 

@@ -152,7 +152,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('GET /roles/:slug', () => {
+	describe('GET /roles/:roleSlug', () => {
 		const systemRoleBody = (slug: string, roleType: string) => ({
 			slug,
 			displayName: expect.any(String),
@@ -448,7 +448,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('PUT /roles/{slug}', () => {
+	describe('PUT /roles/{roleSlug}', () => {
 		type CreatedRole = {
 			slug: string;
 			displayName: string;
@@ -737,7 +737,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('DELETE /roles/{slug}', () => {
+	describe('DELETE /roles/{roleSlug}', () => {
 		it('deletes a custom global role, returns its full public shape, and the slug becomes unreachable', async () => {
 			const role = await createGlobalRole('PA delete all fields', ['user:read', 'user:list']);
 

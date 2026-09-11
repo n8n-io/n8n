@@ -71,6 +71,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
+	/**
+	 * Enable durable background jobs for agents: spawning sub-agents that outlive
+	 * the parent's turn, and detached tracking of waiting workflow tools. Must be
+	 * set to the same value on mains and workers — workers settle workflow jobs.
+	 */
+	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
+	backgroundTasksEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
@@ -90,7 +98,16 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	/** When true, the sandbox provider deletes the knowledge sandbox once it goes idle. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
+
+	/**
+	 * How often (seconds) each main checks that the channels of its published
+	 * agents are actually running, and retries the ones that are not. Set to 0 to
+	 * stop checking, which leaves a channel that failed to start down until the
+	 * agent is republished or the instance restarts.
+	 */
+	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
+	channelReconcileIntervalSeconds: number = 60;
 }

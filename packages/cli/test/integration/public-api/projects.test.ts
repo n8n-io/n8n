@@ -11,6 +11,7 @@ import { Container } from '@n8n/di';
 import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Telemetry } from '@/telemetry';
 import {
@@ -24,12 +25,19 @@ describe('Projects in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
 	mockInstance(Telemetry);
 
+	let emitSpy: MockInstance<EventService['emit']>;
+
 	beforeAll(async () => {
 		await testDb.init();
 	});
 
 	beforeEach(async () => {
 		await testDb.truncate(['Project', 'User']);
+		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+	});
+
+	afterEach(() => {
+		emitSpy.mockRestore();
 	});
 
 	describe('GET /projects', () => {
@@ -75,7 +83,7 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject', async () => {
@@ -118,6 +126,62 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
+
+		it('should return every project field', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('Marketing');
+
+			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual({
+				id: project.id,
+				name: 'Marketing',
+				type: 'team',
+				icon: null,
+				description: null,
+				customTelemetryTags: [],
+				creatorId: null,
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+		});
+
+		it('should paginate with limit and cursor', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			await Promise.all([createTeamProject(), createTeamProject()]);
+
+			const firstPage = await testServer.publicApiAgentFor(owner).get('/projects?limit=1');
+
+			expect(firstPage.status).toBe(200);
+			expect(firstPage.body.data).toHaveLength(1);
+			expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+
+			const secondPage = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/projects?cursor=${firstPage.body.nextCursor}`);
+
+			expect(secondPage.status).toBe(200);
+			expect(secondPage.body.data).toHaveLength(1);
+			expect(secondPage.body.data[0].id).not.toBe(firstPage.body.data[0].id);
+		});
+
+		it('should reject an invalid cursor', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/projects?cursor=not-a-cursor');
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'An invalid cursor was provided');
+		});
 	});
 
 	describe('POST /projects', () => {
@@ -156,6 +220,11 @@ describe('Projects in Public API', () => {
 				scopes: expect.any(Array),
 			});
 			await expect(getProjectByNameOrFail(projectPayload.name)).resolves.not.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-created', {
+				userId: owner.id,
+				role: owner.role.slug,
+				uiContext: undefined,
+			});
 		});
 
 		it('if not authenticated, should reject', async () => {
@@ -176,7 +245,7 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject', async () => {
@@ -227,6 +296,51 @@ describe('Projects in Public API', () => {
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
+
+		it('should reject a body without a name', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer.publicApiAgentFor(owner).post('/projects').send({});
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				"request/body must have required property 'name'",
+			);
+		});
+
+		it('should reject an unknown body key', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send({ name: 'some-project', icon: { type: 'icon', value: 'layers' } });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				"request/body Unrecognized key(s) in object: 'icon'",
+			);
+		});
+
+		it.each(['id', 'type'])('should reject the read-only field %s', async (key) => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send({ name: 'some-project', [key]: 'team' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', `request/body/${key} is read-only`);
+		});
 	});
 
 	describe('DELETE /projects/:id', () => {
@@ -249,6 +363,26 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getProjectByNameOrFail(project.id)).rejects.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-deleted', {
+				userId: owner.id,
+				role: owner.role.slug,
+				projectId: project.id,
+				removalType: 'delete',
+				targetProjectId: undefined,
+			});
+
+			const list = await testServer.publicApiAgentFor(owner).get('/projects');
+			expect(list.body.data).not.toContainEqual(expect.objectContaining({ id: project.id }));
+		});
+
+		it('if project not found, should reject with 404', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer.publicApiAgentFor(owner).delete('/projects/unknown-id');
+
+			expect(response.status).toBe(404);
 		});
 
 		it('if not authenticated, should reject', async () => {
@@ -268,7 +402,7 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject', async () => {
@@ -338,6 +472,29 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getProjectByNameOrFail('new-name')).resolves.not.toThrow();
+			expect(emitSpy).toHaveBeenCalledWith('team-project-updated', {
+				userId: owner.id,
+				role: owner.role.slug,
+				projectId: project.id,
+			});
+
+			const list = await testServer.publicApiAgentFor(owner).get('/projects');
+			expect(list.body.data).toContainEqual(
+				expect.objectContaining({ id: project.id, name: 'new-name' }),
+			);
+		});
+
+		it('if project not found, should reject with 404', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/projects/unknown-id')
+				.send({ name: 'new-name' });
+
+			expect(response.status).toBe(404);
 		});
 
 		it('if not authenticated, should reject', async () => {
@@ -358,7 +515,7 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toHaveProperty('message', 'Unauthorized');
 		});
 
 		it('if not licensed, should reject', async () => {
@@ -408,6 +565,41 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
+
+		it('should reject an unknown body key', async () => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('old-name');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/projects/${project.id}`)
+				.send({ name: 'new-name', icon: { type: 'icon', value: 'layers' } });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty(
+				'message',
+				"request/body Unrecognized key(s) in object: 'icon'",
+			);
+			await expect(getProjectByNameOrFail('old-name')).resolves.not.toThrow();
+		});
+
+		it.each(['id', 'type'])('should reject the read-only field %s', async (key) => {
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createOwnerWithApiKey();
+			const project = await createTeamProject('old-name');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/projects/${project.id}`)
+				.send({ name: 'new-name', [key]: 'team' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', `request/body/${key} is read-only`);
+			await expect(getProjectByNameOrFail('old-name')).resolves.not.toThrow();
 		});
 	});
 

@@ -28,6 +28,7 @@ import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const routerResolveMock = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/new-workflow-id' })));
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: showErrorMock,
@@ -134,7 +135,14 @@ const ToolsConnectionModalStub = defineComponent({
 		modalAttrs = attrs;
 		return {};
 	},
-	template: '<div data-test-id="tools-connection-modal-stub" />',
+	template:
+		'<div data-test-id="tools-connection-modal-stub"><slot name="suggestion-footer" /></div>',
+});
+
+const McpRegistrySuggestionFooterStub = defineComponent({
+	name: 'McpRegistrySuggestionFooter',
+	props: ['prompt', 'action'],
+	template: '<div><span>{{ prompt }}</span><span>{{ action }}</span></div>',
 });
 
 function getItems(): ToolConnectionItem[] {
@@ -172,6 +180,7 @@ const renderComponent = createComponentRenderer(AgentToolsConnectionModalWrapper
 	global: {
 		stubs: {
 			ToolsConnectionModal: ToolsConnectionModalStub,
+			McpRegistrySuggestionFooter: McpRegistrySuggestionFooterStub,
 		},
 	},
 });
@@ -267,6 +276,13 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		});
 	}
 
+	it('configures the suggestion footer copy', () => {
+		const { getByText } = render();
+
+		expect(getByText('Need another capability?')).toBeInTheDocument();
+		expect(getByText('Suggest a tool')).toBeInTheDocument();
+	});
+
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
 	// declared props. If those fall through onto ToolsConnectionModal the
 	// inherited `open` is always true while mounted and would pin the dialog
@@ -304,7 +320,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.open).toBe(true);
 	});
 
-	it('assigns each available item the category tab it belongs to', async () => {
+	it('puts native and other node tools in the n8n nodes category', async () => {
 		const recommended: INodeTypeDescription = {
 			...WIKIPEDIA,
 			displayName: 'Gmail',
@@ -326,7 +342,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		const categoryById = new Map(getItems().map((item) => [item.id, item.category]));
 
 		expect(categoryById.get(`nodeType:${SLACK.name}`)).toBe('app-action');
-		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('n8n');
+		expect(categoryById.get('nodeType:n8n-nodes-base.gmail')).toBe('app-action');
+		expect(modalAttrs.categories).toEqual(['all', 'mcp', 'app-action', 'workflows']);
 	});
 
 	it('assigns workflows to the workflows category', async () => {
@@ -503,33 +520,58 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('closes the tools modal once an edit to a connected tool is saved', async () => {
+	it('adds another instance of a connected node tool instead of overwriting it', async () => {
+		const existing = toolRef(SLACK.name);
 		const onConfirm = vi.fn();
-		render([toolRef(SLACK.name)], onConfirm);
+		render([existing], onConfirm);
 		await flushPromises();
 
 		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
+		// Activating a connected node-tool row opens the config modal for a NEW
+		// instance (fresh ref, empty parameters) — not an edit of the existing one.
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		payload.data.onConfirm({ ...toolRef(SLACK.name), name: 'Renamed Slack' });
+		expect(payload.name).toBe('agentToolConfigModal');
+		expect(payload.data.toolRef).toMatchObject({
+			type: 'node',
+			node: { nodeType: SLACK.name, nodeParameters: {} },
+		});
+		expect(payload.data.existingToolNames).toContain(existing.name);
 
-		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const configuredRef: AgentJsonToolRef = {
+			type: 'node',
+			name: 'Slack (1)',
+			node: {
+				nodeType: SLACK.name,
+				nodeTypeVersion: 1,
+				nodeParameters: { resource: 'message' },
+				credentials: { slackApi: { id: 'c-2', name: 'Other Slack' } },
+			},
+		};
+		payload.data.onConfirm(configuredRef);
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			tools: [existing, configuredRef],
+			mcpServers: [],
+		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('removes a connected tool when the config modal asks to', async () => {
+	it('does not remove a connected node tool when activating its row', async () => {
+		const existing = toolRef(SLACK.name);
 		const onConfirm = vi.fn();
-		render([toolRef(SLACK.name)], onConfirm);
+		render([existing], onConfirm);
 		await flushPromises();
 
 		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
+		// The connected row now opens config for a new instance; there is no
+		// remove callback on that flow (removal happens via the capabilities chips).
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		payload.data.onRemove();
-
-		expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
+		expect(payload.data.onRemove).toBeUndefined();
+		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
 	it('appends a configured tool once the config modal saves', async () => {
@@ -634,7 +676,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(noTriggerDisabled).toBeTruthy();
 			expect(noTriggerDisabled?.disabled).toBe(true);
-			expect(noTriggerDisabled?.disabledReason).toContain('No supported trigger node');
+			expect(noTriggerDisabled?.disabledReason).toContain(
+				"Needs a 'When Executed by Another Workflow' trigger",
+			);
 
 			// Disabled items appear after compatible ones within the category.
 			const workflowItems = items.filter((i) => i.kind === 'workflow');
@@ -949,6 +993,34 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('adds another managed instance with the managed credential preselected', async () => {
+			const existing: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: SLACK.name,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: { slackApi: { id: null, name: '', __aiGatewayManaged: true } },
+				},
+			};
+			const onConfirm = vi.fn();
+			render([existing], onConfirm);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitConnect(connected!);
+
+			// Activating a connected managed tool routes through the managed add
+			// path, so the new instance keeps the __aiGatewayManaged credential.
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef.node.credentials).toEqual({
+				slackApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+			expect(payload.data.existingToolNames).toContain(existing.name);
 		});
 	});
 });

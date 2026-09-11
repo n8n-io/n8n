@@ -10,6 +10,7 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -20,7 +21,9 @@ import {
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiSendMessageRequest,
 	instanceAiEventSchema,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
@@ -31,6 +34,7 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
@@ -42,6 +46,22 @@ import {
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('Instance AI prompt version requests', () => {
+	it('accepts an optional version pin and rejects empty or oversized pins', () => {
+		const base = { message: 'Build a workflow', timeZone: 'UTC' };
+		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
+		expect(
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
+				.promptVersion,
+		).toBe('progressive@1');
+		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
+			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
+				false,
+			);
+		}
+	});
+});
 
 describe('sandbox provider', () => {
 	it('accepts supported providers', () => {
@@ -75,6 +95,84 @@ describe('instanceAiEventSchema', () => {
 		};
 
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses setup-items events (the FE drops any type failing this parse)', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-1:credential:slackApi',
+						kind: 'credential',
+						credentialType: 'slackApi',
+						nodeBindings: [{ nodeName: 'Send message' }],
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('parses historical eval-setup agent events', () => {
+		const event = {
+			type: 'agent-spawned',
+			runId: 'run-legacy-eval',
+			agentId: 'agent-legacy-eval',
+			payload: {
+				parentId: 'agent-root',
+				role: 'evaluation setup',
+				tools: ['workflows'],
+				taskId: 'task-legacy-eval',
+				kind: 'eval-setup',
+				title: 'Setting up evaluations',
+				targetResource: { type: 'workflow', id: 'workflow-1' },
+			},
+		};
+
+		expect(instanceAiEventSchema.parse(event)).toEqual(event);
+	});
+
+	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
+	});
+
+	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					// Missing credentialType.
+					{ id: 'wf-1:credential:slackApi', kind: 'credential' },
+					// A kind this client predates.
+					{ id: 'wf-1:question:q-1', kind: 'question', prompt: 'Region?' },
+					{
+						id: 'wf-1:credential:notionApi',
+						kind: 'credential',
+						credentialType: 'notionApi',
+					},
+				],
+			},
+		};
+
+		const result = instanceAiEventSchema.safeParse(event);
+		expect(result.success).toBe(true);
+		if (result.success && result.data.type === 'setup-items') {
+			expect(result.data.payload.items).toEqual([
+				{
+					id: 'wf-1:credential:notionApi',
+					kind: 'credential',
+					credentialType: 'notionApi',
+				},
+			]);
+		}
 	});
 });
 
@@ -175,6 +273,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 
@@ -198,6 +297,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
 			readFilesystem: 'always_allow',
 		};
@@ -205,6 +305,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
 		expect(result.readFilesystem).toBe('always_allow');
 	});
@@ -236,6 +337,30 @@ describe('confirmationRequestPayloadSchema', () => {
 		const payload = makeConfirmation({ requireUserSelection: true });
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves a credential destination requiring approval', () => {
+		const payload = makeConfirmation({
+			credentialDestination: {
+				origin: 'https://api.example.com',
+				nodeNames: ['Fetch account'],
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('requires a credential destination to be an exact HTTP origin', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				credentialDestination: {
+					origin: 'https://api.example.com/v1',
+					nodeNames: ['Fetch account'],
+				},
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -472,6 +597,14 @@ describe('workflow update session grant keys', () => {
 	});
 });
 
+describe('credential destination session grant keys', () => {
+	it('encodes the workflow and exact origin', () => {
+		expect(buildCredentialDestinationGrantKey('workflow:1', 'https://api.example.com:8443')).toBe(
+			'credential-destination:workflow%3A1:https%3A%2F%2Fapi.example.com%3A8443',
+		);
+	});
+});
+
 describe('workflow-setup skip keys', () => {
 	it('round-trips credential types and ignores unrelated keys', () => {
 		const keys = new Set([
@@ -597,7 +730,7 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
+	it('accepts a sub-agent relationship backed by another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
@@ -606,8 +739,34 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{
+			name: 'self reference',
+			referencedAgentId: 'AgEnT12345678901',
+			expectedError: 'cannot use itself as a sub-agent',
+		},
+		{
+			name: 'unbacked reference',
+			referencedAgentId: 'AgEnT99999999999',
+			expectedError: 'is not included in the seed',
+		},
+	])('rejects a $name', ({ referencedAgentId, expectedError }) => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: referencedAgentId }] } },
+				}),
+			],
+		});
+
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('unpublished draft');
+		expect(errorOf(result)).toContain(expectedError);
 	});
 
 	it('rejects an inherited property name as a backed skill body', () => {
@@ -935,5 +1094,32 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ page: -1 },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
+	});
+});
+
+describe('instanceAiHandoffContextSchema', () => {
+	it('accepts the setup panel execute context', () => {
+		const result = instanceAiHandoffContextSchema.safeParse({
+			source: 'setup-panel-execute',
+			workflowId: 'wf-1',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a setup panel execute context without a workflowId', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute' }).success,
+		).toBe(false);
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel-execute', workflowId: '' })
+				.success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown source', () => {
+		expect(
+			instanceAiHandoffContextSchema.safeParse({ source: 'setup-panel', workflowId: 'wf-1' })
+				.success,
+		).toBe(false);
 	});
 });

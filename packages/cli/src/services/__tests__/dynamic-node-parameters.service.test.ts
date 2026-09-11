@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -177,6 +177,68 @@ describe('DynamicNodeParametersService', () => {
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should stringify a numeric pagination token returned by a listSearch method', async () => {
+			const listSearchMethod = vi
+				.fn()
+				.mockResolvedValue({ results: [{ name: 'r', value: 'v' }], paginationToken: 0 });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBe('0');
+		});
+
+		it('should leave an absent pagination token absent', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('should not throw when a listSearch method returns nothing', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue(undefined);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result).toBeUndefined();
+		});
+
 		it('should acquire and release isolate around getResourceMappingFields', async () => {
 			const resourceMappingMethod = vi.fn().mockResolvedValue({
 				fields: [{ id: '1', displayName: 'F', defaultMatch: false, required: true, display: true }],
@@ -229,8 +291,8 @@ describe('DynamicNodeParametersService', () => {
 	// protection is enabled, they honour the same restrictions as node execution.
 	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
 	// that build the request and set auth by hand), which routes through
-	// `OutboundHttp.requests({ ssrf })` — asserting that argument proves the
-	// bridge is forwarded end to end.
+	// `OutboundHttp.requests()` — asserting the no-argument call proves they get
+	// the default safe client, so the instance's egress policy applies.
 	describe('egress policy for method-name requests', () => {
 		const requestLegacy = vi.fn();
 		const requests = vi.fn();
@@ -313,31 +375,16 @@ describe('DynamicNodeParametersService', () => {
 		];
 
 		it.each(scenarios)(
-			'forwards the SSRF bridge to requests made from the $name method',
+			'routes requests made from the $name method through the default safe client',
 			async ({ register, invoke }) => {
 				const method = requestingMethod();
 				register(method);
-				const ssrfBridge = mock<SsrfBridge>();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 				await invoke(additionalData);
 
 				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
-			},
-		);
-
-		it.each(scenarios)(
-			'disables SSRF for requests from the $name method when no bridge is attached',
-			async ({ register, invoke }) => {
-				const method = requestingMethod();
-				register(method);
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
-
-				await invoke(additionalData);
-
-				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+				expect(requests).toHaveBeenCalledWith();
 			},
 		);
 	});

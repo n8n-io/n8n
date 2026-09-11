@@ -784,8 +784,6 @@ function createDetail(): WorkflowReviewRequestDetail {
 		id: 'req-1',
 		projectId: 'proj-1',
 		title: 'Review',
-		workflowName: 'My workflow',
-		workflowVersionId: null,
 		requester: null,
 		authors: [],
 		reviewers: [],

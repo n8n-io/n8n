@@ -24,6 +24,7 @@ import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
+import type { WorkflowScheduledJobOwner } from '../../workflow-scheduled-job-owner';
 import { ScheduleTriggerJobRegistrar } from '../schedule-trigger-job-registrar';
 
 /** Flatten a schedule into the per-kind columns a row stores; absent fields are null. */
@@ -54,6 +55,7 @@ const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE
 
 describe('ScheduleTriggerJobRegistrar deviations', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
+	const owner = mock<WorkflowScheduledJobOwner>();
 
 	const makeRegistrar = (triggerNodeMode: 'legacy' | 'new') =>
 		new ScheduleTriggerJobRegistrar(
@@ -64,6 +66,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			jobProvisioner,
+			owner,
 		);
 
 	/** Collect one rule and return the row view the reconciliation would persist. */
@@ -72,7 +75,7 @@ describe('ScheduleTriggerJobRegistrar deviations', () => {
 		const session = makeRegistrar(mode).createSession();
 		session.createCollector(workflow, scheduleNode).registerCron(cron, vi.fn());
 		await session.commit(WORKFLOW_ID, NODE_ID);
-		const desired = jobProvisioner.provision.mock.calls.at(-1)![4][0];
+		const desired = jobProvisioner.provision.mock.calls.at(-1)![0].desired[0];
 		return { ...flatten(desired.schedule), nextRunAt: desired.firstRunAt };
 	};
 

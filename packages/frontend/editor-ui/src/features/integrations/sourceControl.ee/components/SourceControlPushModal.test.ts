@@ -13,7 +13,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 const eventBus = createEventBus();
 
@@ -1496,6 +1496,60 @@ describe('SourceControlPushModal', () => {
 				.filter(Boolean);
 
 			expect(optionLabels).toEqual(['Alpha', 'Prod', 'Prod / Analytics', 'Prod / Billing']);
+		});
+
+		it('keeps a workflow moved out of a folder visible when filtering by its source folder', async () => {
+			// Moved from Production (prior) into Archive (current).
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-moved',
+					name: 'Moved workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: true,
+					file: '/home/user/.n8n/git/workflows/wf-moved.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+					folderPath: ['Archive'],
+					remoteFolderPath: ['Production'],
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+			const folderSelect = getByTestId('source-control-folder-filter');
+			const folderCombobox = within(folderSelect).getByRole('combobox');
+			await userEvent.click(folderCombobox);
+
+			const dropdownId = folderCombobox.getAttribute('aria-controls');
+			await waitFor(() => {
+				const dropdown = document.getElementById(dropdownId as string);
+				expect(within(dropdown as HTMLElement).getByText('Production')).toBeInTheDocument();
+			});
+
+			const dropdown = document.getElementById(dropdownId as string) as HTMLElement;
+			await userEvent.click(within(dropdown).getByText('Production'));
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
 		});
 
 		test.each([

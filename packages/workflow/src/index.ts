@@ -5,6 +5,7 @@ import * as TelemetryHelpers from './telemetry-helpers';
 
 export * from './errors';
 export * from './constants';
+export * from './nodes-api-version';
 export * from './common';
 export * from './cron';
 export * from './data-table.types';

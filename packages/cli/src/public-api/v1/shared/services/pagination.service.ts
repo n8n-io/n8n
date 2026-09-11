@@ -17,17 +17,21 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
  * Resolves the offset and limit to query with for a list endpoint either from defaults
  * or from a provided cursor.
  */
-export function resolveOffsetPagination(query: {
+export function resolveOffsetPagination({
+	cursor,
+	limit: queryLimit,
+	offset: queryOffset,
+}: {
 	cursor?: string;
 	limit: number;
 	offset?: number;
 }): { offset: number; limit: number } {
-	let { limit } = query;
-	let offset = query.offset ?? 0;
+	let limit = queryLimit;
+	let offset = queryOffset ?? 0;
 
-	if (query.cursor) {
+	if (cursor) {
 		try {
-			const decoded = decodeCursor(query.cursor);
+			const decoded = decodeCursor(cursor);
 			if (!('offset' in decoded)) {
 				throw new BadRequestError('An invalid cursor was provided');
 			}

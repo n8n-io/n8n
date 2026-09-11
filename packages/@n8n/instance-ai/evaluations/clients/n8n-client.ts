@@ -7,6 +7,10 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiHandoffContext,
+	InstanceAiSendMessageRequest,
+	AgentConfigResponse,
+	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -22,6 +26,7 @@ import type {
 	AgentSkill,
 	EvaluationConfigDto,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
@@ -186,7 +191,7 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
@@ -270,7 +275,15 @@ export class N8nClient {
 	 * Ensure a conversation thread exists before sending chat messages.
 	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
-	async ensureThread(threadId: string, projectId?: string): Promise<void> {
+	/** `sourceContext` is persisted on the thread and surfaced on the run's
+	 *  LangSmith trace (prefixed `source_context.`), so pass what a later reader
+	 *  needs to tell one build apart from another — the eval harness sends the
+	 *  case slug and iteration. Capped at 2 KB by the API. */
+	async ensureThread(
+		threadId: string,
+		projectId?: string,
+		sourceContext?: Record<string, string | number | boolean>,
+	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
@@ -279,6 +292,7 @@ export class N8nClient {
 				projectId: resolvedProjectId,
 				source: 'evals',
 				origin: 'internal',
+				...(sourceContext ? { sourceContext } : {}),
 			},
 		});
 	}
@@ -295,12 +309,21 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
+		mode: InstanceAiBuildMode = 'default',
+		promptVersion?: string,
+		handoffContext?: InstanceAiHandoffContext,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
+			body: {
+				message,
+				...(attachments?.length ? { attachments } : {}),
+				mode,
+				...(promptVersion ? { promptVersion } : {}),
+				...(handoffContext ? { context: handoffContext } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -329,9 +352,12 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
-			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
 	}
 
@@ -510,8 +536,8 @@ export class N8nClient {
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<WorkflowResponse> {
-		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
+	async getWorkflow(id: string, timeoutMs?: number): Promise<WorkflowResponse> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, { timeoutMs })) as {
 			data: WorkflowResponse;
 		};
 		return result.data;
@@ -524,8 +550,8 @@ export class N8nClient {
 	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
 		const result = (await this.fetch(
 			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
-		)) as { data: AgentJsonConfig };
-		return result.data;
+		)) as { data: AgentConfigResponse };
+		return result.data.config;
 	}
 
 	/**
@@ -572,12 +598,14 @@ export class N8nClient {
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
+		timeoutMs?: number,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
 			body.triggerToStartFrom = { name: triggerNodeName };
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			timeoutMs,
 			method: 'POST',
 			body,
 		})) as { data: { executionId: string } };
@@ -588,11 +616,15 @@ export class N8nClient {
 	 * Get a single execution by ID.
 	 * GET /rest/executions/:id
 	 */
-	async getExecution(executionId: string): Promise<ExecutionDetail> {
-		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+	async getExecution(executionId: string, timeoutMs?: number): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`, { timeoutMs })) as {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	async stopExecution(executionId: string): Promise<void> {
+		await this.fetch(`/rest/executions/${executionId}/stop`, { method: 'POST', timeoutMs: 5_000 });
 	}
 
 	/**
@@ -919,8 +951,10 @@ export class N8nClient {
 		threadId: string,
 		tableId: string,
 		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
 		});
@@ -940,6 +974,69 @@ export class N8nClient {
 			throw new Error('Could not determine personal project ID');
 		}
 		return result.data.id;
+	}
+
+	/**
+	 * Create a team project. Used to seed the extra projects a project-scope case
+	 * needs: a second project the eval user can see but whose writes are barred,
+	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 *
+	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
+	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
+	 * unlicensed instance. The error is re-thrown with that hint rather than
+	 * swallowed: a case that silently ran without it would grade the agent
+	 * against a project list it never saw, and pass for the wrong reason.
+	 * POST /rest/projects
+	 */
+	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+		try {
+			const result = (await this.fetch('/rest/projects', {
+				method: 'POST',
+				body: { name },
+			})) as { data?: { id?: string; name?: string } };
+			const id = result.data?.id;
+			if (!id) {
+				throw new Error(`Project "${name}" was created but the response carried no id`);
+			}
+			return { id, name: result.data?.name ?? name };
+		} catch (error: unknown) {
+			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
+				throw new Error(
+					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
+						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
+						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
+						'cert in the env is ignored. Re-enable it after seeding the owner:\n' +
+						'      PATCH /rest/e2e/feature {"feature":"feat:projectRole:admin","enabled":true}\n' +
+						'      PATCH /rest/e2e/quota   {"feature":"quota:maxTeamProjects","value":-1}\n' +
+						`  Original error: ${error.message}`,
+				);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * List the team projects the authenticated user can see, so a run can evict a
+	 * crashed predecessor's leftover before recreating it. Personal projects
+	 * are filtered out — they're never seeded and must never be deleted.
+	 * GET /rest/projects
+	 */
+	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+		const result = (await this.fetch('/rest/projects')) as {
+			data?: Array<{ id?: string; name?: string; type?: string }>;
+		};
+		return (result.data ?? []).flatMap(({ id, name, type }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		);
+	}
+
+	/**
+	 * Delete a project. Used to tear down seeded projects after a run.
+	 * DELETE /rest/projects/:projectId
+	 */
+	async deleteProject(projectId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}`, { method: 'DELETE' });
 	}
 
 	/**

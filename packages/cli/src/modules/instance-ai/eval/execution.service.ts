@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
@@ -141,7 +142,7 @@ export class EvalExecutionService {
 		]);
 		if (!workflowEntity) {
 			for (const delayMs of [200, 500, 1000]) {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				await sleep(delayMs);
 				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -431,7 +432,12 @@ export class EvalExecutionService {
 		/** Caller's budget; unbounded when omitted. See awaitRunWithinBudget. */
 		budget?: RunBudget,
 	): Promise<InstanceAiEvalExecutionResult> {
-		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
+		// Null-prototype map: node names are the keys here and come from workflow
+		// input, so a reserved name (`__proto__`, `constructor`, ...) must land as an
+		// own key instead of resolving up the prototype chain. Without this, the
+		// `nodeResults[name] ??= {}` + nested-write sinks below would assign onto
+		// `Object.prototype`.
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
 
 		// Fill setup-pending resource locators BEFORE the first normalization pass:
 		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
@@ -1287,7 +1293,7 @@ function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
 		parameters[key] = {
 			...rl,
 			value: synthesizeResourceLocatorValue(key),
-		} as INodeParameters[string];
+		};
 	}
 }
 
@@ -1337,7 +1343,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 		const value = mapper.value;
 		const mappingKeys =
 			value !== null && typeof value === 'object' && !Array.isArray(value)
-				? Object.keys(value as Record<string, unknown>)
+				? Object.keys(value)
 				: [];
 
 		if (mappingKeys.length === 0) {
@@ -1349,7 +1355,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				mappingMode: 'autoMapInputData',
 				value: null,
 				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
-			} as INodeParameters[string];
+			};
 			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
 			continue;
 		}
@@ -1369,7 +1375,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				type: 'string',
 				canBeUsedToMatch: true,
 			})),
-		} as INodeParameters[string];
+		};
 	}
 	return changes;
 }

@@ -4,6 +4,7 @@ import {
 	estimateObservationTokens,
 	normalizeObservationLogReflection,
 	supersededLifecycleState,
+	type AgentDbMessage,
 	type BuiltObservationLogStore,
 	type BuiltObservationLogTaskLockStore,
 	type NewObservationLogEntry,
@@ -16,7 +17,6 @@ import {
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
 } from '@n8n/agents';
-import type { AgentDbMessage } from '@n8n/instance-ai';
 import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';

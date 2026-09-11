@@ -49,6 +49,12 @@ export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './executi
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
 	credentialsDecrypted?: ICredentialsDecrypted;
+	/**
+	 * Status code(s) that trigger the generic preAuthentication refresh-and-resend in
+	 * `httpRequestWithAuthentication` (non-OAuth1/OAuth2 credentials only). Defaults to 401;
+	 * override when a gateway signals an expired token with a different status.
+	 */
+	preAuthenticationRetryStatusCode?: number | number[];
 }
 
 export type IAllExecuteFunctions =
@@ -86,7 +92,14 @@ export interface IOAuth2Options {
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
-	tokenExpiredStatusCode?: number;
+	tokenExpiredStatusCode?: number | number[];
+	/**
+	 * Whether a `tokenExpiredStatusCode` other than 401 only forces a refresh when the stored
+	 * token is at or past its expiry. Set this when the status is ambiguous, e.g. a gateway that
+	 * answers 404 both for an expired token and for a resource that does not exist, so a batch of
+	 * missing resources does not cost one refresh each. A 401 and an unknown expiry still refresh.
+	 */
+	skipRefreshWhileTokenIsFresh?: boolean;
 	keyToIncludeInAccessTokenHeader?: string;
 }
 
@@ -155,7 +168,26 @@ export type N8nOAuth2ValidationResult =
 	| { valid: false; reason: OAuth2FailureReason };
 
 export type N8nOAuth2FlowResult =
-	| { valid: true; token: string; user: IUser; metadata?: Record<string, string> }
+	| {
+			valid: true;
+			token: string;
+			/** Rotated on every use. Never hand this to a browser document or to page script. */
+			refreshToken: string;
+			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
+			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
+			expiresIn: number;
+			user: IUser;
+			metadata?: Record<string, string>;
+	  }
+	| { valid: false; reason: string };
+
+/**
+ * Result of trading a refresh token for a fresh pair. Carries no user: the grant
+ * the token belongs to already fixes the subject, and the caller re-validates the
+ * access token when it needs the identity.
+ */
+export type N8nOAuth2RefreshResult =
+	| { valid: true; token: string; refreshToken: string; expiresIn: number }
 	| { valid: false; reason: string };
 
 export type ProjectSharingData = {
@@ -518,7 +550,18 @@ export interface IExecuteContextData {
 	[key: string]: IContextObject;
 }
 
-export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+export type IHttpRequestMethods =
+	| 'DELETE'
+	| 'GET'
+	| 'PATCH'
+	| 'POST'
+	| 'PUT'
+	| 'PROPFIND'
+	| 'MKCOL'
+	| 'MOVE'
+	| 'COPY'
+	| 'REPORT'
+	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {
 	ignore: true;
@@ -934,14 +977,16 @@ interface NodeHelperFunctions {
 
 /**
  * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
- * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
- * validation and a connect-time secure DNS lookup.
+ * `httpRequest`. Mirrors the layers n8n's own egress uses: a pre-flight URL
+ * validation, a connect-time secure DNS lookup, and per-redirect validation.
  */
 export interface NodeEgressFilter {
 	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
 	validateUrl(url: string | URL): Promise<Result<void, Error>>;
 	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
 	createSecureLookup(): LookupFunction;
+	/** Validate a redirect hop synchronously; throws when the target is not allowed. */
+	validateRedirectSync(url: string): void;
 }
 
 export interface RequestHelperFunctions {
@@ -1004,10 +1049,10 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	/**
 	 * Returns the instance egress filter for clients that build their own HTTP
-	 * transport, or `undefined` when egress filtering is not configured (callers
-	 * then use the default transport).
+	 * transport. When egress filtering is not configured, this is a passthrough
+	 * implementation, so callers can always use the returned filter unguarded.
 	 */
-	getSecureEgressFilter(): NodeEgressFilter | undefined;
+	getSecureEgressFilter(): NodeEgressFilter;
 }
 
 export type SSHCredentials = {
@@ -1184,12 +1229,30 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The authoritative root-workflow nodes to check, taken from the SAME workflow snapshot
+ * that is executing — the published version on a live webhook, the execution snapshot on a
+ * waiting form, the draft on a test webhook. Passing the node objects (rather than a
+ * persisted workflow id alone) fixes two things at once: it restricts the check to the
+ * nodes that can actually run on this trigger (disjoint branches and other triggers' chains
+ * are simply not in the list), AND it pins the check to the running snapshot, so a node
+ * renamed or re-wired in a draft that differs from the running version can't make the
+ * resolver silently skip a credential.
+ *
+ * When omitted, every enabled node of the persisted workflow is checked (the safe default,
+ * used by callers that only have a workflow id — e.g. the form connect panel).
+ */
+export type CredentialCheckOptions = {
+	rootNodes?: INode[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1200,6 +1263,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1417,6 +1481,12 @@ export interface IPollFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
+	/**
+	 * Milliseconds this poll may spend before the engine abandons the tick.
+	 * A node draining a large backlog should stop fetching before the budget
+	 * runs out, return what it has, and leave the rest to the next poll.
+	 */
+	getPollBudgetMs(): number;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1529,6 +1599,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
+	 * Trades the refresh token from a completed flow for a fresh access/refresh pair on
+	 * the same grant, keeping a long-lived page working past the access token's one-hour
+	 * life without a new redirect. The AS rotates the refresh token, so the caller must
+	 * store the returned one and drop the old one. `resourceUrl` must name the resource
+	 * the grant was approved for.
+	 */
+	refreshN8nOAuth2Flow(refreshToken: string, resourceUrl: string): Promise<N8nOAuth2RefreshResult>;
+	/**
 	 * Verifies an AS access token against `resourceUrl` (the expected audience) without
 	 * running a redirect flow. Used by resource-server triggers (MCP) that receive a
 	 * bearer token directly, and by browser triggers on the POST leg to re-check the
@@ -1549,8 +1627,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * for this workflow, using the execution context established by
 	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
 	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
-	 * established). Used by the MCP trigger to gate a tool call, and by the Form trigger
-	 * to gate a submission, before an execution is enqueued.
+	 * established). Used by the MCP trigger to gate a tool call, by the Form trigger to
+	 * gate a submission, and by the Chat trigger to gate a message send, before an
+	 * execution is enqueued.
 	 */
 	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
@@ -1578,7 +1657,17 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	/** Whether this request arrived on the editor's session-scoped canvas chat test route. */
+	isChatSessionTest(): boolean;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/**
+	 * The n8n user who started this test run, recorded on the webhook registration.
+	 * Only test webhooks carry it, so this resolves to `undefined` in production.
+	 *
+	 * Optional so hosts that implement this interface themselves are not forced to
+	 * supply it; call it as `getTestWebhookUser?.()`.
+	 */
+	getTestWebhookUser?(): Promise<IUser | undefined>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
 	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
@@ -2397,6 +2486,7 @@ export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export namespace MultiPartFormData {
 	export interface File {
+		/** Parser-owned temporary path. Consume it in the webhook function or its response stream. */
 		filepath: string;
 		mimetype?: string;
 		originalFilename?: string;
@@ -3062,6 +3152,13 @@ export interface IWebhookData {
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
 	webhookId?: string;
 	isTest?: boolean;
+	/**
+	 * Set when this test webhook was registered for the editor's canvas chat session
+	 * (path rewritten to `{workflowId}/{chatSessionId}`). Lets the Chat Trigger skip
+	 * webhook auth for that trusted, session-scoped route only — every other test
+	 * request still enforces the configured authentication.
+	 */
+	isChatSessionTest?: boolean;
 	userId?: string;
 	staticData?: Workflow['staticData'];
 }
@@ -3335,6 +3432,12 @@ export interface RelatedAgentRun {
 	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
 	integrationType?: string;
 	/**
+	 * The run started in the in-app preview chat. `integrationType` cannot say
+	 * this: MCP and AI Assistant test runs use `n8n_chat` too, and they must
+	 * resume on the runtime they started on.
+	 */
+	previewChat?: boolean;
+	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
 	 */
@@ -3400,6 +3503,15 @@ export interface ITaskMetadata {
 	 * Contains token for security validation.
 	 */
 	resumeUrl?: string;
+
+	/**
+	 * Set when a waiting webhook node is resumed. In that case `data.main` already
+	 * holds the resolved output branches returned by the node's `webhook()` method
+	 * (e.g. `[[], [item], []]`), and the node is flagged as disabled to prevent the
+	 * wait from starting over. The disabled-node handler must then forward every
+	 * output branch instead of only the first one. See `WorkflowExecute.handleDisabledNode`.
+	 */
+	forwardAllOutputs?: boolean;
 
 	/**
 	 * Error from a sub-workflow that finished with an error while its parent was
@@ -3744,6 +3856,10 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	beginN8nOAuth2Flow?: (resourceUrl: string, metadata?: Record<string, string>) => Promise<string>;
 	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
+	refreshN8nOAuth2Flow?: (
+		refreshToken: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2RefreshResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,
@@ -3803,6 +3919,7 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<IUser>;
+	getUserById?: (id: string) => Promise<IUser | undefined>;
 	/**
 	 * Mutable flag set to true during a node's execution if any credential was resolved
 	 * dynamically. Reset to false by the execution engine before each node runs.
@@ -4047,6 +4164,10 @@ export interface INodesGraphResult {
 
 export interface FeatureFlags {
 	[featureFlag: string]: string | boolean | undefined;
+}
+
+export interface FeatureFlagPayloads {
+	[featureFlag: string]: JsonValue;
 }
 
 export interface IConnectedNode {
@@ -4303,6 +4424,9 @@ export interface IUserSettings {
 		credentialId?: string | null;
 		modelName?: string;
 		localGatewayDisabled?: boolean;
+	};
+	mcpJsonNudge?: {
+		impressions: number;
 	};
 }
 

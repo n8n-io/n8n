@@ -56,7 +56,11 @@ import type {
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
-import { MAX_ATTACHMENT_BASE64_BYTES, MAX_TOTAL_ATTACHMENT_BASE64_BYTES } from '@n8n/api-types';
+import {
+	InstanceAiPersistPendingAgentRequest,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -86,6 +90,7 @@ import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -111,6 +116,7 @@ describe('InstanceAiController', () => {
 	const gatewayService = mock<InstanceAiGatewayService>();
 	const browserSessionService = mock<InstanceAiBrowserSessionService>();
 	const memoryService = mock<InstanceAiMemoryService>();
+	const pendingAgentService = mock<InstanceAiPendingAgentService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const modelCatalogService = mock<InstanceAiModelCatalogService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -121,7 +127,7 @@ describe('InstanceAiController', () => {
 	const publisher = mock<Publisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -139,6 +145,7 @@ describe('InstanceAiController', () => {
 		gatewayService,
 		browserSessionService,
 		memoryService,
+		pendingAgentService,
 		settingsService,
 		modelCatalogService,
 		mock<EvalExecutionService>(),
@@ -164,7 +171,13 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// SSE replay reads the durable log; default to an empty thread so tests
+		// only stub what they exercise.
+		eventLog.getEventsAfter.mockResolvedValue([]);
+		eventLog.getEventsForRuns.mockResolvedValue([]);
+		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+		settingsService.isModelConfigured.mockResolvedValue(true);
 	});
 
 	describe('chat', () => {
@@ -194,6 +207,8 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
+				payload.mode,
+				payload.promptVersion,
 			);
 		});
 
@@ -228,6 +243,35 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+				payloadWithPushRef.mode,
+				payloadWithPushRef.promptVersion,
+			);
+		});
+
+		it('should forward the build mode and prompt version to startRun', async () => {
+			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				message: 'build me a workflow',
+				timeZone: 'UTC',
+				attachments: undefined,
+				mode: 'progressive',
+				promptVersion: 'progressive@1',
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-5');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithMode.message,
+				payloadWithMode.attachments,
+				payloadWithMode.context,
+				payloadWithMode.timeZone,
+				payloadWithMode.pushRef,
+				'progressive',
+				'progressive@1',
 			);
 		});
 
@@ -260,6 +304,8 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
+				payloadWithContext.mode,
+				payloadWithContext.promptVersion,
 			);
 		});
 
@@ -274,6 +320,17 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should refuse the run when no model is configured', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should reject unsupported attachment types before starting a run', async () => {
@@ -347,6 +404,8 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
+				nodesPayload.mode,
+				nodesPayload.promptVersion,
 			);
 		});
 
@@ -407,79 +466,7 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			eventBus.getEventsAfter.mockReturnValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([
-				{
-					type: 'run-start',
-					runId: 'run-1',
-					agentId: 'agent-root',
-					payload: { messageId: 'msg-1', messageGroupId: 'mg-1' },
-				},
-			] as never);
-			memoryService.getLatestRunSnapshot.mockResolvedValue({
-				runId: 'run-1',
-				messageGroupId: 'mg-1',
-				runIds: ['run-1'],
-				tree: {
-					agentId: 'agent-root',
-					role: 'orchestrator',
-					status: 'active',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [],
-					children: [],
-					timeline: [],
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create the workflow',
-							deps: [],
-						},
-					],
-				},
-			});
-
-			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: vi.fn(),
-				flushHeaders: vi.fn(),
-				write: vi.fn(),
-				end: vi.fn(),
-				flush: vi.fn(),
-			});
-			eventBus.subscribe.mockReturnValue(vi.fn());
-
-			const sseReq = mock<AuthenticatedRequest>({
-				user: { id: USER_ID },
-				headers: {},
-				once: vi.fn(),
-			});
-
-			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
-
-			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID, {
-				delivery: 'event',
-			});
-
-			const runSyncFrame = (sseRes.write as Mock).mock.calls
-				.map(([frame]) => String(frame))
-				.find((frame) => frame.startsWith('event: run-sync'));
-
-			expect(runSyncFrame).toContain('"agent-root"');
-			expect(runSyncFrame).toContain('"planItems"');
-		});
-
-		it('should replay events that arrive while bootstrap snapshot fetches are in flight', async () => {
+		it('should replay events that arrive while bootstrap log reads are in flight', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: true,
@@ -488,26 +475,27 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
 
-			// While the persisted snapshot is being fetched, a relayed event arrives:
+			// While the run-sync tree read is in flight, a relayed event arrives:
 			// the early subscription keeps it flowing into the store, and the replay
 			// after the await must pick it up exactly once.
 			const midAwaitEvent = {
 				id: 7,
 				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: {} },
 			};
-			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
+			eventLog.getEventsForRuns.mockImplementation(async () => {
 				subscribeHandler!(midAwaitEvent);
-				eventBus.getEventsAfter.mockReturnValue([midAwaitEvent] as never);
-				return undefined;
+				eventLog.getEventsAfter.mockResolvedValue([midAwaitEvent] as never);
+				return [];
 			});
 
 			const sseRes = mock<Response & { flush?: () => void }>({
@@ -528,7 +516,7 @@ describe('InstanceAiController', () => {
 			// Subscription must be registered before the async bootstrap starts, so
 			// sibling mains keep relaying events for this thread during the awaits.
 			expect(eventBus.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
-				memoryService.getLatestRunSnapshot.mock.invocationCallOrder[0],
+				(eventLog.getEventsAfter as Mock).mock.invocationCallOrder[0],
 			);
 
 			const eventFrames = (sseRes.write as Mock).mock.calls
@@ -546,13 +534,14 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([
-				{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
-			] as never);
+			eventLog.getEventsForRuns.mockResolvedValue([]);
 
-			const unsubscribe = vi.fn();
-			eventBus.subscribe.mockReturnValue(unsubscribe);
+			const unsubscribers: Array<ReturnType<typeof vi.fn>> = [];
+			eventBus.subscribe.mockImplementation(() => {
+				const unsubscribe = vi.fn();
+				unsubscribers.push(unsubscribe);
+				return unsubscribe;
+			});
 
 			let closeHandler: (() => void) | undefined;
 			const sseReq = mock<AuthenticatedRequest>({
@@ -570,15 +559,21 @@ describe('InstanceAiController', () => {
 				flush: vi.fn(),
 			});
 
-			// The client disconnects while the persisted snapshot is being fetched.
-			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
+			// The client disconnects while the replay read is in flight.
+			eventLog.getEventsAfter.mockImplementation(async () => {
 				closeHandler!();
-				return undefined;
+				return [
+					{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
+				] as never;
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 
-			expect(unsubscribe).toHaveBeenCalledTimes(1);
+			// Both the live subscription (via the close handler) and the temporary
+			// buffering subscription (via the bootstrap finally) are removed.
+			expect(unsubscribers).toHaveLength(2);
+			expect(unsubscribers[0]).toHaveBeenCalledTimes(1);
+			expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
 			expect(sseRes.write).not.toHaveBeenCalled();
 		});
 
@@ -597,10 +592,12 @@ describe('InstanceAiController', () => {
 			// Capture the subscribe handler
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -644,10 +641,12 @@ describe('InstanceAiController', () => {
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -814,6 +813,9 @@ describe('InstanceAiController', () => {
 
 		beforeEach(() => {
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
+			// The allowlist service is real and shared: drop what the allowlist tests pinned.
+			evalCredentialAllowlists.clearThread(THREAD_ID);
 		});
 
 		it('should require instanceAi:eval scope', () => {
@@ -832,6 +834,7 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				expect.any(Map),
+				undefined,
 			);
 			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
 				USER_ID,
@@ -872,8 +875,26 @@ describe('InstanceAiController', () => {
 				[seedWorkflow],
 				'project-1',
 				idMap,
+				undefined,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('should hand the pinned credential allowlist to the workflow restore', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalCredentialAllowlists.set(THREAD_ID, ['cred-1', 'cred-2']);
+
+			await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
+				[seedWorkflow],
+				'project-1',
+				expect.any(Map),
+				new Set(['cred-1', 'cred-2']),
+			);
 		});
 
 		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
@@ -900,6 +921,40 @@ describe('InstanceAiController', () => {
 			// No messages to restore — the message write is skipped.
 			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
+		});
+
+		it('publishes the flagged seeds before the messages, so a refused publish strands nothing', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			evalThreadRestore.restoreWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.publishSeedWorkflows.mockRejectedValueOnce(
+				new Error('Workflow has no trigger'),
+			);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				'Workflow has no trigger',
+			);
+
+			// The messages cannot be rolled back, so they are not written yet.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith(['wf-1']);
+		});
+
+		it('unpublishes a re-applied published seed when a later step fails', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map());
+			// The seed id already existed in the project, so the restore created nothing.
+			evalThreadRestore.restoreWorkflows.mockResolvedValue([]);
+			evalThreadRestore.publishSeedWorkflows.mockResolvedValue(['wf-1']);
+			evalThreadRestore.restoreAgents.mockRejectedValueOnce(new Error('agents down'));
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow('agents down');
+
+			// Not in the created list, so the delete never sees it: the unpublish must.
+			expect(evalThreadRestore.unpublishWorkflows).toHaveBeenCalledWith(['wf-1']);
+			expect(evalThreadRestore.deleteWorkflows).toHaveBeenCalledWith([]);
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {
@@ -1470,7 +1525,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.deleteThread(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeClearThreadState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
 			expect(memoryService.deleteThread).toHaveBeenCalledWith(THREAD_ID);
 		});
 
@@ -1484,6 +1539,46 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 
 			await expect(controller.deleteThread(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('persistPendingAgent', () => {
+		const payload = new InstanceAiPersistPendingAgentRequest({
+			projectId: 'project-1',
+			agentId: 'aBcDeFgHiJkLmNoP',
+			name: 'New Agent',
+		});
+
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('persistPendingAgent')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('should persist and bind the pending agent for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const result = { agent: { id: 'aBcDeFgHiJkLmNoP' }, thread: mock<InstanceAiThreadInfo>() };
+			pendingAgentService.persistAndBind.mockResolvedValue(result as never);
+
+			await expect(controller.persistPendingAgent(req, res, THREAD_ID, payload)).resolves.toBe(
+				result,
+			);
+			expect(pendingAgentService.persistAndBind).toHaveBeenCalledWith(req.user, THREAD_ID, payload);
+		});
+
+		it.each([
+			['other_user', ForbiddenError],
+			// Unlike chat, this has no allowNew: there is no pending marker to prove
+			// anything with until the thread exists.
+			['not_found', NotFoundError],
+		] as const)('should reject a %s thread before persisting', async (ownership, expected) => {
+			memoryService.checkThreadOwnership.mockResolvedValue(ownership);
+
+			await expect(controller.persistPendingAgent(req, res, THREAD_ID, payload)).rejects.toThrow(
+				expected,
+			);
+			expect(pendingAgentService.persistAndBind).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1519,7 +1614,7 @@ describe('InstanceAiController', () => {
 		it('should return rich messages with nextEventId', async () => {
 			const richResult = mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>();
 			memoryService.getRichMessages.mockResolvedValue(richResult);
-			eventBus.getNextEventId.mockResolvedValue(42);
+			eventLog.getNextEventId.mockResolvedValue(42);
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
@@ -1989,7 +2084,7 @@ describe('InstanceAiController', () => {
 	});
 });
 
-describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
+describe('InstanceAiController — durable-log SSE replay', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
@@ -1997,7 +2092,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: true },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -2007,6 +2102,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<InstanceAiGatewayService>(),
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
+		mock<InstanceAiPendingAgentService>(),
 		settingsService,
 		mock<InstanceAiModelCatalogService>(),
 		mock<EvalExecutionService>(),
@@ -2107,7 +2203,6 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 
 	it('delivers events that land during the run-sync tree reads', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
 		instanceAiService.getThreadStatus.mockReturnValue({
 			hasActiveRun: true,
 			isSuspended: false,
@@ -2173,7 +2268,6 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 
 	it('serves the open streamed segment as one ephemeral delta frame and skips its buffered deltas', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
 		instanceAiService.getThreadStatus.mockReturnValue({
 			hasActiveRun: true,
 			isSuspended: false,
@@ -2408,7 +2502,6 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 
 	it('does not re-apply a gap block already folded into a delivered run-sync tree', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
 		instanceAiService.getThreadStatus.mockReturnValue({
 			hasActiveRun: true,
 			isSuspended: false,
@@ -2517,7 +2610,6 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 
 	it('stops the bootstrap when the client disconnects during a durable read', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		memoryService.getLatestRunSnapshot.mockResolvedValue(undefined);
 		instanceAiService.getThreadStatus.mockReturnValue({
 			hasActiveRun: true,
 			isSuspended: false,

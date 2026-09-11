@@ -89,9 +89,13 @@ Initial Build rules in your system prompt. Never create a placeholder or
 - For each new or replacement objective, fill every template section with
   run-specific details. Do not duplicate Agent Instructions or Skill bodies;
   name a configured capability only when it helps route the work.
-- Make sure the agent already has every tool the steps need (an integration,
-  node/workflow tool, or web search). If something is missing, add it to the agent
-  config first — a task can only use tools the agent already has.
+- Make sure the agent already has every capability the steps need (an
+  integration, node/workflow tool, or web search). Configured chat integrations
+  automatically generate their context and action tools in scheduled runs too.
+  If the task sends through a configured platform and the integration lists the
+  needed action (for example \`send_dm\`), use that action; do not add a
+  same-platform node, MCP, or workflow tool. Add a tool only when the exact
+  operation is not supplied by an existing integration.
 - Translate each cadence into a valid 5-field cron expression (e.g. daily 09:00
   -> "0 9 * * *"; weekdays 08:30 -> "30 8 * * 1-5"; hourly -> "0 * * * *").
   Keep this cadence out of the objective; only a data lookback window belongs
@@ -126,8 +130,15 @@ Initial Build rules in your system prompt. Never create a placeholder or
 - To disable or remove a task, edit \`config.tasks\` with \`patch_config\` (set
   \`enabled: false\`, or drop the ref). Changes take effect on the next
   \`publish_agent\`.
-- \`create_tasks\` does NOT add tools — if a task needs a tool the agent lacks,
-  add it to the config yourself first.
+- \`create_tasks\` does not add config tools. This does not mean a scheduled
+  message needs a messaging node: configured integrations supply their generated
+  action tools at runtime even when the task has no inbound conversation.
+- A proactive or scheduled send through a connected chat platform is not a
+  separate backend integration. Use the channel's \`send_dm\` or
+  \`send_channel_message\` action when available.
+- Never claim that a task requires a same-platform messaging node solely because
+  it starts without an inbound conversation. If such a redundant tool already
+  exists and the integration covers its action, remove it.
 - Do not call \`create_tasks\` once per task when several are ready; batch them
   into one call so the whole set is stored in a single round trip.`,
 	};

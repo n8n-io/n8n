@@ -1,18 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import type http from 'node:http';
 import type https from 'node:https';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfProtectionService } from '../../ssrf';
+import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
 import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { OutboundHttp } from '../outbound-http';
 
-function makeFacade(): OutboundHttp {
-	const service = mock<SsrfProtectionService>();
-	vi.mocked(service.createSecureLookup).mockReturnValue(makeLookupFn());
-	return new OutboundHttp(service, mock<Logger>());
+function makeFacade(bridge?: SsrfBridge): OutboundHttp {
+	const service = bridge
+		? mock<SsrfProtectionService>(bridge)
+		: mock<SsrfProtectionService>({ createSecureLookup: vi.fn().mockReturnValue(makeLookupFn()) });
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>());
 }
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
@@ -109,9 +111,7 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 		});
 
-		const { httpAgent, httpsAgent } = makeFacade()
-			.transport({ ssrf: bridge, proxy: false })
-			.getNodeAgent();
+		const { httpAgent, httpsAgent } = makeFacade(bridge).transport({ proxy: false }).getNodeAgent();
 
 		expect(getAgentLookup(httpAgent)).toBe(lookupFn);
 		expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
@@ -119,7 +119,7 @@ describe('getNodeAgent SSRF lookup injection', () => {
 
 	it('no lookup when SSRF is disabled', () => {
 		const { httpAgent, httpsAgent } = makeFacade()
-			.transport({ ssrf: 'disabled', proxy: false })
+			.transport({ useDefaultSsrfPolicy: 'unsafe', proxy: false })
 			.getNodeAgent();
 
 		expect(getAgentLookup(httpAgent)).toBeUndefined();

@@ -58,7 +58,7 @@ export class EventMessageMcp extends AbstractEventMessage {
 	deserialize(data: JsonObject): this {
 		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload as EventPayloadMcp);
+			if (data.payload) this.setPayload(data.payload);
 		}
 		return this;
 	}
