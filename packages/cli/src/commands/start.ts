@@ -212,6 +212,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
+			// A scaling-mode main starts no runner but shares the env with its workers.
+			this.exitIfInternalRunnerMode();
 			this.needsTaskRunner = false;
 		}
 

@@ -91,6 +91,18 @@ export abstract class BaseCommand<F = never> {
 	/** Whether to init task runner. */
 	protected needsTaskRunner = false;
 
+	/**
+	 * Only commands that run workflows reject the removed mode, so a stale env var
+	 * does not block maintenance commands such as `db:revert` or `export:workflow`.
+	 */
+	protected exitIfInternalRunnerMode() {
+		if (readEnvValue('N8N_RUNNERS_MODE') !== 'internal') return;
+		this.logger.error(
+			'N8N_RUNNERS_MODE=internal is no longer supported. Run the task runner launcher as a separate process or container, set N8N_RUNNERS_MODE=external and share N8N_RUNNERS_AUTH_TOKEN between n8n and the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners',
+		);
+		process.exit(1);
+	}
+
 	/** Whether to init the expression engine. Only commands that evaluate workflow expressions need it. */
 	protected needsExpressionEngine = false;
 
@@ -227,14 +239,8 @@ export abstract class BaseCommand<F = never> {
 
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
-		if (readEnvValue('N8N_RUNNERS_MODE') === 'internal') {
-			this.logger.error(
-				'N8N_RUNNERS_MODE=internal is no longer supported. Run the task runner launcher as a separate process or container, set N8N_RUNNERS_MODE=external and share N8N_RUNNERS_AUTH_TOKEN between n8n and the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners',
-			);
-			process.exit(1);
-		}
-
 		if (this.needsTaskRunner) {
+			this.exitIfInternalRunnerMode();
 			if (taskRunnersConfig.insecureMode) {
 				this.logger.warn(
 					'TASK RUNNER CONFIGURED TO START IN INSECURE MODE. This is discouraged for production use. Please consider using secure mode instead.',
