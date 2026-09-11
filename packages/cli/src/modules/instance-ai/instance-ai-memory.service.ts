@@ -5,6 +5,8 @@ import type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiThreadMessagesResponse,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
@@ -13,6 +15,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { z } from 'zod';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
@@ -275,15 +278,59 @@ export class InstanceAiMemoryService {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
+	async getThreadInfo(threadId: string): Promise<InstanceAiThreadInfo> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) throw new NotFoundError('Thread not found');
+		return this.toThreadInfo(thread);
+	}
+
+	async listThreadHistory(
+		userId: string,
+		query: InstanceAiThreadHistoryQuery,
+	): Promise<InstanceAiThreadHistoryResponse> {
+		let before: { updatedAt: Date; id: string } | undefined;
+		if (query.cursor) {
+			try {
+				const parsed = z
+					.object({ updatedAt: z.string().datetime(), id: z.string().min(1).max(256) })
+					.parse(JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8')));
+				before = { updatedAt: new Date(parsed.updatedAt), id: parsed.id };
+			} catch {
+				throw new BadRequestError('Invalid thread history cursor');
+			}
+		}
+		const rows = await this.agentMemory.listThreadHistory(
+			userId,
+			query.limit,
+			query.search,
+			before,
+		);
+		const hasMore = rows.length > query.limit;
+		const threads = rows.slice(0, query.limit).map((thread) => this.toThreadInfo(thread));
+		const last = threads.at(-1);
+		return {
+			threads,
+			hasMore,
+			nextCursor:
+				hasMore && last
+					? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id })).toString(
+							'base64url',
+						)
+					: null,
+		};
+	}
+
 	async listThreads(
 		userId: string,
 		page = 0,
 		perPage = 100,
+		search?: string,
 	): Promise<InstanceAiThreadListResponse> {
 		const result = await this.agentMemory.listThreads({
 			filter: { resourceId: userId },
 			perPage,
 			page,
+			search,
 			orderBy: { field: 'updatedAt', direction: 'DESC' },
 		});
 		return {

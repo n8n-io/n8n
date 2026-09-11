@@ -258,8 +258,18 @@ export class TypeORMAgentMemory
 		return thread ? toThread(thread) : null;
 	}
 
+	async listThreadHistory(
+		resourceId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	): Promise<Thread[]> {
+		return (await this.threadRepo.listHistoryPage(resourceId, limit, search, before)).map(toThread);
+	}
+
 	async listThreads(args: {
 		filter?: { resourceId?: string };
+		search?: string;
 		perPage?: number;
 		page?: number;
 		orderBy?: { field: 'createdAt' | 'updatedAt'; direction: 'ASC' | 'DESC' };
@@ -268,12 +278,15 @@ export class TypeORMAgentMemory
 		const page = args.page ?? 0;
 		const field = args.orderBy?.field ?? 'updatedAt';
 		const direction = args.orderBy?.direction ?? 'DESC';
-		const [threads, total] = await this.threadRepo.findAndCount({
-			where: args.filter?.resourceId ? { resourceId: args.filter.resourceId } : {},
-			order: { [field]: direction, id: direction },
-			take: perPage,
-			skip: page * perPage,
-		});
+		const [threads, total] =
+			args.search && args.filter?.resourceId
+				? await this.threadRepo.searchHistory(args.filter.resourceId, args.search, page, perPage)
+				: await this.threadRepo.findAndCount({
+						where: args.filter?.resourceId ? { resourceId: args.filter.resourceId } : {},
+						order: { [field]: direction, id: direction },
+						take: perPage,
+						skip: page * perPage,
+					});
 
 		return {
 			threads: threads.map(toThread),
@@ -520,6 +533,7 @@ export class TypeORMAgentMemory
 		});
 
 		await this.messageRepo.save(entities);
+		await this.threadRepo.update(args.threadId, { updatedAt: new Date() });
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {

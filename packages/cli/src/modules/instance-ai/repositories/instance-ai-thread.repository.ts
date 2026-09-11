@@ -1,7 +1,7 @@
 import type { Thread } from '@n8n/agents';
 import { BaseRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, LessThan, Raw } from '@n8n/typeorm';
 
 import { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 
@@ -43,6 +43,44 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 			if (patch.resourceId !== undefined) row.resourceId = patch.resourceId;
 			const saved = await repository.save(row);
 			return { ...current, ...patch, title: saved.title || undefined, updatedAt: saved.updatedAt };
+		});
+	}
+
+	async listHistoryPage(
+		resourceId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	) {
+		const base = { resourceId, ...(search ? { title: this.titleContains(search) } : {}) };
+		return await this.find({
+			where: before
+				? [
+						{ ...base, updatedAt: LessThan(before.updatedAt) },
+						{ ...base, updatedAt: before.updatedAt, id: LessThan(before.id) },
+					]
+				: base,
+			order: { updatedAt: 'DESC', id: 'DESC' },
+			take: limit + 1,
+		});
+	}
+
+	private titleContains(search: string) {
+		const escapedSearch = search.replace(/[\\%_]/g, (char) => `\\${char}`);
+		return Raw((alias) => `LOWER(${alias}) LIKE LOWER(:threadSearch) ESCAPE '\\'`, {
+			threadSearch: `%${escapedSearch}%`,
+		});
+	}
+
+	async searchHistory(resourceId: string, search: string, page: number, perPage: number) {
+		return await this.findAndCount({
+			where: {
+				resourceId,
+				title: this.titleContains(search),
+			},
+			order: { updatedAt: 'DESC', id: 'DESC' },
+			take: perPage,
+			skip: page * perPage,
 		});
 	}
 }

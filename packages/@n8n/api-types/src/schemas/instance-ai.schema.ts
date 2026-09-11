@@ -1694,6 +1694,24 @@ export interface InstanceAiThreadListResponse {
 	hasMore: boolean;
 }
 
+export class InstanceAiThreadsQuery extends Z.class({
+	page: z.coerce.number().int().min(0).max(10000).default(0),
+	limit: z.coerce.number().int().min(1).max(100).default(100),
+	search: z.string().trim().max(500).optional(),
+}) {}
+
+export class InstanceAiThreadHistoryQuery extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100).default(30),
+	search: z.string().trim().max(500).optional(),
+	cursor: z.string().min(1).max(512).optional(),
+}) {}
+
+export interface InstanceAiThreadHistoryResponse {
+	threads: InstanceAiThreadInfo[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
+
 export interface InstanceAiEnsureThreadResponse {
 	thread: InstanceAiThreadInfo;
 	created: boolean;
