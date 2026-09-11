@@ -6,9 +6,9 @@ import { parseExecutionFileId, TEMP_EXECUTION_ID } from 'n8n-core';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 /**
- * Workflow that a binary derives its access from: the workflow of the execution
- * that owns the binary, or - when the binary was written before the execution
- * row existed - the workflow named in the file path.
+ * Workflow that a binary derives its access from. Normally the workflow of the
+ * execution that owns the binary. A binary written before its execution row
+ * exists names its workflow in the file path instead.
  */
 type AccessSource = { executionId: string } | { workflowId: string };
 
@@ -65,9 +65,8 @@ export class BinaryDataAccessService {
 		const location = parseExecutionFileId(fileId);
 		if (!location) return null;
 
-		// A trigger writes its binary before the execution row exists, so the path
-		// holds a temp placeholder. The execution id column is numeric, so that
-		// placeholder must never reach the query. Use the workflow in the path.
+		// The execution id column is numeric, so the placeholder must not reach the
+		// query. Authorize on the workflow the path carries instead.
 		return location.executionId === TEMP_EXECUTION_ID
 			? { workflowId: location.workflowId }
 			: { executionId: location.executionId };

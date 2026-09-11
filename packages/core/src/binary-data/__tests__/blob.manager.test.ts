@@ -60,18 +60,22 @@ describe('parseExecutionFileId', () => {
 });
 
 describe('store', () => {
-	it('writes to the temp execution dir when the execution id is missing', async () => {
+	// The read access check authorizes a temp binary on the workflow it parses out
+	// of the path, so the writer and the parser must agree on that path.
+	it('writes a missing execution id as a temp path the parser reads back', async () => {
 		byteStore.write.mockResolvedValue(body.length);
 
-		await manager.store({ type: 'execution', workflowId, executionId: '' }, body, {});
-
-		expect(byteStore.write).toHaveBeenCalledWith(
-			expect.stringMatching(
-				new RegExp(`^workflows/${workflowId}/executions/${TEMP_EXECUTION_ID}/binary_data/`),
-			),
+		const { fileId: written } = await manager.store(
+			{ type: 'execution', workflowId, executionId: '' },
 			body,
 			{},
 		);
+
+		expect(byteStore.write).toHaveBeenCalledWith(written, body, {});
+		expect(parseExecutionFileId(written)).toEqual({
+			workflowId,
+			executionId: TEMP_EXECUTION_ID,
+		});
 	});
 
 	it('writes the bytes with native metadata and no metadata file', async () => {
