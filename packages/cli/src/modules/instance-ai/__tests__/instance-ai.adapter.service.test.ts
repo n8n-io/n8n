@@ -144,6 +144,9 @@ function createMockExecutionRepository(
 	};
 }
 
+/** The subset of a workflow node the adapter helpers read. */
+type WorkflowNode = { name: string; type: string; onError?: string };
+
 /** Build a minimal execution object that satisfies the shape read by the adapter helpers. */
 function makeExecution(
 	overrides: {
@@ -153,7 +156,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
+		workflowNodes?: WorkflowNode[];
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -199,31 +202,39 @@ function makeTaskData(
 	} as unknown as ITaskData;
 }
 
+const FILTER_NODE: WorkflowNode = { name: 'Filter', type: 'n8n-nodes-base.filter' };
+
 /**
- * Build a task data entry for a multi-output node, one item list per output.
- * `null` marks an output that never received data.
+ * Mock an execution where `node` ran once and emitted `outputs`, one item list
+ * per output. `null` marks an output that never received data.
  */
-function makeMultiOutputTaskData(outputs: Array<IDataObject[] | null>): ITaskData {
-	return {
-		...makeTaskData([]),
-		data: { main: outputs.map((items) => items?.map((json) => ({ json })) ?? null) },
-	};
+function mockMultiOutputRun(outputs: Array<IDataObject[] | null>, node = FILTER_NODE) {
+	const main = outputs.map((items) => items?.map((json) => ({ json })) ?? null);
+	createMockExecutionRepository(
+		makeExecution({
+			workflowNodes: [node],
+			runData: { [node.name]: [{ ...makeTaskData([]), data: { main } }] },
+		}),
+	);
 }
 
-/** Node types that resolve every node to the given description. */
+/** Node types that resolve every node to the given description. `new Workflow` needs `properties`. */
 function nodeTypesWith(description: Partial<INodeTypeDescription>): NodeTypes {
 	const nodeTypes = mock<NodeTypes>();
-	nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+	nodeTypes.getByNameAndVersion.mockReturnValue({
+		description: { properties: [], ...description },
+	} as never);
 	return nodeTypes;
 }
 
 /** Node types that resolve every node to a Filter: one declared output, two output names. */
 function filterNodeTypes(): NodeTypes {
-	return nodeTypesWith({
-		properties: [],
-		outputs: [NodeConnectionTypes.Main],
-		outputNames: ['Kept', 'Discarded'],
-	});
+	return nodeTypesWith({ outputs: [NodeConnectionTypes.Main], outputNames: ['Kept', 'Discarded'] });
+}
+
+/** Parse the JSON the adapter wrapped in untrusted-data boundary tags. */
+function unwrapJson(wrapped: unknown): unknown {
+	return JSON.parse(String(wrapped).split('\n').slice(1, -1).join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -362,20 +373,11 @@ describe('extractExecutionResult', () => {
 	});
 
 	it('groups the output data of a multi-output node per output', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [{ name: 'Filter', type: 'n8n-nodes-base.filter' }],
-				runData: {
-					Filter: [makeMultiOutputTaskData([[{ text: '$TSLA' }], [{ text: 'plain' }]])],
-				},
-			}),
-		);
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
 
 		const result = await extractExecutionResult('exec-1', true, filterNodeTypes());
 
-		const wrapped = result.data!.Filter as string;
-		expect(JSON.parse(wrapped.split('\n').slice(1, -1).join('\n'))).toEqual({
+		expect(unwrapJson(result.data!.Filter)).toEqual({
 			outputs: [
 				{ index: 0, name: 'Kept', items: [{ text: '$TSLA' }] },
 				{ index: 1, name: 'Discarded', items: [{ text: 'plain' }] },
@@ -384,48 +386,12 @@ describe('extractExecutionResult', () => {
 		});
 	});
 
-	it('labels the Success and Error outputs of a node that routes errors to an extra output', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [
-					{
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						onError: 'continueErrorOutput',
-					},
-				],
-				runData: {
-					'HTTP Request': [makeMultiOutputTaskData([[{ id: 1 }], [{ error: 'timeout' }]])],
-				},
-			}),
-		);
-		const nodeTypes = nodeTypesWith({ properties: [], outputs: [NodeConnectionTypes.Main] });
-
-		const result = await extractExecutionResult('exec-1', true, nodeTypes);
-
-		const wrapped = result.data!['HTTP Request'] as string;
-		expect(JSON.parse(wrapped.split('\n').slice(1, -1).join('\n'))).toEqual({
-			outputs: [
-				{ index: 0, name: 'Success', items: [{ id: 1 }] },
-				{ index: 1, name: 'Error', items: [{ error: 'timeout' }] },
-			],
-			totalItems: 2,
-		});
-	});
-
 	it('reports a null output as empty', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				runData: { Filter: [makeMultiOutputTaskData([null, [{ id: 1 }]])] },
-			}),
-		);
+		mockMultiOutputRun([null, [{ id: 1 }]]);
 
 		const result = await extractExecutionResult('exec-1', true);
 
-		const wrapped = result.data!.Filter as string;
-		expect(JSON.parse(wrapped.split('\n').slice(1, -1).join('\n'))).toEqual({
+		expect(unwrapJson(result.data!.Filter)).toEqual({
 			outputs: [
 				{ index: 0, items: [] },
 				{ index: 1, items: [{ id: 1 }] },
@@ -1372,155 +1338,106 @@ describe('extractNodeOutput', () => {
 	});
 
 	it('reports each output of a multi-output node separately, with the node type labels', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [{ name: 'Filter', type: 'n8n-nodes-base.filter' }],
-				runData: {
-					Filter: [makeMultiOutputTaskData([[{ text: '$TSLA' }], [{ text: 'plain' }]])],
-				},
-			}),
-		);
+		mockMultiOutputRun([[{ text: '$TSLA' }], [{ text: 'plain' }]]);
 
 		const result = await extractNodeOutput('exec-1', 'Filter', undefined, filterNodeTypes());
 
 		expect(result.totalItems).toBe(2);
 		expect(result.returned).toEqual({ from: 0, to: 2 });
 		expect(result.outputs).toEqual([
-			expect.objectContaining({ index: 0, name: 'Kept', totalItems: 1 }),
-			expect.objectContaining({ index: 1, name: 'Discarded', totalItems: 1 }),
+			{
+				index: 0,
+				name: 'Kept',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "$TSLA"')],
+			},
+			{
+				index: 1,
+				name: 'Discarded',
+				totalItems: 1,
+				items: [expect.stringContaining('"text": "plain"')],
+			},
 		]);
-		expect(result.outputs[0].items[0]).toContain('"text": "$TSLA"');
-		expect(result.outputs[1].items[0]).toContain('"text": "plain"');
 	});
 
-	it('lists an output that received no items and omits names without node types', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				runData: { Filter: [makeMultiOutputTaskData([[], [{ id: 1 }, { id: 2 }]])] },
-			}),
-		);
+	it('lists empty and null outputs as empty, and omits names without node types', async () => {
+		mockMultiOutputRun([[], null, [{ id: 1 }, { id: 2 }]]);
 
 		const result = await extractNodeOutput('exec-1', 'Filter');
 
 		expect(result.totalItems).toBe(2);
-		expect(result.outputs[0]).toEqual({ index: 0, totalItems: 0, items: [] });
-		expect(result.outputs[1]).toMatchObject({ index: 1, totalItems: 2 });
-		expect(result.outputs[1].items).toHaveLength(2);
-		expect(result.outputs[1]).not.toHaveProperty('name');
-	});
-
-	it('lists a null output as empty', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				runData: { Filter: [makeMultiOutputTaskData([null, [{ id: 1 }]])] },
-			}),
-		);
-
-		const result = await extractNodeOutput('exec-1', 'Filter');
-
-		expect(result.totalItems).toBe(1);
-		expect(result.outputs[0]).toEqual({ index: 0, totalItems: 0, items: [] });
-		expect(result.outputs[1].items[0]).toContain('"id": 1');
+		expect(result.outputs).toEqual([
+			{ index: 0, totalItems: 0, items: [] },
+			{ index: 1, totalItems: 0, items: [] },
+			{
+				index: 2,
+				totalItems: 2,
+				items: [expect.stringContaining('"id": 1'), expect.stringContaining('"id": 2')],
+			},
+		]);
 	});
 
 	it('paginates across outputs as one sequence', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				runData: {
-					Filter: [
-						makeMultiOutputTaskData([
-							[{ id: 0 }, { id: 1 }],
-							[{ id: 2 }, { id: 3 }],
-						]),
-					],
-				},
-			}),
-		);
+		mockMultiOutputRun([
+			[{ id: 0 }, { id: 1 }],
+			[{ id: 2 }, { id: 3 }],
+		]);
 
 		const result = await extractNodeOutput('exec-1', 'Filter', { startIndex: 1, maxItems: 2 });
 
 		expect(result.returned).toEqual({ from: 1, to: 3 });
-		expect(result.outputs[0].items).toHaveLength(1);
-		expect(result.outputs[0].items[0]).toContain('"id": 1');
-		expect(result.outputs[1].items).toHaveLength(1);
-		expect(result.outputs[1].items[0]).toContain('"id": 2');
+		expect(result.outputs[0].items).toEqual([expect.stringContaining('"id": 1')]);
+		expect(result.outputs[1].items).toEqual([expect.stringContaining('"id": 2')]);
 	});
 
-	it('prefers the displayName of a declared output over outputNames', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [{ name: 'Router', type: 'test.router' }],
-				runData: { Router: [makeMultiOutputTaskData([[{ id: 1 }], [{ id: 2 }]])] },
-			}),
-		);
-		const nodeTypes = nodeTypesWith({
-			properties: [],
-			outputs: [
-				{ type: 'main', displayName: 'Premium' },
-				{ type: 'main', displayName: 'Fallback' },
-			],
-			outputNames: ['a', 'b'],
-		});
-
-		const result = await extractNodeOutput('exec-1', 'Router', undefined, nodeTypes);
-
-		expect(result.outputs.map((output) => output.name)).toEqual(['Premium', 'Fallback']);
-	});
-
-	it('resolves an outputs expression to its display names', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [{ name: 'Switch', type: 'n8n-nodes-base.switch' }],
-				runData: { Switch: [makeMultiOutputTaskData([[{ id: 1 }], [{ id: 2 }]])] },
-			}),
-		);
-		const nodeTypes = nodeTypesWith({
-			properties: [],
-			outputs: "={{ [{ type: 'main', displayName: 'A' }, { type: 'main', displayName: 'B' }] }}",
-		});
-
-		const result = await extractNodeOutput('exec-1', 'Switch', undefined, nodeTypes);
-
-		expect(result.outputs.map((output) => output.name)).toEqual(['A', 'B']);
-	});
-
-	it('labels the outputs Success and Error when the node routes errors to an extra output', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [
-					{
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						onError: 'continueErrorOutput',
-					},
+	it.each<{
+		name: string;
+		node?: Partial<WorkflowNode>;
+		description: Partial<INodeTypeDescription>;
+		names: string[];
+	}>([
+		{
+			name: 'prefers the displayName of a declared output over outputNames',
+			description: {
+				outputs: [
+					{ type: NodeConnectionTypes.Main, displayName: 'Premium' },
+					{ type: NodeConnectionTypes.Main, displayName: 'Fallback' },
 				],
-				runData: {
-					'HTTP Request': [makeMultiOutputTaskData([[{ id: 1 }], [{ error: 'timeout' }]])],
-				},
-			}),
+				outputNames: ['a', 'b'],
+			},
+			names: ['Premium', 'Fallback'],
+		},
+		{
+			name: 'resolves an outputs expression to its display names',
+			description: {
+				outputs: "={{ [{ type: 'main', displayName: 'A' }, { type: 'main', displayName: 'B' }] }}",
+			},
+			names: ['A', 'B'],
+		},
+		{
+			name: 'labels the outputs Success and Error when the node routes errors to an extra output',
+			node: { onError: 'continueErrorOutput' },
+			description: { outputs: [NodeConnectionTypes.Main] },
+			names: ['Success', 'Error'],
+		},
+	])('$name', async ({ node, description, names }) => {
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], { ...FILTER_NODE, ...node });
+
+		const result = await extractNodeOutput(
+			'exec-1',
+			'Filter',
+			undefined,
+			nodeTypesWith(description),
 		);
-		const nodeTypes = nodeTypesWith({ properties: [], outputs: [NodeConnectionTypes.Main] });
 
-		const result = await extractNodeOutput('exec-1', 'HTTP Request', undefined, nodeTypes);
-
-		expect(result.outputs.map((output) => output.name)).toEqual(['Success', 'Error']);
+		expect(result.outputs.map((output) => output.name)).toEqual(names);
 	});
 
 	it('returns index-only outputs when the node type is unknown', async () => {
-		createMockExecutionRepository(
-			makeExecution({
-				status: 'success',
-				workflowNodes: [{ name: 'Filter', type: 'n8n-nodes-community.missing' }],
-				runData: { Filter: [makeMultiOutputTaskData([[{ id: 1 }], [{ id: 2 }]])] },
-			}),
-		);
+		mockMultiOutputRun([[{ id: 1 }], [{ id: 2 }]], {
+			name: 'Filter',
+			type: 'n8n-nodes-community.missing',
+		});
 		const nodeTypes = mock<NodeTypes>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
