@@ -1,0 +1,67 @@
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnectionProjects.generated.yml
+  ai_agent 14
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  ai_agent 333-334,337,343-344,347,356-357,361,365,381,385,389
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionConnection.generated.yml
+  ai_agent 15
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 16,19,51-54,139,650-655,938-943,961-964,992,1237-1242,1324-1327,1356-1364,1473-1474,1476-1481,1496-1500,1661,1681,1720-1725,1914,1955,2008-2016,2267-2280,2501,2510-2518,2685-2686,2689-2692,2772-2773,3749,3910-3911,4283,4294,4390,4410,4547,4580,4585,4639,4712,5103-5110,5499-5502,5603,5697,5715,5866,5904,5909,5915,5965,6041,6113,6152,6183,6208,6242-6245,6424,6447,6463,6470,6479-6481,6600,6618-6622
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/getVariables.generated.yml
+  ai_agent 1-140
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionConnection.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/getProjects.generated.yml
+  ai_agent 1-108
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/clonePromotionCheckout.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/createProject.generated.yml
+  ai_agent 1-33,37-126
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/upsertPromotionPromoteConfig.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  ai_agent 5
+pnpm-lock.yaml
+  ai_agent 435-436,438-439,441-442,444-445,447-448,681-682,2534,2537,2540,2543,2552,2555,2558,2567,2579,2591,2594,2613,3267,3675,3733,4119,4452-4453,5614,5633,5645,9916-9919,11268-11269,14695-14696,14699-14701,14703-14704,14707-14708,14722-14723,14726-14733,14743-14746,14759-14760,14763-14770,14780-14783,14796-14801,14816-14822,14831-14834,23921-23922,23925-23926,29150-29151,30650,34213,34215-34220,34224,34229,34231-34236,34240,34245,34247-34250,34257,34259-34262,34269,34271-34274,34308,34310,34313-34321,34326,34328-34329,34331,34335,34337-34339,34345,34359-34363,34376-34380,34384,34386,34388,34390-34392,34395,34400,34402-34404,34407,34416-34417,34466,34468-34469,34476-34490,34496,34498-34501,34506-34507,34533,34538,34540,34544,34547-34549,34551-34562,34576-34580,37960,38004,38009-38025,38029,38032,38060-38078,38089,38101,38180,38184,45532-45535,45872,45874-45877
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 355-356,359,365-366,369,378-379,383,387,403,407,411
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnection.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  ai_agent 1-342
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionConfig.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 34-43,49,61,68,71,74,77,80,83,86,91,94,128-130,134-136
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 898-899,902,908-909,912,921-922,926,930,946,950,954
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/upsertPromotionApplyConfig.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionConnection.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/deleteProject.generated.yml
+  ai_agent 1-12,14-27
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/updateProject.generated.yml
+  ai_agent 1-12,14-50
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionConnection.generated.yml
+  ai_agent 14
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  ai_agent 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4feabe7b97e3593f68979c8d98235a21fda83013",
+  "prompts": {}
+}
