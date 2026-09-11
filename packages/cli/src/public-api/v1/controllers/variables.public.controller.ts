@@ -130,8 +130,6 @@ export class VariablesPublicController {
 	@ApiDescription('Delete a variable from your instance.')
 	@ApiTags(tags)
 	@ApiResponse(204)
-	// Kept from the legacy spec. The service deletes by id without a lookup, so a request for an
-	// unknown variable answers 204 today.
 	@ApiErrorResponse(404)
 	async deleteVariable(
 		req: AuthenticatedRequest,
