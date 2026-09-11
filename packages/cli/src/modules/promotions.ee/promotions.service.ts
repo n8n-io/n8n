@@ -1,5 +1,6 @@
 import type {
 	ApplyPackageResultDto,
+	PromotableResource,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromoteRequest,
@@ -9,7 +10,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
+import { jsonParse } from 'n8n-workflow';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -41,9 +43,11 @@ import {
 	GIT_DEFAULT_COMMIT_EMAIL,
 	GIT_DEFAULT_COMMIT_NAME,
 	PACKAGE_SUBFOLDER,
+	PROMOTE_INSTANCE_COMMIT_MESSAGE,
 	PROMOTE_SELECTION_COMMIT_MESSAGE,
 } from './constants';
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
+import { isUnder } from './branch-placement';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -53,6 +57,34 @@ import type { PromotionCacheDescriptor, PromotionOperationInput } from './promot
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
+
+type BranchWorkflowSummary = {
+	id: string;
+	name: string;
+	versionId: string | null;
+	updatedAt: string;
+};
+
+function toPromotableResource(
+	workflow: {
+		id: string;
+		name: string;
+		versionCounter: number;
+		updatedAt: Date;
+	},
+	status: PromotableResource['status'],
+): PromotableResource {
+	return {
+		id: workflow.id,
+		name: workflow.name,
+		type: 'workflow',
+		status,
+		version: workflow.versionCounter,
+		updatedAt: workflow.updatedAt.toISOString(),
+		updatedBy: null,
+		dependencyCount: 0,
+	};
+}
 
 // Apply treats the package as source of truth; callers cannot override this policy.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
@@ -350,6 +382,28 @@ export class PromotionsService {
 	}
 
 	/**
+	 * Demo-only: exports every team project and replaces the package. The project
+	 * id only proves the caller may export a team project.
+	 */
+	async promoteAllTeamProjects(
+		projectId: string,
+		actor: User,
+		request: { canExportVariableValues: boolean },
+	): Promise<PromotePackageResultDto> {
+		await this.assertTeamProject(projectId);
+
+		const instance = await this.connectionRepository.findInstanceConnection();
+		if (!instance) {
+			throw new NotFoundError('No promotion connection is configured for this instance');
+		}
+
+		return await this.promote(instance.id, actor, {
+			commitMessage: PROMOTE_INSTANCE_COMMIT_MESSAGE,
+			canExportVariableValues: request.canExportVariableValues,
+		});
+	}
+
+	/**
 	 * Splits selected ids into live pushes and deletions, using the current instance
 	 * state. An id from another project rejects the whole request.
 	 */
@@ -383,6 +437,109 @@ export class PromotionsService {
 		}
 
 		return { projectId, workflowIds: live, deletedWorkflowIds: deleted };
+	}
+
+	/**
+	 * The workflows that differ between this project and the promote checkout.
+	 * A missing package means every live workflow is new. The read does not
+	 * write to git or the working copy.
+	 */
+	async listProjectChanges(projectId: string): Promise<PromotableResource[]> {
+		await this.assertTeamProject(projectId);
+
+		const instance = await this.connectionRepository.findInstanceConnection();
+		if (!instance) {
+			throw new NotFoundError('No promotion connection is configured for this instance');
+		}
+
+		const input = await this.resolver.resolveForConnection(instance.id, 'promote');
+		this.assertInstanceScope(input, 'List changes');
+		await this.assertCheckoutReady(input, 'listing changes');
+
+		const { repositoryFolder } = this.workingDirectory.paths(input.configId);
+		const packageFolder = path.join(repositoryFolder, PACKAGE_SUBFOLDER);
+		const instanceWorkflows = await this.workflowRepository.findOwnerSummariesForProject(projectId);
+		const branchById = (await this.hasExportedPackage(packageFolder))
+			? await this.readProjectBranchWorkflows(packageFolder, projectId)
+			: new Map<string, BranchWorkflowSummary>();
+
+		return this.diffProjectChanges(instanceWorkflows, branchById);
+	}
+
+	private async readProjectBranchWorkflows(
+		packageFolder: string,
+		projectId: string,
+	): Promise<Map<string, BranchWorkflowSummary>> {
+		const branch = await this.workingCopy.readBranchLayout(packageFolder);
+		const projectTarget = branch.projects?.find((project) => project.id === projectId)?.target;
+		const byId = new Map<string, BranchWorkflowSummary>();
+		if (!projectTarget) return byId;
+
+		for (const entry of branch.workflows ?? []) {
+			if (entry.target !== projectTarget && !isUnder(entry.target, projectTarget)) continue;
+			const file = path.join(packageFolder, entry.target, 'workflow.json');
+			let versionId: string | null = null;
+			let updatedAt = new Date(0).toISOString();
+			try {
+				const raw = await readFile(file, 'utf8');
+				const parsed = jsonParse<{ versionId?: unknown }>(raw);
+				if (typeof parsed.versionId === 'string') versionId = parsed.versionId;
+				updatedAt = (await stat(file)).mtime.toISOString();
+			} catch {
+				// A malformed leftover still counts as present, so a delete can remove it.
+			}
+			byId.set(entry.id, { id: entry.id, name: entry.name, versionId, updatedAt });
+		}
+
+		return byId;
+	}
+
+	private diffProjectChanges(
+		instanceWorkflows: Array<{
+			id: string;
+			name: string;
+			isArchived: boolean;
+			versionId: string;
+			versionCounter: number;
+			updatedAt: Date;
+		}>,
+		branchById: Map<string, BranchWorkflowSummary>,
+	): PromotableResource[] {
+		const changes: PromotableResource[] = [];
+		const matched = new Set<string>();
+
+		for (const workflow of instanceWorkflows) {
+			const onBranch = branchById.get(workflow.id);
+			if (!onBranch) {
+				if (workflow.isArchived) continue;
+				changes.push(toPromotableResource(workflow, 'new'));
+				continue;
+			}
+			matched.add(workflow.id);
+			if (workflow.isArchived) {
+				changes.push(toPromotableResource(workflow, 'archived'));
+				continue;
+			}
+			if (workflow.versionId !== onBranch.versionId || workflow.name !== onBranch.name) {
+				changes.push(toPromotableResource(workflow, 'modified'));
+			}
+		}
+
+		for (const [id, onBranch] of branchById) {
+			if (matched.has(id)) continue;
+			changes.push({
+				id,
+				name: onBranch.name,
+				type: 'workflow',
+				status: 'deleted',
+				version: null,
+				updatedAt: onBranch.updatedAt,
+				updatedBy: null,
+				dependencyCount: 0,
+			});
+		}
+
+		return changes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 	}
 
 	/** Imports the package from the configured branch and replaces instance content. */

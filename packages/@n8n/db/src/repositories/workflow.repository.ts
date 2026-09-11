@@ -492,6 +492,59 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return [...rowsById.values()];
 	}
 
+	/**
+	 * Owner-project workflows for a change list: identity, archive flag, and the
+	 * fields the promotions UI shows. Missing owner shares are left out.
+	 */
+	async findOwnerSummariesForProject(projectId: string): Promise<
+		Array<{
+			id: string;
+			name: string;
+			isArchived: boolean;
+			versionId: string;
+			versionCounter: number;
+			updatedAt: Date;
+		}>
+	> {
+		const rows = await this.createQueryBuilder('workflow')
+			.select('workflow.id', 'id')
+			.addSelect('workflow.name', 'name')
+			.addSelect('workflow.isArchived', 'isArchived')
+			.addSelect('workflow.versionId', 'versionId')
+			.addSelect('workflow.versionCounter', 'versionCounter')
+			.addSelect('workflow.updatedAt', 'updatedAt')
+			.innerJoin(
+				'workflow.shared',
+				'shared',
+				'shared.role = :role AND shared.projectId = :projectId',
+				{
+					role: 'workflow:owner',
+					projectId,
+				},
+			)
+			.getRawMany<{
+				id: string;
+				name: string;
+				isArchived: boolean | number | string;
+				versionId: string;
+				versionCounter: number | string;
+				updatedAt: Date | string;
+			}>();
+
+		return rows.map((row) => ({
+			id: row.id,
+			name: row.name,
+			isArchived:
+				row.isArchived === true ||
+				row.isArchived === 1 ||
+				row.isArchived === '1' ||
+				row.isArchived === 'true',
+			versionId: row.versionId,
+			versionCounter: Number(row.versionCounter),
+			updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+		}));
+	}
+
 	async getActiveTriggerCount() {
 		const totalTriggerCount = await this.sum('triggerCount', {
 			activeVersionId: Not(IsNull()),

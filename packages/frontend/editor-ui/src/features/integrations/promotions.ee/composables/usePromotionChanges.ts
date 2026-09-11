@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
 import type { PromotableResource } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getPromotableChanges, promoteChanges } from '../promotions.api';
+import { getPromotableChanges, promoteAllChanges, promoteChanges } from '../promotions.api';
 
 export function usePromotionChanges(projectId: string) {
 	const rootStore = useRootStore();
@@ -82,6 +82,10 @@ export function usePromotionChanges(projectId: string) {
 		});
 	}
 
+	async function promoteAll() {
+		return await promoteAllChanges(rootStore.restApiContext, projectId);
+	}
+
 	return {
 		changes,
 		filteredChanges,
@@ -96,5 +100,6 @@ export function usePromotionChanges(projectId: string) {
 		toggleSelected,
 		toggleSelectAll,
 		promote,
+		promoteAll,
 	};
 }

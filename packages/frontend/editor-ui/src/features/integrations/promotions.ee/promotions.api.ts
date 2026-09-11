@@ -35,7 +35,8 @@ const MOCK_DATA: PromotableResource[] = [
 	},
 ];
 
-const USE_MOCK = true;
+/** Fixture rows for UI work without a promotions checkout. Leave off for a live demo. */
+const USE_MOCK = false;
 
 export async function getPromotableChanges(
 	context: IRestApiContext,
@@ -64,4 +65,15 @@ export async function promoteChanges(
 	}
 
 	return await makeRestApiRequest(context, 'POST', `/promotions/${projectId}/promote`, request);
+}
+
+export async function promoteAllChanges(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<unknown> {
+	if (USE_MOCK) {
+		return { branchName: `promote/${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}` };
+	}
+
+	return await makeRestApiRequest(context, 'POST', `/promotions/${projectId}/promote-all`);
 }

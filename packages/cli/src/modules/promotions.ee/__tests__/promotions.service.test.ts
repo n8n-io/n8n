@@ -873,6 +873,123 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('listProjectChanges', () => {
+		const writeExportTree = async (base: string, files: Record<string, string>) => {
+			for (const [filePath, content] of Object.entries(files)) {
+				const fullPath = path.join(base, filePath);
+				await mkdir(path.dirname(fullPath), { recursive: true });
+				await writeFile(fullPath, content);
+			}
+		};
+
+		beforeEach(() => {
+			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
+			connectionRepository.findInstanceConnection.mockResolvedValue({ id: 'conn1' } as never);
+			resolver.resolveForConnection.mockResolvedValue(promoteInput());
+		});
+
+		it('lists new, modified, archived, and deleted workflows and skips an unchanged one', async () => {
+			const input = promoteInput();
+			await markCloned(input, 'staging');
+			const packageFolder = path.join(
+				workingDirectory.paths(CONFIG_ID).repositoryFolder,
+				'n8n-export',
+			);
+			await writeExportTree(packageFolder, {
+				'manifest.json': JSON.stringify({
+					packageFormatVersion: '1',
+					exportedAt: '2026-01-01T00:00:00.000Z',
+					sourceN8nVersion: '1.0.0',
+					sourceId: 'inst-1',
+					projects: [{ id: 'p1', name: 'Alpha', target: 'projects/alpha' }],
+					workflows: [
+						{ id: 'w-same', name: 'Same', target: 'projects/alpha/workflows/w-same' },
+						{ id: 'w-edit', name: 'Before', target: 'projects/alpha/workflows/w-edit' },
+						{ id: 'w-arch', name: 'Archived', target: 'projects/alpha/workflows/w-arch' },
+						{ id: 'w-gone', name: 'Gone', target: 'projects/alpha/workflows/w-gone' },
+					],
+				}),
+				'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
+				'projects/alpha/workflows/w-same/workflow.json': branchWorkflowFile('w-same', 'Same'),
+				'projects/alpha/workflows/w-edit/workflow.json': branchWorkflowFile('w-edit', 'Before'),
+				'projects/alpha/workflows/w-arch/workflow.json': branchWorkflowFile('w-arch', 'Archived'),
+				'projects/alpha/workflows/w-gone/workflow.json': branchWorkflowFile('w-gone', 'Gone'),
+			});
+			workflowRepository.findOwnerSummariesForProject.mockResolvedValue([
+				{
+					id: 'w-same',
+					name: 'Same',
+					isArchived: false,
+					versionId: 'version-w-same',
+					versionCounter: 1,
+					updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				},
+				{
+					id: 'w-edit',
+					name: 'After',
+					isArchived: false,
+					versionId: 'version-w-edit-2',
+					versionCounter: 2,
+					updatedAt: new Date('2026-01-03T00:00:00.000Z'),
+				},
+				{
+					id: 'w-arch',
+					name: 'Archived',
+					isArchived: true,
+					versionId: 'version-w-arch',
+					versionCounter: 1,
+					updatedAt: new Date('2026-01-04T00:00:00.000Z'),
+				},
+				{
+					id: 'w-new',
+					name: 'New',
+					isArchived: false,
+					versionId: 'version-w-new',
+					versionCounter: 1,
+					updatedAt: new Date('2026-01-05T00:00:00.000Z'),
+				},
+			]);
+
+			const changes = await service.listProjectChanges('p1');
+
+			expect(changes).toHaveLength(4);
+			expect(changes).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: 'w-new', status: 'new' }),
+					expect.objectContaining({ id: 'w-edit', status: 'modified', name: 'After' }),
+					expect.objectContaining({ id: 'w-arch', status: 'archived' }),
+					expect.objectContaining({ id: 'w-gone', status: 'deleted' }),
+				]),
+			);
+			expect(changes.some((change) => change.id === 'w-same')).toBe(false);
+		});
+
+		it('reports every live workflow as new when the branch has no package yet', async () => {
+			const input = promoteInput();
+			await markCloned(input, 'staging');
+			workflowRepository.findOwnerSummariesForProject.mockResolvedValue([
+				{
+					id: 'w1',
+					name: 'W1',
+					isArchived: false,
+					versionId: 'v1',
+					versionCounter: 1,
+					updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				},
+			]);
+
+			await expect(service.listProjectChanges('p1')).resolves.toEqual([
+				expect.objectContaining({ id: 'w1', status: 'new' }),
+			]);
+		});
+
+		it('rejects when the promote configuration is not cloned', async () => {
+			gitService.hasCheckout.mockResolvedValue(false);
+
+			await expect(service.listProjectChanges('p1')).rejects.toThrow('not cloned');
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 

@@ -43,6 +43,7 @@ const {
 	toggleSelected,
 	toggleSelectAll,
 	promote,
+	promoteAll,
 } = usePromotionChanges(props.data.projectId);
 
 // No visible rows despite a loaded, non-empty change set means the search excluded everything.
@@ -96,6 +97,25 @@ async function onPromote() {
 		await promote(createBranch.value);
 		toast.showMessage({
 			title: i18n.baseText('promotions.modal.promoteSuccess'),
+			type: 'success',
+		});
+		uiStore.closeModal(props.modalName);
+	} catch (e) {
+		toast.showError(
+			e instanceof Error ? e : new Error(String(e)),
+			i18n.baseText('promotions.modal.promoteError'),
+		);
+	} finally {
+		isPromoting.value = false;
+	}
+}
+
+async function onPromoteAll() {
+	isPromoting.value = true;
+	try {
+		await promoteAll();
+		toast.showMessage({
+			title: i18n.baseText('promotions.modal.promoteAllSuccess'),
 			type: 'success',
 		});
 		uiStore.closeModal(props.modalName);
@@ -282,6 +302,15 @@ onMounted(async () => {
 				<div :class="$style.footerRight">
 					<N8nButton variant="subtle" @click="onClose">
 						{{ i18n.baseText('promotions.modal.close') }}
+					</N8nButton>
+					<N8nButton
+						variant="outline"
+						:disabled="isLoading || !!error || isPromoting"
+						:loading="isPromoting"
+						data-test-id="promotion-submit-all"
+						@click="onPromoteAll"
+					>
+						{{ i18n.baseText('promotions.modal.promoteAll') }}
 					</N8nButton>
 					<N8nButton
 						:disabled="selectedCount === 0 || isLoading || !!error || isPromoting"
