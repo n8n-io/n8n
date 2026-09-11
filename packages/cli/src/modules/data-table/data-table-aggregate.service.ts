@@ -26,9 +26,6 @@ export class DataTableAggregateService {
 			return await this.dataTableRepository.getManyAndCount(options);
 		}
 
-		// Membership alone isn't enough — a project role without dataTable:listProject
-		// (e.g. project:chatUser, or a custom role missing dataTable:read) grants no
-		// data table access, so it must not surface that project's tables here either.
 		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
 		let projectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
 			user.id,

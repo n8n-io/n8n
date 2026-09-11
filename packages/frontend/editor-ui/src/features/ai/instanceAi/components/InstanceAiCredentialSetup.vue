@@ -8,6 +8,7 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
@@ -273,9 +274,42 @@ function getDisplayName(request: InstanceAiCredentialRequest): string {
 const hasExistingCredentials = computed(() => {
 	if (!currentRequest.value) return false;
 	const credType = currentRequest.value.credentialType;
-	// Gate on the same source NodeCredentials builds its dropdown from, so the
-	// card renders its own setup button instead of NodeCredentials' empty state.
+	// Prefer the backend-supplied list — it is already project-scoped and
+	// type-matched, so it does not depend on the shared usable-credentials slice
+	// (which may be empty or cleared by a competing scoped fetch). Fall back to
+	// the store so the auto-select path still works when the payload omits it.
+	if ((currentRequest.value.existingCredentials?.length ?? 0) > 0) return true;
 	return (credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0;
+});
+
+/**
+ * The dropdown source for the current step. The backend sends a project-scoped,
+ * exact-type `existingCredentials` list in the suspend payload; mapping it here
+ * (enriched with `type`) lets NodeCredentials render it without depending on the
+ * shared usable-credentials slice. Full store records are used when available so
+ * the row keeps its resolvable/managed badges; otherwise a minimal record is
+ * synthesized from the payload's `{ id, name }`.
+ *
+ * `undefined` when the payload lists nothing, so NodeCredentials falls back to
+ * the store slice — the same source `hasExistingCredentials` fell back to. An
+ * empty array would render an empty picker instead of the card's setup button.
+ */
+const dropdownCredentials = computed<ICredentialsResponse[] | undefined>(() => {
+	const req = currentRequest.value;
+	if (!req?.existingCredentials?.length) return undefined;
+	return req.existingCredentials.map((c) => {
+		const stored = credentialsStore.getCredentialById(c.id);
+		return stored && stored.type === req.credentialType
+			? stored
+			: {
+					id: c.id,
+					name: c.name,
+					type: req.credentialType,
+					isManaged: false,
+					createdAt: '',
+					updatedAt: '',
+				};
+	});
 });
 
 function hasEasySetup(credentialType: string): boolean {
@@ -643,6 +677,7 @@ async function handleSetupAutomatically() {
 							:prefer-new-credential="currentRequest.preferNew === true"
 							:credential-setup-hint="currentRequest.setupHint"
 							:credentials-field-label="credentialsFieldLabel"
+							:credentials="dropdownCredentials"
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
 						<N8nActionDropdown
