@@ -112,7 +112,7 @@ paths:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
     post:
       $ref: ./handlers/roles/spec/paths/createRole.generated.yml
-  /roles/{slug}:
+  /roles/{roleSlug}:
     get:
       $ref: ./handlers/roles/spec/paths/getRole.generated.yml
     put:
@@ -170,7 +170,7 @@ paths:
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
-  /workflows/{workflowId}/versions/{versionId}:
+  /workflows/{workflowId}/versions/{workflowVersionId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
   /workflows/{workflowId}/tags:
