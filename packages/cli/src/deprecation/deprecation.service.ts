@@ -190,7 +190,7 @@ export class DeprecationService {
 
 		if (!this.instanceSettings.isDocker) {
 			mustWarn.push(
-				' - Running n8n outside a container is deprecated. Future versions will require running n8n via the official Docker image. See https://docs.n8n.io/deploy/host-n8n/install-options/install-with-docker\n',
+				' - Running n8n outside a container is deprecated. Future versions will require running n8n via the official Docker image. See https://docs.n8n.io/deploy/host-n8n\n',
 			);
 		}
 

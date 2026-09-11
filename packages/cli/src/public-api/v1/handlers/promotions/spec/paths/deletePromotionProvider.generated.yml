@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The ID of the promotion provider.
-    name: id
+    name: promotionProviderId
     in: path
 responses:
   '204':

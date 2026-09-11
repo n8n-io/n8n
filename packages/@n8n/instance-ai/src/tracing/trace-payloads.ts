@@ -4,6 +4,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -74,7 +75,7 @@ export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
-function scrubTelemetryText(value: string): string {
+export function scrubTelemetryText(value: string): string {
 	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
 }
 
@@ -97,6 +98,7 @@ const LLM_AI_SDK_OPERATION_IDS = new Set([
 ]);
 
 export interface AgentTraceInputOptions {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
@@ -1030,6 +1032,19 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
+	if (isRecord(span.status) && typeof span.status.message === 'string') {
+		span.status = {
+			...span.status,
+			message: truncateString(scrubTelemetryText(span.status.message)),
+		};
+	}
+	if (Array.isArray(span.events)) {
+		span.events = span.events.map((event: unknown) =>
+			isRecord(event) && isRecord(event.attributes)
+				? { ...event, attributes: redactTelemetryJsonValue(event.attributes) }
+				: event,
+		);
+	}
 	return span;
 }
 
@@ -1368,6 +1383,14 @@ export function mergeTraceInputs(
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
+		...(options.promptConfiguration
+			? {
+					prompt_configuration: options.promptConfiguration,
+					system_prompt_hash: createHash('sha256')
+						.update(options.systemPrompt ?? '')
+						.digest('hex'),
+				}
+			: {}),
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
 		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined

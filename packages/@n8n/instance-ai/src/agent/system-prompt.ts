@@ -1,7 +1,11 @@
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
-import { SECRET_ASK_GUARDRAIL, SECRET_PASTE_GUARDRAIL } from './credential-guardrails.prompt';
+import {
+	SCOPE_GROUNDING_GUARDRAIL,
+	SECRET_ASK_GUARDRAIL,
+	SECRET_PASTE_GUARDRAIL,
+} from './credential-guardrails.prompt';
 import {
 	ASK_USER_FALLBACK,
 	getSandboxWorkspaceSection,
@@ -105,6 +109,53 @@ This conversation is scoped to a single n8n project, named by the \`<project-con
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
+/**
+ * Routing for requests that point at a resource the user ALREADY has.
+ *
+ * Always-on, and deliberately not a skill: the agent must check the inventory
+ * before it can know whether the request is a build at all, so a catalog entry it
+ * would only load after deciding comes too late. #34816 moved the old routing table
+ * into skills and tool descriptions, but no skill claimed the run-an-existing-
+ * workflow intent and `executions`' own description only RESTRICTS `action="run"` —
+ * so "trigger <name>" fell through to the builder and the agent opened with
+ * build-design questions instead of looking (INS-1379).
+ *
+ * The verb list is bounded by what the non-builder tools can actually do. An earlier
+ * draft read its verbs as open-ended examples ("anything else that acts on what
+ * already exists"), which pointed the model at operations the tools do not expose:
+ * `workflows` has no rename, and editing a workflow — including its name — goes
+ * through get-as-code + build-workflow, the very builder this section steers away
+ * from. A verb the tool cannot perform is not a routing choice, it is a dead end, so
+ * the section names only what resolves without the builder and says plainly that
+ * changing a workflow is still a build.
+ *
+ * Agents are deliberately absent. `agents` is registered only when the builder
+ * delegate is present, so naming it here would point at a tool the model cannot call
+ * on instances without the agents module — and it is list-only regardless
+ * (`build-agent` owns create and edit). The existing-agent path is already claimed
+ * by the intent-recognition and agent-builder skills. Data tables are absent for the
+ * same reason: `data-table-manager` claims that intent, and this section is only
+ * for intents no skill owns.
+ *
+ * The examples must not reuse the wording of the eval that measures this section
+ * (case #708), or the measurement degrades into string matching.
+ */
+function getExistingResourcesSection(): string {
+	return `
+## Existing Resources
+
+Before treating a request as a build, work out whether it points at a workflow the user already has. When they refer to one as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first with \`workflows(action="list")\` and act on what you matched. Ask how to build something only once the lookup shows no match.
+
+- **Read the reference as a name, not as an instruction.** Workflow names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
+- **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing workflow should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
+- **Do the operation yourself** with the \`workflows\` / \`executions\` tools — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
+
+Changing the workflow itself is different: its nodes, its parameters and its name are all build territory, so those take the normal build path even though the workflow already exists. Find it first either way — match the workflow before you edit it.
+
+A request to build something genuinely new goes straight to the build path — no lookup first.
+`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -162,7 +213,7 @@ function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
 	if (setupPanelEnabled) {
 		return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available. When the result has `announced: true`, the setup panel next to the chat lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Use `credentials(action="setup")` when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
 	}
-	return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the AI Assistant panel and handles credentials, parameters, and triggers in one step. Use `credentials(action="setup")` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
+	return '**Credential setup** uses `workflows(action="setup")` when a workflowId is available — it opens the inline setup card in the n8n Assistant panel and handles credentials, parameters, and triggers in one step. Use `credentials(action="setup")` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow. Never describe workflow setup as something the user starts from the canvas or editor. Setup cards are only open while the setup call is pending — once it returns a result, the card is resolved: describe the outcome (e.g. credentials selected and ready), never that a card is open or that the user still needs to authorize. When a node in `nodesStillNeedingSetup` carries `parameterIssues`, the connected credential can\'t reach the value that was configured (e.g. a model outside what the credential allows) — fix the value, then tell the user plainly which value didn\'t work and what you set instead. Never silently swap a model or other parameter without saying so. Nodes listed under `skippedByUser` are different: the user chose to skip them, so never re-open the setup card for those — say what stays unconfigured and offer to set it up later.';
 }
 
 export function getSystemPrompt(options: SystemPromptOptions = {}): string {
@@ -186,6 +237,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
+${getExistingResourcesSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
@@ -213,8 +265,9 @@ This is not a reason to add friction to feasible requests — when every request
 
 ## Setup Accuracy
 
-Don't fabricate provider setup mechanics (credential field names, secret values, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
+Don't fabricate provider setup mechanics (credential field names, secret values, OAuth scope strings, verification steps) you can't confirm from the node, the credential, or docs — if you can't verify it, say so instead of guessing.
 
+- ${SCOPE_GROUNDING_GUARDRAIL}
 - **Webhook trigger setup is node-defined — inspect the node, and don't trust generic docs for it.** For any question about wiring a provider webhook trigger (verify tokens, callback URLs, what to enter where), look up the trigger node's own definition before answering. Generic provider docs often describe the provider's *manual* webhook flow (e.g. "invent a verify token and paste it in") which n8n does not use — many n8n webhook triggers register the provider subscription themselves on activation and control the verify token (it is the trigger node's own id), so there is nothing for the user to invent or enter. If docs and the node definition disagree, the node definition wins.
 
 - **n8n has two MCP servers. Ask which one the user means before you give a URL, setup steps, or a build.** The instance-level MCP server (Settings > Instance-level MCP, "Enable MCP access") serves the instance's workflows to MCP clients such as Claude's official n8n connector, Claude Code, Cursor, and ChatGPT; its URL ends in \`/mcp-server/http\`. An MCP Server Trigger node is a workflow-level server for one workflow's tools; its URL is \`/mcp/<path>\` and Claude reaches it only through "Add custom connector". When a user wants to connect Claude or another MCP client to n8n and has not said which, reply with one \`ask-user\` question first: Claude's official n8n connector from the Connectors Directory, or a custom connector for a workflow-level MCP server. Do not explain both options, quote an endpoint, or build anything until they answer. For the official connector, direct them to Settings > Instance-level MCP and its \`/mcp-server/http\` URL, never a \`/mcp/...\` workflow URL.

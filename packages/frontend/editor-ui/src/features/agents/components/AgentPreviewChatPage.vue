@@ -10,18 +10,22 @@ import type {
 } from '../types';
 import AgentChatPanel from './AgentChatPanel.vue';
 
-defineProps<{
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-	beforeSend?: () => Promise<void> | void;
-}>();
+withDefaults(
+	defineProps<{
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		effectiveSessionId?: string;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		beforeSend?: () => Promise<void> | void;
+		layout?: 'page' | 'dock';
+	}>(),
+	{ layout: 'dock' },
+);
 
 const emit = defineEmits<{
 	'continue-loaded': [event: AgentContinueLoadedEvent];
@@ -36,11 +40,19 @@ function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
 }
 
-defineExpose({ focusInput });
+function getConversationMarkdown(): string {
+	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+defineExpose({ focusInput, getConversationMarkdown });
 </script>
 
 <template>
-	<div :class="$style.previewPage" data-testid="agent-preview-chat-page">
+	<component
+		:is="layout === 'page' ? 'main' : 'div'"
+		:class="[$style.previewPage, { [$style.pageLayout]: layout === 'page' }]"
+		data-testid="agent-preview-chat-page"
+	>
 		<div :class="$style.chatFrame">
 			<AgentChatPanel
 				v-if="initialized && effectiveSessionId"
@@ -61,7 +73,7 @@ defineExpose({ focusInput });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
-	</div>
+	</component>
 </template>
 
 <style lang="scss" module>
@@ -72,6 +84,10 @@ defineExpose({ focusInput });
 	justify-content: center;
 	background-color: transparent;
 	overflow: hidden;
+}
+
+.pageLayout {
+	background-color: var(--background--surface);
 }
 
 .chatFrame {

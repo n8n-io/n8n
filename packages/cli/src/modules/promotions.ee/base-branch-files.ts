@@ -1,6 +1,6 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
-	WORKFLOW_LIFECYCLE_FILE_NAME,
+	WORKFLOW_METADATA_FILE_NAME,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -69,9 +69,9 @@ export function parseBaseBranchFiles(
 				? folders
 				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
 		if (!entity) continue;
-		const isWorkflowLifecycle =
-			entity.type === 'workflow' && fileName === WORKFLOW_LIFECYCLE_FILE_NAME;
-		if (fileName !== entity.fileName && !isWorkflowLifecycle) continue;
+		const isWorkflowMetadata =
+			entity.type === 'workflow' && fileName === WORKFLOW_METADATA_FILE_NAME;
+		if (fileName !== entity.fileName && !isWorkflowMetadata) continue;
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];

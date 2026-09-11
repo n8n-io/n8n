@@ -64,7 +64,6 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
 				'agents.builder.agent.instructions.label': 'Instructions',
-				'agents.builder.agent.instructions.placeholder': 'Enter instructions here',
 				'agents.builder.agent.instructions.characterCount': `${options?.interpolate?.count ?? '0'} characters`,
 				'agents.builder.agent.model.defaultSelected.title': 'Default model selected',
 				'agents.builder.agent.model.defaultSelected.description':
@@ -75,6 +74,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nVisuallyHidden: { template: '<slot />', props: ['asChild'] },
 	N8nMarkdownEditor: {
 		name: 'N8nMarkdownEditor',
 		props: ['modelValue', 'variant', 'showToolbar', 'placeholder', 'readonly', 'maxHeight'],
@@ -171,8 +171,9 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 function mountPanel(
 	instructions = '# Role\nHelp users.',
 	overrides: Partial<{
-		showInstructionsToolbar: boolean;
 		showModel: boolean;
+		showInstructions: boolean;
+		embedded: boolean;
 		config: Record<string, unknown>;
 	}> = {},
 ) {
@@ -217,39 +218,69 @@ describe('AgentInfoPanel', () => {
 		defaultModelHolder.value = null;
 	});
 
-	it('renders instructions as a contained markdown editor with a floating toolbar', () => {
+	it('keeps the card heading accessible in the builder', function rendersCardHeader() {
+		const wrapper = mountPanel(undefined, { showModel: true, embedded: false });
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
+		});
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it('keeps the card heading accessible in embedded controls', function hidesEmbeddedHeader() {
+		const wrapper = mountPanel();
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
+		});
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it.each([
+		{ showModel: true, showInstructions: true, hasDivider: true },
+		{ showModel: true, showInstructions: false, hasDivider: false },
+		{ showModel: false, showInstructions: true, hasDivider: false },
+		{ showModel: false, showInstructions: false, hasDivider: false },
+	])(
+		'shows a divider only between visible sections: $showModel / $showInstructions',
+		function rendersSectionDivider({ showModel, showInstructions, hasDivider }) {
+			const wrapper = mountPanel(undefined, { showModel, showInstructions });
+
+			expect(wrapper.find('[aria-hidden="true"]').exists()).toBe(hasDivider);
+		},
+	);
+
+	it('renders instructions as a ghost markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'contained',
+			variant: 'ghost',
 			showToolbar: 'floating',
-			maxHeight: '360px',
+			maxHeight: undefined,
+			placeholder: 'agents.builder.agent.instructions.placeholder',
 		});
-		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
-		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
-	it('keeps the markdown toolbar floating when the instructions toolbar is enabled', () => {
-		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
-
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
-		expect(editor.props()).toMatchObject({
-			showToolbar: 'floating',
-			variant: 'contained',
-		});
-	});
-
-	it('does not pass placeholder text to the instructions editor', () => {
+	it('passes a placeholder to the empty instructions editor', function passesInstructionsPlaceholder() {
 		const wrapper = mountPanel('');
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
-		expect(editor.props('placeholder')).toBeUndefined();
-		expect(wrapper.text()).not.toContain('Enter instructions here');
+		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {

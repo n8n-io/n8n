@@ -9,6 +9,7 @@ export interface PromptContext {
 	script: ConversationTurn[];
 	/** What's actually been said this run, both sides. */
 	actualTranscript: ConversationTurn[];
+	savedWorkflows?: Array<{ id: string; name: string }>;
 }
 
 export const SYSTEM_PROMPT = `You are simulating a real user in a workflow-building conversation with an AI assistant.
@@ -103,6 +104,11 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 	return [
 		formatScriptSection(ctx),
 		formatTranscriptSection(ctx),
+		...(ctx.savedWorkflows?.length
+			? [
+					`Saved workflows available to run. Select the intended workflow, not a prerequisite or cleanup workflow.\n${JSON.stringify(ctx.savedWorkflows)}`,
+				]
+			: []),
 		"It is now the user's turn: the agent finished its run and is waiting, and no widget is on screen. Decide what the user does — send a chat message or end the conversation.",
 		'Pick `send_follow_up_message` when the agent\'s last response leaves anything open — it asked a question, requested approval, presented a plan to react to, or stalled and needs unblocking. Approving or rejecting a plan the agent presented in plain text IS a follow-up message (e.g. "No — two changes first: …" / "Yes, go ahead."). If the script answers the open point, deliver it with concrete values verbatim; if the script doesn\'t cover it and credentials aren\'t involved, give a brief plausible reply.',
 		'If a stage direction tells the user to keep requesting changes or stay in the conversation, pick `send_follow_up_message` with the NEXT change — even after a successful build — until the change list is exhausted.',
