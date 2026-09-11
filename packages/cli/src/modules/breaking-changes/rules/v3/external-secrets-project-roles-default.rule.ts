@@ -1,7 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { SettingsRepository } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
-import { EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING } from '@n8n/permissions';
 
 import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
@@ -13,10 +11,7 @@ import { BreakingChangeCategory } from '../../types';
 
 @BreakingChangeRule({ version: 'v3' })
 export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeInstanceRule {
-	constructor(
-		private readonly licenseState: LicenseState,
-		private readonly settingsRepository: SettingsRepository,
-	) {}
+	constructor(private readonly licenseState: LicenseState) {}
 
 	id: string = 'external-secrets-project-roles-default-v3';
 
@@ -38,11 +33,6 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 			return NOT_AFFECTED_INSTANCE;
 		}
 
-		// The toggle already matching the v3 default means no behaviour change.
-		if (await this.isSystemRolesEnabled()) {
-			return NOT_AFFECTED_INSTANCE;
-		}
-
 		return {
 			isAffected: true,
 			instanceIssues: [
@@ -61,15 +51,5 @@ export class ExternalSecretsProjectRolesDefaultRule implements IBreakingChangeIn
 				},
 			],
 		};
-	}
-
-	private async isSystemRolesEnabled(): Promise<boolean> {
-		const rows = await this.settingsRepository.findByKeys([
-			EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
-		]);
-		const value = rows.find(
-			(r) => r.key === EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
-		)?.value;
-		return value === 'true';
 	}
 }
