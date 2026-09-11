@@ -668,22 +668,32 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 
-		it('removes every system task job while the system-task flag is off', async () => {
-			dummy.durable = true;
-			const { runner, metadata, jobs, durableJobProvisioner } = setup({
-				schedulerActive: true,
-				enabledForSystemTasks: false,
-			});
-			jobs.findPayloadsByOwnerType.mockResolvedValue([stored('dummy'), stored('other-dummy')]);
-			metadata.register(DummySystemTask);
+		it.each([
+			{
+				case: 'the durable scheduler is inactive',
+				schedulerActive: false,
+				enabledForSystemTasks: true,
+			},
+			{ case: 'the system-task flag is off', schedulerActive: true, enabledForSystemTasks: false },
+		])(
+			'removes every system task job while $case',
+			async ({ schedulerActive, enabledForSystemTasks }) => {
+				dummy.durable = true;
+				const { runner, metadata, jobs, durableJobProvisioner } = setup({
+					schedulerActive,
+					enabledForSystemTasks,
+				});
+				jobs.findPayloadsByOwnerType.mockResolvedValue([stored('dummy'), stored('other-dummy')]);
+				metadata.register(DummySystemTask);
 
-			await runner.init();
+				await runner.init();
 
-			expect(durableJobProvisioner.deprovisionOwner.mock.calls).toEqual([
-				[ownerOf('dummy')],
-				[ownerOf('other-dummy')],
-			]);
-		});
+				expect(durableJobProvisioner.deprovisionOwner.mock.calls).toEqual([
+					[ownerOf('dummy')],
+					[ownerOf('other-dummy')],
+				]);
+			},
+		);
 
 		it('keeps the job of a task it provisions', async () => {
 			dummy.durable = true;
@@ -730,6 +740,23 @@ describe('SystemTaskRunner', () => {
 				name: 'gone',
 				removed: 1,
 			});
+		});
+
+		it('logs a stale job another instance already removed at debug', async () => {
+			const { runner, jobs, durableJobProvisioner, logger } = setup(durably);
+			jobs.findPayloadsByOwnerType.mockResolvedValue([stored('gone')]);
+			durableJobProvisioner.deprovisionOwner.mockResolvedValue({ removed: 0 });
+
+			await runner.init();
+
+			expect(logger.info).not.toHaveBeenCalledWith(
+				'Removed the stale durable job of a system task',
+				expect.anything(),
+			);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Found no durable job to remove for a stale system task',
+				{ name: 'gone' },
+			);
 		});
 
 		it('reports a job it cannot remove and removes the rest', async () => {

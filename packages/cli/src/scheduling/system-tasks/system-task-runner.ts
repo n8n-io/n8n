@@ -128,7 +128,11 @@ export class SystemTaskRunner {
 				const { removed } = await this.durableJobProvisioner.deprovisionOwner(
 					this.systemTaskOwner.owner(name),
 				);
-				this.logger.info('Removed the stale durable job of a system task', { name, removed });
+				if (removed > 0) {
+					this.logger.info('Removed the stale durable job of a system task', { name, removed });
+				} else {
+					this.logger.debug('Found no durable job to remove for a stale system task', { name });
+				}
 			} catch (error) {
 				this.reportFailure(
 					'Could not remove the stale durable job of a system task',
