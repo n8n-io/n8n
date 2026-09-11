@@ -352,3 +352,37 @@ describe('ThinkingBlock', () => {
 		expect(getByText('deep thoughts')).toBeInTheDocument();
 	});
 });
+
+describe('collapsed subline label', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+	});
+
+	const ctx = {
+		type: 'instance-context' as const,
+		runId: 'run-1',
+		injection: {
+			state: 'injected' as const,
+			isUpdate: false,
+			legs: { inventory: 8, events: 0, runs: 0 },
+			chars: 400,
+		},
+	};
+
+	/**
+	 * The subline falls back to the same "Thinking" string the header shows, so without a
+	 * label of its own the row reads as a duplicate of the header. The context entry is
+	 * the tail for the whole first leg of a turn, before any tool runs.
+	 */
+	it('names reading the context rather than repeating the header', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ timeline: [ctx] }),
+				entries: [ctx],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline').textContent).toContain('Reading instance context');
+	});
+});
