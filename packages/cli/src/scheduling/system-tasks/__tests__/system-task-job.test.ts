@@ -1,5 +1,9 @@
 import { DEFAULT_MISFIRE_GRACE_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
+import type { ScheduledJobRepository } from '@n8n/db';
 import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
+import { mock } from 'vitest-mock-extended';
+
+import { N8N_VERSION } from '@/constants';
 
 import { systemTaskProvisionRequest } from '../system-task-job';
 import { SystemTaskScheduledJobOwner } from '../system-task-scheduled-job-owner';
@@ -16,7 +20,7 @@ const task = (over: Partial<SystemTask> = {}): SystemTask => ({
 });
 
 describe('systemTaskProvisionRequest', () => {
-	const owner = new SystemTaskScheduledJobOwner();
+	const owner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
 	const request = (over: Partial<SystemTask> = {}, defaultTimezone = 'UTC') =>
 		systemTaskProvisionRequest(task(over), owner, defaultTimezone, NOW);
 
@@ -36,8 +40,8 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.name).toBe('system:prune-executions');
 	});
 
-	it('carries no payload, since the task type alone selects the handler', () => {
-		expect(request().payload).toEqual({});
+	it("stamps the payload with this instance's version", () => {
+		expect(request().payload).toEqual({ n8nVersion: N8N_VERSION });
 	});
 
 	it('seeds an interval task one interval past now', () => {

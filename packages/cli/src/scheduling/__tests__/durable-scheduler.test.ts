@@ -55,7 +55,7 @@ describe('DurableScheduler', () => {
 		tasks.readDbTime.mockResolvedValue(new Date());
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
-		const systemTaskOwner = new SystemTaskScheduledJobOwner();
+		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),

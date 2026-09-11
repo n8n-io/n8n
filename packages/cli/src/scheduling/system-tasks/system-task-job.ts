@@ -25,7 +25,7 @@ export function systemTaskProvisionRequest(
 	return {
 		owner: systemTaskOwner.owner(task.name),
 		taskType: name,
-		payload: {},
+		payload: systemTaskOwner.jobPayload(),
 		desired: [{ name, schedule, firstRunAt }],
 		misfirePolicy,
 		misfireGraceSeconds,
