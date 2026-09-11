@@ -96,7 +96,8 @@ From the isolated runner you get:
   invocations don't collide.
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir, cleaned up on exit.
   `~/.n8n/database.sqlite` is never touched.
-- **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so service-backed tests run locally.
+- **`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`** so container-tagged (`@mode:*`,
+  `@licensed`, and `@db:reset`) tests are selected by the local `e2e` project.
 - **Self-managed n8n** with a `/rest/e2e/reset` readiness check that waits for
   the E2E controller, `PLAYWRIGHT_SKIP_WEBSERVER=true` to stop Playwright from
   spawning a duplicate, and process-group cleanup so `node ./n8n` doesn't get

@@ -1,4 +1,4 @@
-import { SERVICE_NAMES } from '../../containers/services/types';
+import { SERVICE_NAMES } from 'n8n-containers/services/types';
 import { describe, expect, it } from 'vitest';
 
 import { getRequiredImages } from './distribution-images.mjs';

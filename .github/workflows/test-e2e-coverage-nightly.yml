@@ -66,6 +66,7 @@ jobs:
       # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
       test-command: pnpm --filter=n8n-playwright coverage:shard
       workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 55
       pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: coverage
