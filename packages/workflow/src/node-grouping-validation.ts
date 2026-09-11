@@ -92,11 +92,11 @@ export const NODE_GROUPING_RULES = {
 		sdkReference:
 			'**One connected section with a single entry and exit.** The connectable members must ' +
 			'form a single connected section of the graph — reachable from one another, not two ' +
-			'unrelated islands — where at most one member takes main input from outside the group ' +
-			'and at most one member sends main output outside it, and that member has no successor ' +
-			'inside (the one exception: a closed loop whose only exit is the loop node) — so a gate ' +
-			'cannot hold only its dead end. The limit is on members facing outward, not on connections: several ' +
-			'connections may reach that one entry member, and several may leave that one exit ' +
+			'unrelated islands — where at most one member takes main input from outside the group and ' +
+			'has no predecessor inside, and at most one member sends main output outside it and has no ' +
+			'successor inside (the one exception: a closed loop whose only exit is the loop node) — so ' +
+			'a gate cannot hold only its dead end. The limit is on members facing outward, not on connections: ' +
+			'several connections may reach that one entry member, and several may leave that one exit ' +
 			'member. Sticky notes may accompany the selection ' +
 			'without participating in connectivity, and a sticky-only group is valid.',
 		violation: 'must form a single connected subgraph with a single entry and exit',

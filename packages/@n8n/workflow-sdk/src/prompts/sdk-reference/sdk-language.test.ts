@@ -142,10 +142,12 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		// rule out a valid group whose entry member is a Merge.
 		expect(NODE_GROUPS_REFERENCE).toMatch(/not on connections/i);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/several connections may reach that one entry member/i);
-		// The engine also rejects an exit member that continues inside the group
-		// (`Output Edge From Non-Leaf Node`), except in a closed loop where the loop node
-		// is the only exit — so a gate cannot be grouped with only its dead end.
-		expect(NODE_GROUPS_REFERENCE).toMatch(/that member has no successor\s+inside/i);
+		// The engine also rejects an entry member fed from inside the group
+		// (`Input Edge To Non-Root Node`) and an exit member that continues inside the
+		// group (`Output Edge From Non-Leaf Node`), except in a closed loop where the
+		// loop node is the only exit — so a gate cannot be grouped with only its dead end.
+		expect(NODE_GROUPS_REFERENCE).toMatch(/has no predecessor\s+inside/i);
+		expect(NODE_GROUPS_REFERENCE).toMatch(/has no\s+successor inside/i);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/closed loop whose only exit is the loop node/i);
 		expect(NODE_GROUPS_REFERENCE).toMatch(/gate\s+cannot hold only its dead end/i);
 	});
