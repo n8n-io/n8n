@@ -12,7 +12,6 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
-	N8nSpinner,
 	N8nTabs,
 	N8nText,
 	N8nToggle,
@@ -852,11 +851,9 @@ watch(
 				</div>
 				<div
 					v-else-if="liveStarting"
-					:class="$style.emptyState"
+					:class="$style.previewStarting"
 					data-test-id="app-preview-starting"
-				>
-					<N8nSpinner />
-				</div>
+				/>
 				<div
 					v-else-if="!loading && !livePending"
 					:class="$style.emptyState"
@@ -1135,6 +1132,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .artifactRoot {
 	height: 100%;
 	min-height: 0;
@@ -1360,6 +1359,14 @@ watch(
 .addressChevron {
 	flex: none;
 	color: var(--color--text--tint-1);
+}
+
+// The banner above already says the dev server is starting; the pane only
+// needs to look alive until the document arrives.
+.previewStarting {
+	flex: 1;
+	--animation--shimmer-surface--duration: 1.5s;
+	@include motion.shimmer-surface;
 }
 
 .emptyState {

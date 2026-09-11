@@ -1254,7 +1254,7 @@ describe('AppDetailsView', () => {
 			},
 		);
 
-		it('shows a spinner under the banner while the preview of an app without a build starts', async () => {
+		it('shimmers under the banner while the preview of an app without a build starts', async () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
 				artifactMode: true,
 				liveStatus: { status: 'starting' },
