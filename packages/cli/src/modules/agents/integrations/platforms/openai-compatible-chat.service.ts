@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { stripCitationMarkers } from './citation-markers';
 import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
@@ -206,7 +207,7 @@ export class OpenAiCompatibleChatService {
 			}
 		}
 
-		return { content, finishReason };
+		return { content: stripCitationMarkers(content), finishReason };
 	}
 
 	/** Constant-time token compare; length guard avoids `timingSafeEqual` throwing. */

@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { createCitationMarkerStripper } from './integrations/platforms/citation-markers';
 import {
 	OpenAiCompatibleChatService,
 	type OpenAiChatMessage,
@@ -152,6 +153,9 @@ export class AgentOpenAiCompatibleChatController {
 			);
 		};
 
+		// Citation markers can straddle two deltas, so strip statefully across the
+		// stream rather than per chunk (see citation-markers.ts).
+		const stripper = createCitationMarkerStripper();
 		try {
 			for await (const chunk of this.chatService.execute(
 				channel,
@@ -159,8 +163,11 @@ export class AgentOpenAiCompatibleChatController {
 				sandboxPrincipalHash,
 			)) {
 				if (chunk.type === 'text-delta') {
-					sendChunk({ content: chunk.delta }, null);
+					const content = stripper.push(chunk.delta);
+					if (content) sendChunk({ content }, null);
 				} else if (chunk.type === 'finish') {
+					const content = stripper.flush();
+					if (content) sendChunk({ content }, null);
 					sendChunk({}, chunk.finishReason);
 				} else if (chunk.type === 'error') {
 					break;

@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
 import type { Agent } from '../../../entities/agent.entity';
 import type { AgentRepository } from '../../../repositories/agent.repository';
+import type { OpenAiCompatibleChatService } from '../openai-compatible-chat.service';
 import { OpenAiCompatibleSetupService } from '../openai-compatible-setup.service';
 
 describe('OpenAiCompatibleSetupService', () => {
@@ -24,31 +23,28 @@ describe('OpenAiCompatibleSetupService', () => {
 	}
 
 	function makeService() {
-		const credentialsService = mock<CredentialsService>();
 		const integrationManagementService = mock<AgentIntegrationManagementService>();
 		const agentRepository = mock<AgentRepository>();
-		const logger = mock<Logger>();
+		const chatService = mock<OpenAiCompatibleChatService>();
+		chatService.deriveToken.mockReturnValue('n8n_agent_derived_token');
 
 		return {
 			service: new OpenAiCompatibleSetupService(
-				credentialsService,
 				integrationManagementService,
 				agentRepository,
-				logger,
+				chatService,
 			),
-			credentialsService,
 			integrationManagementService,
 			agentRepository,
+			chatService,
 		};
 	}
 
 	describe('generateKey', () => {
-		it('creates a managed credential, connects it, and returns the key once', async () => {
-			const { service, credentialsService, integrationManagementService, agentRepository } =
-				makeService();
+		it('connects the channel and returns the derived token once', async () => {
+			const { service, integrationManagementService, agentRepository, chatService } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			credentialsService.createManagedCredential.mockResolvedValue({ id: 'credential-1' } as never);
 
 			const result = await service.generateKey({
 				agentId: agent.id,
@@ -57,47 +53,18 @@ describe('OpenAiCompatibleSetupService', () => {
 				user: user as never,
 			});
 
-			expect(credentialsService.createManagedCredential).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'agentChatApiKeyApi',
-					data: { apiKey: expect.stringMatching(/^n8n_agent_[0-9a-f]{64}$/) },
-					projectId: agent.projectId,
-				}),
-				user,
-			);
 			expect(integrationManagementService.connect).toHaveBeenCalledWith({
 				agent,
 				user,
-				integration: { type: 'openwebui', credentialId: 'credential-1', settings: {} },
-			});
-			expect(result.credentialId).toBe('credential-1');
-			expect(result.apiKey).toMatch(/^n8n_agent_[0-9a-f]{64}$/);
-		});
-
-		it('deletes the credential it just created when the connect fails', async () => {
-			const { service, credentialsService, integrationManagementService, agentRepository } =
-				makeService();
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentRepository.findIntegrationState.mockResolvedValue({
-				integrations: [],
-				versionId: 'draft-1',
-				activeVersionId: null,
-			});
-			credentialsService.createManagedCredential.mockResolvedValue({ id: 'credential-1' } as never);
-			const connectError = new Error('connect failed');
-			integrationManagementService.connect.mockRejectedValue(connectError);
-
-			await expect(
-				service.generateKey({
-					agentId: agent.id,
-					projectId: agent.projectId,
+				integration: {
 					type: 'openwebui',
-					user: user as never,
-				}),
-			).rejects.toBe(connectError);
-
-			expect(credentialsService.delete).toHaveBeenCalledWith(user, 'credential-1');
+					credentialId: result.connectionId,
+					settings: {},
+				},
+			});
+			expect(chatService.deriveToken).toHaveBeenCalledWith(agent.id, result.connectionId);
+			expect(result.connectionId).toMatch(/^[0-9a-f]{32}$/);
+			expect(result.apiKey).toBe('n8n_agent_derived_token');
 		});
 
 		it('throws when the agent does not exist', async () => {
@@ -116,16 +83,12 @@ describe('OpenAiCompatibleSetupService', () => {
 	});
 
 	describe('regenerateKey', () => {
-		it('disconnects the current credential and generates a fresh one', async () => {
-			const { service, credentialsService, integrationManagementService, agentRepository } =
-				makeService();
+		it('disconnects the current connection and generates a fresh one', async () => {
+			const { service, integrationManagementService, agentRepository } = makeService();
 			const agent = makeAgent({
-				integrations: [{ type: 'openwebui', credentialId: 'credential-old' }] as never,
+				integrations: [{ type: 'openwebui', credentialId: 'connection-old' }] as never,
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			credentialsService.createManagedCredential.mockResolvedValue({
-				id: 'credential-new',
-			} as never);
 
 			const result = await service.regenerateKey({
 				agentId: agent.id,
@@ -138,9 +101,10 @@ describe('OpenAiCompatibleSetupService', () => {
 				agent,
 				user,
 				type: 'openwebui',
-				credentialId: 'credential-old',
+				credentialId: 'connection-old',
 			});
-			expect(result.credentialId).toBe('credential-new');
+			expect(result.connectionId).toMatch(/^[0-9a-f]{32}$/);
+			expect(result.connectionId).not.toBe('connection-old');
 		});
 
 		it('throws when the channel is not currently connected', async () => {

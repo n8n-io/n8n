@@ -7,6 +7,11 @@ import { generateOpenAiCompatibleKey, regenerateOpenAiCompatibleKey } from './ap
 export interface OpenAiCompatibleChannelRuntime extends AgentChannelRuntime {
 	/** The plaintext key, present only right after `connect`/`regenerate`; never re-fetched. */
 	apiKey: Ref<string | null>;
+	/**
+	 * Opaque id of the integration entry created by `connect`. The setup flow
+	 * uses it to roll the entry back if the user closes without confirming.
+	 */
+	connectionId: Ref<string | null>;
 	baseUrl: Ref<string>;
 	connect: () => Promise<void>;
 	regenerate: () => Promise<void>;
@@ -30,6 +35,7 @@ export function useOpenAiCompatibleChannelRuntime(
 	const rootStore = useRootStore();
 	const loading = ref(false);
 	const apiKey = ref<string | null>(null);
+	const connectionId = ref<string | null>(null);
 
 	// This is a plain REST endpoint OpenWebUI/LibreChat call directly, not a
 	// webhook: `urlBaseWebhook` can point at a different public domain than
@@ -59,6 +65,7 @@ export function useOpenAiCompatibleChannelRuntime(
 				type,
 			);
 			apiKey.value = result.apiKey;
+			connectionId.value = result.connectionId;
 			await context.fetchStatus([type]);
 		} finally {
 			loading.value = false;
@@ -75,6 +82,7 @@ export function useOpenAiCompatibleChannelRuntime(
 				type,
 			);
 			apiKey.value = result.apiKey;
+			connectionId.value = result.connectionId;
 		} finally {
 			loading.value = false;
 		}
@@ -84,6 +92,7 @@ export function useOpenAiCompatibleChannelRuntime(
 		load,
 		loading: computed(() => loading.value),
 		apiKey,
+		connectionId,
 		baseUrl,
 		connect,
 		regenerate,
