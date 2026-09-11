@@ -40,6 +40,7 @@ export interface ScriptedGateRunArgs {
 	runId: string;
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	verificationScope?: ReadonlySet<string>;
 }
 
 interface DecisionPass {
@@ -85,6 +86,7 @@ export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Pr
 			runId,
 			chatModelRelatedNodeNames,
 			chatModelRecovery,
+			verificationScope: args.verificationScope,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}

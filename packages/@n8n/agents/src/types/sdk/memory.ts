@@ -4,11 +4,10 @@ import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from 
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
-	ObservationLogEntry,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
-	ObservationLogScope,
 } from './observation-log';
+import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -34,6 +33,8 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
+	/** Retains active skills across separate runs, including compacted conversations. */
+	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;
@@ -80,6 +81,38 @@ export interface EpisodicMemoryScope {
 	resourceId: string;
 }
 
+export type EpisodicMemoryCaptureKind =
+	| 'explicit_remember'
+	| 'preference'
+	| 'decision'
+	| 'fact'
+	| 'correction'
+	| 'resolution'
+	| 'request';
+
+export type EpisodicMemoryCaptureStatus = 'pending' | 'completed' | 'failed';
+
+export interface EpisodicMemoryCaptureCandidate {
+	id: string;
+	resourceId: string;
+	threadId: string;
+	sourceMessageId: string | null;
+	runId: string;
+	toolCallId: string;
+	content: string;
+	evidenceText: string;
+	kind: EpisodicMemoryCaptureKind;
+	status: EpisodicMemoryCaptureStatus;
+	attemptCount: number;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export type NewEpisodicMemoryCaptureCandidate = Omit<
+	EpisodicMemoryCaptureCandidate,
+	'id' | 'status' | 'attemptCount' | 'createdAt' | 'updatedAt'
+>;
+
 export interface EpisodicMemoryEntry {
 	id: string;
 	resourceId: string;
@@ -104,33 +137,31 @@ export type NewEpisodicMemoryEntry = Omit<
 	lastSeenAt?: Date;
 };
 
-export interface EpisodicMemoryEntrySource {
+interface EpisodicMemoryEntrySourceBase {
 	id: string;
 	memoryEntryId: string;
-	observationId: string;
 	threadId: string;
 	evidenceText: string;
 	createdAt: Date;
 }
 
-export type NewEpisodicMemoryEntrySource = Omit<EpisodicMemoryEntrySource, 'id' | 'createdAt'> & {
+export type EpisodicMemoryEntrySource = EpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceBase = Omit<EpisodicMemoryEntrySourceBase, 'id' | 'createdAt'> & {
 	createdAt?: Date;
 };
 
-export type NewEpisodicMemoryEntrySourceForEntry = Omit<
-	NewEpisodicMemoryEntrySource,
+export type NewEpisodicMemoryEntrySource = NewEpisodicMemoryEntrySourceBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
+
+type NewEpisodicMemoryEntrySourceForEntryBase = Omit<
+	NewEpisodicMemoryEntrySourceBase,
 	'memoryEntryId'
 >;
 
-export interface EpisodicMemoryCursor extends ObservationLogScope {
-	lastIndexedObservationId: string;
-	lastIndexedObservationCreatedAt: Date;
-	updatedAt: Date;
-}
-
-export type NewEpisodicMemoryCursor = Omit<EpisodicMemoryCursor, 'updatedAt'> & {
-	updatedAt?: Date;
-};
+export type NewEpisodicMemoryEntrySourceForEntry = NewEpisodicMemoryEntrySourceForEntryBase &
+	({ observationId: string; candidateId?: null } | { observationId?: null; candidateId: string });
 
 export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 	lexicalScore: number;
@@ -174,8 +205,6 @@ export interface EpisodicMemoryMethods {
 		scope: EpisodicMemoryScope,
 		reflection: EpisodicMemoryReflectionApply,
 	): Promise<EpisodicMemoryReflectionResult>;
-	getCursor(scope: ObservationLogScope): Promise<EpisodicMemoryCursor | null>;
-	setCursor(cursor: NewEpisodicMemoryCursor): Promise<void>;
 	taskLock?: EpisodicMemoryTaskLockMethods;
 }
 
@@ -183,31 +212,21 @@ export interface BuiltEpisodicMemoryStore {
 	episodic: EpisodicMemoryMethods;
 }
 
-export interface EpisodicMemoryExtractionCandidate {
-	content: string;
-	sources: Array<{
-		observationId: string;
-		evidence: string;
-	}>;
+export interface EpisodicMemoryCaptureMethods {
+	enqueueCaptureCandidate(
+		candidate: NewEpisodicMemoryCaptureCandidate,
+	): Promise<EpisodicMemoryCaptureCandidate>;
+	getPendingCaptureCandidates(
+		scope: EpisodicMemoryScope,
+		opts?: { limit?: number },
+	): Promise<EpisodicMemoryCaptureCandidate[]>;
+	completeCaptureCandidates(ids: string[]): Promise<void>;
+	recordCaptureCandidateFailure(ids: string[], maxAttempts: number): Promise<void>;
 }
 
-export interface EpisodicMemoryExtractorInput {
-	scope: EpisodicMemoryScope;
-	observationScope: ObservationLogScope;
-	now: Date;
-	observations: ObservationLogEntry[];
-	renderedObservations: string;
-	existingEntries: RetrievedEpisodicMemoryEntry[];
-	executionCounter?: AgentExecutionCounter;
+export interface BuiltEpisodicMemoryCaptureStore {
+	episodic: EpisodicMemoryMethods & EpisodicMemoryCaptureMethods;
 }
-
-export interface EpisodicMemoryExtraction {
-	entries: EpisodicMemoryExtractionCandidate[];
-}
-
-export type EpisodicMemoryExtractFn = (
-	input: EpisodicMemoryExtractorInput,
-) => Promise<EpisodicMemoryExtraction>;
 
 export interface EpisodicMemoryReflectionMerge {
 	supersedes: string[];
@@ -249,7 +268,6 @@ export interface EpisodicMemoryReflectionResult {
 }
 
 export interface EpisodicMemoryPrompts {
-	extraction?: string;
 	reflection?: string;
 	recallToolInstruction?: string;
 }
@@ -267,7 +285,6 @@ export interface EpisodicMemoryConfig {
 	embedder?: EmbeddingModel;
 	embeddingModel?: string;
 	embeddingProviderOptions?: string | EpisodicMemoryEmbeddingProviderOptions;
-	extract?: EpisodicMemoryExtractFn;
 	reflect?: EpisodicMemoryReflectFn;
 	prompts?: EpisodicMemoryPrompts;
 }

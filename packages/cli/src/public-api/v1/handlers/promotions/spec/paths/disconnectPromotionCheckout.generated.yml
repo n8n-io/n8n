@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The ID of the promotion connection.
-    name: id
+    name: promotionConnectionId
     in: path
   - schema:
       type: string

@@ -7,10 +7,15 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import {
+	analyzeVerificationResult,
+	buildNodePreviews,
+	getTriggerMainFlowScope,
+} from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
@@ -207,18 +212,42 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 			const { prepared } = preparedResult;
 
-			const chatModelRecovery = await target.domainContext.workflowService
+			const workflow = await target.domainContext.workflowService
 				.getAsWorkflowJSON(workflowId)
-				.then(
-					async (workflow) =>
-						await collectChatModelRecoveryContext(
-							target.domainContext,
-							workflow.nodes ?? [],
-							workflow.connections,
-						),
-				)
 				.catch(() => undefined);
+			if (
+				resolvedInput.triggerNodeName !== undefined &&
+				!workflow?.nodes.some(
+					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+				)
+			) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
+				};
+			}
+			const chatModelRecovery = workflow
+				? await collectChatModelRecoveryContext(
+						target.domainContext,
+						workflow.nodes ?? [],
+						workflow.connections,
+					).catch(() => undefined)
+				: undefined;
 			const chatModelRelatedNodeNames = chatModelRecovery?.relatedNodeNames;
+			const selectedTriggerNodeName = buildOutcome.triggerNodes?.some(
+				(trigger) => trigger.nodeName === resolvedInput.triggerNodeName,
+			)
+				? resolvedInput.triggerNodeName
+				: undefined;
+			const verificationScope =
+				buildOutcome.verificationProgress && selectedTriggerNodeName && workflow
+					? getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName)
+					: undefined;
+			const previousProgress = await workflowTaskService.startVerification(
+				resolvedInput.workItemId,
+				verificationScope ? selectedTriggerNodeName : undefined,
+			);
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
@@ -237,6 +266,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						runId: context.runId,
 						chatModelRelatedNodeNames,
 						chatModelRecovery,
+						verificationScope,
 					})
 				: await (async () => {
 						const runResult = await target.domainContext.executionService.run(
@@ -260,6 +290,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							runId: context.runId,
 							chatModelRelatedNodeNames,
 							chatModelRecovery,
+							verificationScope,
 						});
 						return {
 							result: runResult,
@@ -283,21 +314,27 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
-			const claim = deriveVerificationClaim({
-				analysis,
+			const runClaim = deriveVerificationClaim({
+				analysis: {
+					...analysis,
+					nodesNotReached: buildOutcome.nodeSimulationPlan
+						.map((node) => node.nodeName)
+						.filter((name) => !analysis.reachedNames.has(name)),
+				},
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
 				fixTargetNodeNames,
 			});
 
-			await persistVerificationOutcome({
+			const claim = await persistVerificationOutcome({
 				input: resolvedInput,
 				context,
 				workflowTaskService,
 				workflowId,
 				result,
 				analysis,
-				claim,
-				verifyAttempts: (buildOutcome.verifyAttempts ?? 0) + 1,
+				scopedTriggerNodeName: verificationScope ? selectedTriggerNodeName : undefined,
+				previousProgress,
+				claim: runClaim,
 			});
 
 			// A simulated node's preview is fixture data, so an expression that resolved

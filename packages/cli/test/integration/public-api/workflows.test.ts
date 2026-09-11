@@ -78,7 +78,12 @@ const getStoredParentFolderId = async (workflowId: string) => {
 	return stored?.parentFolder?.id ?? null;
 };
 
+// This suite runs a real `ActiveWorkflowManager` and asserts on the legacy activation
+// path; the one publication-service case below enables the service itself.
+const originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -143,6 +148,10 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	globalConfig.tags.disabled = false;
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 afterEach(async () => {
@@ -1453,7 +1462,13 @@ describe('DELETE /workflows/:id', () => {
 	});
 
 	test('should not return activeVersion', async () => {
-		const workflow = await createActiveWorkflow({}, member);
+		// Active on the legacy path only: `createActiveWorkflow` also records a published
+		// version, whose RESTRICT FK would block the delete.
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
