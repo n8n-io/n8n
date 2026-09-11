@@ -1,0 +1,252 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 776
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 846
+packages/cli/src/modules/sso-saml/saml.service.ee.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 315
+packages/@n8n/eslint-plugin-community-nodes/src/rules/icon-validation.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 136
+packages/testing/code-health/src/rules/stale-overrides.rule.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 133
+packages/workflow/src/errors/expression.error.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 56
+packages/@n8n/instance-ai/evaluations/harness/artifacts/config-eval-handler.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 24
+packages/@n8n/tournament/src/ExpressionBuilder.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 218,274
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-node-description-fields.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 44
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 449
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-unnecessary-password.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 36
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 492
+packages/workflow/src/expression-sandboxing.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 524,528
+packages/@n8n/ai-utilities/src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.ts
+  s_1ba190fa27c8bb::t_ae10b8859c1314 40
+packages/@n8n/ai-workflow-builder.ee/evaluations/harness/runner.ts
+  s_1ba190fa27c8bb::t_ae10b8859c1314 1013
+packages/testing/containers/services/kafka.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 97
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_1ba190fa27c8bb::t_592eaa86b49080 246
+packages/@n8n/eslint-plugin-community-nodes/src/utils/file-utils.ts
+  s_1ba190fa27c8bb::t_1bb3a4c49b6ff3 107
+  s_1ba190fa27c8bb::t_0f6b7128b29000 80,304
+packages/cli/src/utils/object-to-error.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 30
+packages/@n8n/mcp-browser/src/adapters/agent-browser.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 467
+packages/extensions/insights/eslint.config.mjs
+  s_1ba190fa27c8bb::t_592eaa86b49080 4-6,8-13,15
+packages/@n8n/instance-ai/src/tools/workflows/detect-unparseable-openai-schema.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 46
+packages/testing/playwright/tests/infrastructure/benchmarks/harness/orchestration.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 448-449,568
+packages/@n8n/computer-use/src/config.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 326
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/valid-field-references.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 225
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 144
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_1ba190fa27c8bb::t_7028afe7054baa 378,382,384,388,390,394,396,400,402,406,645,670,672,697,863,873,882,892,992,995,997,1019,1021,1043,1122,1132,1134,1156,1158,1180
+packages/@n8n/instance-ai/src/storage/workflow-loop-storage.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 185
+packages/workflow/src/telemetry-helpers.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 722
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 685,703
+packages/cli/src/task-runners/task-runner-module.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 139
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 327,339,365,394
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 124,153,300,342,576,580,1514
+packages/workflow/src/workflow-diff.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 330
+packages/testing/janitor/src/cli.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 167
+packages/cli/src/workflows/workflow-history/workflow-history.service.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 273
+packages/cli/src/modules/data-table/data-table-file-cleanup.service.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 25
+packages/@n8n/task-runner/src/health-check-server.ts
+  s_1ba190fa27c8bb::t_e1d4c5fa4283e3 21
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-author.ts
+  s_1ba190fa27c8bb::t_7a1d0a58136567 25
+packages/modules/insights/frontend/src/insights.utils.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 147
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 69
+packages/@n8n/instance-ai/src/runtime/background-task-manager.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 150,160,209,223,262
+packages/@n8n/codemirror-lang-sql/src/tokens.ts
+  s_1ba190fa27c8bb::t_f9443798915fd8 153-155,272-273
+packages/cli/src/workflow-execute-additional-data.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 902
+packages/@n8n/mcp-browser/src/adapters/playwright.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 683
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 217
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 377
+packages/@n8n/codemirror-lang-sql/src/complete.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 39
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_1ba190fa27c8bb::t_7a1d0a58136567 369
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 527
+packages/testing/playwright/services/workflow-api-helper.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 492
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/tool-node-validator.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 41
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 274-275
+packages/@n8n/eslint-plugin-community-nodes/src/rules/resource-operation-pattern.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 38
+  s_1ba190fa27c8bb::t_7a1d0a58136567 33,48
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-forbidden-lifecycle-scripts.ts
+  s_1ba190fa27c8bb::t_7a1d0a58136567 44
+packages/cli/test/integration/users.api.test.ts
+  s_1ba190fa27c8bb::t_efe87d74fef4f0 1168,1191
+  s_1ba190fa27c8bb::t_7028afe7054baa 1393,1399
+packages/cli/src/task-runners/task-managers/local-task-requester.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 32
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 1052,1054,1078,1128,1130,1154,1239,1241,1258
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 278
+packages/@n8n/eslint-plugin-community-nodes/src/rules/node-class-description-icon-missing.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 44
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 177
+packages/@n8n/instance-ai/evaluations/cli/report.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 151
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 425
+packages/workflow/src/errors/subworkflow-operation.error.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 16
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 1856,2881,2916,2934,3319,3363,3375,3398,3423,3439,3447
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_1ba190fa27c8bb::t_7028afe7054baa 1866,1893,1914,1978
+packages/@n8n/crdt/src/transports/message-port.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 21
+packages/workflow/src/augment-object.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 17,130
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 892,987
+  s_1ba190fa27c8bb::t_56d496e4072fc5 855
+packages/workflow/src/node-parameters/filter-parameter.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 43
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 199,201
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 263
+packages/@n8n/benchmark/src/scenario/scenario-data-loader.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 18,21,23
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_1ba190fa27c8bb::t_ae10b8859c1314 59
+packages/@n8n/ai-workflow-builder.ee/src/assistant/assistant-handler.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 113,129
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_1ba190fa27c8bb::t_7028afe7054baa 427,3751,3826,3884,3970
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_1ba190fa27c8bb::t_f014a22e79a27c 441,516
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/expression-path-validator.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 21
+packages/@n8n/instance-ai/evaluations/harness/credential-setup-checks.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 408
+packages/@n8n/eslint-config/src/configs/base.ts
+  s_1ba190fa27c8bb::t_7ea08ed983948b 445-447
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 229-233
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/index.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 458
+packages/nodes-base/nodes/WhatsApp/WhatsAppTrigger.node.ts
+  s_1ba190fa27c8bb::t_f014a22e79a27c 292-295
+packages/workflow/src/workflow-expression.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 116,135
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/code-builder-agent.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 21
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 48,53,418,443
+packages/@n8n/ai-workflow-builder.ee/src/utils/cache-control/helpers.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 15
+packages/@n8n/ai-utilities/src/utils/log-wrapper.ts
+  s_1ba190fa27c8bb::t_9e5e12aac1e4c3 143,166,194,214,240,287,311,335,363,382,408,440,471
+packages/@n8n/task-runner/src/js-task-runner/prototype-hardening.ts
+  s_1ba190fa27c8bb::t_e1d4c5fa4283e3 44
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 287-289
+packages/workflow/src/workflow.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 357
+packages/@n8n/agents/src/workspace/lifecycle.ts
+  s_1ba190fa27c8bb::t_9e5e12aac1e4c3 20-21
+packages/workflow/src/extensions/expression-extension.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 13,423,425,427,625
+packages/cli/test/integration/environments/source-control.service.test.ts
+  s_1ba190fa27c8bb::t_7028afe7054baa 360,389
+packages/@n8n/engine/src/auth/action-token.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 51
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/pin-data-generator.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 17,58
+packages/@n8n/backend-network/src/proxy/proxied-agents.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 38,42
+packages/@n8n/ai-workflow-builder.ee/src/types/langchain.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 16
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 228
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 209
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 292
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_1ba190fa27c8bb::t_d88fc90ed12b3c 194
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 38
+packages/cli/src/scaling/job-processor.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 725
+packages/frontend/@n8n/frontend-test-utils/src/render.ts
+  s_1ba190fa27c8bb::t_592eaa86b49080 116,131
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 241,247,272,278
+packages/core/src/execution-engine/routing-node.ts
+  s_1ba190fa27c8bb::t_a4405aa7025b1c 995-996
+packages/workflow/src/from-ai-parse-utils.ts
+  s_1ba190fa27c8bb::t_3ef5d687c056d3 482
+packages/@n8n/backend-common/src/utils/flatted-async.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 25
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 1224
+packages/@n8n/instance-ai/src/tools/workflows/wait-gate-script.ts
+  s_1ba190fa27c8bb::t_023f6bd40d5553 59
+packages/@n8n/workflow-sdk/src/cli/validate.ts
+  s_1ba190fa27c8bb::t_779bd57f612633 209
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 449,667
+packages/@n8n/db/src/repositories/secrets-provider-connection.repository.ee.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 61,96
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-password-field.ts
+  s_1ba190fa27c8bb::t_0f6b7128b29000 72
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.ts
+  s_1ba190fa27c8bb::t_56d496e4072fc5 331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a5aa20e2e9d24808e2cb285f468925f6c46419c3",
+  "prompts": {},
+  "sessions": {
+    "s_1ba190fa27c8bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e32a47ff-e107-444d-b1f5-40623878f944",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
