@@ -1,4 +1,6 @@
-import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { createRunExecutionData, type IRunExecutionData, LoggerProxy } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
 
@@ -171,6 +173,28 @@ describe('Execution Metadata functions', () => {
 
 		expect(metadata).toEqual({
 			test1: longValue.slice(0, 512),
+		});
+	});
+
+	describe('logging on truncation', () => {
+		const logger = mock<Logger>();
+
+		beforeEach(() => {
+			logger.warn.mockClear();
+			logger.error.mockClear();
+			LoggerProxy.init(logger);
+		});
+
+		test('should not log and should store the value in full when it is under the limit', () => {
+			const { metadata, executionData } = createExecutionDataWithMetadata();
+
+			const value = 'a'.repeat(300);
+
+			setWorkflowExecutionMetadata(executionData, 'test1', value);
+
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(metadata).toEqual({ test1: value });
 		});
 	});
 
