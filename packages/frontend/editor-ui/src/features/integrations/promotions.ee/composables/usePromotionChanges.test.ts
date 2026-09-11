@@ -57,6 +57,23 @@ describe('usePromotionChanges', () => {
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
 	});
 
+	it('should drop selections whose resource disappears after a refresh', async () => {
+		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
+			usePromotionChanges('project-1');
+		await fetchChanges();
+		toggleSelected('wf-001');
+		toggleSelected('wf-002');
+		expect(selectedCount.value).toBe(2);
+
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce(
+			mockChanges.filter((change) => change.id !== 'wf-001'),
+		);
+		await fetchChanges();
+
+		expect(selectedIds.value).toEqual(new Set(['wf-002']));
+		expect(selectedCount.value).toBe(1);
+	});
+
 	it('should handle fetch errors', async () => {
 		vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValue(new Error('Network error'));
 
