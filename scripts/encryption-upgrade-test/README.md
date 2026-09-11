@@ -18,7 +18,7 @@ phases:
 
 | Phase | Instance | Checks |
 |---|---|---|
-| P1 seed | `FROM_IMAGE` (docker, default `n8nio/n8n:latest`) | owner + credential created, decrypt round-trip |
+| P1 seed | `FROM_IMAGE` (docker, default `n8nio/n8n:2.37.10` (pinned; bump deliberately)) | owner + credential created, decrypt round-trip |
 | P2 upgrade | this checkout, rotation flag **off** | old credential decrypts; a new write is byte-compatible legacy format (`U2FsdGVkX1…`); key store seeded with exactly 2 rows |
 | P3 downgrade | `FROM_IMAGE` again, same folder | the value written by the **newer** instance decrypts on the **older** one |
 | P4 write-on | this checkout, flag **on** | mixed data decrypts; new write is `<activeKeyId>:…`; rotation via `POST /rest/encryption/keys` moves the write key immediately; all four data generations decrypt |
@@ -38,7 +38,7 @@ Raw samples are written to `<work root>/metrics.csv`.
 | Env | Default | Meaning |
 |---|---|---|
 | `DB` | `both` | database backends to run: `sqlite`, `postgres`, or `both` |
-| `FROM_IMAGE` | `n8nio/n8n:latest` | the "old" release to seed on and downgrade to |
+| `FROM_IMAGE` | `n8nio/n8n:2.37.10` (pinned; bump deliberately) | the "old" release to seed on and downgrade to |
 | `PG_IMAGE` | `postgres:16` | the postgres container image for `DB=postgres` |
 | `N8N_REPO` | this repo | the built checkout that plays the "new" version |
 | `N8N_PORT` | `5714` | port shared by all phases (sequential) |
