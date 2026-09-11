@@ -32,14 +32,18 @@ const RUST_REGEX_FILES = [
   ['fowler/repetition.toml', 'fowler-repetition'],
   ['fowler/nullsubexpr.toml', 'fowler-nullsubexpr'],
 ];
-const RUST_REGEX_CATEGORIES = new Set(RUST_REGEX_FILES.map(([, category]) => category));
+// One shared category so build-corpus.mjs writes all rust-regex cases into a single
+// file; the source .toml's own category is preserved per-case via `tags` for traceability.
+const RUST_REGEX_MERGED_CATEGORY = 'rust-regex-corpus';
 
 function loadRustRegexCases() {
   const cases = [];
   for (const [file, category] of RUST_REGEX_FILES) {
     const text = fs.readFileSync(path.join(RUST_REGEX_DIR, file), 'utf8');
     const blocks = parseTestToml(text);
-    cases.push(...normalizeRustRegexBlocks(blocks, category));
+    for (const c of normalizeRustRegexBlocks(blocks, category)) {
+      cases.push({ ...c, category: RUST_REGEX_MERGED_CATEGORY, tags: [category] });
+    }
   }
   return cases;
 }
@@ -193,7 +197,7 @@ async function main() {
       packResult(c.realPcre2),
     ]);
     const output = useSubjectIndex ? { subjects: distinctInputs, cases: cleaned } : cleaned;
-    const dir = RUST_REGEX_CATEGORIES.has(category) ? RUST_REGEX_OUT_DIR : OUT_DIR;
+    const dir = category === RUST_REGEX_MERGED_CATEGORY ? RUST_REGEX_OUT_DIR : OUT_DIR;
     fs.writeFileSync(path.join(dir, `${category}.json`), JSON.stringify(output) + '\n');
   }
   fs.copyFileSync(
@@ -207,7 +211,7 @@ async function main() {
     path.join(OUT_DIR, 'es-pcre2-divergences.json'),
     JSON.stringify(
       dedupedDivergences.map((c) => [
-        c.category,
+        c.tags?.[0] ?? c.category,
         c.pattern,
         c.flags,
         c.input,
