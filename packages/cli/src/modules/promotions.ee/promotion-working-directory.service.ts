@@ -76,8 +76,8 @@ export class PromotionWorkingDirectoryService {
 	}
 
 	/**
-	 * Marks the checkout unusable without removing it, so the next operation must
-	 * clone again. Used when a checkout is left in a state we cannot repair.
+	 * Marks the checkout unusable before a branched promotion changes it.
+	 * A successful base reset or a new clone can restore the descriptor.
 	 */
 	async invalidateDescriptor(configId: string): Promise<void> {
 		await rm(this.paths(configId).descriptorFile, { force: true });

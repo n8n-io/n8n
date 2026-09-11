@@ -399,6 +399,63 @@ describe('Promote and Apply', () => {
 		expect((await remoteGit.revparse(['main'])).trim()).toBe(mergedBaseCommit);
 	});
 
+	it('requires a clone after a branched promotion cannot restore its checkout', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(
+			remote.bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		const { configId } = await service.clone(connection.id, 'promote');
+		const { repositoryFolder, descriptorFile } = workingDirectory.paths(configId);
+		const checkoutGit = simpleGit(repositoryFolder);
+		const baseCommit = (await checkoutGit.revparse(['HEAD'])).trim();
+		const invalidateDescriptor = workingDirectory.invalidateDescriptor.bind(workingDirectory);
+		vi.spyOn(workingDirectory, 'invalidateDescriptor').mockImplementation(async (id) => {
+			if ((await checkoutGit.revparse(['HEAD'])).trim() !== baseCommit) {
+				throw new Error('Descriptor removal failed after commit');
+			}
+			await invalidateDescriptor(id);
+		});
+		// Keep the index locked after commit so the real Git reset fails.
+		await writeFile(
+			path.join(repositoryFolder, '.git', 'hooks', 'post-commit'),
+			'#!/bin/sh\ntouch "$(git rev-parse --git-path index.lock)"\n',
+			{ mode: 0o755 },
+		);
+		const request = { canExportVariableValues: false, commitMessage: 'Promote package' };
+
+		const result = await service.promote(connection.id, owner, request);
+
+		expect((await checkoutGit.revparse(['HEAD'])).trim()).toBe(result.git.commitSha);
+		expect(result.git.commitSha).not.toBe(baseCommit);
+		expect((await simpleGit(remote.bareDir).revparse([result.git.branchName])).trim()).toBe(
+			result.git.commitSha,
+		);
+		await expect(readFile(descriptorFile)).rejects.toMatchObject({ code: 'ENOENT' });
+		// A new service instance must also reject the cache after a restart.
+		const reloadedDirectory = new PromotionWorkingDirectoryService(
+			mock<InstanceSettings>({ n8nFolder: path.join(testRoot, 'instance') }),
+		);
+		await expect(reloadedDirectory.readDescriptor(configId)).resolves.toBeNull();
+		await configRepository.update(configId, {
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+		});
+		const exportSpy = vi.spyOn(packagesService, 'exportPackageToDirectory');
+		try {
+			await expect(service.promote(connection.id, owner, request)).rejects.toThrow('not cloned');
+			expect(exportSpy).not.toHaveBeenCalled();
+			await service.clone(connection.id, 'promote');
+			await expect(service.promote(connection.id, owner, request)).resolves.toMatchObject({
+				git: { branchName: 'main' },
+			});
+			const remoteGit = simpleGit(remote.bareDir);
+			expect((await remoteGit.revparse(['main^'])).trim()).toBe(baseCommit);
+		} finally {
+			exportSpy.mockRestore();
+		}
+	});
+
 	it('requires the configured base branch for a branched promotion', async () => {
 		const bareDir = path.join(testRoot, 'empty-remote.git');
 		await simpleGit().raw(['init', '--bare', bareDir]);

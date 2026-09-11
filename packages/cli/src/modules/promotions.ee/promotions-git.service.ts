@@ -198,7 +198,7 @@ export class PromotionsGitService {
 		commitMessage,
 		force,
 		stagePathspec,
-		onCheckoutDirty,
+		onCheckoutRestored,
 	}: GitOperation & {
 		/** Push to this new branch instead of the configured base branch. */
 		targetBranchName?: string;
@@ -206,8 +206,8 @@ export class PromotionsGitService {
 		commitMessage: string;
 		force: boolean;
 		stagePathspec: string;
-		/** Called when the checkout keeps a promotion commit we could not remove. */
-		onCheckoutDirty: () => Promise<void>;
+		/** Called only after the checkout returns to its base commit. */
+		onCheckoutRestored: () => Promise<void>;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.withGit(
@@ -226,7 +226,7 @@ export class PromotionsGitService {
 							targetBranchName,
 							commitMessage,
 							stagePathspec,
-							onCheckoutDirty,
+							onCheckoutRestored,
 						});
 					}
 
@@ -284,13 +284,13 @@ export class PromotionsGitService {
 			targetBranchName,
 			commitMessage,
 			stagePathspec,
-			onCheckoutDirty,
+			onCheckoutRestored,
 		}: {
 			branchName: string;
 			targetBranchName: string;
 			commitMessage: string;
 			stagePathspec: string;
-			onCheckoutDirty: () => Promise<void>;
+			onCheckoutRestored: () => Promise<void>;
 		},
 	): Promise<{ commitSha: string }> {
 		const preCommitHead = (
@@ -311,7 +311,7 @@ export class PromotionsGitService {
 				branchName,
 				targetBranchName,
 				preCommitHead,
-				onCheckoutDirty,
+				onCheckoutRestored,
 			});
 		}
 	}
@@ -322,12 +322,12 @@ export class PromotionsGitService {
 			branchName,
 			targetBranchName,
 			preCommitHead,
-			onCheckoutDirty,
+			onCheckoutRestored,
 		}: {
 			branchName: string;
 			targetBranchName: string;
 			preCommitHead: string;
-			onCheckoutDirty: () => Promise<void>;
+			onCheckoutRestored: () => Promise<void>;
 		},
 	): Promise<void> {
 		try {
@@ -337,18 +337,17 @@ export class PromotionsGitService {
 				branchName,
 				targetBranchName,
 			});
-			// The local base branch still holds the promotion commit, so a later direct
-			// promotion would push it. Report the checkout as unusable, and keep both the
-			// push result and any push error intact.
-			try {
-				await onCheckoutDirty();
-			} catch (error) {
-				this.logger.warn('Failed to invalidate Git checkout after promotion', {
-					branchName,
-					targetBranchName,
-					error,
-				});
-			}
+			return;
+		}
+
+		try {
+			await onCheckoutRestored();
+		} catch {
+			// The checkout is usable, but it stays untrusted until the next clone.
+			this.logger.warn('Failed to trust the Git checkout after promotion', {
+				branchName,
+				targetBranchName,
+			});
 		}
 	}
 

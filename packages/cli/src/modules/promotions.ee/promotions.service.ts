@@ -197,6 +197,12 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			if (targetBranchName) {
+				// The commit moves the local base branch. Remove trust before it moves, and
+				// restore trust only after the base branch is back on its own commit.
+				await this.workingDirectory.invalidateDescriptor(input.configId);
+			}
+
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),
 				credentials,
@@ -209,8 +215,8 @@ export class PromotionsService {
 				// A promotion branch must be new, so force does not apply.
 				force: targetBranchName ? false : (request.force ?? false),
 				stagePathspec: PACKAGE_SUBFOLDER,
-				onCheckoutDirty: async () =>
-					await this.workingDirectory.invalidateDescriptor(input.configId),
+				onCheckoutRestored: async () =>
+					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
 			});
 
 			return {

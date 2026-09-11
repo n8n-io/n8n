@@ -352,6 +352,41 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		it('stops before the commit when descriptor invalidation fails', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			vi.spyOn(workingDirectory, 'invalidateDescriptor').mockRejectedValueOnce(
+				new Error('Descriptor removal failed'),
+			);
+
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('Descriptor removal failed');
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.not.toBeNull();
+		});
+
+		it('keeps the checkout trusted when a branched promotion fails before the commit', async () => {
+			resolver.resolveForConnection.mockResolvedValue(
+				operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
+				}),
+			);
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(
+				new Error('Missing workflow dependency'),
+			);
+
+			await expect(
+				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
+			).rejects.toThrow('Missing workflow dependency');
+			await expect(workingDirectory.readDescriptor(CONFIG_ID)).resolves.not.toBeNull();
+		});
+
 		it('refuses to promote when the checkout was cloned from another remote', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				promoteInput({ target: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
