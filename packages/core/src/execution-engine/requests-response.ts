@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import {
 	type IConnection,
 	type IDataObject,
@@ -13,8 +12,6 @@ import {
 	type EngineResponse,
 	UnexpectedError,
 } from 'n8n-workflow';
-
-import { ErrorReporter } from '../errors/error-reporter';
 
 type NodeToBeExecuted = {
 	inputConnectionData: IConnection;
@@ -185,36 +182,11 @@ function prepareRequestedNodesForExecution(
 	return { nodesToBeExecuted, subNodeExecutionData };
 }
 
-function prepareRequestingNodeForResuming(
-	workflow: Workflow,
-	request: EngineRequest,
-	executionData: IExecuteData,
-) {
+function prepareRequestingNodeForResuming(executionData: IExecuteData) {
 	// A node that starts the execution has no source, but scheduling still needs a
 	// parent name, so fall back to the node itself.
 	const sourceNode = executionData.source?.main?.[0]?.previousNode;
 	const parentNode = sourceNode ?? executionData.node.name;
-	if (!parentNode) {
-		Container.get(ErrorReporter).error(
-			new UnexpectedError(
-				'Cannot find parent node for subnode execution - request will be ignored',
-			),
-			{
-				extra: {
-					executionNode: executionData.node.name,
-					sourceData: executionData.source,
-					workflowId: workflow.id,
-					requestActions: request.actions.map((a) => ({
-						nodeName: a.nodeName,
-						actionType: a.actionType,
-						id: a.id,
-					})),
-				},
-			},
-		);
-
-		return undefined;
-	}
 	const metadata: Partial<ITaskMetadata> =
 		executionData.metadata?.preservedSourceOverwrite &&
 		executionData.metadata?.preserveSourceOverwrite
@@ -267,10 +239,7 @@ export function handleRequest({
 	);
 
 	// 2. create metadata for current node
-	const result = prepareRequestingNodeForResuming(workflow, request, executionData);
-	if (!result) {
-		return { nodesToBeExecuted: [] };
-	}
+	const result = prepareRequestingNodeForResuming(executionData);
 
 	// 3. under executionOrder v1 reverse the actions to run the requests in the order the root requested them to run
 	if (workflow.settings.executionOrder === 'v1') {
