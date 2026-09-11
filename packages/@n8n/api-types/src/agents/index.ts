@@ -8,6 +8,7 @@ export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
 export * from './agent-skill.schema';
 export * from './child-trace';
+export type * from './background-task';
 export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
 export * from './sanitize-agent-tool-name';

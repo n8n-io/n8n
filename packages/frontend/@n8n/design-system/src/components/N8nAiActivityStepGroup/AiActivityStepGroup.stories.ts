@@ -1,10 +1,14 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { defineComponent } from 'vue';
 
+import './AiActivityStepGroup.stories.scss';
+
 import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
+import N8nChatInput from '../N8nChatInput';
+import N8nIcon from '../N8nIcon';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {
@@ -165,6 +169,47 @@ export const Default: StoryFn = () => ({
 		</div>
 	`,
 });
+
+export const BackgroundTasks: StoryFn = (args) => ({
+	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon },
+	setup: () => ({ args }),
+	data: () => ({
+		message: '',
+		tasks: [
+			{ title: 'Sub-agent — Berlin weather, week 1', waiting: false },
+			{ title: 'Sub-agent — Berlin weather, week 2', waiting: false },
+			{ title: "Workflow (Wait node) — waiting for tomorrow's forecast refresh", waiting: true },
+		],
+	}),
+	template: `
+		<div style="width: 32rem; max-width: 100%">
+			<n8n-chat-input v-model="message" placeholder="Message Research Assistant..." @submit="message = ''">
+				<template #leading>
+					<div class="background-tasks-story">
+						<n8n-ai-activity-step-group v-bind="args">
+							<template #prefix><n8n-icon icon="loader-circle" spin size="small" aria-hidden="true" class="task-spinner" style="color: var(--color--primary)" /></template>
+							<template #header-trailing><span aria-live="off" style="font-variant-numeric: tabular-nums; color: var(--text-color--subtler)">0:42</span></template>
+							<div style="padding: var(--spacing--sm); border-bottom: var(--border); border-bottom-style: dashed;">
+								<ul style="list-style: none; padding: 0; margin: 0 0 var(--spacing--xs); max-height: 20vh; overflow-y: auto">
+									<li v-for="task in tasks" :key="task.title" style="display: flex; align-items: flex-start; gap: var(--spacing--2xs); padding-block: var(--spacing--3xs); font-size: var(--font-size--sm); line-height: var(--line-height--lg); color: var(--text-color--subtle); overflow-wrap: anywhere">
+										<n8n-icon :icon="task.waiting ? 'circle' : 'loader-circle'" :spin="!task.waiting" size="small" aria-hidden="true" :class="task.waiting ? 'waiting' : 'task-spinner'" :style="{ flexShrink: 0, color: task.waiting ? 'var(--text-color--subtler)' : 'var(--color--primary)' }" />
+										<span>{{ task.title }}</span>
+									</li>
+								</ul>
+								<a href="#session-trace" style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); font-size: var(--font-size--sm); color: var(--text-color); text-decoration: underline"><n8n-icon icon="arrow-right" size="small" />View trace</a>
+							</div>
+						</n8n-ai-activity-step-group>
+					</div>
+				</template>
+			</n8n-chat-input>
+		</div>
+	`,
+});
+BackgroundTasks.args = {
+	label: 'Running 3 background tasks',
+	fullWidth: true,
+	contentPosition: 'above',
+};
 
 const Template: StoryFn = (args) => ({
 	components: { N8nAiActivityStep, ...storyComponents },

@@ -312,6 +312,7 @@ useKeybindings({
 
 			<AgentPreviewChatPage
 				ref="previewChatPage"
+				:active="props.isOpen"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
 				:agent-id="props.agentId"

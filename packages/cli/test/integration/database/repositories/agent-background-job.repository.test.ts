@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
@@ -222,6 +223,7 @@ describe('AgentBackgroundJobRepository', () => {
 				publisher,
 				logger,
 				agentsConfig,
+				mock<AgentExecutionUpdateBroadcaster>(),
 			);
 
 			await jobService.settle(jobId, { status: 'completed', result: 'Done' });

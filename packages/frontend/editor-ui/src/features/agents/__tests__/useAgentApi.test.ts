@@ -2,7 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { getChatMessages, listAgents, listAgentsPage } from '../composables/useAgentApi';
+import {
+	getAgentBackgroundTasks,
+	getChatMessages,
+	listAgents,
+	listAgentsPage,
+} from '../composables/useAgentApi';
 import type { AgentResource } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -73,6 +78,16 @@ describe('useAgentApi', () => {
 				{ skip: 1, take: 250 },
 			);
 		});
+	});
+
+	it('encodes the background task route identifiers', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
+		await getAgentBackgroundTasks(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
+		);
 	});
 
 	describe('getChatMessages', () => {

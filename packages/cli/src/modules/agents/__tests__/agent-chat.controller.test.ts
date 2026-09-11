@@ -10,6 +10,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
@@ -27,6 +30,8 @@ function makeController() {
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
+	const agentExecutionService = mock<AgentExecutionService>();
+	const backgroundJobService = mock<AgentBackgroundJobService>();
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
 		sessionId: 'thread-1',
@@ -49,10 +54,14 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
+		agentExecutionService,
+		backgroundJobService,
 	);
 
 	return {
 		controller,
+		agentExecutionService,
+		backgroundJobService,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
@@ -101,10 +110,128 @@ describe('AgentChatController route access scopes', () => {
 		['chatResume', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
+		['getBackgroundTasks', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentChatController background tasks', () => {
+	const thread = mock<AgentExecutionThread>({
+		id: 'thread-1',
+		projectId: 'project-1',
+		agentId: 'agent-1',
+	});
+	const request = { params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' } };
+
+	it('returns current group statuses without consuming results', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				kind: 'subagent',
+				title: 'Check escalations',
+				status: 'running',
+				createdAt: new Date('2026-09-09T10:00:00Z'),
+			},
+			{
+				id: 'job-2',
+				kind: 'workflow',
+				title: 'Wait for reply',
+				status: 'running',
+				createdAt: new Date('2026-09-09T10:01:00Z'),
+			},
+			{
+				id: 'job-3',
+				kind: 'subagent',
+				title: 'Completed job',
+				status: 'completed',
+				createdAt: new Date('2026-09-09T10:02:00Z'),
+			},
+			{
+				id: 'job-4',
+				kind: 'subagent',
+				title: 'Failed job',
+				status: 'failed',
+				createdAt: new Date('2026-09-09T10:03:00Z'),
+			},
+			{
+				id: 'job-5',
+				kind: 'subagent',
+				title: 'Canceled job',
+				status: 'cancelled',
+				createdAt: new Date('2026-09-09T10:04:00Z'),
+			},
+		] as never);
+		expect(await controller.getBackgroundTasks(request as never)).toEqual({
+			tasks: [
+				{
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Check escalations',
+					status: 'running',
+					startedAt: '2026-09-09T10:00:00.000Z',
+				},
+				{
+					id: 'job-2',
+					kind: 'workflow',
+					title: 'Wait for reply',
+					status: 'running',
+					startedAt: '2026-09-09T10:01:00.000Z',
+				},
+				{
+					id: 'job-3',
+					kind: 'subagent',
+					title: 'Completed job',
+					status: 'completed',
+					startedAt: '2026-09-09T10:02:00.000Z',
+				},
+				{
+					id: 'job-4',
+					kind: 'subagent',
+					title: 'Failed job',
+					status: 'failed',
+					startedAt: '2026-09-09T10:03:00.000Z',
+				},
+				{
+					id: 'job-5',
+					kind: 'subagent',
+					title: 'Canceled job',
+					status: 'cancelled',
+					startedAt: '2026-09-09T10:04:00.000Z',
+				},
+			],
+		});
+		expect(backgroundJobService.listCurrentGroupForThread).toHaveBeenCalledWith('thread-1');
+		expect(backgroundJobService.markMailConsumed).not.toHaveBeenCalled();
+	});
+
+	it.each([{ projectId: 'other-project' }, { agentId: 'other-agent' }])(
+		'rejects an unrelated thread: %s',
+		async (overrides) => {
+			const { controller, agentsService, agentExecutionService, backgroundJobService } =
+				makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			agentExecutionService.findThreadById.mockResolvedValue({ ...thread, ...overrides });
+			await expect(controller.getBackgroundTasks(request as never)).rejects.toThrow(NotFoundError);
+			expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
+		},
+	);
+
+	it('returns no tasks for a new session and rejects an unknown agent', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(null);
+		expect(await controller.getBackgroundTasks(request as never)).toEqual({ tasks: [] });
+		expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
+		agentsService.findById.mockResolvedValue(null);
+		await expect(controller.getBackgroundTasks(request as never)).rejects.toThrow(NotFoundError);
 	});
 });
 

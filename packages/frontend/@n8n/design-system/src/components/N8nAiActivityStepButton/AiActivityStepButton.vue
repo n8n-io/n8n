@@ -6,11 +6,14 @@ const props = withDefaults(
 		size?: 'small' | 'medium';
 		loading?: boolean;
 		interactive?: boolean;
+		/** Stretch the header and keep prefix and suffix content at their intrinsic width. */
+		fullWidth?: boolean;
 	}>(),
 	{
 		size: 'small',
 		loading: false,
 		interactive: true,
+		fullWidth: false,
 	},
 );
 
@@ -33,7 +36,11 @@ function handleClick(event: MouseEvent) {
 	<N8nButton
 		variant="ghost"
 		:size="props.size"
-		:class="[$style.button, !props.interactive && $style.nonInteractive]"
+		:class="[
+			$style.button,
+			!props.interactive && $style.nonInteractive,
+			props.fullWidth && $style.fullWidth,
+		]"
 		@click="handleClick"
 	>
 		<slot name="prefix" />
@@ -90,6 +97,23 @@ function handleClick(event: MouseEvent) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: normal;
+}
+
+.fullWidth {
+	width: 100%;
+	max-width: 100%;
+	justify-content: stretch;
+
+	> * {
+		min-width: 0;
+		width: 100%;
+	}
+
+	.label {
+		flex: 1;
+		min-width: 0;
+		text-align: left;
+	}
 }
 
 .shimmer {
