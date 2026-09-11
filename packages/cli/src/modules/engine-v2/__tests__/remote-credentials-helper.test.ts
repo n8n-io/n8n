@@ -144,6 +144,15 @@ describe('RemoteCredentialsHelper', () => {
 
 			expect(client.resolve).not.toHaveBeenCalled();
 		});
+
+		it('reports the unsupported OAuth token refresh for a raw read with no node', async () => {
+			// This is how the OAuth2 token refresh in core re-reads the stored token.
+			await expect(
+				helper.getDecrypted(additionalData, nodeCredentials, type, 'manual', undefined, true),
+			).rejects.toThrow('Engine 2.0 does not support OAuth token refresh yet');
+
+			expect(client.resolve).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('preAuthentication', () => {
