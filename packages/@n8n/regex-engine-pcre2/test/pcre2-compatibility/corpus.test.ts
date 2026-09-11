@@ -59,7 +59,7 @@ function loadCategory(file: string): CorpusCase[] {
 	}));
 }
 
-const NON_CATEGORY_FILES = new Set(['es-pcre2-divergences.json', 'realistic-subjects.json']);
+const NON_CATEGORY_FILES = new Set(['realistic-subjects.json']);
 const categoryFiles = [
 	...fs
 		.readdirSync(FIXTURES_DIR)
