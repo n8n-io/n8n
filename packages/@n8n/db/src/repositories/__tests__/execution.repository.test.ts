@@ -10,8 +10,9 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity } from '../../entities';
+import { ExecutionEntity, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
+import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { ExecutionRepository } from '../execution.repository';
@@ -27,10 +28,13 @@ describe('ExecutionRepository', () => {
 		logging: { outputs: ['console'], scopes: [] },
 	});
 	mockInstance(BinaryDataService);
+	const transactionRunner = mock<TransactionRunner>();
+	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	});
 
 	describe('countInWorkflows', () => {
@@ -245,19 +249,38 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('markAsCrashed', () => {
-		test('should batch updates above a threshold', async () => {
-			// Generates a list of many execution ids.
-			// NOTE: GREATER_THAN_MAX_UPDATE_THRESHOLD is selected to be just above the default threshold.
-			const manyExecutionsToMarkAsCrashed: string[] = Array(GREATER_THAN_MAX_UPDATE_THRESHOLD)
-				.fill(undefined)
-				.map((_, i) => i.toString());
-			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
-			expect(entityManager.update).toBeCalledTimes(2);
+	const crashableRow = (id: string) =>
+		mock<ExecutionEntity>({
+			id,
+			workflowId: `workflow-${id}`,
+			mode: 'trigger',
+			workflow: mock<WorkflowEntity>({ id: `workflow-${id}`, name: `Workflow ${id}` }),
 		});
 
-		test('should clear waitTill when marking executions as crashed', async () => {
+	const executionIdsOfLength = (length: number) =>
+		Array(length)
+			.fill(undefined)
+			.map((_, i) => i.toString());
+
+	describe('markAsCrashed', () => {
+		test('should batch updates above a threshold and report each batch as it transitions', async () => {
+			const manyExecutionsToMarkAsCrashed = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+			const reported: string[][] = [];
+
+			const crashed = await executionRepository.markAsCrashed(
+				manyExecutionsToMarkAsCrashed,
+				(batch) => reported.push(batch.map(({ id }) => id)),
+			);
+
+			expect(entityManager.update).toBeCalledTimes(2);
+			expect(reported).toEqual([['1'], ['1']]);
+			expect(crashed).toHaveLength(2);
+		});
+
+		test('should crash only in-progress rows and clear their `waitTill`', async () => {
 			const executionIds = ['1', '2'];
+			entityManager.find.mockResolvedValue(executionIds.map(crashableRow));
 
 			await executionRepository.markAsCrashed(executionIds);
 
@@ -266,6 +289,71 @@ describe('ExecutionRepository', () => {
 				{ id: In(executionIds), status: In(['new', 'running', 'unknown']) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
+		});
+
+		test('should report the workflow, name and mode of each execution it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markAsCrashed(['1', '2']);
+
+			expect(crashed).toEqual([
+				{
+					id: '1',
+					workflowId: 'workflow-1',
+					workflowName: 'Workflow 1',
+					mode: 'trigger',
+				},
+			]);
+		});
+
+		test('should read back only the rows carrying the `stoppedAt` it wrote, soft-deleted ones included', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed(['1']);
+
+			const updateValues = entityManager.update.mock.calls[0][2] as { stoppedAt: Date };
+			const findOptions = entityManager.find.mock.calls[0][1];
+
+			expect(findOptions).toMatchObject({
+				where: { id: In(['1']), status: 'crashed', stoppedAt: updateValues.stoppedAt },
+				withDeleted: true,
+			});
+		});
+
+		test('should collapse duplicated ids before batching', async () => {
+			const oneBatchWorthOfIds = executionIdsOfLength(GREATER_THAN_MAX_UPDATE_THRESHOLD - 1);
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			await executionRepository.markAsCrashed([...oneBatchWorthOfIds, '0']);
+
+			expect(entityManager.update).toBeCalledTimes(1);
+		});
+
+		test('should skip the read-back and report nothing when the UPDATE affects no rows', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			const crashed = await executionRepository.markAsCrashed(['1']);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(crashed).toEqual([]);
+		});
+	});
+
+	describe('markWorkflowExecutionsAsCrashed', () => {
+		test('should select the rows to crash by workflow rather than by id, and report each one it transitioned', async () => {
+			entityManager.find.mockResolvedValue([crashableRow('1')]);
+
+			const crashed = await executionRepository.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			expect(entityManager.update).toBeCalledTimes(1);
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ workflowId: 'workflow-1', status: In(['new', 'running', 'unknown']) },
+				expect.objectContaining({ status: 'crashed', waitTill: null }),
+			);
+			expect(crashed).toEqual([
+				{ id: '1', workflowId: 'workflow-1', workflowName: 'Workflow 1', mode: 'trigger' },
+			]);
 		});
 	});
 

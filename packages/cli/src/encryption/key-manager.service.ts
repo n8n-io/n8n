@@ -20,6 +20,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { isKeyRotationEnabled } from './key-rotation-flag';
 
+/** Raw DEK format: 64 hex chars stored directly as key material (n8n 2.18.x). */
+const RAW_DEK_PATTERN = /^[0-9a-f]{64}$/i;
+
+/** AES-256-CBC (OpenSSL Salted__) wrapped DEK, base64 prefix (n8n 2.19.x). */
+const CBC_WRAPPED_PREFIX = 'U2FsdGVk';
+
 /**
  * How long a process trusts its database view of the active key. A rotation
  * done on another instance becomes visible within this window — the accepted
@@ -120,6 +126,64 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 		};
 		this.rememberKeyInfo(keyInfo);
 		return keyInfo;
+	}
+
+	/**
+	 * Returns the raw DEK for a legacy-format value, or null if the value is already
+	 * GCM-wrapped or cannot be recovered with this instance key.
+	 */
+	private recoverLegacyDek(keyInfo: DeploymentKey): string | null {
+		const { value } = keyInfo;
+		// 2.18.x: raw key material, used directly. Re-wrap as-is, no decrypt needed.
+		if (RAW_DEK_PATTERN.test(value)) {
+			return value;
+		}
+
+		// 2.19.x: DEK wrapped with the instance key via AES-256-CBC.
+		if (value.startsWith(CBC_WRAPPED_PREFIX)) {
+			let recovered: string;
+			try {
+				recovered = this.cipher.decryptWithInstanceKey(value);
+			} catch {
+				this.logger.warn(
+					`Failed to decrypt legacy CBC-wrapped DEK ${keyInfo.id} with the instance key, this was probably wrapped with a different instance key`,
+				);
+				return null;
+			}
+
+			if (!RAW_DEK_PATTERN.test(recovered)) {
+				this.logger.warn(`Recovered legacy DEK ${keyInfo.id} is not valid raw key material`);
+				return null;
+			}
+
+			return recovered;
+		}
+
+		// Already GCM-wrapped or an unknown format: leave untouched.
+		return null;
+	}
+
+	/**
+	 * Re-wraps data-encryption keys stored in a pre-2.20 legacy format. Early key
+	 * managers stored the DEK either as raw 64-hex key material (2.18.x) or wrapped
+	 * with the instance key via AES-256-CBC (2.19.x). The current unwrap path expects
+	 * a GCM blob, so both fail to decrypt. Both wrap the same 64-hex DEK; recovering
+	 * it and re-wrapping with GCM restores the exact same key, so data stays readable.
+	 * Idempotent: a GCM value matches neither legacy detector and is left untouched.
+	 */
+	async repairLegacyDataEncryptionKeys(): Promise<void> {
+		const rows = await this.deploymentKeyRepository.findDataEncryptionKeys();
+		for (const row of rows) {
+			const rawKey = this.recoverLegacyDek(row);
+			if (rawKey === null) continue;
+			const wrapped = this.cipher.encryptDEKWithInstanceKey(rawKey);
+			await this.deploymentKeyRepository.rewrapLegacyDataEncryptionValue(
+				row.id,
+				row.value,
+				wrapped,
+			);
+			this.logger.info(`Re-wrapped legacy DEK ${row.id} with the instance key`);
+		}
 	}
 
 	/**

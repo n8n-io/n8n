@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon, N8nText, N8nCallout } from '@n8n/design-system';
@@ -30,6 +31,7 @@ const uiStore = useUIStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
+const { next: nextUpload } = useLatestFetch();
 
 const selectedFile = ref<File | null>(null);
 const uploadedFileId = ref<string | null>(null);
@@ -57,9 +59,17 @@ const canImport = computed(() => {
 		uploaded.value &&
 		matchedColumns.value.length > 0 &&
 		unrecognizedColumns.value.length === 0 &&
+		!isUploading.value &&
 		!isImporting.value
 	);
 });
+
+const clearUploadMetadata = () => {
+	uploadedFileId.value = null;
+	csvRowCount.value = 0;
+	matchedColumns.value = [];
+	unrecognizedColumns.value = [];
+};
 
 const handleFileChange = (uploadFile: UploadFile) => {
 	if (uploadFile.raw) {
@@ -69,16 +79,19 @@ const handleFileChange = (uploadFile: UploadFile) => {
 };
 
 const processUpload = async () => {
-	if (!selectedFile.value) return;
+	const file = selectedFile.value;
+	if (!file) return;
 
+	const isCurrent = nextUpload();
 	isUploading.value = true;
+	clearUploadMetadata();
+
 	try {
-		const response = await dataTableStore.uploadCsvFile(selectedFile.value, true);
+		const response = await dataTableStore.uploadCsvFile(file, true);
+		if (!isCurrent()) return;
+
 		uploadedFileId.value = response.id;
 		csvRowCount.value = response.rowCount;
-
-		matchedColumns.value = [];
-		unrecognizedColumns.value = [];
 
 		for (const csvCol of response.columns) {
 			if (DATA_TABLE_SYSTEM_COLUMNS.includes(csvCol.name)) {
@@ -90,10 +103,13 @@ const processUpload = async () => {
 			}
 		}
 	} catch (error) {
+		if (!isCurrent()) return;
+
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
 		reset();
 	} finally {
-		isUploading.value = false;
+		// On a current failure, reset() advances the generation and clears isUploading.
+		if (isCurrent()) isUploading.value = false;
 	}
 };
 
@@ -133,11 +149,10 @@ const onImport = async () => {
 };
 
 const reset = () => {
+	nextUpload();
+	isUploading.value = false;
 	selectedFile.value = null;
-	uploadedFileId.value = null;
-	csvRowCount.value = 0;
-	matchedColumns.value = [];
-	unrecognizedColumns.value = [];
+	clearUploadMetadata();
 };
 
 const isModalOpen = computed(() => uiStore.modalsById[props.modalName]?.open);
@@ -152,6 +167,10 @@ const onClose = () => {
 	reset();
 	emit('close');
 };
+
+onBeforeUnmount(() => {
+	nextUpload();
+});
 </script>
 
 <template>

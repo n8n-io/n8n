@@ -150,9 +150,9 @@ function readNumber(input: InputStream, sawDot: boolean) {
 	}
 	if (input.next === Ch.E || input.next === Ch.e) {
 		input.advance();
-		// advance() updates next, so we need to cast to unknown to avoid type errors
-		const advancedInput = input as unknown as InputStream;
-		if (advancedInput.next === Ch.Plus || advancedInput.next === Ch.Dash) input.advance();
+		// advance() updates next, so re-read it into a fresh local to reset narrowing
+		const afterExponent: number = input.next;
+		if (afterExponent === Ch.Plus || afterExponent === Ch.Dash) input.advance();
 		while (input.next >= Ch._0 && input.next <= Ch._9) input.advance();
 	}
 }
@@ -269,7 +269,8 @@ export function tokensFor(d: Dialect) {
 				const cur: number = input.next;
 				if (input.next < 0) break;
 				input.advance();
-				if (cur === Ch.Star && (input as unknown as InputStream).next === Ch.Slash) {
+				const next: number = input.next;
+				if (cur === Ch.Star && next === Ch.Slash) {
 					depth--;
 					input.advance();
 					if (!depth) break;

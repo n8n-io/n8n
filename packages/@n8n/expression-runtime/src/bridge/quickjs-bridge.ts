@@ -4,6 +4,15 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import type { EscapedTransferValue } from '../runtime/transfer';
+import {
+	isEscapedTransferValue,
+	isOpaqueTransferValue,
+	TRANSFER_ESCAPED_KEY,
+	TRANSFER_OPAQUE_KEY,
+	TRANSFER_TYPE_KEY,
+} from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
@@ -103,10 +112,35 @@ function isEscapedObject(
 }
 
 /**
+ * Give back the payload of an escape wrapper.
+ *
+ * A walked payload only had its own keys collide, so the walk goes on and
+ * rebuilds the markers deeper in it. An opaque payload is a value the guest
+ * could not walk, so `opaque` keeps every marker in it as data.
+ */
+function unescapeTransferValue(value: EscapedTransferValue): unknown {
+	const inner: unknown = value.__value;
+	const opaque = isOpaqueTransferValue(value);
+	if (typeof inner !== 'object' || inner === null) return inner;
+	if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
+	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+	const unescaped: Record<string, unknown> = {};
+	for (const [key, entry] of Object.entries(inner)) {
+		unescaped[key] = unwrapSentinels(entry, opaque);
+	}
+	return unescaped;
+}
+
+/**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
+ *
+ * With `markersAsData` set, a transfer marker is left as the plain object it
+ * is, for the contents of a payload the guest marked opaque. The guest escapes
+ * most such objects itself, but one that also carries `__isError` leaves the
+ * guest walk before the escape, so the host must not read it as a marker.
  */
-function unwrapSentinels(value: unknown): unknown {
+function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -116,9 +150,13 @@ function unwrapSentinels(value: unknown): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key]);
+			result[key] = unwrapSentinels(inner[key], markersAsData);
 		}
 		return result;
+	}
+	if (!markersAsData) {
+		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+		if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
@@ -137,24 +175,29 @@ function unwrapSentinels(value: unknown): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
+				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, markersAsData);
 			}
 		}
 		return err;
 	}
 	if (isMapSentinel(value)) {
-		return new Map(value.__entries.map(([k, v]) => [unwrapSentinels(k), unwrapSentinels(v)]));
+		return new Map(
+			value.__entries.map(([k, v]) => [
+				unwrapSentinels(k, markersAsData),
+				unwrapSentinels(v, markersAsData),
+			]),
+		);
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map(unwrapSentinels));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry, markersAsData)));
 	}
-	if (Array.isArray(value)) return value.map(unwrapSentinels);
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, markersAsData));
 	// Pass error sentinels through untouched — execute() detects them after
 	// unwrapping and reconstructs the Error on the host.
 	if (isErrorSentinel(value)) return value;
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
+		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], markersAsData);
 	}
 	return result;
 }
@@ -862,7 +905,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		var prepared = original(value);
 		return wrapSpecialValues(prepared);
 	};
-	function wrapSpecialValues(v) {
+	// __prepareForTransfer does not walk into a Map, a Set or the extra keys of an
+	// Error, and it does not walk an opaque payload. The inCollection flag marks
+	// those places, where a transfer marker can only come from user data.
+	function wrapSpecialValues(v, inCollection) {
 		if (v === null || v === undefined) return v;
 		// Functions and Promises must not leave the sandbox as results.
 		// isolated-vm's structured clone rejects them; match its error.
@@ -885,7 +931,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			var errKeys = Object.keys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]]);
+					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], true);
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -893,20 +939,48 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key), wrapSpecialValues(val)]);
+				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val));
+				values.push(wrapSpecialValues(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(wrapSpecialValues);
+		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
 		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
+		// Outside a collection, these markers come from __prepareForTransfer above,
+		// so pass them to the host as they are.
+		if (!inCollection) {
+			if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') return v;
+			if (v['${TRANSFER_ESCAPED_KEY}'] === true) {
+				var payload = v.__value;
+				if (v['${TRANSFER_OPAQUE_KEY}'] === true) {
+					// The host gives an opaque payload back as data, so wrap its contents
+					// as a collection and keep any marker in them as data too.
+					var opaqueWrapper = { __value: wrapOwnKeys(payload, true) };
+					opaqueWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+					opaqueWrapper['${TRANSFER_OPAQUE_KEY}'] = true;
+					return opaqueWrapper;
+				}
+				if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
+					var walkedWrapper = { __value: wrapOwnKeys(payload, inCollection) };
+					walkedWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+					return walkedWrapper;
+				}
+				var plainWrapper = { __value: wrapSpecialValues(payload, inCollection) };
+				plainWrapper['${TRANSFER_ESCAPED_KEY}'] = true;
+				return plainWrapper;
+			}
+		}
+		return wrapOwnKeys(v, inCollection);
+	}
+
+	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
 		var collides = false;
@@ -918,7 +992,18 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key]);
+			// Inside a collection a transfer marker is user data, so escape the object
+			// and the host reads the keys as the plain data they are.
+			if (
+				inCollection && (
+					key === '${TRANSFER_TYPE_KEY}' ||
+					key === '${TRANSFER_ESCAPED_KEY}' ||
+					key === '${TRANSFER_OPAQUE_KEY}'
+				)
+			) {
+				collides = true;
+			}
+			result[key] = wrapSpecialValues(v[key], inCollection);
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of

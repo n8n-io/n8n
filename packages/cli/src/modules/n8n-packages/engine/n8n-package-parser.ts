@@ -12,8 +12,9 @@ import { deriveParentFolderId, foldersInScope, workflowsInScope } from './packag
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
+import { derivePublishedState } from '../entities/workflow/workflow-published-state';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
-import { entityFilePath } from '../io/manifest-entry';
+import { entityFilePath, workflowMetadataFilePath } from '../io/manifest-entry';
 import type { PackageReader } from '../io/package-reader';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
@@ -25,6 +26,10 @@ import {
 	serializedVariableSchema,
 	type SerializedVariable,
 } from '../spec/serialized/variable.schema';
+import {
+	serializedWorkflowMetadataSchema,
+	type SerializedWorkflowMetadata,
+} from '../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -115,11 +120,11 @@ export class N8nPackageParser {
 	): Promise<PreparedWorkflow> {
 		const path = entityFilePath('workflows', entry.target);
 		const wire = await this.readJson<SerializedWorkflow>(reader, path, 'workflow');
+		const metadata = await this.readWorkflowMetadata(reader, entry);
 
 		let entity: WorkflowEntity;
 		try {
-			const partial = this.workflowSerializer.deserialize(wire);
-			entity = Object.assign(new WorkflowEntity(), partial);
+			entity = Object.assign(new WorkflowEntity(), this.workflowSerializer.deserialize(wire));
 		} catch (cause) {
 			if (cause instanceof ZodError) {
 				throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
@@ -132,13 +137,41 @@ export class N8nPackageParser {
 		WorkflowHelpers.validateWorkflowStructure(entity);
 		this.normalizeNodeGroups(entity, path);
 
+		// Read from `wire` only past `deserialize`, which is what validates it.
+		const sourcePublished = derivePublishedState(metadata, wire.versionId);
+
 		return {
 			entity,
 			sourceWorkflowId: entry.id,
-			sourcePublished: wire.isPublished,
 			parentFolderId,
+			sourceArchived: entity.isArchived,
+			...(sourcePublished !== undefined ? { sourcePublished } : {}),
 			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
+	}
+
+	private async readWorkflowMetadata(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedWorkflowMetadata> {
+		const path = workflowMetadataFilePath(entry.target);
+		const wire = await this.readJson(
+			reader,
+			path,
+			'workflow metadata',
+			`Package workflow metadata file is missing at ${path}. Export the package again from an instance that runs this version.`,
+		);
+
+		try {
+			return serializedWorkflowMetadataSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package workflow metadata file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
 	}
 
 	/** Drops groups that wouldn't survive the save path, so they can't fail the whole import. */
@@ -281,14 +314,16 @@ export class N8nPackageParser {
 		reader: PackageReader,
 		path: string,
 		label: string,
+		missingFileMessage?: string,
 	): Promise<T> {
 		let content: Buffer;
 		try {
 			content = await reader.readFile(path);
 		} catch (cause) {
-			throw new UserError(`Package manifest references a missing ${label} file at ${path}.`, {
-				cause,
-			});
+			throw new UserError(
+				missingFileMessage ?? `Package manifest references a missing ${label} file at ${path}.`,
+				{ cause },
+			);
 		}
 
 		return jsonParse<T>(content.toString('utf-8'), {

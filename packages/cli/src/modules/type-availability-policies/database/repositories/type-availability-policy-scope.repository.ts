@@ -6,7 +6,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, type EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { PolicyAction } from '../../policy-rule.types';
@@ -104,6 +104,23 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		}
 
 		return found;
+	}
+
+	/**
+	 * Whether any of the named scopes is a project scope (`projectId IS NOT NULL`). A policy
+	 * edit uses this to learn whether its document is attached to a project, where `delegate`
+	 * rules are not accepted. Chunked like `lockScopesByIds`, for the same reason.
+	 */
+	async containsProjectScope(ids: string[], ctx: OperationContext): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		for (const batch of chunkIds(ids)) {
+			const count = await manager.count(TypeAvailabilityPolicyScope, {
+				where: { id: In(batch), projectId: Not(IsNull()) },
+			});
+			if (count > 0) return true;
+		}
+
+		return false;
 	}
 
 	/**
