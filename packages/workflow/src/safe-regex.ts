@@ -3,16 +3,28 @@ import * as LoggerProxy from './logger-proxy';
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 
+/**
+ * A match result. A non-participating capture group is `undefined`, which the built-in
+ * engine also produces at runtime but `RegExpExecArray` claims cannot happen.
+ */
+export type RegexExecArray = Array<string | undefined> & {
+	// A successful match always sets group 0; only capture groups can be unset.
+	0: string;
+	index?: number;
+	input?: string;
+	groups?: Record<string, string | undefined>;
+};
+
 export interface RegexEngine {
-	exec(pattern: string, input: string, flags?: string): RegExpExecArray | null;
+	exec(pattern: string, input: string, flags?: string): RegexExecArray | null;
 	test(pattern: string, input: string, flags?: string): boolean;
 	replace(pattern: string, input: string, flags: string | undefined, replacement: string): string;
-	matchAll(pattern: string, input: string, flags?: string): RegExpMatchArray[];
-	split(pattern: string, input: string, flags?: string): string[];
+	matchAll(pattern: string, input: string, flags?: string): RegexExecArray[];
+	split(pattern: string, input: string, flags?: string): Array<string | undefined>;
 }
 
 export interface RegexEngineAsync {
-	exec(pattern: string, input: string, flags?: string): Promise<RegExpExecArray | null>;
+	exec(pattern: string, input: string, flags?: string): Promise<RegexExecArray | null>;
 	test(pattern: string, input: string, flags?: string): Promise<boolean>;
 	replace(
 		pattern: string,
@@ -20,8 +32,8 @@ export interface RegexEngineAsync {
 		flags: string | undefined,
 		replacement: string,
 	): Promise<string>;
-	matchAll(pattern: string, input: string, flags?: string): Promise<RegExpMatchArray[]>;
-	split(pattern: string, input: string, flags?: string): Promise<string[]>;
+	matchAll(pattern: string, input: string, flags?: string): Promise<RegexExecArray[]>;
+	split(pattern: string, input: string, flags?: string): Promise<Array<string | undefined>>;
 }
 
 export type RegexLiteral = {
@@ -45,6 +57,9 @@ type VmModule = typeof import('node:vm');
 
 let warnedAboutBrowserFallback = false;
 let internalEngine: RegexEngine;
+// Built lazily: most instances never touch the user-regex config, so building it
+// eagerly at module load would pay for a second vm context and script set for nothing.
+let userEngine: RegexEngine | undefined;
 
 export function parseRegexLiteral(value: string): RegexLiteral {
 	const literal = value.toString();
@@ -139,7 +154,7 @@ function nodeVmEngine(vm: VmModule): RegexEngine {
 			context.flags = flags ?? '';
 			context.input = input;
 			context.result = undefined;
-			return run<RegExpExecArray | null>(scripts.exec);
+			return run<RegexExecArray | null>(scripts.exec);
 		},
 		test(pattern, input, flags) {
 			context.pattern = pattern;
@@ -161,14 +176,14 @@ function nodeVmEngine(vm: VmModule): RegexEngine {
 			context.flags = globalFlag(flags);
 			context.input = input;
 			context.result = undefined;
-			return run<RegExpMatchArray[]>(scripts.matchAll);
+			return run<RegexExecArray[]>(scripts.matchAll);
 		},
 		split(pattern, input, flags) {
 			context.pattern = pattern;
 			context.flags = flags ?? '';
 			context.input = input;
 			context.result = undefined;
-			return run<string[]>(scripts.split);
+			return run<Array<string | undefined>>(scripts.split);
 		},
 	};
 }
@@ -192,17 +207,48 @@ export const setSafeRegexEngine = setInternalRegexEngine;
 /** @deprecated Renamed to {@link resetInternalRegexEngine}. */
 export const resetSafeRegexEngine = resetInternalRegexEngine;
 
+export function setUserRegexEngine(regexEngine: RegexEngine): void {
+	userEngine = regexEngine;
+}
+
+export function resetUserRegexEngine(): void {
+	userEngine = createDefaultEngine();
+}
+
+function getUserEngine(): RegexEngine {
+	return (userEngine ??= createDefaultEngine());
+}
+
 internalEngine = createDefaultEngine();
 
-/** For a pattern n8n itself authored. Always the built-in engine, whatever an instance selects for a user's patterns. */
-export const safeInternalRegex: RegexEngine = {
-	exec: (pattern, input, flags) => internalEngine.exec(pattern, input, flags),
-	test: (pattern, input, flags) => internalEngine.test(pattern, input, flags),
-	replace: (pattern, input, flags, replacement) =>
-		internalEngine.replace(pattern, input, flags, replacement),
-	matchAll: (pattern, input, flags) => internalEngine.matchAll(pattern, input, flags),
-	split: (pattern, input, flags) => internalEngine.split(pattern, input, flags),
-};
+function makeRegexFacade(getEngine: () => RegexEngine): RegexEngine {
+	return {
+		exec: (pattern, input, flags) => getEngine().exec(pattern, input, flags),
+		test: (pattern, input, flags) => getEngine().test(pattern, input, flags),
+		replace: (pattern, input, flags, replacement) =>
+			getEngine().replace(pattern, input, flags, replacement),
+		matchAll: (pattern, input, flags) => getEngine().matchAll(pattern, input, flags),
+		split: (pattern, input, flags) => getEngine().split(pattern, input, flags),
+	};
+}
+
+/**
+ * For a pattern n8n itself authored: resource-locator extraction, `displayOptions`
+ * matching, node-description validation, SQL placeholder substitution, and the like.
+ * Always the built-in engine, whatever an instance selects for a user's patterns.
+ *
+ * A pattern a user typed belongs on `safeUserRegex` instead.
+ */
+export const safeInternalRegex: RegexEngine = makeRegexFacade(() => internalEngine);
 
 /** @deprecated Renamed to {@link safeInternalRegex}. */
 export const safeRegex: RegexEngine = safeInternalRegex;
+
+/**
+ * For a pattern a user wrote. Runs on whichever engine the instance selects, so callers
+ * must treat its results as that engine's, not as the built-in engine's.
+ *
+ * A pattern n8n itself authored belongs on `safeInternalRegex` instead: it is written
+ * for the built-in engine and must keep its semantics whatever the instance selects.
+ */
+export const safeUserRegex: RegexEngine = makeRegexFacade(getUserEngine);
