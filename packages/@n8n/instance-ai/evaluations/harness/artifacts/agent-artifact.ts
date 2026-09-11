@@ -14,7 +14,7 @@ const utf8Encoder = new TextEncoder();
 export const AGENT_ARTIFACT_ITERATION_CAP_BYTES = 262_144;
 export const AGENT_ARTIFACT_RUN_CAP_BYTES = 524_288;
 
-export function agentArtifactUtf8Bytes(artifact: AgentArtifact): number {
+function agentArtifactUtf8Bytes(artifact: AgentArtifact): number {
 	return utf8Encoder.encode(JSON.stringify(artifact)).byteLength;
 }
 

@@ -20,7 +20,6 @@ import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import {
 	AGENT_ARTIFACT_RUN_CAP_BYTES,
-	agentArtifactUtf8Bytes,
 	sanitizeAgentArtifact,
 } from '../harness/artifacts/agent-artifact';
 import type { EvalLogger } from '../harness/logger';
@@ -353,6 +352,27 @@ export async function runEvalAndPersist(
 	}
 }
 
+type SerializedAgentArtifacts = {
+	agentArtifact?: AgentArtifact;
+	agentArtifactPerRun: Array<AgentArtifact | null>;
+};
+
+const artifactPayloadEncoder = new TextEncoder();
+const artifactPayloadBaselineBytes = artifactPayloadEncoder.encode(
+	JSON.stringify({ testCases: [{ before: null, after: null }] }, null, 2),
+).byteLength;
+
+/** Measure these fields with the same indentation they receive in eval-results.json. */
+function formattedAgentArtifactFieldsBytes(fields: SerializedAgentArtifacts): number {
+	const embeddedFields = {
+		testCases: [{ before: null, ...fields, after: null }],
+	};
+	return (
+		artifactPayloadEncoder.encode(JSON.stringify(embeddedFields, null, 2)).byteLength -
+		artifactPayloadBaselineBytes
+	);
+}
+
 function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 	agentArtifact?: AgentArtifact;
 	agentArtifactPerRun?: Array<AgentArtifact | null>;
@@ -362,25 +382,27 @@ function serializeAgentArtifacts(runs: WorkflowTestCaseResult[]): {
 	);
 	if (!agentAnchored) return {};
 
-	let cumulativeBytes = 0;
 	let overflowed = false;
-	const agentArtifactPerRun = runs.map((run) => {
+	const agentArtifactPerRun = runs.map((): AgentArtifact | null => null);
+	for (const [index, run] of runs.entries()) {
+		if (overflowed) continue;
 		const artifact = sanitizeAgentArtifact(run.agentArtifact);
-		if (!artifact) return null;
+		if (!artifact) continue;
 
-		const artifactBytes = agentArtifactUtf8Bytes(artifact);
-		if (overflowed || cumulativeBytes + artifactBytes > AGENT_ARTIFACT_RUN_CAP_BYTES) {
+		agentArtifactPerRun[index] = artifact;
+		if (formattedAgentArtifactFieldsBytes({ agentArtifactPerRun }) > AGENT_ARTIFACT_RUN_CAP_BYTES) {
+			agentArtifactPerRun[index] = null;
 			overflowed = true;
-			return null;
 		}
-		cumulativeBytes += artifactBytes;
-		return artifact;
-	});
+	}
+
 	const agentArtifact = agentArtifactPerRun.find((artifact) => artifact !== null);
-	return {
-		...(agentArtifact ? { agentArtifact } : {}),
-		agentArtifactPerRun,
-	};
+	if (!agentArtifact) return { agentArtifactPerRun };
+
+	const withCompatibility = { agentArtifact, agentArtifactPerRun };
+	return formattedAgentArtifactFieldsBytes(withCompatibility) <= AGENT_ARTIFACT_RUN_CAP_BYTES
+		? withCompatibility
+		: { agentArtifactPerRun };
 }
 
 export function writeEvalResults(

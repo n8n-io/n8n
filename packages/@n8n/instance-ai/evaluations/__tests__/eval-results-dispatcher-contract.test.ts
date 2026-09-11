@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
+import { AGENT_ARTIFACT_RUN_CAP_BYTES } from '../harness/artifacts/agent-artifact';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -329,7 +330,7 @@ describe('eval-results.json — dispatcher contract', () => {
 		expect(tc.agentArtifactPerRun).toEqual([null, null]);
 	});
 
-	it('preserves positions while dropping artifacts after the aggregate UTF-8 byte cap', () => {
+	it('caps the final formatted artifact fields while preserving positional artifacts', () => {
 		const largeArtifact = (index: number) => ({
 			agentId: `agent-${index}`,
 			config: {
@@ -358,10 +359,19 @@ describe('eval-results.json — dispatcher contract', () => {
 		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
 		const tc = report.testCases[0];
 
-		expect(tc.agentArtifact).toEqual(tc.agentArtifactPerRun[0]);
+		expect(tc).not.toHaveProperty('agentArtifact');
 		expect(tc.agentArtifactPerRun[0]).toMatchObject({ agentId: 'agent-0' });
 		expect(tc.agentArtifactPerRun[1]).toMatchObject({ agentId: 'agent-1' });
 		expect(tc.agentArtifactPerRun[2]).toBeNull();
+
+		const formattedArtifactFields = JSON.stringify(
+			{ agentArtifactPerRun: tc.agentArtifactPerRun },
+			null,
+			2,
+		);
+		expect(new TextEncoder().encode(formattedArtifactFields).byteLength).toBeLessThanOrEqual(
+			AGENT_ARTIFACT_RUN_CAP_BYTES,
+		);
 	});
 
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
