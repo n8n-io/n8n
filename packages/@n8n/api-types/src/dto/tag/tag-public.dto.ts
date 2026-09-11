@@ -10,12 +10,9 @@ export const tagPublicSchema = z.object({
 	updatedAt: z.string().datetime().openapi({ readOnly: true }),
 });
 
-export class TagPublicDto extends Z.class({
-	id: z.string(),
-	name: z.string(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-}) {}
+// Built from `tagPublicSchema` so the generated spec keeps the `readOnly` flags and examples the
+// hand-written `tag.yml` carried.
+export class TagPublicDto extends Z.class(tagPublicSchema.shape) {}
 
 export class TagListPublicDto extends Z.class({
 	data: z.array(tagPublicSchema),

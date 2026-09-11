@@ -19,29 +19,6 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
-delete:
-  x-eov-operation-id: deleteTag
-  x-required-scope: tag:delete
-  x-eov-operation-handler: v1/handlers/tags/tags.handler
-  tags:
-    - Tags
-  summary: Delete a tag
-  description: Deletes a tag.
-  parameters:
-    - $ref: '../schemas/parameters/tagId.yml'
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/tag.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '403':
-      $ref: '../../../../shared/spec/responses/forbidden.yml'
-    '404':
-      $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateTag
   x-required-scope: tag:update

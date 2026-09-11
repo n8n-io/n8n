@@ -11,7 +11,6 @@ import { TagService } from '@/services/tag.service';
 type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
-	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
 	getTag: PublicAPIEndpoint<TagRequest.Get>;
 };
 
@@ -51,22 +50,6 @@ const tagHandlers: TagHandlers = {
 			} catch {
 				throw new ConflictError('Tag already exists');
 			}
-		},
-	],
-	deleteTag: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:delete' }),
-		async (req, res) => {
-			const { id } = req.params;
-
-			let tag;
-			try {
-				tag = await Container.get(TagService).getById(id);
-			} catch (error) {
-				throw new NotFoundError('Not Found');
-			}
-
-			await Container.get(TagService).delete(id);
-			return res.json(tag);
 		},
 	],
 	getTag: [
