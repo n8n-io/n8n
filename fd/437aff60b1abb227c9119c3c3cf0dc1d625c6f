@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentExecutionUpdates.ts
+  s_fd53f87975be69::t_47199529c7c8f5 35,69
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_fd53f87975be69::t_47199529c7c8f5 142,190,217,231,251
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fd53f87975be69::t_47199529c7c8f5 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fd437aff60b1abb227c9119c3c3cf0dc1d625c6f",
+  "prompts": {},
+  "sessions": {
+    "s_fd53f87975be69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0865b-9b93-72e3-987a-3508c786fce4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
