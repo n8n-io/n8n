@@ -30,7 +30,7 @@ test.describe(
 			const page = n8n.page;
 
 			await page.addInitScript(() => {
-				const probe = window as ProbeWindow;
+				const probe = window as unknown as ProbeWindow;
 				probe.wasmInstantiations = 0;
 				for (const name of ['instantiate', 'instantiateStreaming'] as const) {
 					const original = WebAssembly[name];
@@ -53,7 +53,9 @@ test.describe(
 			await n8n.ndv.typeInExpressionEditor('{{ 1 + 2');
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('3');
 
-			const instantiations = await page.evaluate(() => (window as ProbeWindow).wasmInstantiations);
+			const instantiations = await page.evaluate(
+				() => (window as unknown as ProbeWindow).wasmInstantiations,
+			);
 			expect(instantiations, 'the page instantiated the QuickJS wasm module').toBeGreaterThan(0);
 		});
 	},
