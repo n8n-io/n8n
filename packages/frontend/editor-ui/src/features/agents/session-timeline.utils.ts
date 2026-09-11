@@ -474,7 +474,8 @@ function skillNameFromText(value: string): string | undefined {
 	const match = /^\[Skill: ([^\]]+)\]/m.exec(value);
 	const name = match?.[1];
 	if (!name) return undefined;
-	if (!name.startsWith('"') || !name.endsWith('"')) return name;
+	if (!name.startsWith('"')) return name;
+	if (!name.endsWith('"')) return name.slice(1);
 
 	try {
 		const parsed: unknown = JSON.parse(name);

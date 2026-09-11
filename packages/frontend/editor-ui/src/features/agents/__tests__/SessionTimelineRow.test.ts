@@ -11,6 +11,12 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: () => ({ href: '/wf/1' }) }),
 }));
 
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) => (name === 'n8n-nodes-base.httpRequest' ? { name } : undefined),
+	}),
+}));
+
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 	convertToDisplayDate: () => ({ date: '', time: '00:00' }),
 }));
@@ -44,6 +50,10 @@ const STUBS = {
 		props: ['kind'],
 		template: '<span :data-testid="pill" :data-kind="kind" />',
 	},
+	NodeIcon: {
+		props: ['nodeType', 'size'],
+		template: '<span data-testid="node-icon" :data-node-type="nodeType.name" :data-size="size" />',
+	},
 };
 
 function item(partial: Partial<TimelineItem>): TimelineItem {
@@ -65,6 +75,28 @@ async function renderComponent(it: TimelineItem) {
 }
 
 describe('SessionTimelineRow', () => {
+	it('renders a skill with its name and pill', async () => {
+		const wrapper = await renderComponent(item({ kind: 'skill', skillName: 'Triage' }));
+
+		expect(wrapper.text()).toContain('Triage');
+		expect(wrapper.get('[data-kind="skill"]').exists()).toBe(true);
+	});
+
+	it('renders the node icon when the node type is available', async () => {
+		const wrapper = await renderComponent(
+			item({ kind: 'node', nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 4.2 }),
+		);
+
+		expect(wrapper.get('[data-testid="node-icon"]').attributes('data-size')).toBe('20');
+		expect(wrapper.find('[data-kind]').exists()).toBe(false);
+	});
+
+	it('renders the pill when the node type is unavailable', async () => {
+		const wrapper = await renderComponent(item({ kind: 'node', nodeType: 'unknown' }));
+
+		expect(wrapper.get('[data-kind="node"]').exists()).toBe(true);
+	});
+
 	it('renders the failure icon for a generic tool soft-failure', async () => {
 		const wrapper = await renderComponent(
 			item({

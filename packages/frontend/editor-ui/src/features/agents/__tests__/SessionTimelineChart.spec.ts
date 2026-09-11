@@ -249,6 +249,27 @@ describe('SessionTimelineChart', () => {
 		}
 	});
 
+	it('shows the skill label and name in the block details', async () => {
+		vi.useFakeTimers();
+		const w = mountChart({
+			items: [item({ kind: 'skill', skillName: 'Triage', timestamp: 1000, endTimestamp: 1200 })],
+		});
+
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			expect(block.attributes('aria-label')).toContain('Skill');
+			expect(block.attributes('aria-label')).toContain('Triage');
+
+			await block.trigger('focus');
+			await vi.runAllTimersAsync();
+
+			expect(w.get('[data-test-id="timeline-hover-card"]').text()).toContain('Triage');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
 	it('exposes a failed tool call as an error in the block label and hover card', async () => {
 		vi.useFakeTimers();
 		const w = mountChart({
