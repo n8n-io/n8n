@@ -17,7 +17,6 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflow,
-	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import {
@@ -33,7 +32,7 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { In, type FindOptionsRelations } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
@@ -171,24 +170,12 @@ export class WorkflowsController {
 
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSharingEnabled()) {
-			const relations: FindOptionsRelations<WorkflowEntity> = {
-				shared: {
-					project: {
-						projectRelations: true,
-					},
-				},
-			};
-
-			if (!this.globalConfig.tags.disabled) {
-				relations.tags = true;
-			}
-
 			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
 				['workflow:read'],
 				{
-					includeTags: !this.globalConfig.tags.disabled,
+					includeTags: true,
 					includeParentFolder: true,
 					includeActiveVersion: true,
 					publishHistory: 'latestActivation',
@@ -222,7 +209,7 @@ export class WorkflowsController {
 			req.user,
 			['workflow:read'],
 			{
-				includeTags: !this.globalConfig.tags.disabled,
+				includeTags: true,
 				includeParentFolder: true,
 				includeActiveVersion: true,
 				publishHistory: 'latestActivation',

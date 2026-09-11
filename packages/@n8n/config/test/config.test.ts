@@ -628,9 +628,6 @@ describe('GlobalConfig', () => {
 		collaboration: {
 			crdt: 'off',
 		},
-		tags: {
-			disabled: false,
-		},
 		workflowHistory: {
 			pruneTime: -1,
 		},
