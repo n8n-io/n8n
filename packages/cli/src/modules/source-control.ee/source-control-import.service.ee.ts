@@ -1328,6 +1328,9 @@ export class SourceControlImportService {
 	) {
 		const result: { imported: string[] } = { imported: [] };
 		const overriddenKeys = Object.keys(valueOverrides ?? {});
+		const existingIds = new Set(
+			(await this.variablesRepository.find({ select: ['id'] })).map(({ id }) => id),
+		);
 
 		for (const variable of variables) {
 			if (!variable.key) {
@@ -1338,15 +1341,20 @@ export class SourceControlImportService {
 				overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
 			}
 			try {
-				// by default no value is stored remotely, so an empty string is returned
-				// it must be changed to undefined so as to not overwrite existing values!
+				const isNewVariable = !existingIds.has(variable.id);
+				// By default no value is stored remotely, so an empty string is returned.
+				// For an existing variable, keep it untouched (`undefined`) so re-importing
+				// doesn't overwrite the local value. For a brand-new variable, create it with
+				// an empty value, same as creating one with no value via the UI, rather than
+				// leaving the column unset (which would insert `NULL`).
 				const variableToUpsert = {
 					...variable,
-					value: variable.value === '' ? undefined : variable.value,
+					value: variable.value === '' ? (isNewVariable ? '' : undefined) : variable.value,
 					project: variable.projectId ? { id: variable.projectId } : null,
 				};
 
 				await this.variablesRepository.upsert(variableToUpsert, ['id']);
+				if (isNewVariable) existingIds.add(variable.id);
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
 					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);

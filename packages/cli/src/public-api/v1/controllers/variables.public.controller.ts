@@ -42,7 +42,9 @@ function toVariablePublic(variable: Variables): VariablePublic {
 	return {
 		id: variable.id,
 		key: variable.key,
-		value: variable.value,
+		// The `value` column allows `NULL` for a variable with no value. Represent
+		// that as an empty string, matching how `state: 'empty'` already treats it.
+		value: variable.value ?? '',
 		type: variable.type,
 		project: variable.project ? toPublicProject(variable.project) : null,
 	};

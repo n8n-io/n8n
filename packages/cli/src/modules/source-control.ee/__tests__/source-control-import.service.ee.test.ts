@@ -151,6 +151,7 @@ describe('SourceControlImportService', () => {
 		// Default: nothing is published, so pull deletions never wait on an unpublish.
 		workflowPublishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		credentialsRepository.find.mockResolvedValue([]);
+		variablesRepository.find.mockResolvedValue([]);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
 				await credentialsRepository.upsert(value as never, conflictPaths as never),
