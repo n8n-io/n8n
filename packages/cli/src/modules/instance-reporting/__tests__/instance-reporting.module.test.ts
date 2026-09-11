@@ -2,7 +2,8 @@ import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ModuleName } from '@n8n/backend-common';
 import { Logger, ModulesConfig } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { ModuleMetadata } from '@n8n/decorators';
+import type { Controller } from '@n8n/decorators';
+import { ControllerRegistryMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -49,28 +50,22 @@ function setUpContainer({
 
 describe('InstanceReportingModule', () => {
 	describe('settings()', () => {
-		it('reports the time the instance is due to report at, and its last delivery', async () => {
+		it('reports the time the instance is due to report at', async () => {
 			setUpContainer();
 
 			const settings = await new InstanceReportingModule().settings();
 
-			expect(settings).toEqual({
-				enabled: true,
-				reportTime: REPORT_TIME,
-				lastSuccessfulReport: LAST_DELIVERY.toISOString(),
-			});
+			expect(settings).toEqual({ enabled: true, reportTime: REPORT_TIME });
 		});
 
-		it('reports a null last delivery until the receiver accepts a report', async () => {
-			setUpContainer({ lastDelivery: null });
+		// These settings are cached for the lifetime of the process, so the last
+		// delivery time is served by the module's own endpoint instead.
+		it('leaves the last delivery time out, reading nothing from the reports', async () => {
+			const { reportRepository } = setUpContainer();
 
-			const settings = await new InstanceReportingModule().settings();
+			await new InstanceReportingModule().settings();
 
-			expect(settings).toEqual({
-				enabled: true,
-				reportTime: REPORT_TIME,
-				lastSuccessfulReport: null,
-			});
+			expect(reportRepository.findLastDeliveryTime).not.toHaveBeenCalled();
 		});
 
 		it('reports as disabled, claiming no time and reading nothing, without a receiver', async () => {
@@ -105,6 +100,22 @@ describe('InstanceReportingModule', () => {
 			await new InstanceReportingModule().init();
 
 			expect(scheduler.init).not.toHaveBeenCalled();
+		});
+
+		// The route belongs to the loaded module, not to the receiver, so a client
+		// that asks anyway gets an answer instead of a 404.
+		it('registers the status route even when no receiver is configured', async () => {
+			setUpContainer({ baseUrl: '' });
+
+			await new InstanceReportingModule().init();
+
+			const { InstanceReportingController } = await import('../instance-reporting.controller.js');
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				InstanceReportingController as Controller,
+			);
+
+			expect(metadata.basePath).toBe('/instance-reporting');
+			expect(metadata.routes.get('getStatus')?.path).toBe('/status');
 		});
 	});
 

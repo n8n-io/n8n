@@ -19,6 +19,10 @@ import { UserError } from 'n8n-workflow';
 @BackendModule({ name: 'instance-reporting', instanceTypes: ['main'] })
 export class InstanceReportingModule implements ModuleInterface {
 	async init() {
+		// Imported before the receiver check, so the route exists whenever the
+		// module is loaded. The client gates off `enabled` in the module settings.
+		await import('./instance-reporting.controller.js');
+
 		// The daily figure is read from insights, so the reporter cannot run without it.
 		if (Container.get(ModulesConfig).disabledModules.includes('insights')) {
 			throw new UserError(
@@ -45,12 +49,15 @@ export class InstanceReportingModule implements ModuleInterface {
 	/**
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
-	 * The response shape is
-	 * `{ enabled: boolean, reportTime?: string, lastSuccessfulReport: string | null }`.
-	 * A consumer reads the three states as: key absent, so the module is not
+	 * The response shape is `{ enabled: boolean, reportTime?: string }`. A
+	 * consumer reads the three states as: key absent, so the module is not
 	 * enabled on this instance; `enabled: false`, so it is loaded but has no
 	 * receiver; `enabled: true`, so it reports daily at `reportTime`.
-	 * `lastSuccessfulReport` is `null` until the receiver accepts a report.
+	 *
+	 * These settings are built once, at startup, and served from a cache after
+	 * that, so only values fixed for the process lifetime belong here. For the
+	 * last delivery time, which moves while the process runs, read
+	 * `GET /rest/instance-reporting/status`.
 	 */
 	async settings() {
 		if (!(await this.isConfigured())) return { enabled: false };
@@ -58,23 +65,13 @@ export class InstanceReportingModule implements ModuleInterface {
 		const { InstanceReportingSettingsService } = await import(
 			'./instance-reporting-settings.service.js'
 		);
-		const { InstanceMonitoringReportRepository } = await import(
-			'./database/repositories/instance-monitoring-report.repository.js'
-		);
 
-		const [reportTime, lastDelivery] = await Promise.all([
-			// Resolved on every main, not only the leader. The claim is conditional
-			// and the compaction heal is derived from the stored value, so concurrent
-			// mains settle on one time.
-			Container.get(InstanceReportingSettingsService).getReportTime(),
-			Container.get(InstanceMonitoringReportRepository).findLastDeliveryTime(),
-		]);
+		// Resolved on every main, not only the leader. The claim is conditional
+		// and the compaction heal is derived from the stored value, so concurrent
+		// mains settle on one time.
+		const reportTime = await Container.get(InstanceReportingSettingsService).getReportTime();
 
-		return {
-			enabled: true,
-			reportTime,
-			lastSuccessfulReport: lastDelivery?.toISOString() ?? null,
-		};
+		return { enabled: true, reportTime };
 	}
 
 	async entities() {

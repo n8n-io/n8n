@@ -108,19 +108,33 @@ is enabled on this instance:
 {
   "instance-reporting": {
     "enabled": true,
-    "reportTime": "07:42",
-    "lastSuccessfulReport": "2026-03-25T07:42:13.000Z"
+    "reportTime": "07:42"
   }
 }
 ```
 
 `enabled` says whether a receiver is configured. Without one the key reads
-`{ "enabled": false }` and carries neither `reportTime`, since no time is
-claimed, nor `lastSuccessfulReport`, since nothing is read. A missing key means
-the module is not enabled at all.
+`{ "enabled": false }` and carries no `reportTime`, since no time is claimed. A
+missing key means the module is not enabled at all.
 
-`lastSuccessfulReport` is the UTC instant the receiver last accepted a report,
-or `null` when it never did.
+These settings are built once, during module init, and served from a cache
+afterwards, so they carry only values that stay the same for the lifetime of
+the process.
+
+## Reporting status
+
+`GET /rest/instance-reporting/status` answers with the UTC instant the receiver
+last accepted a report, or `null` when it never did:
+
+```json
+{ "lastSuccessfulReport": "2026-03-25T07:42:13.000Z" }
+```
+
+Each request reads the database, which is what the client settings above cannot
+do: they are cached, and in multi-main only the leader delivers, so every other
+main would serve a value it never sees change. The route exists whenever the
+module is loaded, including without a receiver — the client decides whether to
+ask by reading `enabled` from the client settings.
 
 See [.agents/specs/central-instance-monitoring.md](../../../../../.agents/specs/central-instance-monitoring.md)
 for the full design.
