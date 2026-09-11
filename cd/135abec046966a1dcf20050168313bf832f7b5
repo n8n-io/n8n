@@ -1,0 +1,35 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-test-listener.spec.ts
+  s_c491120e42f4d5::t_fa2ecc8edc1d37 96-97
+  s_c491120e42f4d5::t_0680643027999c 98-100
+  s_f419c111b5246b::t_d2e3aeae992e6c 7-9,12,75-78,101
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/0000-1789123258359-unknown-host-POST-_v1_messages-53a84a4b.json
+  s_f419c111b5246b::t_8ad7d0cb7593b7 1-108
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/0001-1789123258360-unknown-host-POST-_v1_messages-1bd787fd.json
+  s_f419c111b5246b::t_6f6b5c0431409e 1-105
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/trace.jsonl
+  s_f419c111b5246b::t_e1fcd9f1249588 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd135abec046966a1dcf20050168313bf832f7b5",
+  "prompts": {},
+  "sessions": {
+    "s_c491120e42f4d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7450e635-cf6a-4786-8b7c-b946ae65396a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f419c111b5246b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59d49e7-b86b-4d3d-b74b-81189cfd7e22",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
