@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "bindings" text NOT NULL DEFAULT ('[]'), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_activeVersionId_foreign" FOREIGN KEY ("activeVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
+CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "theme" text, "projectId" varchar(36) NOT NULL, "bindings" text NOT NULL DEFAULT ('[]'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_activeVersionId_foreign" FOREIGN KEY ("activeVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
 ```
 
 </details>

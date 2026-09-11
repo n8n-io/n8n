@@ -9,7 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.page](public.page.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| namespace | varchar(128) |  | false |  |  | URL path segment under /apps/; unique per project |
+| namespace | varchar(128) |  | false |  |  | URL path segment under /apps/ |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | theme | json |  | true |  |  | Shared colors/spacing for the App, app-defined shape |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
