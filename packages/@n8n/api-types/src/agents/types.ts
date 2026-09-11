@@ -1,5 +1,6 @@
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } from 'n8n-workflow';
 
+import type { ToolSuspendedPayload } from '../agent-sse';
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 
@@ -189,6 +190,16 @@ export type AgentWebChatSseEvent =
 	| { type: 'text-start'; id: string }
 	| { type: 'text-delta'; id: string; delta: string }
 	| { type: 'text-end'; id: string }
+	| { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+	| {
+			type: 'tool-result';
+			toolCallId: string;
+			toolName: string;
+			output: unknown;
+			isError?: boolean;
+			canceled?: boolean;
+	  }
+	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'done' }
 	| { type: 'error'; message: string };
 
@@ -369,6 +380,11 @@ export interface AgentSessionLangSmithExportResponse {
  * `/chat` executions — never persisted in an agent's `integrations` array.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
+/**
+ * Credentialless hosted-page channel. Persisted on the agent; visitors hit
+ * `/web-agent/:integrationId`. Uses the same hosted-chat tools as n8n Chat.
+ */
+export const WEB_INTEGRATION_TYPE = 'web' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

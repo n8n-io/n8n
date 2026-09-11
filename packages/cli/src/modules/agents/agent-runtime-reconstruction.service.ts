@@ -13,6 +13,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
+	WEB_INTEGRATION_TYPE,
 	buildProxyHeaders,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -885,7 +886,11 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
+			// Hosted pages (in-app preview and the public web channel) share the
+			// same card tools. Slack/Telegram inject their own action tools instead.
+			const includeN8nChat =
+				integrationType === N8N_CHAT_INTEGRATION_TYPE ||
+				integrationType === WEB_INTEGRATION_TYPE;
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
 			const runtimeIntegrationConfigs =
 				integrationRegistry.runtimeConfigs(credentialIntegrations);

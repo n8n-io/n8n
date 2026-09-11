@@ -773,6 +773,17 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		expect(toolNames).toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
 	});
 
+	it('injects n8n_chat tools when integrationType is web', async () => {
+		const { service, credentialProvider } = setup();
+		const entity = makeAgentEntity();
+
+		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production', 'web');
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(toolNames).toContain(N8N_CHAT_CONTEXT_TOOL_NAME);
+	});
+
 	it('does not inject n8n_chat tools when integrationType is absent', async () => {
 		const { service, credentialProvider } = setup();
 		// Same entity, reconstruct WITHOUT integrationType.

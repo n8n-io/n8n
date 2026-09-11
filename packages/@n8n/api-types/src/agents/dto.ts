@@ -288,6 +288,14 @@ export class AgentWebChatMessageDto extends Z.class({
 	message: z.string().trim().min(1).max(32_000),
 }) {}
 
+/** Resume a suspended HITL tool call on the public web channel. */
+export class AgentWebChatResumeDto extends Z.class({
+	sessionId: z.string().uuid(),
+	runId: z.string().min(1),
+	toolCallId: z.string().min(1),
+	resumeData: z.unknown(),
+}) {}
+
 export class PublishAgentDto extends Z.class({
 	versionId: z.string().min(1).optional(),
 }) {}

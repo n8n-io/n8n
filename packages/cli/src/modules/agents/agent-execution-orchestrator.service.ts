@@ -6,7 +6,7 @@ import {
 	type StreamChunk,
 } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, WEB_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -626,6 +626,19 @@ export class AgentExecutionOrchestratorService {
 		);
 
 		try {
+			if (integrationType === WEB_INTEGRATION_TYPE) {
+				// Slack/Telegram set this in the bridge. The web channel has no
+				// bridge, so chat_action cards need the same context here or they
+				// fail with "no current message context" and never render.
+				await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+					integrationConnectionId: WEB_INTEGRATION_TYPE,
+					platform: WEB_INTEGRATION_TYPE,
+					target: { type: 'dm', userId: memory.resourceId, threadId: memory.threadId },
+					interactingUserId: memory.resourceId,
+					updatedAt: new Date().toISOString(),
+				});
+			}
+
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,

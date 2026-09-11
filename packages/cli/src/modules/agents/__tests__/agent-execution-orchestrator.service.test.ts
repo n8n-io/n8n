@@ -492,6 +492,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			executionService,
 			agentRunTracingService,
 			externalHooks,
+			integrationMessageContextService,
 		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
@@ -531,6 +532,39 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({ source: 'slack' }),
+		);
+		expect(integrationMessageContextService.setLatest).not.toHaveBeenCalled();
+	});
+
+	it('sets hosted-chat message context for published web-channel runs', async () => {
+		const { service, runtimeCacheService, integrationMessageContextService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForChatPublished({
+				agentId,
+				projectId,
+				message: 'from web',
+				memory: { threadId: 'web:int-1:session-1', resourceId: 'web-visitor:session-1' },
+				integrationType: 'web',
+				sandboxPrincipalHash: integrationPrincipalHash,
+			}),
+		);
+
+		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
+			'web:int-1:session-1',
+			'web-visitor:session-1',
+			expect.objectContaining({
+				integrationConnectionId: 'web',
+				platform: 'web',
+				target: {
+					type: 'dm',
+					userId: 'web-visitor:session-1',
+					threadId: 'web:int-1:session-1',
+				},
+				interactingUserId: 'web-visitor:session-1',
+			}),
 		);
 	});
 

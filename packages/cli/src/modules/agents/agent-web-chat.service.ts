@@ -1,7 +1,11 @@
-import type {
-	AgentWebChatPageConfig,
-	AgentWebChatSseEvent,
-	AgentWebIntegrationSettings,
+import type { StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
+	WEB_INTEGRATION_TYPE,
+	type AgentWebChatPageConfig,
+	type AgentWebChatSseEvent,
+	type AgentWebIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -178,9 +182,9 @@ export class AgentWebChatService {
 	 * Run one visitor turn and yield only what a public page may see.
 	 *
 	 * The internal chat stream carries reasoning, tool inputs and outputs, and
-	 * execution ids. None of that is translated here: this generator emits the
-	 * assistant's text and nothing else, so a new internal chunk type cannot
-	 * become a public leak by default.
+	 * execution ids. Those stay dropped so a new internal chunk type cannot
+	 * become a public leak by default. HITL cards are the exception: the page
+	 * has to render them and send the visitor's answer back.
 	 */
 	async *streamTurn(params: {
 		channel: ResolvedWebChannel;
@@ -190,65 +194,111 @@ export class AgentWebChatService {
 	}): AsyncGenerator<AgentWebChatSseEvent> {
 		const { channel, session, message, abortSignal } = params;
 		const { agent } = channel;
+		const memory = this.memoryFor(channel, session);
 
-		// Each visitor session is its own sandbox principal, so one visitor's
-		// workspace and episodic memory can never be reached by another.
-		const sandboxPrincipalHash = hashAgentSandboxPrincipal({
-			type: 'project-session',
-			projectId: agent.projectId,
-			sessionId: `web:${channel.integrationId}:${session.sessionId}`,
-		});
+		yield* this.yieldPublicTurn(
+			this.orchestrator.executeForChatPublished({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				message,
+				memory,
+				integrationType: WEB_INTEGRATION_TYPE,
+				sandboxPrincipalHash: this.sandboxPrincipalFor(channel, session),
+			}),
+			abortSignal,
+			{ agentId: agent.id, integrationId: channel.integrationId },
+		);
+	}
 
-		const stream = this.orchestrator.executeForChatPublished({
-			agentId: agent.id,
-			projectId: agent.projectId,
-			message,
-			memory: {
-				threadId: `web:${channel.integrationId}:${session.sessionId}`,
-				resourceId: session.userId ?? `web-visitor:${session.sessionId}`,
-			},
-			integrationType: 'web',
-			sandboxPrincipalHash,
-		});
+	/** Continue a suspended HITL tool call from the same visitor session. */
+	async *resumeTurn(params: {
+		channel: ResolvedWebChannel;
+		session: WebChatSession;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+		abortSignal: AbortSignal;
+	}): AsyncGenerator<AgentWebChatSseEvent> {
+		const { channel, session, runId, toolCallId, resumeData, abortSignal } = params;
+		const { agent } = channel;
+		const memory = this.memoryFor(channel, session);
+
+		yield* this.yieldPublicTurn(
+			this.orchestrator.resumeForChat({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				runId,
+				toolCallId,
+				resumeData,
+				expectedMemory: memory,
+				source: WEB_INTEGRATION_TYPE,
+				integrationType: WEB_INTEGRATION_TYPE,
+				abortSignal,
+			}),
+			abortSignal,
+			{ agentId: agent.id, integrationId: channel.integrationId },
+		);
+	}
+
+	/**
+	 * Translate one internal stream into the public event set. HITL cards
+	 * (`approval`, `chat_action`, and workflow Wait suspensions) pass through;
+	 * every other tool event is dropped.
+	 */
+	private async *yieldPublicTurn(
+		stream: AsyncIterable<StreamChunk>,
+		abortSignal: AbortSignal,
+		logContext: { agentId: string; integrationId: string },
+	): AsyncGenerator<AgentWebChatSseEvent> {
+		const interactiveToolCallIds = new Set<string>();
+		let suspended = false;
 
 		try {
 			for await (const chunk of stream) {
 				if (abortSignal.aborted) return;
 
-				switch (chunk.type) {
-					case 'text-start':
-						yield { type: 'text-start', id: chunk.id };
-						break;
-					case 'text-delta':
-						yield { type: 'text-delta', id: chunk.id, delta: chunk.delta };
-						break;
-					case 'text-end':
-						yield { type: 'text-end', id: chunk.id };
-						break;
-					case 'error':
-						// The internal message can name a credential, a tool, or an
-						// upstream API. A visitor gets a fixed string; the detail is logged.
-						this.logger.warn('[AgentWebChatService] Web chat turn failed', {
-							agentId: agent.id,
-							integrationId: channel.integrationId,
-							error: chunk.error,
-						});
-						yield { type: 'error', message: 'Something went wrong. Please try again.' };
-						return;
-					default:
-						break;
+				if (chunk.type === 'error') {
+					// The internal message can name a credential, a tool, or an
+					// upstream API. A visitor gets a fixed string; the detail is logged.
+					this.logger.warn('[AgentWebChatService] Web chat turn failed', {
+						...logContext,
+						error: chunk.error,
+					});
+					yield { type: 'error', message: 'Something went wrong. Please try again.' };
+					return;
 				}
+
+				const event = toPublicChatEvent(chunk, interactiveToolCallIds);
+				if (!event) continue;
+				if (event.type === 'tool-call-suspended') suspended = true;
+				yield event;
 			}
-			yield { type: 'done' };
+			if (!suspended) yield { type: 'done' };
 		} catch (error) {
 			if (abortSignal.aborted) return;
 			this.logger.error('[AgentWebChatService] Web chat turn threw', {
-				agentId: agent.id,
-				integrationId: channel.integrationId,
+				...logContext,
 				error,
 			});
 			yield { type: 'error', message: 'Something went wrong. Please try again.' };
 		}
+	}
+
+	private memoryFor(channel: ResolvedWebChannel, session: WebChatSession) {
+		return {
+			threadId: `web:${channel.integrationId}:${session.sessionId}`,
+			resourceId: session.userId ?? `web-visitor:${session.sessionId}`,
+		};
+	}
+
+	private sandboxPrincipalFor(channel: ResolvedWebChannel, session: WebChatSession) {
+		// Each visitor session is its own sandbox principal, so one visitor's
+		// workspace and episodic memory can never be reached by another.
+		return hashAgentSandboxPrincipal({
+			type: 'project-session',
+			projectId: channel.agent.projectId,
+			sessionId: `web:${channel.integrationId}:${session.sessionId}`,
+		});
 	}
 
 	/**
@@ -335,4 +385,67 @@ function constantTimeEquals(a: string, b: string): boolean {
 
 function sha256(value: string): Buffer {
 	return createHash('sha256').update(value, 'utf8').digest();
+}
+
+function isPublicInteractiveTool(toolName: string): boolean {
+	return toolName === APPROVAL_TOOL_NAME || toolName === N8N_CHAT_ACTION_TOOL_NAME;
+}
+
+/**
+ * Map one internal chunk to a public event, or drop it.
+ *
+ * `interactiveToolCallIds` remembers HITL calls (including workflow Wait
+ * tools, whose names are not in the allowlist) so their later `tool-result`
+ * can close the card without leaking other tool output.
+ */
+function toPublicChatEvent(
+	chunk: StreamChunk,
+	interactiveToolCallIds: Set<string>,
+): AgentWebChatSseEvent | undefined {
+	switch (chunk.type) {
+		case 'text-start':
+			return { type: 'text-start', id: chunk.id };
+		case 'text-delta':
+			return { type: 'text-delta', id: chunk.id, delta: chunk.delta };
+		case 'text-end':
+			return { type: 'text-end', id: chunk.id };
+		case 'tool-call':
+			if (!isPublicInteractiveTool(chunk.toolName)) return undefined;
+			interactiveToolCallIds.add(chunk.toolCallId);
+			return {
+				type: 'tool-call',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				input: chunk.input,
+			};
+		case 'tool-call-suspended':
+			interactiveToolCallIds.add(chunk.toolCallId);
+			return {
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: chunk.toolCallId,
+					runId: chunk.runId,
+					toolName: chunk.toolName,
+					input: chunk.suspendPayload,
+				},
+			};
+		case 'tool-result': {
+			if (
+				!interactiveToolCallIds.has(chunk.toolCallId) &&
+				!isPublicInteractiveTool(chunk.toolName)
+			) {
+				return undefined;
+			}
+			return {
+				type: 'tool-result',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				output: chunk.output,
+				...(chunk.isError !== undefined && { isError: chunk.isError }),
+				...(chunk.canceled !== undefined && { canceled: chunk.canceled }),
+			};
+		}
+		default:
+			return undefined;
+	}
 }

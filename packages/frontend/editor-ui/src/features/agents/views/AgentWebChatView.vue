@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { APPROVAL_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
+import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
 import { useAgentWebChat } from '../composables/useAgentWebChat';
@@ -25,6 +27,7 @@ const {
 	loadConfig,
 	openSession,
 	send,
+	resume,
 	stop,
 } = useAgentWebChat(integrationId);
 
@@ -34,9 +37,22 @@ const password = ref('');
 const signingIn = ref(false);
 const ready = ref(false);
 
-const canSubmit = computed(() => draft.value.trim().length > 0 && !isStreaming.value);
+const openInteractive = computed(() => findTailOpenInteractive(messages.value));
+const inputBlockedByHitl = computed(() => openInteractive.value !== undefined);
+const canSubmit = computed(
+	() => draft.value.trim().length > 0 && !isStreaming.value && !inputBlockedByHitl.value,
+);
 const canSignIn = computed(() => user.value.length > 0 && password.value.length > 0);
 const title = computed(() => config.value?.title ?? '');
+const placeholder = computed(() => {
+	if (openInteractive.value?.toolName === APPROVAL_TOOL_NAME) {
+		return i18n.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (openInteractive.value?.toolName === WAIT_TOOL_NAME || inputBlockedByHitl.value) {
+		return i18n.baseText('agents.chat.waiting.inputPlaceholder');
+	}
+	return i18n.baseText('agents.webChat.placeholder');
+});
 
 onMounted(async () => {
 	await loadConfig();
@@ -66,7 +82,7 @@ async function signIn() {
 
 async function onSubmit() {
 	const text = draft.value.trim();
-	if (!text) return;
+	if (!text || inputBlockedByHitl.value) return;
 	draft.value = '';
 	await send(text);
 }
@@ -105,7 +121,7 @@ async function onSubmit() {
 				/>
 				<N8nText v-if="error" :class="$style.error" size="small">{{ error }}</N8nText>
 				<N8nButton
-					native-type="submit"
+					type="submit"
 					:loading="signingIn"
 					:disabled="!canSignIn"
 					data-test-id="agent-web-chat-sign-in"
@@ -116,13 +132,18 @@ async function onSubmit() {
 		</form>
 
 		<template v-else-if="ready">
-			<AgentChatMessageList :messages="messages" :messaging-state="messagingState" />
+			<AgentChatMessageList
+				:messages="messages"
+				:messaging-state="messagingState"
+				@resume="resume"
+			/>
 			<div :class="$style.composer">
 				<ChatInputBase
 					v-model="draft"
 					:is-streaming="isStreaming"
 					:can-submit="canSubmit"
-					:placeholder="i18n.baseText('agents.webChat.placeholder')"
+					:disabled="inputBlockedByHitl"
+					:placeholder="placeholder"
 					@submit="onSubmit"
 					@stop="stop"
 				/>
@@ -143,6 +164,7 @@ async function onSubmit() {
 	width: 100%;
 	height: 100%;
 	min-height: 0;
+	overflow: hidden;
 	background: var(--background--surface);
 }
 

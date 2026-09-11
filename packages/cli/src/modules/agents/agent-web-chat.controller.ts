@@ -1,5 +1,6 @@
 import {
 	AgentWebChatMessageDto,
+	AgentWebChatResumeDto,
 	type AgentWebChatPageConfig,
 	type AgentWebChatSessionResponse,
 	type AgentWebChatSseEvent,
@@ -101,6 +102,40 @@ export class AgentWebChatController {
 				channel,
 				session,
 				message: payload.message,
+				abortSignal: abortController.signal,
+			})) {
+				send(event);
+			}
+		} finally {
+			res.off('close', abortOnClose);
+			res.end();
+		}
+	}
+
+	/** Resume a suspended HITL tool call, streamed as SSE. */
+	@Post('/:integrationId/chat/resume', { skipAuth: true, usesTemplates: true })
+	async resume(
+		req: Request,
+		res: FlushableResponse,
+		@Param('integrationId') integrationId: string,
+		@Body payload: AgentWebChatResumeDto,
+	): Promise<void> {
+		const channel = await this.webChatService.resolveChannel(integrationId);
+		const session = this.webChatService.verifySession(bearerToken(req), integrationId);
+		this.assertSessionMatchesBody(session.sessionId, payload.sessionId);
+
+		const { send } = initSseStream<AgentWebChatSseEvent>(res);
+		const abortController = new AbortController();
+		const abortOnClose = () => abortController.abort();
+		res.once('close', abortOnClose);
+
+		try {
+			for await (const event of this.webChatService.resumeTurn({
+				channel,
+				session,
+				runId: payload.runId,
+				toolCallId: payload.toolCallId,
+				resumeData: payload.resumeData,
 				abortSignal: abortController.signal,
 			})) {
 				send(event);

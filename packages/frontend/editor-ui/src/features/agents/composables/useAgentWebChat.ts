@@ -1,11 +1,22 @@
-import type { AgentWebChatPageConfig, AgentWebChatSessionResponse } from '@n8n/api-types';
+import type {
+	AgentWebChatPageConfig,
+	AgentWebChatSessionResponse,
+	AgentWebChatSseEvent,
+} from '@n8n/api-types';
 import { getBrowserId } from '@n8n/constants';
 import { get, post, ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
-import { CHAT_MESSAGE_STATUS } from '../constants';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import {
+	getMessageInteractive,
+	isApprovalSuspendInput,
+	rebuildInteractiveFromHistory,
+	upsertMessageInteractive,
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+
+import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 /** Credentials a `basicAuth` channel asks the visitor for. */
 export interface AgentWebChatCredentials {
@@ -109,6 +120,37 @@ export function useAgentWebChat(integrationId: string) {
 		if (!token || !sessionId || isStreaming.value) return;
 
 		messages.value.push({ id: nextId(), role: 'user', content: text });
+		await runTurn(`${channelUrl.value}/chat`, { sessionId, message: text });
+	}
+
+	async function resume(payload: {
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+	}): Promise<void> {
+		if (!token || !sessionId || isStreaming.value) return;
+
+		const found = findToolCallById(payload.toolCallId);
+		if (found) {
+			found.tc.state = TOOL_CALL_STATE.DONE;
+			found.tc.canceled = false;
+			found.tc.output = payload.resumeData;
+			const updated = rebuildInteractiveFromHistory(found.tc);
+			if (updated) upsertMessageInteractive(found.msg, updated);
+			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			}
+		}
+
+		await runTurn(`${channelUrl.value}/chat/resume`, {
+			sessionId,
+			runId: payload.runId,
+			toolCallId: payload.toolCallId,
+			resumeData: payload.resumeData,
+		});
+	}
+
+	async function runTurn(url: string, body: Record<string, unknown>): Promise<void> {
 		messagingState.value = 'waitingFirstChunk';
 		turn = new AbortController();
 
@@ -120,49 +162,61 @@ export function useAgentWebChat(integrationId: string) {
 		 */
 		let reply: ChatMessage | undefined;
 		const startReply = (content: string, status: ChatMessage['status']): ChatMessage => {
-			reply = { id: nextId(), role: 'assistant', content, status };
+			reply = reactive<ChatMessage>({ id: nextId(), role: 'assistant', content, status });
 			messages.value.push(reply);
 			return reply;
 		};
+		const ensureReply = (): ChatMessage => {
+			if (reply) return reply;
+			messagingState.value = 'receiving';
+			return startReply('', CHAT_MESSAGE_STATUS.STREAMING);
+		};
 
 		try {
-			const response = await fetch(`${channelUrl.value}/chat`, {
+			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Accept: 'text/event-stream',
 					Authorization: `Bearer ${token}`,
 				},
-				body: JSON.stringify({ sessionId, message: text }),
+				body: JSON.stringify(body),
 				signal: turn.signal,
 			});
 
 			if (!response.ok || !response.body) {
-				startReply(await readError(response), CHAT_MESSAGE_STATUS.ERROR);
+				ensureReply();
+				if (reply) {
+					reply.content = await readError(response);
+					reply.status = CHAT_MESSAGE_STATUS.ERROR;
+				}
 				return;
 			}
 
 			for await (const event of readSse(response.body, turn.signal)) {
-				if (event.type === 'text-delta') {
-					messagingState.value = 'receiving';
-					if (reply) reply.content += event.delta;
-					else startReply(event.delta, CHAT_MESSAGE_STATUS.STREAMING);
-				} else if (event.type === 'error') {
-					if (reply) {
-						reply.content = event.message;
-						reply.status = CHAT_MESSAGE_STATUS.ERROR;
-					} else {
-						startReply(event.message, CHAT_MESSAGE_STATUS.ERROR);
-					}
-					return;
-				}
+				applyEvent(event, {
+					getReply: () => reply,
+					startReply,
+					ensureReply,
+					setReply: (msg) => {
+						reply = msg;
+					},
+				});
 			}
-			if (reply) reply.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			if (
+				reply &&
+				reply.status !== CHAT_MESSAGE_STATUS.ERROR &&
+				reply.status !== CHAT_MESSAGE_STATUS.AWAITING_USER
+			) {
+				reply.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			}
 		} catch (e) {
 			// An abort is the visitor pressing stop, so whatever text already
 			// arrived stands as the reply rather than being replaced by an error.
 			if (turn.signal.aborted) {
-				if (reply) reply.status = CHAT_MESSAGE_STATUS.SUCCESS;
+				if (reply && reply.status !== CHAT_MESSAGE_STATUS.AWAITING_USER) {
+					reply.status = CHAT_MESSAGE_STATUS.SUCCESS;
+				}
 			} else {
 				const message = e instanceof Error ? e.message : 'Something went wrong.';
 				if (reply) {
@@ -176,6 +230,129 @@ export function useAgentWebChat(integrationId: string) {
 			messagingState.value = 'idle';
 			turn = undefined;
 		}
+	}
+
+	function applyEvent(
+		event: AgentWebChatSseEvent,
+		ctx: {
+			getReply: () => ChatMessage | undefined;
+			startReply: (content: string, status: ChatMessage['status']) => ChatMessage;
+			ensureReply: () => ChatMessage;
+			setReply: (msg: ChatMessage) => void;
+		},
+	): void {
+		switch (event.type) {
+			case 'text-delta': {
+				messagingState.value = 'receiving';
+				const current = ctx.getReply();
+				if (current) current.content += event.delta;
+				else ctx.setReply(ctx.startReply(event.delta, CHAT_MESSAGE_STATUS.STREAMING));
+				return;
+			}
+			case 'tool-call': {
+				const msg = ctx.ensureReply();
+				msg.toolCalls = msg.toolCalls ?? [];
+				const existing = msg.toolCalls.find((tc) => tc.toolCallId === event.toolCallId);
+				if (existing) {
+					existing.input = event.input;
+					if (
+						existing.state !== TOOL_CALL_STATE.RUNNING &&
+						existing.state !== TOOL_CALL_STATE.DONE &&
+						existing.state !== TOOL_CALL_STATE.CANCELLED
+					) {
+						existing.state = TOOL_CALL_STATE.PENDING;
+					}
+				} else {
+					msg.toolCalls.push({
+						tool: event.toolName,
+						toolCallId: event.toolCallId,
+						input: event.input,
+						state: TOOL_CALL_STATE.PENDING,
+					});
+				}
+				return;
+			}
+			case 'tool-call-suspended': {
+				const { payload } = event;
+				const found = findToolCallById(payload.toolCallId);
+				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
+				let msg: ChatMessage;
+				let tc: ToolCall;
+				if (found) {
+					msg = found.msg;
+					tc = found.tc;
+					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.runId = payload.runId;
+					tc.suspendPayload = payload.input;
+				} else {
+					msg = ctx.ensureReply();
+					tc = {
+						tool: payload.toolName,
+						toolCallId: payload.toolCallId,
+						state: TOOL_CALL_STATE.SUSPENDED,
+						runId: payload.runId,
+						...(suspendIsRenderableInput
+							? { input: payload.input }
+							: { suspendPayload: payload.input }),
+					};
+					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
+				}
+				const interactive = rebuildInteractiveFromHistory({
+					...tc,
+					output: undefined,
+				});
+				if (interactive) {
+					interactive.runId = payload.runId;
+					upsertMessageInteractive(msg, interactive);
+					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+				}
+				return;
+			}
+			case 'tool-result': {
+				const found = findToolCallById(event.toolCallId);
+				if (!found) return;
+				found.tc.output = event.output;
+				found.tc.state = event.isError
+					? TOOL_CALL_STATE.ERROR
+					: event.canceled === true
+						? TOOL_CALL_STATE.CANCELLED
+						: TOOL_CALL_STATE.DONE;
+				found.tc.canceled = event.canceled === true;
+				const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
+				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated && currentInteractive?.resolvedAt === undefined) {
+					upsertMessageInteractive(found.msg, updated);
+				} else if (updated && !currentInteractive) {
+					upsertMessageInteractive(found.msg, updated);
+				}
+				if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER) {
+					found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+				}
+				return;
+			}
+			case 'error': {
+				const current = ctx.getReply();
+				if (current) {
+					current.content = event.message;
+					current.status = CHAT_MESSAGE_STATUS.ERROR;
+				} else {
+					ctx.setReply(ctx.startReply(event.message, CHAT_MESSAGE_STATUS.ERROR));
+				}
+				return;
+			}
+			default:
+				return;
+		}
+	}
+
+	function findToolCallById(toolCallId: string): { msg: ChatMessage; tc: ToolCall } | undefined {
+		for (const msg of messages.value) {
+			const tc = msg.toolCalls?.find((toolCall) => toolCall.toolCallId === toolCallId);
+			if (tc) return { msg, tc };
+		}
+		return undefined;
 	}
 
 	function stop(): void {
@@ -193,6 +370,7 @@ export function useAgentWebChat(integrationId: string) {
 		loadConfig,
 		openSession,
 		send,
+		resume,
 		stop,
 	};
 }
@@ -224,7 +402,7 @@ async function readError(response: Response): Promise<string> {
 		: 'This chat is not available.';
 }
 
-type SseEvent = { type: 'text-delta'; delta: string } | { type: 'error'; message: string };
+type SseEvent = AgentWebChatSseEvent;
 
 /**
  * Read the sanitized public event stream.
@@ -269,15 +447,72 @@ function parseFrame(frame: string): SseEvent | undefined {
 	if (!data) return undefined;
 
 	try {
-		const parsed = JSON.parse(data) as { type?: string; delta?: string; message?: string };
+		const parsed: unknown = JSON.parse(data);
+		if (!isRecord(parsed) || typeof parsed.type !== 'string') return undefined;
 		if (parsed.type === 'text-delta' && typeof parsed.delta === 'string') {
-			return { type: 'text-delta', delta: parsed.delta };
+			return { type: 'text-delta', id: typeof parsed.id === 'string' ? parsed.id : '', delta: parsed.delta };
 		}
+		if (parsed.type === 'text-start' && typeof parsed.id === 'string') {
+			return { type: 'text-start', id: parsed.id };
+		}
+		if (parsed.type === 'text-end' && typeof parsed.id === 'string') {
+			return { type: 'text-end', id: parsed.id };
+		}
+		if (parsed.type === 'done') return { type: 'done' };
 		if (parsed.type === 'error') {
-			return { type: 'error', message: parsed.message ?? 'Something went wrong.' };
+			return { type: 'error', message: typeof parsed.message === 'string' ? parsed.message : 'Something went wrong.' };
+		}
+		if (
+			parsed.type === 'tool-call' &&
+			typeof parsed.toolCallId === 'string' &&
+			typeof parsed.toolName === 'string'
+		) {
+			return {
+				type: 'tool-call',
+				toolCallId: parsed.toolCallId,
+				toolName: parsed.toolName,
+				input: parsed.input,
+			};
+		}
+		if (
+			parsed.type === 'tool-result' &&
+			typeof parsed.toolCallId === 'string' &&
+			typeof parsed.toolName === 'string'
+		) {
+			return {
+				type: 'tool-result',
+				toolCallId: parsed.toolCallId,
+				toolName: parsed.toolName,
+				output: parsed.output,
+				...(typeof parsed.isError === 'boolean' && { isError: parsed.isError }),
+				...(typeof parsed.canceled === 'boolean' && { canceled: parsed.canceled }),
+			};
+		}
+		if (parsed.type === 'tool-call-suspended' && isRecord(parsed.payload)) {
+			const { payload } = parsed;
+			if (
+				typeof payload.toolCallId !== 'string' ||
+				typeof payload.runId !== 'string' ||
+				typeof payload.toolName !== 'string'
+			) {
+				return undefined;
+			}
+			return {
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: payload.toolCallId,
+					runId: payload.runId,
+					toolName: payload.toolName,
+					input: payload.input,
+				},
+			};
 		}
 	} catch {
 		// A malformed frame is dropped rather than shown.
 	}
 	return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }
