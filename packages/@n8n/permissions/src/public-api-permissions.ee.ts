@@ -164,8 +164,6 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
-	// A member may administer a team project, and project admins govern their own project's
-	// node type policy. The route's `@ProjectScope` check still decides per project.
 	'nodeTypePolicy:manage',
 ];
 
@@ -225,9 +223,6 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
-	// Not personal-project bound, but this list is the only path by which a global member can
-	// mint a key with a scope their global role does not carry. Project admins need it for the
-	// public project-policy routes; `@ProjectScope` denies everyone else at request time.
 	'nodeTypePolicy:manage',
 ];
 

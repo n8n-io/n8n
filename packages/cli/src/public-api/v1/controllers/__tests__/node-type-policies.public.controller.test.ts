@@ -12,13 +12,11 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { EffectivePolicy } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
 
 import { NodeTypePoliciesPublicController } from '../node-type-policies.public.controller';
-
-/** The one `kind` the controller manages — mirrored here rather than imported, same as the source. */
-const NODE_TYPES_KIND = 'node-types';
 
 /**
  * Every public route must carry the same guards as the internal controllers it mirrors: the

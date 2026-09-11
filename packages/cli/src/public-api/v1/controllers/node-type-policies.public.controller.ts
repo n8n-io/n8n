@@ -28,11 +28,9 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 
 const tags = ['NodeTypePolicy'];
-
-/** The one `kind` this surface manages — same literal as the internal controllers. */
-const NODE_TYPES_KIND = 'node-types';
 
 /**
  * Public API surface for node type availability policies. Every route delegates to the same
