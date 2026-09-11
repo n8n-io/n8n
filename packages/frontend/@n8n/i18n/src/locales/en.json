@@ -5219,7 +5219,7 @@
 	"apps.builder.versions.unpublish.error": "Couldn't unpublish the app",
 	"apps.builder.empty.title": "Nothing to preview yet",
 	"apps.builder.empty.description": "Ask the AI Assistant to build this app. Each build shows here as soon as it's done.",
-	"apps.connections": "Connections",
+	"apps.connections": "Connect",
 	"apps.connections.empty": "No workflows connected yet.",
 	"apps.connections.delete.confirm.title": "Disconnect workflow",
 	"apps.connections.delete.confirm.message": "Are you sure you want to disconnect the \"{name}\" workflow? The app will no longer be able to run this workflow.",

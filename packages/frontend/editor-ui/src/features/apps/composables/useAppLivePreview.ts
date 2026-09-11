@@ -81,7 +81,8 @@ export function useAppLivePreview(
 	latestSourceEditId?: MaybeRefOrGetter<string | undefined>,
 ) {
 	const rootStore = useRootStore();
-	const status = ref<AppPreviewStatus>();
+	// `starting` from the first ask: the host shows a starting preview, never a blank gap, until the server answers.
+	const status = ref<AppPreviewStatus>({ status: 'starting' });
 	const settledCount = ref(0);
 	const publishedContentKey = ref<string>();
 
@@ -150,7 +151,7 @@ export function useAppLivePreview(
 	watch(
 		() => toValue(builtVersionId),
 		() => {
-			const current = status.value?.status;
+			const current = status.value.status;
 			if (!visible.value || (current !== 'no-source' && current !== 'unavailable')) return;
 			pollingSince = null;
 			void ensure();
@@ -161,7 +162,7 @@ export function useAppLivePreview(
 	watch(
 		() => toValue(running) ?? false,
 		(isRunning, wasRunning) => {
-			const current = status.value?.status;
+			const current = status.value.status;
 			if (isRunning || !wasRunning || !visible.value) return;
 			if (current !== 'ready' && current !== 'no-source' && current !== 'unavailable') return;
 			pollingSince = null;
@@ -173,10 +174,8 @@ export function useAppLivePreview(
 
 	onScopeDispose(stop);
 
-	const liveUrl = computed(() => (status.value?.status === 'ready' ? status.value.url : undefined));
-	const reason = computed(() =>
-		status.value && 'reason' in status.value ? status.value.reason : undefined,
-	);
+	const liveUrl = computed(() => (status.value.status === 'ready' ? status.value.url : undefined));
+	const reason = computed(() => ('reason' in status.value ? status.value.reason : undefined));
 	const contentKey = computed(() => previewContentKey(liveUrl.value, toValue(latestSourceEditId)));
 	const previewAhead = computed(
 		() => contentKey.value !== undefined && contentKey.value !== publishedContentKey.value,

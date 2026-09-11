@@ -10,6 +10,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
+	N8nSpinner,
 	N8nTabs,
 	N8nText,
 	N8nToggle,
@@ -50,7 +51,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 type BuilderMode = 'build' | 'code' | 'preview';
 type PreviewDevice = 'desktop' | 'mobile';
 type PreviewTheme = AppTheme['mode'];
-type BuildTab = 'build' | 'pages' | 'connections' | 'theme' | 'versions';
+type BuildTab = 'build' | 'pages' | 'theme' | 'versions';
 type PublishMenuAction = 'open' | 'copy-url' | 'unpublish';
 
 const props = withDefaults(
@@ -65,7 +66,7 @@ const props = withDefaults(
 		artifactPagePath?: string;
 		/** Dev-server URL of the app's sandbox; shown instead of the build while present. */
 		liveUrl?: string;
-		/** Last answer of the live-preview ensure call; drives the banner and the Live badge. */
+		/** State of the thread's live preview, `starting` until the server answers; drives the banner and the Live badge. */
 		liveStatus?: AppPreviewStatus;
 		/** Changes when an assistant turn has landed on the server; the app is re-read then. */
 		refreshKey?: number;
@@ -176,6 +177,7 @@ const livePending = computed(
 		props.liveStatus !== undefined &&
 		props.liveStatus.status !== 'no-source',
 );
+const liveStarting = computed(() => livePending.value && props.liveStatus?.status === 'starting');
 
 const showPreviewPane = computed(() => hasPreviewSource.value || livePending.value);
 
@@ -204,11 +206,6 @@ const liveBanner = computed(() => {
 const buildTabOptions = computed(() => [
 	{ value: 'build' as const, label: i18n.baseText('apps.builder.build'), icon: 'wrench' as const },
 	{ value: 'pages' as const, label: i18n.baseText('apps.pages'), icon: 'file' as const },
-	{
-		value: 'connections' as const,
-		label: i18n.baseText('apps.connections'),
-		icon: 'workflow' as const,
-	},
 	{ value: 'theme' as const, label: i18n.baseText('apps.builder.theme'), icon: 'palette' as const },
 	{
 		value: 'versions' as const,
@@ -457,8 +454,9 @@ const onPublishMenuSelect = async (action: PublishMenuAction) => {
 };
 
 // Unlike a theme save, stay in Code: the user is likely still editing.
-const onCodeSaved = (updated: App) => {
+const onCodeSaved = async (updated: App) => {
 	setApp(updated);
+	await appsStore.fetchPages(props.projectId, props.appId);
 };
 
 onMounted(initialize);
@@ -477,12 +475,17 @@ watch(buildTab, async (tab) => {
 	if (tab === 'versions') await refreshVersions();
 });
 
-// The turn's snapshot decides whether the draft has unpublished changes.
+// The turn's snapshot decides whether the draft has unpublished changes and
+// which pages the app has: routes are derived from the newest snapshot.
 watch(
 	() => props.refreshKey,
 	async () => {
 		try {
-			setApp(await appsStore.getApp(props.projectId, props.appId));
+			const [updated] = await Promise.all([
+				appsStore.getApp(props.projectId, props.appId),
+				appsStore.fetchPages(props.projectId, props.appId),
+			]);
+			setApp(updated);
 			if (buildTab.value === 'versions') await refreshVersions();
 		} catch (error) {
 			toast.showError(error, i18n.baseText('apps.getDetails.error'));
@@ -765,6 +768,13 @@ watch(
 					</N8nTooltip>
 				</div>
 				<div
+					v-else-if="liveStarting"
+					:class="$style.emptyState"
+					data-test-id="app-preview-starting"
+				>
+					<N8nSpinner />
+				</div>
+				<div
 					v-else-if="!loading && !livePending"
 					:class="$style.emptyState"
 					data-test-id="app-preview-empty"
@@ -795,6 +805,66 @@ watch(
 				<N8nTabs v-model="buildTab" :options="buildTabOptions" data-test-id="app-builder-tabs" />
 				<div v-if="buildTab === 'build'" :class="$style.container">
 					<AppBasicsEditor :project-id="projectId" :app="app" @saved="setApp" />
+
+					<div :class="$style.connectCard" data-test-id="app-connections">
+						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+
+						<N8nText
+							v-if="appsStore.bindings.length === 0"
+							color="text-light"
+							data-test-id="app-connections-empty"
+						>
+							{{ i18n.baseText('apps.connections.empty') }}
+						</N8nText>
+
+						<div
+							v-for="binding in appsStore.bindings"
+							:key="binding.key"
+							:class="$style.connectionRow"
+							data-test-id="app-connection"
+						>
+							<N8nIcon icon="workflow" size="large" />
+							<N8nLink
+								:to="`/workflow/${binding.workflowId}`"
+								new-window
+								theme="text"
+								size="small"
+								:class="$style.connectionName"
+								data-test-id="app-connection-workflow"
+							>
+								{{ binding.name }}
+							</N8nLink>
+							<N8nTooltip
+								v-if="bindingWarnings(binding.key).length > 0"
+								:content="bindingWarnings(binding.key).join(' ')"
+							>
+								<N8nIcon
+									icon="triangle-alert"
+									color="warning"
+									size="small"
+									data-test-id="app-connection-warning"
+								/>
+							</N8nTooltip>
+							<N8nTooltip :content="i18n.baseText('generic.disconnect')">
+								<N8nIconButton
+									icon="trash-2"
+									variant="ghost"
+									size="small"
+									:aria-label="i18n.baseText('generic.disconnect')"
+									data-test-id="app-connection-delete"
+									@click="onDeleteBinding(binding)"
+								/>
+							</N8nTooltip>
+						</div>
+
+						<N8nCallout
+							v-if="unlistedBindingWarnings.length > 0"
+							theme="warning"
+							data-test-id="app-connections-warning"
+						>
+							{{ unlistedBindingWarnings.join(' ') }}
+						</N8nCallout>
+					</div>
 				</div>
 
 				<div v-else-if="buildTab === 'pages'" :class="$style.container">
@@ -822,72 +892,6 @@ watch(
 							@delete="onDeletePage"
 						/>
 					</div>
-				</div>
-
-				<div
-					v-else-if="buildTab === 'connections'"
-					:class="$style.container"
-					data-test-id="app-connections"
-				>
-					<div :class="$style.header">
-						<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
-					</div>
-
-					<N8nText
-						v-if="appsStore.bindings.length === 0"
-						color="text-light"
-						data-test-id="app-connections-empty"
-					>
-						{{ i18n.baseText('apps.connections.empty') }}
-					</N8nText>
-
-					<div
-						v-for="binding in appsStore.bindings"
-						:key="binding.key"
-						:class="$style.connectionRow"
-						data-test-id="app-connection"
-					>
-						<N8nIcon icon="workflow" size="large" />
-						<N8nLink
-							:to="`/workflow/${binding.workflowId}`"
-							new-window
-							theme="text"
-							size="small"
-							:class="$style.connectionName"
-							data-test-id="app-connection-workflow"
-						>
-							{{ binding.name }}
-						</N8nLink>
-						<N8nTooltip
-							v-if="bindingWarnings(binding.key).length > 0"
-							:content="bindingWarnings(binding.key).join(' ')"
-						>
-							<N8nIcon
-								icon="triangle-alert"
-								color="warning"
-								size="small"
-								data-test-id="app-connection-warning"
-							/>
-						</N8nTooltip>
-						<N8nTooltip :content="i18n.baseText('generic.disconnect')">
-							<N8nIconButton
-								icon="trash-2"
-								variant="ghost"
-								size="small"
-								:aria-label="i18n.baseText('generic.disconnect')"
-								data-test-id="app-connection-delete"
-								@click="onDeleteBinding(binding)"
-							/>
-						</N8nTooltip>
-					</div>
-
-					<N8nCallout
-						v-if="unlistedBindingWarnings.length > 0"
-						theme="warning"
-						data-test-id="app-connections-warning"
-					>
-						{{ unlistedBindingWarnings.join(' ') }}
-					</N8nCallout>
 				</div>
 
 				<div v-else-if="buildTab === 'theme'" :class="$style.container">
@@ -1233,6 +1237,16 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.connectCard {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
 }
 
 .connectionRow {

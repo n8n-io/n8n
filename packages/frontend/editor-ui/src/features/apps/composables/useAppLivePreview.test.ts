@@ -119,6 +119,7 @@ describe('useAppLivePreview', () => {
 	it('ensures on start, polls while starting, and exposes the URL once ready', async () => {
 		ensureAppPreviewApi.mockResolvedValueOnce(STARTING).mockResolvedValueOnce(READY);
 		const live = mountLive();
+		expect(live.status.value).toEqual(STARTING);
 		await flush();
 
 		expect(ensureAppPreviewApi).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'app-1');
@@ -194,7 +195,7 @@ describe('useAppLivePreview', () => {
 		resolveEnsure(READY);
 		await flush();
 
-		expect(live.status.value).toBeUndefined();
+		expect(live.status.value).toEqual(STARTING);
 		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
 		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
 	});

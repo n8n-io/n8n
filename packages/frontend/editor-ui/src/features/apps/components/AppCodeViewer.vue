@@ -239,6 +239,7 @@ watch(() => props.versionId, loadFiles, { immediate: true });
 <style lang="scss" module>
 .container {
 	display: flex;
+	width: 100%;
 	height: 100%;
 	min-height: 0;
 	gap: var(--spacing--sm);

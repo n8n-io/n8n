@@ -452,6 +452,7 @@ describe('AppDetailsView', () => {
 			await waitAllPromises();
 
 			expect(appsStore.getApp).toHaveBeenCalledTimes(2);
+			expect(appsStore.fetchPages).toHaveBeenCalledTimes(2);
 			expect(appsStore.fetchVersions).not.toHaveBeenCalled();
 			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
 			expect(getByTestId('app-publish')).toBeEnabled();
@@ -709,7 +710,7 @@ describe('AppDetailsView', () => {
 		});
 	});
 
-	describe('Connections tab', () => {
+	describe('Connect section on the Build tab', () => {
 		const bindings: DescribedBinding[] = [
 			{
 				key: 'submit',
@@ -739,11 +740,10 @@ describe('AppDetailsView', () => {
 				'Binding \'notify\': workflow "Notify" is not published.',
 				"Binding 'gone': workflow 'wf-3' no longer exists in the app's project.",
 			];
-			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			expect(appsStore.fetchBindings).toHaveBeenCalledWith('proj-1', 'app-1');
 			await userEvent.click(getByTestId('app-builder-mode-build'));
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
 			const rows = getAllByTestId('app-connection');
 			expect(rows).toHaveLength(2);
@@ -765,10 +765,9 @@ describe('AppDetailsView', () => {
 		it('deletes a connection after confirmation', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue(MODAL_CONFIRM);
-			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			await userEvent.click(getByTestId('app-builder-mode-build'));
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 			await userEvent.click(getAllByTestId('app-connection-delete')[1]);
 
 			expect(confirm).toHaveBeenCalledWith(
@@ -782,20 +781,18 @@ describe('AppDetailsView', () => {
 		it('keeps the connection when the confirmation is cancelled', async () => {
 			appsStore.bindings = bindings;
 			confirm.mockResolvedValue('cancel');
-			const { getByRole, getByTestId, getAllByTestId } = await renderApp(makeApp());
+			const { getByTestId, getAllByTestId } = await renderApp(makeApp());
 
 			await userEvent.click(getByTestId('app-builder-mode-build'));
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
 
 			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
 		});
 
 		it('shows the empty state when no workflow is connected', async () => {
-			const { getByRole, getByTestId, queryByTestId } = await renderApp(makeApp());
+			const { getByTestId, queryByTestId } = await renderApp(makeApp());
 
 			await userEvent.click(getByTestId('app-builder-mode-build'));
-			await userEvent.click(getByRole('tab', { name: 'Connections' }));
 
 			expect(getByTestId('app-connections-empty')).toHaveTextContent('No workflows connected yet');
 			expect(queryByTestId('app-connection')).not.toBeInTheDocument();
@@ -987,6 +984,23 @@ describe('AppDetailsView', () => {
 				expect(queryByTestId('instance-ai-app-preview-iframe')).not.toBeInTheDocument();
 			},
 		);
+
+		it('shows a spinner under the banner while the preview of an app without a build starts', async () => {
+			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
+				artifactMode: true,
+				liveStatus: { status: 'starting' },
+			});
+
+			expect(getByTestId('app-preview-starting')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+
+			await rerender({
+				artifactMode: true,
+				liveStatus: { status: 'unavailable', reason: 'sandbox' },
+			});
+
+			expect(queryByTestId('app-preview-starting')).not.toBeInTheDocument();
+		});
 
 		it('switches from the empty state to Preview once the first ensure answer arrives', async () => {
 			const { getByTestId, queryByTestId, rerender } = await renderApp(makeApp(), {
