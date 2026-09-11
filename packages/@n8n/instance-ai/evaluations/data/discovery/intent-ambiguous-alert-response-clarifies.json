@@ -8,7 +8,15 @@
 				"argsContainAny": ["intent-recognition"]
 			},
 			{
-				"toolName": "ask-user"
+				"toolName": "ask-user",
+				"argsContainAny": [
+					"fixed rules",
+					"predefined rules",
+					"human judgment",
+					"AI judgment",
+					"case-by-case",
+					"decide which action"
+				]
 			}
 		]
 	},
