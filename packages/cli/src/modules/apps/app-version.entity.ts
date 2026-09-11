@@ -33,4 +33,8 @@ export class AppVersion extends WithTimestampsAndStringId {
 	/** Null once retention pruned the dist tarball, same as {@link distStorageKey}. */
 	@Column({ type: Number, nullable: true })
 	distSizeBytes: number | null;
+
+	/** Short summary of what changed, set by the AI Assistant after a turn; null when unknown. */
+	@Column({ type: String, length: 128, nullable: true })
+	label: string | null;
 }

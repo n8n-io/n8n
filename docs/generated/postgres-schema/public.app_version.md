@@ -9,6 +9,7 @@
 | distSizeBytes | integer |  | true |  |  | Size of the dist tarball, in bytes; null once pruned by retention |
 | distStorageKey | varchar(255) |  | true |  |  | Blob key of the built dist tarball; null once pruned by retention |
 | id | varchar(36) |  | false | [public.app](public.app.md) |  |  |
+| label | varchar(128) |  | true |  |  |  |
 | sourceSizeBytes | integer | 0 | false |  |  | Size of the source tarball, in bytes |
 | sourceStorageKey | varchar(255) |  | false |  |  | Blob key of the source tarball (project minus node_modules, dist, .git) |
 | storedAt | varchar(8) |  | false |  |  | Execution data storage mode the tarballs were written with |
@@ -50,6 +51,7 @@ erDiagram
   integer distSizeBytes
   varchar_255_ distStorageKey
   varchar_36_ id
+  varchar_128_ label
   integer sourceSizeBytes
   varchar_255_ sourceStorageKey
   varchar_8_ storedAt

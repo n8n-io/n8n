@@ -51,22 +51,29 @@ export class AppDraftService {
 		if (draft) await this.snapshotService.snapshotAfterRun(appId, user, draft);
 		const [newest] = await this.appsService.listVersions(appId);
 		if (!newest) return null;
-		return { versionId: newest.id, files: await this.appsService.listVersionFiles(appId, newest.id) };
+		return {
+			versionId: newest.id,
+			files: await this.appsService.listVersionFiles(appId, newest.id),
+		};
 	}
 
-	/** `draft`: the app's sandbox workspace; a sandbox that does not hold the app yet gets it restored first. */
+	/**
+	 * `draft`: the app's sandbox workspace; a sandbox that does not hold the app
+	 * yet gets it restored first. `label` names the version this write creates.
+	 */
 	async write(
 		appId: string,
 		user: User,
 		filesFor: DraftFilesFor,
 		draft?: Workspace,
+		label: string | null = null,
 	): Promise<DraftWriteResult> {
 		const app = await this.appsService.getApp(appId);
 
 		if (draft) {
 			const written = await this.writeIntoDraft(app.id, app.namespace, filesFor, draft);
 			if (written !== true) return written;
-			await this.snapshotService.snapshotAfterRun(appId, user, draft);
+			await this.snapshotService.snapshotAfterRun(appId, user, draft, label);
 			const [newest] = await this.appsService.listVersions(appId);
 			return { versionId: newest?.id ?? null };
 		}
@@ -79,7 +86,7 @@ export class AppDraftService {
 			};
 		}
 		const patched = await patchTarball(source.data, filesFor);
-		const version = await this.appsService.createSourceSnapshot(appId, patched);
+		const version = await this.appsService.createSourceSnapshot(appId, patched, label);
 		return { versionId: version.id };
 	}
 
@@ -93,7 +100,8 @@ export class AppDraftService {
 		const root = await getWorkspaceRoot(draft);
 		const workspace = createScopedWorkspace(draft, root);
 		const filesystem = workspace.filesystem;
-		if (!filesystem) return { error: true, message: 'The sandbox is not available on this instance.' };
+		if (!filesystem)
+			return { error: true, message: 'The sandbox is not available on this instance.' };
 
 		const appDir = `apps/${namespace}`;
 		if (!(await filesystem.exists(`${appDir}/package.json`))) {

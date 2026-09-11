@@ -7,7 +7,7 @@ import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import AppDetailsView from '@/features/apps/AppDetailsView.vue';
 import { useAppLivePreview } from '@/features/apps/composables/useAppLivePreview';
 import type { App } from '@/features/apps/apps.types';
-import { getLatestAppSourceEditId } from '../canvasPreview.utils';
+import { getLatestAppSourceEditId, isAppCreatedIn } from '../canvasPreview.utils';
 import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY } from '../constants';
@@ -57,6 +57,26 @@ const live = useAppLivePreview(
 	() => props.versionId,
 	() => thread.isStreaming,
 	latestSourceEditId,
+);
+
+// The run that creates the app starts from the scaffold, and a theme write
+// stores a source before the home page is touched; the dev server would show
+// the starter template until then. Hold the frame until that run ends. A
+// thread reopened on an existing app has no create in its active run.
+const creatingRun = computed(() => {
+	const runId = thread.activeRunId;
+	if (runId === null) return false;
+	return thread.messages.some(
+		(m) =>
+			m.role === 'assistant' &&
+			(m.runId === runId || (m.runIds?.includes(runId) ?? false)) &&
+			m.agentTree !== undefined &&
+			isAppCreatedIn(m.agentTree, props.appId),
+	);
+});
+const liveUrl = computed(() => (creatingRun.value ? undefined : live.liveUrl.value));
+const liveStatus = computed(() =>
+	creatingRun.value ? ({ status: 'starting' } as const) : live.status.value,
 );
 
 function onAppLoaded(app: App) {
@@ -119,8 +139,8 @@ const pagePath = computed(
 			:app-id="props.appId"
 			:artifact-version-id="props.versionId"
 			:artifact-page-path="pagePath"
-			:live-url="live.liveUrl.value"
-			:live-status="live.status.value"
+			:live-url="liveUrl"
+			:live-status="liveStatus"
 			:refresh-key="live.settledCount.value"
 			:draft-dirty="live.previewAhead.value"
 			@app-loaded="onAppLoaded"

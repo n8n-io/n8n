@@ -19,13 +19,11 @@ hardcode a color.
 Rules:
 
 - Build UI from the catalog components first (below), not hand-rolled markup.
-  Only `button` and `switch` exist from `create` (Home.vue's own demo) — for
-  any other one, call `apps(action: "add-component", appId, component:
-  "<name>")` before importing it. It copies the component's files from this
-  skill's own catalog (`component-registry/<name>/`) into
-  `src/components/ui/<name>/` and installs any dependency it needs; it is
-  safe to call again for a component you already added. Do not hand-write a
-  component the catalog already provides. Reach for `@ark-ui/vue` directly
+  `create` adds `button` and `switch`; add every other one you need in one
+  call, `apps(action: "add-component", appId, components: ["card", "dialog"])`,
+  before importing them. It copies the files from this skill's catalog into
+  `src/components/ui/<name>/` without changing dependencies, and is safe to
+  repeat for a component you already have. Reach for `@ark-ui/vue` directly
   (already a project dependency) only for behavior no catalog component
   covers.
 - Style with the utility names below — they all resolve to the theme's CSS
@@ -47,8 +45,8 @@ Rules:
 
 ## Component catalog
 
-Add one with `apps(action: "add-component", appId, component: "<name>")`,
-then import it as `import { X } from '@/components/ui/<name>'`:
+Add them with `apps(action: "add-component", appId, components: ["<name>", …])`,
+then import each as `import { X } from '@/components/ui/<name>'`:
 
 | Component | Import | Notes |
 |---|---|---|
@@ -92,9 +90,8 @@ import { Switch } from '@/components/ui/switch';
 </template>
 ```
 
-Everything else — `add-component` for `card`, `dialog`, whatever the app
-needs — follows the same shape: import from `@/components/ui/<name>` after
-adding it. Reach for `@ark-ui/vue` directly, styled with the utilities above,
+Everything else follows the same shape: one `add-component` call with every
+name the page needs, then import from `@/components/ui/<name>`. Reach for `@ark-ui/vue` directly, styled with the utilities above,
 only for behavior no catalog component covers (e.g. `Combobox`, `Popover`,
 `Accordion`, `RadioGroup` — part of Ark UI's own broader catalog, not
 pre-generated here). Compose its parts the same way the catalog components

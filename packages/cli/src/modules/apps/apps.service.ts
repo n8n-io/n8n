@@ -158,9 +158,9 @@ export class AppsService {
 		return this.appVersionService.toResponse(version, version.id);
 	}
 
-	async createSourceSnapshot(appId: string, source: Buffer) {
+	async createSourceSnapshot(appId: string, source: Buffer, label: string | null = null) {
 		const app = await this.getApp(appId);
-		const version = await this.appVersionService.createSourceSnapshot(appId, source);
+		const version = await this.appVersionService.createSourceSnapshot(appId, source, label);
 		return this.appVersionService.toResponse(version, app.activeVersionId);
 	}
 
@@ -522,6 +522,27 @@ export class AppsService {
 	async listVersionFiles(appId: string, versionId: string) {
 		const version = await this.getVersion(appId, versionId);
 		return await this.appVersionService.listSourceFiles(version);
+	}
+
+	async labelVersionsSince(appId: string, since: Date, label: string) {
+		await this.appVersionService.labelVersionsSince(appId, since, label);
+	}
+
+	/** The stored source tarball of a version, for download. */
+	async getVersionSource(appId: string, versionId: string) {
+		const app = await this.getApp(appId);
+		const version = await this.getVersion(appId, versionId);
+		const data = await this.appVersionService.readSourceOf(version);
+		if (!data) throw new AppVersionNotFoundError(versionId);
+		return { fileName: `${app.namespace}-${version.id}.tgz`, data };
+	}
+
+	/** Copies a past version's source into a new working-copy version. */
+	async restoreVersion(appId: string, versionId: string) {
+		const app = await this.getApp(appId);
+		const version = await this.getVersion(appId, versionId);
+		const restored = await this.appVersionService.restore(version);
+		return this.appVersionService.toResponse(restored, app.activeVersionId);
 	}
 
 	async getVersionFileContent(appId: string, versionId: string, segments: string[]) {

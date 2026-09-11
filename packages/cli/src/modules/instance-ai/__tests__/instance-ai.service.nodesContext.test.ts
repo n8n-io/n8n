@@ -120,11 +120,9 @@ describe('buildContextResourcesBlock — app attachment', () => {
 		expect(prose).toContain(
 			'App "Greeter" (id: `app-1`, namespace `greeter`, in project `proj-1`)',
 		);
+		expect(prose).not.toContain('action `restore`');
 		expect(prose).toContain(
-			'if apps/greeter is not in the app sandbox yet, call `apps` with action `restore` and `appId` `app-1` first',
-		);
-		expect(prose).toContain(
-			"edit its files under apps/greeter with the `workspace_*` tools and `sandbox: 'app'`",
+			'its source is in apps/greeter: edit the files there with the `workspace_*` tools',
 		);
 		expect(prose).toContain(
 			'action `publish` and `appId` `app-1` only when the user asks to publish',

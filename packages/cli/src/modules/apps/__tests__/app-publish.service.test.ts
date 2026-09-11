@@ -224,6 +224,7 @@ describe('AppPublishService', () => {
 			appId: 'app-1',
 			createdAt: '2026-01-01T00:00:00.000Z',
 			hasDist: true,
+			label: null,
 			isActive: true,
 			kind: 'publish',
 		});

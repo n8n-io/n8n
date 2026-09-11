@@ -64,6 +64,7 @@ erDiagram
   integer distSizeBytes
   varchar_255_ distStorageKey
   varchar_36_ id
+  varchar_128_ label
   integer sourceSizeBytes
   varchar_255_ sourceStorageKey
   varchar_8_ storedAt

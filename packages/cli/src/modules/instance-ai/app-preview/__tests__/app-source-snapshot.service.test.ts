@@ -54,6 +54,7 @@ function createService() {
 		id: 'snap-1',
 		appId: 'app-1',
 		createdAt: '2026-09-09T00:00:00.000Z',
+		label: null,
 		hasDist: false,
 		isActive: false,
 		kind: 'snapshot',
@@ -110,7 +111,7 @@ describe('AppSourceSnapshotService', () => {
 		expect(userHasScopes).toHaveBeenCalledWith(USER, ['app:update'], false, {
 			projectId: 'proj-1',
 		});
-		expect(appsService.createSourceSnapshot).toHaveBeenCalledWith('app-1', TARBALL);
+		expect(appsService.createSourceSnapshot).toHaveBeenCalledWith('app-1', TARBALL, null);
 		expect(String(executeCommand.mock.calls.at(-1)?.[0])).toMatch(
 			/^rm -f '\/home\/user\/workspace\/\.app-builds\/greeter-\d+-snapshot\.tgz'$/,
 		);

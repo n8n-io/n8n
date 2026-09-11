@@ -181,6 +181,7 @@ export class AppPreviewController {
 				return { [file]: dto.content };
 			},
 			await this.instanceAiService.getOrCreateWorkspace(appSandboxKey(app.id), req.user),
+			`Edited ${file}`,
 		);
 		if ('error' in result) throw new BadRequestError(result.message);
 		return await this.appsService.toResponse(await this.appsService.getApp(app.id));

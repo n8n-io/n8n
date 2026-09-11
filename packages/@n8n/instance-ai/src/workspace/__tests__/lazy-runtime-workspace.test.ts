@@ -216,13 +216,17 @@ describe('createLazyRuntimeWorkspace', () => {
 	});
 
 	describe('with an app workspace', () => {
-		function createDualWorkspace() {
+		function createDualWorkspace(defaultSandbox?: () => 'thread' | 'app') {
 			const thread = createMockWorkspace();
 			const app = createMockWorkspace();
 			const ensureWorkspace = vi.fn(async () => await Promise.resolve(thread.workspace));
 			const ensureAppWorkspace = vi.fn(async () => await Promise.resolve(app.workspace));
 			const appWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace: ensureAppWorkspace });
-			const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace, appWorkspace });
+			const lazyWorkspace = createLazyRuntimeWorkspace({
+				ensureWorkspace,
+				appWorkspace,
+				defaultSandbox,
+			});
 			return { thread, app, ensureWorkspace, ensureAppWorkspace, lazyWorkspace };
 		}
 
@@ -234,7 +238,7 @@ describe('createLazyRuntimeWorkspace', () => {
 			expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
 			for (const tool of tools) {
 				const schema = tool.inputSchema as z.ZodObject<z.ZodRawShape>;
-				expect(schema.shape.sandbox.parse(undefined)).toBe('thread');
+				expect(schema.shape.sandbox.parse(undefined)).toBeUndefined();
 				expect(schema.shape.sandbox.parse('app')).toBe('app');
 			}
 		});
@@ -257,6 +261,18 @@ describe('createLazyRuntimeWorkspace', () => {
 			expect(thread.filesystem.readFile).toHaveBeenCalledTimes(1);
 			expect(ensureWorkspace).toHaveBeenCalledTimes(1);
 			expect(ensureAppWorkspace).toHaveBeenCalledTimes(1);
+		});
+
+		it('routes to the app workspace by default when the thread builds an app, and to the thread with sandbox thread', async () => {
+			const { thread, app, lazyWorkspace } = createDualWorkspace(() => 'app');
+			const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+			await readFile?.handler?.({ path: 'apps/greeter/src/App.vue' }, {});
+			expect(app.filesystem.readFile).toHaveBeenCalledTimes(1);
+			expect(thread.filesystem.readFile).not.toHaveBeenCalled();
+
+			await readFile?.handler?.({ path: 'report.md', sandbox: 'thread' }, {});
+			expect(thread.filesystem.readFile).toHaveBeenCalledWith('report.md', expect.anything());
 		});
 
 		it('runs commands in the app sandbox without passing the sandbox input through', async () => {

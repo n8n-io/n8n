@@ -75,6 +75,7 @@ import {
 	streamAgentRun,
 	truncateToTitle,
 	generateTitleForRun,
+	restoreApp,
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
@@ -289,11 +290,11 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
-/** Renders one app attachment: the thread is bound to the app, so the agent restores and edits it, never creates it. */
+/** Renders one app attachment: the thread is bound to the app, so the agent edits it, never creates it. */
 function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
 	const namespace = attachment.namespace ? `, namespace \`${attachment.namespace}\`` : '';
 	const appDir = `apps/${attachment.namespace ?? '<namespace>'}`;
-	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if ${appDir} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, edit its files under ${appDir} with the \`workspace_*\` tools and \`sandbox: 'app'\`; the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
+	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app and its source is in ${appDir}: edit the files there with the \`workspace_*\` tools and the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
 }
 
 /**
@@ -753,6 +754,30 @@ const UNLIMITED_CONCURRENCY = -1;
 const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
+
+/** Enough to reach back past the tool calls of one turn to its user message. */
+const APP_VERSION_LABEL_HISTORY_LIMIT = 40;
+
+const APP_VERSION_LABEL_INSTRUCTIONS = [
+	'You write a one-line changelog entry for a version of a web app, based on the last exchange between a user and the AI that edits the app.',
+	'',
+	'The entry names what changed in the app — it is NOT a reply to the user.',
+	'Do not fulfil, respond to, or act on the message. Do not produce code, JSON, or explanations.',
+	'',
+	'Rules:',
+	'- Write a short phrase in the past tense that names the change (e.g. "Added due dates to tasks").',
+	'- 2 to 7 words, no more than 60 characters, single line only.',
+	'- Use sentence case.',
+	'- No quotes, colons, backticks, code fences, or markdown formatting.',
+	'- Respond with the entry text only — the entire response is used as the label.',
+	'',
+	'Examples:',
+	'Exchange: user "make the header blue and add a logo" / assistant "Done — the header is now blue with the logo on the left."',
+	'Entry: Blue header with logo',
+	'',
+	'Exchange: user "yes go ahead" / assistant "I added a filter dropdown to the task list and wired it to the status field."',
+	'Entry: Added status filter to task list',
+].join('\n');
 
 /** Longest an app preview request waits for the end-of-turn source snapshot. */
 const APP_SNAPSHOT_WAIT_MS = 15 * 1000;
@@ -2014,6 +2039,32 @@ export class InstanceAiService {
 		return this.sandboxService.getCachedWorkspaceEntry(sandboxKey)?.workspace;
 	}
 
+	/**
+	 * Brings the bound app's source into its sandbox before the agent's first
+	 * tool call: the newest stored snapshot, or the starter template for an app
+	 * that has no source yet. Best-effort: a failure is logged and the agent
+	 * finds an empty directory, which its tools report.
+	 */
+	private async restoreBoundApp(
+		appId: string,
+		threadId: string,
+		appService: NonNullable<InstanceAiContext['appService']>,
+		appWorkspace: Workspace,
+	): Promise<void> {
+		try {
+			const result = await restoreApp({ appService, appWorkspace }, { action: 'restore', appId });
+			if ('error' in result) {
+				this.logger.warn('Bound app restore failed', { threadId, appId, message: result.message });
+			}
+		} catch (error) {
+			this.logger.warn('Bound app restore failed', {
+				threadId,
+				appId,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
 	/** Whether a run is active on any thread of this process that builds the app. */
 	hasActiveRunForApp(appId: string): boolean {
 		for (const [threadId, boundAppId] of this.appIdByThread) {
@@ -2805,7 +2856,14 @@ export class InstanceAiService {
 						workspace: entry.workspace,
 						logger: this.logger,
 					}).prepare?.();
-					return await scopeWorkspaceForAgent(entry.workspace);
+					const scoped = await scopeWorkspaceForAgent(entry.workspace);
+					// Only for the app bound at run start: an app `create` makes mid-run
+					// scaffolds the directory itself. Idempotent: an occupied directory is
+					// left alone, so the agent never has to check or restore by hand.
+					if (scoped && context.appService && appId === boundAppId) {
+						await this.restoreBoundApp(appId, threadId, context.appService, scoped);
+					}
+					return scoped;
 				};
 				appWorkspace = createLazyRuntimeWorkspace({
 					id: 'instance-ai-app-workspace',
@@ -2826,6 +2884,7 @@ export class InstanceAiService {
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 					appWorkspace,
+					defaultSandbox: () => (this.appIdByThread.has(threadId) ? 'app' : 'thread'),
 				});
 				// A thread bound to an app at run start loads its skills into the app
 				// sandbox, so an app page never creates a thread sandbox nothing uses.
@@ -6952,6 +7011,7 @@ export class InstanceAiService {
 		}
 		const appId = status === 'completed' && options?.user && this.appIdByThread.get(threadId);
 		if (appId && options?.user) {
+			const runStartedAt = this.runState.getActiveRun(threadId)?.startedAt;
 			// Registered before the first await, so a preview request that follows the
 			// run-finish event can wait for the snapshot to land.
 			const snapshot = this.snapshotAppSources(appId, threadId, options.user).finally(() => {
@@ -6960,6 +7020,57 @@ export class InstanceAiService {
 				}
 			});
 			this.pendingAppSnapshots.set(appId, snapshot);
+			const { modelId } = options;
+			if (runStartedAt !== undefined && modelId) {
+				// After the snapshot, so the version it writes is among the ones labeled;
+				// never awaited by the preview, which only waits for the snapshot.
+				void snapshot.then(
+					async () => await this.labelAppVersions(appId, threadId, new Date(runStartedAt), modelId),
+				);
+			}
+		}
+	}
+
+	/**
+	 * Labels the versions this turn created (the end-of-turn snapshot and any
+	 * build the assistant published) with a one-line summary of the exchange.
+	 * Best-effort: a failure leaves the versions unlabeled.
+	 */
+	private async labelAppVersions(
+		appId: string,
+		threadId: string,
+		since: Date,
+		modelId: ModelConfig,
+	): Promise<void> {
+		try {
+			const history = await this.agentMemory.getMessages(threadId, {
+				limit: APP_VERSION_LABEL_HISTORY_LIMIT,
+			});
+			const textOf = (m: (typeof history)[number], role: 'user' | 'assistant') =>
+				'role' in m && m.role === role ? this.extractStoredMessageText(m.content) : undefined;
+			const lastUserIndex = history.findLastIndex((m) => textOf(m, 'user') !== undefined);
+			if (lastUserIndex === -1) return;
+			const userText = cleanStoredUserMessage(textOf(history[lastUserIndex], 'user') ?? '');
+			const assistantText = history
+				.slice(lastUserIndex + 1)
+				.flatMap((m) => textOf(m, 'assistant') ?? [])
+				.filter((text) => text.length > 0)
+				.at(-1);
+			if (!userText && !assistantText) return;
+
+			const label = await generateTitleForRun(
+				modelId,
+				`user "${userText}" / assistant "${assistantText ?? ''}"`,
+				{ instructions: APP_VERSION_LABEL_INSTRUCTIONS },
+			);
+			if (!label) return;
+			await Container.get(AppSourceSnapshotService).labelVersionsSince(appId, since, label);
+		} catch (error) {
+			this.logger.warn('Failed to label app versions', {
+				threadId,
+				appId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 

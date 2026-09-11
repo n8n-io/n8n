@@ -108,7 +108,11 @@ export class AppVersionService {
 	 * Stores the working copy without publishing it: no dist, the active version
 	 * stays as it is. `readSource` (and so `apps restore`) picks it up as the newest.
 	 */
-	async createSourceSnapshot(appId: string, source: Buffer): Promise<AppVersion> {
+	async createSourceSnapshot(
+		appId: string,
+		source: Buffer,
+		label: string | null = null,
+	): Promise<AppVersion> {
 		const app = await this.appRepository.findOneBy({ id: appId });
 		if (!app) throw new AppNotFoundError(appId);
 		await this.assertUnderQuota(appId, app.projectId, source.length);
@@ -125,6 +129,7 @@ export class AppVersionService {
 				distStorageKey: null,
 				sourceSizeBytes: source.length,
 				distSizeBytes: null,
+				label,
 			})
 			.catch(async (error: unknown) => {
 				await this.blobStore.delete([sourceBlob]);
@@ -180,11 +185,35 @@ export class AppVersionService {
 		const [version] = await this.appVersionRepository.listByAppId(app.id);
 		if (!version) return null;
 
-		const data = await this.blobStore.readAsBuffer({
+		const data = await this.readSourceOf(version);
+		return data ? { versionId: version.id, data } : null;
+	}
+
+	/** Source tarball of one version, or null when its blob is gone. */
+	async readSourceOf(version: AppVersion): Promise<Buffer | null> {
+		return await this.blobStore.readAsBuffer({
 			storedAt: version.storedAt,
 			storageKey: version.sourceStorageKey,
 		});
-		return data ? { versionId: version.id, data } : null;
+	}
+
+	/**
+	 * Makes `version`'s source the working copy again by storing it as the newest
+	 * version. History is kept as is; the published version does not change.
+	 */
+	async restore(version: AppVersion): Promise<AppVersion> {
+		const source = await this.readSourceOf(version);
+		if (!source) throw new UnexpectedError(`Source tarball of app version ${version.id} is gone`);
+		return await this.createSourceSnapshot(version.appId, source, version.label);
+	}
+
+	/** Labels every still-unlabeled version created at or after `since`. */
+	async labelVersionsSince(appId: string, since: Date, label: string): Promise<void> {
+		const versions = await this.appVersionRepository.findUnlabeledSince(appId, since);
+		await this.appVersionRepository.setLabel(
+			versions.map((version) => version.id),
+			label,
+		);
 	}
 
 	/**
@@ -257,6 +286,7 @@ export class AppVersionService {
 			hasDist,
 			isActive: version.id === activeVersionId,
 			kind: hasDist ? 'publish' : 'snapshot',
+			label: version.label,
 		};
 	}
 

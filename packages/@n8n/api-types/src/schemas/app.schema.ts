@@ -83,6 +83,8 @@ export const appVersionSchema = z.object({
 	// `publish` = built version that still has its dist; `snapshot` = source only.
 	// The rows carry nothing else, so a build whose dist was pruned reads as a snapshot.
 	kind: z.enum(['publish', 'snapshot']),
+	// Short summary of what changed, or null when none was generated.
+	label: z.string().nullable(),
 });
 
 export type AppVersion = z.infer<typeof appVersionSchema>;

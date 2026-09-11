@@ -12,7 +12,6 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
-	N8nSpinner,
 	N8nTabs,
 	N8nText,
 	N8nToggle,
@@ -445,6 +444,43 @@ const onActivateVersion = async (version: AppVersion) => {
 	await setActiveVersion(version.id, i18n.baseText('apps.builder.versions.activate.error'));
 };
 
+const restoringVersionId = ref<string | null>(null);
+
+const versionTitle = (version: AppVersion) =>
+	version.label ??
+	i18n.baseText(
+		version.kind === 'publish'
+			? 'apps.builder.versions.kind.publish'
+			: 'apps.builder.versions.kind.snapshot',
+	);
+
+const onRestoreVersion = async (version: AppVersion) => {
+	const response = await message.confirm(
+		i18n.baseText('apps.builder.versions.restore.confirm.message', {
+			interpolate: { name: versionTitle(version) },
+		}),
+		i18n.baseText('apps.builder.versions.restore.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('apps.builder.versions.restore.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (response !== MODAL_CONFIRM) return;
+	restoringVersionId.value = version.id;
+	try {
+		await appsStore.restoreVersion(props.projectId, props.appId, version.id);
+		await refreshVersions();
+		toast.showMessage({
+			title: i18n.baseText('apps.builder.versions.restore.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.versions.restore.error'));
+	} finally {
+		restoringVersionId.value = null;
+	}
+};
+
 const onUnpublish = async () => {
 	const response = await message.confirm(
 		i18n.baseText('apps.builder.versions.unpublish.confirm.message', {
@@ -739,87 +775,93 @@ watch(
 					@diagnostic="emit('diagnostic', $event)"
 					@element-selected="onElementSelected"
 				/>
-				<div v-if="hasPreviewSource" :class="$style.previewTools" data-test-id="app-preview-tools">
-					<N8nToggleGroup
-						:model-value="device"
-						variant="ghost"
-						size="small"
-						data-test-id="app-preview-device"
-						@update:model-value="onDeviceChange"
-					>
-						<template #default="{ variant, size }">
-							<N8nToggle
-								value="desktop"
-								:label="i18n.baseText('apps.builder.desktop')"
-								icon="monitor"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-device-desktop"
-							/>
-							<N8nToggle
-								value="mobile"
-								:label="i18n.baseText('apps.builder.mobile')"
-								icon="smartphone"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-device-mobile"
-							/>
-						</template>
-					</N8nToggleGroup>
-					<span :class="$style.previewToolsDivider" />
-					<N8nToggleGroup
-						:model-value="previewTheme"
-						variant="ghost"
-						size="small"
-						data-test-id="app-preview-theme"
-						@update:model-value="onPreviewThemeChange"
-					>
-						<template #default="{ variant, size }">
-							<N8nToggle
-								value="light"
-								:label="i18n.baseText('apps.builder.theme.mode.light')"
-								icon="sun"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-light"
-							/>
-							<N8nToggle
-								value="dark"
-								:label="i18n.baseText('apps.builder.theme.mode.dark')"
-								icon="moon"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-dark"
-							/>
-							<N8nToggle
-								value="system"
-								:label="i18n.baseText('apps.builder.theme.mode.system')"
-								icon="laptop"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-system"
-							/>
-						</template>
-					</N8nToggleGroup>
-					<span :class="$style.previewToolsDivider" />
-					<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
-						<N8nIconButton
-							icon="mouse-pointer"
-							:variant="inspecting ? 'subtle' : 'ghost'"
+				<div
+					v-if="hasPreviewSource"
+					:class="[
+						$style.previewToolsZone,
+						{ [$style.previewToolsPinned]: inspecting || device === 'mobile' },
+					]"
+				>
+					<div :class="$style.previewTools" data-test-id="app-preview-tools">
+						<N8nToggleGroup
+							:model-value="device"
+							variant="ghost"
 							size="small"
-							:aria-label="i18n.baseText('apps.builder.inspect')"
-							data-test-id="app-preview-inspect"
-							@click="onToggleInspect"
-						/>
-					</N8nTooltip>
+							data-test-id="app-preview-device"
+							@update:model-value="onDeviceChange"
+						>
+							<template #default="{ variant, size }">
+								<N8nToggle
+									value="desktop"
+									:label="i18n.baseText('apps.builder.desktop')"
+									icon="monitor"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-device-desktop"
+								/>
+								<N8nToggle
+									value="mobile"
+									:label="i18n.baseText('apps.builder.mobile')"
+									icon="smartphone"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-device-mobile"
+								/>
+							</template>
+						</N8nToggleGroup>
+						<span :class="$style.previewToolsDivider" />
+						<N8nToggleGroup
+							:model-value="previewTheme"
+							variant="ghost"
+							size="small"
+							data-test-id="app-preview-theme"
+							@update:model-value="onPreviewThemeChange"
+						>
+							<template #default="{ variant, size }">
+								<N8nToggle
+									value="light"
+									:label="i18n.baseText('apps.builder.theme.mode.light')"
+									icon="sun"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-light"
+								/>
+								<N8nToggle
+									value="dark"
+									:label="i18n.baseText('apps.builder.theme.mode.dark')"
+									icon="moon"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-dark"
+								/>
+								<N8nToggle
+									value="system"
+									:label="i18n.baseText('apps.builder.theme.mode.system')"
+									icon="laptop"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-system"
+								/>
+							</template>
+						</N8nToggleGroup>
+						<span :class="$style.previewToolsDivider" />
+						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+							<N8nIconButton
+								icon="mouse-pointer"
+								:variant="inspecting ? 'subtle' : 'ghost'"
+								size="small"
+								:aria-label="i18n.baseText('apps.builder.inspect')"
+								data-test-id="app-preview-inspect"
+								@click="onToggleInspect"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 				<div
 					v-else-if="liveStarting"
-					:class="$style.emptyState"
+					:class="$style.previewStarting"
 					data-test-id="app-preview-starting"
-				>
-					<N8nSpinner />
-				</div>
+				/>
 				<div
 					v-else-if="!loading && !livePending"
 					:class="$style.emptyState"
@@ -1022,7 +1064,10 @@ watch(
 						data-test-id="app-version-row"
 					>
 						<div :class="$style.versionInfo">
-							<N8nText size="small" bold>
+							<N8nText size="small" bold data-test-id="app-version-title">
+								{{ versionTitle(version) }}
+							</N8nText>
+							<N8nBadge theme="tertiary" data-test-id="app-version-kind">
 								{{
 									i18n.baseText(
 										version.kind === 'publish'
@@ -1030,7 +1075,7 @@ watch(
 											: 'apps.builder.versions.kind.snapshot',
 									)
 								}}
-							</N8nText>
+							</N8nBadge>
 							<N8nText size="small" color="text-light">
 								<TimeAgo :date="version.createdAt" capitalize />
 							</N8nText>
@@ -1038,28 +1083,55 @@ watch(
 								{{ i18n.baseText('apps.builder.versions.active') }}
 							</N8nBadge>
 						</div>
-						<N8nButton
-							v-if="version.isActive"
-							variant="subtle"
-							size="small"
-							:loading="switchingVersionId === version.id"
-							:disabled="switchingVersionId !== null"
-							data-test-id="app-version-unpublish"
-							@click="onUnpublish"
-						>
-							{{ i18n.baseText('apps.builder.versions.unpublish') }}
-						</N8nButton>
-						<N8nButton
-							v-else-if="version.hasDist"
-							variant="subtle"
-							size="small"
-							:loading="switchingVersionId === version.id"
-							:disabled="switchingVersionId !== null"
-							data-test-id="app-version-activate"
-							@click="onActivateVersion(version)"
-						>
-							{{ i18n.baseText('apps.builder.versions.activate') }}
-						</N8nButton>
+						<div :class="$style.versionActions">
+							<N8nTooltip :content="i18n.baseText('apps.builder.versions.download')">
+								<a
+									:href="appsStore.versionSourceUrl(projectId, appId, version.id)"
+									download
+									data-test-id="app-version-download"
+								>
+									<N8nIconButton
+										icon="download"
+										variant="ghost"
+										size="small"
+										:aria-label="i18n.baseText('apps.builder.versions.download')"
+									/>
+								</a>
+							</N8nTooltip>
+							<N8nButton
+								v-if="version.id !== appsStore.versions[0]?.id"
+								variant="subtle"
+								size="small"
+								:loading="restoringVersionId === version.id"
+								:disabled="restoringVersionId !== null || switchingVersionId !== null"
+								data-test-id="app-version-restore"
+								@click="onRestoreVersion(version)"
+							>
+								{{ i18n.baseText('apps.builder.versions.restore') }}
+							</N8nButton>
+							<N8nButton
+								v-if="version.isActive"
+								variant="subtle"
+								size="small"
+								:loading="switchingVersionId === version.id"
+								:disabled="switchingVersionId !== null"
+								data-test-id="app-version-unpublish"
+								@click="onUnpublish"
+							>
+								{{ i18n.baseText('apps.builder.versions.unpublish') }}
+							</N8nButton>
+							<N8nButton
+								v-else-if="version.hasDist"
+								variant="subtle"
+								size="small"
+								:loading="switchingVersionId === version.id"
+								:disabled="switchingVersionId !== null"
+								data-test-id="app-version-activate"
+								@click="onActivateVersion(version)"
+							>
+								{{ i18n.baseText('apps.builder.versions.activate') }}
+							</N8nButton>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1068,6 +1140,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .artifactRoot {
 	height: 100%;
 	min-height: 0;
@@ -1206,11 +1280,35 @@ watch(
 }
 
 // Floats over the frame like a browser devtools bar, so the document keeps the whole pane.
-.previewTools {
+// The iframe swallows pointer events, so this zone is the only hover target the pane
+// owns over the document: the toolbar hides into the bottom edge and slides back when
+// the zone is hovered. The pane's overflow: hidden clips the tucked-away part.
+.previewToolsZone {
 	position: absolute;
-	bottom: var(--spacing--sm);
+	bottom: 0;
 	left: 50%;
 	transform: translateX(-50%);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
+
+	&:hover,
+	&:focus-within,
+	&.previewToolsPinned {
+		.previewTools {
+			opacity: 1;
+			transform: none;
+			transition-delay: 0s;
+		}
+	}
+}
+
+.previewTools {
+	margin-bottom: var(--spacing--sm);
+	opacity: 0.6;
+	transform: translateY(calc(100% + var(--spacing--sm) - 4px));
+	transition:
+		opacity 150ms ease,
+		transform 150ms ease;
+	transition-delay: 300ms;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
@@ -1293,6 +1391,14 @@ watch(
 .addressChevron {
 	flex: none;
 	color: var(--color--text--tint-1);
+}
+
+// The banner above already says the dev server is starting; the pane only
+// needs to look alive until the document arrives.
+.previewStarting {
+	flex: 1;
+	--animation--shimmer-surface--duration: 1.5s;
+	@include motion.shimmer-surface;
 }
 
 .emptyState {
@@ -1405,5 +1511,12 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.versionActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 </style>

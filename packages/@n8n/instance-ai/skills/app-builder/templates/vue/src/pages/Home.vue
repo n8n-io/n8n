@@ -11,7 +11,7 @@ const enabled = ref(true);
 <template>
 	<h1 class="text-2xl font-bold">Hello from n8n</h1>
 	<p class="mt-1 text-muted-foreground">
-		Edit <code class="font-mono text-sm">src/pages/Home.vue</code> and run the build.
+		Edit <code class="font-mono text-sm">src/pages/Home.vue</code>; the preview follows.
 	</p>
 
 	<section

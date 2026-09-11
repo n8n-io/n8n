@@ -34,7 +34,10 @@ export const LIST_APPS_SCRIPT = `for d in ${APPS_DIR}/*/; do [ -f "\${d}package.
  * `lastHash`. An uncompressed tar of unchanged files is byte-stable, so its
  * digest tells "nothing changed since the last snapshot" without a second
  * copy of the sources; the gzip header (mtime) makes compressed bytes useless
- * for that. Prints `UNCHANGED`, or `SNAPSHOT <hash> <bytes>`.
+ * for that. A scaffold nobody edited yet (git's only commit is the `scaffold`
+ * baseline and the tree is clean) is not stored either, so an app has no
+ * source, and the preview shows nothing, until the agent changed something.
+ * Prints `UNCHANGED`, `PRISTINE`, or `SNAPSHOT <hash> <bytes>`.
  */
 export function buildSnapshotScript(input: {
 	root: string;
@@ -48,6 +51,7 @@ export function buildSnapshotScript(input: {
 		'set -e',
 		`mkdir -p '${input.root}/${STAGING_DIR}'`,
 		`cd '${input.root}/${APPS_DIR}/${input.namespace}'`,
+		`if [ "$(git log -1 --format=%s 2>/dev/null)" = scaffold ] && [ -z "$(git status --porcelain 2>/dev/null)" ]; then echo PRISTINE; exit 0; fi`,
 		`hash=$(tar -cf - ${excludes} . | (sha256sum 2>/dev/null || cksum) | cut -d' ' -f1)`,
 		`if [ "$hash" = '${input.lastHash ?? ''}' ]; then echo UNCHANGED; exit 0; fi`,
 		`tar -czf '${tarball}' ${excludes} .`,
@@ -73,7 +77,13 @@ export class AppSourceSnapshotService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	async snapshotAfterRun(appId: string, user: User, rawWorkspace: Workspace): Promise<void> {
+	/** `label`: what the version is for, when the caller knows (a Theme- or Code-tab save); assistant turns are labeled afterwards. */
+	async snapshotAfterRun(
+		appId: string,
+		user: User,
+		rawWorkspace: Workspace,
+		label: string | null = null,
+	): Promise<void> {
 		const root = await getWorkspaceRoot(rawWorkspace);
 		const workspace = createScopedWorkspace(rawWorkspace, root);
 		const executeCommand = workspace.sandbox?.executeCommand?.bind(workspace.sandbox);
@@ -110,7 +120,7 @@ export class AppSourceSnapshotService {
 				);
 				const match = /^SNAPSHOT (\S+) (\d+)$/m.exec(packed.stdout);
 				if (packed.exitCode !== 0 || !match) {
-					if (!packed.stdout.includes('UNCHANGED')) {
+					if (!/^(UNCHANGED|PRISTINE)$/m.test(packed.stdout)) {
 						this.logger.debug('App snapshot script did not produce a tarball', {
 							appId,
 							namespace,
@@ -130,7 +140,7 @@ export class AppSourceSnapshotService {
 					this.logger.warn('App snapshot read-out was not binary', { appId, namespace });
 					continue;
 				}
-				const version = await this.appsService.createSourceSnapshot(app.id, source);
+				const version = await this.appsService.createSourceSnapshot(app.id, source, label);
 				this.lastHashes.set(key, hash);
 				this.logger.debug('Stored app source snapshot', {
 					appId,
@@ -143,6 +153,10 @@ export class AppSourceSnapshotService {
 				);
 			}
 		}
+	}
+
+	async labelVersionsSince(appId: string, since: Date, label: string): Promise<void> {
+		await this.appsService.labelVersionsSince(appId, since, label);
 	}
 
 	/** A new sandbox starts from a restore, so the next turn must snapshot again. */

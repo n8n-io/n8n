@@ -175,6 +175,9 @@ const themeFiles = (existingOverrides: string, theme: AppTheme) => {
 	};
 };
 
+/** Version label of a Theme-tab save; assistant turns get a generated one instead. */
+const THEME_EDIT_LABEL = 'Theme edit';
+
 /**
  * Writes a saved theme into the app's draft source (see `AppDraftService`):
  * nothing is built or published, the user publishes explicitly afterwards.
@@ -194,6 +197,7 @@ export class AppThemeService {
 			user,
 			async (read) => themeFiles((await read(OVERRIDES_FILE)) ?? '', theme),
 			options.draft,
+			THEME_EDIT_LABEL,
 		);
 	}
 }

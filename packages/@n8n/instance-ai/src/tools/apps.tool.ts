@@ -2,7 +2,11 @@
  * Apps tool — create an app, restore its stored source into the app's own
  * sandbox, bind n8n workflows, data tables and agents it may use, and publish
  * it as a served version once the user confirms. The agent edits files with
- * the workspace tools and `sandbox: 'app'` in between; the live preview follows.
+ * the workspace tools in between; the live preview follows.
+||||||| parent of e191e266d60 (feat(core): Restore the bound app before the first tool call and trim the app-builder skill)
+ * sandbox, bind n8n workflows and data tables it may use, and publish it as a
+ * served version once the user confirms. The agent edits files with the
+ * workspace tools and `sandbox: 'app'` in between; the live preview follows.
  */
 import { Tool } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -106,6 +110,7 @@ const publishSchema = z.object({
 	appId: z.string(),
 });
 
+/** Not model-facing: the run setup restores the bound app before the first tool call (`restoreApp`). */
 const restoreSchema = z.object({
 	action: z.literal('restore'),
 	appId: z.string(),
@@ -114,11 +119,15 @@ const restoreSchema = z.object({
 const addComponentSchema = z.object({
 	action: z.literal('add-component'),
 	appId: z.string(),
-	component: z
-		.string()
-		.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only')
+	components: z
+		.array(
+			z
+				.string()
+				.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'lowercase letters, digits and single hyphens only'),
+		)
+		.min(1)
 		.describe(
-			'Component name from this skill\'s catalog (references/design-system.md), e.g. "button" or "dropdown-menu"',
+			'Component names from this skill\'s catalog (references/design-system.md), e.g. ["card", "dialog", "dropdown-menu"]',
 		),
 });
 
@@ -193,7 +202,6 @@ type BindingsInput = z.infer<typeof bindingsSchema>;
 type AppsInput =
 	| CreateInput
 	| PublishInput
-	| RestoreInput
 	| AddComponentInput
 	| BindInput
 	| UnbindInput
@@ -308,17 +316,20 @@ const componentRegistryDir = (root: string) =>
  * hosted registry for these components the way shadcn-vue has for reka-ui.
  */
 function copyComponentsScript(registryDir: string, appDir: string, components: string[]): string {
-	const lines = ['set -e'];
-	for (const component of components) {
-		const source = `${registryDir}/${component}`;
-		const dest = `${appDir}/src/components/ui/${component}`;
-		lines.push(
-			`[ -d ${q(source)} ] || { echo "not in the component catalog: ${component}" >&2; exit 1; }`,
-			`mkdir -p ${q(dest)}`,
-			copyDirCommand(source, dest),
-		);
-	}
-	return lines.join('\n');
+	const source = (component: string) => `${registryDir}/${component}`;
+	const dest = (component: string) => `${appDir}/src/components/ui/${component}`;
+	// Every name is checked before the first copy, so a typo adds nothing.
+	return [
+		'set -e',
+		...components.map(
+			(component) =>
+				`[ -d ${q(source(component))} ] || { echo "not in the component catalog: ${component}" >&2; exit 1; }`,
+		),
+		...components.flatMap((component) => [
+			`mkdir -p ${q(dest(component))}`,
+			copyDirCommand(source(component), dest(component)),
+		]),
+	].join('\n');
 }
 
 /**
@@ -959,18 +970,19 @@ async function handleAddComponent(
 	const appDir = `${root}/${APPS_DIR}/${app.namespace}`;
 
 	const add = await run(
-		copyComponentsScript(componentRegistryDir(root), appDir, [input.component]),
+		copyComponentsScript(componentRegistryDir(root), appDir, input.components),
 		{ cwd: appDir },
 	);
 	if (add.exitCode !== 0) {
 		return {
 			error: true,
-			message: `"${input.component}" is not in this app-builder skill's component catalog. Check references/design-system.md for the exact name.`,
+			message:
+				"A component is not in this app-builder skill's catalog; no component was added. Check references/design-system.md for the exact names.",
 			log: tailLog(combinedLog(add)),
 		};
 	}
 
-	return { appId: app.id, component: input.component };
+	return { appId: app.id, components: input.components };
 }
 
 async function writeSdkTarball(
@@ -1353,7 +1365,6 @@ export function createAppsTool(context: InstanceAiContext) {
 		z.discriminatedUnion('action', [
 			createSchema,
 			publishSchema,
-			restoreSchema,
 			addComponentSchema,
 			bindSchema,
 			unbindSchema,
@@ -1363,18 +1374,13 @@ export function createAppsTool(context: InstanceAiContext) {
 
 	return new Tool(APPS_TOOL_ID)
 		.description(
-			'Create, restore, bind and publish user-facing web apps. The user sees the app in the live preview next to the chat while you edit; publishing only makes it public at /apps/<namespace>/ and is never needed to view or test it. ' +
-				'Load the `app-builder` skill via `load_skill` before calling this tool. ' +
-				"`create` registers the app, copies a starter template into apps/<namespace>/ in the app's own sandbox and installs its dependencies; " +
-				"edit the files there with the workspace tools and `sandbox: 'app'`, and the live preview updates by itself. Never build to check your work. " +
-				'Call `publish` only when the user asks to publish, deploy or share the app: the user confirms, then n8n builds the current source, stores a version and updates /apps/<namespace>/. ' +
-				'`publish` returns the published `url` on success, `{ denied }` when the user declines, or `{ error, stage, message, log }` to fix and retry. ' +
-				"`restore` fills apps/<namespace>/ for an existing app when the app's sandbox does not have it yet: it unpacks the stored source, or copies the starter template when the app has no source (`scaffolded: true`). " +
-				"`add-component` copies a component from this app-builder skill's own catalog (built on @ark-ui/vue) into src/components/ui/ — `create` uses it for the two the starter page needs, and every other component goes through it too. " +
-				'`bind` lets the app call n8n workflows by key through `@n8n/app-sdk` (`n8n.workflows.run(key, input)`), read or write data table rows (`n8n.tables.<key>.list/insert/update/delete`) and chat with published agents (`n8n.agents.<key>.chat/resume/messages`): ' +
-				'pass `{ key, kind: "workflow", workflowId }`, `{ key, kind: "dataTable", dataTableId, permissions: ["read", "write"] }` or `{ key, kind: "agent", agentId, permissions: ["chat", "history"] }` entries (one kind per call), and it rewrites src/n8n-bindings.d.ts with the input, row and agent types. ' +
-				"It asks the user for approval first: every app is public, so a bound workflow, table or agent is reachable by anyone with the app URL, and visitors answer a bound agent's approval requests themselves. " +
-				'`unbind` removes a key; `bindings` lists the current ones and rewrites the types (call it after a bound table changes columns). Bind before writing code that uses a workflow, table or agent.',
+			'Web apps served by n8n at /apps/<namespace>/. Load the `app-builder` skill via `load_skill` first. ' +
+				'The user sees the app in the live preview next to the chat while you edit; publishing only makes it public and is never needed to view or test it. ' +
+				'`create` registers a new app and scaffolds it (only when the thread is not already bound to an app); returns `app`, `workspacePath`, `installed`. ' +
+				'`publish` asks the user to confirm, then builds the current source and updates /apps/<namespace>/; returns `url`, `{ denied }`, or `{ error, stage, message, log }`. ' +
+				'`add-component` copies catalog components (references/design-system.md) into src/components/ui/; returns the names added. ' +
+				'`bind` connects workflows (`{ key, kind: "workflow", workflowId }`), data tables (`{ key, kind: "dataTable", dataTableId, permissions }`) or published agents (`{ key, kind: "agent", agentId, permissions }`), one kind per call, after user approval; returns every binding with its types. ' +
+				'`unbind` removes a key; `bindings` lists them. All three rewrite src/n8n-bindings.d.ts.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -1385,8 +1391,6 @@ export function createAppsTool(context: InstanceAiContext) {
 					return await handleCreate(context, input, ctx.abortSignal);
 				case 'publish':
 					return await handlePublish(context, input, ctx);
-				case 'restore':
-					return await handleRestore(context, input, ctx.abortSignal);
 				case 'add-component':
 					return await handleAddComponent(context, input, ctx.abortSignal);
 				case 'bind':

@@ -19,6 +19,8 @@ import {
 	getAppApi,
 	publishAppApi,
 	setActiveAppVersionApi,
+	restoreAppVersionApi,
+	appVersionSourceUrl,
 	saveAppDraftFileApi,
 	updateAppApi,
 	updateBindingApi,
@@ -78,6 +80,12 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const fetchVersions = async (projectId: string, appId: string) => {
 		versions.value = await fetchAppVersionsApi(rootStore.restApiContext, projectId, appId);
 	};
+
+	const restoreVersion = async (projectId: string, appId: string, versionId: string) =>
+		await restoreAppVersionApi(rootStore.restApiContext, projectId, appId, versionId);
+
+	const versionSourceUrl = (projectId: string, appId: string, versionId: string) =>
+		appVersionSourceUrl(rootStore.restApiContext, projectId, appId, versionId);
 
 	const setActiveVersion = async (projectId: string, appId: string, versionId: string | null) => {
 		const updated = await setActiveAppVersionApi(
@@ -175,6 +183,8 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		publishApp,
 		fetchThreads,
 		fetchVersions,
+		restoreVersion,
+		versionSourceUrl,
 		setActiveVersion,
 		deleteApp,
 		fetchPages,

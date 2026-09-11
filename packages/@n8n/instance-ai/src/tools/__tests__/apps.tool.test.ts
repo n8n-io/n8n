@@ -7,6 +7,7 @@ import {
 	buildCheckScript,
 	createAppsTool,
 	handleBuild,
+	handleRestore,
 	jsonSchemaToTs,
 	renderBindingsTypes,
 	slugifyNamespace,
@@ -225,10 +226,8 @@ async function runPublish(context: InstanceAiContext, ctx: unknown) {
 	return await executeTool<Record<string, unknown>>(tool, parsed, ctx);
 }
 
-async function runRestore(context: InstanceAiContext) {
-	const tool = createAppsTool(context);
-	const parsed: unknown = inputSchema(tool).parse({ action: 'restore', appId: 'app-1' });
-	return await executeTool<Record<string, unknown>>(tool, parsed);
+async function runRestore(context: InstanceAiContext, abortSignal?: AbortSignal) {
+	return await handleRestore(context, { action: 'restore', appId: 'app-1' }, abortSignal);
 }
 
 function mockEmptyAppDir(context: InstanceAiContext) {
@@ -299,8 +298,8 @@ describe('apps tool', () => {
 
 		it('opens with the live preview and makes publishing optional for viewing', () => {
 			const tool = createAppsTool(createMockContext());
-			expect(tool.description).toMatch(
-				/^Create, restore, bind and publish user-facing web apps\. The user sees the app in the live preview next to the chat while you edit; publishing only makes it public at \/apps\/<namespace>\/ and is never needed to view or test it\./,
+			expect(tool.description).toContain(
+				'The user sees the app in the live preview next to the chat while you edit; publishing only makes it public and is never needed to view or test it.',
 			);
 		});
 	});
@@ -1061,10 +1060,8 @@ describe('apps tool', () => {
 			const context = createMockContext();
 			mockEmptyAppDir(context);
 			const abortSignal = new AbortController().signal;
-			const tool = createAppsTool(context);
-			const parsed: unknown = inputSchema(tool).parse({ action: 'restore', appId: 'app-1' });
 
-			await executeTool(tool, parsed, { abortSignal });
+			await runRestore(context, abortSignal);
 
 			const commandCalls = executeCommandMock(context).mock.calls as Array<
 				[string, string[], { abortSignal?: AbortSignal }]
@@ -1081,12 +1078,12 @@ describe('apps tool', () => {
 	});
 
 	describe('add-component', () => {
-		async function runAddComponent(context: InstanceAiContext, component = 'accordion') {
+		async function runAddComponent(context: InstanceAiContext, components = ['accordion']) {
 			const tool = createAppsTool(context);
 			const parsed: unknown = inputSchema(tool).parse({
 				action: 'add-component',
 				appId: 'app-1',
-				component,
+				components,
 			});
 			return await executeTool<Record<string, unknown>>(tool, parsed);
 		}
@@ -1096,25 +1093,30 @@ describe('apps tool', () => {
 			const parsed = inputSchema(tool).safeParse({
 				action: 'add-component',
 				appId: 'app-1',
-				component: '../evil',
+				components: ['../evil'],
 			});
 			expect(parsed.success).toBe(false);
 		});
 
-		it('copies the component from the local catalog, no install step needed', async () => {
+		it('copies every component from the local catalog in one command, checking all names first', async () => {
 			const context = createMockContext();
 
-			const result = await runAddComponent(context, 'alert-dialog');
+			const result = await runAddComponent(context, ['alert-dialog', 'card']);
 
 			const commands = commandsRun(context);
-			expect(commands[0]).toContain(
-				"[ -d '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog' ]",
-			);
-			expect(commands[0]).toContain(
-				"cp -r '/home/daytona/workspace/skills/app-builder/component-registry/alert-dialog/.' '/home/daytona/workspace/apps/greeter/src/components/ui/alert-dialog/'",
-			);
 			expect(commands).toHaveLength(1);
-			expect(result).toEqual({ appId: 'app-1', component: 'alert-dialog' });
+			const registry = '/home/daytona/workspace/skills/app-builder/component-registry';
+			const ui = '/home/daytona/workspace/apps/greeter/src/components/ui';
+			expect(commands[0].split('\n')).toEqual([
+				'set -e',
+				`[ -d '${registry}/alert-dialog' ] || { echo "not in the component catalog: alert-dialog" >&2; exit 1; }`,
+				`[ -d '${registry}/card' ] || { echo "not in the component catalog: card" >&2; exit 1; }`,
+				`mkdir -p '${ui}/alert-dialog'`,
+				`cp -r '${registry}/alert-dialog/.' '${ui}/alert-dialog/'`,
+				`mkdir -p '${ui}/card'`,
+				`cp -r '${registry}/card/.' '${ui}/card/'`,
+			]);
+			expect(result).toEqual({ appId: 'app-1', components: ['alert-dialog', 'card'] });
 		});
 
 		it('reports a failure when the component is not in the catalog', async () => {
@@ -1127,7 +1129,7 @@ describe('apps tool', () => {
 
 			expect(result).toEqual({
 				error: true,
-				message: expect.stringContaining("not in this app-builder skill's component catalog"),
+				message: expect.stringContaining("not in this app-builder skill's catalog"),
 				log: expect.stringContaining('not in the component catalog: accordion'),
 			});
 			expect(commandsRun(context)).toHaveLength(1);
