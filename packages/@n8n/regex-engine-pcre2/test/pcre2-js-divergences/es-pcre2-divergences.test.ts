@@ -27,8 +27,8 @@ type DivergenceCaseTuple = [
 	DivergenceCase['jsResult'],
 ];
 
-const FIXTURE = path.join(__dirname, '../fixtures/corpus/es-pcre2-divergences.json');
-const tuples: DivergenceCaseTuple[] = JSON.parse(fs.readFileSync(FIXTURE, 'utf8'));
+const FIXTURE = path.join(__dirname, '../fixtures/corpus/curated-cases.json');
+const tuples: DivergenceCaseTuple[] = JSON.parse(fs.readFileSync(FIXTURE, 'utf8')).divergences;
 const cases: DivergenceCase[] = tuples.map(
 	([category, pattern, flags, input, pcre2Result, jsResult]) => ({
 		category,

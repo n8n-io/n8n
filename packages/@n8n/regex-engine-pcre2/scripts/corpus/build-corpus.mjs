@@ -205,28 +205,34 @@ async function main() {
     path.join(RUST_REGEX_OUT_DIR, 'LICENSE-MIT'),
   );
 
-  // category is kept here since this file mixes every category, unlike the per-category files above.
+  // category is kept here since this array mixes every category, unlike the per-category cases above.
   const dedupedDivergences = dedupBy(esDiverge, caseKey);
-  fs.writeFileSync(
-    path.join(OUT_DIR, 'es-pcre2-divergences.json'),
-    JSON.stringify(
-      dedupedDivergences.map((c) => [
-        c.tags?.[0] ?? c.category,
-        c.pattern,
-        c.flags,
-        c.input,
-        packResult(c.realPcre2),
-        packResult(c.nativeResult),
-      ]),
-    ) + '\n',
-  );
+  const divergenceTuples = dedupedDivergences.map((c) => [
+    c.tags?.[0] ?? c.category,
+    c.pattern,
+    c.flags,
+    c.input,
+    packResult(c.realPcre2),
+    packResult(c.nativeResult),
+  ]);
+
+  // Divergences live alongside the curated/synthetic cases in one file (both are
+  // hand-authored, neither sourced from PCRE2's own suite or rust-regex's) -- attached as
+  // a sibling `divergences` key so corpus.test.ts's generic `.cases` loader still only sees
+  // the must-match-native-RegExp cases; es-pcre2-divergences.test.ts reads `.divergences`.
+  const curatedFile = path.join(OUT_DIR, 'curated-cases.json');
+  const curated = JSON.parse(fs.readFileSync(curatedFile, 'utf8'));
+  const curatedWithDivergences = Array.isArray(curated)
+    ? { cases: curated, divergences: divergenceTuples }
+    : { ...curated, divergences: divergenceTuples };
+  fs.writeFileSync(curatedFile, JSON.stringify(curatedWithDivergences) + '\n');
 
   console.log(`es-pcre2-agree + pcre2-only (pass-required, test/pcre2-compatibility/corpus.test.ts): ${dedupedAgree.length} across ${byCategory.size} categories`);
   for (const [category, cases] of [...byCategory].sort()) {
     const agree = cases.filter((c) => c.validity === 'es-pcre2-agree').length;
     console.log(`  ${category}: ${cases.length} (${agree} es-pcre2-agree, ${cases.length - agree} pcre2-only)`);
   }
-  console.log(`ES-vs-PCRE2 genuine divergences (documented, es-pcre2-divergences.json): ${dedupedDivergences.length}`);
+  console.log(`ES-vs-PCRE2 genuine divergences (documented, curated-cases.json's divergences key): ${dedupedDivergences.length}`);
   console.log(`Engine bugs (our engine disagrees with real PCRE2): ${engineBugs.length}`);
   for (const c of engineBugs) console.log(`  ${c.id}: /${c.pattern}/${c.flags} on ${JSON.stringify(c.input)}`);
   console.log(`Excluded (uncompilable by one or both): ${excluded.length}`);
