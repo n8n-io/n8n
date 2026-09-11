@@ -72,6 +72,12 @@ export interface ExecuteForChatConfig {
 	attachments?: StoredAttachmentRef[];
 	/** Identifies the surface that started the draft test run. */
 	source?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -124,6 +130,12 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/**
+	 * Set by the in-app preview chat, which builds the runtime with an extra
+	 * instruction saying the agent cannot change its own setup. Other draft
+	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
+	 */
+	previewChat?: boolean;
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -446,6 +458,7 @@ export class AgentExecutionOrchestratorService {
 			// `user` actually reach the cache/reconstruction layer.
 			user: usePublishedVersion ? undefined : user,
 			...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
+			previewChat: config.previewChat,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
@@ -577,6 +590,7 @@ export class AgentExecutionOrchestratorService {
 			memory,
 			attachments,
 			source,
+			previewChat,
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -593,6 +607,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			user,
 			sandboxPrincipalHash,
+			previewChat,
 		});
 
 		try {

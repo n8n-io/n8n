@@ -101,7 +101,7 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
+		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues', 'credentials'],
 		emits: ['credentialSelected'],
 		setup(props: { overrideCredType: string }, { emit }: { emit: Function }) {
 			const onClick = () => {
@@ -113,7 +113,8 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 			};
 			return { onClick };
 		},
-		template: '<div data-test-id="credential-picker" @click="onClick" />',
+		template:
+			'<div data-test-id="credential-picker" :data-cred-count="credentials ? credentials.length : 0" @click="onClick" />',
 	},
 }));
 
@@ -384,6 +385,43 @@ describe('InstanceAiCredentialSetup', () => {
 
 			expect(getByText('Reason for type 1')).toBeTruthy();
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
+		});
+
+		// AGENT-799: the reusable-credentials dropdown must render from the
+		// backend-supplied existingCredentials list even when the shared
+		// usable-credentials slice is empty (e.g. a competing scoped fetch on the
+		// canvas cleared it, or no projectId was available to scope the fetch).
+		it('renders the picker from payload existingCredentials when the usable slice is empty', () => {
+			const credentialsStore = useCredentialsStore();
+			// Slice empty — the pre-fix bug: the card would render the setup button
+			// instead of the picker.
+			stubUsableCredentials(credentialsStore, () => []);
+
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'linearApi',
+					reason: 'For the Linear tool',
+					existingCredentials: [
+						{ id: 'lin-1', name: 'Linear Team' },
+						{ id: 'lin-2', name: 'Personal Linear' },
+					],
+				},
+			];
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			const picker = getByTestId('credential-picker');
+			expect(picker).toBeTruthy();
+			// The setup button must not render alongside the picker.
+			expect(queryByTestId('instance-ai-credential-setup-button')).toBeNull();
+			// The backend-supplied list is forwarded to the picker verbatim.
+			expect(picker.getAttribute('data-cred-count')).toBe('2');
 		});
 	});
 

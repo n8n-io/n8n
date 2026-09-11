@@ -153,7 +153,6 @@
     "lodash": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-network": "workspace:*",
-    "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",

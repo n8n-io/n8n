@@ -41,10 +41,27 @@ import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 // Mock provider packages so createModel() doesn't fail when no API key is set
 vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: () =>
-		Object.assign(() => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }), {
-			chat: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v3' }),
-			embeddingModel: () => ({ provider: 'openai', modelId: 'mock', specificationVersion: 'v2' }),
-		}),
+		Object.assign(
+			() => ({
+				provider: 'openai',
+				modelId: 'mock',
+				specificationVersion: 'v3',
+				supportedUrls: {},
+			}),
+			{
+				chat: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v3',
+					supportedUrls: {},
+				}),
+				embeddingModel: () => ({
+					provider: 'openai',
+					modelId: 'mock',
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
 vi.mock('@ai-sdk/anthropic', () => ({
