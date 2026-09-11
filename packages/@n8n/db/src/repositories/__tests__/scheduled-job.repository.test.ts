@@ -357,22 +357,6 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('updatePayload', () => {
-		it('rewrites the payload of the given ids, leaving schedule and clock untouched', async () => {
-			await repository.updatePayload(entityManager, [1, 2], { n8nVersion: '1.0.0' });
-
-			expect(entityManager.update).toHaveBeenCalledWith(ScheduledJob, [1, 2], {
-				payload: { n8nVersion: '1.0.0' },
-			});
-		});
-
-		it('is a no-op when there are no ids', async () => {
-			await repository.updatePayload(entityManager, [], { n8nVersion: '1.0.0' });
-
-			expect(entityManager.update).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('deleteManyByIds', () => {
 		it('deletes the given ids', async () => {
 			await repository.deleteManyByIds(entityManager, [1, 2]);
