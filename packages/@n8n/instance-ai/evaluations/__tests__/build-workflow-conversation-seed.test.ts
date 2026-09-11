@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
-import { buildWorkflow } from '../harness/build-workflow';
-import { recordUserTurn } from '../harness/chat-loop';
+import { buildWorkflow, buildFailedOnInfra } from '../harness/build-workflow';
+import { recordUserTurn, runMultiTurnConversation } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 
@@ -452,12 +452,71 @@ describe('buildWorkflow with an inline seed', () => {
 });
 
 describe('buildWorkflow with scenario seed data tables', () => {
+	afterEach(() => vi.restoreAllMocks());
 	const jobApplications = {
 		id: 'job-applications-1234',
 		name: 'Job Applications',
 		columns: [{ name: 'application_id', type: 'string' as const }],
 		rows: [{ application_id: 'row_001' }],
 	};
+
+	it.each([false, true])(
+		'classifies input reseeding failures (case expired=%s)',
+		async (expired) => {
+			let now = 1_000;
+			vi.spyOn(Date, 'now').mockImplementation(() => now);
+			const client = makeClient(
+				vi.fn().mockResolvedValue({
+					restored: 0,
+					workflowIds: [],
+					dataTableIds: ['dt-real-1'],
+					agentIds: [],
+				}),
+			);
+			client.seedDataTableRows = vi
+				.fn()
+				.mockRejectedValue(new Error('Input rows could not be seeded'));
+			vi.mocked(runMultiTurnConversation).mockImplementationOnce(async (config) => {
+				if (!config.beforeUserExecution) throw new Error('Missing input preparation');
+				const deadline = config.startTime + config.timeoutMs;
+				if (expired) now = deadline;
+				await config.beforeUserExecution(deadline);
+			});
+			const result = await buildWorkflow({
+				...baseConfig,
+				client,
+				allowUserExecution: true,
+				conversation: [
+					{ role: 'user', text: 'Build a contact log' },
+					{ role: 'user', text: 'I ran it' },
+				],
+				executionScenarios: [
+					{
+						name: 'inputs',
+						description: '',
+						dataSetup: '',
+						successCriteria: '',
+						seedDataTables: [jobApplications],
+					},
+				],
+			});
+			expect(result.success).toBe(false);
+			expect(result.seedingFailed).toBe(!expired);
+			expect(buildFailedOnInfra(result)).toBe(!expired);
+			expect(result.error).toContain(expired ? 'Case timed out' : 'Input rows could not be seeded');
+		},
+	);
+
+	it('rejects an invalid mode before creating a thread', async () => {
+		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progresssive');
+		try {
+			const client = makeClient(vi.fn());
+			await expect(buildWorkflow({ ...baseConfig, client })).rejects.toThrow('N8N_EVAL_BUILD_MODE');
+			expect(client.ensureThread).not.toHaveBeenCalled();
+		} finally {
+			vi.unstubAllEnvs();
+		}
+	});
 
 	it('creates the table under a per-run name and tells the agent THAT name', async () => {
 		// The name is project-unique, so a per-run suffix is what lets two iterations of

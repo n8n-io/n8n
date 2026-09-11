@@ -7,6 +7,8 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiSendMessageRequest,
+	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -22,6 +24,7 @@ import type {
 	AgentSkill,
 	EvaluationConfigDto,
 } from '@n8n/api-types';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
@@ -186,7 +189,7 @@ interface ExecutionListItem {
 export interface ExecutionDetail {
 	id: string;
 	workflowId: string;
-	status: string;
+	status: ExecutionStatus;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
@@ -304,12 +307,19 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
+		mode: InstanceAiBuildMode = 'default',
+		promptVersion?: string,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
+			body: {
+				message,
+				...(attachments?.length ? { attachments } : {}),
+				mode,
+				...(promptVersion ? { promptVersion } : {}),
+			} satisfies InstanceAiSendMessageRequest,
 		});
-		return result as { runId: string };
+		return this.unwrapRestData<{ runId: string }>(result);
 	}
 
 	/**
@@ -338,9 +348,12 @@ export class N8nClient {
 	 * Get the current status of a thread (active run, suspended, background tasks).
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
-	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
+	async getThreadStatus(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadStatusResponse> {
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
-			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`),
+			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
 	}
 
@@ -519,8 +532,8 @@ export class N8nClient {
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<WorkflowResponse> {
-		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
+	async getWorkflow(id: string, timeoutMs?: number): Promise<WorkflowResponse> {
+		const result = (await this.fetch(`/rest/workflows/${id}`, { timeoutMs })) as {
 			data: WorkflowResponse;
 		};
 		return result.data;
@@ -581,12 +594,14 @@ export class N8nClient {
 	async executeWorkflow(
 		workflowId: string,
 		triggerNodeName?: string,
+		timeoutMs?: number,
 	): Promise<{ executionId: string }> {
 		const body: Record<string, unknown> = {};
 		if (triggerNodeName) {
 			body.triggerToStartFrom = { name: triggerNodeName };
 		}
 		const result = (await this.fetch(`/rest/workflows/${workflowId}/run`, {
+			timeoutMs,
 			method: 'POST',
 			body,
 		})) as { data: { executionId: string } };
@@ -597,11 +612,15 @@ export class N8nClient {
 	 * Get a single execution by ID.
 	 * GET /rest/executions/:id
 	 */
-	async getExecution(executionId: string): Promise<ExecutionDetail> {
-		const result = (await this.fetch(`/rest/executions/${executionId}`)) as {
+	async getExecution(executionId: string, timeoutMs?: number): Promise<ExecutionDetail> {
+		const result = (await this.fetch(`/rest/executions/${executionId}`, { timeoutMs })) as {
 			data: ExecutionDetail;
 		};
 		return result.data;
+	}
+
+	async stopExecution(executionId: string): Promise<void> {
+		await this.fetch(`/rest/executions/${executionId}/stop`, { method: 'POST', timeoutMs: 5_000 });
 	}
 
 	/**
@@ -928,8 +947,10 @@ export class N8nClient {
 		threadId: string,
 		tableId: string,
 		rows: Array<Record<string, string | number | boolean | null>>,
+		timeoutMs?: number,
 	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
 		});

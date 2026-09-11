@@ -161,6 +161,10 @@ const evalTestCaseObjectSchema = z
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
+		/** Optional case override. Unset cases use the suite mode or control. */
+		buildMode: z.enum(['progressive', 'default']).optional(),
+		promptVersion: z.string().trim().min(1).max(128).optional(),
+		allowUserExecution: z.boolean().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),

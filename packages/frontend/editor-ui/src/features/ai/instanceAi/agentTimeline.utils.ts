@@ -130,6 +130,8 @@ export function buildTimelineBlocks(
 			if (
 				tc &&
 				classifyToolCall(tc) === 'trace' &&
+				// Keep the explanation before a confirmation outside the trace.
+				tc.confirmation === undefined &&
 				!(
 					tc.toolName === 'build-agent' &&
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
