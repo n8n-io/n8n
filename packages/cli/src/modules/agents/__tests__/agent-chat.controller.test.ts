@@ -10,11 +10,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import {
-	type AgentForegroundTurnService,
-	AgentSessionBusyError,
-} from '../agent-foreground-turn.service';
-import type { AgentExecutionService } from '../agent-execution.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
@@ -32,15 +27,6 @@ function makeController() {
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
-	const agentExecutionService = mock<AgentExecutionService>();
-	const foregroundTurnService = mock<AgentForegroundTurnService>();
-	foregroundTurnService.runForChat.mockImplementation(
-		async (_agentId, _threadId, action) => await action(new AbortController().signal),
-	);
-	foregroundTurnService.runForResume.mockImplementation(
-		async (_agentId, _runId, action) => await action(new AbortController().signal),
-	);
-	agentExecutionService.getActiveExecutionIds.mockResolvedValue([]);
 	agentTestRunService.prepareDraftRun.mockResolvedValue({
 		status: 'ready',
 		sessionId: 'thread-1',
@@ -63,14 +49,10 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
-		agentExecutionService,
-		foregroundTurnService,
 	);
 
 	return {
 		controller,
-		foregroundTurnService,
-		agentExecutionService,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
@@ -161,7 +143,6 @@ describe('AgentChatController chat message history', () => {
 				},
 			],
 			openSuspensions: [],
-			activeExecutionIds: [],
 		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
 			threadId: 'thread-1',
@@ -207,26 +188,6 @@ describe('AgentChatController SSE done payload', () => {
 		await request;
 
 		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
-	});
-
-	it('returns a busy event before storing attachments or starting a model turn', async () => {
-		const { controller, foregroundTurnService, agentChatAttachmentService, agentTestRunService } =
-			makeController();
-		foregroundTurnService.runForChat.mockRejectedValue(new AgentSessionBusyError('thread-1'));
-		const writes: string[] = [];
-		await controller.chat(
-			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
-			makeSseResponse(writes),
-			'agent-1',
-			{
-				message: 'keep my draft',
-				sessionId: 'thread-1',
-				attachments: [{ fileName: 'notes.txt' }],
-			} as never,
-		);
-		expect(writes.join('')).toContain('"type":"session-busy","sessionId":"thread-1"');
-		expect(agentTestRunService.streamDraftRun).not.toHaveBeenCalled();
-		expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
 	});
 
 	it('includes executionId on done when recorded', async () => {

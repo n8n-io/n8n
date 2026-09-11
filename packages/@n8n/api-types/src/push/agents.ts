@@ -5,7 +5,6 @@ export type AgentExecutionUpdated = {
 		agentId: string;
 		threadId: string;
 		executionId: string;
-		status?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 	};
 };
 

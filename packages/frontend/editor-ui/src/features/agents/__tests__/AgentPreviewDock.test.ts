@@ -484,6 +484,12 @@ describe('AgentPreviewChatPage', () => {
 		expect(mountChatPage().element.tagName).toBe('DIV');
 	});
 
+	it('keeps the standalone chat visible when no dock state is provided', () => {
+		const wrapper = mountChatPage();
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('visible')).toBe(true);
+	});
+
 	it('forwards the pre-send guard to the chat panel', () => {
 		const beforeSend = vi.fn();
 		const wrapper = mountChatPage(beforeSend);

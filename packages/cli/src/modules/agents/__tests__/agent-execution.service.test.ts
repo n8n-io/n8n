@@ -135,7 +135,6 @@ describe('AgentExecutionService', () => {
 				await vi.advanceTimersByTimeAsync(30_000);
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
-					status: 'running',
 					projectId: 'project-1',
 					agentId: 'agent-1',
 					threadId: 'thread-1',
@@ -226,7 +225,6 @@ describe('AgentExecutionService', () => {
 			await vi.advanceTimersByTimeAsync(1_000);
 
 			expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
-				status: 'running',
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				threadId: 'thread-1',
@@ -338,7 +336,6 @@ describe('AgentExecutionService', () => {
 				'fs',
 			);
 			expect(executionUpdateBroadcaster.notify).toHaveBeenLastCalledWith({
-				status: 'success',
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				threadId: 'thread-1',
@@ -790,7 +787,6 @@ describe('AgentExecutionService', () => {
 
 			await vi.waitFor(() =>
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
-					status: 'interrupted',
 					projectId: 'project-1',
 					agentId: 'agent-1',
 					threadId: 'thread-1',

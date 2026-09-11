@@ -98,12 +98,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
 	const preserveTerminalStateOnAbort = new WeakSet<AbortController>();
 	const historyLoaded = ref(false);
-	const activeExecutionIds = ref(new Set<string>());
-	const terminalExecutionIds = new Set<string>();
-	const rejectedWhileBusy = ref(false);
-	const isForegroundBusy = computed(
-		() => activeExecutionIds.value.size > 0 || rejectedWhileBusy.value,
-	);
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	let disposed = false;
@@ -139,12 +133,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function refreshHistory({
 		clearOnNotFound = false,
 		silent = false,
-		abortIfStale,
 	}: {
 		clearOnNotFound?: boolean;
 		silent?: boolean;
-		/** Checked after the fetch — drop the result rather than overwrite newer state. */
-		abortIfStale?: () => boolean;
 	} = {}): Promise<boolean> {
 		if (disposed) return false;
 		const continueId = params.continueSessionId?.value;
@@ -155,7 +146,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		try {
 			let dbMessages: AgentPersistedMessageDto[];
 			let openSuspensions: AgentBuilderOpenSuspension[] = [];
-			let runningIds: string[] | undefined;
 			if (continueId) {
 				const envelope = await getChatMessages(
 					rootStore.restApiContext,
@@ -165,7 +155,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
-				runningIds = envelope.activeExecutionIds;
 			} else {
 				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
@@ -174,20 +163,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
-				runningIds = envelope.activeExecutionIds;
 			}
-			if (!isCurrent() || abortIfStale?.()) return false;
-			activeExecutionIds.value = new Set(
-				(
-					runningIds ??
-					dbMessages.flatMap((message) =>
-						message.executionStatus === 'running' && message.executionId
-							? [message.executionId]
-							: [],
-					)
-				).filter((id) => !terminalExecutionIds.has(id)),
-			);
-			rejectedWhileBusy.value = false;
+			if (!isCurrent()) return false;
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreaming.value && streamAtStart === streamVersion) {
@@ -202,10 +179,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (!isCurrent()) return false;
 			const status = (error as { httpStatusCode?: number } | null)?.httpStatusCode;
 			if (status === 404) {
-				if (clearOnNotFound) {
-					if (!isStreaming.value && streamAtStart === streamVersion) messages.value = [];
-					activeExecutionIds.value.clear();
-					rejectedWhileBusy.value = false;
+				if (clearOnNotFound && !isStreaming.value && streamAtStart === streamVersion) {
+					messages.value = [];
 				}
 				return clearOnNotFound;
 			} else if (!silent) {
@@ -245,16 +220,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			await refreshHistory({ silent: true });
 		},
-		({ executionId, status }) => {
+		() => {
 			historyVersion++;
 			retryCount = 0;
 			clearTimeout(retryTimer);
-			if (status === 'running') {
-				if (!terminalExecutionIds.has(executionId)) activeExecutionIds.value.add(executionId);
-			} else if (status) {
-				terminalExecutionIds.add(executionId);
-				activeExecutionIds.value.delete(executionId);
-			}
 		},
 	);
 
@@ -275,9 +244,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	watch(targetKey, () => {
 		historyVersion++;
 		streamVersion++;
-		activeExecutionIds.value.clear();
-		terminalExecutionIds.clear();
-		rejectedWhileBusy.value = false;
 		refresh();
 	});
 	onScopeDispose(() => {
@@ -311,7 +277,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		errorEmitted: boolean;
 		/** Set when the stream reaches a valid terminal event. */
 		terminalEventReceived: boolean;
-		busy?: boolean;
 		/**
 		 * Cursor pointing at the ChatMessage currently being filled by
 		 * text/reasoning/tool-input events. `start-step` / `finish-step`
@@ -745,18 +710,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.terminalEventReceived = true;
 				break;
 			}
-			case 'session-busy':
-				session.busy = true;
-				session.terminalEventReceived = true;
-				rejectedWhileBusy.value = true;
-				refreshAfterStream = true;
-				return { done: true };
 			case 'done':
 				settleOpenReasoning(session);
 				if (event.executionId) {
-					historyVersion++;
-					terminalExecutionIds.add(event.executionId);
-					activeExecutionIds.value.delete(event.executionId);
 					for (const msg of session.minted) {
 						msg.executionId = event.executionId;
 					}
@@ -823,7 +779,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	async function postAndConsume(
 		url: string,
 		body: Record<string, unknown>,
-	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' | 'busy' }> {
+	): Promise<{ outcome: 'completed' | 'failed' | 'aborted' }> {
 		const session: StreamSession = {
 			errorEmitted: false,
 			terminalEventReceived: false,
@@ -866,7 +822,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 
 			await consumeStream(response, session);
-			if (session.busy) return { outcome: 'busy' };
 			if (!session.terminalEventReceived) {
 				transportFailed = true;
 				markStreamInterrupted(session);
@@ -897,6 +852,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			preserveTerminalStateOnAbort.delete(controller);
 			streamSettlements.delete(controller);
 			settleStream?.();
+			streamVersion++;
 			if (refreshAfterStream && !isStreaming.value) {
 				refreshAfterStream = false;
 				refreshHistoryFromPush();
@@ -908,7 +864,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string, files?: File[]) {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
@@ -929,7 +885,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				}),
 			);
 		}
-		return await postAndConsume(url, body);
+		await postAndConsume(url, body);
 	}
 
 	/**
@@ -1021,10 +977,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			resumeData,
 		});
 		let reconciled = false;
-		if (outcome === 'failed' || outcome === 'busy') {
+		if (outcome === 'failed') {
 			reconciled = await refreshHistory();
 		}
-		if ((outcome === 'failed' || outcome === 'busy') && !reconciled && snapshot) {
+		if (outcome === 'failed' && !reconciled && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
 			snapshot.tc.canceled = snapshot.prevCanceled;
@@ -1038,7 +994,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				setMessageInteractives(snapshot.msg, []);
 			}
 		}
-		if ((outcome === 'failed' || outcome === 'busy') && !reconciled && optimisticUserMessageId) {
+		if (outcome === 'failed' && !reconciled && optimisticUserMessageId) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
 		}
 	}
@@ -1059,18 +1015,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string, files?: File[]): Promise<'sent' | 'busy' | 'ignored'> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return 'ignored';
-		if (isForegroundBusy.value) return 'busy';
-		isStreaming.value = true;
-		streamVersion++;
-		const submissionId = crypto.randomUUID();
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
 		messages.value.push({
-			id: submissionId,
+			id: crypto.randomUUID(),
 			role: 'user',
 			content: trimmed,
 			status: 'success',
@@ -1083,16 +1035,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				})),
 			}),
 		});
-		try {
-			const { outcome } = await streamChat(trimmed, files);
-			if (outcome === 'busy') {
-				messages.value = messages.value.filter((message) => message.id !== submissionId);
-				return 'busy';
-			}
-			return 'sent';
-		} finally {
-			if (!abortController.value) isStreaming.value = false;
-		}
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {
@@ -1168,7 +1111,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		warnings,
 		loadHistory,
 		refresh,
-		isForegroundBusy,
 		clearHistory,
 		sendMessage,
 		stopGenerating,

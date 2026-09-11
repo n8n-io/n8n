@@ -12,7 +12,6 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
-import { AgentForegroundTurnService } from '@/modules/agents/agent-foreground-turn.service';
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -209,7 +208,7 @@ describe('AgentBackgroundJobRepository', () => {
 				checkpointStorage,
 				mock<ChatIntegrationRegistry>(),
 				orchestrator,
-				new AgentForegroundTurnService(lockService, executionRepository, checkpointStorage),
+				lockService,
 				publisher,
 				mock<InstanceSettings>({ isWorker: false }),
 				agentsConfig,

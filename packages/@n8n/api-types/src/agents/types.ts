@@ -353,8 +353,6 @@ export interface AgentBuilderOpenSuspension {
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
 	openSuspensions: AgentBuilderOpenSuspension[];
-	/** Foreground executions, including runs that have not produced a message. */
-	activeExecutionIds?: string[];
 }
 
 export interface AgentSessionLangSmithExportResponse {

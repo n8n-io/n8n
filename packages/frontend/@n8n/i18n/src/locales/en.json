@@ -7490,7 +7490,6 @@
 	"agents.builder.chat.sessionPicker.empty": "No previous sessions",
 	"agents.builder.chat.newChat.ariaLabel": "Start a new session",
 	"agents.builder.chat.newChat.label": "New session",
-	"agents.chat.draftRestored": "The agent is working. Your message was saved as a draft.",
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.stop.error": "Couldn't stop the agent. Try again.",

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref, nextTick } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -9,14 +9,14 @@ import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
 } from '../composables/agentTelemetry.utils';
-import type { AgentChatDraft, AgentJsonConfig } from '../types';
+import type { AgentJsonConfig } from '../types';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
+const refreshMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
-const isForegroundBusyMock = ref(false);
 const isStreamingMock = ref(false);
 const isCancellingMock = ref(false);
 let onHistoryLoaded: ((count: number) => void) | undefined;
@@ -144,12 +144,11 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		return {
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
-			isForegroundBusy: isForegroundBusyMock,
-			refresh: vi.fn(),
 			isCancelling: isCancellingMock,
 			messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 			fatalError: fatalErrorMock,
 			loadHistory: loadHistoryMock,
+			refresh: refreshMock,
 			sendMessage: sendMessageMock,
 			stopGenerating: stopGeneratingMock,
 			resume: vi.fn(),
@@ -181,7 +180,6 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
-		isForegroundBusyMock.value = false;
 		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
@@ -189,11 +187,10 @@ describe('AgentChatPanel', () => {
 
 	function mountPanel(
 		overrides: Partial<{
+			visible: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
-			inputFiles: File[];
-			recoverDraft: (sessionId: string | undefined, draft: AgentChatDraft) => void;
 		}> = {},
 	) {
 		return mount(AgentChatPanel, {
@@ -208,67 +205,14 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
-	it.each(['local', 'remote'])(
-		'uses the existing composer lock for a %s foreground turn',
-		async (kind) => {
-			const wrapper = mountPanel();
-			if (kind === 'local') isStreamingMock.value = true;
-			else isForegroundBusyMock.value = true;
-			await nextTick();
-			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-			expect(composer.props('disabled')).toBe(true);
-			expect(composer.props('canSubmit')).toBe(false);
-			composer.vm.$emit('update:modelValue', 'blocked submission');
-			composer.vm.$emit('submit');
-			await flushPromises();
-			expect(sendMessageMock).not.toHaveBeenCalled();
-			wrapper.unmount();
-		},
-	);
-
-	it('restores a racing submission as a draft for manual send', async () => {
-		sendMessageMock.mockImplementationOnce(async () => {
-			isForegroundBusyMock.value = true;
-			return 'busy';
-		});
-		const wrapper = mountPanel();
-		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		composer.vm.$emit('update:modelValue', '  keep my draft  ');
-		await nextTick();
-		composer.vm.$emit('submit');
-		await flushPromises();
-		expect(composer.props('modelValue')).toBe('  keep my draft  ');
-		expect(composer.props('disabled')).toBe(true);
-		isForegroundBusyMock.value = false;
-		await nextTick();
-		expect(composer.props('disabled')).toBe(false);
-		expect(sendMessageMock).toHaveBeenCalledTimes(1);
+	it('refreshes history when the preview reopens', async () => {
+		const wrapper = mountPanel({ visible: false });
+		expect(refreshMock).not.toHaveBeenCalled();
+		await wrapper.setProps({ visible: true });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
+		await wrapper.setProps({ visible: false });
+		expect(refreshMock).toHaveBeenCalledTimes(1);
 		wrapper.unmount();
-	});
-
-	it('returns text and attachments to their original session after the panel closes', async () => {
-		const result = Promise.withResolvers<string>();
-		sendMessageMock.mockReturnValueOnce(result.promise);
-		const recoverDraft = vi.fn();
-		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
-		const wrapper = mountPanel({
-			continueSessionId: 'original-session',
-			inputFiles: [file],
-			recoverDraft,
-		});
-		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		composer.vm.$emit('update:modelValue', '  keep these notes  ');
-		await nextTick();
-		composer.vm.$emit('submit');
-		await flushPromises();
-		expect(sendMessageMock).toHaveBeenCalledWith('keep these notes', [file]);
-		wrapper.unmount();
-		result.resolve('busy');
-		await flushPromises();
-		expect(recoverDraft).toHaveBeenCalledWith('original-session', {
-			text: '  keep these notes  ',
-			files: [file],
-		});
 	});
 
 	it('formats conversation markdown in message order with speaker labels', function formatsConversation() {

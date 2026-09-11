@@ -78,7 +78,7 @@ const speechInput = useSpeechRecognition({
 });
 
 watch(speechInput.result, (spoken) => {
-	if (props.showVoice && !props.disabled) {
+	if (props.showVoice) {
 		const prefix = committedSpokenMessage.value;
 		const separator = prefix.length > 0 ? ' ' : '';
 		emit('update:modelValue', prefix + separator + spoken.trimStart());
@@ -95,15 +95,7 @@ watch(
 	{ flush: 'post' },
 );
 
-watch(
-	() => props.disabled,
-	(disabled) => {
-		if (disabled) speechInput.stop();
-	},
-);
-
 function handleMic() {
-	if (props.disabled) return;
 	committedSpokenMessage.value = props.modelValue;
 	if (speechInput.isListening.value) {
 		speechInput.stop();
@@ -113,7 +105,6 @@ function handleMic() {
 }
 
 function handleAttach() {
-	if (props.disabled) return;
 	fileInputRef.value?.click();
 }
 
@@ -178,10 +169,6 @@ function withinSizeLimit(files: File[]): File[] {
 
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
-	if (props.disabled) {
-		target.value = '';
-		return;
-	}
 	const files = target.files;
 	if (!files || files.length === 0) return;
 	const accepted = withinSizeLimit(Array.from(files));
@@ -191,7 +178,7 @@ function handleFileSelect(e: Event) {
 }
 
 function handlePaste(e: ClipboardEvent) {
-	if (props.disabled || !props.showAttach || !e.clipboardData?.files.length) return;
+	if (!props.showAttach || !e.clipboardData?.files.length) return;
 
 	const files = Array.from(e.clipboardData.files);
 	if (files.length > 0) {

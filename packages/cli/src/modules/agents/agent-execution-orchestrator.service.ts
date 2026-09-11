@@ -195,7 +195,6 @@ export interface StreamChatResponseConfig {
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
-	requireExecutionRecording?: boolean;
 }
 
 function withApprovalToolDetails(chunk: StreamChunk, toolRegistry: ToolRegistry): StreamChunk {
@@ -479,6 +478,18 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
+			const resultStream = await agentInstance.resume('stream', resumeData, {
+				runId,
+				toolCallId,
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId: user?.id,
+					runType,
+				}),
+				...modelStreamStallOptions(this.aiConfig),
+				...(tracing ? { telemetry: tracing } : {}),
+				...(abortSignal ? { abortSignal } : {}),
+			});
 			recorder.recordHitlResponse(toolCallId, resumeData);
 			const startParams: StartExecutionParams = {
 				threadId,
@@ -493,26 +504,11 @@ export class AgentExecutionOrchestratorService {
 					configuration: runtime.telemetryConfiguration,
 				},
 			};
-			executionId = usePublishedVersion
-				? await this.tryStartExecution(
-						startParams,
-						startedAt,
-						'Failed to start resumed agent execution recording',
-					)
-				: await this.agentExecutionService.startExecutionRecording(startParams, startedAt);
-			const resultStream = await agentInstance.resume('stream', resumeData, {
-				runId,
-				toolCallId,
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
-					agentId,
-					userId: user?.id,
-					runType,
-				}),
-				...modelStreamStallOptions(this.aiConfig),
-				...(tracing ? { telemetry: tracing } : {}),
-				...(abortSignal ? { abortSignal } : {}),
-			});
-
+			executionId = await this.tryStartExecution(
+				startParams,
+				startedAt,
+				'Failed to start resumed agent execution recording',
+			);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = usePublishedVersion ? value : withApprovalToolDetails(value, toolRegistry);
 				recorder.record(chunk);
@@ -601,7 +597,6 @@ export class AgentExecutionOrchestratorService {
 			yield* this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
-				requireExecutionRecording: true,
 				agentId,
 				userId: user.id,
 				message,
@@ -790,7 +785,6 @@ export class AgentExecutionOrchestratorService {
 			const stream = this.streamChatResponse({
 				agentInstance: runtime.agent,
 				toolRegistry: runtime.toolRegistry,
-				requireExecutionRecording: true,
 				agentId,
 				...(isDraft ? { userId: identity.user.id } : {}),
 				message,
@@ -878,36 +872,16 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			hideUserMessageFromTranscript,
 			isWakeRun,
-			requireExecutionRecording,
 		} = config;
 		const { threadId, resourceId } = memory;
 
+		let executionId: string | undefined;
 		const recorder = this.createRecorder(toolRegistry, () => executionId, {
 			projectId,
 			agentId,
 			threadId,
 		});
 		const startedAt = recorder.startedAt;
-
-		const startParams: StartExecutionParams = {
-			threadId,
-			agentId,
-			agentName: agentInstance.name,
-			projectId,
-			userMessage: hideUserMessageFromTranscript ? null : message,
-			attachments,
-			source,
-			taskId,
-			taskVersionId,
-			telemetry: { ...telemetry, userId },
-		};
-		const executionId = requireExecutionRecording
-			? await this.agentExecutionService.startExecutionRecording(startParams, startedAt)
-			: await this.tryStartExecution(
-					startParams,
-					startedAt,
-					'Failed to start agent execution recording',
-				);
 
 		try {
 			const tracing = await this.agentRunTracingService.build({
@@ -935,7 +909,23 @@ export class AgentExecutionOrchestratorService {
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});
-
+			const startParams: StartExecutionParams = {
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: hideUserMessageFromTranscript ? null : message,
+				attachments,
+				source,
+				taskId,
+				taskVersionId,
+				telemetry: { ...telemetry, userId },
+			};
+			executionId = await this.tryStartExecution(
+				startParams,
+				startedAt,
+				'Failed to start agent execution recording',
+			);
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				const chunk = includeHitlToolDetails ? withApprovalToolDetails(value, toolRegistry) : value;
 				recorder.record(chunk);

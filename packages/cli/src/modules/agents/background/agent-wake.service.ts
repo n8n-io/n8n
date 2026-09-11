@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -14,10 +14,6 @@ import {
 	type ExecuteForWakeConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal, isAgentSandboxPrincipalHash } from '../agent-sandbox-principal';
-import {
-	AgentForegroundTurnService,
-	AgentSessionBusyError,
-} from '../agent-foreground-turn.service';
 import {
 	AGENT_BACKGROUND_UPDATES_CLOSE_TAG,
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
@@ -37,6 +33,8 @@ import {
 export const WAKE_DEBOUNCE_MS = 5_000;
 export const MAX_CONSECUTIVE_FAILED_WAKES = 3;
 
+const WAKE_LOCK_WAIT_MS = 250;
+const WAKE_LOCK_TTL_MS = 30_000;
 const HINT_TITLE_MAX_CHARS = 80;
 
 type FailureState = { generation: string; count: number };
@@ -58,7 +56,7 @@ export class AgentWakeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly foregroundTurnService: AgentForegroundTurnService,
+		private readonly lockService: LockService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentsConfig: AgentsConfig,
@@ -139,12 +137,13 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
-			await this.foregroundTurnService.run(
-				threadId,
+			await this.lockService.withLease(
+				LockNamespace.KNOWN_LOCKS,
+				`agent-background-wake:${threadId}`,
 				async (signal) => await this.deliverInsideLease(threadId, signal),
+				{ waitTimeoutMs: WAKE_LOCK_WAIT_MS, leaseTtlMs: WAKE_LOCK_TTL_MS },
 			);
 		} catch (error) {
-			if (error instanceof AgentSessionBusyError) return;
 			this.logger.warn('Failed to acquire the background job wake lease', { threadId, error });
 		}
 	}

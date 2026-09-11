@@ -1,5 +1,5 @@
 import { onScopeDispose, type Ref } from 'vue';
-import type { PushMessage, PushPayload } from '@n8n/api-types';
+import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
@@ -20,7 +20,7 @@ interface AgentExecutionUpdatesTarget {
 export function useAgentExecutionUpdates(
 	target: AgentExecutionUpdatesTarget,
 	onUpdate: () => void | Promise<void>,
-	onEvent?: (data: PushPayload<'agentExecutionUpdated'>) => void,
+	onInvalidate?: () => void,
 ): () => void {
 	const pushStore = usePushConnectionStore();
 
@@ -61,8 +61,8 @@ export function useAgentExecutionUpdates(
 	}
 
 	const removeListener = pushStore.addEventListener((event) => {
-		if (event.type === 'agentExecutionUpdated' && matches(event)) {
-			onEvent?.(event.data);
+		if (matches(event)) {
+			onInvalidate?.();
 			run();
 		}
 	});

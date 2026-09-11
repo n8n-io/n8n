@@ -25,8 +25,6 @@ import {
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
-import { AgentExecutionService } from './agent-execution.service';
-import { AgentForegroundTurnService, AgentSessionBusyError } from './agent-foreground-turn.service';
 import { messagesToDto } from './agent-message-mapper';
 import { type FlushableResponse, initSseStream, pumpChunks } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
@@ -47,8 +45,6 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
-		private readonly agentExecutionService: AgentExecutionService,
-		private readonly foregroundTurnService: AgentForegroundTurnService,
 	) {}
 
 	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
@@ -148,43 +144,33 @@ export class AgentChatController {
 			}
 
 			const threadId = prepared.sessionId;
-			await this.foregroundTurnService.runForChat(agentId, threadId, async (leaseSignal) => {
-				const signal = AbortSignal.any([abortController.signal, leaseSignal]);
-				signal.throwIfAborted();
-				storedAttachments = await this.storeChatAttachments({
-					attachments,
+			storedAttachments = await this.storeChatAttachments({
+				attachments,
+				agentId,
+				projectId,
+				threadId,
+				resourceId: draftChatMemoryResourceId(req.user.id),
+			});
+
+			const suspended = await pumpChunks(
+				this.agentTestRunService.streamDraftRun({
 					agentId,
 					projectId,
-					threadId,
-					resourceId: draftChatMemoryResourceId(req.user.id),
-				});
-
-				const suspended = await pumpChunks(
-					this.agentTestRunService.streamDraftRun({
-						agentId,
-						projectId,
-						message,
-						attachments: storedAttachments,
-						user: req.user,
-						sessionId: threadId,
-						onExecutionRecorded: (id) => {
-							executionId = id;
-						},
-						abortSignal: signal,
-					}),
-					send,
-				);
-				if (!suspended) {
-					send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
-				}
-			});
-		} catch (error) {
-			if (error instanceof AgentSessionBusyError) {
-				if (!abortController.signal.aborted) {
-					send({ type: 'session-busy', sessionId: error.threadId });
-				}
-				return;
+					message,
+					attachments: storedAttachments,
+					user: req.user,
+					sessionId: threadId,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
+					abortSignal: abortController.signal,
+				}),
+				send,
+			);
+			if (!suspended) {
+				send({ type: 'done', sessionId: threadId, ...(executionId ? { executionId } : {}) });
 			}
+		} catch (error) {
 			// No execution recorded means nothing references this turn's attachments —
 			// remove them so failed turns can't accumulate orphans. Best-effort, and
 			// deliberately also on aborted turns.
@@ -219,38 +205,28 @@ export class AgentChatController {
 		const abortOnClose = () => abortController.abort();
 		res.once('close', abortOnClose);
 		try {
-			await this.foregroundTurnService.runForResume(agentId, runId, async (leaseSignal) => {
-				const signal = AbortSignal.any([abortController.signal, leaseSignal]);
-				signal.throwIfAborted();
-				let executionId: string | undefined;
-				const suspended = await pumpChunks(
-					this.agentExecutionOrchestratorService.resumeForChat({
-						agentId,
-						projectId,
-						runId,
-						toolCallId,
-						resumeData,
-						user: req.user,
-						usePublishedVersion: false,
-						integrationType: N8N_CHAT_INTEGRATION_TYPE,
-						onExecutionRecorded: (id) => {
-							executionId = id;
-						},
-						abortSignal: signal,
-					}),
-					send,
-				);
-				if (!suspended) {
-					send({ type: 'done', ...(executionId ? { executionId } : {}) });
-				}
-			});
-		} catch (error) {
-			if (error instanceof AgentSessionBusyError) {
-				if (!abortController.signal.aborted) {
-					send({ type: 'session-busy', sessionId: error.threadId });
-				}
-				return;
+			let executionId: string | undefined;
+			const suspended = await pumpChunks(
+				this.agentExecutionOrchestratorService.resumeForChat({
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					user: req.user,
+					usePublishedVersion: false,
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
+					onExecutionRecorded: (id) => {
+						executionId = id;
+					},
+					abortSignal: abortController.signal,
+				}),
+				send,
+			);
+			if (!suspended) {
+				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
+		} catch (error) {
 			if (!abortController.signal.aborted) {
 				const errorMessage = error instanceof Error ? error.message : 'Resume failed';
 				send({ type: 'error', message: errorMessage });
@@ -305,10 +281,9 @@ export class AgentChatController {
 			if (checkpoint) return withOpenSuspensions([], checkpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return {
-			...withOpenSuspensions(history, checkpoint, { appendInactiveCheckpointMessages: false }),
-			activeExecutionIds: await this.agentExecutionService.getActiveExecutionIds(threadId),
-		};
+		return withOpenSuspensions(history, checkpoint, {
+			appendInactiveCheckpointMessages: false,
+		});
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -324,12 +299,7 @@ export class AgentChatController {
 			agentId,
 			chatThreadId(agentId, req.user.id),
 		);
-		return {
-			...withOpenSuspensions(messagesToDto(messages), checkpoint),
-			activeExecutionIds: await this.agentExecutionService.getActiveExecutionIds(
-				chatThreadId(agentId, req.user.id),
-			),
-		};
+		return withOpenSuspensions(messagesToDto(messages), checkpoint);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
