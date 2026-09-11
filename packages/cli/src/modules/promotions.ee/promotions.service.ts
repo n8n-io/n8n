@@ -10,7 +10,6 @@ import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
@@ -138,9 +137,6 @@ export class PromotionsService {
 		request: PromotePackageDto & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'promote');
-		if (input.config.direction !== 'promote') {
-			throw new UnexpectedError('Resolved an invalid promotion direction');
-		}
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 

@@ -32,6 +32,10 @@ export class PromotionConfigResolver {
 	 * direction to compare: the addressed config either exists or the request is a
 	 * 404.
 	 */
+	async resolveForConnection<Direction extends PromotionDirection>(
+		connectionId: string,
+		direction: Direction,
+	): Promise<PromotionOperationInput<Direction>>;
 	async resolveForConnection(
 		connectionId: string,
 		direction: PromotionDirection,
@@ -50,6 +54,10 @@ export class PromotionConfigResolver {
 	 * otherwise the instance connection applies. A resolved connection that lacks the
 	 * direction is a clear error, never a second fallback.
 	 */
+	async resolveForProject<Direction extends PromotionDirection>(
+		projectId: string,
+		direction: Direction,
+	): Promise<PromotionOperationInput<Direction>>;
 	async resolveForProject(
 		projectId: string,
 		direction: PromotionDirection,

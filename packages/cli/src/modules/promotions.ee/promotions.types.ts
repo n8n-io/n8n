@@ -1,6 +1,7 @@
 import type {
 	PromotionConnectionScope,
 	PromotionConnectionTarget,
+	PromotionDirection,
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	promotionGitApplySettingsSchema,
@@ -51,17 +52,18 @@ export type ResolvedPromotionConfig =
  * cannot pair old credentials with a new target. `encryptedAuth` is decrypted at
  * the Git boundary, never held beyond it.
  */
-export type PromotionOperationInput = Readonly<{
-	connectionId: string;
-	connectionScope: PromotionConnectionScope;
-	configId: string;
-	providerId: string;
-	providerType: PromotionProviderType;
-	authType: PromotionProviderAuthType;
-	encryptedAuth: string;
-	target: PromotionConnectionTarget;
-	config: ResolvedPromotionConfig;
-}>;
+export type PromotionOperationInput<Direction extends PromotionDirection = PromotionDirection> =
+	Readonly<{
+		connectionId: string;
+		connectionScope: PromotionConnectionScope;
+		configId: string;
+		providerId: string;
+		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		encryptedAuth: string;
+		target: PromotionConnectionTarget;
+		config: Extract<ResolvedPromotionConfig, { direction: Direction }>;
+	}>;
 
 /**
  * Written next to a checkout after a successful clone, and compared with the
