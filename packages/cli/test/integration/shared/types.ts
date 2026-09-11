@@ -62,6 +62,7 @@ type EndpointGroup =
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'agents'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'

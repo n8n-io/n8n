@@ -812,14 +812,87 @@ describe('AppDetailsView', () => {
 			expect(getByTestId('app-connection-access')).not.toHaveTextContent('Read');
 		});
 
+		const supportBinding: DescribedBinding = {
+			key: 'support',
+			kind: 'agent',
+			agentId: 'agent-1',
+			name: 'Support',
+			permissions: ['chat', 'history'],
+			published: true,
+		};
+
+		it('lists a connected agent with a link and its access level', async () => {
+			appsStore.bindings = [
+				supportBinding,
+				{ ...supportBinding, key: 'faq', permissions: ['chat'] },
+				{ ...supportBinding, key: 'log', permissions: ['history'] },
+			];
+			const { getByTestId, getAllByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByTestId('app-builder-mode-build'));
+
+			const rows = getAllByTestId('app-connection');
+			expect(rows).toHaveLength(3);
+			const links = getAllByTestId('app-connection-agent');
+			expect(links[0]).toHaveAttribute('href', '/projects/proj-1/agents/agent-1');
+			expect(links[0]).toHaveAttribute('target', '_blank');
+			expect(links[0]).toHaveTextContent('Support');
+			expect(rows[0].querySelector('[data-icon="robot"]')).not.toBeNull();
+			const access = getAllByTestId('app-connection-access');
+			expect(access[0]).toHaveTextContent('Chat & history');
+			expect(access[1]).toHaveTextContent('Chat');
+			expect(access[1]).not.toHaveTextContent('history');
+			expect(access[2]).toHaveTextContent('History');
+			expect(access[2]).not.toHaveTextContent('Chat');
+			expect(queryByTestId('app-connection-not-published')).toBeNull();
+			expect(queryByTestId('app-connection-workflow')).toBeNull();
+			expect(queryByTestId('app-connection-data-table')).toBeNull();
+		});
+
+		it('flags an unpublished agent connection with the badge only', async () => {
+			appsStore.bindings = [{ ...supportBinding, published: false }];
+			appsStore.bindingWarnings = [
+				`Binding 'support': agent "Support" is not published. The app gets an error until it is published.`,
+			];
+			const { getByTestId, queryByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByTestId('app-builder-mode-build'));
+
+			expect(getByTestId('app-connection-not-published')).toHaveTextContent(
+				'Not published — the app cannot chat yet',
+			);
+			expect(getByTestId('app-connection-agent')).toHaveTextContent('Support');
+			expect(queryByTestId('app-connection-warning')).toBeNull();
+		});
+
+		it('disconnects an agent after confirmation with the agent copy', async () => {
+			appsStore.bindings = [supportBinding];
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			const { getByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByTestId('app-builder-mode-build'));
+			await userEvent.click(getByTestId('app-connection-delete'));
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'disconnect the "Support" agent? Visitors of the app will no longer be able to chat with it.',
+				),
+				'Disconnect agent',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenCalledWith('proj-1', 'app-1', 'support');
+		});
+
 		it('lists a missing connection without a link and disconnects it with its kind copy', async () => {
 			appsStore.bindings = [
 				{ key: 'tasks', kind: 'dataTable', name: 'tasks', missing: true },
 				{ key: 'submit', kind: 'workflow', name: 'submit', missing: true },
+				{ key: 'support', kind: 'agent', name: 'support', missing: true },
 			];
 			appsStore.bindingWarnings = [
 				"Binding 'tasks': data table 'dt-1' no longer exists in the app's project.",
 				"Binding 'submit': workflow 'wf-1' no longer exists in the app's project.",
+				"Binding 'support': agent 'agent-1' no longer exists in the app's project.",
 			];
 			confirm.mockResolvedValue(MODAL_CONFIRM);
 			const { getByTestId, getAllByTestId, queryByTestId } = await renderApp(makeApp());
@@ -827,16 +900,21 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			const rows = getAllByTestId('app-connection');
-			expect(rows).toHaveLength(2);
+			expect(rows).toHaveLength(3);
 			expect(rows[0].querySelector('a')).toBeNull();
 			expect(rows[1].querySelector('a')).toBeNull();
+			expect(rows[2].querySelector('a')).toBeNull();
 			expect(getAllByTestId('app-connection-missing')[0]).toHaveTextContent('tasks');
 			expect(getAllByTestId('app-connection-missing')[1]).toHaveTextContent('submit');
+			expect(getAllByTestId('app-connection-missing')[2]).toHaveTextContent('support');
 			expect(rows[0].querySelector('[data-icon="table"]')).not.toBeNull();
 			expect(rows[1].querySelector('[data-icon="workflow"]')).not.toBeNull();
+			expect(rows[2].querySelector('[data-icon="robot"]')).not.toBeNull();
 			expect(queryByTestId('app-connection-data-table')).toBeNull();
 			expect(queryByTestId('app-connection-workflow')).toBeNull();
+			expect(queryByTestId('app-connection-agent')).toBeNull();
 			expect(queryByTestId('app-connection-access')).toBeNull();
+			expect(queryByTestId('app-connection-not-published')).toBeNull();
 			expect(queryByTestId('app-connections-warning')).toBeNull();
 
 			const warned = rows[0].querySelector('[data-test-id="app-connection-warning"]');
@@ -859,6 +937,14 @@ describe('AppDetailsView', () => {
 				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
 			);
 			expect(appsStore.deleteBinding).toHaveBeenLastCalledWith('proj-1', 'app-1', 'submit');
+
+			await userEvent.click(getAllByTestId('app-connection-delete')[2]);
+			expect(confirm).toHaveBeenLastCalledWith(
+				expect.stringContaining('disconnect the "support" agent'),
+				'Disconnect agent',
+				expect.objectContaining({ confirmButtonText: 'Disconnect' }),
+			);
+			expect(appsStore.deleteBinding).toHaveBeenLastCalledWith('proj-1', 'app-1', 'support');
 		});
 
 		it('disconnects a data table after confirmation with the table copy', async () => {
@@ -929,7 +1015,7 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getByTestId('app-builder-mode-build'));
 
 			expect(getByTestId('app-connections-empty')).toHaveTextContent(
-				'No workflows or data tables connected yet.',
+				'No workflows, data tables or agents connected yet.',
 			);
 			expect(queryByTestId('app-connection')).not.toBeInTheDocument();
 		});

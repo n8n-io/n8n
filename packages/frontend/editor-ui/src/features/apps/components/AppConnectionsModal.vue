@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type {
+	AgentPermission,
 	AppBinding,
 	DataTablePermission,
+	DescribedAgentBinding,
 	DescribedDataTableBinding,
 	DescribedWorkflowBinding,
 } from '@n8n/api-types';
@@ -11,6 +13,8 @@ import { computed, onMounted, ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentToolCatalog } from '@/features/agents/composables/useAgentToolCatalog';
+import { useProjectAgentsList } from '@/features/agents/composables/useProjectAgentsList';
+import type { AgentResource } from '@/features/agents/types';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { deriveBindingKey } from '@/features/apps/bindingKey';
 import AppBindingDetailBody from '@/features/apps/components/AppBindingDetailBody.vue';
@@ -19,6 +23,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
+	AgentConnectionItem,
 	DataStoreConnectionItem,
 	ServiceConnectionItem,
 	ToolCategoryKey,
@@ -44,16 +49,26 @@ const appsStore = useAppsStore();
 const dataTableStore = useDataTableStore();
 const { confirmAndDeleteBinding } = useAppDeletion();
 const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
+// The agent list is cached per project; a fresh fetch shows agents published since.
+const { list: agents, refresh: loadAgents } = useProjectAgentsList(
+	computed(() => props.data.projectId),
+);
 
-const CATEGORIES: ToolCategoryKey[] = ['workflows', 'data'];
+const CATEGORIES: ToolCategoryKey[] = ['workflows', 'data', 'agents'];
 const CATEGORY_ICONS: Partial<Record<ToolCategoryKey, IconName>> = {
 	workflows: 'workflow',
 	data: 'table',
+	agents: 'robot',
 };
 const DATA_TABLE_PERMISSION_OPTIONS: Array<{ value: DataTablePermission; label: string }> = [
 	{ value: 'read', label: i18n.baseText('apps.connections.access.read') },
 	{ value: 'write', label: i18n.baseText('apps.connections.access.write') },
 ];
+const AGENT_PERMISSION_OPTIONS: Array<{ value: AgentPermission; label: string }> = [
+	{ value: 'chat', label: i18n.baseText('apps.connections.access.chat') },
+	{ value: 'history', label: i18n.baseText('apps.connections.access.history') },
+];
+type BindingPermission = DataTablePermission | AgentPermission;
 
 const isOpen = computed({
 	get: () => uiStore.modalsById[props.modalName]?.open === true,
@@ -69,9 +84,12 @@ onMounted(() => {
 		.catch((error) =>
 			toast.showError(error, i18n.baseText('apps.connections.picker.dataTables.error')),
 		);
+	void loadAgents().catch((error) =>
+		toast.showError(error, i18n.baseText('apps.connections.picker.agents.error')),
+	);
 });
 
-type PresentBinding = DescribedWorkflowBinding | DescribedDataTableBinding;
+type PresentBinding = DescribedWorkflowBinding | DescribedDataTableBinding | DescribedAgentBinding;
 
 const bindingByWorkflowId = computed(() => {
 	const map = new Map<string, DescribedWorkflowBinding>();
@@ -85,6 +103,14 @@ const bindingByDataTableId = computed(() => {
 	const map = new Map<string, DescribedDataTableBinding>();
 	for (const binding of appsStore.bindings) {
 		if (binding.kind === 'dataTable' && !binding.missing) map.set(binding.dataTableId, binding);
+	}
+	return map;
+});
+
+const bindingByAgentId = computed(() => {
+	const map = new Map<string, DescribedAgentBinding>();
+	for (const binding of appsStore.bindings) {
+		if (binding.kind === 'agent' && !binding.missing) map.set(binding.agentId, binding);
 	}
 	return map;
 });
@@ -116,7 +142,19 @@ function dataTableItem(dataTable: DataTable): DataStoreConnectionItem {
 	};
 }
 
-// Only workflows the app can call today: compatible (`availableWorkflows`) and published.
+function agentItem(agent: AgentResource): AgentConnectionItem {
+	return {
+		id: `agent:${agent.id}`,
+		kind: 'agent',
+		agentId: agent.id,
+		title: agent.name,
+		iconSource: { type: 'icon', name: 'robot' },
+		status: bindingByAgentId.value.has(agent.id) ? 'connected' : 'none',
+	};
+}
+
+// Only resources the app can call today: compatible (`availableWorkflows`) and
+// published workflows, and published agents.
 const items = computed<ToolConnectionItem[]>(() => [
 	...availableWorkflows.value
 		.filter((workflow) => workflow.activeVersionId !== null)
@@ -126,6 +164,9 @@ const items = computed<ToolConnectionItem[]>(() => [
 	...dataTableStore.dataTables
 		.filter((dataTable) => dataTable.projectId === props.data.projectId)
 		.map(dataTableItem),
+	...(agents.value ?? [])
+		.filter((agent) => agent.projectId === props.data.projectId && agent.activeVersionId !== null)
+		.map(agentItem),
 ]);
 
 // Resolved from the id on every render so the detail view follows the
@@ -138,11 +179,18 @@ const detailItem = computed<ToolConnectionItem | null>(
 function bindingFor(item: ToolConnectionItem): PresentBinding | null {
 	if (item.kind === 'service') return bindingByWorkflowId.value.get(item.serviceId) ?? null;
 	if (item.kind === 'data-store') return bindingByDataTableId.value.get(item.dataStoreId) ?? null;
+	if (item.kind === 'agent') return bindingByAgentId.value.get(item.agentId) ?? null;
 	return null;
 }
 
-function permissionsOf(binding: PresentBinding | null): DataTablePermission[] {
-	return binding?.kind === 'dataTable' ? binding.permissions : [];
+function permissionsOf(binding: PresentBinding | null): BindingPermission[] {
+	return binding?.kind === 'dataTable' || binding?.kind === 'agent' ? binding.permissions : [];
+}
+
+function permissionOptionsFor(item: ToolConnectionItem) {
+	if (item.kind === 'data-store') return DATA_TABLE_PERMISSION_OPTIONS;
+	if (item.kind === 'agent') return AGENT_PERMISSION_OPTIONS;
+	return [];
 }
 
 function bindingKeyFor(title: string): string {
@@ -152,19 +200,37 @@ function bindingKeyFor(title: string): string {
 	);
 }
 
-function newBinding(
-	item: ToolConnectionItem,
-	permissions: DataTablePermission[],
-): AppBinding | null {
+// The detail body emits the union type; the option list of the kind narrows it.
+function pick<P extends BindingPermission>(
+	options: Array<{ value: P }>,
+	permissions: BindingPermission[],
+): P[] {
+	return options.map((option) => option.value).filter((value) => permissions.includes(value));
+}
+
+function newBinding(item: ToolConnectionItem, permissions: BindingPermission[]): AppBinding | null {
 	const key = bindingKeyFor(item.title);
 	if (item.kind === 'service') return { key, kind: 'workflow', workflowId: item.serviceId };
 	if (item.kind === 'data-store') {
-		return { key, kind: 'dataTable', dataTableId: item.dataStoreId, permissions };
+		return {
+			key,
+			kind: 'dataTable',
+			dataTableId: item.dataStoreId,
+			permissions: pick(DATA_TABLE_PERMISSION_OPTIONS, permissions),
+		};
+	}
+	if (item.kind === 'agent') {
+		return {
+			key,
+			kind: 'agent',
+			agentId: item.agentId,
+			permissions: pick(AGENT_PERMISSION_OPTIONS, permissions),
+		};
 	}
 	return null;
 }
 
-async function connect(item: ToolConnectionItem, permissions: DataTablePermission[]) {
+async function connect(item: ToolConnectionItem, permissions: BindingPermission[]) {
 	const binding = newBinding(item, permissions);
 	if (!binding) return;
 	try {
@@ -181,7 +247,7 @@ async function connect(item: ToolConnectionItem, permissions: DataTablePermissio
 	}
 }
 
-async function save(item: ToolConnectionItem, permissions: DataTablePermission[]) {
+async function save(item: ToolConnectionItem, permissions: BindingPermission[]) {
 	const binding = bindingFor(item);
 	if (!binding) return;
 	try {
@@ -231,8 +297,14 @@ async function disconnect(item: ToolConnectionItem) {
 				:item="item"
 				:connected="bindingFor(item) !== null"
 				:permissions="permissionsOf(bindingFor(item))"
-				:permission-options="item.kind === 'data-store' ? DATA_TABLE_PERMISSION_OPTIONS : []"
-				:note="i18n.baseText('apps.connections.access.note')"
+				:permission-options="permissionOptionsFor(item)"
+				:note="
+					i18n.baseText(
+						item.kind === 'agent'
+							? 'apps.connections.access.agentNote'
+							: 'apps.connections.access.note',
+					)
+				"
 				@connect="connect(item, $event)"
 				@save="save(item, $event)"
 				@disconnect="disconnect(item)"

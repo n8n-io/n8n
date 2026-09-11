@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { dataTablePermissionSchema } from './app-binding.schema';
+import { agentPermissionSchema, dataTablePermissionSchema } from './app-binding.schema';
 import { appNameSchema, appNamespaceSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -296,6 +296,20 @@ export const appBindingMetaSchema = z.discriminatedUnion('kind', [
 		key: z.string(),
 		permissions: z.array(dataTablePermissionSchema).min(1).max(2),
 		// For the link to the data table in the approval card.
+		projectId: z.string(),
+	}),
+	z.object({
+		kind: z.literal('agent'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		agentId: z.string(),
+		agentName: z.string(),
+		key: z.string(),
+		permissions: z.array(agentPermissionSchema).min(1).max(2),
+		// Only the published version answers visitors; the card warns while there is none.
+		published: z.boolean(),
+		// For the link to the agent in the approval card.
 		projectId: z.string(),
 	}),
 ]);
@@ -1907,6 +1921,7 @@ const instanceAiPermissionsSchema = z.object({
 	executeMcpTool: instanceAiPermissionModeSchema,
 	bindAppWorkflow: instanceAiPermissionModeSchema,
 	bindAppDataTable: instanceAiPermissionModeSchema,
+	bindAppAgent: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1935,6 +1950,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	executeMcpTool: 'require_approval',
 	bindAppWorkflow: 'require_approval',
 	bindAppDataTable: 'require_approval',
+	bindAppAgent: 'require_approval',
 };
 
 /**

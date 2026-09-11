@@ -1,10 +1,14 @@
 import type { AppBinding } from '@n8n/api-types';
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, User, WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type IDataObject, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { AgentsService } from '@/modules/agents/agents.service';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
 import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
@@ -20,6 +24,7 @@ import type { AppRepository } from '../app.repository';
 import { AppsService } from '../apps.service';
 import { AppNotFoundError } from '../errors/app-not-found.error';
 import { AppQuotaExceededError } from '../errors/app-quota-exceeded.error';
+import { BindingAgentNotFoundError } from '../errors/binding-agent-not-found.error';
 import { BindingDataTableNotFoundError } from '../errors/binding-data-table-not-found.error';
 import { BindingIncompatibleError } from '../errors/binding-incompatible.error';
 import { BindingNotFoundError } from '../errors/binding-not-found.error';
@@ -47,6 +52,8 @@ describe('AppsService', () => {
 			mock<WorkflowToolWorkflowLoader>(),
 			mock<ExecutionPersistence>(),
 			mock<DataTableService>(),
+			mock<AgentsService>(),
+			mock<ModuleRegistry>(),
 		);
 	});
 
@@ -132,6 +139,20 @@ const tableBinding = (
 const table = (overrides: Partial<DataTable> = {}): DataTable =>
 	({ id: 'dt-1', name: 'Tasks', projectId: 'proj-1', ...overrides }) as DataTable;
 
+const agentBinding = (
+	permissions: Array<'chat' | 'history'> = ['chat', 'history'],
+	key = 'support',
+): AppBinding => ({ key, kind: 'agent', agentId: 'agent-1', permissions });
+
+const agent = (overrides: Partial<Agent> = {}): Agent =>
+	({
+		id: 'agent-1',
+		name: 'Support',
+		projectId: 'proj-1',
+		activeVersionId: 'v-1',
+		...overrides,
+	}) as Agent;
+
 const column = (name: string, type: DataTableColumn['type']) =>
 	({ name, type, dataTableId: 'dt-1' }) as DataTableColumn;
 
@@ -174,6 +195,8 @@ describe('AppsService bindings', () => {
 	let workflowLoader: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
 	let executionPersistence: ReturnType<typeof mock<ExecutionPersistence>>;
 	let dataTableService: ReturnType<typeof mock<DataTableService>>;
+	let agentsService: ReturnType<typeof mock<AgentsService>>;
+	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let service: AppsService;
 	let app: App;
 
@@ -183,6 +206,9 @@ describe('AppsService bindings', () => {
 		workflowLoader = mock<WorkflowToolWorkflowLoader>();
 		executionPersistence = mock<ExecutionPersistence>();
 		dataTableService = mock<DataTableService>();
+		agentsService = mock<AgentsService>();
+		moduleRegistry = mock<ModuleRegistry>();
+		moduleRegistry.isActive.mockReturnValue(true);
 		executionPersistence.findMultipleExecutions.mockResolvedValue([
 			successfulExecution([{ reply: 'hi' }]),
 		]);
@@ -195,6 +221,8 @@ describe('AppsService bindings', () => {
 			workflowLoader,
 			executionPersistence,
 			dataTableService,
+			agentsService,
+			moduleRegistry,
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);
@@ -348,6 +376,57 @@ describe('AppsService bindings', () => {
 				}),
 			]);
 			expect(result.warnings).toEqual([]);
+		});
+
+		it('rejects an agent that is not in the app project', async () => {
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(service.setBindings('app-1', [agentBinding()], user)).rejects.toBeInstanceOf(
+				BindingAgentNotFoundError,
+			);
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'proj-1');
+			expect(appRepository.updateBindings).not.toHaveBeenCalled();
+		});
+
+		it('rejects an agent binding with 400 while the agents module is inactive', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			const error: unknown = await service
+				.setBindings('app-1', [agentBinding()], user)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect(error).toMatchObject({ message: 'Agents are not enabled on this instance.' });
+			expect(moduleRegistry.isActive).toHaveBeenCalledWith('agents');
+			expect(agentsService.findById).not.toHaveBeenCalled();
+		});
+
+		it('rejects an agent binding without permissions', async () => {
+			await expect(service.setBindings('app-1', [agentBinding([])], user)).rejects.toBeInstanceOf(
+				InvalidBindingsError,
+			);
+			expect(agentsService.findById).not.toHaveBeenCalled();
+		});
+
+		it('binds an unpublished agent and reports it as a warning', async () => {
+			agentsService.findById.mockResolvedValue(agent({ activeVersionId: null }));
+
+			const result = await service.setBindings('app-1', [agentBinding(['chat'])], user);
+
+			expect(appRepository.updateBindings).toHaveBeenCalledWith(app, [agentBinding(['chat'])]);
+			expect(result.bindings).toEqual([
+				{
+					key: 'support',
+					kind: 'agent',
+					agentId: 'agent-1',
+					name: 'Support',
+					permissions: ['chat'],
+					published: false,
+				},
+			]);
+			expect(result.warnings).toEqual([
+				'Binding \'support\': agent "Support" is not published. The app gets an error until it is published.',
+			]);
 		});
 	});
 
@@ -615,6 +694,55 @@ describe('AppsService bindings', () => {
 			]);
 			expect(result.warnings).toEqual([
 				"Binding 'tasks': data table 'dt-1' no longer exists in the app's project.",
+			]);
+		});
+
+		it('describes a published agent binding without warnings', async () => {
+			app.bindings = [agentBinding()];
+			agentsService.findById.mockResolvedValue(agent());
+
+			const result = await service.describeBindings(app);
+
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'proj-1');
+			expect(result.bindings).toEqual([
+				{
+					key: 'support',
+					kind: 'agent',
+					agentId: 'agent-1',
+					name: 'Support',
+					permissions: ['chat', 'history'],
+					published: true,
+				},
+			]);
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('keeps a binding whose agent no longer exists as missing and warns', async () => {
+			app.bindings = [agentBinding()];
+			agentsService.findById.mockResolvedValue(null);
+
+			const result = await service.describeBindings(app);
+
+			expect(result.bindings).toEqual([
+				{ key: 'support', kind: 'agent', name: 'support', missing: true },
+			]);
+			expect(result.warnings).toEqual([
+				"Binding 'support': agent 'agent-1' no longer exists in the app's project.",
+			]);
+		});
+
+		it('keeps an agent binding as missing and warns while the agents module is inactive', async () => {
+			app.bindings = [agentBinding()];
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			const result = await service.describeBindings(app);
+
+			expect(agentsService.findById).not.toHaveBeenCalled();
+			expect(result.bindings).toEqual([
+				{ key: 'support', kind: 'agent', name: 'support', missing: true },
+			]);
+			expect(result.warnings).toEqual([
+				"Binding 'support': Agents are not enabled on this instance.",
 			]);
 		});
 

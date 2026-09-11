@@ -215,7 +215,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'apps',
 		labelKey: 'settings.n8nAgent.permissions.group.apps',
-		keys: ['bindAppWorkflow', 'bindAppDataTable'],
+		keys: ['bindAppWorkflow', 'bindAppDataTable', 'bindAppAgent'],
 	},
 	{
 		id: 'system',

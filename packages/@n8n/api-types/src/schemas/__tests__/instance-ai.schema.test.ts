@@ -259,11 +259,13 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.cleanupTestExecutions).toBe('blocked');
 		expect(result.bindAppWorkflow).toBe('blocked');
 		expect(result.bindAppDataTable).toBe('blocked');
+		expect(result.bindAppAgent).toBe('blocked');
 	});
 
 	it('requires approval for app bindings by default', () => {
 		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppWorkflow).toBe('require_approval');
 		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppDataTable).toBe('require_approval');
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppAgent).toBe('require_approval');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -350,6 +352,25 @@ describe('confirmationRequestPayloadSchema', () => {
 				dataTableName: 'Tasks',
 				key: 'tasks',
 				permissions: ['read', 'write'],
+				projectId: 'proj-1',
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of an agent bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				kind: 'agent',
+				appId: 'app-1',
+				appName: 'Helpdesk',
+				appNamespace: 'helpdesk',
+				agentId: 'agent-1',
+				agentName: 'Support',
+				key: 'support',
+				permissions: ['chat', 'history'],
+				published: false,
 				projectId: 'proj-1',
 			},
 		});

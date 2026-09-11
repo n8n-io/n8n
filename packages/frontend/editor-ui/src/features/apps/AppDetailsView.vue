@@ -3,10 +3,12 @@ import type { DescribedBinding } from '@n8n/api-types';
 import type { AppPreviewStatus, InstanceAiAppPreviewDiagnostic } from '@n8n/api-types';
 import {
 	type ActionDropdownItem,
+	type IconName,
 	N8nActionDropdown,
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
+	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
@@ -17,7 +19,7 @@ import {
 	N8nToggleGroup,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -220,10 +222,40 @@ const buildTabOptions = computed(() => [
 	},
 ]);
 
+const BINDING_ICONS: Record<DescribedBinding['kind'], IconName> = {
+	workflow: 'workflow',
+	dataTable: 'table',
+	agent: 'robot',
+};
+
+const bindingAccessLabel = (binding: DescribedBinding): string | null => {
+	if (binding.missing) return null;
+	const key = ((): BaseTextKey | null => {
+		if (binding.kind === 'dataTable') {
+			return binding.permissions.includes('read')
+				? binding.permissions.includes('write')
+					? 'apps.connections.access.readWrite'
+					: 'apps.connections.access.read'
+				: 'apps.connections.access.write';
+		}
+		if (binding.kind === 'agent') {
+			return binding.permissions.includes('chat')
+				? binding.permissions.includes('history')
+					? 'apps.connections.access.chatHistory'
+					: 'apps.connections.access.chat'
+				: 'apps.connections.access.history';
+		}
+		return null;
+	})();
+	return key ? i18n.baseText(key) : null;
+};
+
 // The API reports warnings as one flat list; each starts with the quoted binding key.
-// The key is not shown in the UI, so the tooltip drops that prefix.
-const bindingWarnings = (key: string) => {
-	const prefix = `Binding '${key}':`;
+// The key is not shown in the UI, so the tooltip drops that prefix. An unpublished
+// agent's only warning is the one its badge already shows, so it gets no icon.
+const bindingWarnings = (binding: DescribedBinding) => {
+	if (binding.kind === 'agent' && !binding.missing && !binding.published) return [];
+	const prefix = `Binding '${binding.key}':`;
 	return appsStore.bindingWarnings
 		.filter((warning) => warning.startsWith(prefix))
 		.map((warning) => warning.slice(prefix.length).trim());
@@ -822,7 +854,9 @@ watch(
 
 					<div :class="$style.connectCard" data-test-id="app-connections">
 						<div :class="$style.connectHeader">
-							<N8nText tag="h2" size="medium" bold>{{ i18n.baseText('apps.connections') }}</N8nText>
+							<N8nHeading tag="h2" step="md" color="text-dark">
+								{{ i18n.baseText('apps.connections') }}
+							</N8nHeading>
 							<N8nTooltip :content="i18n.baseText('apps.connections.add')">
 								<N8nIconButton
 									icon="plus"
@@ -843,81 +877,93 @@ watch(
 							{{ i18n.baseText('apps.connections.empty') }}
 						</N8nText>
 
-						<div
-							v-for="binding in appsStore.bindings"
-							:key="binding.key"
-							:class="$style.connectionRow"
-							data-test-id="app-connection"
-						>
-							<N8nIcon :icon="binding.kind === 'dataTable' ? 'table' : 'workflow'" size="large" />
-							<N8nText
-								v-if="binding.missing"
-								size="small"
-								color="text-light"
-								:class="$style.connectionName"
-								data-test-id="app-connection-missing"
+						<div v-if="appsStore.bindings.length > 0" :class="$style.connectionList">
+							<div
+								v-for="binding in appsStore.bindings"
+								:key="binding.key"
+								:class="$style.connectionRow"
+								data-test-id="app-connection"
 							>
-								{{ binding.name }}
-							</N8nText>
-							<N8nLink
-								v-else-if="binding.kind === 'dataTable'"
-								:to="`/projects/${projectId}/datatables/${binding.dataTableId}`"
-								new-window
-								theme="text"
-								size="small"
-								:class="$style.connectionName"
-								data-test-id="app-connection-data-table"
-							>
-								{{ binding.name }}
-							</N8nLink>
-							<N8nLink
-								v-else
-								:to="`/workflow/${binding.workflowId}`"
-								new-window
-								theme="text"
-								size="small"
-								:class="$style.connectionName"
-								data-test-id="app-connection-workflow"
-							>
-								{{ binding.name }}
-							</N8nLink>
-							<N8nText
-								v-if="binding.kind === 'dataTable' && !binding.missing"
-								size="small"
-								color="text-light"
-								data-test-id="app-connection-access"
-							>
-								{{
-									i18n.baseText(
-										binding.permissions.includes('read')
-											? binding.permissions.includes('write')
-												? 'apps.connections.access.readWrite'
-												: 'apps.connections.access.read'
-											: 'apps.connections.access.write',
-									)
-								}}
-							</N8nText>
-							<N8nTooltip
-								v-if="bindingWarnings(binding.key).length > 0"
-								:content="bindingWarnings(binding.key).join(' ')"
-							>
-								<N8nIcon
-									icon="triangle-alert"
-									color="warning"
+								<N8nIcon :icon="BINDING_ICONS[binding.kind]" size="large" />
+								<N8nText
+									v-if="binding.missing"
 									size="small"
-									data-test-id="app-connection-warning"
-								/>
-							</N8nTooltip>
-							<N8nTooltip :content="i18n.baseText('generic.disconnect')">
-								<N8nIconButton
-									icon="trash-2"
-									variant="ghost"
+									color="text-light"
+									:class="$style.connectionName"
+									data-test-id="app-connection-missing"
+								>
+									{{ binding.name }}
+								</N8nText>
+								<N8nLink
+									v-else-if="binding.kind === 'dataTable'"
+									:to="`/projects/${projectId}/datatables/${binding.dataTableId}`"
+									new-window
+									theme="text"
 									size="small"
-									:aria-label="i18n.baseText('generic.disconnect')"
-									data-test-id="app-connection-delete"
-									@click="onDeleteBinding(binding)"
-								/>
-							</N8nTooltip>
+									:class="$style.connectionName"
+									data-test-id="app-connection-data-table"
+								>
+									{{ binding.name }}
+								</N8nLink>
+								<N8nLink
+									v-else-if="binding.kind === 'agent'"
+									:to="`/projects/${projectId}/agents/${binding.agentId}`"
+									new-window
+									theme="text"
+									size="small"
+									:class="$style.connectionName"
+									data-test-id="app-connection-agent"
+								>
+									{{ binding.name }}
+								</N8nLink>
+								<N8nLink
+									v-else
+									:to="`/workflow/${binding.workflowId}`"
+									new-window
+									theme="text"
+									size="small"
+									:class="$style.connectionName"
+									data-test-id="app-connection-workflow"
+								>
+									{{ binding.name }}
+								</N8nLink>
+								<N8nBadge
+									v-if="binding.kind === 'agent' && !binding.missing && !binding.published"
+									theme="warning"
+									data-test-id="app-connection-not-published"
+								>
+									{{ i18n.baseText('apps.connections.agent.notPublished') }}
+								</N8nBadge>
+								<N8nText
+									v-if="bindingAccessLabel(binding)"
+									size="small"
+									color="text-light"
+									data-test-id="app-connection-access"
+								>
+									{{ bindingAccessLabel(binding) }}
+								</N8nText>
+								<N8nTooltip
+									v-if="bindingWarnings(binding).length > 0"
+									:content="bindingWarnings(binding).join(' ')"
+								>
+									<N8nIcon
+										icon="triangle-alert"
+										color="warning"
+										size="small"
+										data-test-id="app-connection-warning"
+									/>
+								</N8nTooltip>
+								<N8nTooltip :content="i18n.baseText('generic.disconnect')">
+									<N8nIconButton
+										icon="trash-2"
+										variant="ghost"
+										size="small"
+										:aria-label="i18n.baseText('generic.disconnect')"
+										data-test-id="app-connection-delete"
+										@click="onDeleteBinding(binding)"
+									/>
+								</N8nTooltip>
+							</div>
 						</div>
 
 						<N8nCallout
@@ -1305,7 +1351,7 @@ watch(
 .connectCard {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
 	border: var(--border);
 	border-radius: var(--radius--lg);
@@ -1318,11 +1364,16 @@ watch(
 	justify-content: space-between;
 }
 
+.connectionList {
+	display: flex;
+	flex-direction: column;
+}
+
 .connectionRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 
 	&:hover {

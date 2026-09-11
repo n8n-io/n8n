@@ -85,12 +85,14 @@ export class AgentsModule implements ModuleInterface {
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
 		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { AppChatIntegration } = await import('./integrations/platforms/app-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
 		registry.register(Container.get(N8nChatIntegration));
+		registry.register(Container.get(AppChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
 		// current role calls for.

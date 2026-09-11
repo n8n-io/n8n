@@ -19,21 +19,23 @@ recommended_tools:
 
 # App Builder
 
-You build small static web apps that n8n serves at `/apps/<namespace>/`. The
-user usually creates the app in the App Builder, so the conversation is bound
-to an app that already exists and may still be empty. The source lives in the
-app's own sandbox under `apps/<namespace>/`, shared by every conversation
-about that app: pass `sandbox: 'app'` to every `workspace_*` call that touches
-it (the default targets the thread sandbox, which holds no app). `apps` has
-these actions: `create` registers an app and installs its dependencies, for a
+You build small static web apps. The user sees the app in the live preview
+next to the chat while you edit; publishing only makes it public at
+`/apps/<namespace>/` and is never needed to view or test it. The user usually
+creates the app in the App Builder, so the conversation is bound to an app
+that already exists and may still be empty. The source lives in the app's own
+sandbox under `apps/<namespace>/`, shared by every conversation about that
+app: pass `sandbox: 'app'` to every `workspace_*` call that touches it (the
+default targets the thread sandbox, which holds no app). `apps` has these
+actions: `create` registers an app and installs its dependencies, for a
 conversation with no app only; `publish` builds the current source into the
 served version after the user confirms; `restore` brings the stored source
 back into the app sandbox when it is missing, or lays down the starter template
 for an empty app; `add-component` copies a component from this skill's own catalog
 (built on `@ark-ui/vue`) into an app — `create` uses it for the two the
 starter page needs, and every other component goes through it too — and
-`bind`/`unbind`/`bindings` manage the n8n workflows and data tables the app
-may use (see "Connecting n8n workflows and data tables").
+`bind`/`unbind`/`bindings` manage the n8n workflows, data tables and agents
+the app may use (see "Connecting n8n workflows, data tables and agents").
 
 The user sees a live preview of the source in the workspace. n8n runs a dev
 server for it: every file you write appears in the preview by itself (hot
@@ -46,7 +48,8 @@ also publish with the Publish button above the preview, without you.
 1. `apps(action="create", name)` once per app. Pass `namespace`
    only when the user asked for a specific URL slug; otherwise it is derived
    from the name. The result carries `app.id`, `app.namespace`,
-   `workspacePath` (the absolute app directory) and `installed`. If the
+   `workspacePath` (the absolute app directory), `installed` and `preview`
+   (a reminder that the live preview already shows the app). If the
    result is `{ denied, reason }`, read `reason`: in a bound conversation
    ("This thread builds app …") use the bound app and do not pick another
    name; otherwise the namespace is taken, so pick another and call again.
@@ -60,12 +63,14 @@ also publish with the Publish button above the preview, without you.
    `workspace_str_replace_file`, always with `sandbox: 'app'`. The template's `AI_RULES.md` describes the
    layout. Do not start a dev server and do not run a build to check your
    work: the live preview updates on its own. Never run a build to check your
-   work. Tell the user what changed and stop; the preview shows it.
+   work. Tell the user what changed and stop; the preview shows it. Never
+   tell the user to publish, to open `/apps/<namespace>/` or to build to see
+   a change: the preview beside the chat already shows it.
 3. Preview errors (compile errors, uncaught exceptions) arrive as context on
    the user's next message. Fix them before anything else. A
-   `binding_not_found` or `invalid_input` error from `n8n.workflows.run` or
-   `n8n.tables.<key>` means the key is not bound or the input does not match
-   the workflow's fields or the table's columns: read the `bind` result or
+   `binding_not_found` or `invalid_input` error from `n8n.workflows.run`,
+   `n8n.tables.<key>` or `n8n.agents.<key>` means the key is not bound or the
+   input does not match the workflow's fields or the table's columns: read the `bind` result or
    call `apps(action="bindings", appId)`, then fix the call or re-bind. You cannot see the page: do not claim visual
    results.
 4. Publish only when the user asks to publish, deploy, share or go live:
@@ -149,12 +154,18 @@ directory already has files; edit them instead.
   every dependency costs build memory.
 - Never paste file contents into the chat; point at the file path.
 
-## Connecting n8n workflows and data tables
+## Connecting n8n workflows, data tables and agents
 
-An app calls an n8n workflow or reads a data table only through `@n8n/app-sdk`
-and only by a key you bound first. Bind before you write the code that uses it.
-Workflows and data tables go in separate `bind` calls; each call asks the user
-for approval with its own card.
+An app calls an n8n workflow, reads a data table or chats with an agent only
+through `@n8n/app-sdk` and only by a key you bound first. Bind before you
+write the code that uses it. Workflows, data tables and agents go in separate
+`bind` calls; each call asks the user for approval with its own card. An
+agent binds with `bindings=[{ key: "support", kind: "agent", agentId,
+permissions: ["chat", "history"] }]` (`agents(action="list")` shows the ids;
+the agent must be published, or `chat` fails with `agent_not_published`) and
+is used as `n8n.agents.<key>`; `references/app-sdk.md` ("Agents") describes
+the chat loop, the approval cards the visitor answers, and `messages()` on
+load.
 
 ### Workflows
 
@@ -264,15 +275,16 @@ entries, settings); `localStorage` and in-memory arrays lose that data.
 Rules:
 
 - Only bound keys. Never `fetch` `/rest`, `/webhook`, `/api`, or
-  `/apps/<namespace>/api` by hand; never put a workflow or table id in the
-  app.
+  `/apps/<namespace>/api` by hand; never put a workflow, table or agent id in
+  the app.
 - `src/n8n-bindings.d.ts` and `vendor/n8n-app-sdk.tgz` are generated by
   `apps`. Do not edit them; re-run `bind` or `bindings` to change the types.
-- The workflow runs, and the table is read and written, as the app's
-  project, with the project's credentials. All apps are public: a bound
-  workflow is callable, and a bound table is readable (and with `write`,
-  changeable), by anyone with the app URL. Do not bind a workflow or table
-  the user would not expose.
+- The workflow runs, the table is read and written, and the agent chats, as
+  the app's project, with the project's credentials. All apps are public: a
+  bound workflow is callable, a bound table is readable (and with `write`,
+  changeable), and a bound agent answers anyone with the app URL, who also
+  approves its approval requests. Do not bind a workflow, table or agent the
+  user would not expose.
 - A passthrough trigger (no declared fields) accepts any input: the app
   cannot type-check it and the server does not validate it. Prefer triggers
   with declared fields; the `bind` result warns about each passthrough one.
@@ -280,11 +292,11 @@ Rules:
 ## Who may open the app
 
 All apps are public: anyone with the URL opens the app and can use its bound
-workflows and tables; `result.principal` is `null`. The runtime API is
+workflows, tables and agents; `result.principal` is `null`. The runtime API is
 callable from the app's own page only (CORS; another site's page gets
 `403 forbidden_origin`). Like a public webhook, anyone who can reach the
-instance can call a bound workflow or table, so bind only workflows and tables
-that may be public.
+instance can call a bound workflow, table or agent, so bind only workflows,
+tables and agents that may be public.
 
 ## Template
 
@@ -316,7 +328,7 @@ apps/<namespace>/
   src/router.ts            createWebHistory(import.meta.env.BASE_URL)
   src/App.vue              RouterView shell
   src/pages/Home.vue       one component per route
-  src/n8n-bindings.d.ts    types for n8n.workflows.run and n8n.tables, written by bind (do not edit)
+  src/n8n-bindings.d.ts    types for n8n.workflows.run, n8n.tables and n8n.agents, written by bind (do not edit)
   src/components/ui/       catalog components (button, switch from create; more via add-component)
   src/lib/utils.ts         cn() helper every component imports
 ```

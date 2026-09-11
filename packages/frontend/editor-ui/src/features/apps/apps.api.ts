@@ -1,4 +1,5 @@
 import type {
+	AgentPermission,
 	AppBinding,
 	AppPreviewStatus,
 	DataTablePermission,
@@ -172,7 +173,7 @@ export const addBindingApi = async (
 	);
 };
 
-export type AppBindingPatch = { permissions: DataTablePermission[] };
+export type AppBindingPatch = { permissions: Array<DataTablePermission | AgentPermission> };
 
 export const updateBindingApi = async (
 	context: IRestApiContext,

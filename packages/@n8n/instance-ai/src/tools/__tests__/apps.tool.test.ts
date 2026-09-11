@@ -115,7 +115,23 @@ const STORED_TASKS_BINDING = {
 	dataTableId: 'dt-1',
 	permissions: ['read', 'write'],
 };
+const SUPPORT_BINDING = {
+	key: 'support',
+	kind: 'agent' as const,
+	agentId: 'agent-1',
+	name: 'Support',
+	permissions: ['chat' as const, 'history' as const],
+	published: true,
+};
+const STORED_SUPPORT_BINDING = {
+	key: 'support',
+	kind: 'agent' as const,
+	agentId: 'agent-1',
+	permissions: ['chat', 'history'],
+};
 const TYPES_PATH = 'apps/greeter/src/n8n-bindings.d.ts';
+const PREVIEW_HINT =
+	'The live preview beside the chat already shows this app. Do not ask the user to publish to see it.';
 
 const ok = (stdout = '') => ({ exitCode: 0, stdout, stderr: '' });
 const fail = (stdout: string, exitCode = 1) => ({ exitCode, stdout, stderr: '' });
@@ -279,6 +295,13 @@ describe('apps tool', () => {
 			expect(tool.description).toContain('app-builder');
 			expect(tool.description).toContain('load_skill');
 		});
+
+		it('opens with the live preview and makes publishing optional for viewing', () => {
+			const tool = createAppsTool(createMockContext());
+			expect(tool.description).toMatch(
+				/^Create, restore, bind and publish user-facing web apps\. The user sees the app in the live preview next to the chat while you edit; publishing only makes it public at \/apps\/<namespace>\/ and is never needed to view or test it\./,
+			);
+		});
 	});
 
 	describe('slugifyNamespace', () => {
@@ -331,6 +354,7 @@ describe('apps tool', () => {
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				installed: true,
+				preview: PREVIEW_HINT,
 			});
 		});
 
@@ -366,6 +390,7 @@ describe('apps tool', () => {
 				app: APP,
 				workspacePath: '/home/daytona/workspace/apps/greeter',
 				installed: false,
+				preview: PREVIEW_HINT,
 				warnings: [expect.stringMatching(/npm install failed.*run `npm install`.*E404 left-pad/)],
 			});
 		});
@@ -1120,6 +1145,7 @@ describe('apps tool', () => {
 					'\t\t\t"notify": { input: Record<string, any>; output: Array<Record<string, any>> };',
 					'\t\t};',
 					'\t\ttables: {};',
+					'\t\tagents: {};',
 					'\t}',
 					'}',
 					'',
@@ -1158,9 +1184,26 @@ describe('apps tool', () => {
 					'\t\t\t"tasks": { row: { "id": number; "createdAt": string; "updatedAt": string; "title": string | null; "priority": number | null; "done": boolean | null; "due": string | null } };',
 					'\t\t\t"notes": { row: { "id": number; "createdAt": string; "updatedAt": string } };',
 					'\t\t};',
+					'\t\tagents: {};',
 					'\t}',
 					'}',
 					'',
+				].join('\n'),
+			);
+		});
+
+		it('renders the key and permissions of each bound agent', () => {
+			const types = renderBindingsTypes([
+				SUPPORT_BINDING,
+				{ ...SUPPORT_BINDING, key: 'faq', permissions: ['chat'] },
+			]);
+
+			expect(types).toContain(
+				[
+					'\t\tagents: {',
+					'\t\t\t"support": { permissions: ["chat", "history"] };',
+					'\t\t\t"faq": { permissions: ["chat"] };',
+					'\t\t};',
 				].join('\n'),
 			);
 		});
@@ -1170,12 +1213,15 @@ describe('apps tool', () => {
 				SUBMIT_BINDING,
 				MISSING_BINDING,
 				{ ...MISSING_BINDING, key: 'lost', kind: 'workflow' },
+				{ ...MISSING_BINDING, key: 'silent', kind: 'agent' },
 			]);
 
 			expect(types).toContain('"submit": { input:');
 			expect(types).toContain('\t\ttables: {};');
+			expect(types).toContain('\t\tagents: {};');
 			expect(types).not.toContain('gone');
 			expect(types).not.toContain('lost');
+			expect(types).not.toContain('silent');
 		});
 
 		it('makes required properties non-optional and types every observed output kind', () => {
@@ -1228,8 +1274,10 @@ describe('apps tool', () => {
 			expect(types).toContain('output: Array<Record<string, any>>');
 		});
 
-		it('renders empty workflows and tables maps when nothing is bound', () => {
-			expect(renderBindingsTypes([])).toContain('\t\tworkflows: {};\n\t\ttables: {};\n');
+		it('renders empty workflows, tables and agents maps when nothing is bound', () => {
+			expect(renderBindingsTypes([])).toContain(
+				'\t\tworkflows: {};\n\t\ttables: {};\n\t\tagents: {};\n',
+			);
 			expect(renderBindingsTypes([])).not.toContain('workflows: {\n');
 		});
 
@@ -1371,18 +1419,54 @@ describe('apps tool', () => {
 			expect(result).toMatchObject({ bindings: saved.bindings });
 		});
 
-		it('returns denied when workflows and data tables are mixed in one call', async () => {
+		it('saves an agent binding with the default permissions and regenerates the types', async () => {
 			const context = createMockContext();
+			const saved = { bindings: [SUPPORT_BINDING], warnings: [] };
+			appServiceMock(context, 'setBindings').mockResolvedValue(saved);
 
 			const result = await runAction(
 				context,
-				{ action: 'bind', bindings: [STORED_BINDINGS[0], STORED_TASKS_BINDING] },
+				{ action: 'bind', bindings: [{ key: 'support', kind: 'agent', agentId: 'agent-1' }] },
 				approved,
 			);
 
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				STORED_SUPPORT_BINDING,
+			]);
+			expect(writeFileMock(context)).toHaveBeenCalledWith(
+				TYPES_PATH,
+				renderBindingsTypes(saved.bindings),
+				expect.objectContaining({ recursive: true }),
+			);
+			expect(result).toMatchObject({ bindings: saved.bindings });
+		});
+
+		it('keeps the agent permissions the model passes', async () => {
+			const context = createMockContext();
+
+			await runAction(
+				context,
+				{ action: 'bind', bindings: [{ ...STORED_SUPPORT_BINDING, permissions: ['chat'] }] },
+				approved,
+			);
+
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				{ ...STORED_SUPPORT_BINDING, permissions: ['chat'] },
+			]);
+		});
+
+		it.each([
+			[STORED_BINDINGS[0], STORED_TASKS_BINDING],
+			[STORED_BINDINGS[0], STORED_SUPPORT_BINDING],
+			[STORED_TASKS_BINDING, STORED_SUPPORT_BINDING],
+		])('returns denied when kinds are mixed in one call (%j)', async (...bindings) => {
+			const context = createMockContext();
+
+			const result = await runAction(context, { action: 'bind', bindings }, approved);
+
 			expect(result).toEqual({
 				denied: true,
-				reason: 'Bind workflows and data tables in separate calls.',
+				reason: 'Bind workflows, data tables and agents in separate calls.',
 			});
 			expect(appServiceMock(context, 'get')).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
@@ -1400,6 +1484,10 @@ describe('apps tool', () => {
 				permissions: ['read'],
 				workflowId: 'wf-1',
 			},
+			{ key: 'tasks', kind: 'dataTable', dataTableId: 'dt-1', permissions: ['chat'] },
+			{ key: 'support', kind: 'agent' },
+			{ key: 'support', kind: 'agent', agentId: 'agent-1', dataTableId: 'dt-1' },
+			{ key: 'support', kind: 'agent', agentId: 'agent-1', permissions: ['read'] },
 		])('returns denied for the fields of %j', async (binding) => {
 			const context = createMockContext();
 
@@ -1634,6 +1722,132 @@ describe('apps tool', () => {
 			expect(suspend).not.toHaveBeenCalled();
 			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
 				STORED_TASKS_BINDING,
+			]);
+		});
+	});
+
+	describe('bind approval for an agent', () => {
+		const bindInput = { action: 'bind', bindings: [STORED_SUPPORT_BINDING] };
+		const resolveAgentName = vi.fn().mockResolvedValue('Support');
+		const withDelegate = (overrides: Partial<InstanceAiContext> = {}) =>
+			createMockContext({ builderDelegate: { resolveAgentName }, ...overrides } as never);
+
+		beforeEach(() => {
+			resolveAgentName.mockReset().mockResolvedValue('Support');
+		});
+
+		it('is gated by bindAppAgent, not bindAppWorkflow or bindAppDataTable', async () => {
+			const context = withDelegate({
+				permissions: {
+					bindAppWorkflow: 'always_allow',
+					bindAppDataTable: 'always_allow',
+					bindAppAgent: 'blocked',
+				},
+			} as never);
+			const suspend = vi.fn();
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends with the agent card for a single binding', async () => {
+			const context = withDelegate();
+			appServiceMock(context, 'previewBindings').mockResolvedValue({
+				bindings: [{ ...SUPPORT_BINDING, published: false }],
+				warnings: ['not published'],
+			});
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			const result = await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(result).toBe('suspended');
+			expect(resolveAgentName).toHaveBeenCalledWith('agent-1');
+			expect(appServiceMock(context, 'previewBindings')).toHaveBeenCalledWith('app-1', [
+				STORED_SUPPORT_BINDING,
+			]);
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect agent "Support" (agent-1) to app "Greeter" as "support" with chat and history access ' +
+					"(anyone with the app URL gets this access and answers the agent's approval requests)",
+				severity: 'warning',
+				appBinding: {
+					kind: 'agent',
+					appId: 'app-1',
+					appName: 'Greeter',
+					appNamespace: 'greeter',
+					agentId: 'agent-1',
+					agentName: 'Support',
+					key: 'support',
+					permissions: ['chat', 'history'],
+					published: false,
+					projectId: 'proj-1',
+				},
+			});
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('suspends with plain text naming every agent when several are bound at once', async () => {
+			const context = withDelegate();
+			resolveAgentName.mockResolvedValueOnce('Support').mockResolvedValueOnce(undefined);
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(
+				context,
+				{
+					action: 'bind',
+					bindings: [
+						STORED_SUPPORT_BINDING,
+						{ key: 'faq', kind: 'agent', agentId: 'agent-2', permissions: ['chat'] },
+					],
+				},
+				{ resumeData: undefined, suspend },
+			);
+
+			expect(appServiceMock(context, 'previewBindings')).not.toHaveBeenCalled();
+			expect(suspend).toHaveBeenCalledWith({
+				requestId: expect.any(String),
+				message:
+					'Connect agent "Support" (agent-1) to app "Greeter" as "support" with chat and history access; ' +
+					'Connect agent "agent-2" (agent-2) to app "Greeter" as "faq" with chat access ' +
+					"(anyone with the app URL gets this access and answers the agent's approval requests)",
+				severity: 'warning',
+			});
+		});
+
+		it('falls back to the agent id when no builder delegate is available', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn().mockResolvedValue('suspended');
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend.mock.calls[0][0].message).toContain('Connect agent "agent-1" (agent-1)');
+			expect(suspend.mock.calls[0][0]).not.toHaveProperty('appBinding');
+		});
+
+		it('is denied when the user rejects the card', async () => {
+			const context = withDelegate();
+
+			const result = await runAction(context, bindInput, { resumeData: { approved: false } });
+
+			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
+			expect(appServiceMock(context, 'setBindings')).not.toHaveBeenCalled();
+		});
+
+		it('skips the card when the admin set bindAppAgent to always_allow', async () => {
+			const context = withDelegate({
+				permissions: { bindAppWorkflow: 'blocked', bindAppAgent: 'always_allow' },
+			} as never);
+			const suspend = vi.fn();
+
+			await runAction(context, bindInput, { resumeData: undefined, suspend });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(appServiceMock(context, 'setBindings')).toHaveBeenCalledWith('app-1', [
+				STORED_SUPPORT_BINDING,
 			]);
 		});
 	});
