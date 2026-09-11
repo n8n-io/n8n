@@ -191,6 +191,14 @@ export function buildTimelineBlocks(
 			return;
 		}
 
+		// Joins the trace rather than standing alone: what the turn was handed is
+		// background to how it answered, and standalone it would read as a message of
+		// its own. Expanding the trace is what reveals it.
+		if (entry.type === 'instance-context') {
+			pushTrace(entry, idx);
+			return;
+		}
+
 		if (entry.type === 'text') {
 			if (isIntermediateText(entry, idx)) pushTrace(entry, idx);
 			else pushStandalone({ type: 'text', key: `text-${idx}`, entry });

@@ -4,8 +4,13 @@ import { nonnegativeIntSchema } from '../schemas';
 @Config
 export class ActivityLogConfig {
 	/**
-	 * Whether to record instance activity to `activity_event`. Read once when the relay starts, so
-	 * a disabled instance registers no listeners and pays nothing per event.
+	 * Whether to record instance activity to `activity_event`, and — because the record and the
+	 * assistant's read of it share one rollout flag — whether that read is on too.
+	 *
+	 * Setting this is all a dev instance needs. Leaving it unset does not settle the question:
+	 * with diagnostics on, the rollout flag can turn both on for a user without a deploy, so the
+	 * relay still registers and consults the flag per acting user. Only an instance with this
+	 * unset, diagnostics off, and no explicit flag override registers no listeners at all.
 	 */
 	@Env('N8N_ACTIVITY_LOG_ENABLED')
 	enabled: boolean = false;

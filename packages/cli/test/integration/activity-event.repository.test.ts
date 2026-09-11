@@ -31,7 +31,11 @@ describe('ActivityEventRepository', () => {
 			data: { nodeCount: 4 },
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry).toMatchObject({
 			category: 'workflow',
@@ -57,7 +61,11 @@ describe('ActivityEventRepository', () => {
 			resourceName: 'Lead enrichment',
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry).toMatchObject({ action: 'deleted', resourceId: 'already-gone' });
 	});
@@ -70,7 +78,11 @@ describe('ActivityEventRepository', () => {
 			data: { note: 'y'.repeat(activityDataMaxLength) },
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry.data).toEqual({ truncated: true });
 	});
@@ -88,11 +100,16 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'workflow-1',
 			});
-			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const entry = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
 			});
 
 			expect(entry?.id).toBe(written.id);
@@ -110,15 +127,21 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'not-yours',
 			});
-			const [written] = await repository.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [otherProject.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const outOfScope = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
 			});
 			const pruned = await repository.findEntry({
 				id: written.id + 10_000,
 				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
 			});
 
 			expect(outOfScope).toBeNull();
@@ -180,9 +203,19 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'workflow-1',
 			});
-			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
-			expect(await repository.findEntry({ id: written.id, projectIds: [] })).toBeNull();
+			expect(
+				await repository.findEntry({
+					id: written.id,
+					projectIds: [],
+					categories: ['workflow', 'credential'],
+				}),
+			).toBeNull();
 			expect(
 				await repository.findByResource({
 					resourceType: 'workflow',
@@ -202,6 +235,7 @@ describe('ActivityEventRepository', () => {
 			// Newest first, so the second row is the one written first.
 			const [newest, oldest] = await repository.findFeed({
 				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			// `createdAt` defaults to now for both, so age one row explicitly rather than
@@ -212,7 +246,11 @@ describe('ActivityEventRepository', () => {
 			const deleted = await repository.deleteOlderThan(cutoff);
 
 			expect(deleted).toBe(1);
-			const remaining = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+			const remaining = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(remaining.map((entry) => entry.id)).toEqual([newest.id]);
 		});
 
@@ -259,7 +297,11 @@ describe('ActivityEventRepository', () => {
 			const deleted = await repository.deleteBeyondNewest(2);
 
 			expect(deleted).toBe(1);
-			const remaining = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+			const remaining = await repository.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(remaining.map((entry) => entry.action)).toEqual(['third', 'second']);
 		});
 	});

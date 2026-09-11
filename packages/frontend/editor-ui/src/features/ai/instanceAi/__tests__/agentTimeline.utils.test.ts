@@ -853,3 +853,49 @@ describe('isStreamingTimelineEntry', () => {
 		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
 	});
 });
+
+describe('buildTimelineBlocks — instance context', () => {
+	const contextEntry: InstanceAiTimelineEntry = {
+		type: 'instance-context',
+		runId: 'run-1',
+		injection: {
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 1, runs: 0 },
+			chars: 90,
+		},
+		block: '<instance-context>x</instance-context>',
+	};
+
+	/** Inside the collapsible trace, not beside it — standalone it reads as its own message. */
+	test('puts the entry inside a thinking block rather than standing it alone', () => {
+		const blocks = buildTimelineBlocks([contextEntry], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type).toBe('thinking');
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry]);
+	});
+
+	test('keeps it in the same block as the reasoning that follows it', () => {
+		const reasoning: InstanceAiTimelineEntry = {
+			type: 'reasoning',
+			content: 'checking the failed run',
+			responseId: 'r1',
+		};
+
+		const blocks = buildTimelineBlocks([contextEntry, reasoning], {}, {}, 'completed');
+
+		expect(blocks).toHaveLength(1);
+		if (blocks[0].type !== 'thinking') throw new Error('unreachable');
+		expect(blocks[0].entries).toEqual([contextEntry, reasoning]);
+	});
+
+	test('leads the trace, so the turn reads in the order things happened', () => {
+		const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is what failed.' };
+
+		const blocks = buildTimelineBlocks([contextEntry, answer], {}, {}, 'completed');
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+});

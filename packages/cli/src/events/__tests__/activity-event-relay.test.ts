@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ActivityLogConfig } from '@n8n/config';
+import type { ActivityLogConfig, GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
 	WorkflowHistory,
@@ -7,11 +7,13 @@ import type {
 	Project,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
+import type { PostHogClient } from '@/posthog';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 
@@ -25,6 +27,9 @@ const user = {
 	role: { slug: 'global:owner' },
 };
 
+/** What the gate must send to PostHog, since the event's actor does not carry it. */
+const signupDate = new Date('2026-02-02T00:00:00Z');
+
 const node = (type: string, name = type): INode =>
 	mock<INode>({ name, type, typeVersion: 1, position: [0, 0], parameters: {} });
 
@@ -35,18 +40,44 @@ describe('ActivityEventRelay', () => {
 	const activityEventRepository = mock<ActivityEventRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const userRepository = mock<UserRepository>();
 	const scopedLogger = mock<Logger>();
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	let eventService: EventService;
+	/** Shared so a test can count how often the gate consulted PostHog. */
+	let postHogClient: MockProxy<PostHogClient>;
 
-	const relayWith = (enabled: boolean) => {
+	/**
+	 * `enabled` is the env var and `rolloutFlag` is what PostHog answers for the acting
+	 * user. Either turns recording on, so both have to be settable to test the gate.
+	 */
+	const relayWith = (
+		enabled: boolean,
+		{
+			rolloutFlag = false,
+			diagnostics = true,
+			flagOverride = false,
+		}: { rolloutFlag?: boolean; diagnostics?: boolean; flagOverride?: boolean } = {},
+	) => {
+		postHogClient.getFeatureFlags.mockResolvedValue(
+			rolloutFlag ? { '114_instance_activity_context': true } : {},
+		);
+
 		const relay = new ActivityEventRelay(
 			eventService,
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
+			userRepository,
 			mock<ActivityLogConfig>({ enabled }),
+			mock<GlobalConfig>({
+				diagnostics: { enabled: diagnostics },
+				featureFlags: {
+					override: flagOverride ? { '114_instance_activity_context': true } : {},
+				},
+			}),
+			postHogClient,
 			logger,
 		);
 		relay.init();
@@ -55,6 +86,8 @@ describe('ActivityEventRelay', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		postHogClient = mock<PostHogClient>();
+		userRepository.findCreatedAt.mockResolvedValue(signupDate);
 		eventService = new EventService();
 		// Every event whose resource still exists resolves its project through one of these.
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
@@ -65,14 +98,8 @@ describe('ActivityEventRelay', () => {
 		);
 	});
 
-	describe('the write flag', () => {
-		it('registers no listeners at all when disabled, so no event costs anything', async () => {
-			const onSpy = vi.spyOn(eventService, 'on');
-
-			relayWith(false);
-
-			expect(onSpy).not.toHaveBeenCalled();
-
+	describe('the write gate', () => {
+		const emitDeletion = async () => {
 			eventService.emit('workflow-deleted', {
 				user,
 				workflowId: 'workflow1',
@@ -81,6 +108,124 @@ describe('ActivityEventRelay', () => {
 				publicApi: false,
 			});
 			await flushPromises();
+		};
+
+		/**
+		 * The record and the assistant's read of it move together, so the rollout can turn
+		 * both on for a user without a deploy.
+		 */
+		it('records for a user the rollout has turned on, with the env var unset', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
+		});
+
+		it('records when the env var is set, whatever the rollout says', async () => {
+			relayWith(true, { rolloutFlag: false });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
+		});
+
+		it('records nothing when neither control is on', async () => {
+			relayWith(false, { rolloutFlag: false });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/** Saving a workflow emits several of these at once; they must ask PostHog once. */
+		it('asks PostHog once for a burst of events from one user', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			eventService.emit('workflow-created', {
+				user,
+				workflow: workflowWith([]),
+				publicApi: false,
+				projectId: 'project1',
+				projectType: 'personal',
+			});
+			eventService.emit('workflow-saved', {
+				user,
+				workflow: workflowWith([]),
+				publicApi: false,
+			});
+			await emitDeletion();
+
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(3);
+		});
+
+		/**
+		 * The reader evaluates this same flag with the user's real signup date. Sending a
+		 * placeholder here would let a rollout that conditions on signup date answer one thing
+		 * for the record and another for the read.
+		 */
+		it('evaluates the flag on the same signup date the reader sends', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(userRepository.findCreatedAt).toHaveBeenCalledWith('user1');
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith({
+				id: 'user1',
+				createdAt: signupDate,
+			});
+		});
+
+		/**
+		 * `gateChecks` only collapses one save's events. Two separate actions would each pay
+		 * the read again, while the evaluation it feeds is still served from the client cache.
+		 */
+		it('reads a signup date once for events that do not arrive together', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+			await emitDeletion();
+
+			expect(userRepository.findCreatedAt).toHaveBeenCalledTimes(1);
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(2);
+		});
+
+		/** Fails closed with an unreadable flag: no signup date means no evaluation to trust. */
+		it('records nothing for an actor it cannot resolve', async () => {
+			relayWith(false, { rolloutFlag: true });
+			userRepository.findCreatedAt.mockResolvedValue(undefined);
+
+			await emitDeletion();
+
+			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * An explicit override is the one way to turn the read on with neither other control set.
+		 * Registering for it is what stops that instance reading a log nothing writes.
+		 */
+		it('records when an explicit flag override is the only control set', async () => {
+			relayWith(false, { diagnostics: false, flagOverride: true, rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
+		});
+
+		/**
+		 * With no PostHog to consult, the flag can only come from the env override — so the
+		 * old zero-cost path is kept for instances that will never see a rollout.
+		 */
+		it('registers no listeners when the env var is unset and diagnostics are off', async () => {
+			const onSpy = vi.spyOn(eventService, 'on');
+
+			relayWith(false, { diagnostics: false });
+
+			expect(onSpy).not.toHaveBeenCalled();
+
+			await emitDeletion();
 
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
 		});

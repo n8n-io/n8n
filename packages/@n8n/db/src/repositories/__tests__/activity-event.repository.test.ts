@@ -83,7 +83,11 @@ describe('ActivityEventRepository', () => {
 		it('reads newest first, which is both the render order and the index order', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 
-			await repository.findFeed({ projectIds: ['project1'], limit: 30 });
+			await repository.findFeed({
+				projectIds: ['project1'],
+				categories: ['workflow', 'credential'],
+				limit: 30,
+			});
 
 			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
 				where: { projectId: In(['project1']) },
@@ -93,7 +97,11 @@ describe('ActivityEventRepository', () => {
 		});
 
 		it('reads nothing at all when the caller may see no project', async () => {
-			const entries = await repository.findFeed({ projectIds: [], limit: 30 });
+			const entries = await repository.findFeed({
+				projectIds: [],
+				categories: ['workflow', 'credential'],
+				limit: 30,
+			});
 
 			expect(entries).toEqual([]);
 			expect(entityManager.find).not.toHaveBeenCalled();
@@ -104,6 +112,7 @@ describe('ActivityEventRepository', () => {
 
 			await repository.findFeed({
 				projectIds: ['project1'],
+				categories: ['workflow', 'credential'],
 				limit: 10,
 				afterId: 5,
 				beforeId: 40,

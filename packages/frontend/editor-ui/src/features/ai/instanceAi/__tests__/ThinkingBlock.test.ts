@@ -352,3 +352,56 @@ describe('ThinkingBlock', () => {
 		expect(getByText('deep thoughts')).toBeInTheDocument();
 	});
 });
+
+describe('collapsed subline label', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+	});
+
+	const contextEntry = (
+		injection: Extract<InstanceAiTimelineEntry, { type: 'instance-context' }>['injection'],
+	): InstanceAiTimelineEntry => ({ type: 'instance-context', runId: 'run-1', injection });
+
+	const sublineFor = (entry: InstanceAiTimelineEntry) =>
+		renderComponent({
+			props: { agentNode: makeAgentNode({ timeline: [entry] }), entries: [entry], active: true },
+		}).getByTestId('thinking-block-subline').textContent ?? '';
+
+	/**
+	 * The subline falls back to the same "Thinking" string the header shows, so without a
+	 * label of its own the row reads as a duplicate of the header. The context entry is
+	 * the tail for the whole first leg of a turn, before any tool runs.
+	 */
+	it('names what the turn was handed rather than repeating the header', () => {
+		const subline = sublineFor(
+			contextEntry({
+				state: 'injected',
+				isUpdate: false,
+				legs: { inventory: 8, events: 0, runs: 0 },
+				chars: 400,
+			}),
+		);
+
+		expect(subline).toContain('Read instance context');
+		expect(subline).toContain('8 workflows');
+	});
+
+	/**
+	 * The row is appended for an empty and a failed read too, and it stays the tail for the
+	 * rest of the first leg — so a subline that only keyed on the entry type would claim a
+	 * read that never happened, which is the one thing this row exists to tell apart.
+	 */
+	it('does not claim a read on a turn that was handed nothing', () => {
+		const subline = sublineFor(contextEntry({ state: 'absent', reason: 'empty' }));
+
+		expect(subline).toContain('No instance context to read');
+		expect(subline).not.toContain('Read instance context');
+	});
+
+	it('says the read failed rather than calling it a read', () => {
+		const subline = sublineFor(contextEntry({ state: 'absent', reason: 'failed' }));
+
+		expect(subline).toContain('could not be read');
+		expect(subline).not.toContain('Read instance context');
+	});
+});

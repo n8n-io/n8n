@@ -4,6 +4,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -432,6 +433,9 @@ export class InstanceAiAdapterService {
 			/** Per-user node-usage gate (via `resolveExperimentGates`). Falsy → neither the
 			 *  `node-usage` action nor the `nodeTypes` filter on `list` is offered. */
 			nodeUsageEnabled?: boolean;
+			/** Per-user instance-context gate (via `resolveExperimentGates`). Falsy → no
+			 *  `activity` tool, whatever the reader service itself thinks. */
+			instanceContextEnabled?: boolean;
 			/** Past-conversation recall, already bound to the run's user, project and
 			 *  thread by the caller. Absent → conversation-history tool not wired. */
 			conversationHistory?: InstanceAiConversationHistoryReader;
@@ -455,6 +459,7 @@ export class InstanceAiAdapterService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
@@ -495,7 +500,9 @@ export class InstanceAiAdapterService {
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			conversationHistoryService: conversationHistory,
 			// Presence is the gate, as with the services above: no reader, no `activity` tool.
-			...(this.instanceContext?.enabled
+			// Resolved per user rather than read off config, because the rollout is per user —
+			// the env var reaches this through the flag, not around it.
+			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
@@ -579,6 +586,8 @@ export class InstanceAiAdapterService {
 		progressiveBuildingEnabled: boolean;
 		/** Node-usage context surface: the `node-usage` action and the `nodeTypes` filter on `list`. */
 		nodeUsageEnabled: boolean;
+		/** Instance-activity context: the per-turn block, the `activity` tool and its skill. */
+		instanceContextEnabled: boolean;
 		/** Per-user folder-exploration gate, passed into `createContext`. Fails
 		 *  closed with every other gate: `getFeatureFlags` never throws, it
 		 *  returns `{}` on a PostHog outage. */
@@ -604,6 +613,11 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
 			folderExplorationEnabled: flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] === true,
+			// The flag alone, because it already answers for both controls:
+			// `N8N_ACTIVITY_LOG_ENABLED` force-enables it unless an explicit override says
+			// otherwise, so this reads on when either the env var or the rollout says so, off
+			// when neither does, and off when an operator kills it while the record accrues.
+			instanceContextEnabled: flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true,
 		};
 	}
 

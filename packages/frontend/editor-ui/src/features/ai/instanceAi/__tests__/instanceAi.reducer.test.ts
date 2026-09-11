@@ -474,6 +474,63 @@ describe('instanceAi.reducer', () => {
 	// -----------------------------------------------------------------------
 	// Confirmation
 	// -----------------------------------------------------------------------
+	/**
+	 * These go through `handleEvent`, not the shared reducer directly. The shared
+	 * reducer already had coverage and passed while the row still only appeared after a
+	 * reload — the gap was this layer's dispatch, which forwards an allowlist of types.
+	 */
+	describe('instance context', () => {
+		const injected = {
+			injection: {
+				state: 'injected' as const,
+				isUpdate: false,
+				legs: { inventory: 8, events: 0, runs: 0 },
+				chars: 512,
+			},
+			block: '<instance-context>what exists</instance-context>',
+		};
+
+		const makeContextEvent = (
+			runId: string,
+			agentId: string,
+		): Extract<InstanceAiEvent, { type: 'instance-context' }> => ({
+			type: 'instance-context',
+			runId,
+			agentId,
+			payload: injected,
+		});
+
+		const contextEntries = (state: InstanceAiReducerState, runId = 'run-1') => {
+			const runState = state.runStateByGroupId.get(runId);
+			const root = runState?.agentsById[runState.rootAgentId];
+			return (root?.timeline ?? []).filter((e) => e.type === 'instance-context');
+		};
+
+		it('applies the event live, without waiting for a reload', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+
+			handleEvent(state, makeContextEvent('run-1', 'agent-root'));
+
+			expect(contextEntries(state)).toHaveLength(1);
+		});
+
+		it('completes the entry with the surfaces reached, on run-finish', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeContextEvent('run-1', 'agent-root'));
+
+			handleEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { status: 'completed', contextReach: { surfaces: ['activity-list'] } },
+			});
+
+			const entry = contextEntries(state)[0];
+			if (entry?.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces: ['activity-list'] });
+		});
+	});
+
 	describe('confirmation', () => {
 		test('confirmation-request sets confirmation on matching toolCallId', () => {
 			const state = stateWithRun('run-1', 'agent-root');

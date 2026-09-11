@@ -1,10 +1,12 @@
 import { Logger } from '@n8n/backend-common';
-import { ActivityLogConfig } from '@n8n/config';
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import { ActivityLogConfig, GlobalConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -13,6 +15,7 @@ import type { IDataObject, INode, IWorkflowBase } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import { PostHogClient } from '@/posthog';
 
 /** Carried by nearly every core node type. Dropping it buys room inside the `data` budget. */
 const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
@@ -20,8 +23,33 @@ const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
 /** Enough distinct types to show what a user reached for, few enough to leave room for the rest. */
 const maxListedNodeTypes = 5;
 
+/**
+ * Actors whose signup date is held. A signup date cannot change, so an entry is never stale and
+ * age is the wrong thing to bound this by — what needs bounding is the count, on a long-lived
+ * process that sees many actors.
+ */
+const maxHeldSignupDates = 1_000;
+
 /** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
 const maxDetailStringLength = 64;
+
+/**
+ * The acting user's id on any of the recorded events.
+ *
+ * Takes `unknown` rather than the declared `UserLike`: the handler map is generic over every
+ * event name, so a call site widens to the union of all payloads, and several of those carry no
+ * actor at all. An empty id is rejected too, because a row written against one would fail its
+ * own foreign key.
+ */
+function actingUserId(payload: unknown): string | undefined {
+	if (typeof payload !== 'object' || payload === null || !('user' in payload)) return undefined;
+
+	const { user } = payload;
+	if (typeof user !== 'object' || user === null || !('id' in user)) return undefined;
+
+	const { id } = user;
+	return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
 
 /** An entry that resolves no project, since one written without a project could never be read. */
 type UnresolvedProject = { projectId: string | undefined };
@@ -52,7 +80,10 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly userRepository: UserRepository,
 		private readonly activityLogConfig: ActivityLogConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly postHogClient: PostHogClient,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -60,8 +91,21 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
-		// Checked once, so a disabled instance registers no listeners and pays nothing per event.
-		if (!this.activityLogConfig.enabled) return;
+		// The record and the assistant's read of it move together, and the rollout flag can
+		// turn both on for a user without a deploy — so this cannot be decided once here.
+		//
+		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so the
+		// flag can only come from an explicit override — which is checked here too, or an instance
+		// that forces the read on that way would read a log nothing writes. Ruled out on every
+		// other combination, and such an instance registers no listeners and pays nothing per
+		// event exactly as before.
+		if (
+			!this.activityLogConfig.enabled &&
+			!this.globalConfig.diagnostics.enabled &&
+			!(INSTANCE_ACTIVITY_CONTEXT_FLAG in this.globalConfig.featureFlags.override)
+		) {
+			return;
+		}
 
 		this.setupListeners(
 			this.guarded({
@@ -78,6 +122,86 @@ export class ActivityEventRelay extends EventRelay {
 				'credentials-deleted': async (e) => await this.onCredentialDeleted(e),
 			}),
 		);
+	}
+
+	/** In-flight gate checks, keyed by user, so one burst asks PostHog once. */
+	private readonly gateChecks = new Map<string, Promise<boolean>>();
+
+	/**
+	 * Whether this event's actor has the feature on.
+	 *
+	 * Per acting user, because that is the unit the rollout exposes. The env var short-
+	 * circuits it, so a local instance never consults PostHog, and `getFeatureFlags`
+	 * caches per user, so a busy user costs one evaluation rather than one per event, and
+	 * the signup date it needs is held for as long.
+	 *
+	 * Fails closed: an unreadable flag means no row, never a row written on a guess.
+	 */
+	private async shouldRecord(userId: string): Promise<boolean> {
+		if (this.activityLogConfig.enabled) return true;
+
+		// Coalesced per user. Saving a workflow emits several of these events at once, and
+		// without this each one would open its own evaluation before the first resolved.
+		const inFlight = this.gateChecks.get(userId);
+		if (inFlight) return await inFlight;
+
+		const check = this.readGate(userId).finally(() => this.gateChecks.delete(userId));
+		this.gateChecks.set(userId, check);
+		return await check;
+	}
+
+	/**
+	 * Fails closed, so a user outside the rollout is never recorded on a guess.
+	 *
+	 * The cost is that a PostHog outage pauses recording rather than degrading it. Bounded
+	 * in practice: the client caches a user's flags for ten minutes and only replaces them
+	 * on a successful read, so an outage mid-window leaves an already-evaluated user alone
+	 * and reaches only users it has not seen yet.
+	 *
+	 * The signup date is read from the database rather than taken from the event, whose
+	 * actor carries only a name and a role. It has to be the real one: the reader evaluates
+	 * the same flag with the real date, and a rollout that conditions on signup date would
+	 * otherwise answer one thing here and another there — recording for a user who cannot
+	 * read it back, or leaving a reader's own edits out of what they are handed. A user id
+	 * that resolves to nobody records nothing, for the same reason an unreadable flag does.
+	 */
+	private async readGate(userId: string): Promise<boolean> {
+		try {
+			const createdAt = await this.resolveSignupDate(userId);
+			if (!createdAt) return false;
+
+			const flags = await this.postHogClient.getFeatureFlags({ id: userId, createdAt });
+			return flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true;
+		} catch {
+			return false;
+		}
+	}
+
+	/** Resolved signup dates, so one user's events do not each re-read the same row. */
+	private readonly signupDates = new Map<string, Date>();
+
+	/**
+	 * Held because the flag answer behind it is: `gateChecks` only collapses the events of one
+	 * save, so without this every later event pays the read again while the evaluation it feeds
+	 * is still served from the client's own cache.
+	 *
+	 * Bounded by evicting the oldest rather than by an expiry — a signup date cannot change, so
+	 * there is nothing for an expiry to correct, and only the entry count needs a ceiling. A Map
+	 * iterates in insertion order, which is what makes the first key the oldest.
+	 */
+	private async resolveSignupDate(userId: string): Promise<Date | undefined> {
+		const held = this.signupDates.get(userId);
+		if (held) return held;
+
+		const createdAt = await this.userRepository.findCreatedAt(userId);
+		if (!createdAt) return undefined;
+
+		if (this.signupDates.size >= maxHeldSignupDates) {
+			const oldest = this.signupDates.keys().next();
+			if (!oldest.done) this.signupDates.delete(oldest.value);
+		}
+		this.signupDates.set(userId, createdAt);
+		return createdAt;
 	}
 
 	/**
@@ -98,6 +222,8 @@ export class ActivityEventRelay extends EventRelay {
 			event,
 			async (payload: RelayEventMap[EventNames]) => {
 				try {
+					const userId = actingUserId(payload);
+					if (!userId || !(await this.shouldRecord(userId))) return;
 					await handle(payload);
 				} catch (error) {
 					this.logger.warn('Failed to record activity for an event', { event, error });

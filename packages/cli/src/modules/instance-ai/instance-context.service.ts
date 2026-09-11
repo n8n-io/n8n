@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	ActivityEventRepository,
@@ -11,6 +10,11 @@ import type { ActivityEvent, ActivityEventCategory, ActivityResourceType, User }
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
+import type {
+	InstanceContextAbsenceReason,
+	InstanceContextInjection,
+	InstanceContextLegs,
+} from '@n8n/api-types';
 import type { IDataObject } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -45,36 +49,35 @@ const inventorySize = 8;
 const resourceHistoryLimit = 20;
 
 /**
- * How far below the high-water mark a delta re-reads.
+ * Why a delta re-reads below its own high-water mark at all.
  *
  * Ids are an ordering key, not a completeness watermark: Postgres allocates a sequence value
  * outside the surrounding transaction, so two writers can commit id 101 before id 100, and a
- * cursor that asks for "everything above the highest id seen" skips 100 for good. The entries most
- * worth surfacing are deletions, written by whichever request happens to be committing.
+ * cursor that asks only for "everything above the highest id seen" skips 100 for good. The
+ * entries most worth surfacing are deletions, written by whichever request happens to be
+ * committing.
  *
- * So a delta re-reads this far below the mark and drops what it has already shown.
+ * So a delta re-reads the span between the cursor's floor and its mark, and drops what it has
+ * already shown. The floor is the highest id a turn deliberately cut — everything at or below it
+ * has been decided against, and a later turn must never offer it again. Without that floor a
+ * delta re-offers whatever the window trimmed, which is not a late commit but an ordinary older
+ * row, and a backlog then drains a window per turn no matter what the conversation is about.
  *
- * What this does and does not promise. The read below is newest-first and capped, so when more
- * rows sit above the floor than the cap, the ones dropped are the lowest — and the mark then
- * advances past them. Those rows are by definition further down than a cap's worth of newer ones,
- * so no row the window could have shown is lost; what is lost is a late commit on a turn that was
- * already too busy to show it. The guarantee is therefore "a straggler is recovered whenever it
- * could be displayed", not "every straggler is recovered". What makes even that much true is
- * `entryFetchLimit` staying above `windowSize`, which is why that one is derived rather than set.
+ * What this does and does not promise. A straggler is recovered only while it sits above the
+ * floor, so one that commits below a turn's cut is lost. That row was already further down than a
+ * window's worth of newer ones, which is the same reason the window cut its neighbours.
+ *
+ * Ids are remembered so a delta cannot show one twice. Only ids above the floor can come
+ * back, so that set needs to hold no more than a turn's shown rows plus those earlier turns
+ * left above it — the cap below is a backstop for a long-lived thread on a busy project,
+ * where the oldest forgotten id could reappear once before the age filter takes it.
  */
-const activityLagIds = 200;
+const seenIdsCap = 200;
 
 /**
- * Ids remembered inside the band, so a delta does not show one twice. Deliberately the band's own
- * width: the band spans that many ids, so a smaller cap would forget an id still inside it and
- * show it again, and a larger one would store ids the floor already excludes.
- */
-const seenIdsCap = activityLagIds;
-
-/**
- * Rows one delta reads. Derived from `windowSize` rather than set by hand: staying above it is
- * what bounds what a truncated read can lose — see the note on `activityLagIds` — and the multiple
- * leaves room for the age filter to discard rows and still fill a window.
+ * Rows one delta reads. Derived from `windowSize` rather than set by hand: it has to stay above
+ * the window so a turn can tell "this is all there is" from "this is the first page", and the
+ * multiple leaves room for the age filter to discard rows and still fill a window.
  */
 const entryFetchLimit = windowSize * fetchMultiplier;
 
@@ -82,9 +85,11 @@ const entryFetchLimit = windowSize * fetchMultiplier;
 export const INSTANCE_CONTEXT_CURSOR = 'instanceContext';
 
 export type InstanceContextCursor = {
-	/** Highest activity entry id shown. */
+	/** Highest activity entry id read. */
 	activityMark: number;
-	/** Entry ids already shown that still sit inside the lag band. */
+	/** Highest entry id a turn cut. Nothing at or below it is offered again. */
+	activityFloor: number;
+	/** Entry ids already shown that still sit above the floor. */
 	activitySeen: number[];
 	/** ISO timestamp runs were summarised up to. */
 	runsThrough: string;
@@ -100,12 +105,14 @@ export function readInstanceContextCursor(
 	const value = metadata?.[INSTANCE_CONTEXT_CURSOR];
 	if (!isRecord(value)) return null;
 
-	const { activityMark, activitySeen, runsThrough } = value;
+	const { activityMark, activityFloor, activitySeen, runsThrough } = value;
 	if (typeof activityMark !== 'number' || !Number.isFinite(activityMark)) return null;
+	if (typeof activityFloor !== 'number' || !Number.isFinite(activityFloor)) return null;
 	if (typeof runsThrough !== 'string' || Number.isNaN(Date.parse(runsThrough))) return null;
 
 	return {
 		activityMark,
+		activityFloor,
 		activitySeen: Array.isArray(activitySeen)
 			? activitySeen.filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 			: [],
@@ -122,13 +129,75 @@ type RunSummary = {
 	lastFailedExecutionId: string | null;
 };
 
+/** What one caller may read: which projects, and which categories inside them. */
+type ActivityReadScope = {
+	projectIds: string[];
+	categories: ActivityEventCategory[];
+};
+
 type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
 
-export type InstanceContextBlock = {
-	block: string;
-	/** What the caller should store on the thread, so the next turn sends only what is new. */
-	cursor: InstanceContextCursor;
+/**
+ * What a turn was handed, or why it was handed nothing.
+ *
+ * A bare `null` cannot answer that second half, and the difference is the whole point of
+ * showing this to anyone: an agent that was told nothing because the feature was off did
+ * not ignore anything, while one that was told nothing because there was nothing to tell
+ * was working with all there was. Those read identically until the reason is carried.
+ */
+export type InstanceContextResult =
+	| {
+			state: 'injected';
+			block: string;
+			cursor: InstanceContextCursor;
+			legs: InstanceContextLegs;
+			/** An addition to a block this thread already saw, rather than a full window. */
+			isUpdate: boolean;
+	  }
+	| { state: 'absent'; reason: InstanceContextAbsenceReason };
+
+/**
+ * Restates a build result as the shape the trace and telemetry both report, so neither
+ * derives its own view of what the turn was handed.
+ */
+export function toContextInjection(result: InstanceContextResult): InstanceContextInjection {
+	if (result.state === 'absent') return { state: 'absent', reason: result.reason };
+
+	return {
+		state: 'injected',
+		isUpdate: result.isUpdate,
+		legs: result.legs,
+		chars: result.block.length,
+	};
+}
+
+/**
+ * Whether an outcome is worth a row in the trace.
+ *
+ * An empty block earns one: a turn told nothing has to be distinguishable from one that
+ * was told and ignored it, and only the absent row can say which. A failed read earns one
+ * too — that is the case someone is most likely to be looking for.
+ *
+ * The other two absences do not. A turn where the feature was off has no reader to inform
+ * — a row on every turn of every instance that never enabled this would be noise standing
+ * in for a signal — and a machine follow-up is the agent continuing its own task, where
+ * nobody is reading intent. Both still reach telemetry, where the off arm is the
+ * denominator.
+ */
+/**
+ * Typed against the reason union rather than tested with `||`, so a reason added later has to
+ * decide here instead of silently defaulting to untraced.
+ */
+const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
+	empty: true,
+	failed: true,
+	disabled: false,
+	'machine-follow-up': false,
 };
+
+export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
+	return injection.state === 'injected' || TRACED_ABSENCE_REASONS[injection.reason];
+}
 
 /**
  * Renders what is going on in this instance as a context block for the agent: what exists, what
@@ -147,16 +216,11 @@ export type InstanceContextBlock = {
 export class InstanceContextService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-	}
-
-	get enabled(): boolean {
-		return this.globalConfig.instanceAi.instanceContextEnabled;
 	}
 
 	/**
@@ -177,21 +241,30 @@ export class InstanceContextService {
 		 * paid for unread. Checked before any read, so a skipped turn costs nothing.
 		 */
 		isMachineFollowUp?: boolean;
+		/**
+		 * The per-user rollout gate, already resolved by the caller. Passed in rather than
+		 * read off config here so one turn resolves it once: a second read could disagree
+		 * with the one that decided whether the `activity` tool exists, leaving the agent
+		 * told about entries it has no way to open.
+		 */
+		enabled: boolean;
 		now?: Date;
-	}): Promise<InstanceContextBlock | null> {
-		if (!this.enabled || input.isMachineFollowUp) return null;
+	}): Promise<InstanceContextResult> {
+		if (!input.enabled) return { state: 'absent', reason: 'disabled' };
+		if (input.isMachineFollowUp) return { state: 'absent', reason: 'machine-follow-up' };
 
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			const projectIds = await this.readableProjectIds(input.user, input.projectId);
+			const scope = await this.readableScope(input.user, input.projectId);
+			const { projectIds } = scope;
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
-			if (projectIds.length === 0) return null;
+			if (projectIds.length === 0) return { state: 'absent', reason: 'empty' };
 
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ scope, cursor: input.cursor, now }),
 				this.readRuns({ projectIds, cursor: input.cursor, now }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
@@ -203,9 +276,13 @@ export class InstanceContextService {
 			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
 			// clone, or a quiet fortnight. That is exactly the case that most needs "here is what
 			// exists", so the block stands on any one leg and only genuine emptiness suppresses it.
-			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) return null;
+			if (entries.rows.length === 0 && runs.length === 0 && !inventory?.total) {
+				return { state: 'absent', reason: 'empty' };
+			}
 
 			return {
+				state: 'injected',
+				isUpdate,
 				block: renderBlock({
 					entries: entries.rows.map((row) => toFeedEntry(row, input.user.id, now)),
 					entriesTruncated: entries.truncated,
@@ -216,14 +293,25 @@ export class InstanceContextService {
 				}),
 				cursor: {
 					activityMark: entries.mark,
+					activityFloor: entries.floor,
 					activitySeen: entries.seen,
 					runsThrough: now.toISOString(),
+				},
+				// Counted from what was rendered, not from what was read: the caps and the age
+				// filter both discard rows, so the fetched totals would overstate the block.
+				legs: {
+					inventory: inventory?.workflows.length ?? 0,
+					events: entries.rows.length,
+					runs: runs.length,
 				},
 			};
 		} catch (error) {
 			// Context is an enhancement; failing to build it must not fail the user's turn.
+			// Reported as its own reason: neither `disabled` nor `empty` is true here, and
+			// calling a broken read "nothing happened" would send someone debugging a bad
+			// answer to look at a quiet instance rather than at this log line.
 			this.logger.warn('Failed to build the instance-context block', { error });
-			return null;
+			return { state: 'absent', reason: 'failed' };
 		}
 	}
 
@@ -240,12 +328,17 @@ export class InstanceContextService {
 		// answer a narrowing request by widening it to the whole feed.
 		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
 
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return [];
+
+		// A category the caller may not read is refused rather than dropped, for the same reason
+		// an unknown one is: answering a narrowing request by widening it is the wrong failure.
+		if (input.category !== undefined && !categories.includes(input.category)) return [];
 
 		const rows = await this.activityEventRepository.findFeed({
 			limit: input.limit,
 			projectIds,
+			categories,
 			...(input.category !== undefined ? { category: input.category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
@@ -263,10 +356,14 @@ export class InstanceContextService {
 		user: User;
 		projectId?: string;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return null;
 
-		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
+		const row = await this.activityEventRepository.findEntry({
+			id: input.id,
+			projectIds,
+			categories,
+		});
 		if (!row) return null;
 
 		const history =
@@ -297,28 +394,34 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: string[];
+		scope: ActivityReadScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
-	}): Promise<{ rows: ActivityEvent[]; mark: number; seen: number[]; truncated: boolean }> {
+	}): Promise<{
+		rows: ActivityEvent[];
+		mark: number;
+		floor: number;
+		seen: number[];
+		truncated: boolean;
+	}> {
 		const cursor = input.cursor;
 
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
 			limit: entryFetchLimit,
-			projectIds: input.projectIds,
+			...input.scope,
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
 
-		// The band below the mark is read separately, not folded into the query above. One capped
-		// read cannot cover both: arrivals are unbounded and come back first, so a busy turn would
-		// fill the page and push the band out — losing exactly the late commit the band exists for.
-		// Alone it is bounded by its own width, since it spans that many ids at most.
+		// The span between the floor and the mark is read separately, not folded into the query
+		// above. One capped read cannot cover both: arrivals are unbounded and come back first, so
+		// a busy turn would fill the page and push this out — losing exactly the late commit it
+		// exists for.
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
-					limit: activityLagIds,
-					projectIds: input.projectIds,
-					afterId: Math.max(0, cursor.activityMark - activityLagIds),
+					limit: entryFetchLimit,
+					...input.scope,
+					afterId: cursor.activityFloor,
 					beforeId: cursor.activityMark,
 				})
 			: [];
@@ -337,17 +440,26 @@ export class InstanceContextService {
 			(highest, row) => Math.max(highest, row.id),
 			cursor?.activityMark ?? 0,
 		);
-		// What was shown, not what was read: an entry the window cut is still unseen, and the band
-		// gives it another turn to appear rather than burying it under a mark it never reached.
-		// Only ids inside the band need remembering — below it, the floor already excludes them.
+		// The highest row this turn cut, which is what the next delta must not read back down to.
+		// The list is newest-first, so the first row past the window is that one. A turn that cut
+		// nothing keeps the floor it inherited: nothing was decided against, so the span a
+		// straggler can still surface in must not shrink.
+		const cut = fresh[windowSize];
+		const floor = cut ? cut.id : (cursor?.activityFloor ?? 0);
+
+		// What was shown, not what was read: an entry the window cut is still unseen, and the span
+		// above the floor gives it another turn to appear rather than burying it under a mark it
+		// never reached. Only ids above the floor need remembering — at or below it, the floor
+		// already excludes them.
 		const seen = [...alreadyShown, ...shown.map((row) => row.id)]
-			.filter((id) => id > mark - activityLagIds)
+			.filter((id) => id > floor)
 			.sort((a, b) => b - a)
 			.slice(0, seenIdsCap);
 
 		return {
 			rows: shown,
 			mark,
+			floor,
 			seen,
 			// Said out loud rather than left to inference. A cut list that does not say it is cut
 			// reads as the whole story, and the agent would draw conclusions from it.
@@ -394,23 +506,34 @@ export class InstanceContextService {
 	 * Bare project membership is also not read access — `project:chatUser` holds neither
 	 * `workflow:read` nor `credential:read`.
 	 */
-	private async readableProjectIds(user: User, projectId?: string): Promise<string[]> {
-		if (projectId === undefined) return [];
+	private async readableScope(user: User, projectId?: string): Promise<ActivityReadScope> {
+		if (projectId === undefined) return { projectIds: [], categories: [] };
 
 		// Re-checked every turn, not trusted from the binding. A thread outlives the membership that
 		// authorised it — `assertThreadAccess` proves the thread is the caller's own and nothing more
 		// — so a user removed from a project would otherwise keep reading it here for the life of the
 		// thread, while every other read in this module refused them.
 		//
-		// `workflow:read` stands for the whole block: it is what the inventory and run legs expose,
-		// and credential entries carry a name and a type rather than a secret.
-		const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
-		return allowed ? [projectId] : [];
+		// `workflow:read` opens the block at all: it is what the inventory and run legs expose.
+		// Credential entries are asked for separately, because a project grants the two scopes
+		// independently — a role with workflow access and no credential access must not read a
+		// credential's name and type here when every other surface refuses it.
+		const [workflows, credentials] = await Promise.all([
+			userHasScopes(user, ['workflow:read'], false, { projectId }),
+			userHasScopes(user, ['credential:read'], false, { projectId }),
+		]);
+		if (!workflows) return { projectIds: [], categories: [] };
+
+		return {
+			projectIds: [projectId],
+			categories: credentials ? ['workflow', 'credential'] : ['workflow'],
+		};
 	}
 }
 
 const initialPreamble = [
-	'What is going on in this instance. This is work that already exists and that you can pick up:',
+	'What is going on in this project. Every section below is this project alone, not the whole',
+	'instance. This is work that already exists and that you can pick up:',
 	'when the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually',
 	'the most recent thing here, and often the most recent failure. Name what you think they mean',
 	'and act on it rather than asking them to choose from a list they can already see.',
@@ -418,7 +541,8 @@ const initialPreamble = [
 	'what you do rather than what you say.',
 	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
 	'everything else that happened to the same resource, or `activity(action="list")` to look',
-	'further back than this window. An entry may name a resource that no longer exists.',
+	'further back than this window. An entry may name a resource that was since deleted, or that',
+	'moved to another project — the entry records where the work happened, so it stays here.',
 ];
 
 /**
@@ -434,7 +558,12 @@ const updatePreamble = [
 
 /** Named so the agent can act on one without a lookup: the id is what every tool takes. */
 function renderInventory(inventory: Inventory): string[] {
-	if (inventory.total === 0) return ['Nothing has been built here yet.', ''];
+	// Both headings name the scope rather than saying "here", and the empty one is a state, not
+	// a history. This block is suppressed only when every leg is empty, so an empty inventory
+	// always sits above a feed or a run list that does show work — and an unqualified "nothing
+	// has been built" then reads as a contradiction of the section under it. It is also just
+	// wrong wherever the work was deleted or moved out rather than never written.
+	if (inventory.total === 0) return ['Workflows in this project: none right now.', ''];
 
 	const named = inventory.workflows.map(
 		(workflow) =>
@@ -445,7 +574,7 @@ function renderInventory(inventory: Inventory): string[] {
 	const more = inventory.total - inventory.workflows.length;
 
 	return [
-		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
+		`Workflows in this project: ${inventory.total}. Most recently worked on:`,
 		...named,
 		...(more > 0 ? [`  ... and ${more} more — \`workflows(action="list")\` for the rest.`] : []),
 		'',

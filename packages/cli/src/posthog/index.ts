@@ -6,6 +6,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
@@ -26,6 +27,14 @@ import { N8N_VERSION } from '@/constants';
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * How long an evaluation that answered nothing is held — an outage, blocked egress, or a project
+ * with no flags. Short, because it is not an answer and the next call may get a real one. Not
+ * zero: a caller on a per-event path would otherwise re-request every time, and an unreachable
+ * PostHog makes each of those a full timeout-and-retry cycle.
+ */
+const EMPTY_FLAGS_CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
 const SESSION_ID_MAX_LENGTH = 1000;
 
@@ -165,24 +174,40 @@ export class PostHogClient {
 		const { instanceId } = this.instanceSettings;
 		const fullId = [instanceId, user.id].join('#');
 
-		const cached = this.flagsCache.get(fullId);
+		// Keyed on every input the evaluation reads, not just the id. A slot holds the whole
+		// flag map, so two evaluations of one user that disagree about their signup date must
+		// not share one — the loser would be answered for a different person across every
+		// flag, not only the one the caller came for.
+		const cacheKey = [fullId, user.createdAt.getTime()].join('#');
+
+		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
 			return cached;
 		}
 
-		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
-			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
-				instance_id: instanceId,
-				version_cli: N8N_VERSION,
-			},
-			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
-		});
-		const data = this.resolveFeatureFlagData(evaluatedFlags);
-
-		if (Object.keys(data.featureFlags).length > 0) {
-			this.flagsCache.set(fullId, { ...data, expiresAt: Date.now() + FLAGS_CACHE_TTL_MS });
+		// A failed evaluation is cached like an empty one rather than propagating uncached. The
+		// alternative retries on the next call, which on a per-event caller means one outbound
+		// request per event for as long as PostHog is unreachable.
+		let data: FeatureFlagData;
+		try {
+			const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
+				personProperties: {
+					created_at_timestamp: user.createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
+				},
+				...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
+			});
+			data = this.resolveFeatureFlagData(evaluatedFlags);
+		} catch {
+			data = { featureFlags: {}, featureFlagPayloads: {} };
 		}
+
+		// An answer is held for the full window; nothing-at-all only briefly, so a transient
+		// failure is not remembered as though PostHog had said "no flags".
+		const ttl =
+			Object.keys(data.featureFlags).length > 0 ? FLAGS_CACHE_TTL_MS : EMPTY_FLAGS_CACHE_TTL_MS;
+		this.flagsCache.set(cacheKey, { ...data, expiresAt: Date.now() + ttl });
 
 		return data;
 	}
@@ -220,6 +245,12 @@ export class PostHogClient {
 	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
 	 *    only; `false` defers to PostHog. Applied last so the generic map
 	 *    cannot undo a feature an operator enabled explicitly.
+	 *
+	 * One exception, and it is deliberate: `N8N_ACTIVITY_LOG_ENABLED` yields to
+	 * the generic map instead of overriding it, because that map is the only
+	 * way to stop the read while the record keeps accruing. Without the
+	 * exception an instance with the record on could not be rolled back. Do not
+	 * copy the shape of that block for a flag that has no such kill switch.
 	 */
 	private applyEnvOverrides(data: FeatureFlagData): FeatureFlagData {
 		const overrides = { ...this.globalConfig.featureFlags.override };
@@ -252,6 +283,16 @@ export class PostHogClient {
 
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] = true;
+		}
+
+		// One flag over both sides of instance-activity context, so the env var that turns the
+		// record on is also the one that turns reading it back on.
+		//
+		// Yields to an explicit override. Without the guard, setting this flag to `false`
+		// through `N8N_FEATURE_FLAG_OVERRIDES` would be silently ignored on any instance with
+		// the record on, which takes away the operator's only way to stop the read.
+		if (this.globalConfig.activityLog.enabled && !(INSTANCE_ACTIVITY_CONTEXT_FLAG in overrides)) {
+			overrides[INSTANCE_ACTIVITY_CONTEXT_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

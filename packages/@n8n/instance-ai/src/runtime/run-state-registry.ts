@@ -3,6 +3,8 @@ import type {
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
+	InstanceContextInjection,
+	InstanceContextReach,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -58,6 +60,27 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	};
 	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
 	runHandoff?: OrchestratorRunHandoffState;
+	/**
+	 * What this turn was handed for instance context, and which arm the user was in.
+	 *
+	 * Carried across the suspension because only the first segment builds a block, while
+	 * the reads that answer the user often happen after they approve something. Without it
+	 * the resumed segment cannot say what turn it belongs to, and the trace entry the first
+	 * segment opened would never be completed.
+	 */
+	instanceContext?: {
+		injection: InstanceContextInjection;
+		instanceContextEnabled: boolean;
+		nodeUsageEnabled: boolean;
+		/**
+		 * Surfaces this turn had already used when it stopped to ask.
+		 *
+		 * Carried because a suspension publishes no `run-finish`, and the resumed segment
+		 * gets a fresh work summary holding only post-approval calls. Without this the
+		 * reads taken before the question would never reach the trace.
+		 */
+		reachSoFar: InstanceContextReach;
+	};
 }
 
 /**

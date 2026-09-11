@@ -57,6 +57,16 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
+	/**
+	 * The signup date on its own, for a caller that must evaluate a feature rollout for an
+	 * actor it knows only by id. A rollout can condition on signup date, so a caller that
+	 * cannot send the real one gets a different answer than one that can.
+	 */
+	async findCreatedAt(id: string): Promise<Date | undefined> {
+		const user = await this.findOne({ where: { id }, select: ['createdAt'] });
+		return user?.createdAt;
+	}
+
 	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
 		return await this.findOneByOrFail({
 			projectRelations: { projectId },

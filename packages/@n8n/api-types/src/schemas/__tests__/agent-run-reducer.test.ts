@@ -37,6 +37,24 @@ function makeRunFinish(
 	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
 
+function makeInstanceContext(
+	runId: string,
+	agentId: string,
+	payload: Extract<InstanceAiEvent, { type: 'instance-context' }>['payload'],
+): Extract<InstanceAiEvent, { type: 'instance-context' }> {
+	return { type: 'instance-context', runId, agentId, payload };
+}
+
+const INJECTED_PAYLOAD = {
+	injection: {
+		state: 'injected' as const,
+		isUpdate: false,
+		legs: { inventory: 3, events: 2, runs: 1 },
+		chars: 420,
+	},
+	block: '<instance-context>\nwhat exists\n</instance-context>',
+};
+
 function makeTextDelta(
 	runId: string,
 	agentId: string,
@@ -205,6 +223,156 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	describe('instance context', () => {
+		it('appends what the turn was handed to the root timeline', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: INJECTED_PAYLOAD.injection,
+					block: INJECTED_PAYLOAD.block,
+				},
+			]);
+		});
+
+		it('records an absent block, so a turn told nothing stays distinguishable', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(
+				state,
+				makeInstanceContext('run-1', 'root', {
+					injection: { state: 'absent', reason: 'empty' },
+				}),
+			);
+
+			expect(state.agentsById.root.timeline).toEqual([
+				{
+					type: 'instance-context',
+					runId: 'run-1',
+					injection: { state: 'absent', reason: 'empty' },
+				},
+			]);
+		});
+
+		/** Replay re-delivers persisted events, and the entry describes the turn, not each delivery. */
+		it('appends only once when the event is delivered twice', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			expect(state.agentsById.root.timeline).toHaveLength(1);
+		});
+
+		/**
+		 * A message group accumulates several runs, so two turns can fold into one state.
+		 * Deduping by type alone dropped the second turn's entry entirely.
+		 */
+		it('keeps an entry for each turn in a group that holds more than one run', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(2);
+		});
+
+		it("attaches each turn's reach to its own entry", () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+			reduceEvent(state, makeInstanceContext('run-2', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-2',
+				agentId: 'root',
+				payload: { status: 'completed', contextReach: { surfaces: ['workflow-read'] } },
+			});
+
+			const entries = state.agentsById.root.timeline.filter(
+				(e): e is Extract<typeof e, { type: 'instance-context' }> => e.type === 'instance-context',
+			);
+			expect(entries.find((e) => e.runId === 'run-1')?.reach).toBeUndefined();
+			expect(entries.find((e) => e.runId === 'run-2')?.reach).toEqual({
+				surfaces: ['workflow-read'],
+			});
+		});
+
+		it('folds onto the root even when a sub-agent emitted it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			reduceEvent(state, makeInstanceContext('run-1', 'sub-1', INJECTED_PAYLOAD));
+
+			// The root timeline also carries the spawn's own `child` entry, so count only these.
+			expect(
+				state.agentsById.root.timeline.filter((e) => e.type === 'instance-context'),
+			).toHaveLength(1);
+			expect(state.agentsById['sub-1'].timeline).toEqual([]);
+		});
+
+		it('completes the entry with how far the turn went, on run-finish', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { surfaces: ['activity-expand'] },
+				},
+			});
+
+			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces: ['activity-expand'] });
+		});
+
+		/**
+		 * A suspension emits no `run-finish`, so this arrives once per turn with every
+		 * segment's surfaces already accumulated. Accumulation is tested where it happens:
+		 * `mergeInstanceContextReach` in instance-ai.
+		 */
+		it('completes the entry with the surfaces the turn used, on run-finish', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					status: 'completed',
+					contextReach: { surfaces: ['activity-list', 'workflow-read'] },
+				},
+			});
+
+			const entry = state.agentsById.root.timeline[0];
+			expect(entry.type).toBe('instance-context');
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toEqual({ surfaces: ['activity-list', 'workflow-read'] });
+		});
+
+		it('leaves the reach unset when the run reported none', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeInstanceContext('run-1', 'root', INJECTED_PAYLOAD));
+
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			const entry = state.agentsById.root.timeline[0];
+			if (entry.type !== 'instance-context') throw new Error('unreachable');
+			expect(entry.reach).toBeUndefined();
+		});
+	});
+
 	describe('createInitialState', () => {
 		it('creates state with default root agent', () => {
 			const state = createInitialState();

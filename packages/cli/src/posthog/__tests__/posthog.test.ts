@@ -231,16 +231,44 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		it('does not cache empty results', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+		/**
+		 * Held briefly rather than not at all. A caller on a per-event path would otherwise
+		 * re-request on every event, and an unreachable PostHog makes each of those a full
+		 * timeout-and-retry cycle.
+		 */
+		it('holds an empty result only briefly, then asks again', async () => {
+			vi.useFakeTimers();
+			try {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await ph.getFeatureFlags({ id: userId, createdAt });
+				await ph.getFeatureFlags({ id: userId, createdAt });
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+
+				// Past the short window, but well inside the window an answer would have earned.
+				vi.advanceTimersByTime(31_000);
+				await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		/** A throw is nothing-at-all too, so it must not cost a request per call either. */
+		it('holds a failed evaluation the same way', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog is down'));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
-			await ph.getFeatureFlags({ id: userId, createdAt });
+			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual({});
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
 		});
 
 		describe('env-var overrides', () => {
@@ -253,6 +281,7 @@ describe('PostHog', () => {
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
+				globalConfig.activityLog.enabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -290,6 +319,52 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			/**
+			 * The activity log's write switch is also its read switch, so an instance cannot be
+			 * left reading a log that nothing writes. This override is what couples them.
+			 */
+			it('force-enables the instance-activity-context flag when N8N_ACTIVITY_LOG_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '114_instance_activity_context': true });
+			});
+
+			/**
+			 * The combination is the point: each setting alone passes whether or not the
+			 * precedence guard is there, so without this case the guard could be deleted and
+			 * the suite would stay green.
+			 */
+			it('lets an explicit override disable the flag while the record is on', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = true;
+				globalConfig.featureFlags.override = { '114_instance_activity_context': false };
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '114_instance_activity_context': false });
+			});
+
+			it('leaves the instance-activity-context flag to PostHog when the record is off', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.activityLog.enabled = false;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags['114_instance_activity_context']).toBeUndefined();
 			});
 
 			it('force-enables the folder-exploration flag when N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED is set', async () => {
@@ -511,6 +586,33 @@ describe('PostHog', () => {
 				});
 			});
 		});
+	});
+
+	/**
+	 * A cache slot holds the whole flag map, so two evaluations of one user that disagree
+	 * about their person properties must not share one — the loser would be answered for a
+	 * different person across every flag, not only the one its caller came for.
+	 */
+	it('does not serve one signup date answer to an evaluation that sends another', async () => {
+		(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+			mockEvaluatedFlags({ 'test-flag': true }),
+		);
+		const ph = new PostHogClient(instanceSettings, globalConfig);
+		await ph.init();
+		const createdAt = new Date();
+
+		await ph.getFeatureFlags({ id: userId, createdAt: new Date(0) });
+		await ph.getFeatureFlags({ id: userId, createdAt });
+
+		expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+		expect(PostHog.prototype.evaluateFlags).toHaveBeenLastCalledWith(
+			`${instanceId}#${userId}`,
+			expect.objectContaining({
+				personProperties: expect.objectContaining({
+					created_at_timestamp: createdAt.getTime().toString(),
+				}),
+			}),
+		);
 	});
 
 	describe('setupExpressSessionContext', () => {

@@ -182,6 +182,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'instance-context',
 	'tasks-update',
 	'setup-items',
 	'filesystem-request',
@@ -281,6 +282,104 @@ export function isSafeObjectKey(key: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Instance context: what a turn was handed, and how far it then went
+// ---------------------------------------------------------------------------
+
+export const instanceContextSurfaceSchema = z.enum([
+	'activity-list',
+	'activity-expand',
+	'node-usage',
+	'workflow-read',
+]);
+
+export type InstanceContextSurface = z.infer<typeof instanceContextSurfaceSchema>;
+
+/**
+ * How deep a read each surface is. Typed against the schema above, so adding a surface
+ * to one and not the other fails to compile rather than silently going uncounted.
+ *
+ * The two surfaces at 2 genuinely tie. Opening one entry's history and summarising a
+ * project's node types are different questions asked at the same remove from the block,
+ * so a turn reports which surfaces it used and the depth is derived from them.
+ */
+export const INSTANCE_CONTEXT_SURFACE_DEPTH: Record<InstanceContextSurface, 0 | 1 | 2 | 3> = {
+	'activity-list': 1,
+	'activity-expand': 2,
+	'node-usage': 2,
+	'workflow-read': 3,
+};
+
+export const instanceContextReachSchema = z.object({
+	surfaces: z
+		.array(instanceContextSurfaceSchema)
+		.describe('Surfaces called this turn, de-duplicated, in first-call order. Empty if none.'),
+});
+
+/**
+ * How far a turn went for instance context, beyond the block it was handed.
+ *
+ * Surfaces only. A depth is `max(INSTANCE_CONTEXT_SURFACE_DEPTH)` over them, so carrying
+ * it here would ship derived data next to its source and let the two disagree.
+ */
+export type InstanceContextReach = z.infer<typeof instanceContextReachSchema>;
+
+export const instanceContextLegsSchema = z.object({
+	inventory: z
+		.number()
+		.int()
+		.describe("Workflows named in the inventory leg. Only ever on a thread's opening block."),
+	events: z.number().int().describe('Activity entries listed.'),
+	runs: z.number().int().describe('Workflows contributing a run summary.'),
+});
+
+export type InstanceContextLegs = z.infer<typeof instanceContextLegsSchema>;
+
+/**
+ * Why a turn got no block. Kept distinct because they mean different things to a
+ * reader: `disabled` says the feature was not in play, `empty` says it was and found
+ * nothing worth sending — the case where an agent that guessed was not withholding
+ * anything — and `failed` says the read broke, which is neither of those.
+ *
+ * `failed` is separate from `empty` on purpose. Reporting a broken read as "nothing
+ * happened here" sends someone debugging a bad answer to look at a quiet instance
+ * rather than at the warning in the log.
+ */
+export const instanceContextAbsenceReasonSchema = z.enum([
+	'disabled',
+	'machine-follow-up',
+	'empty',
+	'failed',
+]);
+
+export type InstanceContextAbsenceReason = z.infer<typeof instanceContextAbsenceReasonSchema>;
+
+export const instanceContextInjectionSchema = z.discriminatedUnion('state', [
+	z.object({
+		state: z.literal('injected'),
+		isUpdate: z
+			.boolean()
+			.describe('An addition to a block this thread already saw, rather than a full window.'),
+		legs: instanceContextLegsSchema,
+		chars: z.number().int().describe('Rendered block length, tag included.'),
+	}),
+	z.object({ state: z.literal('absent'), reason: instanceContextAbsenceReasonSchema }),
+]);
+
+/** What a turn was handed, or why it was handed nothing. */
+export type InstanceContextInjection = z.infer<typeof instanceContextInjectionSchema>;
+
+/**
+ * Sent once per turn, right after the block is built and before the agent runs, so a
+ * reader can tell a turn that knew about prior work from one that guessed. `reach`
+ * is not known yet at that point and arrives on `run-finish`.
+ */
+export const instanceContextPayloadSchema = z.object({
+	injection: instanceContextInjectionSchema,
+	/** The rendered block, so the trace can show what was actually said. */
+	block: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
 // Event payloads
 // ---------------------------------------------------------------------------
 
@@ -306,6 +405,12 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * How far this turn went for instance context. Rides the terminal event because it
+	 * is only knowable once every tool call is in — the same reason the run's duration
+	 * and tool counts are reported here.
+	 */
+	contextReach: instanceContextReachSchema.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
 	 * stepping-stones the agent created but never promoted to the main
@@ -1115,6 +1220,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('instance-context'),
+		...eventBase,
+		payload: instanceContextPayloadSchema,
+	}),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({ type: z.literal('status'), ...eventBase, payload: statusPayloadSchema }),
@@ -1581,7 +1691,28 @@ export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
-	| { type: 'child'; agentId: string; responseId?: string };
+	| { type: 'child'; agentId: string; responseId?: string }
+	/**
+	 * What the turn was handed before it started. Sits in the timeline rather than
+	 * beside the message so it lands inside the trace the user expands, and so it
+	 * persists with the rest of the tree — `AgentTreeSnapshot` stores `timeline`
+	 * verbatim, which is what makes it survive a reload without its own restore path.
+	 */
+	| {
+			type: 'instance-context';
+			/**
+			 * The run this entry describes. A message group accumulates several runs, so an
+			 * entry has to say which turn it belongs to — otherwise a follow-up turn's entry
+			 * looks like a duplicate of the first, and its reach lands on the wrong row.
+			 */
+			runId: string;
+			injection: InstanceContextInjection;
+			/** Absent until the run finishes. */
+			reach?: InstanceContextReach;
+			/** The rendered block. Omitted on `absent`. */
+			block?: string;
+			responseId?: string;
+	  };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -2326,6 +2457,45 @@ export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */
 export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_exploration';
+
+/**
+ * Rollout flag for reading instance-activity context: the per-turn
+ * `<instance-context>` block, the `activity` tool, and the skill that explains them.
+ *
+ * One flag over the whole feature rather than one per side, so **turning the record on turns
+ * the read on** and neither control means nothing is read. Only an explicit override parts
+ * them, and only in the one direction that is safe — see the last row:
+ *
+ * | `N8N_ACTIVITY_LOG_ENABLED` | this flag in PostHog | writes | reads |
+ * | -- | -- | -- | -- |
+ * | off | off | off | off |
+ * | off | on | on | on |
+ * | on | anything | on | on |
+ * | on | explicit `false` override | on | off |
+ *
+ * The env var is the local override, and it wins over whatever PostHog says — including
+ * when PostHog is unreachable, since the override is applied to the resolved flags rather
+ * than instead of fetching them. Setting it is all that is needed to try this on a dev
+ * instance. With it unset the flag decides, and both sides follow it: the relay evaluates
+ * it for the acting user of each recorded event, so a rollout reaches writes and reads at
+ * the same time and needs no deploy. Both sides send the same person properties, including
+ * the real signup date, so a rollout may condition on one without the two sides splitting.
+ *
+ * The last row is the kill switch and the one asymmetry left: an explicit override stops
+ * the read while the env var keeps the record accruing, so a token regression can be
+ * rolled back without losing history.
+ *
+ * Two costs of coupling this way, both deliberate. Recording consults the flag per acting
+ * user rather than once at startup, which is a cached lookup per recorded event; and with
+ * diagnostics off there is no PostHog to consult, so the relay keeps its original
+ * zero-cost path and registers no listeners at all.
+ *
+ * Roll the read back if the agent starts answering about the most recent thing rather
+ * than the question, or if turn tokens rise with no matching fall in clarifying
+ * questions. Watch both numbers together: fewer questions with worse builds is a
+ * regression, not a win. `INSTANCE_CONTEXT_TURN` carries both sides per turn.
+ */
+export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

@@ -306,6 +306,18 @@ progress indicator from this data.
 }
 ```
 
+### `instance-context`
+
+What the turn was handed as instance context, published once before the agent
+starts. `injection` is `{ state: 'injected', isUpdate, legs, chars }` or
+`{ state: 'absent', reason }`; `block` carries the rendered block and is present
+only when injected. An `absent` outcome is published too, with reason `empty`,
+because a turn told nothing must be distinguishable from one that was told and
+ignored it. Nothing is published when the feature is off for the user or on a
+machine follow-up. Durable; the reducer appends one `instance-context` timeline
+entry onto the ROOT agent node regardless of the emitting agent. How far the turn
+then read arrives later, on `run-finish`.
+
 ### `setup-items`
 
 The setup panel checklist for a workflow (service-keyed items, kinds
@@ -641,7 +653,7 @@ creating duplicate messages.
 | Event Type | Payload Key Fields | Purpose |
 |------------|-------------------|---------|
 | `run-start` | `messageId` | First event in a run |
-| `run-finish` | `status`, `reason?` | Ends orchestrator streaming; detached events can follow |
+| `run-finish` | `status`, `reason?`, `contextReach?` | Ends orchestrator streaming; detached events can follow |
 | `text-delta` | `text` | Incremental agent text |
 | `reasoning-delta` | `text` | Incremental agent reasoning |
 | `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |
@@ -651,6 +663,7 @@ creating duplicate messages.
 | `agent-completed` | `role`, `result` | Sub-agent finished |
 | `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
 | `tasks-update` | `tasks` | Task checklist created/updated |
+| `instance-context` | `injection`, `block?` | What the turn was handed as instance context (once, before the agent runs) |
 | `setup-items` | `workflowId`, `items` | Setup panel snapshot for a workflow (full list, last wins) |
 | `status` | `message` | Transient status indicator |
 | `error` | `content`, `statusCode?`, `provider?` | System-level error |
