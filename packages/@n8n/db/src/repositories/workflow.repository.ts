@@ -445,6 +445,53 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return [...found.values()];
 	}
 
+	/**
+	 * The owning project and archived state for each id. Ids with no row are left
+	 * out, so a caller can treat a missing id as removed. Used to classify a
+	 * promotion selection into live pushes and deletions.
+	 */
+	async findOwnerProjectAndArchivedState(
+		workflowIds: string[],
+	): Promise<Array<{ id: string; projectId: string | null; isArchived: boolean }>> {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		const rowsById = new Map<
+			string,
+			{ id: string; projectId: string | null; isArchived: boolean }
+		>();
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const workflows = await this.createQueryBuilder('workflow')
+				.select('workflow.id', 'id')
+				.addSelect('workflow.isArchived', 'isArchived')
+				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
+					role: 'workflow:owner',
+				})
+				.addSelect('shared.projectId', 'projectId')
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.getRawMany<{
+					id: string;
+					isArchived: boolean | number | string;
+					projectId: string | null;
+				}>();
+			for (const workflow of workflows) {
+				if (rowsById.has(workflow.id)) continue;
+				rowsById.set(workflow.id, {
+					id: workflow.id,
+					projectId: workflow.projectId ?? null,
+					isArchived:
+						workflow.isArchived === true ||
+						workflow.isArchived === 1 ||
+						workflow.isArchived === '1' ||
+						workflow.isArchived === 'true',
+				});
+			}
+		}
+
+		return [...rowsById.values()];
+	}
+
 	async getActiveTriggerCount() {
 		const totalTriggerCount = await this.sum('triggerCount', {
 			activeVersionId: Not(IsNull()),

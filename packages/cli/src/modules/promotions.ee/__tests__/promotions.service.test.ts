@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectRepository, User } from '@n8n/db';
+import type { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -17,6 +17,7 @@ import {
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
 
+import type { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import type { PromotionConfigResolver } from '../promotion-config.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -53,6 +54,8 @@ describe('PromotionsService', () => {
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
 	const projectRepository = mock<ProjectRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const connectionRepository = mock<PromotionConnectionRepository>();
 	const projectService = mock<ProjectService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const logger = mock<Logger>();
@@ -117,6 +120,8 @@ describe('PromotionsService', () => {
 			),
 			gitService,
 			projectRepository,
+			workflowRepository,
+			connectionRepository,
 			projectService,
 			n8nPackagesService,
 			logger,
@@ -780,6 +785,79 @@ describe('PromotionsService', () => {
 				),
 			).rejects.toThrow(NotFoundError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('promoteProjectSelection', () => {
+		const actor = mock<User>({ id: 'actor', email: 'ada@example.com' });
+
+		beforeEach(() => {
+			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
+			connectionRepository.findInstanceConnection.mockResolvedValue({ id: 'conn1' } as never);
+		});
+
+		it('promotes live workflows and pushes archived or missing ones as deletions', async () => {
+			workflowRepository.findOwnerProjectAndArchivedState.mockResolvedValue([
+				{ id: 'w1', projectId: 'p1', isArchived: false },
+				{ id: 'w2', projectId: 'p1', isArchived: true },
+				{ id: 'w4', projectId: 'p1', isArchived: false },
+				// w3 is left out on purpose: it no longer exists.
+			]);
+			const promoteSelection = vi.spyOn(service, 'promoteSelection').mockResolvedValue({} as never);
+
+			await service.promoteProjectSelection('p1', actor, {
+				workflowIds: ['w1', 'w2', 'w3', 'w4'],
+				createBranch: false,
+				canExportVariableValues: true,
+			});
+
+			expect(promoteSelection).toHaveBeenCalledWith(
+				'conn1',
+				actor,
+				expect.objectContaining({ canExportVariableValues: true }),
+				{ projectId: 'p1', workflowIds: ['w1', 'w4'], deletedWorkflowIds: ['w2', 'w3'] },
+			);
+		});
+
+		it('rejects a selection that includes a workflow from another project', async () => {
+			workflowRepository.findOwnerProjectAndArchivedState.mockResolvedValue([
+				{ id: 'w1', projectId: 'p1', isArchived: false },
+				{ id: 'w9', projectId: 'other', isArchived: false },
+			]);
+			const promoteSelection = vi.spyOn(service, 'promoteSelection');
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1', 'w9'],
+					createBranch: false,
+					canExportVariableValues: false,
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(promoteSelection).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the instance has no promotion connection', async () => {
+			connectionRepository.findInstanceConnection.mockResolvedValue(null);
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					createBranch: false,
+					canExportVariableValues: false,
+				}),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('rejects a project that is not a team project', async () => {
+			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'personal' } as never);
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w1'],
+					createBranch: false,
+					canExportVariableValues: false,
+				}),
+			).rejects.toThrow(BadRequestError);
 		});
 	});
 
