@@ -15,7 +15,9 @@ import {
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
 	gmailDirectExtendMockServer,
+	githubUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -37,7 +39,6 @@ const baseDescription: INodeTypeDescription = {
 	outputs: [],
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
-		{ displayName: 'Endpoint URL', name: 'endpointUrl', type: 'hidden', default: '' },
 		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
@@ -85,13 +86,23 @@ function createLoadNodesAndCredentials(options?: {
 
 	const knownCredentials: Record<string, unknown> = {};
 	for (const name of options?.knownCredentialTypes ?? []) {
-		knownCredentials[name] = {};
+		knownCredentials[name] = {
+			extends: name.toLowerCase().includes('oauth') ? ['oAuth2Api'] : [],
+		};
 	}
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders: loaders as never,
 		knownCredentials: knownCredentials as never,
 	});
+	loadNodesAndCredentials.getCredential.mockImplementation((credentialType) => ({
+		type: {
+			name: credentialType,
+			displayName: credentialType,
+			properties: [],
+		},
+		sourcePath: '',
+	}));
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
 }
@@ -291,6 +302,37 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loadedNode.sourcePath).toBe(sourcePath);
 		});
 
+		it('registers a node using existing credential types without synthetic credentials', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([githubUsesCredentialsMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gitHub',
+				credentials: [{ name: 'githubOAuth2Api', required: true }],
+			});
+			expect(loader.types.credentials).toHaveLength(0);
+			expect(loader.known.credentials).toEqual({});
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				resolveConnection: (nodeTypeName: string, selector?: string) => unknown;
+			};
+			expect(runtime.resolveConnection('@n8n/mcp-registry.gitHub', 'oAuth2')).toMatchObject({
+				binding: { credentialType: 'githubOAuth2Api', selector: 'oAuth2' },
+				connection: {
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					endpointHostname: 'api.githubcopilot.com',
+				},
+			});
+		});
+
 		it('skips servers whose extendsCredential parent matches an inherited prototype key', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['slackOAuth2Api'],
@@ -338,6 +380,74 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('deprecatedServer');
+		});
+	});
+
+	describe('registryRuntime.prepareConnection', () => {
+		function getRegisteredPrepareConnection(baseNode: INodeType) {
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				prepareConnection: (input: unknown) => unknown;
+			};
+			return runtime.prepareConnection;
+		}
+
+		it('merges the registry-configured headers (e.g. the Databricks partner User-Agent) into the connection headers', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['databricksOAuth2Api'],
+			});
+			(
+				loadNodesAndCredentials.knownCredentials as Record<string, unknown>
+			).databricksGenieMcpOAuth2Api = { extends: ['databricksOAuth2Api'] };
+
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([databricksGenieTemplatedMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.databricksGenie');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'databricksGenieMcpOAuth2Api',
+				credentialData: {
+					oauthTokenData: { access_token: 'token' },
+					serverUrl: 'https://acme.cloud.databricks.com',
+				},
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: {
+					headers: { Authorization: 'Bearer token', 'User-Agent': 'n8n_DatabricksNode' },
+				},
+			});
+		});
+
+		it('does not add any extra header for a server with no headers configured on its remote', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([notionMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.notion');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'notionMcpOAuth2Api',
+				credentialData: { oauthTokenData: { access_token: 'token' } },
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: { headers: { Authorization: 'Bearer token' } },
+			});
+			expect(
+				(
+					result as {
+						value: { headers: Record<string, string> };
+					}
+				).value.headers,
+			).not.toHaveProperty('User-Agent');
 		});
 	});
 

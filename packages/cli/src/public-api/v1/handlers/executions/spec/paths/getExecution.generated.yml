@@ -1,6 +1,6 @@
 operationId: getExecution
 tags:
-  - Execution
+  - Executions
 summary: Retrieve an execution
 description: Retrieve an execution from your instance.
 x-required-scope: execution:read
@@ -9,8 +9,10 @@ x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 parameters:
   - schema:
-      type: string
+      type: integer
+      minimum: 1
     required: true
+    description: The ID of the execution.
     name: executionId
     in: path
   - schema:

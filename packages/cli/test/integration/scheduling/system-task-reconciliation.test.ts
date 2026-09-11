@@ -7,6 +7,7 @@ import { reconcile } from '@n8n/scheduler';
 import { inc } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
+import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { createScheduledJobOwnerRegistry } from '@/scheduling/scheduled-job-owner-registry';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
@@ -60,7 +61,11 @@ describe('system task reconciliation', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
 		owner = new SystemTaskScheduledJobOwner(jobRepo);
-		registry = createScheduledJobOwnerRegistry(Container.get(WorkflowScheduledJobOwner), owner);
+		registry = createScheduledJobOwnerRegistry(
+			Container.get(WorkflowScheduledJobOwner),
+			Container.get(AgentScheduledJobOwner),
+			owner,
+		);
 	});
 
 	afterAll(async () => {

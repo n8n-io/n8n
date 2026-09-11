@@ -129,6 +129,31 @@ describe('instanceRegistrationSchema', () => {
 		});
 	});
 
+	describe('poolName', () => {
+		test('accepts payload without poolName', () => {
+			expect(() => instanceRegistrationSchema.parse(validV1)).not.toThrow();
+		});
+
+		test('accepts payload with empty poolName', () => {
+			expect(() => instanceRegistrationSchema.parse({ ...validV1, poolName: '' })).not.toThrow();
+		});
+
+		test('accepts payload with a valid poolName', () => {
+			const parsed = instanceRegistrationSchema.parse({
+				...validV1,
+				instanceType: 'worker',
+				instanceRole: 'unset',
+				poolName: 'gpu',
+			}) as InstanceRegistration & { poolName?: string };
+
+			expect(parsed.poolName).toBe('gpu');
+		});
+
+		test('rejects non-string poolName', () => {
+			expect(() => instanceRegistrationSchema.parse({ ...validV1, poolName: 123 })).toThrow();
+		});
+	});
+
 	describe('serialization roundtrip', () => {
 		test('JSON roundtrip yields deep-equal payload', () => {
 			const serialized = JSON.stringify(validV1);

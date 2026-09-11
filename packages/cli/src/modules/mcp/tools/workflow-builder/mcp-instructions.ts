@@ -44,6 +44,12 @@ export type McpInstructionsOptions = {
 	 * If true, the instructions include Agent build guidance and artifact routing.
 	 */
 	isAgentsEnabled?: boolean;
+
+	/**
+	 * The caller's saved AI preferences, already rendered as a tagged block by
+	 * `AiPreferenceService`. Appended as the last section when set.
+	 */
+	aiPreferences?: string;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -51,6 +57,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
+		aiPreferences,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -106,7 +113,7 @@ To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 Credentials: when a node needs a credential and another node in the workflow already uses a credential of the same type (e.g. adding a second Slack node next to an existing Slack trigger), reuse that credential — get_workflow_details (with detailLevel 'full', the default) and get_workflow_version include each node's credentials as { id, name } per credential type. Only pick from list_credentials when the workflow does not yet use that credential type, and if more than one credential of that type is available, ask the user which one to use rather than picking one yourself.
 
-Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
+Error handling has two complementary layers. (1) Per-node: set onError ("continueRegularOutput" / "continueErrorOutput"), retryOnFail, and maxTries via setNodeSettings on ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. "continueErrorOutput" adds an error output after the node's regular outputs: to send failed items somewhere (a log, a data table, an alert), add the target node and connect it with an addConnection operation whose sourceIndex is that output — 1 for a single-output node such as HTTP Request, 2 for an If node. (2) Failure notifications via an Error Trigger node, which can be wired two ways: (a) Dedicated/shared error workflow — point settings.errorWorkflow (via the setWorkflowSettings operation) at a SEPARATE workflow whose first node is an Error Trigger; this is the common best practice and lets one handler cover many workflows. (b) Same-workflow — add an Error Trigger node (→ a notification node such as Send Email or Slack) INTO this workflow; n8n runs it automatically when the workflow fails, with no settings change needed. Caveats: both fire only for production executions (not manual/test runs), and a configured settings.errorWorkflow takes precedence over a same-workflow Error Trigger for the failing run. When a user asks to "add error handling", "get notified on failure", or "make this reliable", briefly explain both patterns — most users do not know Error Triggers exist — and ask which they prefer before setting one up; do not enable error handling silently. For the shared pattern, reuse an existing handler (find its ID with search_workflows) or create a new one — but a dedicated error workflow must be PUBLISHED before it can be linked, in this order: (1) create it (${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName}, first node = Error Trigger → a notification node), (2) publish it (publish_workflow), (3) set settings.errorWorkflow via ${MCP_UPDATE_WORKFLOW_TOOL.toolName}. Setting settings.errorWorkflow is rejected if the target has no published version, or no Error Trigger in that published version.${GROUPS_HINT}`;
 
 	const AGENT_INSTRUCTIONS = `This MCP server provides tools to build and manage n8n Agents.
 
@@ -121,6 +128,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

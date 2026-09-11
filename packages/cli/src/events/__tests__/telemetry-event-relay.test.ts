@@ -367,6 +367,7 @@ describe('TelemetryEventRelay', () => {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-pull-ui', event);
@@ -375,6 +376,25 @@ describe('TelemetryEventRelay', () => {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-pull-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-pull-ui'] = {
+				workflowUpdates: 5,
+				workflowConflicts: 2,
+				credConflicts: 1,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-pull-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started pull via UI', {
+				workflow_updates: 5,
+				workflow_conflicts: 2,
+				cred_conflicts: 1,
+				public_api: true,
 			});
 		});
 
@@ -414,6 +434,7 @@ describe('TelemetryEventRelay', () => {
 				credsEligible: 5,
 				credsEligibleWithConflicts: 1,
 				variablesEligible: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-started-push-ui', event);
@@ -425,6 +446,31 @@ describe('TelemetryEventRelay', () => {
 				creds_eligible: 5,
 				creds_eligible_with_conflicts: 1,
 				variables_eligible: 3,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-started-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-started-push-ui'] = {
+				userId: 'userId',
+				workflowsEligible: 10,
+				workflowsEligibleWithConflicts: 2,
+				credsEligible: 5,
+				credsEligibleWithConflicts: 1,
+				variablesEligible: 3,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-started-push-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User started push via UI', {
+				user_id: 'userId',
+				workflows_eligible: 10,
+				workflows_eligible_with_conflicts: 2,
+				creds_eligible: 5,
+				creds_eligible_with_conflicts: 1,
+				variables_eligible: 3,
+				public_api: true,
 			});
 		});
 
@@ -435,6 +481,7 @@ describe('TelemetryEventRelay', () => {
 				workflowsPushed: 8,
 				credsPushed: 5,
 				variablesPushed: 3,
+				publicApi: false,
 			};
 
 			eventService.emit('source-control-user-finished-push-ui', event);
@@ -445,6 +492,29 @@ describe('TelemetryEventRelay', () => {
 				workflows_pushed: 8,
 				creds_pushed: 5,
 				variables_pushed: 3,
+				public_api: false,
+			});
+		});
+
+		it('should track on `source-control-user-finished-push-ui` event with publicApi: true', () => {
+			const event: RelayEventMap['source-control-user-finished-push-ui'] = {
+				userId: 'userId',
+				workflowsEligible: 10,
+				workflowsPushed: 8,
+				credsPushed: 5,
+				variablesPushed: 3,
+				publicApi: true,
+			};
+
+			eventService.emit('source-control-user-finished-push-ui', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User finished push via UI', {
+				user_id: 'userId',
+				workflows_eligible: 10,
+				workflows_pushed: 8,
+				creds_pushed: 5,
+				variables_pushed: 3,
+				public_api: true,
 			});
 		});
 	});
@@ -973,6 +1043,7 @@ describe('TelemetryEventRelay', () => {
 	describe('credentials events', () => {
 		it('should track on `credentials-created` event', () => {
 			const event: RelayEventMap['credentials-created'] = {
+				credentialName: 'My GitHub account',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1038,6 +1109,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-updated` event', () => {
 			const event: RelayEventMap['credentials-updated'] = {
+				credentialName: 'Rotated token',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1067,6 +1139,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `credentials-deleted` event', () => {
 			const event: RelayEventMap['credentials-deleted'] = {
+				credentialName: 'Retired token',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -1685,6 +1759,8 @@ describe('TelemetryEventRelay', () => {
 
 		it('should track on `workflow-deleted` event', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
+				workflowName: 'Deleted Workflow',
+				projectId: 'project123',
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -2408,6 +2484,7 @@ describe('TelemetryEventRelay', () => {
 					tags: 2,
 				},
 				credentialExportPolicy: 'expression-values-only',
+				includeArchivedWorkflows: true,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2421,6 +2498,7 @@ describe('TelemetryEventRelay', () => {
 				variable_count: 4,
 				tag_count: 2,
 				credential_export_policy: 'expression-values-only',
+				include_archived_workflows: true,
 			});
 		});
 
@@ -2459,7 +2537,7 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('user events', () => {
-		it('should track on `user-updated` event', () => {
+		describe('on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
 				user: {
 					id: 'user123',
@@ -2471,18 +2549,31 @@ describe('TelemetryEventRelay', () => {
 				fieldsChanged: ['firstName', 'lastName'],
 			};
 
-			eventService.emit('user-updated', event);
+			it('should track without `user_email` on a self-hosted deployment', () => {
+				eventService.emit('user-updated', event);
 
-			expect(telemetry.identify).toHaveBeenCalledWith(
-				{
-					user_role: GLOBAL_OWNER_ROLE.slug,
-					user_email: 'user@example.com',
-				},
-				'user123',
-			);
-			expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
-				user_id: 'user123',
-				fields_changed: ['firstName', 'lastName'],
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug },
+					'user123',
+				);
+				expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
+					user_id: 'user123',
+					fields_changed: ['firstName', 'lastName'],
+				});
+			});
+
+			it('should track with `user_email` on a cloud deployment', () => {
+				globalConfig.deployment.type = 'cloud';
+				try {
+					eventService.emit('user-updated', event);
+				} finally {
+					globalConfig.deployment.type = 'default';
+				}
+
+				expect(telemetry.identify).toHaveBeenCalledWith(
+					{ user_role: GLOBAL_OWNER_ROLE.slug, user_email: 'user@example.com' },
+					'user123',
+				);
 			});
 		});
 

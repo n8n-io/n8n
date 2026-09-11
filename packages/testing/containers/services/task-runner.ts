@@ -20,7 +20,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 
 	getOptions(ctx) {
 		if (ctx.external) {
-			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` } as TaskRunnerConfig;
+			return { taskBrokerUri: `http://${EXTERNAL_HOST}:5679` };
 		}
 		const { workers, mains, projectName } = ctx;
 		const taskBrokerHost =
@@ -29,7 +29,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				: mains > 1
 					? `${projectName}-n8n-main-1`
 					: `${projectName}-n8n`;
-		return { taskBrokerUri: `http://${taskBrokerHost}:5679` } as TaskRunnerConfig;
+		return { taskBrokerUri: `http://${taskBrokerHost}:5679` };
 	},
 
 	async start(network, projectName, config?: unknown): Promise<TaskRunnerResult> {
@@ -43,6 +43,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				.withExposedPorts(5680)
 				.withEnvironment({
 					N8N_RUNNERS_AUTH_TOKEN: 'test',
+					N8N_RUNNERS_LAUNCHER_BROKER_READINESS_POLL_INTERVAL_MS: '500',
 					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug', // Broker registration is logged at debug, and the stack waits on it
 					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 					N8N_RUNNERS_MAX_CONCURRENCY: '5',

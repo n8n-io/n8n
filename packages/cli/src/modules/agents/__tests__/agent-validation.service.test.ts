@@ -26,6 +26,15 @@ const runnableConfig: AgentJsonConfig = {
 	skills: [],
 };
 
+const executeWorkflowTriggerNode = {
+	id: 'trigger-node-id',
+	name: 'When Executed by Another Workflow',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	typeVersion: 1.1,
+	position: [0, 0],
+	parameters: { inputSource: 'passthrough' },
+};
+
 function makeAgent(
 	config: AgentJsonConfig | null = runnableConfig,
 	skills = {},
@@ -1169,30 +1178,15 @@ describe('AgentValidationService — structured issues', () => {
 			{
 				id: 'wf-a',
 				name: 'Workflow A',
-				nodes: [
-					{
-						id: 'trigger-node-id',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
+				activeVersionId: 'version-a',
+				nodes: [executeWorkflowTriggerNode],
 			},
 			{ id: 'wf-c', name: 'Workflow C', nodes: [] },
 			{
 				id: 'wf-form',
 				name: 'Workflow With Form',
 				nodes: [
-					{
-						id: 'trigger-2',
-						name: 'Manual Trigger',
-						type: 'n8n-nodes-base.manualTrigger',
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
+					executeWorkflowTriggerNode,
 					{
 						id: 'form-1',
 						name: 'Form',
@@ -1203,7 +1197,11 @@ describe('AgentValidationService — structured issues', () => {
 					},
 				],
 				// Form is reachable from the trigger, so it actually runs and is flagged.
-				connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+				connections: {
+					[executeWorkflowTriggerNode.name]: {
+						main: [[{ node: 'Form', type: 'main', index: 0 }]],
+					},
+				},
 			},
 		] as never);
 
@@ -1247,6 +1245,46 @@ describe('AgentValidationService — structured issues', () => {
 				reason: 'incompatible_nodes',
 			},
 		]);
+	});
+
+	it('flags an unpublished workflow tool for publishing but not for runtime', async () => {
+		const { service, agentRepository, workflowRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [{ type: 'workflow', workflowId: 'wf-draft', workflow: 'Draft Workflow' }],
+			}),
+		);
+		workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+			{
+				id: 'wf-draft',
+				name: 'Draft Workflow',
+				activeVersionId: null,
+				nodes: [executeWorkflowTriggerNode],
+			},
+		] as never);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const publishResult = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentials,
+			'publish',
+		);
+		const runtimeResult = await service.validateAgentIsRunnable(agentId, projectId, credentials);
+
+		expect(publishResult).toEqual({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'incompatible_reference',
+					path: 'tools.0.workflowId',
+					capability: { kind: 'tool', id: 'Draft Workflow', index: 0, toolType: 'workflow' },
+					reason: 'not_published',
+				},
+			],
+		});
+		expect(runtimeResult).toEqual({ missing: [] });
 	});
 
 	it('loaded-agent full validation loads tasks but does not refetch the agent, flagging missing task bodies regardless of enabled state', async () => {

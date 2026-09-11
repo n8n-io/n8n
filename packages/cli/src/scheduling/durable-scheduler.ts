@@ -14,6 +14,7 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
@@ -44,6 +45,7 @@ export class DurableScheduler implements Scheduler {
 		pollTriggerTaskHandler: PollTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
 		workflowOwner: WorkflowScheduledJobOwner,
+		agentOwner: AgentScheduledJobOwner,
 		systemTaskOwner: SystemTaskScheduledJobOwner,
 	) {
 		const config = globalConfig.scheduler;
@@ -79,7 +81,7 @@ export class DurableScheduler implements Scheduler {
 					reconciliation: config.ownerReconciliationEnabled
 						? {
 								jobStore: jobs,
-								owners: createScheduledJobOwnerRegistry(workflowOwner, systemTaskOwner),
+								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 								options: {
 									settleSeconds: config.ownerSettleSeconds,
 									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,

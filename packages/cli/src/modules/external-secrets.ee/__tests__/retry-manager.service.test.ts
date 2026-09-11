@@ -65,6 +65,34 @@ describe('RetryManager', () => {
 			expect(retryManager.isRetrying('test-key')).toBe(false);
 		});
 
+		it('should spread retries over the second half of the backoff window', async () => {
+			const earliestOperation = vi
+				.fn()
+				.mockResolvedValue({ success: false, error: new Error('Connection failed') });
+			const latestOperation = vi
+				.fn()
+				.mockResolvedValue({ success: false, error: new Error('Connection failed') });
+
+			vi.spyOn(Math, 'random').mockReturnValue(0);
+			await retryManager.runWithRetry('earliest-key', earliestOperation);
+
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF / 2 - 1);
+			await Promise.resolve();
+			expect(earliestOperation).toHaveBeenCalledTimes(1);
+
+			vi.advanceTimersByTime(1);
+			await Promise.resolve();
+			expect(earliestOperation).toHaveBeenCalledTimes(2);
+
+			// The nominal backoff stays the ceiling, which the other tests in this suite rely on.
+			vi.spyOn(Math, 'random').mockReturnValue(1);
+			await retryManager.runWithRetry('latest-key', latestOperation);
+
+			vi.advanceTimersByTime(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+			await Promise.resolve();
+			expect(latestOperation).toHaveBeenCalledTimes(2);
+		});
+
 		it('should cap backoff at maximum value', async () => {
 			const error = new Error('Connection failed');
 			const failOperation = vi.fn().mockResolvedValue({ success: false, error });

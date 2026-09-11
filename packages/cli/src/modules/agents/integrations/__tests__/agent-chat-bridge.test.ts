@@ -5,7 +5,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
 import { mock } from 'vitest-mock-extended';
-import { type Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -17,6 +17,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import type { ComponentMapper } from '../component-mapper';
+import * as esmLoader from '../esm-loader';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -622,6 +623,35 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
+		it('names the misconfiguration when the run fails with a UserError', async () => {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = {
+				// The real method is an async generator: the build error surfaces on
+				// the first `next()`, inside the stream consumer.
+				// eslint-disable-next-line require-yield
+				executeForChatPublished: vi.fn(async function* () {
+					throw new UserError('Credential "OpenAI" not found.');
+				}),
+			};
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+			const thread = makeThread();
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ This agent is misconfigured: Credential "OpenAI" not found. An agent owner has to fix this in n8n.',
+			);
+		});
+
 		it('does not add a generic error when text follows an errored tool result', async () => {
 			const thread = await runMention(bufferedIntegration, [
 				erroredToolResult,
@@ -661,6 +691,68 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+	});
+
+	it('preserves labelled link URLs without duplicating bare URLs', async () => {
+		const chatSdk = await import('chat');
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+		try {
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			await handlers.mention!(makeThread(), {
+				text: 'In this PRD, see https://a.example.com or mail user@example.com',
+				formatted: chatSdk.parseMarkdown(
+					'In [this](https://notion.so/x) PRD, see https://a.example.com or mail user@example.com',
+				),
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'In [this](https://notion.so/x) PRD, see https://a.example.com or mail user@example.com',
+				}),
+			);
+		} finally {
+			loadChatSdkSpy.mockRestore();
+		}
+	});
+
+	it('keeps adapter text unchanged when it is not the plain-text projection', async () => {
+		const chatSdk = await import('chat');
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue(chatSdk);
+		try {
+			const raw = '<@123> see **x** and `code` at [y](https://u)';
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			await handlers.mention!(makeThread(), {
+				text: raw,
+				formatted: chatSdk.parseMarkdown(raw),
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ message: raw }),
+			);
+		} finally {
+			loadChatSdkSpy.mockRestore();
+		}
 	});
 
 	describe('when deriving memory scope', () => {
@@ -1267,6 +1359,114 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('wake delivery', () => {
+		function makeWakeBridge() {
+			const { bot } = makeBot();
+			const thread = makeThread('slack:channel-1:1');
+			bot.thread.mockReturnValue(thread);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'slack', credentialId: 'cred-1' },
+			);
+			return { bridge, bot, thread };
+		}
+
+		const textChunks: StreamChunk[] = [
+			{ type: 'text-delta', id: 'text-1', delta: 'The job ' },
+			{ type: 'text-delta', id: 'text-1', delta: 'is done.' },
+			finishChunk,
+		];
+
+		it('posts wake text to the stored Slack thread before returning', async () => {
+			const { bridge, bot, thread } = makeWakeBridge();
+			let resolvePost!: () => void;
+			thread.post.mockReturnValue(
+				new Promise<void>((resolve) => {
+					resolvePost = resolve;
+				}),
+			);
+			let delivered = false;
+			const delivery = bridge.deliverWakeResponse(thread.id, textChunks).then(() => {
+				delivered = true;
+			});
+
+			await vi.waitFor(() => expect(thread.post).toHaveBeenCalled());
+			expect(delivered).toBe(false);
+			resolvePost();
+			await delivery;
+
+			expect(bot.thread).toHaveBeenCalledWith('slack:channel-1:1');
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith({ markdown: 'The job is done.' });
+			expect(delivered).toBe(true);
+		});
+
+		it('reports a failed Slack post so the wake can retry', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockRejectedValueOnce(error);
+
+			await expect(bridge.deliverWakeResponse(thread.id, textChunks)).rejects.toBe(error);
+			expect(thread.post).toHaveBeenCalledTimes(1);
+
+			await bridge.deliverWakeResponse(thread.id, textChunks);
+			expect(thread.post).toHaveBeenLastCalledWith({ markdown: 'The job is done.' });
+		});
+
+		it('reports a failed message post after wake text', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [
+					...textChunks,
+					{
+						type: 'message',
+						message: { role: 'assistant', content: [{ type: 'text', text: 'More details.' }] },
+					},
+				]),
+			).rejects.toBe(error);
+
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'The job is done.' });
+			expect(thread.post).toHaveBeenNthCalledWith(2, 'More details.');
+		});
+
+		it('reports a failed error reply', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			const error = new Error('Slack is unavailable');
+			thread.post.mockRejectedValue(error);
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [erroredToolResult, finishChunk]),
+			).rejects.toBe(error);
+
+			expect(thread.post).toHaveBeenCalledExactlyOnceWith(GENERIC_ERROR_MESSAGE);
+		});
+
+		it('reports a failed approval card post', async () => {
+			const { bridge, thread } = makeWakeBridge();
+			componentMapper.toCard.mockResolvedValue({ type: 'card', children: [] });
+			thread.post.mockRejectedValue(new Error('Slack is unavailable'));
+
+			await expect(
+				bridge.deliverWakeResponse(thread.id, [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'send_message',
+						suspendPayload: { type: 'approval', message: 'Send the message?' },
+					},
+				]),
+			).rejects.toThrow('Failed to post tool approval request');
 		});
 	});
 

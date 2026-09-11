@@ -1,5 +1,5 @@
 import type { SystemTask } from '@n8n/decorators';
-import { resolveSystemTaskRunOptions } from '@n8n/decorators';
+import { resolveSystemTaskRunOptions, resolveSystemTaskSchedule } from '@n8n/decorators';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
 
 import type { ProvisionRequest } from '../durable-job-provisioner';
@@ -17,7 +17,8 @@ export function systemTaskProvisionRequest(
 	defaultTimezone: string,
 	now: Date,
 ): ProvisionRequest {
-	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(task.schedule, defaultTimezone), now);
+	const schedule = resolveSystemTaskSchedule(task);
+	const firstRunAt = computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
 	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
 
@@ -25,7 +26,7 @@ export function systemTaskProvisionRequest(
 		owner: systemTaskOwner.owner(task.name),
 		taskType: name,
 		payload: systemTaskOwner.jobPayload(),
-		desired: [{ name, schedule: task.schedule, firstRunAt }],
+		desired: [{ name, schedule, firstRunAt }],
 		misfirePolicy,
 		misfireGraceSeconds,
 		maxAttempts,

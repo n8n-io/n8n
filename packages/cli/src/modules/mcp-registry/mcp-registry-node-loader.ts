@@ -28,6 +28,7 @@ import {
 	type IsKnownCredentialType,
 } from './node-description-transform';
 import {
+	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
@@ -86,8 +87,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
+		const credentialTypes = this.getCredentialTypes();
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
-			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
+			isSupportedMcpRegistryCredentialType(credentialTypes, name);
 
 		for (const server of this.servers) {
 			const nodeDescription = serverToNodeDescription(
@@ -96,12 +98,21 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				isKnownCredentialType,
 			);
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
-			if (!nodeDescription || !credentialDescription) continue;
-			const connection = resolveMcpRegistryConnection(server);
-			if (!connection) continue;
-			this.connections.set(connection.nodeTypeName, connection);
+			if (!nodeDescription) continue;
+			if (server.authType !== 'usesCredentials' && !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);
+			const connection = resolveMcpRegistryConnection(server);
+			if (!connection) continue;
+			const supportedCredentialTypes = new Set(
+				nodeDescription.credentials?.map(({ name }) => name) ?? [],
+			);
+			this.connections.set(connection.nodeTypeName, {
+				...connection,
+				credentialBindings: connection.credentialBindings.filter(({ credentialType }) =>
+					supportedCredentialTypes.has(credentialType),
+				),
+			});
 
 			this.types.nodes.push(nodeDescription);
 			const syntheticNode = Object.create(baseNode, {
@@ -113,22 +124,32 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 
-			this.types.credentials.push(credentialDescription);
-			this.credentialTypes[credentialDescription.name] = {
-				type: credentialDescription,
-				sourcePath: '',
-			};
-			this.known.credentials[credentialDescription.name] = {
-				className: 'McpRegistryApi',
-				sourcePath: '',
-				extends: credentialDescription.extends,
-				supportedNodes: [bareName],
-			};
+			if (credentialDescription) {
+				this.types.credentials.push(credentialDescription);
+				this.credentialTypes[credentialDescription.name] = {
+					type: credentialDescription,
+					sourcePath: '',
+				};
+				this.known.credentials[credentialDescription.name] = {
+					className: 'McpRegistryApi',
+					sourcePath: '',
+					extends: credentialDescription.extends,
+					supportedNodes: [bareName],
+				};
+			}
 		}
 
 		if (supportsRegistryRuntime(baseNode)) {
 			baseNode.setRegistryRuntime({
-				resolveConnection: (nodeTypeName) => this.connections.get(nodeTypeName),
+				resolveConnection: (nodeTypeName, selector) => {
+					const connection = this.connections.get(nodeTypeName);
+					if (!connection) return undefined;
+					const binding =
+						connection.credentialBindings.length === 1
+							? connection.credentialBindings[0]
+							: connection.credentialBindings.find((candidate) => candidate.selector === selector);
+					return binding ? { connection, binding } : undefined;
+				},
 				prepareConnection: prepareMcpRegistryConnection,
 			});
 		}
@@ -189,5 +210,24 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			);
 			return undefined;
 		}
+	}
+
+	private getCredentialTypes() {
+		return {
+			recognizes: (name: string) =>
+				Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name),
+			getByName: (name: string) => this.loadNodesAndCredentials.getCredential(name).type,
+			getSupportedNodes: (name: string) =>
+				this.loadNodesAndCredentials.knownCredentials[name]?.supportedNodes ?? [],
+			getParentTypes: (name: string) => this.getParentCredentialTypes(name),
+		};
+	}
+
+	private getParentCredentialTypes(name: string, seen = new Set<string>()): string[] {
+		if (seen.has(name)) return [];
+		seen.add(name);
+
+		const parents = this.loadNodesAndCredentials.knownCredentials[name]?.extends ?? [];
+		return parents.flatMap((parent) => [parent, ...this.getParentCredentialTypes(parent, seen)]);
 	}
 }

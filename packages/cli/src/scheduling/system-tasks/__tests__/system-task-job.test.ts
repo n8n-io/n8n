@@ -71,6 +71,13 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.schedule).toEqual(schedule);
 	});
 
+	it('stores a fractional interval rounded to whole seconds and seeds from the rounded cadence', () => {
+		const { desired } = request({ schedule: { kind: 'interval', intervalSeconds: 89.6 } });
+
+		expect(desired[0]?.schedule).toEqual({ kind: 'interval', intervalSeconds: 90 });
+		expect(desired[0]?.firstRunAt).toEqual(new Date('2026-01-05T09:01:30.000Z'));
+	});
+
 	it('coalesces and retries idempotent work', () => {
 		expect(request({ effects: 'idempotent' })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,

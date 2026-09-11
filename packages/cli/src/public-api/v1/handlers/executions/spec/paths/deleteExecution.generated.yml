@@ -1,6 +1,6 @@
 operationId: deleteExecution
 tags:
-  - Execution
+  - Executions
 summary: Delete an execution
 description: Deletes an execution from your instance.
 x-required-scope: execution:delete
@@ -9,8 +9,10 @@ x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
 parameters:
   - schema:
-      type: string
+      type: integer
+      minimum: 1
     required: true
+    description: The ID of the execution.
     name: executionId
     in: path
 responses:

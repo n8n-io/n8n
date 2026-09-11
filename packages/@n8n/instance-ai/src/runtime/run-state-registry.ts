@@ -1,4 +1,6 @@
 import type {
+	InstanceAiBuildMode,
+	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -24,6 +26,8 @@ export interface ActiveRunState {
 	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
+	/** Owner of the run, resolved at entry so concurrency can be counted per user. */
+	userId?: string;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -145,6 +149,19 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/** Build mode captured at user-run entry and reused by follow-up runs. */
+	private readonly threadBuildModes = new Map<string, InstanceAiBuildMode>();
+	private readonly threadPromptSelections = new Map<
+		string,
+		{ version: string; metadata?: InstanceAiPromptConfiguration }
+	>();
+	/**
+	 * Resolves a user id from the opaque `TUser` the registry is parameterised over.
+	 * Required rather than optional: per-user concurrency counting depends on it, and a
+	 * missing extractor would silently report every user as holding zero runs.
+	 */
+	constructor(private readonly getUserId: (user: TUser) => string) {}
+
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -158,6 +175,7 @@ export class RunStateRegistry<TUser = unknown> {
 			messageGroupId,
 			startedAt: now,
 			lastActivityAt: now,
+			userId: this.getUserId(options.user),
 		});
 		this.threadUsers.set(options.threadId, options.user);
 
@@ -258,9 +276,44 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId)?.runId;
 	}
 
-	/** Number of runs currently executing (excludes suspended/pending runs). */
+	/**
+	 * Runs holding a slot on this process, which is what the instance cap admits against.
+	 *
+	 * Includes a run parked on an inline approval card, which stays in `activeRuns`.
+	 * Excludes a suspended run, which leaves `activeRuns` but keeps its agent in memory.
+	 * So this bounds concurrent execution, not resident memory.
+	 */
 	activeRunCount(): number {
 		return this.activeRuns.size;
+	}
+
+	/**
+	 * Number of runs this user currently has executing, across all their threads.
+	 *
+	 * Excludes everything parked on a human, because none of it is spending anything and
+	 * counting it would lock a user out for the whole confirmation timeout after a few
+	 * abandoned cards. That means two things, not one:
+	 *
+	 *  - suspended runs, which have left `activeRuns` entirely; and
+	 *  - runs blocked in `waitForConfirmation`, which stay in `activeRuns` while an inline
+	 *    approval card is open. `sweepTimedOut` skips these for the same reason.
+	 *
+	 * {@link activeRunCount} differs on the second case only. An inline-parked run is still
+	 * in `activeRuns`, so it holds a slot there. A suspended run holds a slot in neither,
+	 * although it still retains its agent -- see {@link activeRunCount}.
+	 *
+	 * The scan is linear in concurrently-executing runs. That stays small in practice
+	 * regardless of the caps -- each run costs ~12-20MB, so a process cannot hold many --
+	 * and it is negligible next to the model call that follows.
+	 */
+	activeRunCountForUser(userId: string): number {
+		let count = 0;
+		for (const [threadId, run] of this.activeRuns) {
+			if (run.userId !== userId) continue;
+			if (this.hasPendingConfirmationForThread(threadId)) continue;
+			count++;
+		}
+		return count;
 	}
 
 	getActiveRun(threadId: string): ActiveRunState | undefined {
@@ -300,6 +353,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.delete(threadId);
 		state.startedAt = state.startedAt ?? activeRun?.startedAt ?? state.createdAt;
 		state.lastActivityAt = state.lastActivityAt ?? state.createdAt;
+		state.userId = state.userId ?? activeRun?.userId;
 		this.suspendedRuns.set(threadId, state);
 
 		// Re-seed group indexes: on a restart-resumed orphan these maps start
@@ -343,6 +397,7 @@ export class RunStateRegistry<TUser = unknown> {
 			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
+			userId: suspended.userId ?? this.getUserId(suspended.user),
 		});
 
 		// Re-seed group indexes for the reactivated run (empty after a restart).
@@ -399,7 +454,7 @@ export class RunStateRegistry<TUser = unknown> {
 		data: ConfirmationData,
 	): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
-		if (!pending || pending.userId !== requestingUserId) return false;
+		if (pending?.userId !== requestingUserId) return false;
 
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve(data);
@@ -438,6 +493,33 @@ export class RunStateRegistry<TUser = unknown> {
 
 	getTimeZone(threadId: string): string | undefined {
 		return this.threadTimeZones.get(threadId);
+	}
+
+	/** Retain the request mode for internal follow-ups. An omitted mode clears it. */
+	setBuildMode(threadId: string, buildMode: InstanceAiBuildMode | undefined): void {
+		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
+		else this.threadBuildModes.set(threadId, buildMode);
+	}
+
+	getBuildMode(threadId: string): InstanceAiBuildMode | undefined {
+		return this.threadBuildModes.get(threadId);
+	}
+
+	setPromptVersion(threadId: string, version: string | undefined): void {
+		if (version === undefined) this.threadPromptSelections.delete(threadId);
+		else this.threadPromptSelections.set(threadId, { version });
+	}
+
+	getPromptVersion(threadId: string): string | undefined {
+		return this.threadPromptSelections.get(threadId)?.version;
+	}
+
+	setPromptConfiguration(threadId: string, metadata: InstanceAiPromptConfiguration): void {
+		this.threadPromptSelections.set(threadId, { version: metadata.version, metadata });
+	}
+
+	getPromptConfiguration(threadId: string): InstanceAiPromptConfiguration | undefined {
+		return this.threadPromptSelections.get(threadId)?.metadata;
 	}
 
 	/**
@@ -590,6 +672,8 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadBuildModes.delete(threadId);
+		this.threadPromptSelections.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -619,11 +703,15 @@ export class RunStateRegistry<TUser = unknown> {
 	 * confirmation Promise.
 	 */
 	shutdown(): {
-		activeRuns: ActiveRunState[];
+		activeRuns: Array<ActiveRunState & { promptVersion?: string }>;
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
 		pendingThreadIds: string[];
 	} {
-		const activeRuns = [...this.activeRuns.values()];
+		// Capture the selected version before clearing per-thread state.
+		const activeRuns = [...this.activeRuns.values()].map((run) => ({
+			...run,
+			promptVersion: this.getPromptVersion(run.threadId),
+		}));
 		const suspendedRuns = [...this.suspendedRuns.values()];
 		const pendingThreadIds = [
 			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
@@ -634,6 +722,8 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadBuildModes.clear();
+		this.threadPromptSelections.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 

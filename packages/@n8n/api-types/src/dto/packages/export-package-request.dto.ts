@@ -20,4 +20,5 @@ export class ExportPackageRequestDto extends Z.class({
 		.enum(['expression-values-only', 'no-values'])
 		.optional()
 		.default('expression-values-only'),
+	includeArchivedWorkflows: z.boolean().default(false),
 }) {}

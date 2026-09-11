@@ -31,7 +31,13 @@ const renderComponent = createThreadComponentRenderer(InstanceAiMcpConnect);
 const defaultProps = {
 	requestId: 'req-mcp',
 	inputThreadId: 'input-1',
-	servers: [{ serverSlug: 'brave', title: 'Brave', credentialType: 'braveMcpOAuth2Api' }],
+	servers: [
+		{
+			serverSlug: 'brave',
+			title: 'Brave',
+			usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
+		},
+	],
 };
 
 describe('InstanceAiMcpConnect', () => {
