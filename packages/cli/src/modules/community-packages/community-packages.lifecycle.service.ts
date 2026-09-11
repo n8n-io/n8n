@@ -11,6 +11,7 @@ import {
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -187,6 +188,9 @@ export class CommunityPackagesLifecycleService {
 				failureReason: errorMessage,
 			});
 
+			// Rethrow unwrapped: the actionable copy and its metadata must reach the UI.
+			if (error instanceof IncompatibleNodesApiVersionError) throw error;
+
 			let message = [`Error loading package "${name}" `, errorMessage].join(':');
 			if (error instanceof Error && error.cause instanceof Error) {
 				message += `\nCause: ${error.cause.message}`;
@@ -315,6 +319,9 @@ export class CommunityPackagesLifecycleService {
 					},
 				});
 			});
+
+			// Same as on install: keep the actionable copy unwrapped.
+			if (error instanceof IncompatibleNodesApiVersionError) throw error;
 
 			const message = [
 				`Error updating package "${name}"`,

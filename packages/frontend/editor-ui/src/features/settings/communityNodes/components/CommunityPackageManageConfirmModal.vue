@@ -6,6 +6,7 @@ import {
 } from '../communityNodes.constants';
 import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
+import { isNodesApiVersionError } from '../communityNodes.utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -180,7 +181,14 @@ const onUpdate = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
+		toast.showError(
+			error,
+			i18n.baseText(
+				isNodesApiVersionError(error)
+					? 'settings.communityNodes.messages.update.error.incompatible.title'
+					: 'settings.communityNodes.messages.update.error.title',
+			),
+		);
 	} finally {
 		loading.value = false;
 		modalBus.emit('close');

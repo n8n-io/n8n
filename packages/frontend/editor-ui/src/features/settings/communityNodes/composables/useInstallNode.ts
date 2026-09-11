@@ -1,3 +1,4 @@
+import { isNodesApiVersionError } from '../communityNodes.utils';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -106,7 +107,14 @@ export function useInstallNode() {
 			});
 			return { success: true };
 		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
+			toast.showError(
+				error,
+				i18n.baseText(
+					isNodesApiVersionError(error)
+						? 'settings.communityNodes.messages.install.incompatible.title'
+						: 'settings.communityNodes.messages.install.error',
+				),
+			);
 			return { success: false, error };
 		} finally {
 			loading.value = false;

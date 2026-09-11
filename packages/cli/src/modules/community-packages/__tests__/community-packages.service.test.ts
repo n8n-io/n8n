@@ -418,6 +418,7 @@ describe('CommunityPackagesService', () => {
 					devDependencies: { 'a-dev-dep': '1.0.0' },
 					peerDependencies: { 'a-peer-dep': '2.0.0' },
 					optionalDependencies: { 'an-optional-dep': '3.0.0' },
+					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 				}),
 			);
 			vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -482,6 +483,14 @@ describe('CommunityPackagesService', () => {
 						optionalDependencies: {},
 					}),
 				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '2.0.0' },
+					}),
+				)
+				// The compatibility guard reads the extracted package.json after the download.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: 'installed-nodes',
@@ -580,6 +589,55 @@ describe('CommunityPackagesService', () => {
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 		});
 
+		describe('node API version guard', () => {
+			const updateToIncompatible = async (n8nNodesApiVersion: unknown) => {
+				vi.mocked(readFile).mockResolvedValue(
+					JSON.stringify({
+						name: PACKAGE_NAME,
+						version: '2.0.0',
+						dependencies: { 'some-actual-dep': '1.2.3' },
+						n8n: { n8nNodesApiVersion },
+					}),
+				);
+				return await communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				);
+			};
+
+			test('should reject the update when the package requires a newer node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+					`This community node requires n8n node API version ${N8N_NODES_API_VERSION + 1}, but this instance supports up to ${N8N_NODES_API_VERSION}. Install an older compatible version of the package or upgrade n8n.`,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			test('should reject the update when the declared node API version is malformed', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+
+				expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+			});
+
+			test('should install a package that declares the supported node API version', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(
+					installedPackageForUpdateTest,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
+			});
+		});
+
 		test('should remove the package.json dependency when a fresh install fails', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
@@ -601,6 +659,14 @@ describe('CommunityPackagesService', () => {
 						optionalDependencies: {},
 					}),
 				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+					}),
+				)
+				// The compatibility guard reads the extracted package.json after the download.
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: 'installed-nodes',
@@ -805,6 +871,9 @@ describe('CommunityPackagesService', () => {
 						name: PACKAGE_NAME,
 						version: '1.0.0',
 						dependencies: { 'some-actual-dep': '1.2.3' },
+						// The dependency-stripping rewrite must keep the `n8n` section: the
+						// compatibility guard reads it from the rewritten file.
+						n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
 					},
 					null,
 					2,

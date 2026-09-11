@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { Push } from '@/push';
@@ -178,6 +179,43 @@ describe('CommunityPackagesLifecycleService', () => {
 			await expect(promise).rejects.toThrow('Package name "n8n-nodes-invalid" is not allowed');
 			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
 		});
+	});
+
+	const mockInstallPath = () => {
+		communityNodeTypesService.findVetted.mockResolvedValue(
+			mock<CommunityNodeType>({ checksum: 'checksum' }),
+		);
+		communityPackagesService.parseNpmPackageName.mockReturnValue({
+			rawString: 'n8n-nodes-test',
+			packageName: 'n8n-nodes-test',
+			version: undefined,
+		});
+		communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+	};
+
+	it('should rethrow a compatibility rejection unwrapped, keeping status and metadata', async () => {
+		mockInstallPath();
+		communityPackagesService.installPackage.mockRejectedValue(
+			new IncompatibleNodesApiVersionError(
+				'This community node requires n8n node API version 3, but this instance supports up to 1.',
+				{ requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+			),
+		);
+
+		const promise = lifecycle.install({ name: 'n8n-nodes-test', verify: true }, user, 'ui');
+		await expect(promise).rejects.toBeInstanceOf(IncompatibleNodesApiVersionError);
+		await expect(promise).rejects.toMatchObject({
+			httpStatusCode: 400,
+			meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+			message:
+				'This community node requires n8n node API version 3, but this instance supports up to 1.',
+		});
+		// The failure telemetry still records the rejection.
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'community-package-installed',
+			expect.objectContaining({ success: false }),
+		);
 	});
 
 	describe('uninstall', () => {
@@ -427,6 +465,27 @@ describe('CommunityPackagesLifecycleService', () => {
 			await expect(
 				lifecycle.update({ name: 'n8n-nodes-missing', version: '1.0.0' }, user, 'badRequest'),
 			).rejects.toBeInstanceOf(BadRequestError);
+		});
+
+		it('should rethrow a compatibility rejection unwrapped, keeping status and metadata', async () => {
+			communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage('1.0.0'));
+			communityPackagesService.updatePackage.mockRejectedValue(
+				new IncompatibleNodesApiVersionError(
+					'This community node requires n8n node API version 3, but this instance supports up to 1.',
+					{ requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+				),
+			);
+
+			const promise = lifecycle.update(
+				{ name: 'n8n-nodes-test', version: '2.0.0' },
+				user,
+				'badRequest',
+			);
+			await expect(promise).rejects.toBeInstanceOf(IncompatibleNodesApiVersionError);
+			await expect(promise).rejects.toMatchObject({
+				httpStatusCode: 400,
+				meta: { requiredNodesApiVersion: 3, supportedNodesApiVersion: 1 },
+			});
 		});
 	});
 });
