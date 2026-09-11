@@ -1,0 +1,33 @@
+packages/cli/src/modules/chat-hub/chat-hub-extractor.ts
+  s_cab6267f4b831b::t_5106f163b169b7 56
+  s_cab6267f4b831b::t_7e2532975ad62f 13,17
+  s_cab6267f4b831b::t_eda7f235545dab 93-115
+packages/cli/src/modules/chat-hub/__tests__/chat-hub-extractor.test.ts
+  s_cab6267f4b831b::t_76860ada86a816 23,29-31
+  s_cab6267f4b831b::t_ab8a3aeebb0f77 4,8
+  s_cab6267f4b831b::t_da533ad4d40d05 98-140
+  s_cab6267f4b831b::t_f1190b65f9e2b2 9
+packages/cli/src/modules/redaction/__tests__/redaction.module.hook-registration.test.ts
+  s_cab6267f4b831b::t_bfbcc374685749 45-47
+  s_cab6267f4b831b::t_811e1e9b57cfe8 23
+packages/core/src/execution-engine/execution-context.ts
+  s_cab6267f4b831b::t_f9da00355a6197 225-237
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_cab6267f4b831b::t_198ba76a96bd01 836-889
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d8241af4c063dc872b076d4e26bf67f9f629731b",
+  "prompts": {},
+  "sessions": {
+    "s_cab6267f4b831b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b3a91b6-1765-45a5-b515-627644e27f16",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
