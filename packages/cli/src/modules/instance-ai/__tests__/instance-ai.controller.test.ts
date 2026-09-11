@@ -427,6 +427,42 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('events', () => {
+		// Bootstrap fixtures: one live run on group mg-1, and a request/response
+		// pair the handler can write to.
+		const RUN_START = {
+			type: 'run-start',
+			runId: 'run-1',
+			agentId: 'a1',
+			payload: { messageGroupId: 'mg-1' },
+		};
+		function stubLiveRun(runEvents: unknown[] = []): void {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventLog.getEventsForRuns.mockResolvedValue(runEvents as never);
+		}
+		function sseIo(once: Mock = vi.fn()) {
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: once as never,
+			});
+			const frames = () => (sseRes.write as Mock).mock.calls.map(([frame]) => String(frame));
+			return { sseReq, sseRes, frames };
+		}
+
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
@@ -490,20 +526,40 @@ describe('InstanceAiController', () => {
 			expect(eventFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
 		});
 
+		it('should replay events that arrive while the run-sync confirmation check is in flight', async () => {
+			stubLiveRun([RUN_START]);
+			let liveHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				liveHandler ??= handler as (stored: { id: number; event: unknown }) => void;
+				return vi.fn();
+			});
+			// While the pending-row check is in flight, a relayed event arrives:
+			// the bootstrap must hold it and deliver it exactly once, after the frame.
+			const midAwaitEvent = {
+				id: 7,
+				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: {} },
+			};
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async () => {
+				liveHandler!(midAwaitEvent);
+				eventLog.getEventsAfter.mockResolvedValue([midAwaitEvent] as never);
+			});
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const written = frames();
+			const runSyncIndex = written.findIndex((frame) => frame.startsWith('event: run-sync\n'));
+			const runFinishFrames = written.filter((frame) => frame.includes('run-finish'));
+			expect(runSyncIndex).toBeGreaterThanOrEqual(0);
+			expect(runFinishFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
+			expect(written.indexOf(runFinishFrames[0])).toBeGreaterThan(runSyncIndex);
+		});
+
 		it('should settle confirmation cards the server no longer holds before writing the run-sync frame', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventLog.getEventsAfter.mockResolvedValue([]);
+			stubLiveRun([RUN_START]);
 			eventBus.subscribe.mockReturnValue(vi.fn());
-			eventLog.getEventsForRuns.mockResolvedValue([
-				{ type: 'run-start', runId: 'run-1', agentId: 'a1', payload: { messageGroupId: 'mg-1' } },
-			] as never);
 			// The fold only knows the card was requested. The run has since resumed
 			// (the pending row is gone), which is what the flagging reports.
 			vi.mocked(buildAgentTreeFromEvents).mockReturnValueOnce({
@@ -531,25 +587,11 @@ describe('InstanceAiController', () => {
 					}
 				}
 			});
-
-			const sseRes = mock<Response & { flush?: () => void }>({
-				setHeader: vi.fn(),
-				flushHeaders: vi.fn(),
-				write: vi.fn(),
-				end: vi.fn(),
-				flush: vi.fn(),
-			});
-			const sseReq = mock<AuthenticatedRequest>({
-				user: { id: USER_ID },
-				headers: {},
-				once: vi.fn(),
-			});
+			const { sseReq, sseRes, frames } = sseIo();
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 
-			const runSyncFrame = (sseRes.write as Mock).mock.calls
-				.map(([frame]) => String(frame))
-				.find((frame) => frame.startsWith('event: run-sync\n'));
+			const runSyncFrame = frames().find((frame) => frame.startsWith('event: run-sync\n'));
 			expect(runSyncFrame).toBeDefined();
 			const { agentTree } = JSON.parse(runSyncFrame!.slice('event: run-sync\ndata: '.length)) as {
 				agentTree: {
@@ -601,6 +643,35 @@ describe('InstanceAiController', () => {
 				return [
 					{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
 				] as never;
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Both the live subscription (via the close handler) and the temporary
+			// buffering subscription (via the bootstrap finally) are removed.
+			expect(unsubscribers).toHaveLength(2);
+			expect(unsubscribers[0]).toHaveBeenCalledTimes(1);
+			expect(unsubscribers[1]).toHaveBeenCalledTimes(1);
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
+		it('should write no run-sync frame when the client disconnects during the confirmation check', async () => {
+			stubLiveRun([RUN_START]);
+			const unsubscribers: Mock[] = [];
+			eventBus.subscribe.mockImplementation(() => {
+				const unsubscribe = vi.fn();
+				unsubscribers.push(unsubscribe);
+				return unsubscribe;
+			});
+			let closeHandler: (() => void) | undefined;
+			const { sseReq, sseRes } = sseIo(
+				vi.fn((event: string, handler: () => void) => {
+					if (event === 'close') closeHandler = handler;
+				}),
+			);
+			// The client disconnects while the pending-row check is in flight.
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async () => {
+				closeHandler!();
 			});
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
