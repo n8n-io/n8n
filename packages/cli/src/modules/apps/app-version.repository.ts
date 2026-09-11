@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
 
 import { AppVersion } from './app-version.entity';
 
@@ -19,7 +19,8 @@ export class AppVersionRepository extends Repository<AppVersion> {
 			| 'distStorageKey'
 			| 'sourceSizeBytes'
 			| 'distSizeBytes'
-		>,
+		> &
+			Partial<Pick<AppVersion, 'label'>>,
 	) {
 		return await this.save(this.create(version));
 	}
@@ -31,6 +32,18 @@ export class AppVersionRepository extends Repository<AppVersion> {
 	/** Newest first. */
 	async listByAppId(appId: string) {
 		return await this.find({ where: { appId }, order: { createdAt: 'DESC', id: 'DESC' } });
+	}
+
+	/** Unlabeled versions of an app created at or after `since`. */
+	async findUnlabeledSince(appId: string, since: Date) {
+		return await this.find({
+			where: { appId, label: IsNull(), createdAt: MoreThanOrEqual(since) },
+		});
+	}
+
+	async setLabel(ids: string[], label: string) {
+		if (ids.length === 0) return;
+		await this.update({ id: In(ids) }, { label });
 	}
 
 	async countByAppId(appId: string): Promise<number> {

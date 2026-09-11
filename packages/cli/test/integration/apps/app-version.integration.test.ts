@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { AppsConfig } from '@n8n/config';
 import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -14,6 +15,7 @@ import { gzipSync } from 'node:zlib';
 import { Header, type types } from 'tar';
 
 import { AppVersionRepository } from '@/modules/apps/app-version.repository';
+import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppsService } from '@/modules/apps/apps.service';
@@ -42,6 +44,7 @@ let appVersionRepository: AppVersionRepository;
 let pageRepository: PageRepository;
 let binaryDataRepository: BinaryDataRepository;
 let cacheRoot: string;
+const instanceAiService = mockInstance(InstanceAiService);
 
 type TarEntry = {
 	path: string;
@@ -97,6 +100,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['App', 'Page']);
+	instanceAiService.destroyAppSandbox.mockClear();
 });
 
 const createApp = async () => await appRepository.createApp(ownerProject.id, 'Hello', 'hello');
@@ -396,6 +400,122 @@ describe('PATCH /projects/:projectId/apps/:appId/active-version', () => {
 		await authMemberAgent
 			.patch(`/projects/${ownerProject.id}/apps/${app.id}/active-version`)
 			.send({ versionId: null })
+			.expect(403);
+	});
+});
+
+describe('GET /projects/:projectId/apps/:appId/versions/:versionId/source', () => {
+	test('downloads the stored source tarball as an attachment', async () => {
+		const app = await createApp();
+		const source = sourceTgz();
+		const versionId: string = (await upload(app.id, source).expect(200)).body.data.id;
+
+		const response = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${versionId}/source`)
+			.buffer(true)
+			.parse((res, callback) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => callback(null, Buffer.concat(chunks)));
+			})
+			.expect(200);
+
+		expect(response.headers['content-type']).toContain('application/gzip');
+		expect(response.headers['content-disposition']).toBe(
+			`attachment; filename="hello-${versionId}.tgz"`,
+		);
+		expect(Buffer.from(response.body as Buffer).equals(source)).toBe(true);
+	});
+
+	test("answers 404 for another app's version", async () => {
+		const app = await createApp();
+		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const otherVersionId: string = (await upload(other.id).expect(200)).body.data.id;
+
+		await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/apps/${app.id}/versions/${otherVersionId}/source`)
+			.expect(404);
+	});
+});
+
+describe('POST /projects/:projectId/apps/:appId/versions/:versionId/restore', () => {
+	const restore = (appId: string, versionId: string) =>
+		authOwnerAgent.post(`/projects/${ownerProject.id}/apps/${appId}/versions/${versionId}/restore`);
+
+	test('stores the old source as the newest draft, keeps its label and the active version', async () => {
+		const app = await createApp();
+		const oldSource = tgz([{ path: './src/main.ts', content: 'old' }]);
+		const appsService = Container.get(AppsService);
+		const old = await appsService.createSourceSnapshot(app.id, oldSource);
+		await appVersionRepository.setLabel([old.id], 'Added tasks');
+		const publishedId: string = (await upload(app.id).expect(200)).body.data.id;
+
+		const response = await restore(app.id, old.id).expect(200);
+
+		expect(response.body.data).toMatchObject({
+			kind: 'snapshot',
+			isActive: false,
+			label: 'Added tasks',
+		});
+		const [newest] = await appVersionRepository.listByAppId(app.id);
+		expect(newest.id).toBe(response.body.data.id);
+		expect(newest.id).not.toBe(old.id);
+		expect((await appRepository.findOneBy({ id: app.id }))?.activeVersionId).toBe(publishedId);
+		expect((await appsService.getSourceTarball(app.id))?.data.equals(oldSource)).toBe(true);
+		expect(instanceAiService.destroyAppSandbox).not.toHaveBeenCalled();
+	});
+
+	test('drops the app sandbox when instance-ai is active and no run is editing the app', async () => {
+		const app = await createApp();
+		const versionId: string = (await upload(app.id).expect(200)).body.data.id;
+		instanceAiService.hasActiveRunForApp.mockReturnValue(false);
+		const isActive = vi
+			.spyOn(Container.get(ModuleRegistry), 'isActive')
+			.mockImplementation((name) => name === 'instance-ai' || name === 'apps');
+
+		try {
+			await restore(app.id, versionId).expect(200);
+		} finally {
+			isActive.mockRestore();
+		}
+
+		expect(instanceAiService.destroyAppSandbox).toHaveBeenCalledWith(app.id);
+	});
+
+	test('answers 409 while the assistant is editing the app', async () => {
+		const app = await createApp();
+		const versionId: string = (await upload(app.id).expect(200)).body.data.id;
+		instanceAiService.hasActiveRunForApp.mockReturnValue(true);
+		const isActive = vi
+			.spyOn(Container.get(ModuleRegistry), 'isActive')
+			.mockImplementation((name) => name === 'instance-ai' || name === 'apps');
+
+		try {
+			await restore(app.id, versionId).expect(409);
+		} finally {
+			isActive.mockRestore();
+		}
+
+		expect(await appVersionRepository.countByAppId(app.id)).toBe(1);
+		expect(instanceAiService.destroyAppSandbox).not.toHaveBeenCalled();
+	});
+
+	test("answers 404 for another app's version", async () => {
+		const app = await createApp();
+		const other = await appRepository.createApp(ownerProject.id, 'Other', 'other');
+		const otherVersionId: string = (await upload(other.id).expect(200)).body.data.id;
+
+		await restore(app.id, otherVersionId).expect(404);
+
+		expect(await appVersionRepository.countByAppId(app.id)).toBe(0);
+	});
+
+	test('rejects a non-member with 403', async () => {
+		const app = await createApp();
+		const versionId: string = (await upload(app.id).expect(200)).body.data.id;
+
+		await authMemberAgent
+			.post(`/projects/${ownerProject.id}/apps/${app.id}/versions/${versionId}/restore`)
 			.expect(403);
 	});
 });

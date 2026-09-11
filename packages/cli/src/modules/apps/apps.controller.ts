@@ -335,6 +335,42 @@ export class AppsController {
 		return await this.appsService.getVersionFileContent(appId, versionId, segments);
 	}
 
+	@Get('/:appId/versions/:versionId/source')
+	@ProjectScope('app:read')
+	async downloadVersionSource(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+	) {
+		const { fileName, data } = await this.appsService.getVersionSource(appId, versionId);
+		res.setHeader('Content-Type', 'application/gzip');
+		res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+		res.send(data);
+	}
+
+	/**
+	 * Makes a past version the working copy again. The app's sandbox is dropped
+	 * so the next assistant turn starts from the restored source.
+	 */
+	@Post('/:appId/versions/:versionId/restore')
+	@ProjectScope('app:update')
+	async restoreVersion(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('versionId') versionId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		const instanceAiActive = this.moduleRegistry.isActive('instance-ai');
+		if (instanceAiActive && Container.get(InstanceAiService).hasActiveRunForApp(appId)) {
+			throw new ConflictError('The AI Assistant is editing this app. Wait for it to finish.');
+		}
+		const version = await this.appsService.restoreVersion(appId, versionId);
+		if (instanceAiActive) await Container.get(InstanceAiService).destroyAppSandbox(appId);
+		return version;
+	}
+
 	@Post('/:appId/pages')
 	@ProjectScope('app:update')
 	async createPage(

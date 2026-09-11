@@ -134,6 +134,10 @@ describe('AppDetailsView', () => {
 		appsStore.deleteBinding.mockResolvedValue(undefined);
 		confirm.mockReset();
 		appsStore.fetchVersions.mockResolvedValue(undefined);
+		appsStore.versionSourceUrl.mockImplementation(
+			(projectId, appId, versionId) =>
+				`/rest/projects/${projectId}/apps/${appId}/versions/${versionId}/source`,
+		);
 	});
 
 	async function renderApp(app: App, props: Record<string, unknown> = {}) {
@@ -532,11 +536,12 @@ describe('AppDetailsView', () => {
 			hasDist: true,
 			isActive: false,
 			kind: 'publish',
+			label: null,
 			...overrides,
 		});
 		const versions = [
 			version({ id: 's-3', hasDist: false, kind: 'snapshot' }),
-			version({ id: 'v-2', isActive: true }),
+			version({ id: 'v-2', isActive: true, label: 'Added due dates' }),
 			version({ id: 'v-1' }),
 		];
 
@@ -559,8 +564,22 @@ describe('AppDetailsView', () => {
 			expect(appsStore.fetchVersions).toHaveBeenCalledWith('proj-1', 'app-1');
 			const rows = getAllByTestId('app-version-row');
 			expect(rows).toHaveLength(3);
-			expect(rows[0]).toHaveTextContent('Draft snapshot');
-			expect(rows[1]).toHaveTextContent('Published build');
+			expect(rows[0].querySelector('[data-test-id="app-version-title"]')).toHaveTextContent(
+				'Draft',
+			);
+			expect(rows[0].querySelector('[data-test-id="app-version-kind"]')).toHaveTextContent('Draft');
+			expect(rows[1].querySelector('[data-test-id="app-version-title"]')).toHaveTextContent(
+				'Added due dates',
+			);
+			expect(rows[1].querySelector('[data-test-id="app-version-kind"]')).toHaveTextContent(
+				'Published',
+			);
+			expect(rows[0].querySelector('[data-test-id="app-version-restore"]')).toBeNull();
+			expect(rows[1].querySelector('[data-test-id="app-version-restore"]')).not.toBeNull();
+			expect(rows[2].querySelector('[data-test-id="app-version-download"]')).toHaveAttribute(
+				'href',
+				expect.stringContaining('/projects/proj-1/apps/app-1/versions/v-1/source'),
+			);
 			expect(getByTestId('app-version-active')).toBe(
 				rows[1].querySelector('[data-test-id="app-version-active"]'),
 			);
@@ -594,6 +613,32 @@ describe('AppDetailsView', () => {
 				type: 'success',
 			});
 			expect(getByTestId('app-publish-indicator')).toHaveClass('indicatorChanges');
+		});
+
+		it('restores an older version after confirmation and refetches the list', async () => {
+			appsStore.fetchVersions.mockImplementation(async () => {
+				appsStore.versions = versions;
+			});
+			confirm.mockResolvedValue('confirm');
+			appsStore.restoreVersion.mockResolvedValue(
+				version({ id: 's-4', hasDist: false, kind: 'snapshot', label: 'Added due dates' }),
+			);
+			const { getAllByTestId } = await openVersionsTab(makeApp({ activeVersionId: 'v-2' }));
+
+			await userEvent.click(getAllByTestId('app-version-restore')[0]);
+			await waitAllPromises();
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('"Added due dates"'),
+				'Restore this version?',
+				expect.objectContaining({ confirmButtonText: 'Restore version' }),
+			);
+			expect(appsStore.restoreVersion).toHaveBeenCalledWith('proj-1', 'app-1', 'v-2');
+			expect(appsStore.fetchVersions).toHaveBeenCalledTimes(2);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Version restored',
+				type: 'success',
+			});
 		});
 
 		it('unpublishes the active version after confirmation', async () => {

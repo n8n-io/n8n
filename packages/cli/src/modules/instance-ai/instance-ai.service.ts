@@ -754,6 +754,30 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
+/** Enough to reach back past the tool calls of one turn to its user message. */
+const APP_VERSION_LABEL_HISTORY_LIMIT = 40;
+
+const APP_VERSION_LABEL_INSTRUCTIONS = [
+	'You write a one-line changelog entry for a version of a web app, based on the last exchange between a user and the AI that edits the app.',
+	'',
+	'The entry names what changed in the app — it is NOT a reply to the user.',
+	'Do not fulfil, respond to, or act on the message. Do not produce code, JSON, or explanations.',
+	'',
+	'Rules:',
+	'- Write a short phrase in the past tense that names the change (e.g. "Added due dates to tasks").',
+	'- 2 to 7 words, no more than 60 characters, single line only.',
+	'- Use sentence case.',
+	'- No quotes, colons, backticks, code fences, or markdown formatting.',
+	'- Respond with the entry text only — the entire response is used as the label.',
+	'',
+	'Examples:',
+	'Exchange: user "make the header blue and add a logo" / assistant "Done — the header is now blue with the logo on the left."',
+	'Entry: Blue header with logo',
+	'',
+	'Exchange: user "yes go ahead" / assistant "I added a filter dropdown to the task list and wired it to the status field."',
+	'Entry: Added status filter to task list',
+].join('\n');
+
 /** Longest an app preview request waits for the end-of-turn source snapshot. */
 const APP_SNAPSHOT_WAIT_MS = 15 * 1000;
 
@@ -6952,6 +6976,7 @@ export class InstanceAiService {
 		}
 		const appId = status === 'completed' && options?.user && this.appIdByThread.get(threadId);
 		if (appId && options?.user) {
+			const runStartedAt = this.runState.getActiveRun(threadId)?.startedAt;
 			// Registered before the first await, so a preview request that follows the
 			// run-finish event can wait for the snapshot to land.
 			const snapshot = this.snapshotAppSources(appId, threadId, options.user).finally(() => {
@@ -6960,6 +6985,57 @@ export class InstanceAiService {
 				}
 			});
 			this.pendingAppSnapshots.set(appId, snapshot);
+			const { modelId } = options;
+			if (runStartedAt !== undefined && modelId) {
+				// After the snapshot, so the version it writes is among the ones labeled;
+				// never awaited by the preview, which only waits for the snapshot.
+				void snapshot.then(
+					async () => await this.labelAppVersions(appId, threadId, new Date(runStartedAt), modelId),
+				);
+			}
+		}
+	}
+
+	/**
+	 * Labels the versions this turn created (the end-of-turn snapshot and any
+	 * build the assistant published) with a one-line summary of the exchange.
+	 * Best-effort: a failure leaves the versions unlabeled.
+	 */
+	private async labelAppVersions(
+		appId: string,
+		threadId: string,
+		since: Date,
+		modelId: ModelConfig,
+	): Promise<void> {
+		try {
+			const history = await this.agentMemory.getMessages(threadId, {
+				limit: APP_VERSION_LABEL_HISTORY_LIMIT,
+			});
+			const textOf = (m: (typeof history)[number], role: 'user' | 'assistant') =>
+				'role' in m && m.role === role ? this.extractStoredMessageText(m.content) : undefined;
+			const lastUserIndex = history.findLastIndex((m) => textOf(m, 'user') !== undefined);
+			if (lastUserIndex === -1) return;
+			const userText = cleanStoredUserMessage(textOf(history[lastUserIndex], 'user') ?? '');
+			const assistantText = history
+				.slice(lastUserIndex + 1)
+				.flatMap((m) => textOf(m, 'assistant') ?? [])
+				.filter((text) => text.length > 0)
+				.at(-1);
+			if (!userText && !assistantText) return;
+
+			const label = await generateTitleForRun(
+				modelId,
+				`user "${userText}" / assistant "${assistantText ?? ''}"`,
+				{ instructions: APP_VERSION_LABEL_INSTRUCTIONS },
+			);
+			if (!label) return;
+			await Container.get(AppSourceSnapshotService).labelVersionsSince(appId, since, label);
+		} catch (error) {
+			this.logger.warn('Failed to label app versions', {
+				threadId,
+				appId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 

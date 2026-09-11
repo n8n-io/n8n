@@ -445,6 +445,43 @@ const onActivateVersion = async (version: AppVersion) => {
 	await setActiveVersion(version.id, i18n.baseText('apps.builder.versions.activate.error'));
 };
 
+const restoringVersionId = ref<string | null>(null);
+
+const versionTitle = (version: AppVersion) =>
+	version.label ??
+	i18n.baseText(
+		version.kind === 'publish'
+			? 'apps.builder.versions.kind.publish'
+			: 'apps.builder.versions.kind.snapshot',
+	);
+
+const onRestoreVersion = async (version: AppVersion) => {
+	const response = await message.confirm(
+		i18n.baseText('apps.builder.versions.restore.confirm.message', {
+			interpolate: { name: versionTitle(version) },
+		}),
+		i18n.baseText('apps.builder.versions.restore.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText('apps.builder.versions.restore.confirm.button'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (response !== MODAL_CONFIRM) return;
+	restoringVersionId.value = version.id;
+	try {
+		await appsStore.restoreVersion(props.projectId, props.appId, version.id);
+		await refreshVersions();
+		toast.showMessage({
+			title: i18n.baseText('apps.builder.versions.restore.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.builder.versions.restore.error'));
+	} finally {
+		restoringVersionId.value = null;
+	}
+};
+
 const onUnpublish = async () => {
 	const response = await message.confirm(
 		i18n.baseText('apps.builder.versions.unpublish.confirm.message', {
@@ -1022,7 +1059,10 @@ watch(
 						data-test-id="app-version-row"
 					>
 						<div :class="$style.versionInfo">
-							<N8nText size="small" bold>
+							<N8nText size="small" bold data-test-id="app-version-title">
+								{{ versionTitle(version) }}
+							</N8nText>
+							<N8nBadge theme="tertiary" data-test-id="app-version-kind">
 								{{
 									i18n.baseText(
 										version.kind === 'publish'
@@ -1030,7 +1070,7 @@ watch(
 											: 'apps.builder.versions.kind.snapshot',
 									)
 								}}
-							</N8nText>
+							</N8nBadge>
 							<N8nText size="small" color="text-light">
 								<TimeAgo :date="version.createdAt" capitalize />
 							</N8nText>
@@ -1038,28 +1078,55 @@ watch(
 								{{ i18n.baseText('apps.builder.versions.active') }}
 							</N8nBadge>
 						</div>
-						<N8nButton
-							v-if="version.isActive"
-							variant="subtle"
-							size="small"
-							:loading="switchingVersionId === version.id"
-							:disabled="switchingVersionId !== null"
-							data-test-id="app-version-unpublish"
-							@click="onUnpublish"
-						>
-							{{ i18n.baseText('apps.builder.versions.unpublish') }}
-						</N8nButton>
-						<N8nButton
-							v-else-if="version.hasDist"
-							variant="subtle"
-							size="small"
-							:loading="switchingVersionId === version.id"
-							:disabled="switchingVersionId !== null"
-							data-test-id="app-version-activate"
-							@click="onActivateVersion(version)"
-						>
-							{{ i18n.baseText('apps.builder.versions.activate') }}
-						</N8nButton>
+						<div :class="$style.versionActions">
+							<N8nTooltip :content="i18n.baseText('apps.builder.versions.download')">
+								<a
+									:href="appsStore.versionSourceUrl(projectId, appId, version.id)"
+									download
+									data-test-id="app-version-download"
+								>
+									<N8nIconButton
+										icon="download"
+										variant="ghost"
+										size="small"
+										:aria-label="i18n.baseText('apps.builder.versions.download')"
+									/>
+								</a>
+							</N8nTooltip>
+							<N8nButton
+								v-if="version.id !== appsStore.versions[0]?.id"
+								variant="subtle"
+								size="small"
+								:loading="restoringVersionId === version.id"
+								:disabled="restoringVersionId !== null || switchingVersionId !== null"
+								data-test-id="app-version-restore"
+								@click="onRestoreVersion(version)"
+							>
+								{{ i18n.baseText('apps.builder.versions.restore') }}
+							</N8nButton>
+							<N8nButton
+								v-if="version.isActive"
+								variant="subtle"
+								size="small"
+								:loading="switchingVersionId === version.id"
+								:disabled="switchingVersionId !== null"
+								data-test-id="app-version-unpublish"
+								@click="onUnpublish"
+							>
+								{{ i18n.baseText('apps.builder.versions.unpublish') }}
+							</N8nButton>
+							<N8nButton
+								v-else-if="version.hasDist"
+								variant="subtle"
+								size="small"
+								:loading="switchingVersionId === version.id"
+								:disabled="switchingVersionId !== null"
+								data-test-id="app-version-activate"
+								@click="onActivateVersion(version)"
+							>
+								{{ i18n.baseText('apps.builder.versions.activate') }}
+							</N8nButton>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1405,5 +1472,12 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.versionActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 </style>

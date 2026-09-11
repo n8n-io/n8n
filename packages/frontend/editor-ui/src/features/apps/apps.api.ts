@@ -117,6 +117,28 @@ export const fetchAppVersionsApi = async (
 	);
 };
 
+/** Download URL of a version's source tarball; the cookie session authenticates it. */
+export const appVersionSourceUrl = (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+) => `${context.baseUrl}/projects/${projectId}/apps/${appId}/versions/${versionId}/source`;
+
+/** Copies a past version's source into a new working-copy version. */
+export const restoreAppVersionApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+) => {
+	return await makeRestApiRequest<AppVersion>(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/restore`,
+	);
+};
+
 /** Serves a stored built version again; `null` unpublishes the app. */
 export const setActiveAppVersionApi = async (
 	context: IRestApiContext,

@@ -145,6 +145,10 @@ export class AppSourceSnapshotService {
 		}
 	}
 
+	async labelVersionsSince(appId: string, since: Date, label: string): Promise<void> {
+		await this.appsService.labelVersionsSince(appId, since, label);
+	}
+
 	/** A new sandbox starts from a restore, so the next turn must snapshot again. */
 	clearApp(appId: string): void {
 		for (const key of this.lastHashes.keys()) {
