@@ -24,6 +24,7 @@ import * as utils from '@test-integration/utils';
 import { OtelTestProvider } from './otel-test-provider';
 import { TestNodeWithTracing } from './test-node-with-tracing';
 import { OtelConfig } from '../../otel.config';
+import { OtelService } from '../../otel.service';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 
@@ -52,6 +53,7 @@ export async function initOtelTestEnvironment() {
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 	await Container.get(ModuleRegistry).initModules('main');
+	await routeModuleSpansInto(otel);
 	Container.get(LicenseState).setLicenseProvider({
 		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
 		getValue: () => undefined,
@@ -80,6 +82,13 @@ export async function initOtelTestEnvironment() {
 		workflowRunner: Container.get(WorkflowRunner),
 		executionRepository: Container.get(ExecutionRepository),
 	};
+}
+
+/** The module started a real OTLP provider next to the test one; swap it for the in-memory provider. */
+async function routeModuleSpansInto(otel: OtelTestProvider) {
+	const otelService = Container.get(OtelService);
+	await otelService.shutdown();
+	Object.assign(otelService, { provider: otel.provider });
 }
 
 export async function terminateOtelTestEnvironment(otel: OtelTestProvider) {

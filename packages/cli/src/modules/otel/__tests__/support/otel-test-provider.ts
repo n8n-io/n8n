@@ -1,12 +1,14 @@
 import type { Context, ContextManager } from '@opentelemetry/api';
-import { context, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import { context, ROOT_CONTEXT, trace } from '@opentelemetry/api';
 import {
-	BasicTracerProvider,
 	InMemorySpanExporter,
+	NodeTracerProvider,
 	SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-node';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { mock } from 'vitest-mock-extended';
+
+import type { OtelService } from '../../otel.service';
 
 /**
  * Minimal stand-in for `@opentelemetry/context-async-hooks`'
@@ -46,11 +48,14 @@ class AsyncLocalStorageTestContextManager implements ContextManager {
 }
 
 /**
- * Disposable OTel test harness. Sets up an in-memory tracer
- * that captures spans for assertion, and tears down cleanly.
+ * Disposable OTel test harness. Sets up an in-memory tracer provider that
+ * captures spans for assertion, registers it as the global tracer provider
+ * (so the module under test sees the slot taken, like it does next to
+ * Sentry), and tears down cleanly.
  *
  * Usage:
  *   const otel = OtelTestProvider.create();
+ *   const tracer = new ExecutionLevelTracer(otel.asOtelService(), ...);
  *   // ... run code that creates spans ...
  *   expect(otel.getFinishedSpans()).toHaveLength(1);
  *   otel.reset(); // between tests
@@ -62,22 +67,26 @@ class AsyncLocalStorageTestContextManager implements ContextManager {
  */
 export class OtelTestProvider {
 	private constructor(
-		private readonly provider: BasicTracerProvider,
+		readonly provider: NodeTracerProvider,
 		private readonly exporter: InMemorySpanExporter,
 		private readonly contextManagerEnabled: boolean,
 	) {}
 
 	static create(options: { withContextManager?: boolean } = {}): OtelTestProvider {
 		const exporter = new InMemorySpanExporter();
-		const provider = new BasicTracerProvider({
+		const provider = new NodeTracerProvider({
 			spanProcessors: [new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
-		propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 		if (options.withContextManager) {
 			context.setGlobalContextManager(new AsyncLocalStorageTestContextManager());
 		}
 		return new OtelTestProvider(provider, exporter, options.withContextManager ?? false);
+	}
+
+	/** An `OtelService` stand-in that hands out this provider's tracers. */
+	asOtelService(): OtelService {
+		return mock<OtelService>({ getTracer: (name: string) => this.provider.getTracer(name) });
 	}
 
 	getFinishedSpans() {
@@ -92,7 +101,6 @@ export class OtelTestProvider {
 		this.exporter.reset();
 		await this.provider.shutdown();
 		trace.disable();
-		propagation.disable();
 		if (this.contextManagerEnabled) context.disable();
 	}
 }
