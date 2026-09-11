@@ -435,6 +435,26 @@ describe('SystemTaskRunner', () => {
 			expect(dummy.runCount).toBe(1);
 		});
 
+		it('does not run a task whose store check settles after stepdown', async () => {
+			const { runner, metadata, jobs } = setup();
+			dummy.durable = true;
+			let settleCheck!: (count: number) => void;
+			jobs.countByOwner.mockReturnValue(
+				new Promise<number>((resolve) => {
+					settleCheck = resolve;
+				}),
+			);
+			metadata.register(DummySystemTask);
+			await runner.init();
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			const stepdown = runner.stopTimers();
+			settleCheck(0);
+			await stepdown;
+
+			expect(dummy.runCount).toBe(0);
+		});
+
 		it('runs when the store cannot be read', async () => {
 			const { runner, metadata, jobs, logger, errorReporter } = setup();
 			dummy.durable = true;

@@ -370,6 +370,7 @@ export class SystemTaskRunner {
 		}
 
 		const { signal } = this.inMemoryRunsController;
+		if (signal.aborted) return;
 		try {
 			await task.run(signal);
 		} catch (error) {
