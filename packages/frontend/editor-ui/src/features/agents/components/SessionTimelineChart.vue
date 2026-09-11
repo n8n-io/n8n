@@ -111,6 +111,8 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -136,6 +138,8 @@ function popoverName(item: TimelineItem): string {
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
+		case 'skill':
+			return item.skillName ?? resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		case 'tool': {
 			return resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		}

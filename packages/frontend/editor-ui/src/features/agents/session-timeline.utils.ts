@@ -20,6 +20,8 @@ import {
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
+const LOAD_SKILL_TOOL_NAME = 'load_skill';
+
 export function endTimestampOf(item: TimelineItem): number {
 	return item.endTimestamp ?? item.timestamp;
 }
@@ -69,7 +71,14 @@ function mcpErrorMessage(output: Record<string, unknown>): string {
  * of throwing. In-flight calls without output are not failed.
  */
 export function isErroredToolCallTimelineItem(item: TimelineItem): boolean {
-	if (item.kind !== 'tool' && item.kind !== 'workflow' && item.kind !== 'node') return false;
+	if (
+		item.kind !== 'tool' &&
+		item.kind !== 'skill' &&
+		item.kind !== 'workflow' &&
+		item.kind !== 'node'
+	) {
+		return false;
+	}
 	if (item.toolOutcome === 'error') return true;
 	if (item.toolOutcome === undefined && item.toolSuccess === false) return true;
 	if (!isRecord(item.toolOutput)) return false;
@@ -274,6 +283,7 @@ export function timelineItemSearchText(
 		item.toolName,
 		item.workflowName,
 		item.nodeDisplayName,
+		item.skillName,
 		item.subAgentName,
 		searchableValueText(item.toolInput),
 		searchableValueText(item.toolOutput),
@@ -332,6 +342,7 @@ export function sessionBounds(items: TimelineItem[]): { start: number; end: numb
 const COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-400)',
 	agent: 'var(--color--secondary)',
+	skill: 'var(--color--warning)',
 	tool: 'var(--color--success)',
 	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
@@ -347,6 +358,7 @@ export function kindColorToken(kind: EventKind): string {
 const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-600)',
 	agent: 'var(--color--purple-600)',
+	skill: 'var(--color--orange-600)',
 	tool: 'var(--color--green-600)',
 	node: 'var(--color--neutral-600)',
 	workflow: 'var(--color--pink-600)',
@@ -380,7 +392,7 @@ export function formatDuration(ms: number): string {
 
 interface RawToolCallEvent {
 	type: 'tool-call';
-	kind?: 'tool' | 'workflow' | 'node';
+	kind?: 'tool' | 'workflow' | 'node' | 'skill';
 	name: string;
 	toolCallId: string;
 	input: unknown;
@@ -452,6 +464,47 @@ function isWaitRequest(value: unknown): boolean {
 function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
 	if (event.endTime === 0) return undefined;
 	return event.success ? 'success' : 'error';
+}
+
+function isSkillToolCall(event: RawToolCallEvent): boolean {
+	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
+}
+
+function skillNameFromText(value: string): string | undefined {
+	const match = /^\[Skill: ([^\]]+)\]/m.exec(value);
+	const name = match?.[1];
+	if (!name) return undefined;
+	if (!name.startsWith('"') || !name.endsWith('"')) return name;
+
+	try {
+		const parsed: unknown = JSON.parse(name);
+		return typeof parsed === 'string' ? parsed : name;
+	} catch {
+		return name.slice(1, -1);
+	}
+}
+
+function skillNameFromOutput(output: unknown): string | undefined {
+	if (!isRecord(output)) return undefined;
+	if (typeof output.name === 'string' && output.name.length > 0) return output.name;
+	if (!Array.isArray(output.value)) return undefined;
+
+	for (const part of output.value) {
+		if (!isRecord(part) || typeof part.text !== 'string') continue;
+		const name = skillNameFromText(part.text);
+		if (name) return name;
+	}
+	return undefined;
+}
+
+function skillNameFromEvent(event: RawToolCallEvent): string | undefined {
+	const outputName = skillNameFromOutput(event.output);
+	if (outputName) return outputName;
+	if (!isRecord(event.input)) return undefined;
+	if (typeof event.input.name === 'string' && event.input.name.length > 0) return event.input.name;
+	return typeof event.input.skillId === 'string' && event.input.skillId.length > 0
+		? event.input.skillId
+		: undefined;
 }
 
 interface HitlContext {
@@ -612,11 +665,13 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
+				const isSkill = isSkillToolCall(event);
 				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
 				const item: TimelineItem = {
-					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
+					kind: isWorkflow ? 'workflow' : isNode ? 'node' : isSkill ? 'skill' : 'tool',
 					executionId: exec.id,
 					toolName: event.name,
+					skillName: isSkill ? skillNameFromEvent(event) : undefined,
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,

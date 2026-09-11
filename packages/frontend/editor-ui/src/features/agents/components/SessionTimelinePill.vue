@@ -23,6 +23,8 @@ const icon = computed((): IconName => {
 		case 'agent':
 		case 'subagent':
 			return 'bot';
+		case 'skill':
+			return 'book-open';
 		case 'tool':
 			return 'wrench';
 		case 'workflow':
