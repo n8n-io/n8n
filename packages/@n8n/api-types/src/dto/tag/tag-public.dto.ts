@@ -10,12 +10,7 @@ export const tagPublicSchema = z.object({
 	updatedAt: z.string().datetime().openapi({ readOnly: true }),
 });
 
-export class TagPublicDto extends Z.class({
-	id: z.string(),
-	name: z.string(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-}) {}
+export class TagPublicDto extends Z.class(tagPublicSchema.shape) {}
 
 export class TagListPublicDto extends Z.class({
 	data: z.array(tagPublicSchema),

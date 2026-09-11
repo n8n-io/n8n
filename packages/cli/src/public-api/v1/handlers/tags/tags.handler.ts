@@ -12,7 +12,6 @@ type TagHandlers = {
 	createTag: PublicAPIEndpoint<TagRequest.Create>;
 	updateTag: PublicAPIEndpoint<TagRequest.Update>;
 	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
-	getTag: PublicAPIEndpoint<TagRequest.Get>;
 };
 
 const tagHandlers: TagHandlers = {
@@ -67,19 +66,6 @@ const tagHandlers: TagHandlers = {
 
 			await Container.get(TagService).delete(id);
 			return res.json(tag);
-		},
-	],
-	getTag: [
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:read' }),
-		async (req, res) => {
-			const { id } = req.params;
-
-			try {
-				const tag = await Container.get(TagService).getById(id);
-				return res.json(tag);
-			} catch (error) {
-				throw new NotFoundError('Not Found');
-			}
 		},
 	],
 };

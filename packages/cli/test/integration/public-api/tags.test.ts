@@ -119,6 +119,31 @@ describe('GET /tags/:id', () => {
 		expect(createdAt).toEqual(tag.createdAt.toISOString());
 		expect(updatedAt).toEqual(tag.updatedAt.toISOString());
 	});
+
+	test('should return only the published tag fields', async () => {
+		const tag = await createTag({});
+
+		const response = await authMemberAgent.get(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({
+			id: tag.id,
+			name: tag.name,
+			createdAt: tag.createdAt.toISOString(),
+			updatedAt: tag.updatedAt.toISOString(),
+		});
+	});
+
+	test('should fail due to missing scope', async () => {
+		const tag = await createTag({});
+
+		const memberWithoutScope = await createMemberWithApiKey({ scopes: ['tag:list'] });
+		const agent = testServer.publicApiAgentFor(memberWithoutScope);
+
+		const response = await agent.get(`/tags/${tag.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('DELETE /tags/:id', () => {
