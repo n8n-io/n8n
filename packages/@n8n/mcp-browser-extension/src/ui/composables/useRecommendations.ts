@@ -26,13 +26,15 @@ export function useRecommendations() {
 		ideas.value = message.ideas ?? [];
 	}
 
+	async function refresh(): Promise<void> {
+		await chrome.runtime.sendMessage({ type: 'getRecommendations' });
+	}
+
 	chrome.runtime.onMessage.addListener(onMessage);
 
-	onMounted(async () => {
-		await chrome.runtime.sendMessage({ type: 'getRecommendations' });
-	});
+	onMounted(refresh);
 
 	onUnmounted(() => chrome.runtime.onMessage.removeListener(onMessage));
 
-	return { status, ideas, isSending, send };
+	return { status, ideas, isSending, send, refresh };
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -60,6 +60,7 @@ const {
 	ideas: recommendationIdeas,
 	isSending: isSendingRecommendation,
 	send: sendRecommendation,
+	refresh: refreshRecommendations,
 } = useRecommendations();
 
 const showTabSelection = ref(false);
@@ -102,6 +103,15 @@ const recordingTitle = computed(() => {
 	if (recording.value.status === 'submitting') return 'Sending recording…';
 	return 'Review recording';
 });
+
+watch(
+	() => recording.value?.status,
+	(status, previousStatus) => {
+		if (status === 'submitted' && previousStatus === 'submitting') {
+			void refreshRecommendations();
+		}
+	},
+);
 
 async function disconnectFromInstance() {
 	await disconnect();
@@ -260,9 +270,18 @@ async function submitToInstanceUrl() {
 					Complete the task in your browser. Return here when you're ready to review the recorded
 					actions.
 				</p>
-				<p v-else-if="recording.status === 'submitted'" class="subtitle">
-					AI Assistant is building this in a new conversation.
-				</p>
+				<template v-else-if="recording.status === 'submitted'">
+					<p class="subtitle">AI Assistant is building this in a new conversation.</p>
+					<template v-if="recommendationsStatus === 'loading' || recommendationsStatus === 'ready'">
+						<h2 class="ideas-title">Automation ideas for this page</h2>
+						<AutomationIdeas
+							:status="recommendationsStatus"
+							:ideas="recommendationIdeas"
+							:is-sending="isSendingRecommendation"
+							@pick="sendRecommendation"
+						/>
+					</template>
+				</template>
 				<p v-else-if="recording.status === 'submitting'" class="subtitle">
 					n8n is starting a new conversation from your recording.
 				</p>
@@ -529,6 +548,13 @@ async function submitToInstanceUrl() {
 	font-size: var(--font-size--sm);
 	color: var(--text-color--subtler);
 	margin: 0 0 var(--spacing--sm);
+}
+
+.ideas-title {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	color: var(--color--text--shade-1);
+	margin: var(--spacing--lg) 0 var(--spacing--sm);
 }
 
 .divider {

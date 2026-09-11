@@ -926,7 +926,7 @@ async function extractPageContext(
 
 async function requestRecommendations(): Promise<{ success: boolean; error?: string }> {
 	const relay = activeConnection?.relay;
-	if (!relay || recording) {
+	if (!relay || (recording && recording.status !== 'submitted')) {
 		log.debug('recommendations skipped: not connected or a recording is in progress');
 		broadcastRecommendationsChange('unavailable');
 		return { success: false, error: 'No automation ideas are available right now.' };

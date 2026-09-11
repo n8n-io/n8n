@@ -43,6 +43,7 @@ const recommendationsState = {
 	ideas: ref<Array<{ id: string; title: string; description: string }>>([]),
 	isSending: ref(false),
 	send: vi.fn(),
+	refresh: vi.fn(),
 };
 
 vi.mock('./composables/useConnection', () => ({ useConnection: () => state }));
