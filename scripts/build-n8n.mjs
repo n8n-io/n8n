@@ -422,6 +422,8 @@ try {
 		'*agent-browser/bin/*linux-musl*',
 		// The launcher that package.json's `bin` resolves to.
 		'*agent-browser/bin/agent-browser.js',
+		// The PCRE2 engine loads this next to its own compiled js at runtime.
+		'*/@n8n/regex-engine-pcre2/dist/generated/*.wasm',
 	];
 
 	echo(chalk.yellow('INFO: Verifying Runtime assets'));
