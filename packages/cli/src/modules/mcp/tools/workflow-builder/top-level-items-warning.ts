@@ -7,20 +7,30 @@ import {
 
 export type TopLevelItemsWarning = { code: string; message: string };
 
-/**
- * One warning when the saved canvas shows more boxes than the ceiling. A box is a
- * node or a collapsed group. Returns nothing when the canvas is within the ceiling.
- */
-export function topLevelItemsWarning(workflow: {
+type CanvasShape = {
 	nodes: INode[];
 	connections: IConnections;
 	nodeGroups?: IWorkflowGroup[];
-}): TopLevelItemsWarning | undefined {
-	const summary = summarizeTopLevelItems({
+};
+
+const summarize = (workflow: CanvasShape) =>
+	summarizeTopLevelItems({
 		nodes: workflow.nodes,
 		nodeGroups: workflow.nodeGroups,
 		connectionsBySourceNode: workflow.connections,
 	});
+
+/** Boxes the canvas shows with every group collapsed: groups plus loose nodes. */
+export function topLevelBoxCount(workflow: CanvasShape): number {
+	return summarize(workflow).total;
+}
+
+/**
+ * One warning when the saved canvas shows more boxes than the ceiling. A box is a
+ * node or a collapsed group. Returns nothing when the canvas is within the ceiling.
+ */
+export function topLevelItemsWarning(workflow: CanvasShape): TopLevelItemsWarning | undefined {
+	const summary = summarize(workflow);
 
 	if (!summary.overCeiling) {
 		return undefined;

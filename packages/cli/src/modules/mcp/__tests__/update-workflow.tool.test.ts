@@ -1251,13 +1251,22 @@ describe('update-workflow MCP tool', () => {
 					);
 				});
 
-				test('a canvas that was already over the ceiling gets the warning marked pre-existing', async () => {
+				test('a canvas already over the ceiling, with no box added, gets the warning marked pre-existing', async () => {
 					findWorkflowMock.mockResolvedValue(
 						Object.assign(buildExistingWorkflow(), { nodes: looseNodes(9), connections: {} }),
 					);
 
 					const result = await callHandler(
-						{ workflowId: 'wf-1', operations: addNodeOps(9, 10) },
+						{
+							workflowId: 'wf-1',
+							operations: [
+								{
+									type: 'updateNodeParameters',
+									nodeName: 'Step 1',
+									parameters: { url: 'https://new' },
+								},
+							],
+						},
 						createOnTool(),
 					);
 
@@ -1270,6 +1279,27 @@ describe('update-workflow MCP tool', () => {
 								message: expect.stringContaining('[pre-existing]') as string,
 							}),
 						]),
+					);
+				});
+
+				test('a canvas already over the ceiling that this update adds loose nodes to is not marked pre-existing', async () => {
+					findWorkflowMock.mockResolvedValue(
+						Object.assign(buildExistingWorkflow(), { nodes: looseNodes(9), connections: {} }),
+					);
+
+					const result = await callHandler(
+						{ workflowId: 'wf-1', operations: addNodeOps(9, 11) },
+						createOnTool(),
+					);
+
+					const response = parseResult(result);
+					expect(response.validationWarnings).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ code: 'TOP_LEVEL_ITEMS_OVER_CEILING' }),
+						]),
+					);
+					expect(response.validationWarnings).not.toEqual(
+						expect.arrayContaining([expect.objectContaining({ preExisting: true })]),
 					);
 				});
 			});
