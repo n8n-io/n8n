@@ -2,6 +2,8 @@ import type { PromotionSshKeyType } from '@n8n/api-types';
 import { resolveProxyUrl } from '@n8n/backend-network';
 import { generateKeyPairSync } from 'node:crypto';
 
+import { quoteShellArg } from '@/utils/quote-shell-arg';
+
 import {
 	HTTP_LOW_SPEED_LIMIT_BYTES,
 	HTTP_LOW_SPEED_TIME_SECONDS,
@@ -10,9 +12,6 @@ import {
 	SSH_SERVER_ALIVE_INTERVAL_SECONDS,
 } from './constants';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from './promotions.types';
-
-/** Quote a value for use as one POSIX shell argument. */
-const quoteShellArg = (value: string) => `'${value.replace(/'/g, "'\"'\"'")}'`;
 
 /**
  * Build the Git configuration for an HTTP(S) remote.
