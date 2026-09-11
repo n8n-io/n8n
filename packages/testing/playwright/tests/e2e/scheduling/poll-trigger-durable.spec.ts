@@ -22,7 +22,7 @@ test.use({
 });
 
 test.describe(
-	'Poll Trigger (durable scheduler) @capability:proxy',
+	'Poll Trigger (durable scheduler)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

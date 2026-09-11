@@ -2,7 +2,7 @@ import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from 
 
 test.use(instanceAiTestConfig);
 test.describe(
-	'Instance AI thread launcher @capability:proxy @capability:sandbox',
+	'Instance AI thread launcher',
 	{
 		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},

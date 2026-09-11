@@ -30,7 +30,7 @@ test.use({ capability: 'dynamic-credentials' });
  *  10. Wait for execution and assert success (HTTP node resolved credential + called userinfo)
  */
 test.describe(
-	'Dynamic Credentials: webhook execution @capability:dynamic-credentials @licensed',
+	'Dynamic Credentials: webhook execution @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

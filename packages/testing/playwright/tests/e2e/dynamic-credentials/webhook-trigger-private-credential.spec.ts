@@ -27,7 +27,7 @@ interface CredentialGateResponse {
 }
 
 test.describe(
-	'Webhook Trigger n8nOAuth2 private credentials @capability:dynamic-credentials @licensed',
+	'Webhook Trigger n8nOAuth2 private credentials @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

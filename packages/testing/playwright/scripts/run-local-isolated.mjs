@@ -16,7 +16,7 @@
  *     `PLAYWRIGHT_SKIP_WEBSERVER=true` so Playwright doesn't race to spawn its
  *     own n8n.
  *   - **Container-only tests included.** Sets `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true`
- *     so `@capability:*`, `@licensed`, and `@db:reset` tests are picked up by
+ *     so service-backed, `@licensed`, and `@db:reset` tests are picked up by
  *     the local `e2e` project. Their fixtures are responsible for detecting
  *     the missing container and skipping or falling back.
  *   - **Process-group cleanup.** Spawns n8n `detached: true` and SIGTERMs the

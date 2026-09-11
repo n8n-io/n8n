@@ -63,7 +63,7 @@ const hitlForToolsTestConfig = {
 
 test.use(hitlForToolsTestConfig);
 test.describe(
-	'HITL for Tools @capability:proxy',
+	'HITL for Tools',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

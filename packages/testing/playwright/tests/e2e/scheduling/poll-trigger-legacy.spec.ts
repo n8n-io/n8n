@@ -7,7 +7,7 @@ import { test } from '../../../fixtures/base';
 test.use({ capability: 'proxy' });
 
 test.describe(
-	'Poll Trigger (legacy in-memory scheduler) @capability:proxy',
+	'Poll Trigger (legacy in-memory scheduler)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

@@ -162,7 +162,7 @@ const httpRequestNode = (internalBase: string, credential: { id: string; name: s
 });
 
 test.describe(
-	'Form Trigger end-user credentials in the hosting shell @capability:dynamic-credentials @licensed',
+	'Form Trigger end-user credentials in the hosting shell @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

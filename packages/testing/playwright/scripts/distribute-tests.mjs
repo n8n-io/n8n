@@ -58,6 +58,7 @@ const CAPABILITY_IMAGES = {
 	email: ['mailpit'],
 	'external-secrets': ['localstack'],
 	kafka: ['kafka'],
+	kent: [], // Kent is built locally and has no remote image to pull.
 	observability: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	oidc: ['keycloak'],
 	proxy: ['mockserver'],
@@ -65,15 +66,33 @@ const CAPABILITY_IMAGES = {
 	'source-control': ['gitea'],
 };
 
+const SERVICE_IMAGES = {
+	gitea: ['gitea'],
+	kafka: ['kafka'],
+	kent: [],
+	keycloak: ['keycloak'],
+	localstack: ['localstack'],
+	mailpit: ['mailpit'],
+	proxy: ['mockserver'],
+	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
+	vector: ['vector'],
+	victoriaLogs: ['victoriaLogs'],
+	victoriaMetrics: ['victoriaMetrics'],
+};
+
 const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
 
-function getRequiredImages(capabilities) {
+function getRequiredImages(capabilities, services) {
 	const images = new Set(BASE_IMAGES);
 	for (const cap of capabilities) {
 		const capImages = CAPABILITY_IMAGES[cap];
-		if (capImages) {
-			for (const img of capImages) images.add(img);
-		}
+		if (!capImages) throw new Error(`No Docker image mapping for capability "${cap}"`);
+		for (const img of capImages) images.add(img);
+	}
+	for (const service of services) {
+		const serviceImages = SERVICE_IMAGES[service];
+		if (!serviceImages) throw new Error(`No Docker image mapping for service "${service}"`);
+		for (const img of serviceImages) images.add(img);
 	}
 	return [...images].sort();
 }
@@ -377,9 +396,10 @@ if (matrixMode) {
 				maxShardTime = Math.max(maxShardTime, totalTime);
 				const testMins = (shard.testTime / 60_000).toFixed(1);
 				const totalMins = (totalTime / 60_000).toFixed(1);
-				const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+				const requirements = [...shard.capabilities, ...shard.services];
+				const suffix = requirements.length > 0 ? ` [${requirements.join(', ')}]` : '';
 				console.error(
-					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
+					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${suffix}`,
 				);
 			}
 			const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
@@ -391,10 +411,11 @@ if (matrixMode) {
 			const matrix = shardsWithSpecs.map((shard) => ({
 				shard: shard.shard,
 				specs: shard.specs.join(' '),
-				images: getRequiredImages(shard.capabilities).join(' '),
+				images: getRequiredImages(shard.capabilities, shard.services).join(' '),
 				...(includeMetadata
 					? {
 							capabilities: shard.capabilities,
+							services: shard.services,
 							fixturePools: shard.fixturePools,
 							fixtureCount: shard.fixtureCount,
 							testTime: shard.testTime,

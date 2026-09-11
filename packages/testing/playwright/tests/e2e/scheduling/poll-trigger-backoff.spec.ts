@@ -14,7 +14,7 @@ const SKIP_CHECK_WINDOW_MS = 1_000;
 test.use(migratedPollTestConfig);
 
 test.describe(
-	'Poll Trigger error backoff @capability:proxy',
+	'Poll Trigger error backoff',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

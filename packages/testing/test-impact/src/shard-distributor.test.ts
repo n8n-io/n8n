@@ -5,8 +5,13 @@ import type { DiscoveredSpec } from './types.js';
 
 const DEFAULT_CONFIG = { defaultDuration: 60_000, maxGroupDuration: 300_000 };
 
-function spec(path: string, capabilities: string[] = [], fixturePools?: string[]): DiscoveredSpec {
-	return { path, capabilities, fixturePools };
+function spec(
+	path: string,
+	capabilities: string[] = [],
+	fixturePools?: string[],
+	services: string[] = [],
+): DiscoveredSpec {
+	return { path, capabilities, services, fixturePools };
 }
 
 describe('distributeShards', () => {
@@ -94,20 +99,21 @@ describe('distributeShards', () => {
 		expect(mixedShard?.fixtureCount).toBe(2);
 	});
 
-	it('keeps capabilities scoped when splitting fixture groups', () => {
+	it('keeps worker requirements scoped when splitting fixture groups', () => {
 		const metrics = {
 			'email1.spec.ts': 200_000,
 			'proxy.spec.ts': 200_000,
 		};
 		const config = { defaultDuration: 60_000, maxGroupDuration: 200_000 };
 		const specs = [
-			spec('email1.spec.ts', ['email'], ['pool-email']),
-			spec('proxy.spec.ts', ['proxy'], ['pool-email']),
+			spec('email1.spec.ts', ['email'], ['pool-email'], ['mailpit']),
+			spec('proxy.spec.ts', ['proxy'], ['pool-email'], ['proxy']),
 		];
 
 		const result = distributeShards(specs, 2, metrics, config);
 
 		expect(result.shards.map((shard) => shard.capabilities)).toEqual([['email'], ['proxy']]);
+		expect(result.shards.map((shard) => shard.services)).toEqual([['mailpit'], ['proxy']]);
 	});
 
 	it('balances shards with greedy bin-packing', () => {

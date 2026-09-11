@@ -72,6 +72,7 @@ function parseMatrix(output) {
 				specs,
 				images: words(entry.images),
 				capabilities: [],
+				services: [],
 				fixturePools: [],
 				fixtureCount: 0,
 				testTime: 0,
@@ -79,6 +80,7 @@ function parseMatrix(output) {
 		}
 		if (
 			!Array.isArray(entry.capabilities) ||
+			!Array.isArray(entry.services) ||
 			!Array.isArray(entry.fixturePools) ||
 			typeof entry.fixtureCount !== 'number' ||
 			typeof entry.testTime !== 'number'
@@ -90,6 +92,7 @@ function parseMatrix(output) {
 			specs,
 			images: words(entry.images),
 			capabilities: entry.capabilities,
+			services: entry.services,
 			fixturePools: entry.fixturePools,
 			fixtureCount: entry.fixtureCount,
 			testTime: entry.testTime,
@@ -198,6 +201,7 @@ try {
 			extraStackStarts: listed.profiles.length - entry.fixtureCount,
 			testTime: entry.testTime,
 			capabilities: entry.capabilities,
+			services: entry.services,
 			images: entry.images,
 			profiles: listed.profiles,
 		});

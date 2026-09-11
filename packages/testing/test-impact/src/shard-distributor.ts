@@ -14,6 +14,7 @@ export interface ShardAssignment {
 	specs: string[];
 	testTime: number;
 	capabilities: string[];
+	services: string[];
 	fixturePools: string[];
 	fixtureCount: number;
 }
@@ -35,6 +36,7 @@ type SpecWithDuration = DiscoveredSpec & { duration: number };
 interface PackingItem {
 	fixtures: string[];
 	capabilities: string[];
+	services: string[];
 	specs: string[];
 	duration: number;
 }
@@ -43,6 +45,7 @@ interface Bucket {
 	specs: string[];
 	testTime: number;
 	capabilities: Set<string>;
+	services: Set<string>;
 	fixtures: Set<string>;
 	hasStandardSpecs: boolean;
 }
@@ -114,6 +117,7 @@ function splitLargeGroups(
 				items.push({
 					fixtures,
 					capabilities: [...new Set(subGroup.flatMap((spec) => spec.capabilities))].sort(),
+					services: [...new Set(subGroup.flatMap((spec) => spec.services))].sort(),
 					specs: subGroup.map((s) => s.path),
 					duration: subGroup.reduce((sum, s) => sum + s.duration, 0),
 				});
@@ -122,6 +126,7 @@ function splitLargeGroups(
 			items.push({
 				fixtures,
 				capabilities: [...new Set(specs.flatMap((spec) => spec.capabilities))].sort(),
+				services: [...new Set(specs.flatMap((spec) => spec.services))].sort(),
 				specs: specs.map((s) => s.path),
 				duration: totalDuration,
 			});
@@ -161,6 +166,7 @@ function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 		specs: [],
 		testTime: 0,
 		capabilities: new Set<string>(),
+		services: new Set<string>(),
 		fixtures: new Set<string>(),
 		hasStandardSpecs: false,
 	}));
@@ -172,6 +178,7 @@ function assignToShards(items: PackingItem[], numShards: number): Bucket[] {
 		lightest.testTime += item.duration;
 
 		for (const capability of item.capabilities) lightest.capabilities.add(capability);
+		for (const service of item.services) lightest.services.add(service);
 		if (item.fixtures.length > 0) {
 			for (const fixture of item.fixtures) lightest.fixtures.add(fixture);
 		} else {
@@ -195,6 +202,7 @@ export function distributeShards(
 	const standardItems: PackingItem[] = standard.map((spec) => ({
 		fixtures: spec.fixturePools ?? [],
 		capabilities: spec.capabilities,
+		services: spec.services,
 		specs: [spec.path],
 		duration: spec.duration,
 	}));
@@ -217,6 +225,7 @@ export function distributeShards(
 				specs: b.specs,
 				testTime: b.testTime,
 				capabilities: [...b.capabilities].sort(),
+				services: [...b.services].sort(),
 				fixturePools: [...b.fixtures].sort(),
 				fixtureCount: b.fixtures.size + (b.hasStandardSpecs ? 1 : 0),
 			})),

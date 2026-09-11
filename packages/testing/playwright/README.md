@@ -100,13 +100,11 @@ pnpm --filter n8n-containers services:clean
 
 This stops the containers and removes `packages/cli/bin/.env`.
 
-**Running capability tests against this setup.** The `@capability:*` tags are
-gated to container mode by default. To exercise them against your local n8n
-(useful for fast iteration on proxy/email/SSO flows), use the
-`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` escape hatch documented under
+**Running service-backed tests against this setup.** Tests with service-backed
+`capability` options skip local mode by default. To run them against your local
+n8n, use the `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` option documented under
 [`test:local:isolated`](#test-local-isolated--local-run-with-full-isolation)
-below. Capability fixtures must detect the no-container case and fall back —
-some do, some don't yet.
+below. Capability fixtures must support the no-container case.
 
 ## Separate Backend and Frontend URLs
 
@@ -141,7 +139,7 @@ pnpm test:chaos									# Runs the chaos tests
 pnpm test:all --grep "workflow"           # Pattern match, can run across all test types E2E/cli-workflow/performance
 pnpm test:local --ui            # To enable UI debugging and test running mode
 
-# Isolated local run: random port, throwaway DB, runs @capability:* too
+# Isolated local run: random port, throwaway DB, includes service-backed tests
 pnpm test:local:isolated tests/e2e/credentials/crud.spec.ts
 ```
 
@@ -157,10 +155,9 @@ situations where `test:local`'s defaults aren't enough:
 - **Throwaway `N8N_USER_FOLDER`** under the OS temp dir (cleaned up on exit).
   n8n creates `.n8n/` (sqlite DB, encryption key) inside it, fully isolated
   from your local `~/.n8n` install.
-- **Container-only tests included.** `@capability:*` / `@licensed` /
-  `@db:reset` tests are picked up by the local `e2e` project. Their fixtures
-  are responsible for detecting the missing container and skipping or falling
-  back.
+- **Container-only tests included.** Service-backed, `@licensed`, and
+  `@db:reset` tests are included. Their fixtures must support the missing
+  container case.
 - **Self-managed n8n.** Boots n8n with a readiness check against
   `/rest/e2e/reset`, so the run waits for the E2E controller itself, and skips
   Playwright's own webServer.
@@ -176,7 +173,7 @@ The two underlying env-var levers — usable independently of the script:
 
 | Env var | Effect |
 |---------|--------|
-| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Disables `grepInvert` so `@capability:*`, `@mode:*`, `@licensed`, and `@db:reset` tests are picked up by the local `e2e` project. The fixtures consumed by those tests must detect the missing container and either skip or fall back. |
+| `PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` | Lets service-backed tests run locally. It also includes `@mode:*`, `@licensed`, and `@db:reset` tests. The fixtures must support the missing container case. |
 | `PLAYWRIGHT_SKIP_WEBSERVER=true` | Stops Playwright from launching its own n8n via the `webServer` config. Use when a wrapper script (like `scripts/run-local-isolated.mjs`) already manages n8n with custom env vars. |
 
 ## Test Tags
@@ -185,7 +182,6 @@ test('basic test', ...)                              // All modes, fully paralle
 test('postgres only @mode:postgres', ...)            // Mode-specific
 test('chaos test @mode:multi-main @chaostest', ...) // Isolated per worker
 test('cloud resource test @cloud:trial', ...)       // Cloud resource constraints
-test('proxy test @capability:proxy', ...)           // Requires proxy server capability
 test('enterprise feature @licensed', ...)           // Requires enterprise license (container-only)
 ```
 
@@ -194,7 +190,6 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | Tag | Description | When to Use |
 |-----|-------------|-------------|
 | `@mode:X` | Infrastructure mode (postgres, queue, multi-main) | Tests requiring specific DB or architecture |
-| `@capability:X` | Container services (email, proxy, oidc, source-control, observability) | Tests needing external services |
 | `@licensed` | Enterprise license features | Tests for features behind license flags at startup |
 | `@cloud:X` | Resource constraints (trial, enterprise) | Performance tests with memory/CPU limits |
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
@@ -316,8 +311,9 @@ You can use ProxyServer to mock API requests.
 ```typescript
 import { test, expect } from '../fixtures/base';
 
-// The `@capability:proxy` tag ensures tests only run when proxy infrastructure is available.
-test.describe('Proxy tests @capability:proxy', () => {
+test.use({ capability: 'proxy' });
+
+test.describe('Proxy tests', () => {
   test('should mock HTTP requests', async ({ proxyServer, n8n }) => {
     // Create mock expectations
     await proxyServer.createGetExpectation('/api/data', { result: 'mocked' });
@@ -404,7 +400,7 @@ Use `N8N_CONTAINERS_KEEPALIVE=true` to keep containers running after tests compl
 - Manual testing against a pre-configured environment
 
 ```bash
-N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite --grep "@capability:email" --workers 1
+N8N_CONTAINERS_KEEPALIVE=true pnpm test:container:sqlite tests/e2e/auth/password-reset.spec.ts --workers 1
 ```
 
 After tests complete, connection details are printed:

@@ -16,7 +16,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use({ capability: 'dynamic-credentials' });
 
 test.describe(
-	'Dynamic Credentials: resolver deletion cleanup @capability:dynamic-credentials @licensed',
+	'Dynamic Credentials: resolver deletion cleanup @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},

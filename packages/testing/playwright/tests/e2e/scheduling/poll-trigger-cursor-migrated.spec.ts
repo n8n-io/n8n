@@ -13,7 +13,7 @@ import { test, expect } from '../../../fixtures/base';
 test.use(migratedPollTestConfig);
 
 test.describe(
-	'Poll Trigger cursor (migrated) @capability:proxy',
+	'Poll Trigger cursor (migrated)',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

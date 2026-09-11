@@ -55,47 +55,34 @@ Metrics auto-correct over time. As grouped tests run, they report actual executi
 
 ## Writing Tests with Capabilities
 
-### 1. Use the capability option
+### Use the capability option
 
 ```typescript
 test.use({ capability: 'proxy' });
 
 test.use({
   capability: {
-    proxyServerEnabled: true,
-    env: { MY_VAR: 'value' },
+	services: ['proxy'],
+	env: { MY_VAR: 'value' },
   },
-});
-```
-
-### 2. Add an `@capability` tag
-
-The tag enables filtering, reporting, and Docker image pre-pulls.
-
-```typescript
-test('My feature @capability:proxy', async ({ page }) => {
-});
-
-test.describe('Feature @capability:email', () => {
 });
 ```
 
 ### Available Capabilities
 
-| Capability | Tag | Containers |
-|------------|-----|-----------|
-| `'proxy'` | `@capability:proxy` | Proxy server |
-| `'email'` | `@capability:email` | Mailpit |
-| `'source-control'` | `@capability:source-control` | Git server |
-| `'task-runner'` | `@capability:task-runner` | Task runner |
-| `'oidc'` | `@capability:oidc` | OIDC provider |
-| `'observability'` | `@capability:observability` | VictoriaLogs + VictoriaMetrics + Vector |
+| Capability | Containers |
+|------------|------------|
+| `'proxy'` | Proxy server |
+| `'email'` | Mailpit |
+| `'source-control'` | Git server |
+| `'oidc'` | OIDC provider |
+| `'observability'` | VictoriaLogs + VictoriaMetrics + Vector |
 
 ## Modes vs Capabilities
 
-**Capabilities** (`@capability:X`) are add-on features you can combine with any infrastructure:
+**Capabilities** are add-on features you can combine with any infrastructure:
 - Use `test.use({ capability: 'proxy' })` to configure the worker
-- Add-on containers (proxy, email, gitea, etc.) spin up alongside n8n
+- Add-on containers start alongside n8n
 
 **Modes** (`@mode:X`) define the infrastructure configuration itself:
 - `@mode:postgres` - n8n with PostgreSQL database (vs default sqlite)
@@ -108,17 +95,17 @@ Use `@mode:X` only for tests that ONLY work with a specific infrastructure.
 ```typescript
 // Capability - add-on feature
 test.use({ capability: 'proxy' });
-test('API mocking @capability:proxy', ...);
+test('API mocking', ...);
 
 // Mode - infrastructure requirement (no test.use needed, project handles it)
 test('Postgres-specific test @mode:postgres', ...);
 
 // Combined - capability ON a specific mode
 test.use({ capability: 'observability' });
-test('Multi-main logs @capability:observability @mode:multi-main', ...);
+test('Multi-main logs @mode:multi-main', ...);
 ```
 
-Both `@capability:X` and `@mode:X` tests are skipped in local mode (they require containers).
+Service-backed capability tests and `@mode:X` tests skip local mode by default.
 
 ## Temporarily Disabling Tests
 

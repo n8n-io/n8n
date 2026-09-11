@@ -6,7 +6,7 @@ import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import { CAPABILITIES, type Capability } from './capabilities';
+import { ALLOW_CONTAINER_ONLY, CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
@@ -46,6 +46,7 @@ type TestFixtures = {
 	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
 	 *  unless COVERAGE_ENABLED. */
 	backendCoverage: undefined;
+	containerRequirement: undefined;
 };
 
 type WorkerFixtures = {
@@ -81,6 +82,12 @@ function logKeepalive(container: N8NStack): void {
 	console.log('=========================================================\n');
 }
 
+function requiresContainerServices(capability: CapabilityOption | undefined): boolean {
+	if (!capability) return false;
+	const config = typeof capability === 'string' ? CAPABILITIES[capability] : capability;
+	return (config.services?.length ?? 0) > 0;
+}
+
 export const test = base.extend<
 	TestFixtures &
 		CurrentsFixtures &
@@ -100,6 +107,18 @@ export const test = base.extend<
 
 	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
 	capability: [undefined, { scope: 'worker', option: true }],
+
+	// Service requirements now come from test.use(), so local projects cannot filter them by title.
+	containerRequirement: [
+		async ({ capability }, use, testInfo) => {
+			testInfo.skip(
+				!ALLOW_CONTAINER_ONLY && !!getBackendUrl() && requiresContainerServices(capability),
+				'This test requires container services',
+			);
+			await use(undefined);
+		},
+		{ auto: true },
+	],
 
 	// Resolves the effective N8NConfig from project.containerConfig (base) +
 	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it
