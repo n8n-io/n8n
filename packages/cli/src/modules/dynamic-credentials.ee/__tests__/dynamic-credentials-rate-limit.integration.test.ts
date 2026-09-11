@@ -107,6 +107,8 @@ async function setupTestData() {
 			id: randomId(),
 			name: 'Test OAuth2 Credential',
 			type: 'oAuth2Api',
+			// These routes only serve end-user credentials.
+			isResolvable: true,
 			data: cipher.encrypt({ clientId: 'test-client-id' }),
 		}),
 	);

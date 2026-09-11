@@ -769,4 +769,40 @@ describe('CredentialsRepository', () => {
 			expect(reverseContamination).toHaveLength(0);
 		});
 	});
+
+	describe('hasResolvableCredential', () => {
+		let credentialsRepository: CredentialsRepository;
+
+		beforeEach(() => {
+			credentialsRepository = Container.get(CredentialsRepository);
+		});
+
+		it('returns true when any given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+			const privateCred = await createCredentials({
+				name: 'Private',
+				type: 'googleApi',
+				data: '',
+				isResolvable: true,
+			});
+
+			await expect(
+				credentialsRepository.hasResolvableCredential([staticCred.id, privateCred.id]),
+			).resolves.toBe(true);
+		});
+
+		it('returns false when no given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+
+			await expect(credentialsRepository.hasResolvableCredential([staticCred.id])).resolves.toBe(
+				false,
+			);
+		});
+
+		it('returns false for an empty id list without querying', async () => {
+			await expect(credentialsRepository.hasResolvableCredential([])).resolves.toBe(false);
+		});
+	});
 });
