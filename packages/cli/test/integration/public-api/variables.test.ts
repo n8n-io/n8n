@@ -130,7 +130,6 @@ describe('Variables in Public API', () => {
 			for (const variable of response.body.data) {
 				expect(Object.keys(variable).sort()).toEqual(['id', 'key', 'project', 'type', 'value']);
 				if (variable.project !== null) {
-					// Same nine fields `GET /workflows` publishes for a nested project.
 					expect(Object.keys(variable.project).sort()).toEqual([
 						'createdAt',
 						'creatorId',
@@ -151,7 +150,6 @@ describe('Variables in Public API', () => {
 
 		it('should return the stored project icon unchanged', async () => {
 			testServer.license.enable('feat:variables');
-			// A stored icon can carry a `color` the entity type does not name.
 			const icon = { type: 'emoji', value: '🚀', color: '#ff0000' } as Project['icon'];
 			await Container.get(ProjectRepository).update(project.id, { icon });
 			await createProjectVariable('projectKey', 'projectValue', project);
@@ -265,8 +263,6 @@ describe('Variables in Public API', () => {
 				.send(variablePayload);
 
 			expect(response.status).toBe(201);
-			// The registry sends an empty body for a success status that declares no DTO. The legacy
-			// handler sent no content type with it, the registry sends the JSON one.
 			expect(response.text).toBe('');
 			expect(response.headers['content-type']).toBe('application/json; charset=utf-8');
 			const created = await getVariableByKey('key');
