@@ -1114,7 +1114,8 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Add 2 rows. Row 1: set "email" to "a@b.com"; Row 2: set "email" to "c@d.com"',
+					message:
+						'Add 2 rows\n\nRow 1: set "email" to "a@b.com"\n\nRow 2: set "email" to "c@d.com"',
 					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
@@ -1139,7 +1140,7 @@ describe('data-tables tool', () => {
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message:
-						'Add 1 row. Row 1: set "email" to "a@b.com", "age" to 42, "active" to false, "notes" to no value',
+						'Add 1 row\n\nRow 1: set "email" to "a@b.com", "age" to 42, "active" to false, "notes" to no value',
 					resourceName: 'Contacts',
 				}),
 			);
@@ -1165,13 +1166,13 @@ describe('data-tables tool', () => {
 
 				expect(suspend).toHaveBeenCalledWith(
 					expect.objectContaining({
-						message: expect.stringContaining(`Add ${rowCount} rows.`),
+						message: expect.stringContaining(`Add ${rowCount} rows\n\n`),
 					}),
 				);
 				const message: unknown = suspend.mock.calls[0][0].message;
-				expect(message).toContain('Row 3:');
+				expect(message).toContain('\n\nRow 3:');
 				expect(message).not.toContain('Row 4:');
-				expect(message).toContain(rowCount === 4 ? '1 more row' : '2 more rows');
+				expect(message).toContain(rowCount === 4 ? '\n\n1 more row' : '\n\n2 more rows');
 				expect(message).toContain('1 more column');
 				expect(message).not.toContain('Keep this value');
 				expect(message).toContain('x'.repeat(99) + '…');

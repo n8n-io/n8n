@@ -696,7 +696,7 @@ async function handleInsertRows(
 		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}. ${rowDescriptions.join('; ')}`,
+			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}\n\n${rowDescriptions.join('\n\n')}`,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});

@@ -258,7 +258,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 		});
 
 		it('keeps the full description in a keyboard-accessible region', async () => {
-			const message = `Set ${'"notes" to a detailed value, '.repeat(30)}in all rows`;
+			const message = `Add 5 rows\n\nRow 1: set ${'"notes" to a detailed value, '.repeat(30)}\n\n2 more rows`;
 			injectPendingConfirmation(
 				thread,
 				{ requestId: 'long-summary', severity: 'warning', message, resourceName: 'Contacts' },
@@ -270,7 +270,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				name: 'Assistant wants to add a column to Contacts',
 			});
 
-			expect(description).toHaveTextContent(message);
+			expect(description.textContent).toBe(message);
 			await userEvent.tab();
 			expect(description).toHaveFocus();
 			expect(getByTestId('instance-ai-panel-confirm-approve')).toBeVisible();

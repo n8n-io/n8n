@@ -770,6 +770,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 
 /* Keep all action details accessible without pushing the approval options off screen. */
 .approvalRowBody .approvalDescription {
+	white-space: pre-wrap;
 	max-height: var(--height--5xl);
 	overflow-y: auto;
 	word-break: normal;
