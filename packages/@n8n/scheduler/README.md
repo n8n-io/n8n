@@ -279,9 +279,10 @@ version: a newer version added that task, and an older instance in a rolling dep
 must leave it alone (`SystemTaskRunner`). The resolver answers by the same rule, so the
 sweep only retires what a failed startup cleanup left behind. Two cases are deploy
 constraints, not code: rolling back to a version without a task leaves that task's job
-in place, unclaimed, until a version that runs it boots again; and every instance must
-share the same system-task configuration, since an instance that does not run a task
-durably deletes its job at startup.
+in place, unclaimed, until a version that runs it boots again or a newer version that
+does not run it deletes it at startup; and every instance must share the same
+system-task configuration, since an instance that does not run a task durably deletes
+its job at startup.
 
 **2. Register a liveness resolver.**
 
