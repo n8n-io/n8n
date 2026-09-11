@@ -14,12 +14,17 @@ const BASE_BRANCH_ENTITIES = {
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
 
-export type BaseBranchFile = {
-	key: string;
+export type PackageFile = Readonly<{
+	entityId: string;
+	slug: string;
+	projectId: string | null;
+	fileName:
+		| (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName']
+		| typeof WORKFLOW_METADATA_FILE_NAME;
 	path: string;
 	blobSha: string;
 	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
-};
+}>;
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
 	.filter(({ includeRoot }) => includeRoot)
@@ -36,20 +41,26 @@ function entityIdOfSegment(segment: string): string {
 
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
+	options: { exportRoot: string; projectId: string },
+): PackageFile[] {
+	const files = lsTreeOutput.split('\0').flatMap((record) => {
+		const tabIndex = record.indexOf('\t');
+		if (tabIndex === -1) return [];
+		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
+		return objectType === 'blob' ? [{ path: record.slice(tabIndex + 1), blobSha }] : [];
+	});
+	return parsePackageFiles(files, options);
+}
+
+export function parsePackageFiles(
+	packageFiles: Array<{ path: string; blobSha: string }>,
 	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
-): BaseBranchFile[] {
+): PackageFile[] {
 	const { projects, folders } = BASE_BRANCH_ENTITIES;
-	const files: BaseBranchFile[] = [];
+	const files: PackageFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
-	for (const record of lsTreeOutput.split('\0')) {
-		const tabIndex = record.indexOf('\t');
-		if (tabIndex === -1) continue;
-
-		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
-		if (objectType !== 'blob') continue;
-
-		const path = record.slice(tabIndex + 1);
+	for (const { path, blobSha } of packageFiles) {
 		if (!path.startsWith(rootPrefix)) continue;
 
 		const segments = path.slice(rootPrefix.length).split('/');
@@ -75,11 +86,15 @@ export function parseBaseBranchFiles(
 		const { type } = entity;
 
 		const entitySegment = segments[segments.length - 2];
-		const key =
-			type === 'variable'
-				? entitySegment.slice(0, entitySegment.lastIndexOf('-'))
-				: entityIdOfSegment(entitySegment);
-		files.push({ key, path, blobSha, type });
+		files.push({
+			entityId: entityIdOfSegment(entitySegment),
+			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
+			projectId: segments[0] === projects.directory ? projectId : null,
+			fileName: isWorkflowMetadata ? WORKFLOW_METADATA_FILE_NAME : entity.fileName,
+			path,
+			blobSha,
+			type,
+		});
 	}
 
 	return files;

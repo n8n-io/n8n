@@ -490,6 +490,7 @@ export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
 
 export {
+	PromotionChangesQueryDto,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,

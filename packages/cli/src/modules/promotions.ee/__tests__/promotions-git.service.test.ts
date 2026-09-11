@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -343,6 +344,33 @@ describe('PromotionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('listBranchTree', () => {
+		it('runs operations on one checkout one at a time', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.raw.mockResolvedValue('');
+			const operation = {
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+				pathspecs: ['n8n-export/'],
+			};
+
+			const first = gitService.listBranchTree(operation);
+			const second = gitService.listBranchTree(operation);
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+			fetching.resolve();
+			await Promise.all([first, second]);
+
+			const [firstFetch, secondFetch] = mockGit.fetch.mock.invocationCallOrder;
+			const [firstListing] = mockGit.raw.mock.invocationCallOrder;
+			expect(firstListing).toBeGreaterThan(firstFetch);
+			expect(firstListing).toBeLessThan(secondFetch);
 		});
 	});
 

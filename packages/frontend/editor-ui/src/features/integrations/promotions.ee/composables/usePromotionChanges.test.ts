@@ -55,22 +55,23 @@ describe('usePromotionChanges', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValue(mockChanges);
-		vi.mocked(promotionsApi.promoteChanges).mockResolvedValue({ branchName: 'promote/test' });
 	});
 
-	it('should call promote with correct parameters', async () => {
-		const { fetchChanges, toggleSelected, promote } = usePromotionChanges('project-1');
+	it('should drop selections whose resource disappears after a refresh', async () => {
+		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
+			usePromotionChanges('project-1');
+		await fetchChanges();
+		toggleSelected('wf-001');
+		toggleSelected('wf-002');
+		expect(selectedCount.value).toBe(2);
+
+		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce(
+			mockChanges.filter((change) => change.id !== 'wf-001'),
+		);
 		await fetchChanges();
 
-		toggleSelected('wf-001');
-		toggleSelected('wf-003');
-
-		await promote(true);
-
-		expect(promotionsApi.promoteChanges).toHaveBeenCalledWith({}, 'project-1', {
-			workflowIds: expect.arrayContaining(['wf-001', 'wf-003']),
-			createBranch: true,
-		});
+		expect(selectedIds.value).toEqual(new Set(['wf-002']));
+		expect(selectedCount.value).toBe(1);
 	});
 
 	it('should handle fetch errors', async () => {
@@ -82,27 +83,6 @@ describe('usePromotionChanges', () => {
 		expect(error.value).toBeInstanceOf(Error);
 		expect(error.value?.message).toBe('Network error');
 		expect(isLoading.value).toBe(false);
-	});
-
-	it('should drop selections whose resource disappears after a refresh', async () => {
-		const { fetchChanges, toggleSelected, selectedIds, selectedCount } =
-			usePromotionChanges('project-1');
-		await fetchChanges();
-
-		toggleSelected('wf-001');
-		toggleSelected('wf-002');
-		expect(selectedCount.value).toBe(2);
-
-		// wf-001 is gone from the refreshed response (e.g. promoted elsewhere).
-		vi.mocked(promotionsApi.getPromotableChanges).mockResolvedValueOnce([
-			mockChanges[1],
-			mockChanges[2],
-		]);
-		await fetchChanges();
-
-		expect(selectedIds.value.has('wf-001')).toBe(false);
-		expect(selectedIds.value.has('wf-002')).toBe(true);
-		expect(selectedCount.value).toBe(1);
 	});
 
 	it('should select only the visible rows when a search filter is active', async () => {

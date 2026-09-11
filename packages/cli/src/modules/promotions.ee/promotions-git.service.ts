@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import pLimit from 'p-limit';
 import {
 	CheckRepoActions,
 	GitPluginError,
@@ -50,8 +51,20 @@ const BASE_GIT_OPTIONS = {
  */
 @Service()
 export class PromotionsGitService {
+	/** Concurrent fetches and pushes on one checkout race on the same tracking ref. */
+	private readonly checkoutLocks = new Map<string, ReturnType<typeof pLimit>>();
+
 	constructor(private readonly logger: Logger) {
 		this.logger = this.logger.scoped('promotions');
+	}
+
+	private async lockCheckout<T>(repositoryFolder: string, operation: () => Promise<T>) {
+		let lock = this.checkoutLocks.get(repositoryFolder);
+		if (!lock) {
+			lock = pLimit(1);
+			this.checkoutLocks.set(repositoryFolder, lock);
+		}
+		return await lock(operation);
 	}
 
 	/** The provider's auth method decides which remote URL forms are accepted. */
@@ -137,36 +150,40 @@ export class PromotionsGitService {
 
 		try {
 			// Clone from the root so repository-next sits beside the checkout.
-			await this.withGit(
-				{ remoteUrl, credentials, repoDir: paths.rootFolder, sshDir },
-				async (git) => {
-					const branchRefs = await git.listRemote([
-						'--heads',
-						remoteUrl,
-						`refs/heads/${branchName}`,
-					]);
-					if (!branchRefs.trim()) {
-						// Bootstrap only an empty remote; otherwise the requested branch is missing.
-						const anyRefs = await git.listRemote([remoteUrl]);
-						if (anyRefs.trim()) {
-							throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
-						}
-						// branchName is check-ref-format validated and passed without a shell.
-						await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
-						await git.raw(['-C', nextRepositoryFolder, 'remote', 'add', 'origin', remoteUrl]);
-					} else {
-						await git.clone(remoteUrl, nextRepositoryFolder, [
-							'--branch',
-							branchName,
-							'--single-branch',
-							'--no-tags',
-							// Keep the stall timeout fed during a healthy transfer.
-							'--progress',
-						]);
-					}
-					await rm(repositoryFolder, { recursive: true, force: true });
-					await rename(nextRepositoryFolder, repositoryFolder);
-				},
+			await this.lockCheckout(
+				repositoryFolder,
+				async () =>
+					await this.withGit(
+						{ remoteUrl, credentials, repoDir: paths.rootFolder, sshDir },
+						async (git) => {
+							const branchRefs = await git.listRemote([
+								'--heads',
+								remoteUrl,
+								`refs/heads/${branchName}`,
+							]);
+							if (!branchRefs.trim()) {
+								// Bootstrap only an empty remote; otherwise the requested branch is missing.
+								const anyRefs = await git.listRemote([remoteUrl]);
+								if (anyRefs.trim()) {
+									throw new BadRequestError(`Remote branch does not exist: ${branchName}`);
+								}
+								// branchName is check-ref-format validated and passed without a shell.
+								await git.raw(['init', `--initial-branch=${branchName}`, nextRepositoryFolder]);
+								await git.raw(['-C', nextRepositoryFolder, 'remote', 'add', 'origin', remoteUrl]);
+							} else {
+								await git.clone(remoteUrl, nextRepositoryFolder, [
+									'--branch',
+									branchName,
+									'--single-branch',
+									'--no-tags',
+									// Keep the stall timeout fed during a healthy transfer.
+									'--progress',
+								]);
+							}
+							await rm(repositoryFolder, { recursive: true, force: true });
+							await rename(nextRepositoryFolder, repositoryFolder);
+						},
+					),
 			);
 		} catch (error) {
 			await rm(nextRepositoryFolder, { recursive: true, force: true });
@@ -204,28 +221,32 @@ export class PromotionsGitService {
 		stagePathspec: string;
 	}): Promise<{ commitSha: string }> {
 		try {
-			return await this.withGit(
-				{
-					remoteUrl,
-					credentials,
-					repoDir: paths.repositoryFolder,
-					sshDir: paths.sshDir,
-					// Process-local identity, so a concurrent op can't change repo-wide config.
-					config: [`user.name=${author.name}`, `user.email=${author.email}`],
-				},
-				async (git) => {
-					// Scope staging to the package while including removed entities.
-					await git.add(['--all', '--', stagePathspec]);
-					await git.commit(commitMessage);
+			return await this.lockCheckout(
+				paths.repositoryFolder,
+				async () =>
+					await this.withGit(
+						{
+							remoteUrl,
+							credentials,
+							repoDir: paths.repositoryFolder,
+							sshDir: paths.sshDir,
+							// Process-local identity, so a concurrent op can't change repo-wide config.
+							config: [`user.name=${author.name}`, `user.email=${author.email}`],
+						},
+						async (git) => {
+							// Scope staging to the package while including removed entities.
+							await git.add(['--all', '--', stagePathspec]);
+							await git.commit(commitMessage);
 
-					if (force) {
-						await git.push('origin', branchName, ['-f']);
-					} else {
-						await git.push('origin', branchName);
-					}
+							if (force) {
+								await git.push('origin', branchName, ['-f']);
+							} else {
+								await git.push('origin', branchName);
+							}
 
-					return { commitSha: (await git.revparse(['HEAD'])).trim() };
-				},
+							return { commitSha: (await git.revparse(['HEAD'])).trim() };
+						},
+					),
 			);
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
@@ -252,10 +273,12 @@ export class PromotionsGitService {
 	async refreshCheckout(operation: GitOperation): Promise<{ commitSha: string }> {
 		const { paths, branchName, configId } = operation;
 		try {
-			await this.fetchBranch(operation);
-			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
-			await git.raw(['reset', '--hard', `origin/${branchName}`]);
-			return { commitSha: (await git.revparse(['HEAD'])).trim() };
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				await this.fetchBranch(operation);
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				await git.raw(['reset', '--hard', `origin/${branchName}`]);
+				return { commitSha: (await git.revparse(['HEAD'])).trim() };
+			});
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
 		}
@@ -267,28 +290,30 @@ export class PromotionsGitService {
 	}: GitOperation & { pathspecs: string[] }): Promise<string> {
 		const { remoteUrl, credentials, paths, branchName, configId } = operation;
 		try {
-			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
-			try {
-				await this.fetchBranch(operation);
-			} catch (error) {
-				const cached = await git.branch(['--remotes', '--list', `origin/${branchName}`]);
-				if (cached.all.length > 0) throw error;
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				try {
+					await this.fetchBranch(operation);
+				} catch (error) {
+					const cached = await git.branch(['--remotes', '--list', `origin/${branchName}`]);
+					if (cached.all.length > 0) throw error;
 
-				const refs = await this.withGit(
-					{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
-					async (git) => await git.listRemote(['origin']),
-				);
-				if (!refs.trim()) return '';
-				throw error;
-			}
-			return await git.raw([
-				'ls-tree',
-				'-r',
-				'-z',
-				`refs/remotes/origin/${branchName}`,
-				'--',
-				...pathspecs,
-			]);
+					const refs = await this.withGit(
+						{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+						async (git) => await git.listRemote(['origin']),
+					);
+					if (!refs.trim()) return '';
+					throw error;
+				}
+				return await git.raw([
+					'ls-tree',
+					'-r',
+					'-z',
+					`refs/remotes/origin/${branchName}`,
+					'--',
+					...pathspecs,
+				]);
+			});
 		} catch (error) {
 			throw this.mapGitError(error, { configId, branchName });
 		}
