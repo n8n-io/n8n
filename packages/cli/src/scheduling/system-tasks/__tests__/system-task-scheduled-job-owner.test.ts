@@ -149,14 +149,16 @@ describe('SystemTaskScheduledJobOwner', () => {
 
 	describe('isProvisioned', () => {
 		it('reports a task with a stored job as provisioned', async () => {
-			jobs.countByOwner.mockResolvedValue(1);
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(true);
 
 			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(true);
-			expect(jobs.countByOwner).toHaveBeenCalledExactlyOnceWith(owner.owner('prune-executions'));
+			expect(jobs.existsUnquarantinedByOwner).toHaveBeenCalledExactlyOnceWith(
+				owner.owner('prune-executions'),
+			);
 		});
 
-		it('reports a task without a stored job as not provisioned', async () => {
-			jobs.countByOwner.mockResolvedValue(0);
+		it('reports a task without a stored job or with only a quarantined one as not provisioned', async () => {
+			jobs.existsUnquarantinedByOwner.mockResolvedValue(false);
 
 			await expect(owner.isProvisioned('prune-executions')).resolves.toBe(false);
 		});
