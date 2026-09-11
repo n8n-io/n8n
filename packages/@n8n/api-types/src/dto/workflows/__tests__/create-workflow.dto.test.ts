@@ -2,6 +2,22 @@ import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
 
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
+const nodeEndpoint = { kind: 'node', id: 'node-a', port: { type: 'main', index: 2 } };
+const groupEndpoint = { kind: 'group', id: 'group-1', port: { type: 'main', index: 0 } };
+
+const emptyGroup = {
+	id: 'group-1',
+	name: 'Empty group',
+	nodeIds: [],
+	frame: { position: [560, 280], size: [240, 160] },
+	visualLinks: [
+		{
+			source: nodeEndpoint,
+			target: groupEndpoint,
+		},
+	],
+};
+
 describe('CreateWorkflowDto', () => {
 	describe('Valid requests', () => {
 		test.each([
@@ -127,6 +143,17 @@ describe('CreateWorkflowDto', () => {
 		])('should validate $name', ({ request }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should preserve an empty group frame and visual links', () => {
+			const result = CreateWorkflowDto.parse({
+				name: 'Grouped Workflow',
+				nodes: [],
+				connections: {},
+				nodeGroups: [emptyGroup],
+			});
+
+			expect(result.nodeGroups).toEqual([emptyGroup]);
 		});
 
 		test('should strip parentFolder from the parsed payload', () => {
@@ -405,6 +432,105 @@ describe('CreateWorkflowDto', () => {
 			if (expectedErrorPath) {
 				expect(result.error?.issues[0].path).toEqual(expectedErrorPath);
 			}
+		});
+
+		test.each([
+			{
+				name: 'a frame position with fewer than two numbers',
+				group: { ...emptyGroup, frame: { position: [560], size: [240, 160] } },
+			},
+			{
+				name: 'a non-finite frame position',
+				group: { ...emptyGroup, frame: { position: [Infinity, 280], size: [240, 160] } },
+			},
+			{
+				name: 'a frame size with more than two numbers',
+				group: { ...emptyGroup, frame: { position: [560, 280], size: [240, 160, 80] } },
+			},
+			{
+				name: 'a non-positive frame size',
+				group: { ...emptyGroup, frame: { position: [560, 280], size: [0, 160] } },
+			},
+			{
+				name: 'a non-finite frame size',
+				group: { ...emptyGroup, frame: { position: [560, 280], size: [Infinity, 160] } },
+			},
+			{
+				name: 'an empty endpoint ID',
+				group: {
+					...emptyGroup,
+					visualLinks: [{ source: { ...nodeEndpoint, id: '' }, target: groupEndpoint }],
+				},
+			},
+			{
+				name: 'an endpoint kind other than node or group',
+				group: {
+					...emptyGroup,
+					visualLinks: [
+						{
+							source: { ...nodeEndpoint, kind: 'workflow' },
+							target: groupEndpoint,
+						},
+					],
+				},
+			},
+			{
+				name: 'a port type other than main',
+				group: {
+					...emptyGroup,
+					visualLinks: [
+						{
+							source: { ...nodeEndpoint, port: { type: 'ai_tool', index: 0 } },
+							target: groupEndpoint,
+						},
+					],
+				},
+			},
+			{
+				name: 'a negative node port index',
+				group: {
+					...emptyGroup,
+					visualLinks: [
+						{
+							source: { ...nodeEndpoint, port: { type: 'main', index: -1 } },
+							target: groupEndpoint,
+						},
+					],
+				},
+			},
+			{
+				name: 'a fractional node port index',
+				group: {
+					...emptyGroup,
+					visualLinks: [
+						{
+							source: { ...nodeEndpoint, port: { type: 'main', index: 0.5 } },
+							target: groupEndpoint,
+						},
+					],
+				},
+			},
+			{
+				name: 'a nonzero group port index',
+				group: {
+					...emptyGroup,
+					visualLinks: [
+						{
+							source: nodeEndpoint,
+							target: { ...groupEndpoint, port: { type: 'main', index: 1 } },
+						},
+					],
+				},
+			},
+		])('should reject $name', ({ group }) => {
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Grouped Workflow',
+				nodes: [],
+				connections: {},
+				nodeGroups: [group],
+			});
+
+			expect(result.success).toBe(false);
 		});
 	});
 

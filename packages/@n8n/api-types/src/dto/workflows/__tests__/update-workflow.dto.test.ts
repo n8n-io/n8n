@@ -78,6 +78,25 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.success).toBe(true);
 		});
 
+		test('should preserve empty-group frame and visual-link data', () => {
+			const group = {
+				id: 'group-1',
+				name: 'Empty group',
+				nodeIds: [],
+				frame: { position: [560, 280], size: [240, 160] },
+				visualLinks: [
+					{
+						source: { kind: 'node', id: 'node-a', port: { type: 'main', index: 2 } },
+						target: { kind: 'group', id: 'group-1', port: { type: 'main', index: 0 } },
+					},
+				],
+			};
+
+			const result = UpdateWorkflowDto.parse({ nodeGroups: [group] });
+
+			expect(result.nodeGroups).toEqual([group]);
+		});
+
 		test('should strip parentFolder from the parsed payload', () => {
 			const result = UpdateWorkflowDto.safeParse({
 				parentFolder: { id: 'folder123', name: 'Some Folder' },
