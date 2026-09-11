@@ -1,8 +1,8 @@
 import { fireEvent, render } from '@testing-library/vue';
 import { computed } from 'vue';
 
-import type { ResizablePanel } from '../../composables/useResizablePanel';
 import N8nResizeWrapper from './ResizeWrapper.vue';
+import type { ResizablePanel } from '../../composables/useResizablePanel';
 
 function renderComponent(props: Record<string, unknown> = {}) {
 	return render(N8nResizeWrapper, {
