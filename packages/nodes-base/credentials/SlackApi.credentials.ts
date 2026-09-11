@@ -22,13 +22,14 @@ export class SlackApi implements ICredentialType {
 			required: true,
 		},
 		{
+			// Hidden, not removed: Slack Trigger nodes created before the Slack Signing Secret
+			// credential existed keep verifying requests with the value that is already stored.
+			// `password` keeps the API redacting the stored value; redaction ignores `type`.
 			displayName: 'Signature Secret',
 			name: 'signatureSecret',
-			type: 'string',
+			type: 'hidden',
 			typeOptions: { password: true },
 			default: '',
-			description:
-				'The signature secret is used to verify the authenticity of requests sent by Slack.',
 		},
 		{
 			displayName: 'Managed App ID',
@@ -47,18 +48,6 @@ export class SlackApi implements ICredentialType {
 			name: 'managerCredentialId',
 			type: 'hidden',
 			default: '',
-		},
-		{
-			displayName:
-				'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					signatureSecret: [''],
-				},
-			},
 		},
 	];
 
