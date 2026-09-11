@@ -8,6 +8,7 @@ describe('permissions', () => {
 		expect(getResourcePermissions()).toEqual({
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -95,6 +96,7 @@ describe('permissions', () => {
 		const permissionRecord: PermissionsRecord = {
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},

@@ -1,0 +1,196 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { User } from '@n8n/db';
+
+import type { ApplicableAiPreferences } from '@/services/ai-preference.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
+import { Telemetry } from '@/telemetry';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { createGetUserPreferencesTool } from '../tools/get-user-preferences.tool';
+
+/**
+ * The ticket fixes the description as a requirement, not an implementation choice: whether the
+ * assistant calls the tool at all, and keeps applying the result, is decided by this text. It
+ * is asserted verbatim so an edit has to be deliberate.
+ */
+const DESCRIPTION = [
+	'Returns the preferences saved for this n8n instance, the caller, and their projects: node and credential choices, naming, how work is organised, and patterns to avoid.',
+	'Call this before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — and apply what it returns to every change you make for the remainder of the task, not only the first one. If a preference conflicts with something the user asks for directly, follow the user and say which preference you set aside.',
+].join('\n\n');
+
+const NOTHING_SAVED = 'No preferences are saved for this instance, for you, or for your projects.';
+
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
+const empty: ApplicableAiPreferences = { instance: [], user: [], projects: [] };
+
+const createMocks = (result: ApplicableAiPreferences | Error = empty) => {
+	const getApplicableAcrossProjects =
+		result instanceof Error ? vi.fn().mockRejectedValue(result) : vi.fn().mockResolvedValue(result);
+	const aiPreferenceService = mockInstance(AiPreferenceService, { getApplicableAcrossProjects });
+	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	return { aiPreferenceService, telemetry };
+};
+
+describe('get-user-preferences MCP tool', () => {
+	const user = userWithScopes(['aiPreference:read']);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('tool definition', () => {
+		test('is named get_user_preferences', () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			expect(tool.name).toBe('get_user_preferences');
+		});
+
+		test('carries the agreed description verbatim', () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			expect(tool.config.description).toBe(DESCRIPTION);
+		});
+
+		test('takes no arguments, because the caller has nothing to choose', () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			expect(tool.config.inputSchema).toEqual({});
+		});
+
+		test('is annotated read-only', () => {
+			const { aiPreferenceService, telemetry } = createMocks();
+
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			expect(tool.config.annotations).toMatchObject({
+				readOnlyHint: true,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: false,
+			});
+		});
+	});
+
+	describe('reading', () => {
+		test('reads the preferences that apply to the calling user', async () => {
+			const { aiPreferenceService, telemetry } = createMocks({
+				instance: [],
+				user: ['Keep replies short.'],
+				projects: [],
+			});
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+
+			expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(user);
+		});
+
+		test('returns the rendered preferences', async () => {
+			const { aiPreferenceService, telemetry } = createMocks({
+				instance: ['Use British English.'],
+				user: ['Keep replies short.'],
+				projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+			});
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			const result = await tool.handler({});
+
+			const text = result.content?.[0];
+			expect(text).toMatchObject({ type: 'text' });
+			expect(text && 'text' in text ? text.text : '').toContain('- Use British English.');
+			expect(text && 'text' in text ? text.text : '').toContain('- Keep replies short.');
+			expect(text && 'text' in text ? text.text : '').toContain('- Prefer HubSpot nodes.');
+			expect(result.structuredContent).toEqual({ hasPreferences: true });
+		});
+
+		test('answers definitely when nothing is saved, so the assistant does not ask again', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			const result = await tool.handler({});
+
+			expect(result.content).toEqual([{ type: 'text', text: NOTHING_SAVED }]);
+			expect(result.structuredContent).toEqual({ hasPreferences: false });
+		});
+
+		test('reads again on every call, so an edit lands without a reconnect', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+			await tool.handler({});
+
+			expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('permissions', () => {
+		test('refuses a user without aiPreference:read and never reads', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(empty);
+			const tool = createGetUserPreferencesTool(
+				userWithScopes(['workflow:read']),
+				aiPreferenceService,
+				telemetry,
+			);
+
+			await expect(tool.handler({})).rejects.toThrow(
+				'User does not have permission to read preferences',
+			);
+			expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('failures', () => {
+		test('throws rather than reporting no preferences, so no build proceeds blind', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await expect(tool.handler({})).rejects.toThrow('db down');
+		});
+	});
+
+	describe('telemetry', () => {
+		test('reports a successful call', async () => {
+			const { aiPreferenceService, telemetry } = createMocks({
+				instance: ['Use British English.'],
+				user: [],
+				projects: [],
+			});
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await tool.handler({});
+
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'get_user_preferences',
+				parameters: {},
+				results: { success: true, data: { hasPreferences: true } },
+			});
+		});
+
+		test('reports a failed call before rethrowing', async () => {
+			const { aiPreferenceService, telemetry } = createMocks(new Error('db down'));
+			const tool = createGetUserPreferencesTool(user, aiPreferenceService, telemetry);
+
+			await expect(tool.handler({})).rejects.toThrow('db down');
+
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'get_user_preferences',
+				parameters: {},
+				results: { success: false, error: 'db down' },
+			});
+		});
+	});
+});

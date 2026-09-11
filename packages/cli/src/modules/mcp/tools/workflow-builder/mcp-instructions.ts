@@ -18,7 +18,10 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import {
+	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+} from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -46,10 +49,13 @@ export type McpInstructionsOptions = {
 	isAgentsEnabled?: boolean;
 
 	/**
-	 * The caller's saved AI preferences, already rendered as a tagged block by
-	 * `AiPreferenceService`. Appended as the last section when set.
+	 * Whether the `get_user_preferences` tool is registered for this caller.
+	 * If true, one sentence points the client at it. Clients that defer tool
+	 * descriptions (Claude Code loads them on demand, by name) never read the
+	 * tool's own description before building, so this is the only text that
+	 * reliably reaches them. Identical for every caller; nothing per-user.
 	 */
-	aiPreferences?: string;
+	isUserPreferencesEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
 	const {
@@ -57,9 +63,15 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
-		aiPreferences,
+		isUserPreferencesEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	// Deliberately one sentence: its only job is to make the client load and call the
+	// tool. The tool's description carries the rest once it has been loaded.
+	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
+		? `Before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
+		: '';
 
 	// Only appended when the flag is on; keeps the paid-per-session string short.
 	const GROUPS_HINT = canvasGroupsEnabled
@@ -125,10 +137,10 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 
 	return [
 		INTRO,
+		USER_PREFERENCES_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
-		aiPreferences,
 	]
 		.filter(Boolean)
 		.join('\n\n');

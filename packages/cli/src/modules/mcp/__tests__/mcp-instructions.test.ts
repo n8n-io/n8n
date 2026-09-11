@@ -84,30 +84,62 @@ describe('getMcpInstructions', () => {
 		});
 	});
 
-	describe('aiPreferences', () => {
-		const block =
-			'<ai-preferences>\nPersonal preferences:\n- Keep replies short.\n</ai-preferences>';
+	// CONTEXT-132 moved the preferences into the `get_user_preferences` tool. What stays
+	// in the instructions is one caller-independent sentence pointing at it: clients that
+	// defer tool descriptions never read the tool's own description before building.
+	describe('preferences', () => {
+		const HINT =
+			'Before you create or modify anything in n8n — a workflow, an Agent, a data table, a folder — call get_user_preferences first and apply what it returns for the remainder of the task.';
 
-		test('appends the block as the last section', () => {
-			const instructions = getMcpInstructions({ isBuilderEnabled: true, aiPreferences: block });
-			expect(instructions.endsWith(block)).toBe(true);
-			expect(instructions.indexOf(block)).toBeGreaterThan(
+		test('carries no preferences block, ever', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				isUserPreferencesEnabled: true,
+			});
+
+			expect(instructions).not.toContain('<ai-preferences>');
+			expect(instructions).not.toContain('Instance preferences');
+			expect(instructions).not.toContain('Personal preferences');
+		});
+
+		test('names the tool only when it is registered for the caller', () => {
+			expect(getMcpInstructions({ isBuilderEnabled: true })).not.toContain('get_user_preferences');
+			expect(
+				getMcpInstructions({ isBuilderEnabled: true, isUserPreferencesEnabled: true }),
+			).toContain(HINT);
+		});
+
+		test('puts the pointer directly after the intro, before any build steps', () => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				isAgentsEnabled: true,
+				isUserPreferencesEnabled: true,
+			});
+
+			expect(instructions.indexOf(HINT)).toBeGreaterThan(
 				instructions.indexOf('official MCP server for n8n'),
 			);
-		});
-
-		test('appends the block even when the builder is disabled', () => {
-			const instructions = getMcpInstructions({ isBuilderEnabled: false, aiPreferences: block });
-			expect(instructions).toBe(
-				`This is the official MCP server for n8n, a workflow automation platform.\n\n${block}`,
+			expect(instructions.indexOf(HINT)).toBeLessThan(
+				instructions.indexOf('Choose the artifact before choosing build tools'),
 			);
 		});
 
-		test('leaves the instructions unchanged when there is no block', () => {
-			expect(getMcpInstructions({ isBuilderEnabled: true, aiPreferences: undefined })).toBe(
-				getMcpInstructions({ isBuilderEnabled: true }),
-			);
-			expect(getMcpInstructions({ isBuilderEnabled: true })).not.toContain('<ai-preferences>');
+		test('shows the pointer even when the builder is disabled', () => {
+			expect(
+				getMcpInstructions({ isBuilderEnabled: false, isUserPreferencesEnabled: true }),
+			).toContain(HINT);
+		});
+
+		test('is identical for every caller with the same options', () => {
+			const options = {
+				isBuilderEnabled: true,
+				isN8nConnectAvailable: true,
+				canvasGroupsEnabled: true,
+				isAgentsEnabled: true,
+				isUserPreferencesEnabled: true,
+			};
+
+			expect(getMcpInstructions(options)).toBe(getMcpInstructions(options));
 		});
 	});
 });

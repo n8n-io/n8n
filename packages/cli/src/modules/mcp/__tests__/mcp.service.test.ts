@@ -46,7 +46,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
 import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
-import { McpService, type McpFeatureFlags, type McpServerBuildOptions } from '../mcp.service';
+import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
@@ -345,6 +345,7 @@ describe('McpService', () => {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
 			mcpCanvasGroupsEnabled?: boolean;
+			mcpUserPreferencesEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -361,6 +362,7 @@ describe('McpService', () => {
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
 						mcpCanvasGroupsEnabled: opts.mcpCanvasGroupsEnabled ?? false,
+						mcpUserPreferencesEnabled: opts.mcpUserPreferencesEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -453,6 +455,51 @@ describe('McpService', () => {
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
 					mcpApps: { enabled: false, variant: 'unassigned' },
+				});
+			});
+		});
+
+		describe('user preferences', () => {
+			it('enables the tool for users with the flag set', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({ [CONTEXT_PREFERENCES_FLAG]: true });
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					aiPreferencesEnabled: true,
+				});
+			});
+
+			it('keeps the tool disabled when the flag is missing', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({});
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					aiPreferencesEnabled: false,
+				});
+			});
+
+			it('treats non-boolean flag values as disabled', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({
+					[CONTEXT_PREFERENCES_FLAG]: 'variant',
+				});
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					aiPreferencesEnabled: false,
+				});
+			});
+
+			// Without this an instance with no PostHog cannot exercise the tool at all.
+			it('enables the tool when the operator force-enables it', async () => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue({});
+				const service = buildResolutionService({ postHogClient, mcpUserPreferencesEnabled: true });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					aiPreferencesEnabled: true,
 				});
 			});
 		});
@@ -562,13 +609,10 @@ describe('McpService', () => {
 					.filter((line) => line.startsWith('data: '))
 					.map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
 
-			const buildHandler = async (
-				flags = mcpFeatureFlags(),
-				options: McpServerBuildOptions = {},
-			) => {
+			const buildHandler = async (flags = mcpFeatureFlags(), auth?: McpAuthContext) => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				return createMcpHandler(
-					async () => await mcpService.getServer(user, flags, undefined, undefined, options),
+					async () => await mcpService.getServer(user, flags, undefined, auth),
 					{ legacy: 'stateless' },
 				);
 			};
@@ -629,8 +673,8 @@ describe('McpService', () => {
 				return (message as { result: { instructions?: string } }).result.instructions ?? '';
 			};
 
-			const initialize = async (flags: McpFeatureFlags) => {
-				const handler = await buildHandler(flags, { isConnectionHandshake: true });
+			const initialize = async (flags: McpFeatureFlags, auth?: McpAuthContext) => {
+				const handler = await buildHandler(flags, auth);
 				const res = await handler.fetch(
 					new Request('http://n8n.local/mcp-server/http', {
 						method: 'POST',
@@ -658,7 +702,7 @@ describe('McpService', () => {
 			// connection with `server/discover`: the other branch of
 			// `isConnectionHandshake`, and the one that carries the instructions today.
 			const discover = async (flags: McpFeatureFlags) => {
-				const handler = await buildHandler(flags, { isConnectionHandshake: true });
+				const handler = await buildHandler(flags);
 				const res = await handler.fetch(
 					new Request('http://n8n.local/mcp-server/http', {
 						method: 'POST',
@@ -684,91 +728,52 @@ describe('McpService', () => {
 				return await handshakeInstructions(res);
 			};
 
-			it('serves the AI preferences block in the initialize instructions when the flag is on', async () => {
-				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
-					instance: ['Ask before you publish.'],
-					user: ['Keep replies short.'],
-					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
-				});
-
+			// CONTEXT-132 moved the preferences out of the instructions and into the
+			// `get_user_preferences` tool. The instructions must now be identical for every
+			// caller: nothing per-user, and no read on the handshake path at all.
+			it('keeps the preferences out of the initialize instructions', async () => {
 				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
 
-				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'user-1' }),
-				);
 				expect(instructions).toContain('official MCP server for n8n');
-				expect(instructions.endsWith('</ai-preferences>')).toBe(true);
-				expect(instructions).toContain('- Keep replies short.');
-
-				// The three sections keep the order the renderer sets: instance, then the
-				// projects, then the personal one. `toContain` alone passes on a reshuffle.
-				const instanceAt = instructions.indexOf(
-					'Instance preferences (set by an admin for everyone):',
-				);
-				const projectAt = instructions.indexOf('Preferences for project "Marketing":');
-				const personalAt = instructions.indexOf('Personal preferences:');
-				expect(instanceAt).toBeGreaterThan(-1);
-				expect(projectAt).toBeGreaterThan(instanceAt);
-				expect(personalAt).toBeGreaterThan(projectAt);
+				expect(instructions).not.toContain('<ai-preferences>');
+				expect(instructions).not.toContain('Instance preferences');
+				expect(instructions).not.toContain('Personal preferences');
 			});
 
-			it('serves the AI preferences block in the server/discover instructions when the flag is on', async () => {
-				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
-					instance: [],
-					user: ['Keep replies short.'],
-					projects: [{ id: 'p-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
-				});
-
+			it('keeps the preferences out of the server/discover instructions', async () => {
 				const instructions = await discover(mcpFeatureFlags({ aiPreferencesEnabled: true }));
 
-				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'user-1' }),
-				);
-				expect(instructions).toContain('official MCP server for n8n');
-				expect(instructions.endsWith('</ai-preferences>')).toBe(true);
-				expect(instructions).toContain('Preferences for project "Marketing":');
-				expect(instructions).toContain('- Keep replies short.');
-			});
-
-			it('serves the instructions unchanged when the AI preferences flag is off', async () => {
-				const instructions = await initialize(mcpFeatureFlags());
-
-				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
 				expect(instructions).toContain('official MCP server for n8n');
 				expect(instructions).not.toContain('<ai-preferences>');
 			});
 
-			it('serves the instructions unchanged when the caller has no preferences', async () => {
-				aiPreferenceService.getApplicableAcrossProjects.mockResolvedValue({
-					instance: [],
-					user: [],
-					projects: [],
-				});
+			it('never reads the preferences to build the instructions', async () => {
+				await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
+				await discover(mcpFeatureFlags({ aiPreferencesEnabled: true }));
 
+				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
+			});
+
+			it('points at get_user_preferences only when the flag is on', async () => {
 				const withFlagOn = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
 				const withFlagOff = await initialize(mcpFeatureFlags());
 
-				expect(aiPreferenceService.getApplicableAcrossProjects).toHaveBeenCalledTimes(1);
-				expect(withFlagOn).not.toContain('<ai-preferences>');
-				// Byte-identical, so an empty set leaves no trailing separator either.
-				expect(withFlagOn).toBe(withFlagOff);
+				expect(withFlagOn).toContain('call get_user_preferences first');
+				expect(withFlagOff).not.toContain('get_user_preferences');
 			});
 
-			it('does not read the preferences for a request that is not the handshake', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
+			// A pointer at a tool the grant cannot call would send the client into a
+			// dead end, so the scope gates the sentence exactly as it gates the tool.
+			it('drops the pointer for a grant without the preferences scope', async () => {
+				const scoped = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }), {
+					grantedScopes: ['workflow:read', 'workflow:write'],
+				});
+				const granted = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }), {
+					grantedScopes: ['aiPreference:read'],
+				});
 
-				await mcpService.getServer(user, mcpFeatureFlags({ aiPreferencesEnabled: true }));
-
-				expect(aiPreferenceService.getApplicableAcrossProjects).not.toHaveBeenCalled();
-			});
-
-			it('serves the instructions without the block when the preference read fails', async () => {
-				aiPreferenceService.getApplicableAcrossProjects.mockRejectedValue(new Error('db down'));
-
-				const instructions = await initialize(mcpFeatureFlags({ aiPreferencesEnabled: true }));
-
-				expect(instructions).toContain('official MCP server for n8n');
-				expect(instructions).not.toContain('<ai-preferences>');
+				expect(scoped).not.toContain('get_user_preferences');
+				expect(granted).toContain('call get_user_preferences first');
 			});
 
 			it('serves a 2025-era client through the stateless legacy fallback', async () => {

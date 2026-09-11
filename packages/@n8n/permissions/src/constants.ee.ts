@@ -3,6 +3,9 @@ export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list']
 export const RESOURCES = {
 	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
 	aiAssistant: ['manage'] as const,
+	// Read only: nothing writes preferences yet. The create and edit operations land with
+	// the ticket that adds them.
+	aiPreference: ['read'] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
