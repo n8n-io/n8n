@@ -1123,13 +1123,13 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('prefills pending composer state before the thread list finishes loading', async () => {
+	it('prefills pending composer state before the thread finishes loading', async () => {
 		store.threads = [];
-		let resolveThreadList!: (loaded: boolean) => void;
-		store.loadThreads.mockImplementation(
+		let resolveThread!: () => void;
+		store.loadThread.mockImplementation(
 			() =>
 				new Promise((resolve) => {
-					resolveThreadList = resolve;
+					resolveThread = resolve;
 				}),
 		);
 		localStorageState.store.set(
@@ -1145,7 +1145,7 @@ describe('InstanceAiThreadView', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(store.loadThreads).toHaveBeenCalledWith();
+			expect(store.loadThread).toHaveBeenCalledWith('thread-1');
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Preview session');
 			expect(getByTestId('instance-ai-input-draft')).toHaveTextContent('Fix the failed tool');
 		});
@@ -1158,7 +1158,7 @@ describe('InstanceAiThreadView', () => {
 				updatedAt: '2026-04-01T00:00:00.000Z',
 			},
 		] as typeof store.threads;
-		resolveThreadList(true);
+		resolveThread();
 		await flushPromises();
 	});
 
@@ -1649,6 +1649,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {
+		mockRouteState.params.threadId = 'thread-2';
 		thread.sseState = 'disconnected';
 		store.threads = [
 			...store.threads,

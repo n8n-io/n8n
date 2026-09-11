@@ -1407,6 +1407,10 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('listThreads', () => {
+		it('passes pagination and search with the authenticated user scope', async () => {
+			await controller.listThreads(req, res, { page: 2, limit: 30, search: 'invoice' });
+			expect(memoryService.listThreads).toHaveBeenCalledWith(USER_ID, 2, 30, 'invoice');
+		});
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
