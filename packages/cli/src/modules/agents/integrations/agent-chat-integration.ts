@@ -1,5 +1,6 @@
 import {
 	AgentIntegrationConfig,
+	type AgentCredentialIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
 	type RichCardComponentType,
 } from '@n8n/api-types';
@@ -25,6 +26,24 @@ import type {
 	ReplyExpectation,
 } from './integration-tools';
 
+export interface CredentialRequirement {
+	credentialId: string;
+	acceptedCredentialTypes: readonly string[];
+	path: string;
+	role: 'connection' | 'access';
+}
+
+export interface BoundAgentIntegration {
+	config: AgentIntegrationConfig;
+	implementation: AgentChatIntegration;
+	connectionId: string;
+	identity: string;
+	persistedIdentity: { credentialId: string } | { integrationId: string };
+	clientIdentity: Partial<{ integrationId: string }>;
+	credentialRequirements: CredentialRequirement[];
+	adapterRuntimeConfig?: AgentCredentialIntegrationConfig;
+}
+
 /**
  * Channel identity, without the decrypted credential. Enough for checks that
  * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
@@ -37,7 +56,7 @@ export interface AgentChannelPreconditionContext {
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext extends AgentChannelPreconditionContext {
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	credential: Record<string, unknown>;
 	/** Whether this connection may receive events from the external platform. */
 	ingressEnabled: boolean;
@@ -123,7 +142,7 @@ export interface BridgeMessageContextParams {
 	chat: ChatInstance;
 	thread: Thread<unknown, unknown>;
 	message: Message<unknown>;
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	logger: Logger;
 	agentId: string;
 	statusRetry?: AbortController;
@@ -155,7 +174,7 @@ export type ActionDecisionMessageFormatter = (
 
 export interface SettleActionMessageParams {
 	agentId: string;
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	threadId: string;
 	messageId: string;
 	content: string;
@@ -178,6 +197,33 @@ export abstract class AgentChatIntegration {
 
 	/** Credential types accepted by the frontend selector. */
 	abstract readonly credentialTypes: string[];
+
+	connectionId(config: AgentIntegrationConfig): string {
+		if ('credentialId' in config) return config.credentialId;
+		throw new Error(`Integration "${this.type}" requires a credential-backed config`);
+	}
+
+	credentialRequirements(config: AgentIntegrationConfig): CredentialRequirement[] {
+		if (!('credentialId' in config)) return [];
+		return [
+			{
+				credentialId: config.credentialId,
+				acceptedCredentialTypes: this.credentialTypes,
+				path: 'credentialId',
+				role: 'connection',
+			},
+		];
+	}
+
+	adapterRuntimeConfig(
+		config: AgentIntegrationConfig,
+	): AgentCredentialIntegrationConfig | undefined {
+		return 'credentialId' in config ? config : undefined;
+	}
+
+	withDefaultConnectionId(config: Record<string, unknown>): Record<string, unknown> {
+		return config;
+	}
 
 	// ---------------------------------------------------------------------------
 	// FE display metadata — shown in the trigger-picker and integration cards.
@@ -561,5 +607,34 @@ export class ChatIntegrationRegistry {
 	/** Registered integrations that appear in the public catalog (excludes internal channels). */
 	listPublic(): AgentChatIntegration[] {
 		return this.list().filter((integration) => !integration.internal);
+	}
+
+	bind(config: AgentIntegrationConfig): BoundAgentIntegration {
+		const implementation = this.require(config.type);
+		const connectionId = implementation.connectionId(config);
+		const adapterRuntimeConfig = implementation.adapterRuntimeConfig(config);
+		const persistedIdentity =
+			'credentialId' in config
+				? { credentialId: config.credentialId }
+				: { integrationId: config.integrationId };
+		return {
+			config,
+			implementation,
+			connectionId,
+			identity: `${config.type}:${connectionId}`,
+			persistedIdentity,
+			clientIdentity: 'integrationId' in persistedIdentity ? persistedIdentity : {},
+			credentialRequirements: implementation.credentialRequirements(config),
+			...(adapterRuntimeConfig ? { adapterRuntimeConfig } : {}),
+		};
+	}
+
+	runtimeConfigs(
+		configs: AgentIntegrationConfig[] | null | undefined,
+	): AgentCredentialIntegrationConfig[] {
+		return (configs ?? []).flatMap((config) => {
+			const runtimeConfig = this.bind(config).adapterRuntimeConfig;
+			return runtimeConfig ? [runtimeConfig] : [];
+		});
 	}
 }

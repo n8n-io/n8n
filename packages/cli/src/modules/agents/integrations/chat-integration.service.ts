@@ -1,4 +1,8 @@
-import { AgentIntegrationConfig, type AgentIntegrationSettings } from '@n8n/api-types';
+import {
+	AgentIntegrationConfig,
+	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationSettings,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { OnLeaderStepdown, OnPubSubEvent } from '@n8n/decorators';
@@ -158,7 +162,7 @@ export class ChatIntegrationService {
 	 */
 	async broadcastIntegrationChange(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
@@ -195,7 +199,7 @@ export class ChatIntegrationService {
 	 */
 	async assertStartupPreconditions(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
 		const implementation = this.integrationRegistry.require(integration.type);
@@ -212,7 +216,7 @@ export class ChatIntegrationService {
 
 	async validateBeforeConnect(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		projectId: string,
 	): Promise<void> {
 		const implementation = this.integrationRegistry.require(integration.type);
@@ -246,7 +250,7 @@ export class ChatIntegrationService {
 	 */
 	async connect(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
@@ -291,7 +295,7 @@ export class ChatIntegrationService {
 	 */
 	private async connectLocal(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
@@ -320,7 +324,7 @@ export class ChatIntegrationService {
 
 	private async establishConnection(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
@@ -542,7 +546,7 @@ export class ChatIntegrationService {
 	 */
 	async disconnectChannel(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		options: DisconnectChannelOptions = {},
 	): Promise<void> {
 		const { deleteSubscriptions = true } = options;
@@ -637,9 +641,13 @@ export class ChatIntegrationService {
 	 */
 	async syncToConfig(
 		agent: Agent,
-		previous: AgentIntegrationConfig[],
-		next: AgentIntegrationConfig[],
+		allPrevious: AgentIntegrationConfig[],
+		allNext: AgentIntegrationConfig[],
 	): Promise<void> {
+		// Request-driven channels have no connection to sync — they are served
+		// from the row on each inbound request.
+		const previous = this.integrationRegistry.runtimeConfigs(allPrevious);
+		const next = this.integrationRegistry.runtimeConfigs(allNext);
 		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
 		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
 
@@ -766,10 +774,13 @@ export class ChatIntegrationService {
 		const agent = await this.agentRepository
 			.findOne({ where: { id: agentId } })
 			.catch(handleInitializationError);
-		const persistedIntegration = agent?.integrations?.find(
-			(candidate) =>
-				candidate.type === integration.type && candidate.credentialId === integration.credentialId,
-		);
+		const persistedIntegration = this.integrationRegistry
+			.runtimeConfigs(agent?.integrations)
+			.find(
+				(candidate) =>
+					candidate.type === integration.type &&
+					candidate.credentialId === integration.credentialId,
+			);
 		if (!agent || agent.activeVersionId !== null || !persistedIntegration) {
 			await this.disconnectOutboundOne(key);
 			return undefined;
@@ -867,7 +878,7 @@ export class ChatIntegrationService {
 	 * Which channels to start, and when to retry one that failed, is
 	 * {@link AgentChannelReconciler}'s decision.
 	 */
-	async startChannel(agent: Agent, integration: AgentIntegrationConfig): Promise<void> {
+	async startChannel(agent: Agent, integration: AgentCredentialIntegrationConfig): Promise<void> {
 		const skipExternalHooks = !this.instanceSettings.isLeader;
 		await this.connect(
 			agent.id,
@@ -996,7 +1007,7 @@ export class ChatIntegrationService {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private channelRef(agentId: string, integration: AgentIntegrationConfig): AgentChannelRef {
+	private channelRef(agentId: string, integration: AgentCredentialIntegrationConfig): AgentChannelRef {
 		return {
 			agentId,
 			integrationType: integration.type,
@@ -1211,7 +1222,7 @@ export class ChatIntegrationService {
 	}
 
 	private connectOptionsFor(
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		skipExternalHooks: boolean,
 	): ConnectOptions {
 		return 'settings' in integration

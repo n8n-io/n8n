@@ -24,6 +24,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
@@ -335,7 +336,8 @@ export class AgentsService {
 		}
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
-		for (const integration of agent.integrations ?? []) {
+		const integrationRegistry = Container.get(ChatIntegrationRegistry);
+		for (const integration of integrationRegistry.runtimeConfigs(agent.integrations)) {
 			await chatIntegrationService.disconnectChannel(agentId, integration);
 		}
 

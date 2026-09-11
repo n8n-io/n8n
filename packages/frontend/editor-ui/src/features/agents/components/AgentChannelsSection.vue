@@ -6,6 +6,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
+import { isWebIntegrationSettings } from '../channels/web/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
+const { connectedCredentials, integrationSettings, runtimeErrors, hasRuntimeError, fetchStatus } =
 	useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const credentialNamesById = ref<Record<string, string>>({});
@@ -86,6 +87,22 @@ function channelRuntimeErrorMessage(channel: string): string {
 	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
 }
 
+function webChannelDetail(): string | undefined {
+	const settings = integrationSettings.value.web;
+	if (!isWebIntegrationSettings(settings)) return undefined;
+	if (settings.accessMode === 'n8nUserAuth') {
+		return i18n.baseText('agents.channels.web.authentication.n8nUserAuth');
+	}
+	if (settings.accessMode === 'public') {
+		return i18n.baseText('agents.channels.web.authentication.none');
+	}
+
+	return settings.basicAuthCredentialId
+		? (credentialNamesById.value[settings.basicAuthCredentialId] ??
+				i18n.baseText('agents.channels.web.authentication.basicAuth'))
+		: i18n.baseText('agents.channels.web.authentication.basicAuth');
+}
+
 const channelRows = computed(() =>
 	props.connectedTriggers.map((channel) => {
 		const integration = catalog.value?.find(({ type }) => type === channel);
@@ -100,7 +117,13 @@ const channelRows = computed(() =>
 			type: channel,
 			label: integration?.label ?? channel,
 			icon: channelIcon(integration?.icon),
-			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+			detail:
+				channel === 'web'
+					? webChannelDetail()
+					: credentialId
+						? credentialNamesById.value[credentialId]
+						: undefined,
+			showDetailSkeleton: channel !== 'web' && !credentialId,
 			invalidReasons,
 		};
 	}),
@@ -225,10 +248,10 @@ const remainingChannelOptionLabels = computed(() => {
 				<N8nIcon v-if="channel.icon" :icon="channel.icon" size="large" />
 				<div :class="$style.channelCardText">
 					<N8nText step="sm" bold>{{ channel.label }}</N8nText>
-					<N8nText v-if="channel.credentialName" step="xs" color="text-light">
-						{{ channel.credentialName }}
+					<N8nText v-if="channel.detail" step="xs" color="text-light">
+						{{ channel.detail }}
 					</N8nText>
-					<div v-else :class="$style.credentialnameSkeleton" />
+					<div v-else-if="channel.showDetailSkeleton" :class="$style.credentialnameSkeleton" />
 				</div>
 			</button>
 

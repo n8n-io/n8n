@@ -1671,8 +1671,7 @@ export class McpAgentToolsService {
 		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user,
-			type: input.type,
-			credentialId: input.credentialId,
+			remove: { type: input.type, credentialId: input.credentialId },
 			modifiedBy: 'mcp',
 		});
 		return {

@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
@@ -89,7 +89,7 @@ export interface TelegramReplayContext extends Omit<ReplayContextSetup, 'nextStr
 	actionExecutor: ChatIntegrationActionExecutor;
 	apiCalls: TelegramApiCall[];
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
 	sendTelegramWebhook: (payload: unknown) => Promise<Response>;
 	sendWebhook: (payload: unknown) => Promise<Response>;
@@ -199,7 +199,7 @@ export async function createTelegramReplayContext(
 	fixtures: TelegramReplayFixtures,
 	options: {
 		stream?: StreamChunk[];
-		integration?: AgentIntegrationConfig;
+		integration?: AgentCredentialIntegrationConfig;
 		failedApiMethods?: string[];
 	} = {},
 ): Promise<TelegramReplayContext> {

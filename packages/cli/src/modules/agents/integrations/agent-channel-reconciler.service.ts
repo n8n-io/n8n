@@ -1,4 +1,7 @@
-import { isDraftIntegration, type AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	isDraftIntegration,
+	type AgentCredentialIntegrationConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -22,7 +25,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 export type ChannelReconcileReason = 'startup' | 'leader-takeover' | 'interval';
 
 /** Channels a pass should see running, keyed by {@link channelKey}. */
-type WantedChannels = Map<string, { agent: Agent; integration: AgentIntegrationConfig }>;
+type WantedChannels = Map<string, { agent: Agent; integration: AgentCredentialIntegrationConfig }>;
 
 /**
  * How long shutdown waits for a pass to finish before withdrawing anyway. Well
@@ -209,7 +212,7 @@ export class AgentChannelReconciler {
 			const wantedHere: WantedChannels = new Map();
 
 			for (const agent of agents) {
-				for (const integration of agent.integrations ?? []) {
+				for (const integration of this.integrationRegistry.runtimeConfigs(agent.integrations)) {
 					// A draft entry has no credential to connect with. The builder writes
 					// it so the panel can show a needs-setup chip, and publishing rejects
 					// it, so it can only be here mid-setup.
@@ -238,7 +241,7 @@ export class AgentChannelReconciler {
 	 * follower must leave them alone — including their status, which belongs to
 	 * whichever main is actually running them.
 	 */
-	private runsHere(integration: AgentIntegrationConfig): boolean {
+	private runsHere(integration: AgentCredentialIntegrationConfig): boolean {
 		const definition = this.integrationRegistry.get(integration.type);
 		return !definition?.requiresLeader() || this.instanceSettings.isLeader;
 	}
@@ -422,7 +425,7 @@ export class AgentChannelReconciler {
 		}
 	}
 
-	private refOf(agent: Agent, integration: AgentIntegrationConfig): AgentChannelRef {
+	private refOf(agent: Agent, integration: AgentCredentialIntegrationConfig): AgentChannelRef {
 		return {
 			agentId: agent.id,
 			integrationType: integration.type,

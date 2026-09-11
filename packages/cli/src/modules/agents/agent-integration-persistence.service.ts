@@ -1,5 +1,6 @@
 import {
 	AgentIntegrationSchema,
+	getAgentIntegrationConnectionId,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
@@ -30,11 +31,14 @@ export interface CredentialIntegrationMutationContext {
 	modifiedBy: AgentActor;
 }
 
-/** Reference to a persisted entry; `credentialId: ''` targets a builder draft entry. */
-export interface IntegrationRef {
-	type: string;
-	credentialId: string;
-}
+/**
+ * Reference to a persisted entry. Credential-backed channels are addressed by
+ * their credential (`credentialId: ''` targets a builder draft entry);
+ * credentialless ones by their own id.
+ */
+export type IntegrationRef =
+	| { type: string; credentialId: string; integrationId?: undefined }
+	| { type: string; integrationId: string; credentialId?: undefined };
 
 /**
  * One durable change to an agent's channels. Both fields together are a
@@ -63,10 +67,16 @@ export interface IntegrationDeltaResult {
 const MAX_WRITE_ATTEMPTS = 3;
 
 export function matchesIntegrationRef(
-	integration: { type: string; credentialId: string },
+	integration: AgentIntegrationConfig,
 	ref: IntegrationRef,
 ): boolean {
-	return integration.type === ref.type && integration.credentialId === ref.credentialId;
+	if (integration.type !== ref.type) return false;
+	return getAgentIntegrationConnectionId(integration) === integrationRefConnectionId(ref);
+}
+
+/** The id a ref addresses, whichever kind of channel it names. */
+export function integrationRefConnectionId(ref: IntegrationRef): string {
+	return ref.credentialId ?? ref.integrationId;
 }
 
 /**
@@ -218,7 +228,7 @@ export class AgentIntegrationPersistenceService {
 	private validateAddition(integration: AgentIntegrationConfig): AgentIntegrationConfig {
 		const parseResult = AgentIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
-			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
+			throw new UserError(`Invalid integration: ${parseResult.error.message}`);
 		}
 		if (isDraftIntegration(parseResult.data)) {
 			throw new UserError('Credential integration requires a credential ID.');

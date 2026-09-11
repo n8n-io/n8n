@@ -10,11 +10,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { Agent } from '../entities/agent.entity';
-import type {
-	AgentChatIntegration,
+import {
+	type AgentChatIntegration,
 	ChatIntegrationRegistry,
 } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { WebIntegration } from '../integrations/platforms/web-integration';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentIntegrationManagementService', () => {
@@ -39,7 +40,7 @@ describe('AgentIntegrationManagementService', () => {
 		const persistenceService = mock<AgentIntegrationPersistenceService>();
 		const credentialsService = mock<CredentialsService>();
 		const chatService = mock<ChatIntegrationService>();
-		const registry = mock<ChatIntegrationRegistry>();
+		const registry = new ChatIntegrationRegistry();
 		const logger = mock<Logger>();
 		const agentRepository = mock<AgentRepository>();
 		const implementation = mock<AgentChatIntegration>({
@@ -47,8 +48,28 @@ describe('AgentIntegrationManagementService', () => {
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
 		});
-		registry.require.mockReturnValue(implementation);
-		registry.get.mockReturnValue(implementation);
+		implementation.connectionId.mockImplementation((config) => {
+			if ('credentialId' in config) return config.credentialId;
+			throw new Error('Expected a credential integration');
+		});
+		implementation.credentialRequirements.mockImplementation((config) =>
+			'credentialId' in config
+				? [
+						{
+							credentialId: config.credentialId,
+							acceptedCredentialTypes: implementation.credentialTypes,
+							path: 'credentialId',
+							role: 'connection',
+						},
+					]
+				: [],
+		);
+		implementation.adapterRuntimeConfig.mockImplementation((config) =>
+			'credentialId' in config ? config : undefined,
+		);
+		implementation.withDefaultConnectionId.mockImplementation((config) => config);
+		registry.register(implementation);
+		registry.register(new WebIntegration());
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{ id: integration.credentialId, type: 'slackApi' },
 		] as never);
@@ -69,6 +90,7 @@ describe('AgentIntegrationManagementService', () => {
 			credentialsService,
 			chatService,
 			implementation,
+			registry,
 			agentRepository,
 		};
 	}
@@ -283,6 +305,72 @@ describe('AgentIntegrationManagementService', () => {
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
 		});
 
+		it('configures a public Web channel without a credential or runtime', async () => {
+			const { service, persistenceService, credentialsService, chatService } = makeService();
+			const agent = makeAgent();
+
+			const result = await service.connect({
+				agent,
+				user: user as never,
+				integration: { type: 'web', settings: { accessMode: 'public' } },
+			});
+
+			expect(result.integration).toMatchObject({
+				type: 'web',
+				settings: { accessMode: 'public' },
+			});
+			expect(result.integration).toHaveProperty('integrationId');
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled();
+		});
+
+		it('validates the Basic Auth dependency without starting a runtime', async () => {
+			const { service, credentialsService, chatService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'basic-credential', type: 'httpBasicAuth' },
+			] as never);
+
+			await service.connect({
+				agent: makeAgent(),
+				user: user as never,
+				integration: {
+					type: 'web',
+					settings: {
+						accessMode: 'basicAuth',
+						basicAuthCredentialId: 'basic-credential',
+					},
+				},
+			});
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(chatService.validateBeforeConnect).not.toHaveBeenCalled();
+		});
+
+		it('rejects an incompatible Web Basic Auth credential', async () => {
+			const { service, persistenceService, credentialsService } = makeService();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'basic-credential', type: 'slackApi' },
+			] as never);
+
+			await expect(
+				service.connect({
+					agent: makeAgent(),
+					user: user as never,
+					integration: {
+						type: 'web',
+						settings: {
+							accessMode: 'basicAuth',
+							basicAuthCredentialId: 'basic-credential',
+						},
+					},
+				}),
+			).rejects.toThrow(BadRequestError);
+
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+
 		it('starts no runtime when a draft channel fails its pre-connect validation', async () => {
 			// A leader-only channel on a follower reports as live without the follower
 			// being able to check — so without the publication gate, the rollback below
@@ -427,8 +515,7 @@ describe('AgentIntegrationManagementService', () => {
 				service.disconnect({
 					agent,
 					user: user as never,
-					type: integration.type,
-					credentialId: integration.credentialId,
+					remove: { type: integration.type, credentialId: integration.credentialId },
 					deleteExternalResource: true,
 				}),
 			).resolves.toMatchObject({ warning });
@@ -454,8 +541,7 @@ describe('AgentIntegrationManagementService', () => {
 				service.disconnect({
 					agent,
 					user: user as never,
-					type: integration.type,
-					credentialId: integration.credentialId,
+					remove: { type: integration.type, credentialId: integration.credentialId },
 					deleteExternalResource: true,
 				}),
 			).rejects.toBe(cleanupError);
@@ -477,8 +563,7 @@ describe('AgentIntegrationManagementService', () => {
 			await service.disconnect({
 				agent,
 				user: user as never,
-				type: integration.type,
-				credentialId: integration.credentialId,
+				remove: { type: integration.type, credentialId: integration.credentialId },
 				modifiedBy: 'mcp',
 			});
 
@@ -504,8 +589,7 @@ describe('AgentIntegrationManagementService', () => {
 				service.disconnect({
 					agent: makeAgent({ integrations: [integration] }),
 					user: user as never,
-					type: integration.type,
-					credentialId: integration.credentialId,
+					remove: { type: integration.type, credentialId: integration.credentialId },
 					deleteExternalResource: true,
 				}),
 			).rejects.toBe(removalError);
@@ -523,8 +607,7 @@ describe('AgentIntegrationManagementService', () => {
 			await service.disconnect({
 				agent,
 				user: user as never,
-				type: 'slack',
-				credentialId: '',
+				remove: { type: 'slack', credentialId: '' },
 			});
 
 			expect(chatService.disconnectChannel).not.toHaveBeenCalled();
@@ -544,8 +627,7 @@ describe('AgentIntegrationManagementService', () => {
 			await service.disconnect({
 				agent,
 				user: user as never,
-				type: integration.type,
-				credentialId: integration.credentialId,
+				remove: { type: integration.type, credentialId: integration.credentialId },
 			});
 
 			expect(chatService.disconnect).toHaveBeenCalledWith(agent.id, integration);
@@ -579,8 +661,7 @@ describe('AgentIntegrationManagementService', () => {
 			const removal = service.disconnect({
 				agent,
 				user: user as never,
-				type: integration.type,
-				credentialId: integration.credentialId,
+				remove: { type: integration.type, credentialId: integration.credentialId },
 			});
 			const reconnect = service.connect({ agent, user: user as never, integration });
 
@@ -716,8 +797,7 @@ describe('AgentIntegrationManagementService', () => {
 			await service.disconnect({
 				agent: connectedAgent,
 				user: user as never,
-				type: integration.type,
-				credentialId: integration.credentialId,
+				remove: { type: integration.type, credentialId: integration.credentialId },
 				deleteExternalResource,
 			});
 

@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { AgentsConfig } from '@n8n/config';
@@ -44,19 +44,19 @@ class FakeIntegration extends AgentChatIntegration {
 	}
 }
 
-const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
-const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
+const slack: AgentCredentialIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
+const telegram: AgentCredentialIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
 
-function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
+function makeAgent(integrations: AgentCredentialIntegrationConfig[], id = 'agent-1'): Agent {
 	return { id, projectId: 'project-1', integrations } as unknown as Agent;
 }
 
-function refOf(integration: AgentIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {
+function refOf(integration: AgentCredentialIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {
 	return { agentId, integrationType: integration.type, credentialId: integration.credentialId };
 }
 
 function ownRow(
-	integration: AgentIntegrationConfig,
+	integration: AgentCredentialIntegrationConfig,
 	overrides: Partial<AgentChannelStatus> = {},
 ): AgentChannelStatus {
 	return {
@@ -74,7 +74,7 @@ function ownRow(
 }
 
 function erroredOwnRow(
-	integration: AgentIntegrationConfig,
+	integration: AgentCredentialIntegrationConfig,
 	overrides: Partial<AgentChannelStatus> = {},
 ): AgentChannelStatus {
 	return ownRow(integration, {

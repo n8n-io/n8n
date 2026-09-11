@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { z } from 'zod';
 
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -67,7 +67,7 @@ export interface IntegrationSubjectPerson {
  * stored on the agent).
  */
 export type IntegrationToolConnectionSource =
-	| AgentIntegrationConfig
+	| AgentCredentialIntegrationConfig
 	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
 
 export type IntegrationContextQuery =

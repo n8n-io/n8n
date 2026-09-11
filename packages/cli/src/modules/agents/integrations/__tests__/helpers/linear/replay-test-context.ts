@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { createHmac } from 'crypto';
@@ -103,7 +103,7 @@ export interface LinearReplayContext extends Omit<ReplayContextSetup, 'nextStrea
 	};
 	apiCalls: LinearApiCall[];
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
 	sendWebhook: (payload: unknown) => Promise<Response>;
 	latestContext: () => IntegrationMessageContext | undefined;
@@ -265,7 +265,7 @@ export async function createLinearReplayContext(
 		state: createMemoryState(),
 	});
 
-	const integration: AgentIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };
+	const integration: AgentCredentialIntegrationConfig = { type: 'linear', credentialId: 'cred-linear' };
 	const setup = createReplayContextSetup({
 		chat: chat as never,
 		integrationImpl: new LinearIntegration(mock<BackendLogger>(), mock<OutboundHttp>()),

@@ -1,5 +1,7 @@
 import { Tool, type InterruptibleToolContext } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	type AgentCredentialIntegrationConfig,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -58,12 +60,14 @@ const actionSuspendSchema = z.object({
 const actionResumeSchema = z.record(z.string(), z.unknown());
 
 export function getIntegrationToolConnectionDescriptors(
-	integrations: AgentIntegrationConfig[],
+	integrations: AgentCredentialIntegrationConfig[],
 	agentId?: string,
 	capabilitiesFor?: (
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 	) => IntegrationToolCapabilities | undefined,
 ): IntegrationToolConnectionDescriptor[] {
+	// Only a channel with an adapter has context and action tools; a
+	// request-driven one has no platform to read from or post back to.
 	const sorted = [...integrations].sort((a, b) => {
 		const byType = a.type.localeCompare(b.type);
 		if (byType !== 0) return byType;

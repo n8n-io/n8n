@@ -856,10 +856,19 @@ describe('AgentValidationService — structured issues', () => {
 
 	it('flags channels with a missing credential or a credential type the integration does not support', async () => {
 		const { service, agentRepository, chatIntegrationRegistry } = makeService();
-		chatIntegrationRegistry.get.mockReturnValue({
-			type: 'slack',
-			credentialTypes: ['slackOAuth2Api'],
-		} as never);
+		chatIntegrationRegistry.bind.mockImplementation((config) => ({
+			credentialRequirements:
+				'credentialId' in config
+					? [
+							{
+								credentialId: config.credentialId,
+								acceptedCredentialTypes: ['slackOAuth2Api'],
+								path: 'credentialId',
+								role: 'connection',
+							},
+						]
+					: [],
+		}) as never);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent(
 				runnableConfig,

@@ -178,6 +178,11 @@ export const warmAgentKnowledgeSandbox = async (
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
+	/**
+	 * Identifies a credentialless channel (the web one). Sent back on every later
+	 * save so its hosted URL survives a settings change.
+	 */
+	integrationId?: string;
 }
 
 export const connectIntegration = async (
@@ -195,7 +200,10 @@ export const connectIntegration = async (
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
 		{
 			type,
-			credentialId,
+			// A credentialless channel has none to send, and the envelope rejects
+			// an empty string rather than reading it as "no credential".
+			...(credentialId ? { credentialId } : {}),
+			...(options?.integrationId ? { integrationId: options.integrationId } : {}),
 			...(settings ? { settings } : {}),
 			...(options?.replaces ? { replaces: options.replaces } : {}),
 		},
@@ -209,12 +217,13 @@ export const disconnectIntegration = async (
 	type: string,
 	credentialId: string,
 	deleteExternalResource?: boolean,
+	integrationId?: string,
 ): Promise<AgentDisconnectIntegrationResponse> => {
 	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId, deleteExternalResource },
+		{ type, credentialId, deleteExternalResource, ...(integrationId ? { integrationId } : {}) },
 	);
 };
 

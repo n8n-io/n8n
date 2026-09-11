@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Lock, QueueEntry, StateAdapter } from 'chat';
 
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -23,11 +23,11 @@ export class AgentChatSubscriptionStateAdapter implements StateAdapter {
 
 	constructor(
 		private readonly scope: AgentChatSubscriptionScope,
-		private readonly integration: AgentIntegrationConfig,
+		private readonly integration: AgentCredentialIntegrationConfig,
 		private readonly delegate: StateAdapter,
 		private readonly repository: AgentChatSubscriptionRepository,
 		private readonly publishChange: (
-			integration: AgentIntegrationConfig,
+			integration: AgentCredentialIntegrationConfig,
 			threadId: string,
 			action: SubscriptionAction,
 		) => Promise<void>,

@@ -17,7 +17,7 @@ export function resolveSavedTelegramSettings(
 	connected: boolean,
 ): AgentTelegramIntegrationSettings | undefined {
 	if (!connected) return undefined;
-	return settings && 'accessMode' in settings ? settings : DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
+	return settings && 'allowedUsers' in settings ? settings : DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 }
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';

@@ -501,27 +501,29 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
-			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
 				id: integration.type,
 				index,
 			};
 			if (isDraftIntegration(integration)) {
-				issues.push(issue('missing_credential', path, capability));
+				issues.push(issue('missing_credential', `integrations.${index}.credentialId`, capability));
 				continue;
 			}
-			const credentialId = integration.credentialId.trim();
-
-			const credential = await this.findCredentialSafe(findCredential, credentialId);
-			if (!credential) {
-				issues.push(issue('invalid_credential', path, capability));
-				continue;
-			}
-
-			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
-			if (integrationImpl && !integrationImpl.credentialTypes.includes(credential.type)) {
-				issues.push(issue('incompatible_credential', path, capability));
+			const bound = this.chatIntegrationRegistry.bind(integration);
+			for (const requirement of bound.credentialRequirements) {
+				const path = `integrations.${index}.${requirement.path}`;
+				const credential = await this.findCredentialSafe(
+					findCredential,
+					requirement.credentialId.trim(),
+				);
+				if (!credential) {
+					issues.push(issue('invalid_credential', path, capability));
+					continue;
+				}
+				if (!requirement.acceptedCredentialTypes.includes(credential.type)) {
+					issues.push(issue('incompatible_credential', path, capability));
+				}
 			}
 		}
 	}

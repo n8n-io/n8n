@@ -32,6 +32,7 @@ const statuses = ref<
 	Record<string, 'configured' | 'starting' | 'connected' | 'error' | 'disconnected'>
 >({});
 const connectedCredentials = ref<Record<string, string>>({});
+const integrationIds = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
@@ -146,6 +147,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
 		fetchStatus: mocks.fetchStatus,
 		connectedCredentials,
+		integrationIds,
 		integrationSettings: ref({ example: { accessMode: 'all' } }),
 		loadingMap,
 		errorMessages: ref({}),
@@ -256,6 +258,7 @@ describe('AgentChannelModal', () => {
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
+		integrationIds.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};

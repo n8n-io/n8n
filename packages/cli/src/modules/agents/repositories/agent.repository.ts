@@ -1,4 +1,8 @@
-import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import {
+	getAgentIntegrationConnectionId,
+	type AgentIntegrationConfig,
+	type ListAgentsQueryDto,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
@@ -338,7 +342,36 @@ export class AgentRepository extends Repository<Agent> {
 		return agents.filter(
 			(agent) =>
 				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+				(agent.integrations ?? []).some(
+					(i) => i.type === type && getAgentIntegrationConnectionId(i) === credentialId,
+				),
+		);
+	}
+
+	/**
+	 * Finds the published agent that owns a web channel, by the channel's own id.
+	 *
+	 * The id is the only thing a public visitor presents, so the lookup is
+	 * instance-wide and cannot be narrowed by project. Unpublished agents are
+	 * excluded here rather than by the caller: an agent that is not published must
+	 * not serve traffic, and a `null` keeps the endpoint from telling a visitor
+	 * whether the id exists at all.
+	 *
+	 * Filters in memory for the same reason as `findByIntegrationCredential` —
+	 * `integrations` is a JSON column with no portable query across our databases.
+	 */
+	// TODO: use a different approach to avoid in-memory filtering.
+	async findPublishedByWebIntegrationId(integrationId: string): Promise<Agent | null> {
+		const agents = await this.find({
+			where: { activeVersionId: Not(IsNull()) },
+			relations: { activeVersion: true },
+		});
+		return (
+			agents.find((agent) =>
+				(agent.integrations ?? []).some(
+					(i) => i.type === 'web' && getAgentIntegrationConnectionId(i) === integrationId,
+				),
+			) ?? null
 		);
 	}
 

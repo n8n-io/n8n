@@ -39,10 +39,9 @@ export class AgentIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentConnectIntegrationDto,
 	): Promise<AgentIntegrationConnectResponse> {
-		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const { savedAgent } = await this.integrationManagementService.connect({
+		const { integration, savedAgent } = await this.integrationManagementService.connect({
 			agent,
 			user: req.user,
 			integration: req.body,
@@ -50,9 +49,12 @@ export class AgentIntegrationsController {
 				? { replaces: { type: payload.type, credentialId: payload.replaces.credentialId } }
 				: {}),
 		});
-		if (savedAgent.activeVersionId === null) return { status: 'configured' };
+		// The web channel's id is minted server-side on first save and is what its
+		// public URL is built from, so the client needs it back.
+		const identity = this.chatIntegrationRegistry.bind(integration).clientIdentity;
+		if (savedAgent.activeVersionId === null) return { status: 'configured', ...identity };
 
-		return { status: 'connected' };
+		return { status: 'connected', ...identity };
 	}
 
 	@Post('/:agentId/integrations/disconnect')
@@ -63,14 +65,17 @@ export class AgentIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentDisconnectIntegrationDto,
 	): Promise<AgentDisconnectIntegrationResponse> {
-		const { type, credentialId, deleteExternalResource } = payload;
+		const { type, credentialId, integrationId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const remove =
+			integrationId !== undefined
+				? { type, integrationId }
+				: { type, credentialId: credentialId ?? '' };
 		const { warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user: req.user,
-			type,
-			credentialId,
+			remove,
 			deleteExternalResource,
 		});
 
@@ -90,8 +95,12 @@ export class AgentIntegrationsController {
 		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
 		const now = new Date();
 
-		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
-			this.statusReporter.isLive(row, now),
+		return buildChannelStatusReport(
+			agent.integrations,
+			agent.activeVersionId,
+			statuses,
+			(row) => this.statusReporter.isLive(row, now),
+			(integration) => this.chatIntegrationRegistry.bind(integration),
 		);
 	}
 

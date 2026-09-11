@@ -1,5 +1,9 @@
 import { type Ref } from 'vue';
-import { isDraftIntegration, type AgentIntegrationStatusEntry } from '@n8n/api-types';
+import {
+	getAgentIntegrationPersistedIdentity,
+	isDraftIntegration,
+	type AgentIntegrationStatusEntry,
+} from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -40,15 +44,15 @@ function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
 	isPublished: boolean,
-): Array<AgentIntegrationStatusEntry & { credentialId: string }> {
+): AgentIntegrationStatusEntry[] {
 	const knownTypes = new Set(knownTriggerTypes);
-	const entries: Array<AgentIntegrationStatusEntry & { credentialId: string }> = [];
+	const entries: AgentIntegrationStatusEntry[] = [];
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
 		entries.push({
 			type: integration.type,
-			credentialId: integration.credentialId,
+			...getAgentIntegrationPersistedIdentity(integration),
 			status: isPublished ? 'starting' : 'configured',
 		});
 	}

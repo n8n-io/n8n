@@ -59,25 +59,25 @@ import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
-const slack: AgentIntegrationConfig = {
+const slack: AgentCredentialIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-a',
 };
 
-const linear: AgentIntegrationConfig = {
+const linear: AgentCredentialIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-linear',
 };
 
-const telegram: AgentIntegrationConfig = {
+const telegram: AgentCredentialIntegrationConfig = {
 	type: 'telegram',
 	credentialId: 'cred-telegram',
 };
 
-const discord: AgentIntegrationConfig = {
+const discord: AgentCredentialIntegrationConfig = {
 	type: 'discord',
 	credentialId: 'cred-discord',
 };

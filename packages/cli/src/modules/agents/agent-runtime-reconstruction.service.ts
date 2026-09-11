@@ -886,15 +886,17 @@ export class AgentRuntimeReconstructionService {
 
 		if (runtimeProfile === 'top-level') {
 			const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
+			const integrationRegistry = Container.get(ChatIntegrationRegistry);
+			const runtimeIntegrationConfigs =
+				integrationRegistry.runtimeConfigs(credentialIntegrations);
 
-			if (credentialIntegrations.length > 0 || includeN8nChat) {
-				const integrationRegistry = Container.get(ChatIntegrationRegistry);
+			if (runtimeIntegrationConfigs.length > 0 || includeN8nChat) {
 				const { messageContextStore, actionExecutor, queryExecutor } =
 					await getChatIntegrationToolServices();
 
 				const descriptors: IntegrationToolConnectionDescriptor[] =
 					getIntegrationToolConnectionDescriptors(
-						credentialIntegrations,
+						runtimeIntegrationConfigs,
 						agentId,
 						(integrationConfig) => {
 							const integrationDef = integrationRegistry.get(integrationConfig.type);

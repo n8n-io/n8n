@@ -19,7 +19,7 @@ import {
 import type { ComponentMapper } from '../component-mapper';
 import type { IntegrationMessageContextService } from '../integration-message-context.service';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
@@ -203,11 +203,11 @@ describe('AgentChatBridge — consumeStream', () => {
 	const bufferedIntegration = {
 		type: 'test-buffered',
 		credentialId: 'cred-1',
-	} as unknown as AgentIntegrationConfig;
+	} as unknown as AgentCredentialIntegrationConfig;
 	const streamingIntegration = {
 		type: 'test-streaming',
 		credentialId: 'cred-1',
-	} as unknown as AgentIntegrationConfig;
+	} as unknown as AgentCredentialIntegrationConfig;
 
 	const finishChunk: StreamChunk = { type: 'finish', finishReason: 'stop' };
 	const erroredToolResult: StreamChunk = {
@@ -238,7 +238,7 @@ describe('AgentChatBridge — consumeStream', () => {
 
 	/** Build a bridge for the integration, fire a mention that streams the given chunks, and return the thread. */
 	async function runMention(
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		chunks: StreamChunk[],
 		options: { thread?: FakeThread } = {},
 	): Promise<FakeThread> {
@@ -757,7 +757,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'test-formatted-buffered',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 			);
 
 			await handlers.mention!(thread1, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
@@ -788,12 +788,12 @@ describe('AgentChatBridge — consumeStream', () => {
 	});
 
 	describe('session rotation', () => {
-		function integrationWithIdleTimeout(minutes: number | null): AgentIntegrationConfig {
+		function integrationWithIdleTimeout(minutes: number | null): AgentCredentialIntegrationConfig {
 			return {
 				type: 'test-streaming',
 				credentialId: 'cred-1',
 				settings: { sessionIdleTimeoutMinutes: minutes },
-			} as unknown as AgentIntegrationConfig;
+			} as unknown as AgentCredentialIntegrationConfig;
 		}
 
 		/** In-memory stand-in for CacheService, so state persists across calls within a test. */
@@ -970,7 +970,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -1300,7 +1300,7 @@ describe('AgentChatBridge — consumeStream', () => {
 	});
 
 	describe('resumeInAgentThread', () => {
-		function makeResumeBridge(integration: AgentIntegrationConfig) {
+		function makeResumeBridge(integration: AgentCredentialIntegrationConfig) {
 			const { bot } = makeBot();
 			bot.thread.mockReturnValue(makeThread('1001'));
 			const agentExecutor = makeAgentExecutor([finishChunk]);
@@ -1320,7 +1320,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, bridge } = makeResumeBridge({
 				type: 'test-formatted-buffered',
 				credentialId: 'cred-1',
-			} as unknown as AgentIntegrationConfig);
+			} as unknown as AgentCredentialIntegrationConfig);
 
 			await bridge
 				.resumeInAgentThread('agent-1:chat:bot1-1001#2', 'run-1', 'tool-1', {})
@@ -1333,7 +1333,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, bridge } = makeResumeBridge({
 				type: 'test-formatted-buffered',
 				credentialId: 'cred-1',
-			} as unknown as AgentIntegrationConfig);
+			} as unknown as AgentCredentialIntegrationConfig);
 
 			await bridge
 				.resumeInAgentThread('agent-1:chat:bot1-1001', 'run-1', 'tool-1', {})
@@ -1370,7 +1370,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		function makeBridge(
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
-			integration: AgentIntegrationConfig = streamingIntegration,
+			integration: AgentCredentialIntegrationConfig = streamingIntegration,
 			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
@@ -1450,7 +1450,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'discord',
 					credentialId: 'cred-discord',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				httpClient,
 			);
 			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
@@ -1792,7 +1792,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		const slackIntegration = {
 			type: 'slack',
 			credentialId: 'cred-1',
-		} as unknown as AgentIntegrationConfig;
+		} as unknown as AgentCredentialIntegrationConfig;
 
 		it('sets a thinking status before executing a Slack thread message', async () => {
 			const { bot, handlers } = makeBot();
@@ -2289,7 +2289,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2333,7 +2333,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2533,7 +2533,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2600,7 +2600,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 				attachmentService as never,
 			);
@@ -2652,7 +2652,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2691,7 +2691,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					type: 'slack',
 					credentialId: 'cred-1',
 					settings: { messagingExperience: 'agent' },
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2731,7 +2731,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2770,7 +2770,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2811,7 +2811,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'slack',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 				messageContextStore,
 			);
 
@@ -2969,7 +2969,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'test-status-handle',
 					credentialId: 'cred-1',
-				} as unknown as AgentIntegrationConfig,
+				} as unknown as AgentCredentialIntegrationConfig,
 			);
 
 			await handlers.mention!(thread, {
@@ -2989,7 +2989,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 	const slackIntegration = {
 		type: 'slack',
 		credentialId: 'cred-1',
-	} as unknown as AgentIntegrationConfig;
+	} as unknown as AgentCredentialIntegrationConfig;
 	const componentMapper = mock<ComponentMapper>();
 	const logger = mock<Logger>();
 

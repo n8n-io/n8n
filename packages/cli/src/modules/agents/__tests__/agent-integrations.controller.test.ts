@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	getAgentIntegrationConnectionId,
+	getAgentIntegrationPersistedIdentity,
+	type AgentCredentialIntegrationConfig,
+} from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -36,6 +40,15 @@ function makeController({
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
+	chatIntegrationRegistry.bind.mockImplementation((config) => {
+		const persistedIdentity = getAgentIntegrationPersistedIdentity(config);
+		return {
+			connectionId: getAgentIntegrationConnectionId(config),
+			persistedIdentity,
+			clientIdentity: 'integrationId' in persistedIdentity ? persistedIdentity : {},
+			...('credentialId' in config ? { adapterRuntimeConfig: config } : {}),
+		} as never;
+	});
 
 	return {
 		controller: new AgentIntegrationsController(
@@ -82,7 +95,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
-		} satisfies AgentIntegrationConfig;
+		} satisfies AgentCredentialIntegrationConfig;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
 
@@ -97,7 +110,9 @@ describe('AgentIntegrationsController integration management', () => {
 			integration as never,
 		);
 
-		expect(managementService.validateConfig).toHaveBeenCalledWith(integration);
+		// `connect` validates the envelope itself. Validating again here would mint a
+		// second, different id for a credentialless channel.
+		expect(managementService.validateConfig).not.toHaveBeenCalled();
 		expect(managementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
@@ -111,7 +126,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
-		} satisfies AgentIntegrationConfig;
+		} satisfies AgentCredentialIntegrationConfig;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
 
@@ -140,7 +155,7 @@ describe('AgentIntegrationsController integration management', () => {
 			type: 'telegram',
 			credentialId: 'credential-1',
 			settings: { accessMode: 'private', allowedUsers: ['@alice'] },
-		} satisfies AgentIntegrationConfig;
+		} satisfies AgentCredentialIntegrationConfig;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
 
@@ -163,7 +178,7 @@ describe('AgentIntegrationsController integration management', () => {
 		const integration = {
 			type: 'slack',
 			credentialId: 'credential-1',
-		} satisfies AgentIntegrationConfig;
+		} satisfies AgentCredentialIntegrationConfig;
 		const draftAgent = { ...agent, activeVersionId: null } as Agent;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(draftAgent);
 		managementService.connect.mockResolvedValue({
@@ -203,8 +218,8 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(managementService.disconnect).toHaveBeenCalledWith({
 			agent,
 			user,
-			type: 'slack',
-			credentialId: 'credential-1',
+			remove: { type: 'slack', credentialId: 'credential-1' },
+			deleteExternalResource: undefined,
 		});
 		expect(result).toEqual({ status: 'disconnected' });
 	});
@@ -343,11 +358,11 @@ describe('AgentIntegrationsController channel status', () => {
 	const slack = {
 		type: 'slack',
 		credentialId: 'credential-slack',
-	} satisfies AgentIntegrationConfig;
+	} satisfies AgentCredentialIntegrationConfig;
 	const telegram = {
 		type: 'telegram',
 		credentialId: 'credential-telegram',
-	} satisfies AgentIntegrationConfig;
+	} satisfies AgentCredentialIntegrationConfig;
 	const publishedAgent = {
 		id: 'agent-1',
 		projectId: 'project-1',
@@ -355,7 +370,7 @@ describe('AgentIntegrationsController channel status', () => {
 		integrations: [slack, telegram],
 	} as unknown as Agent;
 
-	function liveRow(integration: AgentIntegrationConfig): AgentChannelStatus {
+	function liveRow(integration: AgentCredentialIntegrationConfig): AgentChannelStatus {
 		return {
 			agentId: publishedAgent.id,
 			integrationType: integration.type,

@@ -26,6 +26,8 @@ type Status = AgentChannelRuntimeStatus | 'disconnected' | 'unknown';
 interface AgentIntegrationStatusState {
 	statuses: Ref<Record<string, Status>>;
 	connectedCredentials: Ref<Record<string, string>>;
+	/** Server-minted id of a credentialless channel, which its public URL is built from. */
+	integrationIds: Ref<Record<string, string>>;
 	integrationSettings: Ref<Record<string, AgentIntegrationSettings | undefined>>;
 	loadingMap: Ref<Record<string, boolean>>;
 	errorMessages: Ref<Record<string, string>>;
@@ -62,6 +64,7 @@ function getOrCreate(projectId: string, agentId: string): AgentIntegrationStatus
 		state = {
 			statuses: ref({}),
 			connectedCredentials: ref({}),
+			integrationIds: ref({}),
 			integrationSettings: ref({}),
 			loadingMap: ref({}),
 			errorMessages: ref({}),
@@ -113,6 +116,7 @@ function applyStatus(
 	for (const type of integrationTypes) {
 		state.statuses.value[type] = 'disconnected';
 		state.connectedCredentials.value[type] = '';
+		state.integrationIds.value[type] = '';
 		state.integrationSettings.value[type] = undefined;
 		state.runtimeErrors.value[type] = '';
 	}
@@ -129,6 +133,7 @@ function applyStatus(
 			: integration.status;
 		state.connectedCredentials.value[integration.type] =
 			typeof integration.credentialId === 'string' ? integration.credentialId : '';
+		state.integrationIds.value[integration.type] = integration.integrationId ?? '';
 		state.integrationSettings.value[integration.type] = integration.settings;
 		state.runtimeErrors.value[integration.type] = keepServerAnswer
 			? (previousRuntimeErrors[integration.type] ?? '')
@@ -212,6 +217,9 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			// other consumer re-renders without waiting for a round-trip refetch.
 			state.statuses.value[type] = result.status;
 			state.connectedCredentials.value[type] = credId;
+			// Minted on the first save of a credentialless channel; echoed back on
+			// every later one, so keep whichever the server just confirmed.
+			if (result.integrationId) state.integrationIds.value[type] = result.integrationId;
 			state.integrationSettings.value[type] = settings;
 			// The channel just started, so whatever it failed with before is history.
 			state.runtimeErrors.value[type] = '';
@@ -248,9 +256,11 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				type,
 				credId,
 				options.deleteExternalResource,
+				state.integrationIds.value[type] || undefined,
 			);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
+			state.integrationIds.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
 			state.runtimeErrors.value[type] = '';
 			state.serverConfirmed.value.add(type);
@@ -289,6 +299,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
+		integrationIds: state.integrationIds,
 		integrationSettings: state.integrationSettings,
 		loadingMap: state.loadingMap,
 		errorMessages: state.errorMessages,

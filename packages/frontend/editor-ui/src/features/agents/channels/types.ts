@@ -55,6 +55,8 @@ export interface AgentChannelViewProps {
 	errorMessage: string;
 	errorIsConflict: boolean;
 	savedSettings?: AgentIntegrationSettings;
+	/** Set only for a credentialless channel, once the server has minted its id. */
+	savedIntegrationId?: string;
 	isPublished: boolean;
 	agentName: string;
 	projectId: string;
@@ -86,6 +88,11 @@ export interface AgentChannelPlatform {
 	type: string;
 	setupComponent: Component;
 	editComponent: Component;
+	/**
+	 * False for a channel served from inbound requests, which has nothing to
+	 * connect to and so nothing to hold a credential for. Defaults to true.
+	 */
+	requiresCredential?: boolean;
 	createRuntime?: (context: AgentChannelRuntimeContext) => AgentChannelRuntime;
 	getConnectAction: (
 		context: AgentChannelPresentationContext,

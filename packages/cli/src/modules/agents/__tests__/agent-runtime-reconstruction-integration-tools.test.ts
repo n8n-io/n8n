@@ -53,7 +53,10 @@ import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
-import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
@@ -64,6 +67,20 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+
+class TestChatIntegration extends AgentChatIntegration {
+	readonly credentialTypes = ['testApi'];
+	readonly displayLabel = 'Test';
+	readonly displayIcon = 'message-circle';
+
+	constructor(readonly type: string) {
+		super();
+	}
+
+	async createAdapter(): Promise<unknown> {
+		return {};
+	}
+}
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
@@ -349,6 +366,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 
 		it('injects each credential integration context/action tool only once', async () => {
 			const integrationRegistry = new ChatIntegrationRegistry();
+			integrationRegistry.register(new TestChatIntegration('slack'));
 			Container.set(ChatIntegrationRegistry, integrationRegistry);
 			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
 			Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());

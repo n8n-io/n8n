@@ -62,6 +62,7 @@ const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
 	connectedCredentials,
+	integrationIds,
 	integrationSettings,
 	loadingMap,
 	errorMessages,
@@ -240,10 +241,14 @@ const showFooterActions = computed(() => isEditMode.value && selectedChannelType
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
+/** A request-driven channel is saved on its settings alone; it has no credential. */
+const currentChannelNeedsCredential = computed(
+	() => currentPlatform.value.requiresCredential !== false,
+);
 const canSaveChannelConfig = computed(() => {
 	return (
 		selectedChannelType.value !== null &&
-		currentChannelCredentialId.value.length > 0 &&
+		(!currentChannelNeedsCredential.value || currentChannelCredentialId.value.length > 0) &&
 		!channelViewLoading.value &&
 		!channelViewRef.value?.validationError
 	);
@@ -368,7 +373,8 @@ async function saveChannelConfig() {
 	if (actionInFlight.value) return;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
-	if (!channelType || !credentialId) return;
+	if (!channelType) return;
+	if (currentChannelNeedsCredential.value && !credentialId) return;
 	if (channelViewRef.value?.validationError) return;
 
 	// Swapping the credential of a configured channel is one request: the
@@ -385,8 +391,12 @@ async function saveChannelConfig() {
 	try {
 		if (!(await persistAgent())) return;
 		if (!(await runBeforeSave())) return;
+		// Echo back the id of a credentialless channel so its hosted URL survives
+		// this save; on the very first one there is none and the server mints it.
+		const existingIntegrationId = integrationIds.value[channelType];
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			...(existingIntegrationId ? { integrationId: existingIntegrationId } : {}),
 		});
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
@@ -639,6 +649,7 @@ watch(
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
+						:saved-integration-id="integrationIds[currentIntegration.type]"
 						:is-published="isPublished"
 						:agent-name="agentId"
 						:project-id="projectId"

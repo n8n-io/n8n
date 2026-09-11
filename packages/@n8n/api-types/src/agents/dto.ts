@@ -42,6 +42,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'web',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -263,7 +264,9 @@ export class AgentChatResumeDto extends Z.class({
  */
 export class AgentConnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
-	credentialId: z.string().min(1),
+	credentialId: z.string().min(1).optional(),
+	/** Identifies a credentialless entry (the web channel) instead of a credential. */
+	integrationId: z.string().uuid().optional(),
 	/**
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
@@ -274,8 +277,15 @@ export class AgentConnectIntegrationDto extends Z.class({
 export class AgentDisconnectIntegrationDto extends Z.class({
 	type: z.string().min(1),
 	// Empty string targets a draft integration entry (`credentialId: ''`).
-	credentialId: z.string(),
+	credentialId: z.string().optional(),
+	integrationId: z.string().uuid().optional(),
 	deleteExternalResource: z.boolean().optional(),
+}) {}
+
+/** One visitor turn on the public web channel. */
+export class AgentWebChatMessageDto extends Z.class({
+	sessionId: z.string().uuid(),
+	message: z.string().trim().min(1).max(32_000),
 }) {}
 
 export class PublishAgentDto extends Z.class({

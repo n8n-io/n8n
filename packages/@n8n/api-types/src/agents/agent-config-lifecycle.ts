@@ -9,7 +9,11 @@ export function isDraftAgentConfig(config: { model?: string } | null | undefined
 	return typeof config?.model !== 'string' || config.model.trim() === '';
 }
 
-/** True while no credential is connected yet (setup pending). */
-export function isDraftIntegration(integration: { credentialId: string }): boolean {
-	return integration.credentialId.trim() === '';
+/** True while a credential-backed integration has no credential connected. */
+export function isDraftIntegration(integration: object): boolean {
+	return (
+		'credentialId' in integration &&
+		typeof integration.credentialId === 'string' &&
+		integration.credentialId.trim() === ''
+	);
 }

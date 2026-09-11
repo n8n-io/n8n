@@ -38,11 +38,27 @@ export class AgentIntegrationManagementService {
 	) {}
 
 	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
-		const parsed = await AgentIntegrationSchema.safeParseAsync(integration);
+		const parsed = await AgentIntegrationSchema.safeParseAsync(
+			this.withMintedIntegrationId(integration),
+		);
 		if (!parsed.success) throw new BadRequestError(parsed.error.message);
 		const result = parsed.data;
-		this.registry.require(result.type).validateConfig?.(result);
+		this.registry.bind(result).implementation.validateConfig?.(result);
 		return result;
+	}
+
+	/**
+	 * Give a credentialless channel its identity on first save.
+	 *
+	 * The id is what its public URL is built from, so it is minted once and then
+	 * echoed back by the client on later saves — a fresh id on every save would
+	 * silently break every link already handed out.
+	 */
+	private withMintedIntegrationId(integration: unknown): unknown {
+		if (typeof integration !== 'object' || integration === null) return integration;
+		const candidate = integration as Record<string, unknown>;
+		if (typeof candidate.type !== 'string') return integration;
+		return this.registry.get(candidate.type)?.withDefaultConnectionId(candidate) ?? integration;
 	}
 
 	/**
@@ -76,15 +92,14 @@ export class AgentIntegrationManagementService {
 	async disconnect(options: {
 		agent: Agent;
 		user: User;
-		type: string;
-		credentialId: string;
+		remove: IntegrationRef;
 		deleteExternalResource?: boolean;
 		modifiedBy?: AgentActor;
 	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const result = await this.applyChange({
 			agent: options.agent,
 			user: options.user,
-			remove: { type: options.type, credentialId: options.credentialId },
+			remove: options.remove,
 			cleanupRemovedIntegration: true,
 			deleteExternalResource: options.deleteExternalResource,
 			modifiedBy: options.modifiedBy ?? 'user',
@@ -179,7 +194,11 @@ export class AgentIntegrationManagementService {
 		// what makes that explicit — `isChannelLive` reports a leader-routed channel
 		// as live without being able to inspect the leader, so on its own it would
 		// have a draft's failed pre-connect validation start a runtime.
-		const wasLive = !!add && publishedBefore && this.chatService.isChannelLive(agent.id, add);
+		const addRuntimeConfig = add ? this.registry.bind(add).adapterRuntimeConfig : undefined;
+		const wasLive =
+			!!addRuntimeConfig &&
+			publishedBefore &&
+			this.chatService.isChannelLive(agent.id, addRuntimeConfig);
 		const persistedBefore =
 			add && state
 				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
@@ -231,12 +250,15 @@ export class AgentIntegrationManagementService {
 		const isPublished = result.published ?? publishedBefore;
 		let warning: AgentIntegrationDisconnectWarning | undefined;
 		try {
+			const removedRuntimeConfig = result.removed
+				? this.registry.bind(result.removed).adapterRuntimeConfig
+				: undefined;
 			warning =
-				result.removed && options.cleanupRemovedIntegration
-					? await this.registry.get(result.removed.type)?.onRemove?.({
+				removedRuntimeConfig && options.cleanupRemovedIntegration
+					? await this.registry.get(removedRuntimeConfig.type)?.onRemove?.({
 							agentId: agent.id,
 							projectId: agent.projectId,
-							credentialId: result.removed.credentialId,
+							credentialId: removedRuntimeConfig.credentialId,
 							user: options.user,
 							deleteExternalResource:
 								// if not published, by default delete the external resource
@@ -247,8 +269,9 @@ export class AgentIntegrationManagementService {
 			if (remove) await this.releaseRemoved(agent, remove, result);
 		}
 
-		if (connected && add) {
-			await this.chatService.broadcastIntegrationChange(agent.id, add, 'connect');
+		const addedRuntimeConfig = add ? this.registry.bind(add).adapterRuntimeConfig : undefined;
+		if (connected && addedRuntimeConfig) {
+			await this.chatService.broadcastIntegrationChange(agent.id, addedRuntimeConfig, 'connect');
 		}
 
 		return { ...result, ...(warning ? { warning } : {}) };
@@ -269,6 +292,9 @@ export class AgentIntegrationManagementService {
 		connected: boolean,
 		published: boolean,
 	): Promise<boolean> {
+		const runtimeConfig = this.registry.bind(add).adapterRuntimeConfig;
+		if (!runtimeConfig) return false;
+
 		if (connected && !published) {
 			this.logger.info(
 				'[AgentIntegrationManagementService] Agent was unpublished while its channel connected — releasing the runtime',
@@ -276,11 +302,13 @@ export class AgentIntegrationManagementService {
 			);
 			// The entry stays persisted, so its subscriptions do too — as in
 			// `unpublishAgent`, which preserves them for a later publish.
-			await this.chatService.disconnectChannel(agent.id, add, { deleteSubscriptions: false });
+			await this.chatService.disconnectChannel(agent.id, runtimeConfig, {
+				deleteSubscriptions: false,
+			});
 			return false;
 		}
 
-		if (connected && published && !this.chatService.isChannelLive(agent.id, add)) {
+		if (connected && published && !this.chatService.isChannelLive(agent.id, runtimeConfig)) {
 			this.logger.info(
 				'[AgentIntegrationManagementService] Channel runtime went away while the mutation was in flight — restarting it',
 				{ agentId: agent.id, type: add.type },
@@ -332,14 +360,17 @@ export class AgentIntegrationManagementService {
 		add: AgentIntegrationConfig,
 		published: boolean,
 	): Promise<boolean> {
+		const runtimeConfig = this.registry.bind(add).adapterRuntimeConfig;
+		if (!runtimeConfig) return false;
+
 		if (!published) {
-			await this.chatService.validateBeforeConnect(agent.id, add, agent.projectId);
+			await this.chatService.validateBeforeConnect(agent.id, runtimeConfig, agent.projectId);
 			return false;
 		}
 
 		// `connect` runs the pre-connect hook itself; running it twice would repeat
 		// an external call for no benefit.
-		await this.chatService.connect(agent.id, add, agent.projectId);
+		await this.chatService.connect(agent.id, runtimeConfig, agent.projectId);
 		return true;
 	}
 
@@ -354,14 +385,17 @@ export class AgentIntegrationManagementService {
 		agent: Agent,
 		persisted: AgentIntegrationConfig | undefined,
 	): Promise<void> {
-		if (!persisted) return;
+		const runtimeConfig = persisted
+			? this.registry.bind(persisted).adapterRuntimeConfig
+			: undefined;
+		if (!runtimeConfig) return;
 
 		try {
-			await this.chatService.connect(agent.id, persisted, agent.projectId);
+			await this.chatService.connect(agent.id, runtimeConfig, agent.projectId);
 		} catch (error) {
 			this.logger.warn(
 				'[AgentIntegrationManagementService] Could not restore the previous channel runtime',
-				{ agentId: agent.id, type: persisted.type, error },
+				{ agentId: agent.id, type: runtimeConfig.type, error },
 			);
 		}
 	}
@@ -378,8 +412,15 @@ export class AgentIntegrationManagementService {
 		remove: IntegrationRef,
 		result: IntegrationDeltaResult,
 	): Promise<void> {
-		if (result.removed) {
-			await this.chatService.disconnectChannel(agent.id, result.removed);
+		// Nothing to release for a request-driven channel: removing the row is the
+		// whole teardown, and its next request finds no channel to serve.
+		if (remove.credentialId === undefined) return;
+
+		const removedRuntimeConfig = result.removed
+			? this.registry.bind(result.removed).adapterRuntimeConfig
+			: undefined;
+		if (removedRuntimeConfig) {
+			await this.chatService.disconnectChannel(agent.id, removedRuntimeConfig);
 			return;
 		}
 
@@ -394,8 +435,11 @@ export class AgentIntegrationManagementService {
 		// Draft references (`credentialId: ''`) are not a real connection anywhere
 		// and fail this parse, which keeps them a local-only cleanup.
 		const parsed = AgentIntegrationSchema.safeParse(remove);
-		if (parsed.success) {
-			await this.chatService.broadcastIntegrationChange(agent.id, parsed.data, 'disconnect');
+		const runtimeConfig = parsed.success
+			? this.registry.bind(parsed.data).adapterRuntimeConfig
+			: undefined;
+		if (runtimeConfig) {
+			await this.chatService.broadcastIntegrationChange(agent.id, runtimeConfig, 'disconnect');
 		}
 	}
 
@@ -408,8 +452,15 @@ export class AgentIntegrationManagementService {
 	 * reporting it would replace the failure that actually matters.
 	 */
 	private async releaseRuntimeQuietly(agent: Agent, integration: IntegrationRef): Promise<void> {
+		// Only a credential-backed reference names a connection; a request-driven
+		// one is filtered out by `releaseRemoved` before it reaches here.
+		if (integration.credentialId === undefined) return;
+
 		try {
-			await this.chatService.disconnect(agent.id, integration);
+			await this.chatService.disconnect(agent.id, {
+				type: integration.type,
+				credentialId: integration.credentialId,
+			});
 		} catch (error) {
 			this.logger.warn(
 				'[AgentIntegrationManagementService] Could not release the channel runtime',
@@ -427,20 +478,22 @@ export class AgentIntegrationManagementService {
 		user: User,
 		integration: AgentIntegrationConfig,
 	): Promise<void> {
-		const implementation = this.registry.require(integration.type);
-
+		const bound = this.registry.bind(integration);
+		if (bound.credentialRequirements.length === 0) return;
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
 			{ projectId: agent.projectId },
 		);
-		const credential = usableCredentials.find((item) => item.id === integration.credentialId);
-		if (!credential) {
-			throw new NotFoundError(`Credential "${integration.credentialId}" not found`);
-		}
-		if (!implementation.credentialTypes.includes(credential.type)) {
-			throw new BadRequestError(
-				`${implementation.displayLabel} integrations do not support ${credential.type} credentials`,
-			);
+		for (const requirement of bound.credentialRequirements) {
+			const credential = usableCredentials.find((item) => item.id === requirement.credentialId);
+			if (!credential) {
+				throw new NotFoundError(`Credential "${requirement.credentialId}" not found`);
+			}
+			if (!requirement.acceptedCredentialTypes.includes(credential.type)) {
+				throw new BadRequestError(
+					`${bound.implementation.displayLabel} integrations do not support ${credential.type} credentials`,
+				);
+			}
 		}
 	}
 }

@@ -7,6 +7,7 @@ import {
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_WEB_CHAT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 import { AGENTS_MODALS } from '@/features/agents/modals';
@@ -23,6 +24,8 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
+const AgentWebChatView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/AgentWebChatView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -31,6 +34,16 @@ export const AgentsModule: FrontendModuleDescription = {
 	icon: 'robot',
 	modals: AGENTS_MODALS,
 	routes: [
+		{
+			// The hosted chat for a published agent's web channel. Deliberately the
+			// only agents route with no `middleware`: the guard treats that as public,
+			// and who may open this one is decided per channel by the backend, from
+			// the access mode behind its `integrationId`.
+			name: AGENT_WEB_CHAT_VIEW,
+			path: '/web-agent/:integrationId',
+			component: AgentWebChatView,
+			meta: { layout: 'auth' },
+		},
 		{
 			name: AGENTS_LIST_VIEW,
 			path: '/home/agents',

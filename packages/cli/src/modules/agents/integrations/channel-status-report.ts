@@ -7,9 +7,14 @@ import {
 } from '@n8n/api-types';
 
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
+import type { BoundAgentIntegration } from './agent-chat-integration';
 
 /** Decides whether a row still counts; see `AgentChannelStatusReporter.isLive`. */
 export type IsLiveRow = (row: AgentChannelStatus) => boolean;
+type ChannelStatusBinding = Pick<
+	BoundAgentIntegration,
+	'connectionId' | 'persistedIdentity' | 'adapterRuntimeConfig'
+>;
 
 /**
  * Turn what is configured, plus what each process observed, into what the API
@@ -36,6 +41,7 @@ export function buildChannelStatusReport(
 	activeVersionId: string | null,
 	statuses: AgentChannelStatus[],
 	isLive: IsLiveRow,
+	bindIntegration: (config: AgentIntegrationConfig) => ChannelStatusBinding,
 ): AgentIntegrationStatusResponse {
 	const liveByChannel = new Map<string, AgentChannelStatus[]>();
 	for (const row of statuses) {
@@ -51,13 +57,16 @@ export function buildChannelStatusReport(
 	const entries: AgentIntegrationStatusEntry[] = (integrations ?? [])
 		.filter((integration) => !isDraftIntegration(integration))
 		.map((integration) => {
-			const rows = liveByChannel.get(channelKey(integration.type, integration.credentialId)) ?? [];
-			const status = resolveStatus(activeVersionId, rows);
+			const bound = bindIntegration(integration);
+			const rows = bound.adapterRuntimeConfig
+				? (liveByChannel.get(channelKey(integration.type, bound.connectionId)) ?? [])
+				: [];
+			const status = resolveStatus(activeVersionId, rows, !bound.adapterRuntimeConfig);
 			const failure = status === 'error' ? mostRecentFailure(rows) : undefined;
 
 			return {
 				type: integration.type,
-				credentialId: integration.credentialId,
+				...bound.persistedIdentity,
 				...('settings' in integration ? { settings: integration.settings } : {}),
 				status,
 				...(failure?.errorMessage ? { errorMessage: failure.errorMessage } : {}),
@@ -74,10 +83,14 @@ function channelKey(integrationType: string, credentialId: string): string {
 function resolveStatus(
 	activeVersionId: string | null,
 	rows: AgentChannelStatus[],
+	requestDriven: boolean,
 ): AgentChannelRuntimeStatus {
 	// An unpublished agent must not receive events, so no channel of it is meant
 	// to be running — whatever a row left over from before the unpublish says.
 	if (activeVersionId === null) return 'configured';
+	// Nothing starts a request-driven channel, so it never reports a row. Once the
+	// agent is published its endpoint answers, which is all `connected` claims.
+	if (requestDriven) return 'connected';
 	if (rows.length === 0) return 'starting';
 	if (rows.some((row) => row.status === 'error')) return 'error';
 

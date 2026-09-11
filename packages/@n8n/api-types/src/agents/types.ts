@@ -131,6 +131,7 @@ export type AgentChannelRuntimeStatus = 'configured' | 'starting' | 'connected' 
 export interface AgentIntegrationStatusEntry {
 	type: string;
 	credentialId?: string;
+	integrationId?: string;
 	settings?: AgentIntegrationSettings;
 	/** Authoritative per-channel state; prefer this over the response rollup. */
 	status: AgentChannelRuntimeStatus;
@@ -169,7 +170,27 @@ export interface AgentIntegrationDisconnectWarning {
  */
 export interface AgentIntegrationConnectResponse {
 	status: Extract<AgentChannelRuntimeStatus, 'configured' | 'connected'>;
+	integrationId?: string;
 }
+
+export interface AgentWebChatPageConfig {
+	title: string;
+	subtitle?: string;
+	accessMode: 'public' | 'n8nUserAuth' | 'basicAuth';
+}
+
+export interface AgentWebChatSessionResponse {
+	token: string;
+	sessionId: string;
+	config: AgentWebChatPageConfig;
+}
+
+export type AgentWebChatSseEvent =
+	| { type: 'text-start'; id: string }
+	| { type: 'text-delta'; id: string; delta: string }
+	| { type: 'text-end'; id: string }
+	| { type: 'done' }
+	| { type: 'error'; message: string };
 
 export interface AgentSkillReference {
 	path: string;

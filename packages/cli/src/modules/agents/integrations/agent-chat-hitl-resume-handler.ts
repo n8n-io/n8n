@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { ActionEvent, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
@@ -29,7 +29,7 @@ interface ResumeExecutor {
 interface AgentChatHitlResumeHandlerOptions {
 	agentId: string;
 	projectId: string;
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	agentService: ResumeExecutor;
 	logger: Logger;
 	callbackStore?: CallbackStore;

@@ -11,6 +11,7 @@ import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	type AgentCredentialIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
@@ -43,6 +44,7 @@ import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.servi
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
+import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -95,6 +97,14 @@ function makeService() {
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	// Mirrors the real registry: only credential-backed channels have a runtime
+	// config, so a credentialless one (the web channel) drops out here.
+	chatIntegrationRegistry.runtimeConfigs.mockImplementation((configs) =>
+		(configs ?? []).filter(
+			(config): config is AgentCredentialIntegrationConfig => 'credentialId' in config,
+		),
+	);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -128,6 +138,7 @@ function makeService() {
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
+		chatIntegrationRegistry,
 	);
 
 	return {

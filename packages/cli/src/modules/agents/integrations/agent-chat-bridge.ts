@@ -4,7 +4,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	type AgentIntegrationConfig,
+	type AgentCredentialIntegrationConfig,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -159,7 +159,7 @@ export class AgentChatBridge {
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
 		private readonly n8nProjectId: string,
-		private readonly integration: AgentIntegrationConfig,
+		private readonly integration: AgentCredentialIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
 		private readonly discordHttpClient?: HttpRequestClient,
@@ -235,7 +235,7 @@ export class AgentChatBridge {
 		componentMapper: ComponentMapper,
 		logger: Logger,
 		n8nProjectId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 	): AgentChatBridge {
 		const agentExecutor: AgentExecutor = {
 			async *executeForChatPublished({

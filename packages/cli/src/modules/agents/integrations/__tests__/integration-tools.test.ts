@@ -1,6 +1,6 @@
 import type { InterruptibleToolContext } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
@@ -13,22 +13,22 @@ import {
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
 
-const slackA: AgentIntegrationConfig = {
+const slackA: AgentCredentialIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-a',
 };
 
-const slackB: AgentIntegrationConfig = {
+const slackB: AgentCredentialIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-b',
 };
 
-const linear: AgentIntegrationConfig = {
+const linear: AgentCredentialIntegrationConfig = {
 	type: 'linear',
 	credentialId: 'cred-c',
 };
 
-const telegram: AgentIntegrationConfig = {
+const telegram: AgentCredentialIntegrationConfig = {
 	type: 'telegram',
 	credentialId: 'cred-telegram',
 };

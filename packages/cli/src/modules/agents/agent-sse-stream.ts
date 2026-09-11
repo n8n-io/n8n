@@ -19,8 +19,12 @@ interface ChunkHandlerCtx {
 
 /**
  * Set up SSE headers and return a typed `send(event)` helper.
+ *
+ * The event type is a parameter so a surface with a narrower public contract —
+ * the web channel, which must not emit reasoning or tool data — cannot be handed
+ * an internal event by accident.
  */
-export function initSseStream(res: FlushableResponse) {
+export function initSseStream<TEvent = AgentSseEvent>(res: FlushableResponse) {
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache, no-transform');
 	res.setHeader('Connection', 'keep-alive');
@@ -43,7 +47,7 @@ export function initSseStream(res: FlushableResponse) {
 	res.once('finish', stopHeartbeat);
 	res.once('close', stopHeartbeat);
 
-	const send = (event: AgentSseEvent) => {
+	const send = (event: TEvent) => {
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
 		res.flush?.();
 	};

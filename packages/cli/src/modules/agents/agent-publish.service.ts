@@ -32,6 +32,7 @@ import {
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentValidationService } from './agent-validation.service';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
@@ -308,9 +309,13 @@ export class AgentPublishService {
 	 */
 	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
 		const chatIntegrationService = Container.get(ChatIntegrationService);
+		const integrationRegistry = Container.get(ChatIntegrationRegistry);
 		for (const integration of agent.integrations ?? []) {
 			if (isDraftIntegration(integration)) continue;
-			await chatIntegrationService.assertStartupPreconditions(agent.id, integration, projectId);
+			const runtimeConfig = integrationRegistry.bind(integration).adapterRuntimeConfig;
+			if (runtimeConfig) {
+				await chatIntegrationService.assertStartupPreconditions(agent.id, runtimeConfig, projectId);
+			}
 		}
 	}
 
@@ -358,7 +363,8 @@ export class AgentPublishService {
 		this.trackUnpublished(agentId, projectId, user, by);
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
-		for (const integration of agent.integrations ?? []) {
+		const integrationRegistry = Container.get(ChatIntegrationRegistry);
+		for (const integration of integrationRegistry.runtimeConfigs(agent.integrations)) {
 			await chatIntegrationService.disconnectChannel(agentId, integration, {
 				deleteSubscriptions: false,
 			});

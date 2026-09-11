@@ -1,12 +1,20 @@
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	getAgentIntegrationConnectionId,
+	getAgentIntegrationPersistedIdentity,
+	type AgentCredentialIntegrationConfig,
+	type AgentIntegrationConfig,
+} from '@n8n/api-types';
 
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
-import { buildChannelStatusReport } from '../channel-status-report';
+import {
+	buildChannelStatusReport as buildBoundChannelStatusReport,
+	type IsLiveRow,
+} from '../channel-status-report';
 
 const PUBLISHED = 'version-1';
 
-const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
-const telegram: AgentIntegrationConfig = {
+const slack: AgentCredentialIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
+const telegram: AgentCredentialIntegrationConfig = {
 	type: 'telegram',
 	credentialId: 'cred-telegram',
 	settings: { accessMode: 'public', allowedUsers: [] },
@@ -16,8 +24,21 @@ const telegram: AgentIntegrationConfig = {
 const isLive = (row: AgentChannelStatus) =>
 	row.expiresAt === null || row.expiresAt.getTime() > Date.now();
 
+function buildChannelStatusReport(
+	integrations: AgentIntegrationConfig[],
+	activeVersionId: string | null,
+	statuses: AgentChannelStatus[],
+	checkLive: IsLiveRow,
+) {
+	return buildBoundChannelStatusReport(integrations, activeVersionId, statuses, checkLive, (config) => ({
+		connectionId: getAgentIntegrationConnectionId(config),
+		persistedIdentity: getAgentIntegrationPersistedIdentity(config),
+		...('credentialId' in config ? { adapterRuntimeConfig: config } : {}),
+	}));
+}
+
 function row(
-	integration: AgentIntegrationConfig,
+	integration: AgentCredentialIntegrationConfig,
 	hostId: string,
 	overrides: Partial<AgentChannelStatus> = {},
 ): AgentChannelStatus {
@@ -38,7 +59,7 @@ function row(
 }
 
 function erroredRow(
-	integration: AgentIntegrationConfig,
+	integration: AgentCredentialIntegrationConfig,
 	hostId: string,
 	message: string,
 	overrides: Partial<AgentChannelStatus> = {},
@@ -82,6 +103,23 @@ describe('buildChannelStatusReport', () => {
 		expect(report.status).toBe('partial');
 	});
 
+	it('reports a published request-driven channel as connected without a runtime row', () => {
+		const web: AgentIntegrationConfig = {
+			type: 'web',
+			integrationId: 'f99ee418-1134-4e77-9935-67b6fb63aa27',
+			settings: { accessMode: 'public' },
+		};
+
+		const report = buildChannelStatusReport([web], PUBLISHED, [], isLive);
+
+		expect(report.integrations[0]).toEqual({
+			type: 'web',
+			integrationId: web.integrationId,
+			settings: web.settings,
+			status: 'connected',
+		});
+	});
+
 	it('reports a failed startup as an error carrying the reason', () => {
 		const report = buildChannelStatusReport(
 			[slack],
@@ -121,7 +159,7 @@ describe('buildChannelStatusReport', () => {
 	});
 
 	it('leaves draft entries out — they are not a channel yet', () => {
-		const draft: AgentIntegrationConfig = { type: 'discord', credentialId: '' };
+		const draft: AgentCredentialIntegrationConfig = { type: 'discord', credentialId: '' };
 
 		const report = buildChannelStatusReport(
 			[slack, draft],

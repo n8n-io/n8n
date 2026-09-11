@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Message, MessageSubject, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
@@ -22,7 +22,7 @@ interface UpdateLatestMessageContextOptions {
 export class AgentChatMessageContextBridge {
 	constructor(
 		private readonly messageContextStore: IntegrationMessageContextService | undefined,
-		private readonly integration: AgentIntegrationConfig,
+		private readonly integration: AgentCredentialIntegrationConfig,
 		private readonly agentId: string,
 		private readonly logger: Logger,
 	) {}

@@ -13,6 +13,7 @@ import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
+import AgentChannelWebView from './web/AgentChannelWebView.vue';
 import type {
 	AgentChannelPlatform,
 	AgentChannelRuntime,
@@ -104,6 +105,15 @@ const platforms = {
 		type: 'discord',
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	web: {
+		type: 'web',
+		setupComponent: AgentChannelWebView,
+		editComponent: AgentChannelWebView,
+		// Served from inbound requests: there is nothing to hold a credential for.
+		// Basic Auth uses one, but as a setting the channel reads, not as its own.
+		requiresCredential: false,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;

@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -22,6 +22,7 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
@@ -111,6 +112,7 @@ function makeService() {
 	const customToolsService = mock<AgentCustomToolsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	const taskService = mock<AgentTaskService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
@@ -131,6 +133,18 @@ function makeService() {
 	chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
 	chatIntegrationService.disconnect.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
+	chatIntegrationRegistry.bind.mockImplementation(
+		(config: AgentIntegrationConfig) =>
+			({
+				adapterRuntimeConfig: 'credentialId' in config ? config : undefined,
+			}) as never,
+	);
+	chatIntegrationRegistry.runtimeConfigs.mockImplementation((configs) =>
+		(configs ?? []).filter(
+			(config): config is Extract<AgentIntegrationConfig, { credentialId: string }> =>
+				'credentialId' in config,
+		),
+	);
 	taskService.requestReconcile.mockResolvedValue();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
@@ -142,6 +156,7 @@ function makeService() {
 		issues: [],
 	});
 	Container.set(ChatIntegrationService, chatIntegrationService);
+	Container.set(ChatIntegrationRegistry, chatIntegrationRegistry);
 	Container.set(AgentTaskService, taskService);
 
 	const service = new AgentPublishService(

@@ -81,11 +81,41 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+export const AGENT_WEB_ACCESS_MODES = ['public', 'n8nUserAuth', 'basicAuth'] as const;
+
+export const AgentWebSettingsSchema = z
+	.object({
+		accessMode: z.enum(AGENT_WEB_ACCESS_MODES).default('public'),
+		title: z.string().trim().max(128).optional(),
+		subtitle: z.string().trim().max(256).optional(),
+		basicAuthCredentialId: z.string().min(1).optional(),
+	})
+	.strict()
+	.superRefine((settings, ctx) => {
+		if (settings.accessMode === 'basicAuth' && !settings.basicAuthCredentialId) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['basicAuthCredentialId'],
+				message: 'Select a Basic Auth credential',
+			});
+		}
+		if (settings.accessMode !== 'basicAuth' && settings.basicAuthCredentialId) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['basicAuthCredentialId'],
+				message: 'Basic Auth credentials require Basic Auth access',
+			});
+		}
+	});
+
+export type AgentWebIntegrationSettings = z.infer<typeof AgentWebSettingsSchema>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentWebSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -122,12 +152,36 @@ const draftCredentialIntegrations = [
 	}),
 ] as const;
 
-export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
+const webIntegration = z.object({
+	type: z.literal('web'),
+	integrationId: z.string().uuid(),
+	settings: AgentWebSettingsSchema,
+});
+
+export const AgentIntegrationSchema = z.discriminatedUnion('type', [
+	...credentialIntegrations,
+	webIntegration,
+]);
 
 /** Draft config variant that allows cleared stale credential IDs. */
 export const AgentIntegrationConfigSchema = z.discriminatedUnion(
 	'type',
-	draftCredentialIntegrations,
+	[...draftCredentialIntegrations, webIntegration],
 );
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
+// TODO: restructure credentials to avoid separation of types
+export type AgentCredentialIntegrationConfig = Exclude<AgentIntegrationConfig, { type: 'web' }>;
+export type AgentWebIntegrationConfig = Extract<AgentIntegrationConfig, { type: 'web' }>;
+
+export function getAgentIntegrationConnectionId(integration: AgentIntegrationConfig): string {
+	return 'credentialId' in integration ? integration.credentialId : integration.integrationId;
+}
+
+export function getAgentIntegrationPersistedIdentity(
+	integration: AgentIntegrationConfig,
+): { credentialId: string } | { integrationId: string } {
+	return 'credentialId' in integration
+		? { credentialId: integration.credentialId }
+		: { integrationId: integration.integrationId };
+}

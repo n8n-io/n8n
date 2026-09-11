@@ -1,5 +1,5 @@
 import type {
-	AgentIntegrationConfig,
+	AgentCredentialIntegrationConfig,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -284,7 +284,9 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		integration: AgentIntegrationConfig;
+		// Only a credential-backed channel holds a connection each main has to
+		// keep aligned; a request-driven one has nothing to broadcast.
+		integration: AgentCredentialIntegrationConfig;
 		action: 'connect' | 'disconnect';
 	};
 
@@ -310,7 +312,7 @@ export type PubSubCommandMap = {
 		replyTo: string;
 		agentId: string;
 	} & (
-		| { action: 'connect'; integration: AgentIntegrationConfig }
+		| { action: 'connect'; integration: AgentCredentialIntegrationConfig }
 		| { action: 'disconnect'; integration: { type: string; credentialId: string } }
 	);
 
@@ -338,7 +340,7 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-subscription-changed': {
 		agentId: string;
-		integration: AgentIntegrationConfig;
+		integration: AgentCredentialIntegrationConfig;
 		threadId: string;
 		action: 'subscribe' | 'unsubscribe';
 	};

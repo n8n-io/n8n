@@ -1,7 +1,8 @@
-import type {
-	AgentIntegrationConfig,
-	SlackAgentAppManifest,
-	SlackApiErrorMeta,
+import {
+	getAgentIntegrationConnectionId,
+	type AgentIntegrationConfig,
+	type SlackAgentAppManifest,
+	type SlackApiErrorMeta,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -255,7 +256,8 @@ export class SlackMethodsService {
 		try {
 			const state = await this.agentRepository.findIntegrationState(agentId);
 			const referenced = (state?.integrations ?? []).some(
-				(entry) => entry.credentialId === credentialId,
+				(entry) =>
+					entry.type === 'slack' && getAgentIntegrationConnectionId(entry) === credentialId,
 			);
 			if (referenced) return;
 

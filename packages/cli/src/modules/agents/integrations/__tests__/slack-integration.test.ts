@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { mock } from 'vitest-mock-extended';
 
@@ -31,7 +31,7 @@ describe('SlackIntegration', () => {
 		} as unknown as Awaited<ReturnType<typeof loadSlackAdapter>>);
 	});
 
-	function connectionContext(config: AgentIntegrationConfig): AgentChatIntegrationContext {
+	function connectionContext(config: AgentCredentialIntegrationConfig): AgentChatIntegrationContext {
 		return {
 			agentId: 'agent-1',
 			projectId: 'project-1',

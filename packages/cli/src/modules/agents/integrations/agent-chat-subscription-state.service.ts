@@ -1,4 +1,4 @@
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -20,11 +20,11 @@ import {
 
 interface CreateStateAdapterOptions {
 	agentId: string;
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	delegate: StateAdapter;
 }
 
-function toScope(agentId: string, integration: AgentIntegrationConfig): AgentChatSubscriptionScope {
+function toScope(agentId: string, integration: AgentCredentialIntegrationConfig): AgentChatSubscriptionScope {
 	return {
 		agentId,
 		integrationType: integration.type,
@@ -60,7 +60,7 @@ export class AgentChatSubscriptionStateService {
 
 	async deleteSubscriptionsForIntegration(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 	): Promise<void> {
 		await this.repository.deleteForConnection(toScope(agentId, integration));
 	}
@@ -81,7 +81,7 @@ export class AgentChatSubscriptionStateService {
 
 	private async publishSubscriptionChanged(
 		agentId: string,
-		integration: AgentIntegrationConfig,
+		integration: AgentCredentialIntegrationConfig,
 		threadId: string,
 		action: SubscriptionAction,
 	): Promise<void> {

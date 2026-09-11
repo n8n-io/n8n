@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { Logger } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -195,7 +195,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 	};
 	actionExecutor: ChatIntegrationActionExecutor;
 	descriptor: ReturnType<typeof getIntegrationToolConnectionDescriptors>[number];
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	messageContextStore: MemoryMessageContextStore;
 	nextStream: (chunks: StreamChunk[]) => void;
 	shutdown: () => Promise<void>;
@@ -204,7 +204,7 @@ export interface ReplayContextSetup<TChat extends ChatInstance = ChatInstance> {
 export function createReplayContextSetup<TChat extends ChatInstance>(params: {
 	chat: TChat;
 	integrationImpl: AgentChatIntegration;
-	integration: AgentIntegrationConfig;
+	integration: AgentCredentialIntegrationConfig;
 	componentMapper?: ComponentMapper;
 	stream?: StreamChunk[];
 }): ReplayContextSetup<TChat> {

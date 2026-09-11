@@ -60,6 +60,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import {
 	AgentTestRunService,
 	collectStandardApprovals,
@@ -296,6 +297,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -888,7 +890,8 @@ export class AgentsBuilderToolsService {
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
-					return (agent?.integrations ?? [])
+					return this.chatIntegrationRegistry
+						.runtimeConfigs(agent?.integrations)
 						.filter((integration) => !isDraftIntegration(integration))
 						.map((integration) => integration.credentialId);
 				},
@@ -924,8 +927,9 @@ export class AgentsBuilderToolsService {
 						this.credentialTypes.recognizes(credentialType),
 					listIntegrationCredentialIds: async () => {
 						const agent = await this.agentsService.findById(agentId, projectId);
-						return (agent?.integrations ?? [])
-							.filter((integration) => !isDraftIntegration(integration))
+						return this.chatIntegrationRegistry
+							.runtimeConfigs(agent?.integrations)
+						.filter((integration) => !isDraftIntegration(integration))
 							.map((integration) => integration.credentialId);
 					},
 					listChatIntegrationTypes: () =>
