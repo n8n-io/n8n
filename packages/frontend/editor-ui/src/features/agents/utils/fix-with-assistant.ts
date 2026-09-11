@@ -1,4 +1,4 @@
-import type { I18nClass } from '@n8n/i18n';
+import type { BaseTextKey, I18nClass } from '@n8n/i18n';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
@@ -10,14 +10,13 @@ const MAX_ERROR_LENGTH = 4_000;
 const MAX_ERROR_DETAILS_TOTAL_LENGTH = 10_000;
 const MAX_METADATA_VALUE_LENGTH = 160;
 const MAX_TOOL_CALLS_PER_ERROR = 8;
-const DIAGNOSTICS_TEMPLATE_SENTINEL = '__N8N_FIX_WITH_ASSISTANT_DIAGNOSTICS__';
 const UNTRUSTED_DATA_CLOSE_TAG_PATTERN = /<\/untrusted_data/gi;
 const SERVICE_CONTEXT_TAG_PATTERN = /<(\/?(?:current-date-time|project-context))/gi;
 const INVISIBLE_UNICODE_PATTERN =
 	// eslint-disable-next-line no-misleading-character-class
 	/[\u200B-\u200F\u2028-\u202F\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB\u00AD\u034F\u061C\u180E\u{E0001}\u{E0020}-\u{E007F}]/gu;
 
-type FixWithAssistantI18n = Pick<I18nClass, 'baseText'>;
+export type FixWithAssistantI18n = Pick<I18nClass, 'baseText'>;
 
 export interface AgentFixWithAssistantPromptContext {
 	projectId: string;
@@ -77,7 +76,8 @@ function truncate(value: string, maxLength: number, suffix: string) {
 	};
 }
 
-function sanitizeDiagnosticText(value: string): string {
+/** Neutralises prompt-injection markers before a value is embedded in a draft. */
+export function sanitizeDiagnosticText(value: string): string {
 	return value
 		.replace(/<!--[\s\S]*?-->/g, '')
 		.replace(INVISIBLE_UNICODE_PATTERN, '')
@@ -179,16 +179,39 @@ function buildDiagnosticPayload(
 	};
 }
 
+const BODY_SENTINEL = '__N8N_ASSISTANT_DRAFT_BODY__';
+
+/**
+ * Put caller-supplied text into an assistant draft template. The body goes in
+ * via a sentinel so `baseText` can never interpolate it a second time, and via
+ * a replacer function so `$&` and `$1` in it stay literal.
+ */
+export function renderAssistantDraft(
+	i18n: FixWithAssistantI18n,
+	templateKey: BaseTextKey,
+	placeholder: string,
+	body: string,
+): string {
+	const template = i18n.baseText(templateKey, {
+		interpolate: { [placeholder]: BODY_SENTINEL },
+	});
+	return template.replaceAll(BODY_SENTINEL, () => body);
+}
+
 function renderPrompt(payload: DiagnosticPayload, i18n: FixWithAssistantI18n): string {
+	// Tool output from external services — genuinely untrusted, so it is fenced
+	// and the template tells the assistant to read it as data.
 	const diagnostics = [
 		'<untrusted_data source="agent-preview-tool-errors">',
 		JSON.stringify(payload, null, 2),
 		'</untrusted_data>',
 	].join('\n');
-	const template = i18n.baseText('agents.builder.preview.fixWithAssistantPrompt.template', {
-		interpolate: { diagnostics: DIAGNOSTICS_TEMPLATE_SENTINEL },
-	});
-	return template.replaceAll(DIAGNOSTICS_TEMPLATE_SENTINEL, () => diagnostics);
+	return renderAssistantDraft(
+		i18n,
+		'agents.builder.preview.fixWithAssistantPrompt.template',
+		'diagnostics',
+		diagnostics,
+	);
 }
 
 export function buildAgentFixWithAssistantPrompt(
