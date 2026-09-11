@@ -293,22 +293,6 @@ export class PromotionsGitService {
 		}
 	}
 
-	async readBlob({
-		paths,
-		configId,
-		branchName,
-		blobSha,
-	}: Pick<GitOperation, 'paths' | 'configId' | 'branchName'> & {
-		blobSha: string;
-	}): Promise<string> {
-		try {
-			const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
-			return await git.raw(['cat-file', 'blob', blobSha]);
-		} catch (error) {
-			throw this.mapGitError(error, { configId, branchName });
-		}
-	}
-
 	// Configure credentials per operation and remove temporary SSH key material afterwards.
 	private async withGit<T>(
 		{

@@ -256,16 +256,6 @@ export class PromotionsService {
 		return parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId });
 	}
 
-	async readBaseBranchBlob(projectId: string, blobSha: string): Promise<string> {
-		const input = await this.resolver.resolveForProject(projectId, 'promote');
-		return await this.gitService.readBlob({
-			paths: this.workingDirectory.paths(input.configId),
-			configId: input.configId,
-			branchName: checkoutBranchName(input.config),
-			blobSha,
-		});
-	}
-
 	/**
 	 * Project connections can be configured and resolved, but running a package
 	 * operation on one is not implemented. The current export and import cover the

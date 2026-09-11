@@ -226,11 +226,24 @@ it('preserves workflow moves and changes across workflow files', async () => {
 	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([]);
 }, 30_000);
 
-it('logs hashes and redacted workflow differences when promotion diagnostics are enabled', async () => {
+it('logs file hashes without workflow content', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Diagnostics', owner);
 	const workflow = await createWorkflow(
-		{ name: 'Diagnostic', nodes: [], connections: {} },
+		{
+			name: 'Diagnostic',
+			nodes: [
+				{
+					id: 'diagnostic-node',
+					name: 'Diagnostic',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { value: 'fixture-base-value' },
+				},
+			],
+			connections: {},
+		},
 		project,
 	);
 	const connection = await createConnection();
@@ -252,7 +265,11 @@ it('logs hashes and redacted workflow differences when promotion diagnostics are
 				type: 'n8n-nodes-base.noOp',
 				typeVersion: 1,
 				position: [0, 0],
-				parameters: { password: 'fixture-password', note: 'Contact fixture@example.test' },
+				parameters: {
+					value: 'fixture-desired-value',
+					password: 'fixture-password',
+					note: 'Contact fixture@example.test',
+				},
 			},
 		],
 	});
@@ -287,9 +304,10 @@ it('logs hashes and redacted workflow differences when promotion diagnostics are
 		}),
 	);
 	const output = JSON.stringify(debug.mock.calls);
-	expect(output).toContain('changed-version');
-	expect(output).toContain(workflow.versionId);
-	expect(output).toContain('[REDACTED]');
+	expect(output).not.toContain('fixture-base-value');
+	expect(output).not.toContain('fixture-desired-value');
+	expect(output).not.toContain('changed-version');
+	expect(output).not.toContain(workflow.versionId);
 	expect(output).not.toContain('fixture-password');
 	expect(output).not.toContain('fixture@example.test');
 	expect(output).not.toContain('fixture-variable-value');
@@ -301,7 +319,7 @@ it('logs hashes and redacted workflow differences when promotion diagnostics are
 	expect((await agent.get(endpoint).expect(200)).body.data).toEqual([
 		expect.objectContaining({ id: workflow.id, status: 'modified' }),
 	]);
-	expect(debug.mock.calls.map(([message]) => message).join('\n')).toContain('versionId');
+	expect(debug.mock.calls.map(([message]) => message).join('\n')).not.toContain('versionId');
 
 	await workflows.update(workflow.id, { versionId: workflow.versionId });
 	debug.mockClear();
