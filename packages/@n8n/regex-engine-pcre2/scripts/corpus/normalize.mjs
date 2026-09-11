@@ -26,8 +26,12 @@ function normalizePcre2Case(block, category, index) {
     'allcaptures',
     'no_force_utf8',
     'aftertext', // output-only: echoes text after the match, doesn't change it
-    'dupnames', // allows duplicate group names; doesn't change match results
     'mark', // output-only: shows (*MARK) names, doesn't change match results
+    // 'dupnames' is deliberately NOT here: it's compile-affecting (PCRE2_DUPNAMES lets a
+    // pattern with repeated capture-group names compile at all), and our engine never
+    // sets it. Treating it as ignorable would emit a case our engine genuinely can't
+    // compile, silently losing it to the "excluded" bucket instead of being dropped here
+    // where it's clear why.
   ]);
 
   let flags = 'u';

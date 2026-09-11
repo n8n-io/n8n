@@ -198,12 +198,15 @@ const GROUPS = [
     cases: [
       { pattern: 'a++b', flags: '', inputs: ['aaab', 'aaa'] },
       { pattern: '(?>ab)+', flags: '', inputs: ['abab', 'aba'] },
-      { pattern: '(?(1)a|b)', flags: '', inputs: ['a', 'b'] },
+      // A conditional/subroutine reference to a capture group that's never defined is a
+      // compile error in real PCRE2, not something these cases can exercise -- both
+      // reference group 1 after actually defining it.
+      { pattern: '(x)?(?(1)a|b)', flags: '', inputs: ['xa', 'b'] },
       { pattern: '\\K', flags: '', inputs: ['abcdef'] },
       { pattern: '(?i)abc', flags: '', inputs: ['ABC', 'abc'] },
       { pattern: '\\R', flags: '', inputs: ['a\r\nb', 'a\nb', 'a\rb'] },
       { pattern: '(*ACCEPT)b', flags: '', inputs: ['ab', 'a'] },
-      { pattern: '(?<=(?1))', flags: '', inputs: ['a'] },
+      { pattern: '(a)(?<=(?1))', flags: '', inputs: ['xa', 'xb'] },
       { pattern: 'a(*COMMIT)b', flags: '', inputs: ['ab', 'ac'] },
       { pattern: '\\p{Xan}+', flags: '', inputs: ['abc123', '!!!'] },
       { pattern: '(?C1)a', flags: '', inputs: ['a', 'b'] },

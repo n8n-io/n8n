@@ -65,22 +65,56 @@ function tryNative(pattern, flags, input) {
   }
   const m = re.exec(input);
   if (!m) return { matched: false };
-  return { matched: true, whole: m[0], groups: m.slice(1) };
+  return { matched: true, whole: m[0], groups: m.slice(1), index: m.index, namedGroups: m.groups };
+}
+
+function namedGroupsEqual(a, b) {
+  if (a === b) return true; // both undefined -- neither pattern has named groups
+  if (!a || !b) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((k) => a[k] === b[k]);
+}
+
+// pcre2test's default output doesn't echo a trailing group that never participated --
+// its `groups` array can end up shorter than ours/native's for that reason alone, not
+// because the group is genuinely different. A missing trailing entry reads as `undefined`
+// on both sides either way, so pad rather than treat the length difference as a mismatch.
+function groupsEqual(a, b) {
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function resultsEqual(a, b) {
   if (!a || !b) return a === b;
   if (!a.matched || !b.matched) return a.matched === b.matched;
   if (a.whole !== b.whole) return false;
-  if (a.groups.length !== b.groups.length) return false;
-  return a.groups.every((v, i) => v === b.groups[i]);
+  if (!groupsEqual(a.groups, b.groups)) return false;
+  // Same matched text + captures can still hide a wrong start position (e.g. `/a/` on
+  // `ba` matching the right letter at the wrong offset) -- only compared when both
+  // sides report one, since the oracle didn't always carry it.
+  if ('index' in a && 'index' in b && a.index !== b.index) return false;
+  // Only ours/native carry named groups (the oracle doesn't tell us group names), so
+  // this only ever fires for that one comparison -- harmless no-op otherwise.
+  if ('namedGroups' in a && 'namedGroups' in b && !namedGroupsEqual(a.namedGroups, b.namedGroups)) {
+    return false;
+  }
+  return true;
 }
 
 function runOurEngine(engine, c) {
-  let ourProbeFailed = false;
   try {
     const r = engine.exec(c.pattern, c.input, c.flags);
-    return { result: r === null ? { matched: false } : { matched: true, whole: r[0], groups: r.slice(1) } };
+    return {
+      result:
+        r === null
+          ? { matched: false }
+          : { matched: true, whole: r[0], groups: r.slice(1), index: r.index, namedGroups: r.groups },
+    };
   } catch (error) {
     if (error instanceof Pcre2CompileError) return { compileError: true };
     if (error instanceof Pcre2BudgetExceededError) return { budgetError: true };
@@ -183,6 +217,23 @@ async function main() {
 
   const RUST_REGEX_OUT_DIR = path.join(OUT_DIR, 'rust-regex');
   fs.mkdirSync(RUST_REGEX_OUT_DIR, { recursive: true });
+
+  // Tracks only the files THIS generator writes (never realistic-patterns.json or
+  // realistic-subjects.json, both hand-curated). If a category disappears or every one of
+  // its cases gets excluded between runs, its old file would otherwise linger on disk and
+  // corpus.test.ts would keep exercising stale, no-longer-generated data.
+  const manifestFile = path.join(OUT_DIR, '.generated-manifest.json');
+  const previousManifest = fs.existsSync(manifestFile)
+    ? JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+    : [];
+  const currentManifest = [...byCategory.keys()].map((category) =>
+    path.join(category === RUST_REGEX_MERGED_CATEGORY ? 'rust-regex' : '.', `${category}.json`),
+  );
+  for (const relPath of previousManifest) {
+    if (!currentManifest.includes(relPath)) fs.rmSync(path.join(OUT_DIR, relPath), { force: true });
+  }
+  fs.writeFileSync(manifestFile, JSON.stringify(currentManifest) + '\n');
+
   for (const [category, cases] of byCategory) {
     // `input` can repeat heavily within a category (e.g. realistic cases cross-multiply
     // patterns against a handful of subjects) -- store distinct inputs once, referenced by index.
@@ -239,6 +290,14 @@ async function main() {
   const byReason = new Map();
   for (const e of excluded) byReason.set(e.reason, (byReason.get(e.reason) ?? 0) + 1);
   for (const [reason, count] of byReason) console.log(`  ${reason}: ${count}`);
+
+  // A probe that disagrees with real PCRE2 is a bug in our engine -- letting the command
+  // exit 0 anyway would silently generate (and commit) a corpus with known-wrong cases
+  // quietly excluded, rather than surfacing the regression.
+  if (engineBugs.length > 0) {
+    console.error(`\n${engineBugs.length} case(s) disagree with real PCRE2 -- see "Engine bugs" above.`);
+    process.exitCode = 1;
+  }
 }
 
 main();

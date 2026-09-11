@@ -104,7 +104,11 @@ export function parseTestOutput(text) {
     // space) is a genuine empty-subject DATA line and must not be treated as one.
     if (trimmed === '\\=' || /^\\=\s/.test(trimmed)) continue;
 
-    const resultMatch = /^ *(\d+): (.*)$/.exec(raw);
+    // pcre2test right-justifies the group number in a fixed 2-character-wide field (" 0:",
+    // "10:", never more than one leading space) -- matching "any number of spaces" here
+    // would also match a 4-space-indented subject whose own text happens to start with
+    // e.g. "0: ", misreading the subject echo as a match result.
+    const resultMatch = /^ {0,1}(\d+): (.*)$/.exec(raw);
     if (resultMatch) {
       if (!subject) {
         failBlock();
@@ -114,6 +118,19 @@ export function parseTestOutput(text) {
       const text =
         resultMatch[2] === '<unset>' ? undefined : decodeResultText(resultMatch[2], failBlock);
       subject.groups[groupIndex] = text;
+      continue;
+    }
+    // "N+ text" is pcre2test's aftertext/startchar annotation line (same "+" marker for
+    // both): the text following a match, or the extended match start when \K shifted it.
+    const afterMatch = /^ {0,1}(\d+)\+ ?(.*)$/.exec(raw);
+    if (afterMatch) {
+      if (!subject) {
+        failBlock();
+        continue;
+      }
+      const groupIndex = Number(afterMatch[1]);
+      subject.afterText ??= [];
+      subject.afterText[groupIndex] = decodeResultText(afterMatch[2], failBlock);
       continue;
     }
     if (trimmed === 'No match') {

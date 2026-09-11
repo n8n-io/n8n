@@ -23,6 +23,11 @@ function sanitizePatternForScript(pattern) {
     const code = ch.codePointAt(0);
     if (code < 0x20 || code === 0x7f) {
       out += `\\x${code.toString(16).padStart(2, '0')}`;
+    } else if (code >= 0xd800 && code <= 0xdfff) {
+      // A lone (unpaired) surrogate can't be encoded as valid UTF-8: execSync would
+      // silently corrupt it to U+FFFD when writing the script to the subprocess's stdin.
+      // Escape it as a PCRE2 pattern hex escape instead, which survives the trip intact.
+      out += `\\x{${code.toString(16)}}`;
     } else {
       out += ch;
     }
@@ -40,8 +45,19 @@ function pickDelimiter(pattern) {
 export function buildPcre2TestOracle(root) {
   const buildDir = path.join(root, 'native-oracle-build');
   const binary = path.join(buildDir, 'pcre2test');
+  const fingerprintFile = path.join(buildDir, '.fingerprint');
 
-  if (!fs.existsSync(binary)) {
+  // A stale binary would silently oracle against an outdated PCRE2 -- fingerprint on the
+  // vendored submodule's checked-out commit so a bump (or a dirty local checkout) forces
+  // a rebuild instead of reusing whatever happened to be built last.
+  const vendorRev = execFileSync('git', ['-C', path.join(root, 'vendor/pcre2'), 'rev-parse', 'HEAD'])
+    .toString('utf8')
+    .trim();
+  const fingerprint = `${vendorRev}\n`;
+  const cachedFingerprint = fs.existsSync(fingerprintFile) ? fs.readFileSync(fingerprintFile, 'utf8') : null;
+
+  if (!fs.existsSync(binary) || cachedFingerprint !== fingerprint) {
+    fs.rmSync(buildDir, { recursive: true, force: true });
     fs.mkdirSync(buildDir, { recursive: true });
     execFileSync(
       'cmake',
@@ -50,6 +66,11 @@ export function buildPcre2TestOracle(root) {
         '-DPCRE2_BUILD_TESTS=ON',
         '-DPCRE2_BUILD_PCRE2GREP=OFF',
         '-DBUILD_SHARED_LIBS=OFF',
+        // Our wrapper is the 16-bit library (native/pcre2_wrapper.h); an 8-bit-only
+        // oracle would compare UTF-8 byte semantics against our UTF-16 code-unit
+        // semantics for any astral-character case -- keep both so pcre2test can
+        // select 16-bit at runtime via `-16` below.
+        '-DPCRE2_BUILD_PCRE2_16=ON',
       ],
       { cwd: buildDir, stdio: 'inherit' },
     );
@@ -57,6 +78,7 @@ export function buildPcre2TestOracle(root) {
       cwd: buildDir,
       stdio: 'inherit',
     });
+    fs.writeFileSync(fingerprintFile, fingerprint);
   }
 
   function flagsToModifiers(flags) {
@@ -65,6 +87,10 @@ export function buildPcre2TestOracle(root) {
     // isn't testing what our shim actually does. `utf` is not in this list: it comes
     // from the `u` flag alone (FLAG_TO_MODIFIER), same as in the wrapper.
     modifiers.push('alt_bsux', 'extra_alt_bsux', 'match_unset_backref');
+    // The text after a match, needed to recover the match's start offset (see
+    // runBatch's offset arithmetic below) -- pcre2test's default output never prints
+    // a numeric offset, only the matched text itself.
+    modifiers.push('aftertext');
     return modifiers;
   }
 
@@ -95,7 +121,8 @@ export function buildPcre2TestOracle(root) {
       const modifiers = flagsToModifiers(flags);
       // An empty subject line is indistinguishable from pcre2test's blank-line block
       // separator, so use its `\=startchar` escape (an inert modifier) instead.
-      const subjectLine = input === '' ? '\\=startchar' : encodePcre2TestSubject(input);
+      const subjectLine =
+        input === '' ? '\\=startchar' : encodePcre2TestSubject(input, flags.includes('u'));
       runnable.push(i);
       scriptBlocks.push(`${delimiter}${pattern}${delimiter}${modifiersToScriptString(modifiers)}\n    ${subjectLine}`);
     }
@@ -106,11 +133,21 @@ export function buildPcre2TestOracle(root) {
     let stdout = '';
     if (scriptBlocks.length > 0) {
       try {
-        stdout = execSync(`${binary} -q`, { input: script, encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 });
+        // -16 selects the 16-bit library, matching native/pcre2_wrapper.h's build width.
+        stdout = execSync(`${binary} -16 -q`, {
+          input: script,
+          encoding: 'utf8',
+          maxBuffer: 1024 * 1024 * 64,
+        });
       } catch (error) {
-        // pcre2test exits non-zero if any pattern fails to compile but still prints
-        // output for the rest -- use stdout regardless of exit code.
-        stdout = error.stdout ?? '';
+        // pcre2test exits non-zero (a numeric `.status`) if any pattern fails to compile,
+        // but still prints usable output for the rest of the batch -- only that specific,
+        // expected failure mode should fall through to using partial stdout. A spawn
+        // failure (no `.status`, e.g. ENOENT) or a maxBuffer overflow (stdout may be
+        // truncated mid-block) means the run itself can't be trusted, so it must propagate
+        // instead of silently masquerading as a valid (if incomplete) oracle result.
+        if (typeof error.status !== 'number' || error.stdout === undefined) throw error;
+        stdout = error.stdout;
       }
     }
 
@@ -125,7 +162,7 @@ export function buildPcre2TestOracle(root) {
     }
 
     const runnableSet = new Set(runnable);
-    return cases.map(({ flags }, i) => {
+    return cases.map(({ flags, input }, i) => {
       if (!runnableSet.has(i)) return null;
       const key = scriptPatterns[i] + ' ' + flagsToModifiers(flags).slice().sort().join('');
       const bucket = queue.get(key);
@@ -134,7 +171,12 @@ export function buildPcre2TestOracle(root) {
       const subject = block.subjects[0];
       if (!subject) return null;
       if (subject.noMatch) return { matched: false };
-      return { matched: true, whole: subject.groups[0], groups: subject.groups.slice(1) };
+      const whole = subject.groups[0];
+      // aftertext's "0+" line is exactly the subject text following the match, with no
+      // ambiguity -- the match must start exactly where that much text is left over.
+      const afterText = subject.afterText?.[0] ?? '';
+      const index = input.length - afterText.length - whole.length;
+      return { matched: true, whole, groups: subject.groups.slice(1), index };
     });
   }
 
