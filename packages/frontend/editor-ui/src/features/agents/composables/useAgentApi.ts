@@ -131,7 +131,7 @@ export const duplicateAgent = async (
 	agentId: string,
 	name: string,
 ): Promise<AgentResource> => {
-	const [agent, config] = await Promise.all([
+	const [agent, configResponse] = await Promise.all([
 		getAgent(context, projectId, agentId),
 		getAgentConfig(context, projectId, agentId),
 	]);
@@ -141,7 +141,7 @@ export const duplicateAgent = async (
 	// publish state, so keeping the source's credentialId would 409 at publish
 	// time (and break the source's channel). Blank to drafts so the builder
 	// opens the copy with a "connect a channel" chip instead.
-	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = config;
+	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
 	const draftIntegrations = (sourceIntegrations ?? []).map((integration) => ({
 		...integration,
 		credentialId: '',

@@ -110,9 +110,10 @@ describe('useAgentApi', () => {
 			} as unknown as AgentJsonConfig;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
 			// getAgent, getAgentConfig, then createAgent — in Promise.all order then sequential.
+			// getAgentConfig returns the AgentConfigResponse envelope { config, configHash }.
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce(sourceConfig)
+				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			const result = await duplicateAgent(
@@ -172,7 +173,7 @@ describe('useAgentApi', () => {
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce(sourceConfig)
+				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			await duplicateAgent(restApiContext, 'project-1', 'agent-1', 'Support Agent (copy)');
