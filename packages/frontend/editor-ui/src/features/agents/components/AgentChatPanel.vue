@@ -272,8 +272,8 @@ const chatPlaceholder = computed(() => {
 watch(isStreaming, (v) => emit('update:streaming', v));
 watch(
 	() => props.visible,
-	(active) => {
-		if (active) refresh();
+	(visible) => {
+		if (visible) refresh();
 	},
 );
 
@@ -321,6 +321,8 @@ async function onSubmit() {
 			props.connectedTriggers,
 		);
 		if (!isCurrentTarget()) return;
+		// Keep the draft if a local resume or cancellation started during preparation.
+		if (isStreaming.value || isCancelling.value) return;
 
 		inputText.value = '';
 		attachedFiles.value = [];

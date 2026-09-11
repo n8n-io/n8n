@@ -12,7 +12,7 @@ import AgentChatPanel from './AgentChatPanel.vue';
 
 withDefaults(
 	defineProps<{
-		active?: boolean;
+		visible?: boolean;
 		initialized: boolean;
 		projectId: string;
 		agentId: string;
@@ -25,7 +25,7 @@ withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ active: true, layout: 'dock' },
+	{ visible: true, layout: 'dock' },
 );
 
 const emit = defineEmits<{
@@ -62,7 +62,7 @@ defineExpose({ focusInput, getConversationMarkdown });
 				v-model:input-draft="inputDraft"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:visible="active"
+				:visible="visible"
 				mode="inline"
 				:continue-session-id="effectiveSessionId"
 				:agent-config="localConfig"
