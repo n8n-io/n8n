@@ -240,6 +240,19 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+**Injected trigger output is a simulation of the trigger.** A run that starts
+from `inputData` proves the nodes after the trigger, not the trigger itself:
+its auth, query parameters, response mode, and form fields never ran. Such a
+run is reported with the trigger as simulated, and it does not satisfy the
+publish gate on its own. For Webhook and Form Triggers, offer a live test
+instead of publishing: `executions(action="listen", workflowId)` arms the test
+URL (`/webhook-test/...` or `/form-test/...`), shows it to the user with the
+deadline, and waits for one real request. Offer it when the user wants to send
+a real request, when the trigger uses header auth, or when a form must be
+filled in a browser. Never tell the user to publish so they can hit the
+production URL for a test. When the listener returns `received`, read the
+execution back; `timed_out` or `cancelled` means no evidence was gathered.
+
 **Webhook input must carry the fields the workflow reads.** A flat `inputData`
 becomes the request `body` only; `query`, `headers` and `params` stay empty. When
 any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*`, pass

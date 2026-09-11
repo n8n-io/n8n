@@ -1,5 +1,9 @@
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
-import { analyzeVerificationResult } from '../analyze-result';
+import {
+	analyzeVerificationResult,
+	INJECTED_TRIGGER_SIMULATION_REASON,
+	WORKFLOW_PIN_SIMULATION_REASON,
+} from '../analyze-result';
 import type { ExecutionRunResult } from '../types';
 
 function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
@@ -322,6 +326,46 @@ describe('analyzeVerificationResult — workflow-pinned nodes', () => {
 
 		expect(analysis.reachedSimulatedNodes).toEqual([
 			{ nodeName: 'Get Job Alert Emails', reason: 'Mocked credentials' },
+		]);
+	});
+});
+
+describe('analyzeVerificationResult — injected trigger output', () => {
+	const injectedRunResult = {
+		executionId: 'exec-1',
+		status: 'success',
+		executedNodeNames: ['Webhook', 'Format'],
+		lastNodeExecuted: 'Format',
+		data: { Webhook: [{}], Format: [{}] },
+		injectedTriggerNodeName: 'Webhook',
+	} as unknown as ExecutionRunResult;
+
+	it('counts the injected trigger as simulated so the run is not a live trigger test', () => {
+		const analysis = analyzeVerificationResult({
+			result: injectedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: INJECTED_TRIGGER_SIMULATION_REASON },
+		]);
+		expect(analysis.simulationNote).toContain('Webhook');
+	});
+
+	it('does not duplicate a trigger that workflow pins already disclose', () => {
+		const analysis = analyzeVerificationResult({
+			result: { ...injectedRunResult, workflowPinnedNodeNames: ['Webhook'] },
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: WORKFLOW_PIN_SIMULATION_REASON },
 		]);
 	});
 });

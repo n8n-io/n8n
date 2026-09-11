@@ -526,7 +526,7 @@ Update a version's name or description.
 
 ---
 
-## `executions` (7 actions)
+## `executions` (8 actions)
 
 ### `executions(action="list")`
 
@@ -570,6 +570,26 @@ Get execution status without blocking.
 | `executionId` | string | yes | Execution ID |
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
+
+### `executions(action="listen")`
+
+Arm the test URL of a Webhook or Form Trigger, wait for one real request, and
+return the execution it started. The workflow stays unpublished. Uses the same
+permission gate as `run` (admin policy, allow-lists, session grants).
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `workflowId` | string | yes | — | Workflow to arm |
+| `triggerNodeName` | string | no | — | Trigger to arm when the workflow has several Webhook or Form Triggers |
+
+Suspends on a listener card that shows each armed trigger's test URL and method
+plus the deadline. The card settles when the browser receives the test request
+push, when the user clicks "I sent the request", or when the user cancels.
+
+**Returns**: `{ state: 'received', ...ExecutionResult }` once a request arrived,
+`{ state: 'timed_out' | 'cancelled', listenerCleared: true, reason }` otherwise,
+`{ state: 'denied', reason }` when the gate refuses, or `{ state: 'unsupported' }`
+when the host has no test webhook registry.
 
 ### `executions(action="debug")`
 

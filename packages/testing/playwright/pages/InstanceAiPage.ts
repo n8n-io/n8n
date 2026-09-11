@@ -171,6 +171,23 @@ export class InstanceAiPage extends BasePage {
 		return this.getContainer().getByText(text);
 	}
 
+	/** Card shown while executions(action="listen") waits for a request on a trigger's test URL. */
+	getTestListenerCard(): Locator {
+		return this.container.getByTestId('instance-ai-test-listener');
+	}
+
+	getTestListenerUrl(): Locator {
+		return this.getTestListenerCard().getByTestId('instance-ai-test-listener-url');
+	}
+
+	/** Clicks "I sent the request" unless the push event already settled the card. */
+	async confirmTestRequestSent(): Promise<void> {
+		const button = this.getTestListenerCard().getByTestId('instance-ai-test-listener-sent');
+		if (await button.isVisible()) {
+			await button.click().catch(() => undefined);
+		}
+	}
+
 	/** Tailored out-of-credits error callout shown when a run fails due to exhausted quota. */
 	getOutOfCreditsError(): Locator {
 		return this.container.getByTestId('instance-ai-out-of-credits');

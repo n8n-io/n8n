@@ -632,7 +632,7 @@ interface NodeSetupContext {
 	isTestable: boolean;
 	parameterIssues: Record<string, string[]>;
 	editableParameters: SetupRequest['editableParameters'];
-	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string };
+	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string; url?: string };
 	nodeId: string;
 	nodePosition: [number, number];
 	typeVersion: number;
@@ -788,7 +788,7 @@ async function buildRequestForCredentialType(
 export async function buildSetupRequests(
 	context: InstanceAiContext,
 	node: NodeJSON,
-	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string },
+	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string; url?: string },
 	cache?: CredentialCache,
 	workflowId?: string,
 	preferNewCredentialTypes?: ReadonlySet<string>,
@@ -1453,7 +1453,10 @@ export function buildSubnodeToRootNodeMap(
 export async function analyzeWorkflow(
 	context: InstanceAiContext,
 	workflowId: string,
-	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
+	triggerResults?: Record<
+		string,
+		{ status: 'success' | 'error' | 'listening'; error?: string; url?: string }
+	>,
 	options?: {
 		/** Passive observation reads saved configuration without provider calls. Defaults to live validation. */
 		validationMode?: SetupValidationMode;

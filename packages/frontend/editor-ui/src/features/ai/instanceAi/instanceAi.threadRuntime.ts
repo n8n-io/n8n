@@ -725,6 +725,7 @@ export function createThreadRuntime(
 		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
+		if (conf.testListener) return false;
 		return true;
 	}
 

@@ -112,6 +112,7 @@ function globalConfigStub(
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		endpoints: { webhookTest: 'webhook-test', formTest: 'form-test' },
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
@@ -1263,6 +1264,11 @@ function connect(from: string, to: string): IConnections {
 // ---------------------------------------------------------------------------
 // createDataTableAdapter – access control
 // ---------------------------------------------------------------------------
+
+// `armTestListener` only forwards the base data to TestWebhooks, which these tests mock.
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: vi.fn().mockResolvedValue({}),
+}));
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -4203,11 +4209,18 @@ function createRunAdapterForTests(
 		threadId?: string;
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
+		/** Recent executions returned by the range query the execution list runs. */
+		listedExecutions?: Array<ReturnType<typeof makeExecution>>;
+		testWebhooks?: { cancelWebhook: Mock; needsWebhook: Mock };
+		testWebhookRegistrations?: { getAllRegistrations: Mock };
 	},
 ) {
 	const mockWorkflowFinderService = {
 		findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
 	};
+	const mockWorkflowRepository = { isActive: vi.fn().mockResolvedValue(false) };
+	const mockRoleService = { rolesWithScope: vi.fn().mockResolvedValue([]) };
+	const mockUrlService = { getWebhookBaseUrl: vi.fn().mockReturnValue('http://localhost:5678/') };
 
 	const mockWorkflowRunner = {
 		run: vi.fn().mockResolvedValue('exec-1'),
@@ -4223,6 +4236,14 @@ function createRunAdapterForTests(
 
 	const mockExecutionRepository = {
 		findSingleExecution: vi.fn().mockResolvedValue(options?.execution),
+		findManyByRangeQuery: vi.fn().mockResolvedValue(
+			(options?.listedExecutions ?? []).map((execution) => ({
+				...execution,
+				workflowId: 'wf-1',
+				mode: 'webhook',
+				workflowName: 'Workflow',
+			})),
+		),
 	};
 	const mockExecutionPersistence = mock<ExecutionPersistence>();
 	mockExecutionPersistence.findSingleExecution.mockResolvedValue(options?.execution as never);
@@ -4243,7 +4264,7 @@ function createRunAdapterForTests(
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[3],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		mockWorkflowRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		mockExecutionRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
@@ -4272,7 +4293,7 @@ function createRunAdapterForTests(
 		>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		mockRoleService as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
@@ -4286,9 +4307,24 @@ function createRunAdapterForTests(
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		options?.testWebhooks as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[43],
+		options?.testWebhookRegistrations as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[44],
+		mockUrlService as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[45],
 	);
 
-	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
+	const adapter = service.createContext(mockUser, {
+		threadId: options?.threadId,
+		pushRef: 'push-1',
+	}).executionService;
 
 	return {
 		adapter,
@@ -4299,9 +4335,214 @@ function createRunAdapterForTests(
 	};
 }
 
+/** A test-webhook registration as `TestWebhookRegistrationsService.getAllRegistrations` lists it. */
+function makeRegistration(overrides: {
+	workflowId?: string;
+	node?: string;
+	httpMethod?: string;
+	path?: string;
+	nodeType?: 'webhook' | 'form';
+}) {
+	return {
+		workflowEntity: { id: overrides.workflowId ?? 'wf-1' },
+		webhook: {
+			node: overrides.node ?? 'Webhook',
+			httpMethod: overrides.httpMethod ?? 'POST',
+			path: overrides.path ?? 'abc-123/intake',
+			webhookDescription: { nodeType: overrides.nodeType ?? 'webhook' },
+		},
+	};
+}
+
+const webhookWorkflow = {
+	id: 'wf-1',
+	name: 'Intake',
+	nodes: [
+		{ id: 'n1', name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0] },
+	],
+	connections: {},
+	settings: { executionOrder: 'v1' },
+};
+
+describe('createExecutionAdapter test listeners', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function createListenerAdapter(
+		registrations: Array<ReturnType<typeof makeRegistration>> = [makeRegistration({})],
+		options: Parameters<typeof createRunAdapterForTests>[1] = {},
+	) {
+		const testWebhooks = {
+			cancelWebhook: vi.fn().mockResolvedValue(undefined),
+			needsWebhook: vi.fn().mockResolvedValue(true),
+		};
+		const testWebhookRegistrations = {
+			// Empty right after the cancel sweep, then whatever the arm registered.
+			getAllRegistrations: vi.fn().mockResolvedValueOnce([]).mockResolvedValue(registrations),
+		};
+		const built = createRunAdapterForTests(webhookWorkflow, {
+			...options,
+			testWebhooks,
+			testWebhookRegistrations,
+		});
+		return { ...built, testWebhooks, testWebhookRegistrations };
+	}
+
+	it('arms the test webhook and returns the exact test URL and method per trigger', async () => {
+		const { adapter, testWebhooks } = createListenerAdapter([
+			makeRegistration({}),
+			makeRegistration({ node: 'Form', httpMethod: 'GET', path: 'form-path', nodeType: 'form' }),
+		]);
+
+		const armed = await adapter.armTestListener!('wf-1', { triggerNodeName: 'Webhook' });
+
+		expect(testWebhooks.cancelWebhook).toHaveBeenCalledWith('wf-1');
+		expect(testWebhooks.cancelWebhook.mock.invocationCallOrder[0]).toBeLessThan(
+			testWebhooks.needsWebhook.mock.invocationCallOrder[0],
+		);
+		expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'user-1',
+				pushRef: 'push-1',
+				timeoutMs: 600_000,
+				triggerToStartFrom: { name: 'Webhook' },
+				workflowEntity: expect.objectContaining({
+					settings: expect.objectContaining({
+						saveManualExecutions: true,
+						saveDataSuccessExecution: 'all',
+						saveDataErrorExecution: 'all',
+					}),
+				}),
+			}),
+		);
+		expect(armed).toEqual({
+			state: 'armed',
+			workflowId: 'wf-1',
+			triggers: [
+				{
+					nodeName: 'Webhook',
+					method: 'POST',
+					url: 'http://localhost:5678/webhook-test/abc-123/intake',
+				},
+				{ nodeName: 'Form', method: 'GET', url: 'http://localhost:5678/form-test/form-path' },
+			],
+			armedAt: expect.any(String),
+			deadlineAt: expect.any(String),
+		});
+		expect(new Date(armed.deadlineAt).getTime() - new Date(armed.armedAt).getTime()).toBe(600_000);
+	});
+
+	it('rejects a workflow that has nothing to listen on', async () => {
+		const { adapter, testWebhooks } = createListenerAdapter([]);
+		testWebhooks.needsWebhook.mockResolvedValue(false);
+
+		await expect(adapter.armTestListener!('wf-1')).rejects.toThrow(UserError);
+	});
+
+	it('cancels the listener on request', async () => {
+		const { adapter, testWebhooks } = createListenerAdapter();
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+			cancel: true,
+		});
+
+		expect(testWebhooks.cancelWebhook).toHaveBeenCalledWith('wf-1');
+		expect(outcome).toEqual({ state: 'cancelled' });
+	});
+
+	it('reads back the execution the push event named', async () => {
+		const execution = { ...makeExecution({ status: 'success' }), workflowId: 'wf-1' };
+		const { adapter } = createListenerAdapter(undefined, { execution });
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+			executionId: 'exec-1',
+		});
+
+		expect(outcome).toMatchObject({
+			state: 'received',
+			executionId: 'exec-1',
+			result: { executionId: 'exec-1', status: 'success' },
+		});
+	});
+
+	it('refuses an execution that belongs to another workflow', async () => {
+		const execution = { ...makeExecution({ status: 'success' }), workflowId: 'wf-2' };
+		const { adapter } = createListenerAdapter(undefined, { execution });
+
+		await expect(
+			adapter.resolveTestListener!('wf-1', {
+				armedAt: '2026-01-01T00:00:00.000Z',
+				executionId: 'exec-1',
+			}),
+		).rejects.toThrow(UserError);
+	});
+
+	it('falls back to the first execution started after arming', async () => {
+		const execution = {
+			...makeExecution({ status: 'success', startedAt: new Date('2026-01-01T00:00:05Z') }),
+			workflowId: 'wf-1',
+		};
+		const { adapter } = createListenerAdapter(undefined, {
+			execution,
+			listedExecutions: [execution],
+		});
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-1' });
+	});
+
+	it('stays armed while the registration is present and nothing has arrived', async () => {
+		const stale = {
+			...makeExecution({ status: 'success', startedAt: new Date('2025-12-31T00:00:00Z') }),
+			workflowId: 'wf-1',
+		};
+		const { adapter, testWebhookRegistrations } = createListenerAdapter(undefined, {
+			listedExecutions: [stale],
+		});
+		testWebhookRegistrations.getAllRegistrations
+			.mockReset()
+			.mockResolvedValue([makeRegistration({})]);
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(outcome).toEqual({ state: 'armed' });
+	});
+
+	it('reports a timeout once the registration is gone', async () => {
+		const { adapter, testWebhookRegistrations } = createListenerAdapter();
+		testWebhookRegistrations.getAllRegistrations.mockReset().mockResolvedValue([]);
+
+		const outcome = await adapter.resolveTestListener!('wf-1', {
+			armedAt: '2026-01-01T00:00:00.000Z',
+		});
+
+		expect(outcome).toEqual({ state: 'timed_out' });
+	});
+});
+
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('names the trigger whose output the caller injected', async () => {
+		const { adapter } = createRunAdapterForTests(webhookWorkflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+
+		const injected = await adapter.run('wf-1', { body: { name: 'Ada' } });
+		const live = await adapter.run('wf-1');
+
+		expect(injected.injectedTriggerNodeName).toBe('Webhook');
+		expect(live).not.toHaveProperty('injectedTriggerNodeName');
 	});
 
 	it('reports workflow-pinned nodes on the run result', async () => {

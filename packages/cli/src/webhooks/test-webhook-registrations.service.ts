@@ -51,7 +51,10 @@ export class TestWebhookRegistrationsService {
 
 	private readonly cacheKey = 'test-webhooks';
 
-	async register(registration: TestWebhookRegistration) {
+	async register(
+		registration: TestWebhookRegistration,
+		ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER,
+	) {
 		const hashKey = this.toKey(registration.webhook);
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
@@ -74,9 +77,11 @@ export class TestWebhookRegistrationsService {
 		 * We set a TTL on the key so that it is cleared even on creator process crash,
 		 * with an additional buffer to ensure this safeguard expiration will not delete
 		 * the key before the regular test webhook timeout fetches the key to delete it.
+		 *
+		 * ponytail: the TTL covers the whole hash, so the most recent registration's
+		 * window applies to every test webhook on the instance. Key the TTL per
+		 * registration if short-lived editor tests start expiring long assistant ones.
 		 */
-		const ttl = TEST_WEBHOOK_TIMEOUT + TEST_WEBHOOK_TIMEOUT_BUFFER;
-
 		await this.cacheService.expire(this.cacheKey, ttl);
 	}
 

@@ -958,7 +958,10 @@ For AI Agent workflows:
 After building a workflow that uses a trigger with an HTTP endpoint, share the
 full production URL with the user. Use the Webhook base URL and Form base URL
 from Instance Info in the system prompt. Each trigger type has a distinct
-pattern:
+pattern. Production URLs answer only after the workflow is published; for a
+test before publishing, `executions(action="listen")` arms the test URL
+(`{webhookTestBaseUrl}/{path}` or `{formTestBaseUrl}/{path}`) and returns the
+exact URL and method to share — never build a test URL by hand.
 
 - **Webhook Trigger**: `{webhookBaseUrl}/{path}` (where `{path}` is the node's
   webhook path parameter).
@@ -981,7 +984,8 @@ pattern:
     workflow JSON, never guess. End users can open this URL in a browser.
   The `/chat` suffix is unique to Chat Trigger — do NOT append it to Form
   Trigger or Webhook URLs. (Your own testing via `executions(action="run")` and
-  `verify-built-workflow` works regardless of `public` or publish state.)
+  `verify-built-workflow` works regardless of `public` or publish state; Chat
+  Trigger has no test-URL listener — the in-editor chat is its test path.)
 
 **These URLs are for sharing with the user only.** Do NOT hardcode them into
 workflow code or build specs unless the workflow actually needs to send or

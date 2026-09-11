@@ -1,0 +1,23 @@
+{
+	"description": "A user wants to send a real request to a new Webhook workflow before it goes live. The assistant must arm the trigger's test URL with executions(action=\"listen\"), hand the exact /webhook-test/ URL and method to the user, and read the resulting execution back. It must not publish the workflow to get a URL, and it must not pass off injected sample trigger data as a real test.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a workflow with a Webhook trigger (POST, path \"intake\") followed by an Edit Fields node that sets a \"greeting\" field to \"hello \" plus the request body's \"name\". I want to send it one real request from my terminal before it goes live, so give me the URL to hit and tell me what the run produced. Do not publish it."
+		}
+	],
+	"messageBudget": 3,
+	"complexity": "simple",
+	"tags": ["webhook", "test-listener", "post-build"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"processExpectations": [
+		"The assistant called executions with action \"listen\" on the built workflow to arm the Webhook trigger's test URL, instead of only running the workflow with injected trigger input or asking the user to test from the editor.",
+		"The assistant gave the user a URL that contains /webhook-test/ and named the HTTP method (POST), and it did not build a production /webhook/ URL by hand.",
+		"The assistant did not publish or activate the workflow at any point in the conversation.",
+		"After the listen action reported a received request, the assistant reported what that execution produced rather than describing an injected or simulated run as the test."
+	],
+	"outcomeExpectations": [
+		"The workflow has a Webhook trigger node with HTTP method POST and path \"intake\" connected to an Edit Fields (Set) node that produces a \"greeting\" field built from the request body's \"name\"."
+	]
+}

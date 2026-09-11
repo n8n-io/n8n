@@ -20,7 +20,7 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { jsonParse } from 'n8n-workflow';
+import { FORM_TRIGGER_NODE_TYPE, jsonParse, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { existsSync, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -234,6 +234,40 @@ export async function createStubServices(
 				startedAt: new Date().toISOString(),
 				finishedAt: new Date().toISOString(),
 			};
+		},
+		// The eval has no HTTP ingress. Arming returns the URLs the real adapter would, and
+		// resolving reports a synthetic request, so the offer → arm → read-back path is graded
+		// without a real webhook call.
+		async armTestListener(workflowId, options) {
+			const { nodes } = await workflowService.getAsWorkflowJSON(workflowId);
+			const triggers = nodes
+				.filter((node) => node.type === WEBHOOK_NODE_TYPE || node.type === FORM_TRIGGER_NODE_TYPE)
+				.filter((node) => !options?.triggerNodeName || node.name === options.triggerNodeName)
+				.map((node) => {
+					const isForm = node.type === FORM_TRIGGER_NODE_TYPE;
+					const { path, httpMethod } = node.parameters ?? {};
+					return {
+						nodeName: node.name,
+						method: isForm || typeof httpMethod !== 'string' ? 'GET' : httpMethod,
+						url: `http://localhost:5678/${isForm ? 'form-test' : 'webhook-test'}/${typeof path === 'string' ? path : (node.webhookId ?? workflowId)}`,
+					};
+				});
+			if (triggers.length === 0) {
+				throw new Error(`Workflow ${workflowId} has no Webhook or Form Trigger to listen on.`);
+			}
+			const armedAt = new Date();
+			return {
+				state: 'armed' as const,
+				workflowId,
+				triggers,
+				armedAt: armedAt.toISOString(),
+				deadlineAt: new Date(armedAt.getTime() + 10 * 60_000).toISOString(),
+			};
+		},
+		async resolveTestListener(workflowId, { cancel }) {
+			if (cancel) return { state: 'cancelled' as const };
+			const result = await executionService.run(workflowId);
+			return { state: 'received' as const, executionId: result.executionId, result };
 		},
 		async getStatus() {
 			return stubExecutionResult('stub: execution disabled in eval');

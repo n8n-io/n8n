@@ -536,6 +536,8 @@ export const workflowSetupNodeSchema = z.object({
 		.object({
 			status: z.enum(['success', 'error', 'listening']),
 			error: z.string().optional(),
+			/** Test URL armed for a Webhook or Form Trigger (status `listening`). */
+			url: z.string().optional(),
 		})
 		.optional(),
 	parameterIssues: z.record(z.array(z.string())).optional(),
@@ -704,6 +706,14 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** Test URL card: the assistant armed a trigger's test URL and waits for one request. */
+export const testListenerCardSchema = z.object({
+	workflowId: z.string(),
+	triggers: z.array(z.object({ nodeName: z.string(), url: z.string(), method: z.string() })),
+	/** ISO timestamp at which the listener deregisters itself. */
+	deadlineAt: z.string(),
+});
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -795,6 +805,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	mcpConnectRequest: mcpConnectRequestSchema
 		.optional()
 		.describe('When present, renders the inline "Available tools" MCP connect card'),
+	testListener: testListenerCardSchema
+		.optional()
+		.describe(
+			'When present, renders the "waiting for a test request" card with the armed test URLs',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -829,6 +844,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
+	if (payload.testListener) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {

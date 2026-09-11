@@ -38,6 +38,17 @@ describe('TestWebhookRegistrationsService', () => {
 			expect(cacheService.expire).not.toHaveBeenCalled();
 		});
 
+		test('should set the given TTL on the hash in multi-main setup', async () => {
+			const multiMainRegistrations = new TestWebhookRegistrationsService(
+				cacheService,
+				mock<InstanceSettings>({ isSingleMain: false }),
+			);
+
+			await multiMainRegistrations.register(registration, 1234);
+
+			expect(cacheService.expire).toHaveBeenCalledWith(cacheKey, 1234);
+		});
+
 		test('should throw an error if the registration fails', async () => {
 			cacheService.exists.mockResolvedValue(false);
 
