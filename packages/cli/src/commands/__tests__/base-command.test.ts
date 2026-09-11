@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { LicenseState, Logger, ModuleRegistry, ModulesConfig } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
@@ -14,16 +13,11 @@ import {
 import { DatabaseManager } from '@/binary-data/database.manager';
 import { License } from '@/license';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-=======
-import { Logger } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
->>>>>>> 1abdc9222b67f2e1892f44eb79ec65c45deec77b
 
 import { BaseCommand } from '../base-command';
 
 class TestCommand extends BaseCommand {
 	async run() {}
-<<<<<<< HEAD
 
 	protected async initObjectStoreIfConfigured() {
 		return undefined;
@@ -49,6 +43,10 @@ const logger = mockInstance(Logger);
 const license = mockInstance(License);
 const binaryDataConfig = mockInstance(BinaryDataConfig);
 const objectStoreConfig = mockInstance(ObjectStoreConfig);
+
+afterEach(() => {
+	vi.resetAllMocks();
+});
 
 describe('BaseCommand', () => {
 	let exitSpy: ReturnType<typeof vi.spyOn>;
@@ -81,13 +79,7 @@ describe('BaseCommand', () => {
 
 			expect(exitSpy).not.toHaveBeenCalled();
 		});
-=======
-}
-
-const logger = mockInstance(Logger);
-
-afterEach(() => {
-	vi.resetAllMocks();
+	});
 });
 
 describe('logError', () => {
@@ -117,6 +109,5 @@ describe('logError', () => {
 			'Something went wrong',
 			'the stack',
 		]);
->>>>>>> 1abdc9222b67f2e1892f44eb79ec65c45deec77b
 	});
 });
