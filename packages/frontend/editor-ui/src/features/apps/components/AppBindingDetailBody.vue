@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="P extends string">
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, shallowRef } from 'vue';
 
 import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
 
@@ -27,7 +27,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 // The list unmounts this body between items, so the selection needs no reset.
-const selected = ref<P[]>(
+// `shallowRef` keeps `P` intact; `ref` would unwrap it to `string`.
+const selected = shallowRef<P[]>(
 	props.connected ? [...props.permissions] : props.permissionOptions.map((option) => option.value),
 );
 

@@ -2,7 +2,6 @@
 import type {
 	AppBinding,
 	DataTablePermission,
-	DescribedBinding,
 	DescribedDataTableBinding,
 	DescribedWorkflowBinding,
 } from '@n8n/api-types';
@@ -72,6 +71,8 @@ onMounted(() => {
 		);
 });
 
+type PresentBinding = DescribedWorkflowBinding | DescribedDataTableBinding;
+
 const bindingByWorkflowId = computed(() => {
 	const map = new Map<string, DescribedWorkflowBinding>();
 	for (const binding of appsStore.bindings) {
@@ -134,13 +135,13 @@ const detailItem = computed<ToolConnectionItem | null>(
 	() => items.value.find((item) => item.id === activeItemId.value) ?? null,
 );
 
-function bindingFor(item: ToolConnectionItem): DescribedBinding | null {
+function bindingFor(item: ToolConnectionItem): PresentBinding | null {
 	if (item.kind === 'service') return bindingByWorkflowId.value.get(item.serviceId) ?? null;
 	if (item.kind === 'data-store') return bindingByDataTableId.value.get(item.dataStoreId) ?? null;
 	return null;
 }
 
-function permissionsOf(binding: DescribedBinding | null): DataTablePermission[] {
+function permissionsOf(binding: PresentBinding | null): DataTablePermission[] {
 	return binding?.kind === 'dataTable' ? binding.permissions : [];
 }
 
