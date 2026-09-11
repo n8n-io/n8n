@@ -20,6 +20,14 @@ The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags
 
 No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
 
+### What changed?
+
+The Execute Sub-workflow node no longer supports the "Local File" and "URL" sources. Executions of nodes that still use these sources fail with an error.
+
+### When is action necessary?
+
+If your workflows use an Execute Sub-workflow node with the "Local File" or "URL" source. Save the sub-workflow on the instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source. The migration report on v2 lists every affected node.
+
 # 2.0.0
 
 ### What changed?
