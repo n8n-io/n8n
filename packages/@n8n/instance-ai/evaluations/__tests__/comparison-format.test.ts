@@ -169,6 +169,16 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/-100pp ↓/);
 	});
 
+	it('labels Agent eval reports and uses a generic test-case column', () => {
+		const md = formatComparisonMarkdown(evalFixture, undefined, { subject: 'agent' });
+		const terminal = formatComparisonTerminal(evalFixture, undefined, { subject: 'agent' });
+
+		expect(md).toMatch(/^### Instance AI Agent Eval/);
+		expect(md).toContain('| Test case | Status | pass@3 | pass^3 |');
+		expect(md).not.toContain('| Workflow |');
+		expect(terminal).toMatch(/^Instance AI Agent Eval/);
+	});
+
 	it('renders run-level pass metrics and the LangSmith experiment link when provided', () => {
 		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
 		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);

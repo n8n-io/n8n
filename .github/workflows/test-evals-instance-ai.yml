@@ -765,7 +765,7 @@ jobs:
 
           # Find and update existing eval comment, or create new one
           COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
+            --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval") or startswith("### Instance AI Agent Eval")) | .id' | tail -1)
 
           if [ -n "$COMMENT_ID" ]; then
             gh api "repos/$REPO/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md

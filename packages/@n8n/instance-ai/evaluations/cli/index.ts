@@ -170,6 +170,7 @@ async function main(): Promise<void> {
 			evaluation,
 			outcome,
 			gate,
+			subject: args.tier === 'agents' ? 'agent' : 'workflow',
 			slugByTestCase,
 			commitSha,
 			outputDir: args.outputDir,
