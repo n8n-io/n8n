@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { existsSync, renameSync } from 'node:fs';
 import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
@@ -19,7 +16,6 @@ vi.mock('node:fs', () => ({
 describe('StorageConfig', () => {
 	const n8nFolder = '~/.n8n';
 	let markFsStorageMigrated: Mock;
-	let logger: Logger;
 
 	beforeEach(() => {
 		process.env = {};
@@ -31,8 +27,6 @@ describe('StorageConfig', () => {
 			fsStorageMigrated: false,
 			markFsStorageMigrated,
 		});
-		logger = mock<Logger>();
-		Container.set(Logger, logger);
 		(existsSync as Mock).mockReturnValue(false);
 	});
 
@@ -88,22 +82,7 @@ describe('StorageConfig', () => {
 	});
 
 	describe('storage dir migration', () => {
-		it('should log deprecation warning and use old path when old path exists but migration not enabled', () => {
-			(existsSync as Mock).mockReturnValueOnce(true); // old path exists
-
-			const config = Container.get(StorageConfig);
-
-			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Deprecation warning'));
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_MIGRATE_FS_STORAGE_PATH=true'),
-			);
-			expect(config.storagePath).toBe('~/.n8n/binaryData');
-			expect(renameSync).not.toHaveBeenCalled();
-			expect(markFsStorageMigrated).not.toHaveBeenCalled();
-		});
-
-		it('should proceed when old path exists and migration is enabled', () => {
-			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
+		it('should rename old path when it exists', () => {
 			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(false); // new path does not exist
@@ -151,8 +130,7 @@ describe('StorageConfig', () => {
 			expect(renameSync).not.toHaveBeenCalled();
 		});
 
-		it('should error if `storage` already exists when migration is enabled', () => {
-			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
+		it('should error if `storage` already exists', () => {
 			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(true); // new path also exists
@@ -162,7 +140,6 @@ describe('StorageConfig', () => {
 		});
 
 		it.each(['ENOENT', 'EEXIST'])('should ignore `%s` error', (code) => {
-			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
 			(existsSync as Mock).mockReturnValueOnce(true).mockReturnValueOnce(false);
 			(renameSync as Mock).mockImplementation(() => {
 				throw Object.assign(new Error(code), { code });
@@ -172,7 +149,6 @@ describe('StorageConfig', () => {
 		});
 
 		it('should rethrow other errors', () => {
-			process.env.N8N_MIGRATE_FS_STORAGE_PATH = 'true';
 			(existsSync as Mock)
 				.mockReturnValueOnce(true) // old path exists
 				.mockReturnValueOnce(false); // new path does not exist
