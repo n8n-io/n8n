@@ -103,9 +103,9 @@ export const workflowSettingsObjectSchema = z.object({
 		.describe('Estimated time saved per execution, in minutes (used for insights/reporting).')
 		.optional(),
 	callerPolicy: z
-		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+		.enum(['none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z

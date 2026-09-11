@@ -477,7 +477,7 @@ async function assertErrorWorkflowIsUsable({
 	} catch (error) {
 		if (error instanceof SubworkflowPolicyDenialError) {
 			throw new Error(
-				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — add this workflow to its allowlist — or pick a different error workflow.`,
 			);
 		}
 
