@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="xsmall"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -261,7 +261,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="small"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>

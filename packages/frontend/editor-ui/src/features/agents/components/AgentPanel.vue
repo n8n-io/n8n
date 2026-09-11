@@ -43,7 +43,7 @@ const headerId = useId();
 	padding: var(--spacing--sm);
 	padding-block: var(--spacing--md);
 	background-color: var(--background--surface);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	border: var(--border);
 	box-shadow: var(--shadow--xs);
 }

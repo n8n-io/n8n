@@ -108,7 +108,7 @@ const {
 				variant="ghost"
 				size="small"
 				icon="plus"
-				icon-size="large"
+				icon-size="medium"
 				aria-label="Add new item"
 			/>
 			<template #[createWorkflowsAppendSlotName]>
@@ -172,7 +172,7 @@ const {
 				variant="ghost"
 				size="small"
 				icon="search"
-				icon-size="large"
+				icon-size="medium"
 				aria-label="Open command palette"
 				@click="openCommandBar"
 			/>
@@ -193,7 +193,7 @@ const {
 				variant="ghost"
 				size="small"
 				icon="panel-left"
-				icon-size="large"
+				icon-size="medium"
 				aria-label="Toggle sidebar"
 				@click="toggleCollapse"
 			/>
@@ -224,6 +224,7 @@ const {
 
 .logo {
 	margin-right: auto;
+	padding-inline-start: var(--spacing--3xs);
 }
 
 .readOnlyEnvironmentIcon {
