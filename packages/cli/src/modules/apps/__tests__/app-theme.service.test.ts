@@ -194,7 +194,12 @@ describe('AppThemeService', () => {
 				"export const THEME_MODE: 'light' | 'dark' | 'system' = 'dark';\n",
 				undefined,
 			);
-			expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('app-1', USER, draft);
+			expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith(
+				'app-1',
+				USER,
+				draft,
+				'Theme edit',
+			);
 			expect(appsService.getSourceTarball).not.toHaveBeenCalled();
 			expect(appsService.createSourceSnapshot).not.toHaveBeenCalled();
 			expect(result).toEqual({ versionId: 's-9' });
@@ -235,7 +240,8 @@ describe('AppThemeService', () => {
 
 			expect(result).toEqual({ versionId: 's-4' });
 			expect(snapshotService.snapshotAfterRun).not.toHaveBeenCalled();
-			const [appId, patched] = appsService.createSourceSnapshot.mock.calls[0];
+			const [appId, patched, label] = appsService.createSourceSnapshot.mock.calls[0];
+			expect(label).toBe('Theme edit');
 			expect(appId).toBe('app-1');
 			expect(await listFiles(patched)).toEqual({
 				...original,

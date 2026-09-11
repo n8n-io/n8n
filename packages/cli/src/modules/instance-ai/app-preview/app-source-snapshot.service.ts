@@ -73,7 +73,13 @@ export class AppSourceSnapshotService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	async snapshotAfterRun(appId: string, user: User, rawWorkspace: Workspace): Promise<void> {
+	/** `label`: what the version is for, when the caller knows (a Theme- or Code-tab save); assistant turns are labeled afterwards. */
+	async snapshotAfterRun(
+		appId: string,
+		user: User,
+		rawWorkspace: Workspace,
+		label: string | null = null,
+	): Promise<void> {
 		const root = await getWorkspaceRoot(rawWorkspace);
 		const workspace = createScopedWorkspace(rawWorkspace, root);
 		const executeCommand = workspace.sandbox?.executeCommand?.bind(workspace.sandbox);
@@ -130,7 +136,7 @@ export class AppSourceSnapshotService {
 					this.logger.warn('App snapshot read-out was not binary', { appId, namespace });
 					continue;
 				}
-				const version = await this.appsService.createSourceSnapshot(app.id, source);
+				const version = await this.appsService.createSourceSnapshot(app.id, source, label);
 				this.lastHashes.set(key, hash);
 				this.logger.debug('Stored app source snapshot', {
 					appId,

@@ -158,9 +158,9 @@ export class AppsService {
 		return this.appVersionService.toResponse(version, version.id);
 	}
 
-	async createSourceSnapshot(appId: string, source: Buffer) {
+	async createSourceSnapshot(appId: string, source: Buffer, label: string | null = null) {
 		const app = await this.getApp(appId);
-		const version = await this.appVersionService.createSourceSnapshot(appId, source);
+		const version = await this.appVersionService.createSourceSnapshot(appId, source, label);
 		return this.appVersionService.toResponse(version, app.activeVersionId);
 	}
 

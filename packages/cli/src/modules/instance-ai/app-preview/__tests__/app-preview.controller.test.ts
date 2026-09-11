@@ -265,6 +265,7 @@ describe('AppPreviewController', () => {
 				user,
 				expect.any(Function),
 				undefined,
+				'Edited main.ts',
 			);
 		});
 
