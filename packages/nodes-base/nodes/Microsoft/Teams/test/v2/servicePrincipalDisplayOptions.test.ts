@@ -82,7 +82,7 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 					p.displayOptions?.show?.operation?.includes(operation),
 			);
 
-		it.each(['softDeleteMessage'])(
+		it.each(['softDeleteMessage', 'undoSoftDeleteMessage'])(
 			'%s is offered and shows only the chat and message pickers',
 			(operation) => {
 				expect(operationValues).toContain(operation);
