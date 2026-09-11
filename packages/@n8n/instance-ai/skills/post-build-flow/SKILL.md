@@ -317,6 +317,31 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
 
+### Fixing a workflow that is already published
+
+The publishing rules above assume a new workflow. A repair of a workflow that
+is already published is different. That workflow runs in production right now,
+and it runs the version published before your fix. Your save creates a draft,
+and the draft is not live. The published version keeps running, broken, until
+somebody publishes the fix.
+
+For a repair on a published workflow:
+
+- Telling the user the fix is not live yet is not an offer to publish. Say it.
+- Do NOT report the workflow as fixed, live, running, or working in production
+  while the published version is the older one. Say the fix is in the draft.
+- `verify-built-workflow` returns `claim.liveState`. `live-stale` means the
+  published version is older than the draft you just verified. The result also
+  carries `liveStateNote`. Relay it.
+- Without a claim, call `workflows(action="get", workflowId)` and compare
+  `versionId` (the draft) with `activeVersionId` (the published version). They
+  differ while the fix is not live. A null `activeVersionId` means the workflow
+  is not published at all.
+- Ask whether to publish the fix. Publish only after the user agrees.
+- Name the version in a retest invitation: the draft, or the published version.
+  "Send another email to test it" is wrong when the fix is still a draft — the
+  test would run the broken version and look like the fix failed.
+
 ## After build-workflow succeeds
 
 1. Read `workflowId`, `workItemId`, `triggerNodes`, `verificationReadiness`,
@@ -415,7 +440,9 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
    proved it works end-to-end with full coverage.
 9. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically or proactively offer publishing before
-   the publish-readiness requirement above is met.
+   the publish-readiness requirement above is met. A repair of a workflow that
+   is already published is the exception — follow
+   [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
 10. After a direct new primary workflow is successfully published, follow
     [Error workflow follow-up](#error-workflow-follow-up).
     Do not replace this explicit opt-in with a generic "add
@@ -555,6 +582,16 @@ say:
 - `verified` — you may call the workflow verified, tested, or working.
 - `partial`, `unproven`, or `failed` — you may NOT. Name what is unconfirmed
   instead.
+
+`claim.liveState` decides separately whether you may call the workflow live. A
+run always executes the draft, so `verified` says nothing about production:
+
+- `live-stale` — the published version is older than the draft you verified.
+  Do NOT call the workflow live, running, or working in production. Say the fix
+  is in the draft, and see
+  [Fixing a workflow that is already published](#fixing-a-workflow-that-is-already-published).
+- `live-current` — the published version is the one you verified.
+- `unpublished` — the workflow does not run in production at all.
 
 **`success: true` does not mean verified.** It means the run ended without an
 error, and a run with every write simulated also ends without an error. Read

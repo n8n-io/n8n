@@ -165,6 +165,13 @@ export interface ExecutionResult {
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
 	lastNodeExecuted?: string;
+	/**
+	 * Workflow version this execution actually ran, read back from the
+	 * execution record. Authoritative: a save landing while the run was in
+	 * flight moves the workflow head, but not this. Null for an execution of an
+	 * unsaved workflow, absent when the record could not be read.
+	 */
+	workflowVersionId?: string | null;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -434,10 +441,14 @@ export interface InstanceAiWorkflowService {
 	getPinnedDataSummary?(
 		workflowId: string,
 	): Promise<Array<{ nodeName: string; itemCount: number }>>;
-	/** Cheap version-only lookup. The adapter projects just `versionId` and
-	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
-	 *  Use to validate per-session caches when the body isn't needed. */
-	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Cheap version-only lookup. The adapter projects just `versionId`,
+	 *  `activeVersionId` and `updatedAt` from the workflow row, skipping
+	 *  `nodes`/`connections`/etc. Use to validate per-session caches when the
+	 *  body isn't needed, or to compare the draft against the published
+	 *  version. `activeVersionId` is null while the workflow is unpublished. */
+	getWorkflowHead(
+		workflowId: string,
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: number }>;
 	/** Single fetch returning the SDK WorkflowJSON together with the version it
 	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
 	 *  versionId you'll pin to it land in one round-trip. */
@@ -513,6 +524,13 @@ export interface ExecutionSummary {
 	startedAt: string;
 	finishedAt?: string;
 	mode: string;
+	/**
+	 * Workflow version this execution ran. Compare it with the workflow's
+	 * `activeVersionId` to tell a run of the published version from a run of a
+	 * draft. Null for executions of an unsaved workflow, and on rows recorded
+	 * before the column existed.
+	 */
+	workflowVersionId?: string | null;
 }
 
 export interface InstanceAiExecutionService {

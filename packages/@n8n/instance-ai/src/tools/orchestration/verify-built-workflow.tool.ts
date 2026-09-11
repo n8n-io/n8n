@@ -10,13 +10,14 @@ import { Tool } from '@n8n/agents';
 import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { OrchestrationContext } from '../../types';
+import type { InstanceAiWorkflowService, OrchestrationContext } from '../../types';
 import {
 	analyzeVerificationResult,
 	buildNodePreviews,
 	getTriggerMainFlowScope,
 } from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
+import type { VerificationPublishState } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
 	persistVerificationOutcome,
@@ -25,6 +26,8 @@ import { prepareVerificationRun } from './verification/prepare-run';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
+import { describeClaimLiveState } from '../../workflow-loop/render-claim';
+import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
 import {
 	executionNodeErrorSchema,
 	verificationClaimSchema,
@@ -32,6 +35,58 @@ import {
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
+
+/**
+ * The publish sentence for the tool result. A passing run on a stale published
+ * workflow is the case a model reports as "live and working" — say what is
+ * live before it does.
+ */
+function formatLiveStateNote(claim: VerificationClaim | undefined): string | undefined {
+	// A scoped multi-trigger pass can settle without a workflow-level claim.
+	if (claim === undefined) return undefined;
+
+	const liveState = describeClaimLiveState(claim);
+	if (liveState === undefined) return undefined;
+
+	const fact =
+		`${liveState} Do NOT describe the workflow as live, running, or working in production ` +
+		'until it is published.';
+
+	// Only a verified draft is worth publishing. Below `verified` the coverage
+	// rules already refuse a publish offer, so the prompt would contradict them.
+	return claim.level === 'verified'
+		? `${fact} Publishing is what makes this change live — ask the user whether to do it.`
+		: fact;
+}
+
+/**
+ * Version pair behind `claim.liveState`. The executed version has to come from
+ * the execution record: the workflow head moves when anybody saves, so
+ * substituting it would let the claim describe a version this run never ran.
+ * Without that record there is no publish state — an unknown run version must
+ * not become `live-current`, which reads as "production is proven".
+ */
+async function resolvePublishState(args: {
+	workflowService: InstanceAiWorkflowService;
+	workflowId: string;
+	executedVersionId: string | null | undefined;
+	logger: OrchestrationContext['logger'];
+}): Promise<VerificationPublishState | undefined> {
+	const { workflowService, workflowId, executedVersionId, logger } = args;
+
+	if (!executedVersionId) return undefined;
+
+	try {
+		const head = await workflowService.getWorkflowHead(workflowId);
+		return { activeVersionId: head.activeVersionId, draftVersionId: executedVersionId };
+	} catch (error) {
+		logger.warn('Failed to read publish state for the verification claim', {
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
 
 export const verifyBuiltWorkflowInputSchema = z.object({
 	workItemId: z
@@ -144,6 +199,12 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	/**
+	 * Present only while the published version is older than the verified
+	 * draft. The claim carries the same fact as `liveState`; this is the
+	 * sentence to relay, because a passing run reads as "production works".
+	 */
+	liveStateNote: z.string().optional(),
 	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
@@ -294,6 +355,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					].filter((name): name is string => name !== undefined),
 				),
 			];
+			// Which version passed, and is that version the one production serves?
+			// The executed version comes from the execution record, so a save
+			// landing mid-run cannot make the claim name a version this run never
+			// ran. The published version is read after the run, so a publish
+			// landing mid-run is reflected rather than reported as stale.
+			const publishState = await resolvePublishState({
+				workflowService: target.domainContext.workflowService,
+				workflowId,
+				executedVersionId: result.workflowVersionId,
+				logger: context.logger,
+			});
+
 			const runClaim = deriveVerificationClaim({
 				analysis: {
 					...analysis,
@@ -303,6 +376,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				},
 				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
 				fixTargetNodeNames,
+				publishState,
 			});
 
 			const claim = await persistVerificationOutcome({
@@ -334,6 +408,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
+				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,
 				remediation: analysis.remediation,

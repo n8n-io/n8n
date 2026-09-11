@@ -1357,7 +1357,11 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!head) throw new WorkflowNotFoundError(workflowId);
-				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+				return {
+					versionId: head.versionId,
+					activeVersionId: head.activeVersionId,
+					updatedAt: head.updatedAt.getTime(),
+				};
 			},
 
 			async getWorkflowSnapshot(workflowId: string) {
@@ -1831,6 +1835,7 @@ export class InstanceAiAdapterService {
 						startedAt: String(e.startedAt ?? ''),
 						finishedAt: e.stoppedAt ? String(e.stoppedAt) : undefined,
 						mode: e.mode,
+						workflowVersionId: e.workflowVersionId ?? null,
 					}),
 				);
 			},
@@ -4117,6 +4122,7 @@ export async function extractExecutionOutcome(
 			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
 			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			workflowVersionId: execution.workflowVersionId,
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),

@@ -89,6 +89,95 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Report completion');
 		});
 
+		it('should not report completion when the published version is the older one', () => {
+			// The run proved the draft. Production still serves the version this
+			// run never touched, so "verified successfully" would read as "live".
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Fixed',
+				workflowId: 'wf-123',
+				claim: makeClaim({ liveState: 'live-stale', verifiedVersionId: 'draft-2' }),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Verified in the draft, NOT live');
+			expect(result).toContain('The live version is still the previous one');
+			expect(result).toContain('Do NOT call the workflow live');
+			expect(result).toContain('ask whether to publish the fix');
+			expect(result).not.toContain('Report completion');
+		});
+
+		it('should not ask about publishing a stale live version below verified', () => {
+			// The lead already says "Do NOT offer to publish it". Asking anyway
+			// would contradict it inside the same message.
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Changed',
+				workflowId: 'wf-123',
+				claim: makeClaim({
+					level: 'partial',
+					liveState: 'live-stale',
+					nodesNotReached: ['Send Email'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('The live version is still the previous one');
+			expect(result).toContain('Do NOT offer to publish it.');
+			expect(result).not.toContain('ask whether to publish the fix');
+		});
+
+		it('should keep the verified wording when the published version is the verified one', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				claim: makeClaim({ liveState: 'live-current' }),
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('Workflow verified successfully');
+			expect(result).toContain('Report completion');
+		});
+
+		it('should downgrade the setup-panel guidance too', () => {
+			// The setup-panel branch used to hardcode "Workflow verified
+			// successfully with temporary mock data", which restored the exact
+			// sentence the claim exists to withhold.
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'All good',
+				workflowId: 'wf-123',
+				mockedCredentialTypes: ['slackApi'],
+				claim: makeClaim({
+					level: 'partial',
+					nodesNotReached: ['Send Email'],
+					publishReady: false,
+					liveTestRecommended: true,
+				}),
+			};
+			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('NOT fully verified');
+			expect(result).toContain('workflows(action="setup")');
+		});
+
+		it('should keep the setup-panel guidance honest about a stale live version', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Fixed',
+				workflowId: 'wf-123',
+				mockedCredentialTypes: ['slackApi'],
+				claim: makeClaim({ liveState: 'live-stale' }),
+			};
+			const result = formatWorkflowLoopGuidance(action, { setupPanelEnabled: true });
+			expect(result).not.toContain('Workflow verified successfully');
+			expect(result).toContain('Verified in the draft, NOT live');
+			expect(result).toContain('workflows(action="setup")');
+			// Setup comes first. Asking to publish a workflow that still needs
+			// credentials contradicts the setup instruction in the same breath.
+			expect(result).not.toContain('publish');
+		});
+
 		it('should downgrade the mocked-credential guidance too', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
