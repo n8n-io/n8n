@@ -54,6 +54,8 @@ const infoText = computed((): string => {
 		case 'user':
 		case 'agent':
 			return truncate(it.content ?? '', 500);
+		case 'skill':
+			return it.skillName ?? resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
 		case 'tool': {
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
 			return resolveToolNameForDisplay(it.toolName, i18n, it.toolOutput);
@@ -93,6 +95,8 @@ const label = computed((): string => {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
