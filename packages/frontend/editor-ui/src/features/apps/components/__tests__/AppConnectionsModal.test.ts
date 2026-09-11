@@ -66,7 +66,8 @@ const TRIGGER = { type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When cal
 
 const workflows = [
 	{ id: 'wf-1', name: 'Echo', isArchived: false, activeVersionId: 'v-1', nodes: [TRIGGER] },
-	{ id: 'wf-2', name: 'Notify Slack', isArchived: false, activeVersionId: null, nodes: [TRIGGER] },
+	{ id: 'wf-2', name: 'Notify Slack', isArchived: false, activeVersionId: 'v-2', nodes: [TRIGGER] },
+	{ id: 'wf-4', name: 'Draft Digest', isArchived: false, activeVersionId: null, nodes: [TRIGGER] },
 	{
 		id: 'wf-3',
 		name: 'Survey',
@@ -145,8 +146,8 @@ describe('AppConnectionsModal', () => {
 		confirm.mockReset();
 	});
 
-	it('loads the project workflows and lists them with their connection state', async () => {
-		const { getAllByTestId, getByRole } = await renderOpen();
+	it('lists only published, compatible workflows with their connection state', async () => {
+		const { getAllByTestId, getByRole, queryByText } = await renderOpen();
 
 		expect(mockedStore(useWorkflowsListStore).searchWorkflows).toHaveBeenCalledWith(
 			expect.objectContaining({ projectId: 'proj-1' }),
@@ -154,25 +155,25 @@ describe('AppConnectionsModal', () => {
 		expect(getByRole('heading', { name: 'Connect to app' })).toBeInTheDocument();
 
 		const rows = getAllByTestId('tools-connection-row');
-		expect(rows).toHaveLength(3);
+		expect(rows).toHaveLength(2);
+		expect(queryByText('Draft Digest')).not.toBeInTheDocument();
+		expect(queryByText('Survey')).not.toBeInTheDocument();
 
 		const echo = rowByTitle(rows, 'Echo');
 		expect(within(echo).getByTestId('tools-connection-row-connected')).toBeInTheDocument();
-		expect(within(echo).queryByTestId('tools-connection-row-warning')).not.toBeInTheDocument();
 
 		const notify = rowByTitle(rows, 'Notify Slack');
 		expect(within(notify).queryByTestId('tools-connection-row-connected')).not.toBeInTheDocument();
-		expect(within(notify).getByTestId('tools-connection-row-warning')).toHaveTextContent(
-			'Not published',
-		);
+	});
 
-		const survey = rowByTitle(rows, 'Survey');
-		expect(within(survey).getByTestId('tools-connection-row-main')).toBeDisabled();
-		expect(within(survey).getByTestId('tools-connection-row-disabled')).toHaveAttribute(
-			'aria-label',
-			'Contains nodes an app cannot run (Wait, Form)',
-		);
-		expect(rows.indexOf(survey)).toBe(2);
+	it('renders workflow rows through the same circle icon as table rows', async () => {
+		const { getAllByTestId } = await renderOpen();
+
+		const echo = rowByTitle(getAllByTestId('tools-connection-row'), 'Echo');
+		expect(echo).toHaveAttribute('data-row-kind', 'service');
+		const icon = echo.querySelector('[data-icon="workflow"]');
+		expect(icon).not.toBeNull();
+		expect(icon?.closest('[class*="wrapper"]')).not.toBeNull();
 	});
 
 	it('narrows the rows to the search query', async () => {
@@ -254,15 +255,6 @@ describe('AppConnectionsModal', () => {
 		await userEvent.click(within(echo).getByTestId('tools-connection-row-main'));
 
 		expect(appsStore.deleteBinding).not.toHaveBeenCalled();
-	});
-
-	it('does nothing for an incompatible workflow', async () => {
-		const { getAllByTestId } = await renderOpen();
-
-		const survey = rowByTitle(getAllByTestId('tools-connection-row'), 'Survey');
-		await userEvent.click(within(survey).getByTestId('tools-connection-row-main'));
-
-		expect(appsStore.addBinding).not.toHaveBeenCalled();
 	});
 
 	it('shows an icon on each tab', async () => {

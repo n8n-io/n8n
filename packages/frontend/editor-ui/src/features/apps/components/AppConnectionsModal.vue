@@ -4,7 +4,6 @@ import type {
 	DataTablePermission,
 	DescribedDataTableBinding,
 	DescribedWorkflowBinding,
-	WorkflowToolIncompatibilityReason,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -12,7 +11,6 @@ import { computed, onMounted, ref } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAgentToolCatalog } from '@/features/agents/composables/useAgentToolCatalog';
-import { workflowToolTriggerLabel } from '@/features/agents/utils/workflowToolTriggers';
 import { useAppsStore } from '@/features/apps/apps.store';
 import { deriveBindingKey } from '@/features/apps/bindingKey';
 import AppDataTableAccessDialog from '@/features/apps/components/AppDataTableAccessDialog.vue';
@@ -22,9 +20,9 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	DataStoreConnectionItem,
+	ServiceConnectionItem,
 	ToolCategoryKey,
 	ToolConnectionItem,
-	WorkflowConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 import type { IconName } from '@n8n/design-system';
@@ -45,7 +43,7 @@ const uiStore = useUIStore();
 const appsStore = useAppsStore();
 const dataTableStore = useDataTableStore();
 const { confirmAndDeleteBinding } = useAppDeletion();
-const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
+const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
 
 const CATEGORIES: ToolCategoryKey[] = ['workflows', 'data'];
 const CATEGORY_ICONS: Partial<Record<ToolCategoryKey, IconName>> = {
@@ -89,43 +87,19 @@ const bindingByDataTableId = computed(() => {
 	return map;
 });
 
-function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
+// A generic `service` item, not a `workflow` one: ToolRow gives workflows a bare
+// primary-coloured icon, while every other kind gets the same grey circle as the
+// table rows. `serviceId` carries the workflow id.
+function workflowItem(workflow: IWorkflowDb): ServiceConnectionItem {
 	return {
 		id: `workflow:${workflow.id}`,
-		kind: 'workflow',
-		workflowId: workflow.id,
+		kind: 'service',
+		category: 'workflows',
+		serviceId: workflow.id,
 		title: workflow.name,
 		description: workflow.description ?? undefined,
-		warning:
-			workflow.activeVersionId === null
-				? i18n.baseText('agents.tools.workflow.notPublished')
-				: undefined,
+		iconSource: { type: 'icon', name: 'workflow' },
 		status: bindingByWorkflowId.value.has(workflow.id) ? 'connected' : 'none',
-	};
-}
-
-function disabledWorkflowReasonText(reason: WorkflowToolIncompatibilityReason): string {
-	if (reason.reason === 'incompatible_nodes') {
-		return i18n.baseText('apps.connections.picker.incompatible');
-	}
-	return i18n.baseText('agents.tools.workflow.disabled.noSupportedTrigger', {
-		interpolate: { trigger: workflowToolTriggerLabel() },
-	});
-}
-
-function disabledWorkflowItem(
-	workflow: IWorkflowDb,
-	reason: WorkflowToolIncompatibilityReason,
-): WorkflowConnectionItem {
-	return {
-		id: `workflow-disabled:${workflow.id}`,
-		kind: 'workflow',
-		workflowId: workflow.id,
-		title: workflow.name,
-		description: workflow.description ?? undefined,
-		status: 'none',
-		disabled: true,
-		disabledReason: disabledWorkflowReasonText(reason),
 	};
 }
 
@@ -140,13 +114,11 @@ function dataTableItem(dataTable: DataTable): DataStoreConnectionItem {
 	};
 }
 
-// Incompatible workflows come last, greyed out, so the user sees why they are
-// missing instead of them simply being absent.
+// Only workflows the app can call today: compatible (`availableWorkflows`) and published.
 const items = computed<ToolConnectionItem[]>(() => [
-	...availableWorkflows.value.map(availableWorkflowItem),
-	...incompatibleWorkflows.value.map(({ workflow, reason }) =>
-		disabledWorkflowItem(workflow, reason),
-	),
+	...availableWorkflows.value
+		.filter((workflow) => workflow.activeVersionId !== null)
+		.map(workflowItem),
 	// The store is shared with the data table views, which load other projects
 	// into it; keep only this project's tables until our fetch lands.
 	...dataTableStore.dataTables
@@ -174,10 +146,8 @@ async function connect(name: string, binding: AppBinding) {
 }
 
 async function handleRowActivate(item: ToolConnectionItem) {
-	if (item.disabled) return;
-
-	if (item.kind === 'workflow') {
-		const existing = bindingByWorkflowId.value.get(item.workflowId);
+	if (item.kind === 'service') {
+		const existing = bindingByWorkflowId.value.get(item.serviceId);
 		if (existing) {
 			await confirmAndDeleteBinding(props.data.projectId, props.data.appId, existing);
 			return;
@@ -185,7 +155,7 @@ async function handleRowActivate(item: ToolConnectionItem) {
 		await connect(item.title, {
 			key: bindingKeyFor(item.title),
 			kind: 'workflow',
-			workflowId: item.workflowId,
+			workflowId: item.serviceId,
 		});
 		return;
 	}

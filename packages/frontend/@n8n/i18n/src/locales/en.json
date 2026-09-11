@@ -5243,7 +5243,6 @@
 	"apps.connections.picker.connected": "Connected. Ask the assistant to use \"{name}\" in the app.",
 	"apps.connections.picker.error": "Error connecting to app",
 	"apps.connections.picker.dataTables.error": "Error loading data tables",
-	"apps.connections.picker.incompatible": "Contains nodes an app cannot run (Wait, Form)",
 	"apps.pages": "Pages",
 	"apps.page.subPageCount": "{count} sub-page | {count} sub-pages",
 	"apps.page.subPages": "Sub-pages",
