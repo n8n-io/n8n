@@ -933,15 +933,20 @@ export class WorkflowService {
 			...ctx,
 			policyCleared: cleared,
 		});
-		if (tagIds && !tagsDisabled) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
+		if (tagIds) {
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
-		const savedWorkflow = await this.workflowRepository.get(
-			{ id: workflowId },
-			{ relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'] },
-			ctx,
-		);
-		if (!savedWorkflow) {
+
+		const relations = ['tags', 'activeVersion'];
+
+		// We sadly get nothing back from "update". Neither if it updated a record
+		// nor the new value. So query now the hopefully updated entry.
+		const updatedWorkflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations,
+		});
+
+		if (updatedWorkflow === null) {
 			throw new BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);

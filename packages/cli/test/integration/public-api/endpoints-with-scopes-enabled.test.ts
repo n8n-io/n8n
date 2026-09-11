@@ -101,7 +101,6 @@ describe('Public API endpoints with API key scopes', () => {
 			'WorkflowEntity',
 			'WorkflowHistory',
 		]);
-		// globalConfig.tags.disabled = false;
 	});
 
 	describe('API key scope enforcement', () => {

@@ -1,6 +1,3 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -144,7 +141,6 @@ export class N8nPackagesService {
 		private readonly dataTableExporter: DataTableExporter,
 		private readonly variableExporter: VariableExporter,
 		private readonly tagExporter: TagExporter,
-		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
@@ -209,8 +205,11 @@ export class N8nPackagesService {
 		const dependencyPolicy = request.dependencyPolicy ?? ExportDependencyPolicy.Fail;
 		const isReferenceOnly = dependencyPolicy === ExportDependencyPolicy.ReferenceOnly;
 
-		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
-		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
+		const workflowIds = request.workflowIds ?? [];
+		const folderIds = request.folderIds ?? [];
+		const projectIds = request.projectIds ?? [];
+		const includeTags = request.includeTags ?? true;
+		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;

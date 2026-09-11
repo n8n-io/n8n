@@ -12,22 +12,13 @@ n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.
 
 If you run n8n from the npm package, move to the Docker image before you update. Reuse your existing database and encryption key. See https://docs.n8n.io/deploy/host-n8n
 
-The package import API now uses `conflictPolicy` for both Agents and workflows.
-Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api/v1/n8n-packages/import-selection`.
-Both endpoints reject the old `workflowConflictPolicy` field.
-The ordinary import endpoint requires `conflictPolicy`.
-The selection endpoint defaults it to `new-version`.
-The ordinary import API also uses `idPolicy` and `publishingPolicy` for both Agents and workflows.
-These fields replace `workflowIdPolicy`, `agentIdPolicy`, `workflowPublishingPolicy`, and `agentPublishingPolicy`.
-The old fields are rejected.
-The selection import API replaces `workflowIdPolicy` with `idPolicy`.
-Only `source` is supported for `idPolicy`.
-Selection imports retain their fixed `match-source` publication policy.
+### What changed?
 
-Use `--conflict-policy`, `--id-policy`, and `--publishing-policy` in the CLI.
-The CLI rejects the old workflow-specific flag names, including their camelCase spellings.
-Selection imports accept `--conflict-policy` and `--id-policy`.
-There are no compatibility aliases or per-kind policy overrides.
+The `N8N_WORKFLOW_TAGS_DISABLED` environment variable was removed. Workflow tags are always enabled. n8n now ignores the variable.
+
+### When is action necessary?
+
+No action is required. Remove the variable from your configuration. Tag data was never deleted while the feature was disabled, so tags reappear in the UI and API after the upgrade.
 
 # 2.0.0
 
