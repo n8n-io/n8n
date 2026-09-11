@@ -21,7 +21,9 @@ import {
 	setActiveAppVersionApi,
 	saveAppVersionFileContentApi,
 	updateAppApi,
+	updateBindingApi,
 } from '@/features/apps/apps.api';
+import type { AppBindingPatch } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
 import type { App, AppTheme, AppVersion, Page, UpdateAppInput } from '@/features/apps/apps.types';
 
@@ -104,6 +106,15 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		setBindings(await addBindingApi(rootStore.restApiContext, projectId, appId, binding));
 	};
 
+	const updateBinding = async (
+		projectId: string,
+		appId: string,
+		key: string,
+		patch: AppBindingPatch,
+	) => {
+		setBindings(await updateBindingApi(rootStore.restApiContext, projectId, appId, key, patch));
+	};
+
 	const deleteBinding = async (projectId: string, appId: string, key: string) => {
 		setBindings(await deleteBindingApi(rootStore.restApiContext, projectId, appId, key));
 	};
@@ -165,6 +176,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 		fetchPages,
 		fetchBindings,
 		addBinding,
+		updateBinding,
 		deleteBinding,
 		fetchAppVersionFiles,
 		fetchAppVersionFileContent,

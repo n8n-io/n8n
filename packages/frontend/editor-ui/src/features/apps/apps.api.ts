@@ -1,6 +1,7 @@
 import type {
 	AppBinding,
 	AppPreviewStatus,
+	DataTablePermission,
 	DescribedBinding,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
@@ -168,6 +169,23 @@ export const addBindingApi = async (
 		'POST',
 		`/projects/${projectId}/apps/${appId}/bindings`,
 		binding,
+	);
+};
+
+export type AppBindingPatch = { permissions: DataTablePermission[] };
+
+export const updateBindingApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	key: string,
+	patch: AppBindingPatch,
+) => {
+	return await makeRestApiRequest<DescribedBindings>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/apps/${appId}/bindings/${key}`,
+		patch,
 	);
 };
 
