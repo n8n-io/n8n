@@ -98,4 +98,32 @@ describe('LogStreamingStore', () => {
 			expect(nodeEventGroup!.indeterminate).toBe(false);
 		});
 	});
+
+	describe('event group boundaries', () => {
+		it('should not put a longer group under one that only shares leading characters', () => {
+			logStreamingStore.addEventName('n8n.ai.tool.called');
+			logStreamingStore.addEventName('n8n.airgappedReporting.success');
+			logStreamingStore.addEventName('n8n.airgappedReporting.failed');
+
+			logStreamingStore.addDestination({
+				id: 'boundaryDestination',
+				label: 'Boundary Destination',
+				enabled: true,
+				subscribedEvents: [],
+				anonymizeAuditMessages: false,
+			});
+
+			const groups = logStreamingStore.items.boundaryDestination.eventGroups;
+			const aiGroup = groups.find((group) => group.name === 'n8n.ai');
+			const reportingGroup = groups.find((group) => group.name === 'n8n.airgappedReporting');
+
+			// `n8n.airgappedReporting` starts with `n8n.ai`, but the two are distinct
+			// groups: neither must swallow the other's events.
+			expect(aiGroup!.children.map((c) => c.name)).toEqual(['n8n.ai.tool.called']);
+			expect(reportingGroup!.children.map((c) => c.name)).toEqual([
+				'n8n.airgappedReporting.success',
+				'n8n.airgappedReporting.failed',
+			]);
+		});
+	});
 });
