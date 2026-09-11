@@ -1282,6 +1282,30 @@ describe('update-workflow MCP tool', () => {
 					);
 				});
 
+				test('swapping one loose node for a new one keeps the box count but is not pre-existing', async () => {
+					findWorkflowMock.mockResolvedValue(
+						Object.assign(buildExistingWorkflow(), { nodes: looseNodes(9), connections: {} }),
+					);
+
+					const result = await callHandler(
+						{
+							workflowId: 'wf-1',
+							operations: [{ type: 'removeNode', nodeName: 'Step 8' }, ...addNodeOps(9, 10)],
+						},
+						createOnTool(),
+					);
+
+					const response = parseResult(result);
+					expect(response.validationWarnings).toEqual(
+						expect.arrayContaining([
+							expect.objectContaining({ code: 'TOP_LEVEL_ITEMS_OVER_CEILING' }),
+						]),
+					);
+					expect(response.validationWarnings).not.toEqual(
+						expect.arrayContaining([expect.objectContaining({ preExisting: true })]),
+					);
+				});
+
 				test('a canvas already over the ceiling that this update adds loose nodes to is not marked pre-existing', async () => {
 					findWorkflowMock.mockResolvedValue(
 						Object.assign(buildExistingWorkflow(), { nodes: looseNodes(9), connections: {} }),

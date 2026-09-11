@@ -20,9 +20,9 @@ const summarize = (workflow: CanvasShape) =>
 		connectionsBySourceNode: workflow.connections,
 	});
 
-/** Boxes the canvas shows with every group collapsed: groups plus loose nodes. */
-export function topLevelBoxCount(workflow: CanvasShape): number {
-	return summarize(workflow).total;
+/** Names of the nodes that draw a box of their own: not in a group, not a sub-node. */
+export function summarizeUngroupedNodeNames(workflow: CanvasShape): string[] {
+	return summarize(workflow).ungroupedNodeNames;
 }
 
 /**

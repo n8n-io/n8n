@@ -34,7 +34,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
-import { topLevelBoxCount, topLevelItemsWarning } from './top-level-items-warning';
+import { summarizeUngroupedNodeNames, topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildUpdateVersionMetadata,
 	resolveVersionMetadata,
@@ -1360,13 +1360,16 @@ export const createUpdateWorkflowTool = (
 					: undefined;
 
 				if (ceilingWarning) {
-					// The warning is pre-existing only when the canvas was already over the ceiling and
-					// this update did not add any box. When the update added boxes, the agent must
-					// group them, so the warning is a normal one.
-					const boxesBefore = topLevelBoxCount(existingWorkflow);
-					const boxesAfter = topLevelBoxCount(updatedWorkflow);
+					const preExistingUngroupedNodeNames = new Set(
+						summarizeUngroupedNodeNames(existingWorkflow),
+					);
+
+					const hasNewlyAddedUngroupedNodeNames = summarizeUngroupedNodeNames(updatedWorkflow).some(
+						(name) => !preExistingUngroupedNodeNames.has(name),
+					);
+
 					const wasOverCeilingBefore = topLevelItemsWarning(existingWorkflow) !== undefined;
-					const preExisting = wasOverCeilingBefore && boxesAfter <= boxesBefore;
+					const preExisting = wasOverCeilingBefore && !hasNewlyAddedUngroupedNodeNames;
 					validationWarnings.push(
 						preExisting
 							? {
