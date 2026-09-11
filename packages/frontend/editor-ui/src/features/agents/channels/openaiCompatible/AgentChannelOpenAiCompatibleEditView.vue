@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { N8nButton, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { TIME } from '@/app/constants';
@@ -7,9 +7,15 @@ import type { AgentChannelViewProps } from '../types';
 import { isOpenAiCompatibleChannelRuntime } from './useOpenAiCompatibleChannelRuntime';
 
 const props = defineProps<AgentChannelViewProps>();
+const emit = defineEmits<{
+	// Emitted after a successful key rotation so the modal re-reads the refreshed
+	// integration status (the old connection id is dead after regenerate).
+	regenerated: [];
+}>();
 
 const i18n = useI18n();
-const copied = shallowRef(false);
+const copiedField = shallowRef<'baseUrl' | 'apiKey' | null>(null);
+const regenerateError = ref<string | null>(null);
 
 const runtime = computed(() => {
 	if (!isOpenAiCompatibleChannelRuntime(props.runtime)) {
@@ -21,17 +27,40 @@ const runtime = computed(() => {
 });
 
 const revealedKey = computed(() => runtime.value.apiKey.value);
+// Regeneration runs through the runtime, not the modal's connect, so the modal's
+// `loading` prop stays false. Fold the runtime's own loading in so this view and
+// (through `defineExpose`) the modal both treat the rotation as in flight.
+const busy = computed(() => props.loading || runtime.value.loading.value);
+const displayError = computed(() => regenerateError.value ?? (props.errorMessage || ''));
 
-async function copyValue(value: string) {
+async function copyValue(field: 'baseUrl' | 'apiKey', value: string) {
 	await navigator.clipboard.writeText(value);
-	copied.value = true;
+	copiedField.value = field;
 	setTimeout(() => {
-		copied.value = false;
+		if (copiedField.value === field) {
+			copiedField.value = null;
+		}
 	}, 2 * TIME.SECOND);
 }
 
+function copyLabel(field: 'baseUrl' | 'apiKey'): string {
+	return copiedField.value === field
+		? i18n.baseText('agents.builder.addTrigger.copied')
+		: i18n.baseText('agents.builder.addTrigger.copy');
+}
+
 async function handleRegenerate() {
-	await runtime.value.regenerate();
+	if (busy.value) return;
+	regenerateError.value = null;
+	try {
+		await runtime.value.regenerate();
+	} catch {
+		// The runtime path has no shared error surface, so report inline and leave
+		// the button active for a retry.
+		regenerateError.value = i18n.baseText('agents.channels.openaiCompatible.regenerate.error');
+		return;
+	}
+	emit('regenerated');
 }
 
 function selectInput(event: FocusEvent) {
@@ -41,7 +70,7 @@ function selectInput(event: FocusEvent) {
 const currentSettings = computed(() => undefined);
 const validationError = computed(() => null);
 
-defineExpose({ currentSettings, validationError });
+defineExpose({ currentSettings, validationError, loading: busy });
 </script>
 
 <template>
@@ -59,12 +88,13 @@ defineExpose({ currentSettings, validationError });
 			>
 				<template #suffix>
 					<N8nIconButton
-						icon="copy"
+						:icon="copiedField === 'baseUrl' ? 'check' : 'copy'"
 						variant="ghost"
 						size="small"
-						:aria-label="i18n.baseText('generic.copy')"
+						:title="copyLabel('baseUrl')"
+						:aria-label="copyLabel('baseUrl')"
 						data-testid="openai-compatible-copy-base-url"
-						@click.stop="copyValue(runtime.baseUrl.value)"
+						@click.stop="copyValue('baseUrl', runtime.baseUrl.value)"
 					/>
 				</template>
 			</N8nInput>
@@ -83,12 +113,13 @@ defineExpose({ currentSettings, validationError });
 			>
 				<template #suffix>
 					<N8nIconButton
-						:icon="copied ? 'check' : 'copy'"
+						:icon="copiedField === 'apiKey' ? 'check' : 'copy'"
 						variant="ghost"
 						size="small"
-						:aria-label="i18n.baseText('generic.copy')"
+						:title="copyLabel('apiKey')"
+						:aria-label="copyLabel('apiKey')"
 						data-testid="openai-compatible-copy-key"
-						@click.stop="copyValue(revealedKey)"
+						@click.stop="copyValue('apiKey', revealedKey)"
 					/>
 				</template>
 			</N8nInput>
@@ -103,15 +134,15 @@ defineExpose({ currentSettings, validationError });
 		<N8nButton
 			variant="subtle"
 			size="medium"
-			:loading="loading"
+			:loading="busy"
 			data-testid="openai-compatible-regenerate-button"
 			@click="handleRegenerate"
 		>
 			{{ i18n.baseText('agents.channels.openaiCompatible.regenerate.button') }}
 		</N8nButton>
 
-		<N8nText v-if="errorMessage" size="small" :class="$style.errorText">
-			{{ errorMessage }}
+		<N8nText v-if="displayError" size="small" :class="$style.errorText">
+			{{ displayError }}
 		</N8nText>
 	</div>
 </template>

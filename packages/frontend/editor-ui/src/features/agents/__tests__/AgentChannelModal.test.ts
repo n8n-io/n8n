@@ -49,7 +49,7 @@ vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
 		props: ['modelValue', 'mode', 'isPublished', 'runtime'],
-		emits: ['update:modelValue', 'connect', 'connected'],
+		emits: ['update:modelValue', 'connect', 'connected', 'generated', 'cancel', 'regenerated'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
 			// still reporting `loading`, so the two are controlled together here.
@@ -74,6 +74,8 @@ vi.mock('../channels/registry', async () => {
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
+				<button data-testid="generate-key" @click="$emit('generated', 'conn-generated')" />
+				<button data-testid="cancel-setup" @click="$emit('cancel')" />
 			</div>
 		`,
 	};
@@ -601,6 +603,70 @@ describe('AgentChannelModal', () => {
 
 		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
 			deleteExternalResource: true,
+		});
+	});
+
+	describe('unconfirmed generated key', () => {
+		it('rolls back the generated connection when the modal is closed', async () => {
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="generate-key"]').trigger('click');
+			await wrapper.get('[data-testid="close-dialog"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('example', 'conn-generated', {});
+			expect(wrapper.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('rolls back the generated connection on cancel', async () => {
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="generate-key"]').trigger('click');
+			await wrapper.get('[data-testid="cancel-setup"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('example', 'conn-generated', {});
+			expect(wrapper.emitted('update:open')).toEqual([[false]]);
+		});
+
+		it('rolls back the generated connection when going back to the list', async () => {
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="generate-key"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-back"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('example', 'conn-generated', {});
+			// Back returns to the list rather than closing the modal.
+			expect(wrapper.emitted('update:open')).toBeUndefined();
+		});
+
+		it('rolls back the generated connection when the modal unmounts', async () => {
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="generate-key"]').trigger('click');
+			wrapper.unmount();
+			await flushPromises();
+
+			expect(mocks.disconnect).toHaveBeenCalledWith('example', 'conn-generated', {});
+		});
+
+		it('keeps the connection when the generated key is confirmed', async () => {
+			const wrapper = mountModal('example_setup');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="generate-key"]').trigger('click');
+			// The platform reports the key as confirmed, so the persisted entry is
+			// intentional and must not be rolled back on close.
+			await wrapper.get('[data-testid="platform-own-flow"]').trigger('click');
+			await flushPromises();
+
+			expect(wrapper.emitted('channel-connected')).toEqual([['example']]);
+			expect(mocks.disconnect).not.toHaveBeenCalled();
 		});
 	});
 

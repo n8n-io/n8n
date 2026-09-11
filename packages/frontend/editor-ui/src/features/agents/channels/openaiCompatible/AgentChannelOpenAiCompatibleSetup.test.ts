@@ -130,6 +130,32 @@ describe('AgentChannelOpenAiCompatibleSetup', () => {
 		expect(keyCopy.getAttribute('aria-label')).toBe('agents.builder.addTrigger.copy');
 	});
 
+	it('surfaces a failed generation and stays retryable', async () => {
+		const runtime = createRuntime({ connect: vi.fn().mockRejectedValue(new Error('boom')) });
+		const { getByTestId, getByText, emitted } = renderComponent({ props: baseProps(runtime) });
+
+		await fireEvent.click(getByTestId('openai-compatible-connect-button'));
+
+		await waitFor(() =>
+			expect(getByText('agents.channels.openaiCompatible.generate.error')).toBeVisible(),
+		);
+		expect(emitted().generated).toBeFalsy();
+		// The button stays available so the user can retry.
+		expect(getByTestId('openai-compatible-connect-button')).toBeVisible();
+	});
+
+	it('locks the flow while the runtime is generating', () => {
+		const runtime = createRuntime({
+			apiKey: ref('sk-existing'),
+			connectionId: ref('conn-1'),
+			loading: ref(true),
+		});
+		const { getByTestId } = renderComponent({ props: baseProps(runtime) });
+
+		expect(getByTestId('openai-compatible-confirm-button')).toBeDisabled();
+		expect(getByTestId('openai-compatible-cancel-button')).toBeDisabled();
+	});
+
 	it('shows connection errors below the stepper', () => {
 		const runtime = createRuntime();
 		const { getByText } = renderComponent({

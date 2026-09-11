@@ -13,7 +13,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import {
 	agentChannelPlatforms,
@@ -452,6 +452,16 @@ function handleSetupCancel() {
 	completeAndClose();
 }
 
+/**
+ * The OpenAI-compatible edit view rotates the key through its runtime, which
+ * refreshes the shared status first. Re-capture the connected credential so a
+ * later save/disconnect targets the live integration, not the rotated-away one.
+ */
+function handleChannelRegenerated() {
+	if (!selectedChannelType.value) return;
+	prepareChannelEdit(selectedChannelType.value);
+}
+
 async function handleDisconnected(
 	channelType: string,
 	credentialId?: string,
@@ -565,6 +575,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The host (builder tab/agent/page) can unmount this modal without going through
+// a close path — roll back any key that was generated but never confirmed so it
+// is not left configured on the backend.
+onBeforeUnmount(() => {
+	void rollbackUnconfirmedConnection();
+});
 </script>
 
 <template>
@@ -695,6 +712,7 @@ watch(
 						@connect="saveChannelConfig"
 						@connected="handlePlatformConnected"
 						@generated="trackUnconfirmedConnection"
+						@regenerated="handleChannelRegenerated"
 						@cancel="handleSetupCancel"
 					/>
 				</div>

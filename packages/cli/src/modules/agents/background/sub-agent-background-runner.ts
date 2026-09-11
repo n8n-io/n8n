@@ -63,6 +63,7 @@ export class SubAgentBackgroundRunner {
 			| 'user'
 			| 'instrumentation'
 			| 'parentWorkspaceHandle'
+			| 'disableMemory'
 		>,
 	): Promise<BackgroundJobReceipt> {
 		// Throws on an unusable task name — before the job row exists, so a bad
@@ -136,6 +137,7 @@ export class SubAgentBackgroundRunner {
 					...(context.parentWorkspaceHandle !== undefined
 						? { parentWorkspaceHandle: context.parentWorkspaceHandle }
 						: {}),
+					...(context.disableMemory !== undefined ? { disableMemory: context.disableMemory } : {}),
 				},
 			)
 			.then((result) => settlementFor(result))

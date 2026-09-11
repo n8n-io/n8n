@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { N8nButton, N8nIconButton, N8nInput, N8nStepper, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { TIME } from '@/app/constants';
@@ -15,6 +15,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const copiedField = shallowRef<'baseUrl' | 'apiKey' | 'yaml' | null>(null);
+const generateError = ref<string | null>(null);
 
 const runtime = computed(() => {
 	if (!isOpenAiCompatibleChannelRuntime(props.runtime)) {
@@ -22,6 +23,13 @@ const runtime = computed(() => {
 	}
 	return props.runtime;
 });
+
+// Key generation runs through the runtime (not the modal's connect), so the
+// modal's `loading` prop stays false while it is pending. Fold the runtime's
+// own loading in so every action here — and, through `defineExpose`, the modal
+// itself — treats the flow as in flight.
+const busy = computed(() => props.loading || runtime.value.loading.value);
+const displayError = computed(() => generateError.value ?? (props.errorMessage || ''));
 
 const revealedKey = computed(() => runtime.value.apiKey.value);
 const isLibrechat = computed(() => props.integration.type === 'librechat');
@@ -85,7 +93,15 @@ function copyLabel(field: 'baseUrl' | 'apiKey' | 'yaml'): string {
 }
 
 async function handleGenerate() {
-	await runtime.value.connect();
+	generateError.value = null;
+	try {
+		await runtime.value.connect();
+	} catch {
+		// The runtime path has no shared error surface, so report inline and leave
+		// the button active for a retry.
+		generateError.value = i18n.baseText('agents.channels.openaiCompatible.generate.error');
+		return;
+	}
 	const connectionId = runtime.value.connectionId.value;
 	if (connectionId) {
 		emit('generated', connectionId);
@@ -107,7 +123,7 @@ function selectInput(event: FocusEvent) {
 const currentSettings = computed(() => undefined);
 const validationError = computed(() => null);
 
-defineExpose({ currentSettings, validationError });
+defineExpose({ currentSettings, validationError, loading: busy });
 </script>
 
 <template>
@@ -131,7 +147,7 @@ defineExpose({ currentSettings, validationError });
 							v-if="!revealedKey"
 							variant="subtle"
 							size="medium"
-							:loading="loading"
+							:loading="busy"
 							data-testid="openai-compatible-connect-button"
 							@click="handleGenerate"
 						>
@@ -232,7 +248,7 @@ defineExpose({ currentSettings, validationError });
 						<N8nButton
 							variant="solid"
 							size="medium"
-							:disabled="!revealedKey || loading"
+							:disabled="!revealedKey || busy"
 							data-testid="openai-compatible-confirm-button"
 							@click="handleConfirm"
 						>
@@ -241,7 +257,7 @@ defineExpose({ currentSettings, validationError });
 						<N8nButton
 							variant="outline"
 							size="medium"
-							:disabled="loading"
+							:disabled="busy"
 							data-testid="openai-compatible-cancel-button"
 							@click="handleCancel"
 						>
@@ -252,8 +268,8 @@ defineExpose({ currentSettings, validationError });
 			</template>
 		</N8nStepper>
 
-		<N8nText v-if="errorMessage" size="small" :class="$style.errorText">
-			{{ errorMessage }}
+		<N8nText v-if="displayError" size="small" :class="$style.errorText">
+			{{ displayError }}
 		</N8nText>
 	</div>
 </template>
@@ -324,7 +340,7 @@ defineExpose({ currentSettings, validationError });
 	padding: var(--spacing--xs) var(--spacing--xl) var(--spacing--xs) var(--spacing--xs);
 	font-family: monospace;
 	font-size: var(--font-size--2xs);
-	line-height: var(--font-line-height--loose);
+	line-height: var(--line-height--xl);
 	// Wrap long lines (baseURL, key) instead of overflowing the dialog.
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;

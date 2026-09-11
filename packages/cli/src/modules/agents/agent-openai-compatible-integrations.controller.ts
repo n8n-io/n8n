@@ -5,12 +5,16 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { isOpenAiCompatibleChannelType } from './integrations/platforms/openai-compatible-chat-integration';
 import { OpenAiCompatibleSetupService } from './integrations/platforms/openai-compatible-setup.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentOpenAiCompatibleIntegrationsController {
-	constructor(private readonly setupService: OpenAiCompatibleSetupService) {}
+	constructor(
+		private readonly setupService: OpenAiCompatibleSetupService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+	) {}
 
 	@Post('/:agentId/integrations/:type/generate-key')
 	@ProjectScope('agent:update')
@@ -29,6 +33,11 @@ export class AgentOpenAiCompatibleIntegrationsController {
 			projectId: req.params.projectId,
 			type,
 			user: req.user,
+			onPersisted: () =>
+				this.agentUpdateBroadcaster.notify(
+					{ projectId: req.params.projectId, agentId },
+					req.headers?.['push-ref'],
+				),
 		});
 	}
 
@@ -49,6 +58,11 @@ export class AgentOpenAiCompatibleIntegrationsController {
 			projectId: req.params.projectId,
 			type,
 			user: req.user,
+			onPersisted: () =>
+				this.agentUpdateBroadcaster.notify(
+					{ projectId: req.params.projectId, agentId },
+					req.headers?.['push-ref'],
+				),
 		});
 	}
 }

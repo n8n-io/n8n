@@ -43,7 +43,7 @@ describe('AgentOpenAiCompatibleChatController', () => {
 			const { controller, chatService } = makeController();
 			const res = makeRes();
 
-			await controller.listModels({ headers: {} } as never, res as never, 'agent-1');
+			await controller.listModels({ headers: {} } as never, res as never, 'project-1', 'agent-1');
 
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(chatService.authenticate).not.toHaveBeenCalled();
@@ -52,7 +52,7 @@ describe('AgentOpenAiCompatibleChatController', () => {
 		it('returns the agent as a single-item model list once authenticated', async () => {
 			const { controller, chatService } = makeController();
 			chatService.authenticate.mockResolvedValue({
-				agent: {} as never,
+				agent: { name: 'Agent One' } as never,
 				credentialId: 'credential-1',
 				type: 'openwebui',
 			});
@@ -61,13 +61,14 @@ describe('AgentOpenAiCompatibleChatController', () => {
 			await controller.listModels(
 				{ headers: { authorization: 'Bearer secret' } } as never,
 				res as never,
+				'project-1',
 				'agent-1',
 			);
 
-			expect(chatService.authenticate).toHaveBeenCalledWith('agent-1', 'secret');
+			expect(chatService.authenticate).toHaveBeenCalledWith('agent-1', 'project-1', 'secret');
 			expect(res.json).toHaveBeenCalledWith({
 				object: 'list',
-				data: [{ id: 'agent-1', object: 'model', owned_by: 'n8n' }],
+				data: [{ id: 'agent-1', name: 'Agent One', object: 'model', owned_by: 'n8n' }],
 			});
 		});
 	});
@@ -77,7 +78,12 @@ describe('AgentOpenAiCompatibleChatController', () => {
 			const { controller, chatService } = makeController();
 			const res = makeRes();
 
-			await controller.chatCompletions({ headers: {}, body: {} } as never, res as never, 'agent-1');
+			await controller.chatCompletions(
+				{ headers: {}, body: {} } as never,
+				res as never,
+				'project-1',
+				'agent-1',
+			);
 
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(chatService.authenticate).not.toHaveBeenCalled();
@@ -96,6 +102,7 @@ describe('AgentOpenAiCompatibleChatController', () => {
 				controller.chatCompletions(
 					{ headers: { authorization: 'Bearer secret' }, body: {} } as never,
 					res as never,
+					'project-1',
 					'agent-1',
 				),
 			).rejects.toThrow('"messages" is required');
@@ -116,10 +123,16 @@ describe('AgentOpenAiCompatibleChatController', () => {
 					body: { messages: [{ role: 'user', content: 'Hi' }] },
 				} as never,
 				res as never,
+				'project-1',
 				'agent-1',
 			);
 
-			expect(chatService.runNonStreaming).toHaveBeenCalledWith(channel, 'user: Hi', 'hash');
+			expect(chatService.runNonStreaming).toHaveBeenCalledWith(
+				channel,
+				'user: Hi',
+				'hash',
+				expect.any(AbortSignal),
+			);
 			expect(res.json).toHaveBeenCalledWith(
 				expect.objectContaining({
 					object: 'chat.completion',
@@ -155,6 +168,7 @@ describe('AgentOpenAiCompatibleChatController', () => {
 					body: { messages: [{ role: 'user', content: 'Hi' }], stream: true },
 				} as never,
 				res as never,
+				'project-1',
 				'agent-1',
 			);
 
@@ -188,6 +202,7 @@ describe('AgentOpenAiCompatibleChatController', () => {
 					body: { messages: [{ role: 'user', content: 'Hi' }], stream: true },
 				} as never,
 				res as never,
+				'project-1',
 				'agent-1',
 			);
 

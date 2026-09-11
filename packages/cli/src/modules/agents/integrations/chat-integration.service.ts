@@ -315,6 +315,13 @@ export class ChatIntegrationService {
 			throw error;
 		}
 
+		// A stateless channel (e.g. the OpenAI-compatible channels) builds no
+		// runtime: `establishConnection` returns before creating a connection, so
+		// `disconnectOne` never withdraws a status for it and the reconciler skips
+		// it. Recording it connected would leave a status row nothing ever clears;
+		// its status is derived from config instead (see channel-status-report.ts).
+		if (this.integrationRegistry.get(integration.type)?.hasNoRuntimeProcess) return;
+
 		await this.statusReporter.recordConnected(ref);
 	}
 

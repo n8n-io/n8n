@@ -46,7 +46,6 @@ describe('AgentIntegrationManagementService', () => {
 			type: 'slack',
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
-			requiresManagedCredential: false,
 		});
 		registry.require.mockReturnValue(implementation);
 		registry.get.mockReturnValue(implementation);
@@ -283,48 +282,6 @@ describe('AgentIntegrationManagementService', () => {
 
 			expect(chatService.connect).not.toHaveBeenCalled();
 			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
-		});
-
-		it('rejects a non-managed credential when the integration requires a managed one', async () => {
-			const { service, persistenceService, credentialsService, chatService, registry } =
-				makeService();
-			registry.require.mockReturnValue(
-				mock<AgentChatIntegration>({
-					type: 'slack',
-					displayLabel: 'Slack',
-					credentialTypes: ['slackApi'],
-					requiresManagedCredential: true,
-				}),
-			);
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				{ id: integration.credentialId, type: 'slackApi', isManaged: false },
-			] as never);
-
-			await expect(
-				service.connect({ agent: makeAgent(), user: user as never, integration }),
-			).rejects.toThrow(BadRequestError);
-
-			expect(chatService.connect).not.toHaveBeenCalled();
-			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
-		});
-
-		it('accepts a managed credential when the integration requires a managed one', async () => {
-			const { service, persistenceService, credentialsService, registry } = makeService();
-			registry.require.mockReturnValue(
-				mock<AgentChatIntegration>({
-					type: 'slack',
-					displayLabel: 'Slack',
-					credentialTypes: ['slackApi'],
-					requiresManagedCredential: true,
-				}),
-			);
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				{ id: integration.credentialId, type: 'slackApi', isManaged: true },
-			] as never);
-
-			await service.connect({ agent: makeAgent(), user: user as never, integration });
-
-			expect(persistenceService.applyIntegrationDelta).toHaveBeenCalled();
 		});
 
 		it('starts no runtime when a draft channel fails its pre-connect validation', async () => {

@@ -146,6 +146,24 @@ export interface ReconstructAgentRuntimeParams {
 	 * instead of acquiring its own sandbox.
 	 */
 	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
+	/**
+	 * Build with no persistent memory: strip the memory config so the runtime
+	 * loads nothing, saves nothing, and runs no observer. A stateless top-level
+	 * run (OpenAI-compatible channels) propagates this to its delegated and
+	 * background children, so a child of a stateless turn does not write memory
+	 * rows nobody will ever read.
+	 */
+	disableMemory?: boolean;
+}
+
+/**
+ * Turn off persistent memory by clearing the config's `enabled` flag.
+ * `buildFromJson` gates the whole memory subsystem (store, observation log,
+ * mid-run observer) on `config.memory?.enabled`.
+ */
+function withMemoryDisabled(config: AgentJsonConfig): AgentJsonConfig {
+	if (!config.memory) return config;
+	return { ...config, memory: { ...config.memory, enabled: false } };
 }
 
 async function getChatIntegrationToolServices() {
@@ -255,11 +273,10 @@ export class AgentRuntimeReconstructionService {
 			throw new UserError('Agent has no JSON config.');
 		}
 
-		// Stateless runtimes drop memory entirely: `buildFromJson` gates the whole
-		// memory subsystem on `config.memory?.enabled`, so clearing it skips the
+		// Stateless runtimes drop memory entirely: clearing the config skips the
 		// store, the observation log, and the mid-run observer.
-		if (disableMemory && config.memory) {
-			config = { ...config, memory: { ...config.memory, enabled: false } };
+		if (disableMemory) {
+			config = withMemoryDisabled(config);
 		}
 
 		// Published/integration runs have no interactive n8n user and keep
@@ -309,6 +326,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
+			disableMemory,
 		});
 		return {
 			...runtime,
@@ -464,6 +482,13 @@ export class AgentRuntimeReconstructionService {
 		params: ReconstructAgentRuntimeParams,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = params.config;
+
+		// A stateless top-level run propagates `disableMemory` to its children, so
+		// a sub-agent of a stateless turn does not persist memory rows nobody reads.
+		if (params.disableMemory) {
+			config = withMemoryDisabled(config);
+		}
+
 		let unavailableTools: UnavailableTool[] = [];
 		if (params.user && config.tools?.length) {
 			// Sub-agent runtimes are built per delegation and never cached, so the
@@ -511,6 +536,11 @@ export class AgentRuntimeReconstructionService {
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 		/** Tools the access filter already dropped; reported together with build-time stubs. */
 		unavailableTools?: UnavailableTool[];
+		/**
+		 * Stateless run: propagate the no-memory flag to the delegation and
+		 * background tools so foreground and background children inherit it.
+		 */
+		disableMemory?: boolean;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -533,6 +563,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			parentWorkspace,
 			allowBackgroundTasks = true,
+			disableMemory,
 		} = options;
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
@@ -649,6 +680,7 @@ export class AgentRuntimeReconstructionService {
 			instrumentation,
 			sandboxPrincipalHash,
 			backgroundTasksEnabled,
+			...(disableMemory !== undefined ? { disableMemory } : {}),
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -821,6 +853,8 @@ export class AgentRuntimeReconstructionService {
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 		backgroundTasksEnabled: boolean;
 		parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
+		/** Stateless run: hand the no-memory flag to delegated and background children. */
+		disableMemory?: boolean;
 	}): Promise<void> {
 		const {
 			agent,
@@ -840,6 +874,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			backgroundTasksEnabled,
 			parentWorkspace,
+			disableMemory,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
@@ -977,6 +1012,7 @@ export class AgentRuntimeReconstructionService {
 				parentWorkspaceHandle,
 				user,
 				instrumentation,
+				...(disableMemory !== undefined ? { disableMemory } : {}),
 			});
 			this.attachWriteTodosTool(agent, agentId);
 
@@ -992,6 +1028,7 @@ export class AgentRuntimeReconstructionService {
 					user,
 					instrumentation,
 					...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
+					...(disableMemory !== undefined ? { disableMemory } : {}),
 				});
 
 				agent.volatileInstructionsProvider(async ({ persistence }) => {
@@ -1036,6 +1073,8 @@ export class AgentRuntimeReconstructionService {
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		/** Stateless run: forwarded to the delegate tool's run context so foreground children inherit it. */
+		disableMemory?: boolean;
 	}): Promise<void> {
 		const {
 			agent,
@@ -1049,6 +1088,7 @@ export class AgentRuntimeReconstructionService {
 			parentWorkspaceHandle,
 			user,
 			instrumentation,
+			disableMemory,
 		} = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
@@ -1066,6 +1106,7 @@ export class AgentRuntimeReconstructionService {
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
 				instrumentation,
+				...(disableMemory !== undefined ? { disableMemory } : {}),
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
@@ -1114,6 +1155,8 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
+		/** Stateless run: forwarded (via runContext) so background children inherit it. */
+		disableMemory?: boolean;
 	}): Promise<void> {
 		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
 		const {

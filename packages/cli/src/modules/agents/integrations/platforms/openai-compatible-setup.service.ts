@@ -33,6 +33,7 @@ export class OpenAiCompatibleSetupService {
 		projectId: string;
 		type: OpenAiCompatibleChannelType;
 		user: User;
+		onPersisted?: () => void;
 	}): Promise<AgentGenerateChannelKeyResponse> {
 		const agent = await this.getAgent(options.agentId, options.projectId);
 		const connectionId = this.generateConnectionId();
@@ -43,10 +44,22 @@ export class OpenAiCompatibleSetupService {
 			settings: {},
 		} satisfies AgentIntegrationConfig;
 
+		// A channel keeps at most one live key per type. Replace any existing entry
+		// of this type in the same write so a second generate cannot append a
+		// second entry (both derived tokens would then keep validating). The old
+		// entry — and the token derived from it — stops validating only once the
+		// new entry is durable, so a failed write leaves the previous key working
+		// rather than leaving the agent with no channel.
+		const existing = (agent.integrations ?? []).find((entry) => entry.type === options.type);
+
 		await this.integrationManagementService.connect({
 			agent,
 			user: options.user,
 			integration,
+			onPersisted: options.onPersisted,
+			...(existing
+				? { replaces: { type: existing.type, credentialId: existing.credentialId } }
+				: {}),
 		});
 
 		return {
@@ -60,6 +73,7 @@ export class OpenAiCompatibleSetupService {
 		projectId: string;
 		type: OpenAiCompatibleChannelType;
 		user: User;
+		onPersisted?: () => void;
 	}): Promise<AgentGenerateChannelKeyResponse> {
 		const agent = await this.getAgent(options.agentId, options.projectId);
 		const current = (agent.integrations ?? []).find((entry) => entry.type === options.type);
@@ -69,16 +83,8 @@ export class OpenAiCompatibleSetupService {
 			);
 		}
 
-		// Disconnect first so the new connection id (and thus the new derived
-		// token) replaces the old one; the old token stops validating the moment
-		// its entry is gone.
-		await this.integrationManagementService.disconnect({
-			agent,
-			user: options.user,
-			type: options.type,
-			credentialId: current.credentialId,
-		});
-
+		// `generateKey` swaps the existing entry of this type for a fresh one in a
+		// single write, so the old key keeps validating until the new one lands.
 		return await this.generateKey(options);
 	}
 

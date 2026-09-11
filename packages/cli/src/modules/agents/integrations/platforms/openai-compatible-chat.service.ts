@@ -177,6 +177,10 @@ export class OpenAiCompatibleChatService {
 		channel: AuthenticatedOpenAiChannel,
 		message: string,
 		sandboxPrincipalHash: AgentSandboxPrincipalHash,
+		// Optional cancel signal from the controller: when the client disconnects,
+		// this propagates down to the model/tool run so it actually stops. Omitting
+		// it keeps the previous, uncancellable behavior.
+		signal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		return this.orchestrator.executeForChatPublished({
 			agentId: channel.agent.id,
@@ -186,6 +190,7 @@ export class OpenAiCompatibleChatService {
 			integrationType: channel.type,
 			sandboxPrincipalHash,
 			disableMemory: true,
+			...(signal ? { abortSignal: signal } : {}),
 		});
 	}
 
@@ -194,10 +199,11 @@ export class OpenAiCompatibleChatService {
 		channel: AuthenticatedOpenAiChannel,
 		message: string,
 		sandboxPrincipalHash: AgentSandboxPrincipalHash,
+		signal?: AbortSignal,
 	): Promise<NonStreamingResult> {
 		let content = '';
 		let finishReason = 'stop';
-		for await (const chunk of this.execute(channel, message, sandboxPrincipalHash)) {
+		for await (const chunk of this.execute(channel, message, sandboxPrincipalHash, signal)) {
 			if (chunk.type === 'text-delta') {
 				content += chunk.delta;
 			} else if (chunk.type === 'finish') {

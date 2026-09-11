@@ -83,6 +83,10 @@ export function useOpenAiCompatibleChannelRuntime(
 			);
 			apiKey.value = result.apiKey;
 			connectionId.value = result.connectionId;
+			// Regenerate replaces the integration entry on the backend, so the old
+			// connection id is now dead. Refresh the shared status (as `connect`
+			// does) so the modal targets the live entry for save/disconnect.
+			await context.fetchStatus([type]);
 		} finally {
 			loading.value = false;
 		}

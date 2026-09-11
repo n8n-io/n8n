@@ -30,6 +30,7 @@ export interface BackgroundJobToolsOptions {
 		| 'user'
 		| 'instrumentation'
 		| 'parentWorkspaceHandle'
+		| 'disableMemory'
 	>;
 }
 

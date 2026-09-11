@@ -67,6 +67,30 @@ describe('OpenAiCompatibleSetupService', () => {
 			expect(result.apiKey).toBe('n8n_agent_derived_token');
 		});
 
+		it('replaces an existing connection of the same type instead of appending', async () => {
+			const { service, integrationManagementService, agentRepository } = makeService();
+			const agent = makeAgent({
+				integrations: [{ type: 'openwebui', credentialId: 'connection-old' }] as never,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.generateKey({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				type: 'openwebui',
+				user: user as never,
+			});
+
+			// A second generate must not leave the previous entry (and its derived
+			// token) valid, so it swaps in the same write rather than appending.
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent,
+				user,
+				integration: { type: 'openwebui', credentialId: result.connectionId, settings: {} },
+				replaces: { type: 'openwebui', credentialId: 'connection-old' },
+			});
+		});
+
 		it('throws when the agent does not exist', async () => {
 			const { service, agentRepository } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
@@ -83,7 +107,7 @@ describe('OpenAiCompatibleSetupService', () => {
 	});
 
 	describe('regenerateKey', () => {
-		it('disconnects the current connection and generates a fresh one', async () => {
+		it('swaps the current connection for a fresh one in a single write', async () => {
 			const { service, integrationManagementService, agentRepository } = makeService();
 			const agent = makeAgent({
 				integrations: [{ type: 'openwebui', credentialId: 'connection-old' }] as never,
@@ -97,12 +121,15 @@ describe('OpenAiCompatibleSetupService', () => {
 				user: user as never,
 			});
 
-			expect(integrationManagementService.disconnect).toHaveBeenCalledWith({
+			// The old entry is removed and the new one added in one write, so the old
+			// key keeps validating until the new one is durable.
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
 				agent,
 				user,
-				type: 'openwebui',
-				credentialId: 'connection-old',
+				integration: { type: 'openwebui', credentialId: result.connectionId, settings: {} },
+				replaces: { type: 'openwebui', credentialId: 'connection-old' },
 			});
+			expect(integrationManagementService.disconnect).not.toHaveBeenCalled();
 			expect(result.connectionId).toMatch(/^[0-9a-f]{32}$/);
 			expect(result.connectionId).not.toBe('connection-old');
 		});

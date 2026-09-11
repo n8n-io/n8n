@@ -11,6 +11,9 @@ import type { AgentChannelStatus } from '../entities/agent-channel-status.entity
 /** Decides whether a row still counts; see `AgentChannelStatusReporter.isLive`. */
 export type IsLiveRow = (row: AgentChannelStatus) => boolean;
 
+/** True for a type with no persistent process to prove liveness (e.g. openwebui/librechat). */
+export type HasNoRuntimeProcess = (integrationType: string) => boolean;
+
 /**
  * Turn what is configured, plus what each process observed, into what the API
  * reports.
@@ -31,9 +34,6 @@ export type IsLiveRow = (row: AgentChannelStatus) => boolean;
  * No live rows means `starting`, not an error: it is the honest answer right
  * after a publish, and after an upgrade, before any pass has reported in.
  */
-/** True for a type with no persistent process to prove liveness (e.g. openwebui/librechat). */
-export type HasNoRuntimeProcess = (integrationType: string) => boolean;
-
 export function buildChannelStatusReport(
 	integrations: AgentIntegrationConfig[] | null | undefined,
 	activeVersionId: string | null,
