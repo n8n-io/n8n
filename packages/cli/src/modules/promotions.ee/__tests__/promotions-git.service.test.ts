@@ -318,6 +318,65 @@ describe('PromotionsGitService (git operations)', () => {
 
 		beforeEach(() => {
 			mockGit.revparse.mockResolvedValue('abc123\n');
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('pushes to a new branch and restores the local base branch', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			const result = await call({
+				targetBranchName: 'n8n-promotion/2026-01-01T00-00-00-000Z',
+			});
+
+			expect(mockGit.push).toHaveBeenCalledWith(
+				'origin',
+				'HEAD:refs/heads/n8n-promotion/2026-01-01T00-00-00-000Z',
+			);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(result).toEqual({ commitSha: 'commit' });
+		});
+
+		it('restores the local base branch when a new branch push fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(new Error('remote: rejected'));
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(BadRequestError);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+		});
+
+		it('rejects a new branch push when the local base branch does not exist', async () => {
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
+				'Local branch does not exist: main',
+			);
+			expect(mockGit.commit).not.toHaveBeenCalled();
+			expect(mockGit.push).not.toHaveBeenCalled();
+		});
+
+		it('keeps a successful result when the local reset fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).resolves.toEqual({
+				commitSha: 'commit',
+			});
+			expect(logger.warn).toHaveBeenCalledWith('Failed to restore Git checkout after promotion', {
+				branchName: 'main',
+				targetBranchName: 'n8n-promotion/x',
+			});
+		});
+
+		it('keeps the push error when the local reset also fails', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n').mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.revparse.mockResolvedValueOnce('commit\n');
+			mockGit.push.mockRejectedValueOnce(
+				new GitPluginError(undefined, 'timeout', 'block timeout reached'),
+			);
+
+			await expect(call({ targetBranchName: 'n8n-promotion/x' })).rejects.toThrow(
+				ServiceUnavailableError,
+			);
 		});
 
 		it('reports a stalled push as a retryable 503', async () => {
@@ -343,6 +402,37 @@ describe('PromotionsGitService (git operations)', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('secret-token');
 			expect(logged).not.toContain('non-fast-forward');
+		});
+	});
+
+	describe('prepareCheckoutForPromotion', () => {
+		const call = async () =>
+			await gitService.prepareCheckoutForPromotion({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				configId,
+			});
+
+		it('fetches and resets to the configured remote base branch', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+
+			await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
+		});
+
+		it('rejects a promotion when the remote base branch does not exist', async () => {
+			mockGit.listRemote.mockResolvedValue('');
+
+			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
+			expect(mockGit.fetch).not.toHaveBeenCalled();
 		});
 	});
 

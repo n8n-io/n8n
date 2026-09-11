@@ -320,9 +320,7 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 		});
 
-		// `createBranchOnPromotion` is not part of the cache identity, so flipping it
-		// must leave the checkout alone.
-		it('keeps the checkout usable when only the branching toggle changes', async () => {
+		it('pushes to a new timestamped branch when branching is enabled', async () => {
 			resolver.resolveForConnection.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
@@ -330,11 +328,28 @@ describe('PromotionsService', () => {
 				}),
 			);
 
-			await expect(
-				service.promote('conn1', actor, { canExportVariableValues: true, commitMessage: 'm' }),
-			).resolves.toMatchObject({
-				git: { branchName: 'staging' },
+			const result = await service.promote('conn1', actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+				force: true,
 			});
+			const targetBranchName = result.git.branchName;
+
+			expect(targetBranchName).toMatch(
+				/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+			);
+			expect(gitService.validateBranchName).toHaveBeenCalledWith(targetBranchName);
+			expect(gitService.prepareCheckoutForPromotion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'staging',
+					configId: CONFIG_ID,
+					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+				}),
+			);
+			expect(gitService.commitAndPush).toHaveBeenCalledWith(
+				expect.objectContaining({ targetBranchName, force: false }),
+			);
 		});
 
 		it('refuses to promote when the checkout was cloned from another remote', async () => {

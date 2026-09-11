@@ -191,6 +191,7 @@ async function createRemoteBranches(remote: TestRemote, branchNames: string[]) {
 async function createInstanceConnection(
 	remoteUrl: string,
 	branches: { apply: string; promote: string } = { apply: 'main', promote: 'main' },
+	createBranchOnPromotion = false,
 ) {
 	const provider = await providerRepository.insertProvider({
 		name: 'Bot user',
@@ -222,7 +223,7 @@ async function createInstanceConnection(
 		settings: {
 			schemaVersion: 1,
 			baseBranchName: branches.promote,
-			createBranchOnPromotion: false,
+			createBranchOnPromotion,
 		},
 	});
 	return connection;
@@ -349,6 +350,72 @@ describe('Promote and Apply', () => {
 		).resolves.toBeDefined();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
+	});
+
+	it('creates one timestamped branch for each promotion', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(
+			remote.bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		await service.clone(connection.id, 'promote');
+
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
+		const baseCommit = (await remote.git.revparse(['main'])).trim();
+
+		const first = await service.promote(connection.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Promote orders',
+			force: true,
+		});
+		const remoteGit = simpleGit(remote.bareDir);
+
+		expect(first.git.branchName).toMatch(
+			/^n8n-promotion\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/,
+		);
+		expect((await remoteGit.revparse([first.git.branchName])).trim()).toBe(first.git.commitSha);
+		expect((await remoteGit.revparse([`${first.git.branchName}^`])).trim()).toBe(baseCommit);
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(baseCommit);
+
+		await remote.git.fetch('origin', first.git.branchName);
+		await remote.git.merge(['FETCH_HEAD']);
+		await remote.git.push('origin', 'main');
+		const mergedBaseCommit = (await remote.git.revparse(['main'])).trim();
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Process order v2' });
+
+		const second = await service.promote(connection.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Promote orders again',
+		});
+
+		expect(second.git.branchName).not.toBe(first.git.branchName);
+		expect((await remoteGit.revparse([second.git.branchName])).trim()).toBe(second.git.commitSha);
+		expect((await remoteGit.revparse([`${second.git.branchName}^`])).trim()).toBe(mergedBaseCommit);
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(mergedBaseCommit);
+	});
+
+	it('requires the configured base branch for a branched promotion', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await simpleGit().raw(['init', '--bare', bareDir]);
+		const connection = await createInstanceConnection(
+			bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		await service.clone(connection.id, 'promote');
+
+		await expect(
+			service.promote(connection.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Promote orders',
+			}),
+		).rejects.toThrow('Remote branch does not exist: main');
+		await expect(simpleGit(bareDir).raw(['show-ref', '--heads'])).resolves.toBe('');
 	});
 
 	it('applies the package and makes the managed target scope match it', async () => {
