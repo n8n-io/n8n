@@ -109,6 +109,7 @@ import {
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
+	type ProjectSummary,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
 	type WorkflowTaskService,
@@ -140,6 +141,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Push } from '@/push';
+import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -185,6 +187,7 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withAiPreferences,
 	withPastConversations,
 	withProjectContext,
 	getProjectContextSection,
@@ -851,6 +854,7 @@ export class InstanceAiService {
 		private readonly push: Push,
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2486,6 +2490,7 @@ export class InstanceAiService {
 			progressiveBuildingEnabled,
 			nodeUsageEnabled,
 			folderExplorationEnabled,
+			aiPreferencesEnabled,
 		} = await this.adapterService.resolveExperimentGates(user);
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
@@ -2826,6 +2831,7 @@ export class InstanceAiService {
 			modelId,
 			orchestrationContext,
 			conversationHistory,
+			aiPreferencesEnabled,
 		};
 	}
 
@@ -3882,6 +3888,7 @@ export class InstanceAiService {
 				modelId,
 				orchestrationContext,
 				conversationHistory,
+				aiPreferencesEnabled,
 			} = environment;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -4105,21 +4112,30 @@ export class InstanceAiService {
 			//
 			// The opening turn names the project's recent conversations; otherwise the
 			// agent has no reason to believe the conversation-history tool holds anything.
-			const [projectSection, pastConversationsSection] = await Promise.all([
-				this.resolveProjectContextSection(context),
+			const [boundProject, pastConversationsSection] = await Promise.all([
+				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
+			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
+			// Saved preferences ride the opening turn too, under the same project name.
+			const aiPreferencesBlock =
+				isOpeningTurn && aiPreferencesEnabled
+					? await this.resolveAiPreferencesBlock(user.id, boundProject)
+					: undefined;
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
 				: messageWithContext;
 			const messageWithPastConversations = pastConversationsSection
 				? withPastConversations(messageWithProject, pastConversationsSection)
 				: messageWithProject;
+			const messageWithPreferences = aiPreferencesBlock
+				? withAiPreferences(messageWithPastConversations, aiPreferencesBlock)
+				: messageWithPastConversations;
 
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithPastConversations,
+				messageWithPreferences,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -5102,17 +5118,16 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The one-line "you are in project X" fact for the per-turn block, or undefined
-	 * when there is nothing useful to say (no bound project, no workspace adapter, a
-	 * project we can't read).
+	 * The bound project for the per-turn blocks, or undefined when it cannot be named
+	 * (no bound project, no workspace adapter, a project we can't read).
 	 *
 	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
 	 * name its project should be a less-informed run, not a failed one - the write access is
 	 * locked to the bound project either way.
 	 */
-	private async resolveProjectContextSection(
+	private async resolveBoundProject(
 		context: InstanceAiContext,
-	): Promise<string | undefined> {
+	): Promise<ProjectSummary | undefined> {
 		const projectId = context.projectId;
 		if (!projectId) return undefined;
 
@@ -5122,7 +5137,7 @@ export class InstanceAiService {
 		// the failure this block exists to prevent.
 		try {
 			const project = await context.workspaceService?.getProject?.(projectId);
-			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+			if (project) return project;
 
 			this.logger.warn('Instance AI could not name the bound project for this turn', {
 				projectId,
@@ -5142,6 +5157,21 @@ export class InstanceAiService {
 			});
 			return undefined;
 		}
+	}
+
+	/** Best-effort like the project block: a failed read costs the preferences, not the turn. */
+	private async resolveAiPreferencesBlock(
+		userId: string,
+		project: ProjectSummary | undefined,
+	): Promise<string | undefined> {
+		return await this.bestEffort(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId },
+			async () =>
+				renderAiPreferencesBlock(
+					await this.aiPreferenceService.getApplicable(userId, project ? [project] : []),
+				),
+		);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
@@ -6106,7 +6136,7 @@ export class InstanceAiService {
 
 	private async bestEffort<T>(
 		failureMessage: string,
-		context: { threadId: string; runId: string },
+		context: Record<string, unknown>,
 		step: () => T | Promise<T>,
 	): Promise<Awaited<T> | undefined> {
 		try {

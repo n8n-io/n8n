@@ -775,6 +775,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				conversationHistoryEnabled: false,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: false,
+				aiPreferencesEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -1093,6 +1094,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				progressiveBuildingEnabled: enabled,
 				nodeUsageEnabled: false,
 				folderExplorationEnabled: true,
+				aiPreferencesEnabled: false,
 			}),
 		};
 		service.instanceWriteAccess = { isReadOnly: vi.fn(() => false) };
@@ -5853,5 +5855,72 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — resolveAiPreferencesBlock', () => {
+	type Internals = {
+		resolveAiPreferencesBlock: (
+			userId: string,
+			project: { id: string; name: string; type: 'team' } | undefined,
+		) => Promise<string | undefined>;
+		aiPreferenceService: { getApplicable: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reads the preferences for the user and the bound project and renders the block', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: ['Keep replies short.'],
+			projects: [{ id: 'project-1', name: 'Marketing', items: ['Prefer HubSpot nodes.'] }],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', {
+			id: 'project-1',
+			name: 'Marketing',
+			type: 'team',
+		});
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
+			{ id: 'project-1', name: 'Marketing', type: 'team' },
+		]);
+		expect(block).toContain('<ai-preferences>');
+		expect(block).toContain('Preferences for project "Marketing":');
+		expect(block).toContain('- Keep replies short.');
+	});
+
+	it('reads only user and instance preferences when the project could not be resolved', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockResolvedValue({
+			instance: [],
+			user: [],
+			projects: [],
+		});
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', []);
+		expect(block).toBeUndefined();
+	});
+
+	it('warns and skips the block when the read fails', async () => {
+		const service = createService();
+		service.aiPreferenceService.getApplicable.mockRejectedValue(new Error('db down'));
+
+		const block = await service.resolveAiPreferencesBlock('user-1', undefined);
+
+		expect(block).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Instance AI failed to read the AI preferences for this turn',
+			{ userId: 'user-1', error: 'db down' },
+		);
 	});
 });

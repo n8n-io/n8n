@@ -76,6 +76,7 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5477,6 +5478,7 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
+		[CONTEXT_PREFERENCES_FLAG]: true,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5489,6 +5491,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
+			aiPreferencesEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -5502,6 +5505,7 @@ describe('resolveExperimentGates', () => {
 			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
+			[CONTEXT_PREFERENCES_FLAG]: false,
 		});
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toEqual({
@@ -5511,6 +5515,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5524,6 +5529,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
@@ -5538,6 +5544,7 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			aiPreferencesEnabled: false,
 		});
 	});
 
