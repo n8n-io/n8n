@@ -48,6 +48,7 @@ const filterSchemaWithMinOne = z.object({
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
+	resourceName: z.string().optional(),
 	severity: instanceAiConfirmationSeveritySchema,
 });
 
@@ -106,13 +107,58 @@ const projectIdDescribe =
 	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
 const dataTableNameDescribe =
-	'Data table name, shown next to the ID in the approval card. Pass whenever known so users see a recognisable label instead of a bare UUID.';
+	'Data table name for the approval card. Pass whenever known so users see a name instead of an ID.';
 
-/** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
-function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {
-	return input.dataTableName
-		? `${input.dataTableName} (ID: ${input.dataTableId})`
-		: input.dataTableId;
+const columnNameForCardDescribe =
+	'Current column name for the approval card. Pass whenever known so users see a name instead of an ID.';
+
+/** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
+function dataTableResourceName(input: DataTableReferenceInput): string {
+	return input.dataTableName ?? input.dataTableId;
+}
+
+function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
+	const conditions = {
+		eq: 'is',
+		neq: 'is not',
+		like: 'matches the text pattern',
+		ilike: 'matches the text pattern (ignoring case)',
+		gt: 'is greater than',
+		gte: 'is greater than or equal to',
+		lt: 'is less than',
+		lte: 'is less than or equal to',
+	};
+	return filter.filters
+		.map(({ columnName, condition, value }) => {
+			if (value === null && (condition === 'eq' || condition === 'neq')) {
+				return `"${columnName}" ${condition === 'eq' ? 'has no value' : 'has a value'}`;
+			}
+			if (
+				(condition === 'like' || condition === 'ilike') &&
+				typeof value === 'string' &&
+				!value.includes('%')
+			) {
+				return `"${columnName}" contains ${JSON.stringify(value)}${condition === 'ilike' ? ' (ignoring case)' : ' (matching case)'}`;
+			}
+			return `"${columnName}" ${conditions[condition]} ${JSON.stringify(value)}`;
+		})
+		.join(` ${filter.type} `);
+}
+
+const MAX_DESCRIBED_COLUMNS = 5;
+
+function describeRowChanges(data: Record<string, unknown>): string {
+	const entries = Object.entries(data);
+	const described = entries.slice(0, MAX_DESCRIBED_COLUMNS).map(([column, value]) => {
+		if (value === null || value === undefined) return `"${column}" to no value`;
+		const text = JSON.stringify(value);
+		return `"${column}" to ${text.length > 100 ? `${text.slice(0, 100)}…` : text}`;
+	});
+	const remaining = entries.length - described.length;
+	if (remaining > 0) {
+		described.push(`${remaining} more ${remaining === 1 ? 'column' : 'columns'}`);
+	}
+	return described.join(', ');
 }
 
 const listAction = z.object({
@@ -218,6 +264,7 @@ const deleteColumnAction = z.object({
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
+	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 });
 
 const renameColumnAction = z.object({
@@ -230,6 +277,7 @@ const renameColumnAction = z.object({
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
+	currentColumnName: z.string().optional().describe(columnNameForCardDescribe),
 	newName: z.string().describe('New column name'),
 });
 
@@ -425,15 +473,16 @@ async function handleCreate(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		let message = `Create ${input.name}`;
+		let message = `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`;
 		if (input.projectId) {
 			const project = await context.workspaceService?.getProject?.(input.projectId);
 			const projectLabel = project?.name ?? input.projectId;
-			message = `Create ${input.name} in project ${projectLabel}`;
+			message += ` in project "${projectLabel}"`;
 		}
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message,
+			resourceName: input.name,
 			severity: 'info' as const,
 		});
 	}
@@ -482,7 +531,8 @@ async function handleDelete(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete ${buildDataTableLabel(input)}`,
+			message: 'Permanently delete the table and all its rows',
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}
@@ -518,7 +568,8 @@ async function handleAddColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add ${input.columnName} (${input.type}) to ${buildDataTableLabel(input)}`,
+			message: `Add column "${input.columnName}" (${input.type})`,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -558,7 +609,8 @@ async function handleDeleteColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete ${input.columnId} from ${buildDataTableLabel(input)}`,
+			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}
@@ -596,7 +648,8 @@ async function handleRenameColumn(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Rename ${input.columnId} to ${input.newName} in ${buildDataTableLabel(input)}`,
+			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -634,7 +687,8 @@ async function handleInsertRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Insert ${input.rows.length} row(s) into ${buildDataTableLabel(input)}`,
+			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}`,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -671,7 +725,11 @@ async function handleUpdateRows(
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update rows in ${buildDataTableLabel(input)}`,
+			message:
+				input.filter.filters.length === 0
+					? `Set ${describeRowChanges(input.data)} in all rows`
+					: `Set ${describeRowChanges(input.data)} in rows where ${describeRowFilter(input.filter)}`,
+			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
 	}
@@ -706,18 +764,10 @@ async function handleDeleteRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const filterDesc = input.filter.filters
-			.map(
-				(f: {
-					columnName: string;
-					condition: string;
-					value: string | number | boolean | null;
-				}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
-			)
-			.join(` ${input.filter.type} `);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Delete rows from ${buildDataTableLabel(input)} where ${filterDesc}`,
+			message: `Delete rows where ${describeRowFilter(input.filter)}`,
+			resourceName: dataTableResourceName(input),
 			severity: 'destructive' as const,
 		});
 	}

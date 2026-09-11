@@ -15,6 +15,7 @@ import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
@@ -290,6 +291,7 @@ const updateAction = z.object({
 		.describe(
 			'Full WorkflowJSON object (same shape as returned by `get-json`). This completely replaces the current workflow definition — ensure name, nodes, and connections are all included.',
 		),
+	approvalSummary: approvalSummarySchema,
 });
 
 const publishBaseAction = z.object({
@@ -298,6 +300,7 @@ const publishBaseAction = z.object({
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
+	approvalSummary: approvalSummarySchema,
 });
 
 const publishExtendedAction = publishBaseAction.extend({
@@ -343,7 +346,10 @@ const confirmationSuspendSchema = setupSuspendSchema
 		workflowId: true,
 	})
 	.partial({ workflowId: true })
-	.extend({ credentialDestination: credentialDestinationSchema.optional() });
+	.extend({
+		resourceName: z.string().optional(),
+		credentialDestination: credentialDestinationSchema.optional(),
+	});
 
 const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
@@ -1693,7 +1699,8 @@ async function handleUpdate(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			message: formatApprovalMessage('Save the changes to this workflow', input.approvalSummary),
+			resourceName: workflowName,
 			severity: 'warning' as const,
 			// Carried on the confirmation so the UI can scope "always allow" per workflow
 			// even if tool-call args are incomplete on resume.
@@ -1786,14 +1793,17 @@ async function handlePublish(
 		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		const dependencyNote =
 			supportingWorkflowIds.length > 0
-				? ` and ${String(supportingWorkflowIds.length)} referenced supporting workflow(s)`
+				? ` (also publishes ${supportingWorkflowIds.length} supporting ${supportingWorkflowIds.length === 1 ? 'workflow' : 'workflows'})`
 				: '';
 
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: input.versionId
-				? `Publish version ${input.versionId} of ${workflowName} (ID: ${input.workflowId})${dependencyNote}`
-				: `Publish ${workflowName} (ID: ${input.workflowId})${dependencyNote}`,
+			message:
+				formatApprovalMessage(
+					`Make the ${input.versionId ? 'selected version' : 'latest draft'} live`,
+					input.approvalSummary,
+				) + dependencyNote,
+			resourceName: workflowName,
 			severity: 'warning' as const,
 		});
 	}

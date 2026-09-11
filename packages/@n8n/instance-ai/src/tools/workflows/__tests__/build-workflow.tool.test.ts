@@ -1028,12 +1028,65 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
-				message: 'Edit Target workflow (ID: wf-existing)?',
+				message: 'Save the changes to this workflow',
+				resourceName: 'Target workflow',
 				severity: 'warning',
 				workflowId: 'wf-existing',
 			}),
 		);
 		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it.each([true, false])(
+		'resumes a saved build without a summary when approved=%s',
+		async (approved) => {
+			const { context, filePath } = makeContext({
+				overrides: {
+					permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+				},
+			});
+			const input = buildWorkflowInputSchema.parse({ filePath, workflowId: 'wf-existing' });
+			const suspend = vi.fn();
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), input, {
+				resumeData: { approved },
+				suspend,
+			});
+
+			expect(input).not.toHaveProperty('approvalSummary');
+			expect(suspend).not.toHaveBeenCalled();
+			if (approved) {
+				expect(result).toMatchObject({ success: true, workflowId: 'wf-existing' });
+				expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+			} else {
+				expect(result).toMatchObject({ success: false, denied: true });
+				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('shows the concrete summary before saving a workflow', async () => {
+		const { context, filePath } = makeContext({
+			overrides: {
+				permissions: { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'],
+			},
+		});
+		const input = buildWorkflowInputSchema.parse({
+			filePath,
+			workflowId: 'wf-existing',
+			approvalSummary: 'Add a Slack notification after the check',
+		});
+		const suspend = vi.fn();
+		await executeTool(createBuildWorkflowTool(context), input, { suspend });
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Add a Slack notification after the check',
+				resourceName: 'Target workflow',
+				workflowId: 'wf-existing',
+				severity: 'warning',
+			}),
+		);
 		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 

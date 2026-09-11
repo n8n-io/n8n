@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
@@ -46,6 +47,55 @@ function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('executions tool', () => {
+	it.each([true, false])(
+		'resumes a saved execution without a summary when approved=%s',
+		async (approved) => {
+			const context = createMockContext();
+			vi.mocked(context.executionService.run).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+			const tool = createExecutionsTool(context);
+			const savedInput = { action: 'run', workflowId: 'wf-1', inputData: { orderId: 'order-1' } };
+			const input: unknown = (tool.inputSchema as z.ZodType).parse(savedInput);
+			const suspend = vi.fn();
+			const result = await executeTool(tool, input, { resumeData: { approved }, suspend });
+
+			expect(input).toEqual(savedInput);
+			expect(suspend).not.toHaveBeenCalled();
+			if (approved) {
+				expect(result).toMatchObject({ executionId: 'exec-1', status: 'success' });
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', savedInput.inputData, {
+					timeout: undefined,
+				});
+			} else {
+				expect(result).toMatchObject({ denied: true });
+				expect(context.executionService.run).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('preserves a live execution summary through input validation', async () => {
+		const context = createMockContext();
+		vi.mocked(context.workflowService.get).mockResolvedValue({ name: 'Orders' } as never);
+		const tool = createExecutionsTool(context);
+		const input: unknown = (tool.inputSchema as z.ZodType).parse({
+			action: 'run',
+			workflowId: 'wf-1',
+			approvalSummary: 'Send a Slack notification for order 42',
+		});
+		const suspend = vi.fn();
+		await executeTool(tool, input, { suspend });
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Send a Slack notification for order 42',
+				resourceName: 'Orders',
+				severity: 'warning',
+			}),
+		);
+		expect(context.executionService.run).not.toHaveBeenCalled();
+	});
+
 	// ── list ────────────────────────────────────────────────────────────────
 
 	describe('list action', () => {
@@ -170,7 +220,8 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute My Workflow (ID: wf-1)',
+					message: 'Run this workflow live',
+					resourceName: 'My Workflow',
 					severity: 'warning',
 					requestId: expect.any(String),
 				}),
@@ -193,7 +244,8 @@ describe('executions tool', () => {
 			const suspendPayload = suspendFn.mock.calls[0][0] as Record<string, unknown>;
 			expect(suspendPayload).toEqual(
 				expect.objectContaining({
-					message: 'Execute wf-42 (ID: wf-42)',
+					message: 'Run this workflow live',
+					resourceName: 'wf-42',
 				}),
 			);
 		});

@@ -13,6 +13,29 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval copy
+
+An approval card has two lines. The title names the asset without its ID, for
+example `Assistant wants to edit CRM Lead enrichment`. The line below it is a
+plain-language description of the change. Tools send the asset name as
+`resourceName` on the suspend payload and the description as `message`. The
+frontend builds the title from `resourceName` and the
+`instanceAi.tools.{tool}.{action}.imperativeWithResource` i18n key.
+
+`build-workflow`, `workflows(action="update")`, `workflows(action="publish")`,
+and `executions(action="run")` accept `approvalSummary`. The agent supplies one
+line that describes the concrete change or effect of the call, for example
+`Add a Slack notification after the payment check`. Live execution summaries
+describe the external actions that the workflow will perform. The field is
+optional so older saved tool calls can still resume. Calls without the field
+show a generic description such as `Save the changes to this workflow`.
+
+Data-table approvals build the description from the tool input: columns, row
+counts, and filter conditions. Pass `dataTableName` and `currentColumnName` when known
+so the card shows names instead of IDs. No tool looks up names only for the
+card. These messages do not change approval permissions or group separate tool
+calls.
+
 | Tool | Actions |
 |------|---------|
 | `workflows` | 14 |

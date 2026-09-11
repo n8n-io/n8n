@@ -341,6 +341,7 @@ describe('mapAgentChunkToEvent', () => {
 					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
+					resourceName: 'CRM Lead enrichment',
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -379,6 +380,7 @@ describe('mapAgentChunkToEvent', () => {
 				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
+				resourceName: 'CRM Lead enrichment',
 				questions: [
 					{
 						id: 'q1',

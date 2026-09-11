@@ -714,6 +714,12 @@ export const confirmationRequestPayloadSchema = z.object({
 	args: z.record(z.unknown()),
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
+	resourceName: z
+		.string()
+		.optional()
+		.describe(
+			'Display name of the workflow or data table the action applies to, shown in the card title',
+		),
 	targetApproval: instanceAiTargetApprovalSchema
 		.optional()
 		.describe('Target-agent tool approval details rendered instead of the outer tool call'),

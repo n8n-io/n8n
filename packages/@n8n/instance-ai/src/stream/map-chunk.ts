@@ -346,6 +346,7 @@ function mapSuspendedChunk(
 	);
 	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
 	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceName = presentString(suspendPayload.resourceName);
 	const resourceDecision = parseSchemaRecord(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
@@ -392,6 +393,7 @@ function mapSuspendedChunk(
 			...(credentialDestination ? { credentialDestination } : {}),
 			...(setupRequests ? { setupRequests } : {}),
 			...(workflowId ? { workflowId } : {}),
+			...(resourceName ? { resourceName } : {}),
 			...(questions ? { questions } : {}),
 			...(introMessage ? { introMessage } : {}),
 			...(tasks ? { tasks } : {}),

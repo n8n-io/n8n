@@ -1,0 +1,29 @@
+{
+	"description": "Post-build tool ordering guard. A fully specified scheduled Slack reminder with no Slack credential declared, so the build mocks the credential and setup routing is required. The product-prescribed order is build-workflow, then verify-built-workflow (with report-verification-verdict), then workflows(action=\"setup\") — see setup-verification-policy.ts (shouldVerifyBeforeSetup) and the post-build-flow skill, which forbids opening setup in the verification turn. The case reds when the agent opens setup before verifying, skips verification, skips setup, or routes credentials through credentials(action=\"setup\") / apply-workflow-credentials instead. Build-only, judged on processExpectations; the single outcome expectation only rules out a no-op build. Calibrated 2026-09-09 against a local 2.39.0 instance: green, observed sequence build-workflow -> verify-built-workflow -> workflows(action=\"setup\") with the setup card applied; a regression guard, no kept reds.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday at 9am, post a message to our #standup Slack channel that says 'Standup starts in 15 minutes — please add your updates to the thread.'"
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"behaviour",
+		"tool-ordering",
+		"post-build-flow",
+		"verification",
+		"setup",
+		"slack",
+		"schedule"
+	],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent built the workflow first: a successful build-workflow call precedes every verify-built-workflow call and every workflows(action=\"setup\") call in the transcript. No verification or setup tool was called before the workflow existed.",
+		"The agent verified before setting up: a verify-built-workflow call on the built workflow appears BEFORE the first workflows(action=\"setup\") call. Opening the setup card and then verifying, or opening setup with no verification at all, fails this.",
+		"The agent routed setup after verification through workflows(action=\"setup\") on the built workflow. It did not skip setup even though the Slack credential was mocked, and it did not use credentials(action=\"setup\") or apply-workflow-credentials for that credential instead."
+	],
+	"outcomeExpectations": [
+		"A Schedule Trigger configured for weekday mornings around 9am connects to a Slack node that posts the given reminder text to the #standup channel."
+	]
+}
