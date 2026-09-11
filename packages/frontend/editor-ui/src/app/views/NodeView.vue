@@ -133,6 +133,7 @@ import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
+import AppBuilderCanvasInfoCard from '@/features/apps/AppBuilderCanvasInfoCard.vue';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -2058,6 +2059,10 @@ onBeforeUnmount(() => {
 				v-if="!isCanvasReadOnly"
 				:class="$style.evaluationsCanvasInfoCardWrapper"
 			/>
+			<AppBuilderCanvasInfoCard
+				v-if="!isCanvasReadOnly"
+				:class="$style.appBuilderCanvasInfoCardWrapper"
+			/>
 			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
@@ -2203,6 +2208,15 @@ onBeforeUnmount(() => {
 .evaluationsCanvasInfoCardWrapper {
 	position: absolute;
 	left: var(--spacing--lg);
+	bottom: var(--spacing--lg);
+	z-index: var.$index-popper;
+}
+
+// Mirrors evaluationsCanvasInfoCardWrapper on the opposite corner so the two
+// nudges can coexist without overlapping.
+.appBuilderCanvasInfoCardWrapper {
+	position: absolute;
+	right: var(--spacing--lg);
 	bottom: var(--spacing--lg);
 	z-index: var.$index-popper;
 }

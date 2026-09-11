@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCard,
+	N8nEmptyState,
+	N8nHeading,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { computed, onMounted } from 'vue';
@@ -67,9 +74,15 @@ onMounted(() => {
 		</template>
 
 		<div :class="$style.container">
-			<N8nText v-if="appsStore.apps.length === 0" color="text-light">
-				{{ i18n.baseText('apps.empty.heading') }}
-			</N8nText>
+			<N8nEmptyState
+				v-if="appsStore.apps.length === 0"
+				data-test-id="apps-empty-state"
+				:icon="{ type: 'icon', value: 'app-window' }"
+				:heading="i18n.baseText('apps.empty.heading')"
+				:description="i18n.baseText('apps.empty.description')"
+				:button-text="i18n.baseText('apps.add.button.label')"
+				@click:button="openAddAppModal"
+			/>
 
 			<N8nCard
 				v-for="app in appsStore.apps"
