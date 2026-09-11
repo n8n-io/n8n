@@ -5222,6 +5222,7 @@
 	"apps.block.table.filter.value.placeholder": "Value (can reference a URL param, e.g. params.id)",
 	"apps.block.table.filter.add": "Add filter",
 	"apps.block.table.sort.label": "Sort by",
+	"apps.block.table.sort.order.label": "Sort order",
 	"apps.block.table.limit.label": "Limit",
 	"apps.block.table.editable": "Allow editing rows",
 	"apps.block.table.deletable": "Allow deleting rows",

@@ -212,10 +212,15 @@ watch(filterRows, emitUpdate, { deep: true });
 					/>
 				</N8nSelect>
 			</N8nInputLabel>
-			<N8nSelect v-model="sortDirection" size="medium">
-				<N8nOption value="ASC" label="ASC" />
-				<N8nOption value="DESC" label="DESC" />
-			</N8nSelect>
+			<N8nInputLabel
+				:label="i18n.baseText('apps.block.table.sort.order.label')"
+				input-name="table-sort-direction"
+			>
+				<N8nSelect v-model="sortDirection" size="medium">
+					<N8nOption value="ASC" label="ASC" />
+					<N8nOption value="DESC" label="DESC" />
+				</N8nSelect>
+			</N8nInputLabel>
 		</div>
 
 		<N8nInputLabel :label="i18n.baseText('apps.block.table.limit.label')" input-name="table-limit">
