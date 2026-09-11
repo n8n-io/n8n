@@ -996,8 +996,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			undefined,
 			'manual',
 			undefined,
-			undefined,
-			false,
+			{ allowBackgroundTasks: false },
 		);
 
 		const toolNames = getInjectedToolNames();

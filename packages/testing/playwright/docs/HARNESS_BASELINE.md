@@ -127,13 +127,13 @@ Attempt duration does not include all worker startup. A zero bootstrap-failure d
 | `multi-main:e2e` listed spec files | 222 | Playwright list output, not an impact-selected CI shard |
 | Listed tests | 981 | 934 expected-passed and 47 expected-skipped |
 | Listed skip annotations | 44 fixme, 3 skip | Static expectations, not runtime results |
-| Janitor discovered specs | 244 | 64 with capability tags and 180 without |
+| Janitor discovered specs | 244 | Static discovery for shard distribution |
 | Janitor inventory | 9 fixtures, 19 services, 25 helpers | Static inventory, not a complete runtime dependency graph |
 
 The list report contains no execution results. Expected-passed does not mean passed.
 Runtime conditional skips and Currents actions can change execution. The list report does not establish the live quarantine count.
 The production quarantine fixture uses the fallback webhook only when Currents reporting is not configured.
-Discovery extracts capability tags from titles. It does not resolve every runtime configuration override.
+Discovery resolves named capabilities and container services from `test.use()`.
 
 ## Fixture dependency reference
 
