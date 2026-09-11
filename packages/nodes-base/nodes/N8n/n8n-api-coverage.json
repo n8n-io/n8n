@@ -438,6 +438,18 @@
 		},
 		"POST /n8n-packages/import": {
 			"status": "gap"
+		},
+		"GET /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/instance": {
+			"status": "gap"
+		},
+		"GET /node-type-policies/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /node-type-policies/projects/{projectId}": {
+			"status": "gap"
 		}
 	}
 }

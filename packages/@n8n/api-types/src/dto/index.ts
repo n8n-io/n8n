@@ -276,6 +276,10 @@ export { CreatePolicyDocumentDto } from './node-type-policies/create-policy-docu
 export { UpdatePolicyDocumentDto } from './node-type-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './node-type-policies/replace-attachments.dto';
 export {
+	NodeTypePolicyEffectivePublicDto,
+	NodeTypePolicyEffectiveWriteResultPublicDto,
+} from './node-type-policies/node-type-policy-public.dto';
+export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
 	USERS_LIST_SORT_OPTIONS,
