@@ -54,7 +54,7 @@
 		"PATCH /credentials/{id}": {
 			"status": "gap"
 		},
-		"DELETE /credentials/{id}": {
+		"DELETE /credentials/{credentialId}": {
 			"status": "covered",
 			"nodeOperation": "credential:delete"
 		},
@@ -62,7 +62,7 @@
 			"status": "covered",
 			"nodeOperation": "credential:getSchema"
 		},
-		"PUT /credentials/{id}/transfer": {
+		"PUT /credentials/{credentialId}/transfer": {
 			"status": "gap"
 		},
 		"POST /credentials/{id}/test": {

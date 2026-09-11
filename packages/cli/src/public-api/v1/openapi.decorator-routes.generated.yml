@@ -9,6 +9,11 @@ paths:
   /credentials/{credentialId}:
     get:
       $ref: ./handlers/credentials/spec/paths/getCredential.generated.yml
+    delete:
+      $ref: ./handlers/credentials/spec/paths/deleteCredential.generated.yml
+  /credentials/{credentialId}/transfer:
+    put:
+      $ref: ./handlers/credentials/spec/paths/transferCredential.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
