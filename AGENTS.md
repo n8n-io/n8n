@@ -280,7 +280,9 @@ config picks exactly one:
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
 down for the whole package: every lint script runs with `--quiet`, so a `warn`
-enforces nothing and reads as if it did.
+enforces nothing and reads as if it did. The code-health rule
+`lint-config-layering` enforces this, with existing debt in
+`.code-health-baseline.json`, which only shrinks.
 
 To stop enforcing a rule everywhere, retire it in `base.ts` with the count
 behind the decision. To enforce one again in a package that is ready, set it to
