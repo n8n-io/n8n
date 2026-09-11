@@ -1,14 +1,14 @@
 // @ts-check
 
-const CAPABILITY_IMAGES = {
+const CAPABILITY_SERVICES = {
 	'dynamic-credentials': ['keycloak'],
 	email: ['mailpit'],
 	'external-secrets': ['localstack'],
 	kafka: ['kafka'],
-	kent: [],
+	kent: ['kent'],
 	observability: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	oidc: ['keycloak'],
-	proxy: ['mockserver'],
+	proxy: ['proxy'],
 	'source-control': ['gitea'],
 };
 
@@ -40,17 +40,18 @@ const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
 
 export function getRequiredImages(capabilities, services) {
 	const images = new Set(BASE_IMAGES);
-	for (const capability of capabilities) {
-		const capabilityImages = CAPABILITY_IMAGES[capability];
-		if (!capabilityImages) {
-			throw new Error(`No Docker image mapping for capability "${capability}"`);
-		}
-		for (const image of capabilityImages) images.add(image);
-	}
-	for (const service of services) {
+	const addServiceImages = (service) => {
 		const serviceImages = SERVICE_IMAGES[service];
 		if (!serviceImages) throw new Error(`No Docker image mapping for service "${service}"`);
 		for (const image of serviceImages) images.add(image);
+	};
+	for (const capability of capabilities) {
+		const capabilityServices = CAPABILITY_SERVICES[capability];
+		if (!capabilityServices) {
+			throw new Error(`No Docker image mapping for capability "${capability}"`);
+		}
+		for (const service of capabilityServices) addServiceImages(service);
 	}
+	for (const service of services) addServiceImages(service);
 	return [...images].sort();
 }

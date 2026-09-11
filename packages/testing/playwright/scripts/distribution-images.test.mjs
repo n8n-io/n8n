@@ -8,10 +8,12 @@ describe('getRequiredImages', () => {
 	it.each(SERVICE_NAMES)('maps the %s service to its required images', (service) => {
 		expect(() => getRequiredImages([], [service])).not.toThrow();
 	});
-	it.each(Object.keys(CAPABILITIES))(
-		'maps the %s capability to its required images',
-		(capability) => {
-			expect(() => getRequiredImages([capability], [])).not.toThrow();
+	it.each(Object.entries(CAPABILITIES))(
+		'maps the %s capability through its configured services',
+		(capability, config) => {
+			expect(getRequiredImages([capability], [])).toEqual(
+				getRequiredImages([], config.services ?? []),
+			);
 		},
 	);
 
