@@ -79,7 +79,6 @@ const props = withDefaults(
 		readOnly?: boolean;
 		workflowListEventBus?: EventBus;
 		showOwnershipBadge?: boolean;
-		areTagsEnabled?: boolean;
 		isMcpEnabled?: boolean;
 		isMcpModuleActive?: boolean;
 		canManageInstanceMcp?: boolean;
@@ -90,7 +89,6 @@ const props = withDefaults(
 		readOnly: false,
 		workflowListEventBus: undefined,
 		showOwnershipBadge: false,
-		areTagsEnabled: true,
 		isMcpEnabled: false,
 		isMcpModuleActive: false,
 		canManageInstanceMcp: false,
@@ -698,11 +696,7 @@ const tags = computed(
 					size="small"
 				/>
 			</span>
-			<span
-				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
-				v-show="data"
-				:class="$style.cardTags"
-			>
+			<span v-if="data.tags && data.tags.length > 0" v-show="data" :class="$style.cardTags">
 				<N8nTags
 					:tags="tags"
 					:truncate-at="3"

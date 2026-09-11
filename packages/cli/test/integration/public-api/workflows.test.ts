@@ -146,8 +146,6 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
-
-	globalConfig.tags.disabled = false;
 });
 
 afterAll(() => {
@@ -413,23 +411,6 @@ describe('GET /workflows', () => {
 
 		expect(wfTags.length).toBe(1);
 		expect(wfTags[0].id).toBe(tag.id);
-	});
-
-	test('should omit tags entirely when tags are disabled', async () => {
-		globalConfig.tags.disabled = true;
-
-		try {
-			const tag = await createTag({ name: 'production' });
-			await createWorkflowWithHistory({ tags: [tag] }, member);
-
-			const response = await authMemberAgent.get('/workflows');
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body.data).toHaveLength(1);
-			expect(response.body.data[0]).not.toHaveProperty('tags');
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
@@ -933,21 +914,6 @@ describe('GET /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.tags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
-	});
-
-	test('should omit tags entirely when tags are disabled', async () => {
-		globalConfig.tags.disabled = true;
-
-		try {
-			const workflow = await createWorkflowWithHistory({}, member);
-
-			const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body).not.toHaveProperty('tags');
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 
 	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
@@ -3747,15 +3713,6 @@ describe('GET /workflows/:id/tags', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
 
-	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
-		globalConfig.tags.disabled = true;
-
-		const response = await authOwnerAgent.get('/workflows/2/tags');
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Workflow Tags Disabled');
-	});
-
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
@@ -3802,15 +3759,6 @@ describe('PUT /workflows/:id/tags', () => {
 	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/tags', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
-
-	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
-		globalConfig.tags.disabled = true;
-
-		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Workflow Tags Disabled');
-	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
