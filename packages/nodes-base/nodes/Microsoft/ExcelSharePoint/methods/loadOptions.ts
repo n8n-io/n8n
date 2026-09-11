@@ -6,7 +6,7 @@ import { resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
 import { microsoftApiRequest } from '../transport';
 
 async function readHeaderRow(this: ILoadOptionsFunctions): Promise<string[]> {
-	const workbookRoot = await resolveWorkbookRoot.call(this);
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
 	const worksheetId = validatePathSegment(
 		this.getNode(),
 		'Sheet',
@@ -51,7 +51,7 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 export async function getTableColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookRoot = await resolveWorkbookRoot.call(this);
+	const workbookRoot = await resolveWorkbookRoot.call(this, 0);
 	// Load-options contexts take (name, fallback, options) — the execute-style
 	// 4-arg read would silently drop extractValue here.
 	const tableId = validatePathSegment(

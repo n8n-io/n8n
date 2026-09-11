@@ -169,14 +169,14 @@ export function driveEndpoint(root: string): string {
  * signature. Validation + encoding happen in `getServicePrincipalResourceRoot`.
  *
  * The target RLC accepts expressions, so in execute contexts it is resolved per
- * item — the node MUST pass the loop's `itemIndex`. `resourceTarget` (the mode)
- * stays `noDataExpression`, so only the id can vary per item. The trigger keeps
- * `isPoll=true` single resolution.
+ * item and `itemIndex` is required: the node passes the loop's index, and poll or
+ * load-options callers pass 0, where the argument is ignored. `resourceTarget`
+ * (the mode) stays `noDataExpression`, so only the id can vary per item.
  */
 export function resolveDriveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	isPoll: boolean,
-	itemIndex = 0,
+	itemIndex: number,
 ): string | undefined {
 	const credType = getOneDriveCredentialType.call(this);
 	if (credType !== 'microsoftEntraServicePrincipalApi') {
@@ -405,7 +405,7 @@ export async function getPath(
 	// root with the poll signature and pass the resource-form path so transport can
 	// scope it. Do not convert this back to an absolute `/me` uri — that would bypass
 	// scoping and break the app-only (Service Principal) case.
-	const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
+	const driveScopeRoot = resolveDriveScopeRoot.call(this, true, 0);
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',

@@ -39,15 +39,16 @@ export function validatePathSegment(node: INode, label: string, value: string): 
  * lookup per distinct pasted address, not one per item) — the caller hoists
  * them once above its item loop and passes the same instances every call.
  *
- * `itemIndex` defaults to 0 so load-options contexts (list-search methods for
- * the sheet/table dropdowns), which have no item index and no loop to
- * amortize a cache across, can call this too without passing any of the
- * three — `AuthContext.getNodeParameter`'s 2nd arg is itemIndex in execute
- * and the fallback in load-options; 0 is a valid, harmless value either way.
+ * `itemIndex` is required so an execute call site cannot omit it and resolve
+ * every item at item 0. Load-options contexts (list-search methods for the
+ * sheet/table dropdowns) pass a literal 0 and no caches, since they have no item
+ * index and no loop to amortize a cache across: `AuthContext.getNodeParameter`'s
+ * 2nd arg is the itemIndex in execute and the fallback in load-options, so 0 is
+ * valid either way.
  */
 export async function resolveWorkbookRoot(
 	this: AuthContext,
-	itemIndex = 0,
+	itemIndex: number,
 	workbookRootCache: Map<string, string> = new Map(),
 	siteIdCache: Map<string, string> = new Map(),
 ): Promise<string> {
