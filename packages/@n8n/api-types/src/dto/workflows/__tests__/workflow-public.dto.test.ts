@@ -54,6 +54,25 @@ describe('WorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	test('preserves empty-group frame and visual-link data in responses', () => {
+		const group = {
+			id: 'group-1',
+			name: 'Empty group',
+			nodeIds: [],
+			frame: { position: [560, 280], size: [240, 160] },
+			visualLinks: [
+				{
+					source: { kind: 'node', id: 'node-a', port: { type: 'main', index: 2 } },
+					target: { kind: 'group', id: 'group-1', port: { type: 'main', index: 0 } },
+				},
+			],
+		};
+
+		const result = WorkflowPublicDto.parse({ ...baseWorkflow, nodeGroups: [group] });
+
+		expect(result.nodeGroups).toEqual([group]);
+	});
+
 	test('accepts an active workflow with pinData, tags, and activeVersion populated', () => {
 		const result = WorkflowPublicDto.safeParse({
 			...baseWorkflow,

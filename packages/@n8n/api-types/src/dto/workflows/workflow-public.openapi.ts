@@ -32,6 +32,12 @@ export const workflowNodeGroupFieldDocs = {
 		example: 'Cleans and normalizes incoming records',
 	},
 	nodeIds: { description: 'IDs of the nodes that belong to this group' },
+	frame: {
+		description: 'Stored canvas position and size for a group that has no member nodes',
+	},
+	visualLinks: {
+		description: 'Editor-only links between real nodes and groups that have no member nodes',
+	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
 export const workflowSettingsFieldDocs = {
@@ -198,24 +204,102 @@ export const connectionsOpenApi: ZodOpenAPIMetadata = {
 	example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } },
 };
 
-export const nodeGroupsOpenApi: ZodOpenAPIMetadata = {
+const workflowGroupVisualLinkEndpointOpenApi: Record<string, unknown> = {
+	oneOf: [
+		{
+			type: 'object',
+			additionalProperties: false,
+			properties: {
+				kind: { type: 'string', enum: ['node'] },
+				id: { type: 'string', minLength: 1 },
+				port: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						type: { type: 'string', enum: ['main'] },
+						index: { type: 'integer', minimum: 0 },
+					},
+					required: ['type', 'index'],
+				},
+			},
+			required: ['kind', 'id', 'port'],
+		},
+		{
+			type: 'object',
+			additionalProperties: false,
+			properties: {
+				kind: { type: 'string', enum: ['group'] },
+				id: { type: 'string', minLength: 1 },
+				port: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						type: { type: 'string', enum: ['main'] },
+						index: { type: 'integer', enum: [0] },
+					},
+					required: ['type', 'index'],
+				},
+			},
+			required: ['kind', 'id', 'port'],
+		},
+	],
+};
+
+export const nodeGroupsOpenApi = nestingDescriptor({
 	type: 'array',
 	...workflowCreateFieldDocs.nodeGroups,
 	items: {
 		type: 'object',
 		properties: {
-			id: { type: 'string', ...workflowNodeGroupFieldDocs.id },
-			name: { type: 'string', ...workflowNodeGroupFieldDocs.name },
+			id: { type: 'string', minLength: 1, ...workflowNodeGroupFieldDocs.id },
+			name: { type: 'string', minLength: 1, ...workflowNodeGroupFieldDocs.name },
 			description: {
 				type: 'string',
 				maxLength: 155,
 				...workflowNodeGroupFieldDocs.description,
 			},
-			nodeIds: { type: 'array', ...workflowNodeGroupFieldDocs.nodeIds, items: { type: 'string' } },
+			nodeIds: {
+				type: 'array',
+				...workflowNodeGroupFieldDocs.nodeIds,
+				items: { type: 'string', minLength: 1 },
+			},
+			frame: {
+				type: 'object',
+				...workflowNodeGroupFieldDocs.frame,
+				additionalProperties: false,
+				properties: {
+					position: {
+						type: 'array',
+						minItems: 2,
+						maxItems: 2,
+						items: { type: 'number' },
+					},
+					size: {
+						type: 'array',
+						minItems: 2,
+						maxItems: 2,
+						items: { type: 'number', minimum: 0, exclusiveMinimum: true },
+					},
+				},
+				required: ['position', 'size'],
+			},
+			visualLinks: {
+				type: 'array',
+				...workflowNodeGroupFieldDocs.visualLinks,
+				items: {
+					type: 'object',
+					additionalProperties: false,
+					properties: {
+						source: workflowGroupVisualLinkEndpointOpenApi,
+						target: workflowGroupVisualLinkEndpointOpenApi,
+					},
+					required: ['source', 'target'],
+				},
+			},
 		},
 		required: ['id', 'name', 'nodeIds'],
 	},
-};
+});
 
 export const settingsOpenApi: ZodOpenAPIMetadata = alsoNullable({
 	type: 'object',

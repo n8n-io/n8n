@@ -7,10 +7,12 @@ required:
 properties:
   id:
     type: string
+    minLength: 1
     description: Unique identifier for the node group
     example: 9b1c8e2a-4d3f-4a6b-8c7d-1e2f3a4b5c6d
   name:
     type: string
+    minLength: 1
     description: Display name of the node group
     example: Data processing
   description:
@@ -23,3 +25,154 @@ properties:
     description: IDs of the nodes that belong to this group
     items:
       type: string
+      minLength: 1
+  frame:
+    type: object
+    additionalProperties: false
+    description: Stored canvas position and size for a group that has no member nodes
+    required:
+      - position
+      - size
+    properties:
+      position:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          type: number
+      size:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+  visualLinks:
+    type: array
+    description: Editor-only links between real nodes and groups that have no member nodes
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - source
+        - target
+      properties:
+        source:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required:
+                - kind
+                - id
+                - port
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - node
+                id:
+                  type: string
+                  minLength: 1
+                port:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - type
+                    - index
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - main
+                    index:
+                      type: integer
+                      minimum: 0
+            - type: object
+              additionalProperties: false
+              required:
+                - kind
+                - id
+                - port
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - group
+                id:
+                  type: string
+                  minLength: 1
+                port:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - type
+                    - index
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - main
+                    index:
+                      type: integer
+                      enum:
+                        - 0
+        target:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required:
+                - kind
+                - id
+                - port
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - node
+                id:
+                  type: string
+                  minLength: 1
+                port:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - type
+                    - index
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - main
+                    index:
+                      type: integer
+                      minimum: 0
+            - type: object
+              additionalProperties: false
+              required:
+                - kind
+                - id
+                - port
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - group
+                id:
+                  type: string
+                  minLength: 1
+                port:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - type
+                    - index
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - main
+                    index:
+                      type: integer
+                      enum:
+                        - 0

@@ -37,7 +37,7 @@ const nodeGroupsPublicSchema = z
 	.custom<IWorkflowGroup[]>((value) => Array.isArray(value), {
 		message: 'Node groups must be an array',
 	})
-	.openapi(nodeGroupsOpenApi);
+	.openapi('WorkflowNodeGroupsPublic', nodeGroupsOpenApi);
 
 const nullableObjectPublicSchema = nullableObjectGuardSchema<Record<string, unknown>>();
 

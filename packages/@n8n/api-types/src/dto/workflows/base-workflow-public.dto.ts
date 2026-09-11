@@ -56,12 +56,62 @@ const workflowNodeWritePublicSchema = z
 	})
 	.strict();
 
+const workflowGroupFrameWritePublicSchema = z
+	.object({
+		position: z.tuple([z.number().finite(), z.number().finite()]),
+		size: z.tuple([z.number().finite().positive(), z.number().finite().positive()]),
+	})
+	.strict();
+
+const workflowGroupVisualLinkNodeEndpointWritePublicSchema = z
+	.object({
+		kind: z.literal('node'),
+		id: z.string().min(1),
+		port: z
+			.object({
+				type: z.literal('main'),
+				index: z.number().int().nonnegative(),
+			})
+			.strict(),
+	})
+	.strict();
+
+const workflowGroupVisualLinkGroupEndpointWritePublicSchema = z
+	.object({
+		kind: z.literal('group'),
+		id: z.string().min(1),
+		port: z
+			.object({
+				type: z.literal('main'),
+				index: z.literal(0),
+			})
+			.strict(),
+	})
+	.strict();
+
+const workflowGroupVisualLinkEndpointWritePublicSchema = z.discriminatedUnion('kind', [
+	workflowGroupVisualLinkNodeEndpointWritePublicSchema,
+	workflowGroupVisualLinkGroupEndpointWritePublicSchema,
+]);
+
+const workflowGroupVisualLinkWritePublicSchema = z
+	.object({
+		source: workflowGroupVisualLinkEndpointWritePublicSchema,
+		target: workflowGroupVisualLinkEndpointWritePublicSchema,
+	})
+	.strict();
+
 const workflowNodeGroupWritePublicSchema = z
 	.object({
-		id: z.string().openapi(workflowNodeGroupFieldDocs.id),
-		name: z.string().openapi(workflowNodeGroupFieldDocs.name),
+		id: z.string().min(1).openapi(workflowNodeGroupFieldDocs.id),
+		name: z.string().min(1).openapi(workflowNodeGroupFieldDocs.name),
 		description: z.string().max(155).optional().openapi(workflowNodeGroupFieldDocs.description),
-		nodeIds: z.array(z.string()).openapi(workflowNodeGroupFieldDocs.nodeIds),
+		nodeIds: z.array(z.string().min(1)).openapi(workflowNodeGroupFieldDocs.nodeIds),
+		frame: workflowGroupFrameWritePublicSchema.optional().openapi(workflowNodeGroupFieldDocs.frame),
+		visualLinks: z
+			.array(workflowGroupVisualLinkWritePublicSchema)
+			.optional()
+			.openapi(workflowNodeGroupFieldDocs.visualLinks),
 	})
 	.strict();
 

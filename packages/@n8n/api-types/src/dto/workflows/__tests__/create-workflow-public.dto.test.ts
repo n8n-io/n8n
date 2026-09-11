@@ -16,6 +16,19 @@ const validPayload = {
 	settings: { executionOrder: 'v1' },
 };
 
+const emptyGroup = {
+	id: 'group-1',
+	name: 'Empty group',
+	nodeIds: [],
+	frame: { position: [560, 280], size: [240, 160] },
+	visualLinks: [
+		{
+			source: { kind: 'node', id: 'node-a', port: { type: 'main', index: 2 } },
+			target: { kind: 'group', id: 'group-1', port: { type: 'main', index: 0 } },
+		},
+	],
+};
+
 describe('CreateWorkflowPublicDto', () => {
 	test('rejects an unknown key through both the DTO and its schema', () => {
 		const payload = { ...validPayload, notAWorkflowField: 'x' };
@@ -90,5 +103,44 @@ describe('CreateWorkflowPublicDto', () => {
 		});
 
 		expect(result.success).toBe(expected);
+	});
+
+	test('preserves an empty group frame and visual links', () => {
+		const result = CreateWorkflowPublicDto.parse({
+			...validPayload,
+			nodeGroups: [emptyGroup],
+		});
+
+		expect(result.nodeGroups).toEqual([emptyGroup]);
+	});
+
+	test.each([
+		['a blank group id', { ...emptyGroup, id: '' }],
+		['a blank group name', { ...emptyGroup, name: '' }],
+		['a blank member id', { ...emptyGroup, nodeIds: [''] }],
+		['a non-positive frame size', { ...emptyGroup, frame: { position: [0, 0], size: [0, 1] } }],
+		[
+			'a nonzero group port index',
+			{
+				...emptyGroup,
+				visualLinks: [
+					{
+						source: { kind: 'node', id: 'node-a', port: { type: 'main', index: 0 } },
+						target: {
+							kind: 'group',
+							id: 'group-1',
+							port: { type: 'main', index: 1 },
+						},
+					},
+				],
+			},
+		],
+	])('rejects %s', (_name, group) => {
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodeGroups: [group],
+		});
+
+		expect(result.success).toBe(false);
 	});
 });

@@ -122,33 +122,7 @@ properties:
               type: main
               index: 0
   nodeGroups:
-    type: array
-    description: Visual groupings of nodes shown as frames on the canvas
-    items:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the node group
-          example: 9b1c8e2a-4d3f-4a6b-8c7d-1e2f3a4b5c6d
-        name:
-          type: string
-          description: Display name of the node group
-          example: Data processing
-        description:
-          type: string
-          maxLength: 155
-          description: Optional plain-text description of the node group
-          example: Cleans and normalizes incoming records
-        nodeIds:
-          type: array
-          description: IDs of the nodes that belong to this group
-          items:
-            type: string
-      required:
-        - id
-        - name
-        - nodeIds
+    $ref: workflowNodeGroupsPublic.generated.yml
   settings:
     type: object
     description: Execution and behaviour settings for the workflow
@@ -415,33 +389,7 @@ properties:
                   type: main
                   index: 0
       nodeGroups:
-        type: array
-        description: Visual groupings of nodes shown as frames on the canvas
-        items:
-          type: object
-          properties:
-            id:
-              type: string
-              description: Unique identifier for the node group
-              example: 9b1c8e2a-4d3f-4a6b-8c7d-1e2f3a4b5c6d
-            name:
-              type: string
-              description: Display name of the node group
-              example: Data processing
-            description:
-              type: string
-              maxLength: 155
-              description: Optional plain-text description of the node group
-              example: Cleans and normalizes incoming records
-            nodeIds:
-              type: array
-              description: IDs of the nodes that belong to this group
-              items:
-                type: string
-          required:
-            - id
-            - name
-            - nodeIds
+        $ref: workflowNodeGroupsPublic.generated.yml
       authors:
         type: string
       name:
