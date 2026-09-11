@@ -786,10 +786,16 @@ const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWork
  */
 function assertOperationsSupported(
 	strictOperations: PartialUpdateOperation[],
-	{ tagsDisabled }: { tagsDisabled: boolean },
+	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
 ): void {
-	if (tagsDisabled && strictOperations.some(isTagOperation)) {
-		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
+	// Defense in depth: with the flag off, the published schema already
+	// rejects these op types at the enum level; this guards against the
+	// loose and strict schemas drifting apart. Flag first so the scan only
+	// runs on instances where it can actually reject something.
+	if (!canvasGroupsEnabled && strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type))) {
+		throw new Error(
+			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
+		);
 	}
 }
 
@@ -1181,9 +1187,7 @@ export const createUpdateWorkflowTool = (
 				const hasSettingsOperations = strictOperations.some(isSettingsOperation);
 				hasGraphOps = strictOperations.some((op) => GRAPH_OPERATION_TYPES.has(op.type));
 
-				assertOperationsSupported(strictOperations, {
-					tagsDisabled: globalConfig.tags.disabled,
-				});
+				assertOperationsSupported(strictOperations, { canvasGroupsEnabled });
 
 				existingWorkflow = await getMcpWorkflow(
 					workflowId,

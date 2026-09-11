@@ -72,7 +72,6 @@ export class McpProtectedResource implements ProtectedResource {
 	 */
 	getScopeTools(): Record<string, string[]> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
-		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
 		// Consent must not advertise a tool `tools/list` will not carry. The instance-context
@@ -91,10 +90,7 @@ export class McpProtectedResource implements ProtectedResource {
 					tools.filter(
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
-							(!tagsDisabled || tool !== 'list_workflow_tags') &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
-							(instanceContextAvailable || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
-							(activityToolsAvailable || !ACTIVITY_LOG_TOOLS.has(tool)),
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
 					),
 				]),
 		);
