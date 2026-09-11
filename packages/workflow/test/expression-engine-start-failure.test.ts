@@ -27,6 +27,24 @@ describe('Expression.initExpressionEngine', () => {
 		// bridge is acquired, which blocks both a retry and the legacy fallback.
 		expect(Expression.getActiveImplementation()).toBe('legacy');
 	});
+
+	it('fails loudly on Node when an engine is recorded but never started', async () => {
+		await Expression.disposeExpressionEngine();
+		// What base-command does for a command that should never evaluate an
+		// expression: record the engine without starting one, so an unexpected
+		// evaluation is reported instead of silently served by `new Function`.
+		Expression.setExpressionEngine('quickjs');
+
+		expect(() =>
+			new Expression('UTC').resolveSimpleParameterValue('={{ 1 + 1 }}', {
+				$json: {},
+				$thisRunIndex: 0,
+				$thisItemIndex: 0,
+			} as never),
+		).toThrow('has not been initialized');
+
+		Expression.setExpressionEngine('legacy');
+	});
 });
 
 describe('Expression.disposeExpressionEngine', () => {
@@ -51,10 +69,26 @@ describe('Expression.disposeExpressionEngine', () => {
 		};
 
 		await Expression.disposeExpressionEngine();
-		// The browser shape: a pre-loaded bundle plus an explicit request for
-		// shared-caller mode.
-		await Expression.initExpressionEngine({ ...options, runtimeBundle, sharedCaller: true });
+		// The browser shape: a pre-loaded bundle, one shared scope, and the runtime
+		// built on first use.
+		await Expression.initExpressionEngine({
+			...options,
+			runtimeBundle,
+			sharedCaller: true,
+			lazyAcquire: true,
+		});
 		expect(Expression.getActiveImplementation()).toBe('quickjs');
+
+		// The editor never calls acquireIsolate(): it evaluates straight away on a
+		// fresh Expression. Without the shared scope this throws "No bridge
+		// acquired for this context".
+		expect(
+			new Expression('UTC').resolveSimpleParameterValue('={{ 1 + 1 }}', {
+				$json: {},
+				$thisRunIndex: 0,
+				$thisItemIndex: 0,
+			} as never),
+		).toBe(2);
 
 		await Expression.disposeExpressionEngine();
 

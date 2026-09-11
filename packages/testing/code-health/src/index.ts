@@ -5,6 +5,7 @@ import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
+import { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
@@ -16,6 +17,7 @@ export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EncryptionBoundaryRule } from './rules/encryption-boundary.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
+export { LintConfigLayeringRule } from './rules/lint-config-layering.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
 export { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
@@ -54,6 +56,13 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'error',
 		options: {},
+	},
+	'lint-config-layering': {
+		enabled: true,
+		severity: 'error',
+		// This package is a dependency of @n8n/eslint-config, so extending it
+		// would be a cycle.
+		options: { exempt: ['packages/frontend/@n8n/eslint-plugin-design-system'] },
 	},
 	'stale-overrides': {
 		enabled: true,
@@ -136,6 +145,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new SingleInstanceLibsRule());
 	runner.registerRule(new SingleInstanceLockfileRule());
 	runner.registerRule(new EncryptionBoundaryRule());
+	runner.registerRule(new LintConfigLayeringRule());
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());

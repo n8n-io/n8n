@@ -42,8 +42,12 @@ export async function initializeExpressionEngine(
 		poolSize: 1,
 		maxCodeCacheSize: 1024,
 		runtimeBundle,
-		// The editor's evaluate() is synchronous, so it needs a bridge already
-		// acquired; one shared caller serves every Expression instance.
+		// The editor's evaluate() is synchronous, so it needs a caller that already
+		// holds a scope. One shared scope covers every Expression the editor builds.
 		sharedCaller: true,
+		// Open that scope without building the runtime yet. The first expression
+		// that reaches the engine cold-starts it from inside the synchronous path,
+		// so enabling the engine costs nothing until something is evaluated.
+		lazyAcquire: true,
 	});
 }

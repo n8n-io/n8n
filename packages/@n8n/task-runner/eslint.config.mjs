@@ -1,21 +1,13 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
-import { encryptionBoundaryConfig } from '@n8n/eslint-config/encryption-boundary';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	baseConfig,
-	// Depends on n8n-core, so the encryption guardrails must run here even
-	// though it is not on nodeConfig.
-	encryptionBoundaryConfig,
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			complexity: 'error',
 
-			// TODO: Remove this
-			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/require-await': 'warn',
 		},
 	},
 	{

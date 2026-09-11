@@ -23,6 +23,7 @@ describe('initializeExpressionEngine', () => {
 				engine: 'quickjs',
 				runtimeBundle: '/* runtime bundle */',
 				sharedCaller: true,
+				lazyAcquire: true,
 			}),
 		);
 	});

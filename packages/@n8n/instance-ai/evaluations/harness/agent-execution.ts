@@ -22,6 +22,7 @@ import {
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient } from '../clients/n8n-client';
 import type {
+	AgentArtifact,
 	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
@@ -43,19 +44,24 @@ export function findAgentArtifactRef(
  * the workflow JSON block). Falls back to a marker string so a fetch failure
  * degrades verification instead of failing the scenario.
  */
+export interface AgentScenarioContext {
+	rendered: string;
+	artifact?: AgentArtifact;
+}
+
 export async function fetchAgentScenarioContext(
 	client: N8nClient,
 	ref: ArtifactRef,
 	logger: EvalLogger,
-): Promise<string> {
+): Promise<AgentScenarioContext> {
 	try {
-		const agentArtifact = await agentHandler.fetch(ref, client);
-		return agentHandler.renderArtifact(agentArtifact);
+		const artifact = await agentHandler.fetch(ref, client);
+		return { rendered: agentHandler.renderArtifact(artifact), artifact };
 	} catch (error: unknown) {
 		logger.warn(
 			`  Agent config fetch failed — verifying scenarios without it: ${error instanceof Error ? error.message : String(error)}`,
 		);
-		return '(agent configuration could not be fetched)';
+		return { rendered: '(agent configuration could not be fetched)' };
 	}
 }
 

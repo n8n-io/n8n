@@ -58,6 +58,7 @@ describe('ExecutionRedactionService', () => {
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
 			withDynamicCredentials?: boolean;
+			usesDynamicCredentials?: boolean;
 			executedByUserId?: string | null;
 		} = {},
 	): RedactableExecution => {
@@ -69,6 +70,7 @@ describe('ExecutionRedactionService', () => {
 			workflowSettingsPolicy,
 			withRuntimeData = true,
 			withDynamicCredentials = false,
+			usesDynamicCredentials = false,
 			executedByUserId = null,
 		} = overrides;
 
@@ -97,6 +99,20 @@ describe('ExecutionRedactionService', () => {
 				establishedAt: Date.now(),
 				source: mode,
 				credentials: 'encrypted-credential-context',
+			};
+		}
+
+		// Stamp the private-credential flag onto runtimeData, mirroring what
+		// `DynamicCredentialsContextHook` does at execution start. Set without a
+		// runData `usedDynamicCredentials` flag, this models a run that failed or
+		// stopped before the private credential resolved.
+		if (usesDynamicCredentials) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				...executionData.runtimeData,
+				usesDynamicCredentials: true,
 			};
 		}
 
@@ -704,6 +720,34 @@ describe('ExecutionRedactionService', () => {
 			).rejects.toThrow(ForbiddenError);
 		});
 
+		it('emits execution-data-reveal-failure before the ForbiddenError on the reveal path', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(
+				service.processExecution(execution, {
+					user: mockUser,
+					redactExecutionData: false,
+					ipAddress: '1.2.3.4',
+					userAgent: 'TestAgent/1.0',
+				}),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
+				user: mockUser,
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'none',
+				rejectionReason: 'Not the executing user of a private-credential execution',
+			});
+		});
+
 		it('does not force-redact when execution has no dynamic credentials', async () => {
 			const execution = makeExecution({
 				policy: 'none',
@@ -854,6 +898,67 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
+		});
+	});
+
+	describe('dynamic credentials from context flag (failed/partial run)', () => {
+		it('force-redacts a run that used no runData flag but references a private credential', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+			});
+
+			// No runData node ran, so the per-node flag is absent.
+			expect(execution.data.resultData.runData).toEqual({});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.enforceDynCredRedaction).toBe(true);
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('lets the executing user reveal their own failed run', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+				executedByUserId: mockUser.id,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('rejects reveal for a different user even with execution:reveal scope', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: true,
+				executedByUserId: 'another-user-id',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('leaves a run with no private credential and no flag unchanged', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				usesDynamicCredentials: false,
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 	});
 

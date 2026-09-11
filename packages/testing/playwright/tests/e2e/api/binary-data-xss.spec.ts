@@ -59,7 +59,7 @@ return [{ json: { binaryDataId: data.id }, binary: { data } }];
 }
 
 test.describe(
-	'Binary data endpoint XSS prevention @capability:task-runner',
+	'Binary data endpoint XSS prevention',
 	{
 		annotation: [{ type: 'owner', description: 'Adore' }],
 	},

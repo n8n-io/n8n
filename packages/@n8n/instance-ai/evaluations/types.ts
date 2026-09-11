@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedDataTable,
@@ -185,6 +186,13 @@ export interface ArtifactRef {
 	id: string;
 }
 
+/** Structured agent preview. Capture redacts it; persistence validates and caps it. */
+export interface AgentArtifact {
+	agentId?: string;
+	config: unknown;
+	skills: Record<string, AgentSkill>;
+}
+
 export interface ExecutionScenario {
 	name: string;
 	description: string;
@@ -351,8 +359,10 @@ export interface WorkflowTestCaseResult {
 	workflowId?: string;
 	/** Agent the case's scenarios executed (agent-artifact cases). */
 	agentId?: string;
-	/** Rendered agent config + skills — the agent analog of `workflowJson`, for the report. */
+	/** Rendered agent config + skills, used by the local HTML report. */
 	agentArtifactContext?: string;
+	/** Structured, redacted agent config and skills. Persistence validates and caps this value. */
+	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	executionScenarioResults: ExecutionScenarioResult[];

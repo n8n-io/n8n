@@ -8,16 +8,16 @@
 		"GET /roles": {
 			"status": "gap"
 		},
-		"GET /roles/{slug}": {
+		"GET /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"POST /roles": {
 			"status": "gap"
 		},
-		"PUT /roles/{slug}": {
+		"PUT /roles/{roleSlug}": {
 			"status": "gap"
 		},
-		"DELETE /roles/{slug}": {
+		"DELETE /roles/{roleSlug}": {
 			"status": "gap"
 		},
 		"GET /role-mapping-rules": {
@@ -155,7 +155,7 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
-		"GET /workflows/{workflowId}/versions/{versionId}": {
+		"GET /workflows/{workflowId}/versions/{workflowVersionId}": {
 			"status": "gap"
 		},
 		"GET /workflows/{id}/history": {

@@ -265,14 +265,39 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
   - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
     operator import — trades a visible leak for an invisible one.
 
+### ESLint configuration layers
+
+Rule policy lives in four shared configs in `@n8n/eslint-config`, and a package
+config picks exactly one:
+
+| layer | subpath | for |
+|---|---|---|
+| `baseConfig` | `@n8n/eslint-config/base` | runtime-agnostic libraries |
+| `backendConfig` | `@n8n/eslint-config/backend` | anything that runs on Node; adds the network and encryption boundaries |
+| `frontendConfig` | `@n8n/eslint-config/frontend` | Vue packages |
+| `nodesConfig` | `@n8n/eslint-config/nodes` | `n8n-nodes-base` and `@n8n/nodes-langchain`; adds the node and credential file rules |
+
+A package config may add `ignores`, an additive plugin config, a block that
+raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
+down for the whole package: every lint script runs with `--quiet`, so a `warn`
+enforces nothing and reads as if it did. The code-health rule
+`lint-config-layering` enforces this, with existing debt in
+`.code-health-baseline.json`, which only shrinks.
+
+To stop enforcing a rule everywhere, retire it in `base.ts` with the count
+behind the decision. To enforce one again in a package that is ready, set it to
+`error` there. `node scripts/lint-parity/majority.mjs` prints how many packages
+downgrade each rule, and `scripts/lint-parity/snapshot.mjs` plus `diff.mjs`
+prove a config change only altered what you meant it to.
+
 ### Encryption boundary
 
 New code encrypts and decrypts only through `cipher.encryptV2()` /
 `cipher.decryptV2()` — the key-manager module decides which key is used and in
 which output format. Enforced in CI by the rules in
 `packages/@n8n/eslint-config/src/configs/encryption-boundary.ts` (part of
-`nodeConfig`; baseConfig packages that depend on `n8n-core` or `@n8n/db`
-compose it directly):
+`backendConfig`, and so of `nodesConfig`; every package that runs on Node
+extends one of those layers):
 
 - The deprecated `Cipher.encrypt` / `Cipher.decrypt` are banned outside tests.
 - The raw AES classes and `encryptWithKey` / `decryptWithKey` stay inside
@@ -283,8 +308,9 @@ compose it directly):
 - Inline disables that name these rules, and bare line-form disables, are
   themselves lint errors. The code-health rule `encryption-boundary` (CI
   "Static Analysis") is the enforcement layer: it checks that every package
-  that depends on `n8n-core` or `@n8n/db` composes the boundary config at
-  `error` severity, and rejects every directive form that would silence the
+  that depends on `n8n-core` or `@n8n/db` extends `backendConfig` (or
+  `nodesConfig`) at `error` severity, and rejects every directive form that
+  would silence the
   rules in non-test code (`eslint-disable*` and inline `eslint` configuration
   comments). Widening the boundary happens in `encryption-boundary.ts` only;
   that file and the rule files require security (IAM) approval via OWNERS.

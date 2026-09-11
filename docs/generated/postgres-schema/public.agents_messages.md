@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | content | json |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [public.agents_memory_entry_candidates](public.agents_memory_entry_candidates.md) |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
 | role | varchar(36) |  | false |  |  |  |
 | threadId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) |  |
@@ -40,6 +40,7 @@
 ```mermaid
 erDiagram
 
+"public.agents_memory_entry_candidates" }o--o| "public.agents_messages" : "FOREIGN KEY (#quot;sourceMessageId#quot;) REFERENCES agents_messages(id) ON DELETE SET NULL"
 "public.agents_messages" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
 
 "public.agents_messages" {
@@ -50,6 +51,22 @@ erDiagram
   varchar_36_ role
   varchar_255_ threadId FK
   varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents_memory_entry_candidates" {
+  varchar_36_ agentId FK
+  smallint attemptCount
+  text content
+  timestamp_3__with_time_zone createdAt
+  text evidenceText
+  varchar_36_ id
+  varchar_32_ kind
+  varchar_255_ resourceId FK
+  varchar_255_ runId
+  varchar_36_ sourceMessageId FK
+  varchar_16_ status
+  varchar_255_ threadId FK
+  varchar_255_ toolCallId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_threads" {

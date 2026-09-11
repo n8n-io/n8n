@@ -16,7 +16,7 @@ const LOCALSTACK_AWS_SETTINGS = {
 const INVALID_AWS_SETTINGS_REGION = 'us-east/1';
 
 test.describe(
-	'Secret Providers Connections UI @capability:external-secrets @licensed',
+	'Secret Providers Connections UI @licensed',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
