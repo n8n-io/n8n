@@ -1,13 +1,16 @@
 import {
+	CreateAppBindingDto,
 	CreateAppDto,
 	CreatePageDto,
 	SetActiveAppVersionDto,
+	UpdateAppBindingDto,
 	UpdateAppDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	Body,
 	Delete,
@@ -35,6 +38,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
+import { AppNotFoundError } from './errors/app-not-found.error';
 import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { pathSegments } from './serving/path-segments';
 
@@ -110,6 +114,27 @@ export class AppsController {
 			next();
 		} catch {
 			res.status(404).send('Project not found');
+		}
+	}
+
+	/**
+	 * Runs after the project-scope check. An `:appId` of another project answers
+	 * the same 404 as an unknown id, so it does not reveal that the app exists.
+	 */
+	@Middleware()
+	async validateAppBelongsToProject(
+		req: AuthenticatedRequest<{ projectId: string; appId?: string }>,
+		res: Response,
+		next: NextFunction,
+	) {
+		const { projectId, appId } = req.params;
+		if (appId === undefined) return next();
+		try {
+			const app = await this.appsService.getApp(appId);
+			if (app.projectId !== projectId) throw new AppNotFoundError(appId);
+			next();
+		} catch (error) {
+			sendErrorResponse(res, ensureError(error));
 		}
 	}
 
@@ -220,6 +245,35 @@ export class AppsController {
 	) {
 		const app = await this.appsService.getApp(appId);
 		return await this.appsService.describeBindings(app);
+	}
+
+	@Post('/:appId/bindings')
+	@ProjectScope('app:update')
+	async addBinding(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('appId') appId: string,
+	) {
+		this.checkInstanceWriteAccess();
+		const parsed = CreateAppBindingDto.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError(parsed.error.errors[0].message);
+		const described = await this.appsService.addBinding(appId, parsed.data, req.user);
+		res.status(201);
+		return described;
+	}
+
+	@Patch('/:appId/bindings/:key')
+	@ProjectScope('app:update')
+	async updateBinding(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('appId') appId: string,
+		@Param('key') key: string,
+	) {
+		this.checkInstanceWriteAccess();
+		const parsed = UpdateAppBindingDto.safeParse(req.body);
+		if (!parsed.success) throw new BadRequestError(parsed.error.errors[0].message);
+		return await this.appsService.updateBinding(appId, key, parsed.data, req.user);
 	}
 
 	@Delete('/:appId/bindings/:key')

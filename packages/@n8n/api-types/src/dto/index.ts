@@ -285,6 +285,8 @@ export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
 export { SaveAppDraftFileDto } from './app/save-app-draft-file.dto';
+export { CreateAppBindingDto } from './app/create-app-binding.dto';
+export { UpdateAppBindingDto } from './app/update-app-binding.dto';
 export { CreatePageDto } from './app/create-page.dto';
 export { UpdatePageDto } from './app/update-page.dto';
 export { SetActiveAppVersionDto } from './app/set-active-app-version.dto';

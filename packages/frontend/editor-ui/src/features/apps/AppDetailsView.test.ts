@@ -5,11 +5,17 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import AppDetailsView from './AppDetailsView.vue';
 import { useAppsStore } from './apps.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { APP_DETAILS, APP_PAGE_DETAILS, PROJECT_APPS } from './apps.constants';
+import {
+	APP_CONNECTIONS_MODAL_KEY,
+	APP_DETAILS,
+	APP_PAGE_DETAILS,
+	PROJECT_APPS,
+} from './apps.constants';
 import type { DescribedBinding } from '@n8n/api-types';
 import type { App, AppVersion } from './apps.types';
 
@@ -898,6 +904,23 @@ describe('AppDetailsView', () => {
 			await userEvent.click(getAllByTestId('app-connection-delete')[0]);
 
 			expect(appsStore.deleteBinding).not.toHaveBeenCalled();
+		});
+
+		it('opens the connections picker from the plus button in the Connect card header', async () => {
+			const uiStore = mockedStore(useUIStore);
+			const { getByTestId } = await renderApp(makeApp());
+
+			await userEvent.click(getByTestId('app-builder-mode-build'));
+			const add = getByTestId('app-connections').querySelector(
+				'[data-test-id="app-connection-add"]',
+			);
+			expect(add).toHaveAttribute('aria-label', 'Add connection');
+			await userEvent.click(add!);
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: APP_CONNECTIONS_MODAL_KEY,
+				data: { projectId: 'proj-1', appId: 'app-1' },
+			});
 		});
 
 		it('shows the empty state when nothing is connected', async () => {

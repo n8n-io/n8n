@@ -1,4 +1,5 @@
 import {
+	appBindingSchema,
 	appBindingsSchema,
 	getWorkflowToolIncompatibilityReason,
 	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
@@ -232,6 +233,32 @@ export class AppsService {
 		if (table.projectId !== projectId) {
 			throw new BindingProjectMismatchError(binding.key, 'data table', table.name);
 		}
+	}
+
+	/** Appends one binding; the whole list goes through `setBindings`, so a duplicate key is a 400. */
+	async addBinding(appId: string, binding: AppBinding, user: User) {
+		const app = await this.getApp(appId);
+		return await this.setBindings(appId, [...app.bindings, binding], user);
+	}
+
+	/**
+	 * Replaces the permissions of one binding. The patched binding is parsed by kind first,
+	 * so a value the kind does not know is a 400; the whole list then goes through
+	 * `setBindings`, so the user must still hold the scopes the new permissions need.
+	 */
+	async updateBinding(appId: string, key: string, patch: { permissions: string[] }, user: User) {
+		const app = await this.getApp(appId);
+		const current = app.bindings.find((binding) => binding.key === key);
+		if (!current) throw new BindingNotFoundError(key);
+		if (!('permissions' in current)) {
+			throw new InvalidBindingsError([`A ${current.kind} binding has no permissions.`]);
+		}
+		const patched = appBindingSchema.safeParse({ ...current, permissions: patch.permissions });
+		if (!patched.success) {
+			throw new InvalidBindingsError(patched.error.issues.map((issue) => issue.message));
+		}
+		const bindings = app.bindings.map((binding) => (binding.key === key ? patched.data : binding));
+		return await this.setBindings(appId, bindings, user);
 	}
 
 	/** Drops one binding by key; the others are not re-checked. Returns the remaining ones described. */

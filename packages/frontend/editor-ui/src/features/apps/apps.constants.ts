@@ -5,3 +5,4 @@ export const APP_PAGE_DETAILS = 'app-page-details';
 export const APPS_STORE = 'appsStore';
 
 export const ADD_APP_MODAL_KEY = 'addAppModal';
+export const APP_CONNECTIONS_MODAL_KEY = 'appConnectionsModal';
