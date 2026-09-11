@@ -1,6 +1,7 @@
 import {
 	CreateAppBindingDto,
 	CreateAppDto,
+	ListAppsQueryDto,
 	SetActiveAppVersionDto,
 	UpdateAppBindingDto,
 	UpdateAppDto,
@@ -18,6 +19,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { NextFunction, RequestHandler, Response } from 'express';
@@ -151,9 +153,12 @@ export class AppsController {
 
 	@Get('/')
 	@ProjectScope('app:listProject')
-	async listApps(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		const apps = await this.appsService.listApps(req.params.projectId);
-		return await Promise.all(apps.map(async (app) => await this.appsService.toResponse(app)));
+	async listApps(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Query query: ListAppsQueryDto,
+	) {
+		return await this.appsService.listApps(req.params.projectId, query);
 	}
 
 	@Get('/:appId')

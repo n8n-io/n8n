@@ -25,7 +25,7 @@ import {
 	updateAppApi,
 	updateBindingApi,
 } from '@/features/apps/apps.api';
-import type { AppBindingPatch } from '@/features/apps/apps.api';
+import type { AppBindingPatch, ListAppsOptions } from '@/features/apps/apps.api';
 import { APPS_STORE } from '@/features/apps/apps.constants';
 import type {
 	App,
@@ -39,13 +39,16 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const rootStore = useRootStore();
 
 	const apps = ref<App[]>([]);
+	const appsCount = ref(0);
 	const pages = ref<Page[]>([]);
 	const bindings = ref<DescribedBinding[]>([]);
 	const bindingWarnings = ref<string[]>([]);
 	const versions = ref<AppVersion[]>([]);
 
-	const fetchApps = async (projectId: string) => {
-		apps.value = await fetchAppsApi(rootStore.restApiContext, projectId);
+	const fetchApps = async (projectId: string | undefined, options: ListAppsOptions) => {
+		const { count, data } = await fetchAppsApi(rootStore.restApiContext, projectId, options);
+		apps.value = data;
+		appsCount.value = count;
 	};
 
 	const getApp = async (projectId: string, appId: string) => {
@@ -101,6 +104,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 	const deleteApp = async (projectId: string, appId: string) => {
 		await deleteAppApi(rootStore.restApiContext, projectId, appId);
 		apps.value = apps.value.filter((app) => app.id !== appId);
+		appsCount.value = Math.max(0, appsCount.value - 1);
 	};
 
 	const fetchPages = async (projectId: string, appId: string) => {
@@ -171,6 +175,7 @@ export const useAppsStore = defineStore(APPS_STORE, () => {
 
 	return {
 		apps,
+		appsCount,
 		pages,
 		bindings,
 		bindingWarnings,

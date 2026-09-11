@@ -321,6 +321,11 @@ export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from '.
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateAppDto } from './app/create-app.dto';
+export {
+	ListAppsQueryDto,
+	APPS_LIST_SORT_OPTIONS,
+	type AppsListSortBy,
+} from './app/list-apps-query.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
 export { SaveAppDraftFileDto } from './app/save-app-draft-file.dto';

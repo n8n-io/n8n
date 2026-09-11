@@ -1,7 +1,7 @@
 import type { AppBinding } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { IExecutionResponse, User, WorkflowEntity } from '@n8n/db';
+import type { IExecutionResponse, ProjectRelationRepository, User, WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type IDataObject, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -35,12 +35,14 @@ import { InvalidBindingsError } from '../errors/invalid-bindings.error';
 describe('AppsService', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
 	let appVersionService: ReturnType<typeof mock<AppVersionService>>;
+	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let globalConfig: GlobalConfig;
 	let service: AppsService;
 
 	beforeEach(() => {
 		appRepository = mock<AppRepository>();
 		appVersionService = mock<AppVersionService>();
+		projectRelationRepository = mock<ProjectRelationRepository>();
 		globalConfig = mock<GlobalConfig>({ apps: { maxAppsPerProject: 20 } });
 		service = new AppsService(
 			appRepository,
@@ -52,7 +54,38 @@ describe('AppsService', () => {
 			mock<DataTableService>(),
 			mock<AgentsService>(),
 			mock<ModuleRegistry>(),
+			projectRelationRepository,
 		);
+	});
+
+	describe('listApps', () => {
+		const query = { skip: 0, take: 10 };
+		const app = { id: 'app-1', projectId: 'project-1' } as App;
+
+		it('pages one project and marks each app with its publish state', async () => {
+			appRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 3, data: [app] });
+			appVersionService.hasUnpublishedChanges.mockResolvedValue(true);
+
+			const result = await service.listApps('project-1', query);
+
+			expect(appRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(['project-1'], query);
+			expect(result).toEqual({ count: 3, data: [{ ...app, hasUnpublishedChanges: true }] });
+		});
+
+		it('pages across every project the user belongs to', async () => {
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				{ projectId: 'project-1' },
+				{ projectId: 'project-2' },
+			] as never);
+			appRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+
+			await service.listAppsForUser('user-1', query);
+
+			expect(appRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+				['project-1', 'project-2'],
+				query,
+			);
+		});
 	});
 
 	describe('createApp', () => {
@@ -220,6 +253,7 @@ describe('AppsService bindings', () => {
 			dataTableService,
 			agentsService,
 			moduleRegistry,
+			mock<ProjectRelationRepository>(),
 		);
 		app = { id: 'app-1', projectId: 'proj-1', bindings: [] } as unknown as App;
 		appRepository.findOneBy.mockResolvedValue(app);

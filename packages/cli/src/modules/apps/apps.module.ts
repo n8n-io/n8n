@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 export class AppsModule implements ModuleInterface {
 	async init() {
 		await import('./apps.controller.js');
+		await import('./apps-list.controller.js');
 		// Before the serving controller: routes register in import order, and its
 		// catch-all would otherwise answer `/apps/<ns>/api/*` with the SPA's index.html.
 		await import('./runtime/app-runtime.controller.js');

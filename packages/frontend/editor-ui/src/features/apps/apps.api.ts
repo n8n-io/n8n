@@ -2,6 +2,7 @@ import type {
 	AgentPermission,
 	AppBinding,
 	AppPreviewStatus,
+	AppsListSortBy,
 	DataTablePermission,
 	DescribedBinding,
 	InstanceAiThreadInfo,
@@ -18,8 +19,21 @@ import type {
 	UpdateAppInput,
 } from '@/features/apps/apps.types';
 
-export const fetchAppsApi = async (context: IRestApiContext, projectId: string) => {
-	return await makeRestApiRequest<App[]>(context, 'GET', `/projects/${projectId}/apps`);
+export type ListAppsOptions = {
+	skip: number;
+	take: number;
+	sortBy?: AppsListSortBy;
+	name?: string;
+};
+
+/** Without a project the list spans every project the user is a member of. */
+export const fetchAppsApi = async (
+	context: IRestApiContext,
+	projectId: string | undefined,
+	options: ListAppsOptions,
+) => {
+	const path = projectId ? `/projects/${projectId}/apps` : '/apps';
+	return await makeRestApiRequest<{ count: number; data: App[] }>(context, 'GET', path, options);
 };
 
 export const getAppApi = async (context: IRestApiContext, projectId: string, appId: string) => {

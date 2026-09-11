@@ -581,7 +581,7 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
-			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(5);
+			expect(settingsStore.isModuleActive).toHaveBeenCalledTimes(6);
 		});
 
 		it('should pass empty array when no modules are active', () => {

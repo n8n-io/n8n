@@ -1,4 +1,4 @@
-import type { AppBinding } from '@n8n/api-types';
+import type { AppBinding, ListAppsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
@@ -25,8 +25,23 @@ export class AppRepository extends Repository<App> {
 		return await this.findOneBy({ namespace });
 	}
 
-	async findManyByProjectId(projectId: string) {
-		return await this.findBy({ projectId });
+	async findByProjectIdsPaginated(
+		projectIds: string[],
+		{ skip, take, name, sortBy }: ListAppsQueryDto,
+	): Promise<{ count: number; data: App[] }> {
+		if (projectIds.length === 0) return { count: 0, data: [] };
+
+		const [field, direction] = (sortBy ?? 'updatedAt:desc').split(':');
+		const query = this.createQueryBuilder('app')
+			.where('app.projectId IN (:...projectIds)', { projectIds })
+			.orderBy(`app.${field}`, direction === 'asc' ? 'ASC' : 'DESC')
+			.skip(skip)
+			.take(take);
+		// sqlite has no ILIKE; LOWER() on both sides is what the sibling repositories do.
+		if (name) query.andWhere('LOWER(app.name) LIKE LOWER(:name)', { name: `%${name}%` });
+
+		const [data, count] = await query.getManyAndCount();
+		return { count, data };
 	}
 
 	async countByProjectId(projectId: string): Promise<number> {

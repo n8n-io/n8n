@@ -7,11 +7,12 @@ import {
 	type CreateAppDto,
 	type DescribedBinding,
 	type DescribedWorkflowBinding,
+	type ListAppsQueryDto,
 	type UpdateAppDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity } from '@n8n/db';
+import { ProjectRelationRepository, type User, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -106,6 +107,7 @@ export class AppsService {
 		private readonly dataTableService: DataTableService,
 		private readonly agentsService: AgentsService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async createApp(projectId: string, dto: CreateAppDto) {
@@ -116,8 +118,23 @@ export class AppsService {
 		return await this.appRepository.createApp(projectId, dto.name, dto.namespace);
 	}
 
-	async listApps(projectId: string) {
-		return await this.appRepository.findManyByProjectId(projectId);
+	async listApps(projectId: string, query: ListAppsQueryDto) {
+		return await this.toPageResponse(
+			await this.appRepository.findByProjectIdsPaginated([projectId], query),
+		);
+	}
+
+	/** Apps across every project the user is a member of; the overview page has no project context. */
+	async listAppsForUser(userId: string, query: ListAppsQueryDto) {
+		const relations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = relations.map((relation) => relation.projectId);
+		return await this.toPageResponse(
+			await this.appRepository.findByProjectIdsPaginated(projectIds, query),
+		);
+	}
+
+	private async toPageResponse({ count, data }: { count: number; data: App[] }) {
+		return { count, data: await Promise.all(data.map(async (app) => await this.toResponse(app))) };
 	}
 
 	async getApp(appId: string) {
