@@ -5,11 +5,9 @@ import {
 	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	type AppBinding,
 	type CreateAppDto,
-	type CreatePageDto,
 	type DescribedBinding,
 	type DescribedWorkflowBinding,
 	type UpdateAppDto,
-	type UpdatePageDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -49,14 +47,8 @@ import { BindingProjectMismatchError } from './errors/binding-project-mismatch.e
 import { BindingWorkflowNotFoundError } from './errors/binding-workflow-not-found.error';
 import { AppVersionFileNotFoundError } from './errors/app-version-file-not-found.error';
 import { AppVersionNotFoundError } from './errors/app-version-not-found.error';
-import { DataWorkflowNotFoundError } from './errors/data-workflow-not-found.error';
 import { InvalidBindingsError } from './errors/invalid-bindings.error';
-import { IndexPageCannotHaveChildrenError } from './errors/index-page-cannot-have-children.error';
-import { IndexPageMustBeTopLevelError } from './errors/index-page-must-be-top-level.error';
-import { PageNotFoundError } from './errors/page-not-found.error';
-import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './infer-output-fields';
-import { PageRepository } from './page.repository';
 
 const PASSTHROUGH_INPUT_SCHEMA: JSONSchema7 = { type: 'object', additionalProperties: true };
 
@@ -106,7 +98,6 @@ export type AppResponse = App & { hasUnpublishedChanges: boolean };
 export class AppsService {
 	constructor(
 		private readonly appRepository: AppRepository,
-		private readonly pageRepository: PageRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly appVersionService: AppVersionService,
 		private readonly globalConfig: GlobalConfig,
@@ -552,82 +543,13 @@ export class AppsService {
 		return { content };
 	}
 
-	async createPage(appId: string, dto: CreatePageDto) {
-		await this.getApp(appId);
-		const parentPageId = dto.parentPageId ?? null;
-		if (parentPageId) {
-			if (dto.route === '') throw new IndexPageMustBeTopLevelError();
-			// getPage scopes the lookup to this app, so a parentPageId belonging to
-			// another app/project is rejected the same as one that doesn't exist.
-			const parent = await this.getPage(appId, parentPageId);
-			if (!parent.route) throw new IndexPageCannotHaveChildrenError(parent.id);
-		}
-		if (await this.pageRepository.hasSiblingWithRoute(appId, parentPageId, dto.route)) {
-			throw new PageRouteConflictError(dto.route);
-		}
-		return await this.pageRepository.createPage(appId, parentPageId, dto.route);
-	}
-
-	/** Flat list; callers build the tree from each page's `parentPageId`. */
-	async listPages(appId: string) {
-		await this.getApp(appId);
-		return await this.pageRepository.findManyByAppId(appId);
-	}
-
 	/**
-	 * The app's real pages, derived from its source's `src/router.ts` rather
-	 * than the (unused) `Page` table — `[]` when the app has no version yet,
-	 * or that version's source has no `src/router.ts`.
+	 * The app's pages, derived from its source's `src/router.ts` — `[]` when the
+	 * app has no version yet, or that version's source has no `src/router.ts`.
 	 */
 	async listRoutes(appId: string) {
 		const app = await this.getApp(appId);
 		const routerSource = await this.appVersionService.readRouterSource(app);
 		return routerSource ? deriveRoutesFromRouterSource(routerSource) : [];
-	}
-
-	/** Scoped to `appId` so a pageId from a different app is treated as not found, not just unauthorized. */
-	async getPage(appId: string, pageId: string) {
-		const page = await this.pageRepository.findOneBy({ id: pageId });
-		if (!page || page.appId !== appId) throw new PageNotFoundError(pageId);
-		return page;
-	}
-
-	async updatePage(appId: string, pageId: string, dto: UpdatePageDto, user: User) {
-		const page = await this.getPage(appId, pageId);
-		if (dto.route !== undefined && dto.route !== page.route) {
-			if (dto.route === '') {
-				if (page.parentPageId) throw new IndexPageMustBeTopLevelError();
-				if (await this.pageRepository.hasChildren(pageId)) {
-					throw new IndexPageCannotHaveChildrenError(pageId);
-				}
-			}
-			if (
-				await this.pageRepository.hasSiblingWithRoute(
-					page.appId,
-					page.parentPageId,
-					dto.route,
-					pageId,
-				)
-			) {
-				throw new PageRouteConflictError(dto.route);
-			}
-		}
-		if (dto.dataWorkflowId) {
-			// Scoped to the user's own `workflow:read` access, same as any other
-			// workflow lookup — not just existence, so a page can't be wired up to
-			// read data from a workflow the caller isn't allowed to see.
-			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				dto.dataWorkflowId,
-				user,
-				['workflow:read'],
-			);
-			if (!workflow) throw new DataWorkflowNotFoundError(dto.dataWorkflowId);
-		}
-		return await this.pageRepository.updatePage(page, dto);
-	}
-
-	async deletePage(appId: string, pageId: string) {
-		await this.getPage(appId, pageId);
-		await this.pageRepository.deletePage(pageId);
 	}
 }

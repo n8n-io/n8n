@@ -14,19 +14,6 @@ export const appNamespaceSchema = z
 	.max(128)
 	.regex(SLUG_REGEX, SLUG_ERROR_MESSAGE);
 
-// Empty means this page is the index/home page for its level (the app's own
-// landing page, for a top-level page with no parent). A page's own segment
-// can also be a dynamic param, e.g. ":id" (as in /clients/:id), matching the
-// data workflow's input field of the same name.
-const PAGE_ROUTE_REGEX = /^(:[a-zA-Z_][a-zA-Z0-9_]*|[a-z0-9]+(-[a-z0-9]+)*)?$/;
-const PAGE_ROUTE_ERROR_MESSAGE = `${SLUG_ERROR_MESSAGE} A dynamic segment starts with ':' followed by a name, e.g. ':id'.`;
-
-export const pageRouteSchema = z
-	.string()
-	.trim()
-	.max(255)
-	.regex(PAGE_ROUTE_REGEX, PAGE_ROUTE_ERROR_MESSAGE);
-
 // Flat CSS custom-property overrides applied on top of the shadcn-vue template's
 // default :root/.dark block. Open-ended by design: the server derives a handful
 // of keys from `appThemeSettingsSchema` (see app-theme.service.ts), but Instance
@@ -89,8 +76,8 @@ export const appVersionSchema = z.object({
 
 export type AppVersion = z.infer<typeof appVersionSchema>;
 
-// A page derived from the app's own `src/router.ts`, not a `Page` DB row —
-// `id` is synthesized from the route's own full path, since there is no row.
+// A page derived from the app's own `src/router.ts`; `id` is synthesized from
+// the route's full path.
 export const appRouteSchema = z.object({
 	id: z.string(),
 	parentPageId: z.string().nullable(),

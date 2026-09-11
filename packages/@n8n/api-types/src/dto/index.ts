@@ -332,8 +332,6 @@ export {
 	appAgentResumeRequestSchema,
 	type AppAgentResumeRequest,
 } from './app/app-agent-chat.dto';
-export { CreatePageDto } from './app/create-page.dto';
-export { UpdatePageDto } from './app/update-page.dto';
 export { SetActiveAppVersionDto } from './app/set-active-app-version.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';

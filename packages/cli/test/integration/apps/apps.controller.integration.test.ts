@@ -9,7 +9,6 @@ import { stringify } from 'flatted';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { AppRepository } from '@/modules/apps/app.repository';
-import { PageRepository } from '@/modules/apps/page.repository';
 import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createExecution } from '@test-integration/db/executions';
@@ -29,12 +28,10 @@ const testServer = utils.setupTestServer({
 });
 
 let appRepository: AppRepository;
-let pageRepository: PageRepository;
 const instanceAiService = mockInstance(InstanceAiService);
 
 beforeAll(async () => {
 	appRepository = Container.get(AppRepository);
-	pageRepository = Container.get(PageRepository);
 
 	owner = await createOwner();
 	member = await createMember();
@@ -46,7 +43,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page', 'ExecutionEntity']);
+	await testDb.truncate(['App', 'ExecutionEntity']);
 });
 
 describe('POST /projects/:projectId/apps', () => {
@@ -119,18 +116,6 @@ describe('GET /projects/:projectId/apps', () => {
 		expect(response.body.data).toHaveLength(1);
 
 		await authMemberAgent.get(`/projects/${ownerProject.id}/apps`).expect(403);
-	});
-});
-
-describe('GET /projects/:projectId/apps/data-workflows', () => {
-	// Regression test: this route must be registered before GET /:appId, or
-	// Express matches 'data-workflows' as an appId and 404s looking for that app.
-	test('lists data workflows without being shadowed by GET /:appId', async () => {
-		const response = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/apps/data-workflows`)
-			.expect(200);
-
-		expect(response.body.data).toEqual([]);
 	});
 });
 
@@ -546,165 +531,17 @@ describe('DELETE /projects/:projectId/apps/:appId/bindings/:key', () => {
 	});
 });
 
-describe('App pages', () => {
-	test('creates a page and a nested child page under it', async () => {
+describe('DELETE /projects/:projectId/apps/:appId', () => {
+	test('deletes the app without touching a sandbox when instance-ai is inactive', async () => {
 		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-
-		const rootResponse = await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'home' })
-			.expect(200);
-
-		const childResponse = await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'nested', parentPageId: rootResponse.body.data.id })
-			.expect(200);
-
-		expect(childResponse.body.data.parentPageId).toBe(rootResponse.body.data.id);
-
-		const listResponse = await authOwnerAgent
-			.get(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.expect(200);
-		expect(listResponse.body.data).toHaveLength(2);
-	});
-
-	test('accepts an empty route, meaning this page is the index page for its level', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-
-		const response = await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: '' })
-			.expect(200);
-
-		expect(response.body.data.route).toBe('');
-	});
-
-	test('accepts a dynamic param segment, e.g. :id', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-
-		const response = await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: ':id' })
-			.expect(200);
-
-		expect(response.body.data.route).toBe(':id');
-	});
-
-	test('rejects creating a sub-page under an index page', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const indexPage = await pageRepository.createPage(app.id, null, '');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'child', parentPageId: indexPage.id })
-			.expect(400);
-	});
-
-	test('rejects creating an index page under another page', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const parent = await pageRepository.createPage(app.id, null, 'parent');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: '', parentPageId: parent.id })
-			.expect(400);
-	});
-
-	test('rejects turning a sub-page into an index page', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const parent = await pageRepository.createPage(app.id, null, 'parent');
-		const child = await pageRepository.createPage(app.id, parent.id, 'child');
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${child.id}`)
-			.send({ route: '' })
-			.expect(400);
-	});
-
-	test('rejects turning a page with children into an index page', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const parent = await pageRepository.createPage(app.id, null, 'parent');
-		await pageRepository.createPage(app.id, parent.id, 'child');
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${parent.id}`)
-			.send({ route: '' })
-			.expect(400);
-	});
-
-	test('rejects creating a page whose route collides with a sibling, at any level', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'foo' })
-			.expect(200);
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'foo' })
-			.expect(409);
-	});
-
-	test('rejects creating a second index page at the same level', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		await pageRepository.createPage(app.id, null, '');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: '' })
-			.expect(409);
-	});
-
-	test('allows the same route at different levels (different parents)', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const parentA = await pageRepository.createPage(app.id, null, 'a');
-		const parentB = await pageRepository.createPage(app.id, null, 'b');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'same', parentPageId: parentA.id })
-			.expect(200);
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'same', parentPageId: parentB.id })
-			.expect(200);
-	});
-
-	test('rejects renaming a page to collide with a sibling', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		await pageRepository.createPage(app.id, null, 'foo');
-		const other = await pageRepository.createPage(app.id, null, 'bar');
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${other.id}`)
-			.send({ route: 'foo' })
-			.expect(409);
-	});
-
-	test('allows saving a page with its own current route unchanged', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'foo');
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ route: 'foo' })
-			.expect(200);
-	});
-
-	test('deleting an app deletes its pages', async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		await pageRepository.createPage(app.id, null, 'home');
 
 		await authOwnerAgent.delete(`/projects/${ownerProject.id}/apps/${app.id}`).expect(200);
 
-		const remaining = await pageRepository.findManyByAppId(app.id);
-		expect(remaining).toHaveLength(0);
+		expect(await appRepository.findOneBy({ id: app.id })).toBeNull();
 		expect(instanceAiService.destroyAppSandbox).not.toHaveBeenCalled();
 	});
 
-	test("deleting an app destroys the app's sandbox when instance-ai is active", async () => {
+	test("destroys the app's sandbox when instance-ai is active", async () => {
 		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
 		const isActive = vi
 			.spyOn(Container.get(ModuleRegistry), 'isActive')
@@ -717,71 +554,6 @@ describe('App pages', () => {
 		}
 
 		expect(instanceAiService.destroyAppSandbox).toHaveBeenCalledWith(app.id);
-	});
-
-	test("rejects updating a page through a different app's URL", async () => {
-		const appA = await appRepository.createApp(ownerProject.id, 'App A', 'app-a');
-		const appB = await appRepository.createApp(ownerProject.id, 'App B', 'app-b');
-		const page = await pageRepository.createPage(appA.id, null, 'foo');
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${appB.id}/pages/${page.id}`)
-			.send({ route: 'moved' })
-			.expect(404);
-	});
-
-	test("rejects deleting a page through a different app's URL, leaving it untouched", async () => {
-		const appA = await appRepository.createApp(ownerProject.id, 'App A', 'app-a');
-		const appB = await appRepository.createApp(ownerProject.id, 'App B', 'app-b');
-		const page = await pageRepository.createPage(appA.id, null, 'foo');
-
-		await authOwnerAgent
-			.delete(`/projects/${ownerProject.id}/apps/${appB.id}/pages/${page.id}`)
-			.expect(404);
-
-		const remaining = await pageRepository.findManyByAppId(appA.id);
-		expect(remaining).toHaveLength(1);
-	});
-
-	test('rejects creating a page whose parentPageId belongs to a different app', async () => {
-		const appA = await appRepository.createApp(ownerProject.id, 'App A', 'app-a');
-		const appB = await appRepository.createApp(ownerProject.id, 'App B', 'app-b');
-		const pageInA = await pageRepository.createPage(appA.id, null, 'foo');
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${appB.id}/pages`)
-			.send({ route: 'child', parentPageId: pageInA.id })
-			.expect(404);
-	});
-
-	test("sets and clears a page's dataWorkflowId", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		const workflow = await createWorkflow({}, ownerProject);
-
-		const setResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
-			.expect(200);
-		expect(setResponse.body.data.dataWorkflowId).toBe(workflow.id);
-
-		const clearResponse = await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: null })
-			.expect(200);
-		expect(clearResponse.body.data.dataWorkflowId).toBeNull();
-	});
-
-	test("rejects a dataWorkflowId the caller can't read", async () => {
-		const app = await appRepository.createApp(ownerProject.id, 'My App', 'my-app');
-		const page = await pageRepository.createPage(app.id, null, 'home');
-		// Owned by no one, so no SharedWorkflow row grants the owner access to it.
-		const workflow = await createWorkflow();
-
-		await authOwnerAgent
-			.patch(`/projects/${ownerProject.id}/apps/${app.id}/pages/${page.id}`)
-			.send({ dataWorkflowId: workflow.id })
-			.expect(404);
 	});
 });
 
@@ -849,17 +621,6 @@ describe('/:appId of another project', () => {
 			.expect(404);
 
 		expect((await appRepository.findOneByOrFail({ id: app.id })).bindings).toEqual(app.bindings);
-	});
-
-	test('answers 404 for POST /:appId/pages and creates no page', async () => {
-		const app = await appOfMember();
-
-		await authOwnerAgent
-			.post(`/projects/${ownerProject.id}/apps/${app.id}/pages`)
-			.send({ route: 'home' })
-			.expect(404);
-
-		expect(await pageRepository.findBy({ appId: app.id })).toEqual([]);
 	});
 
 	test('still resolves an app of the request project', async () => {

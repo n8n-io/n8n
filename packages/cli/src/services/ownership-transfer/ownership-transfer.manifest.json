@@ -87,7 +87,7 @@
 		{
 			"name": "App",
 			"path": "packages/cli/src/modules/apps/app.entity.ts",
-			"reason": "Hackweek slice: ownership transfer isn't implemented yet (unlike DataTable, which this entity otherwise follows closely). Dropped via the projectId FK cascade when the source project itself is deleted; revisit before this ships beyond the prototype."
+			"reason": "Apps are served at a namespace URL that carries no project, so moving one between projects has no user-visible meaning yet. Dropped via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
 		},
 		{
 			"name": "PromotionConnectionProject",

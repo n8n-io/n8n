@@ -4,10 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| activeVersionId | varchar(36) |  | true |  | [public.app_version](public.app_version.md) | app_version served at /apps/\<namespace\>/; null falls back to pages |
+| activeVersionId | varchar(36) |  | true |  | [public.app_version](public.app_version.md) | app_version served at /apps/\<namespace\>/; null means unpublished |
 | bindings | json | '[]'::json | false |  |  | Resources the served app may call through its runtime API |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.page](public.page.md) |  |  |
+| id | varchar(36) |  | false | [public.app_version](public.app_version.md) [public.instance_ai_threads](public.instance_ai_threads.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  | URL path segment under /apps/ |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
@@ -44,7 +44,6 @@ erDiagram
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--o| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE SET NULL"
-"public.page" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
 "public.app" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.app" {
@@ -78,16 +77,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   text title
-  timestamp_3__with_time_zone updatedAt
-}
-"public.page" {
-  varchar_36_ appId FK
-  json content
-  timestamp_3__with_time_zone createdAt
-  varchar_36_ dataWorkflowId FK
-  varchar_36_ id
-  varchar_36_ parentPageId FK
-  varchar_255_ route
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {

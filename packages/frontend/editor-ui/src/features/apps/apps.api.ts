@@ -154,7 +154,7 @@ export const setActiveAppVersionApi = async (
 	);
 };
 
-/** The app's real pages, derived from its source — not the (unused) DB `Page` CRUD. */
+/** The app's pages, derived from its source's `src/router.ts`. */
 export const fetchRoutesApi = async (
 	context: IRestApiContext,
 	projectId: string,

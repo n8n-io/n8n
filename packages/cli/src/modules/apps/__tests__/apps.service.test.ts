@@ -31,7 +31,6 @@ import { BindingNotFoundError } from '../errors/binding-not-found.error';
 import { BindingProjectMismatchError } from '../errors/binding-project-mismatch.error';
 import { BindingWorkflowNotFoundError } from '../errors/binding-workflow-not-found.error';
 import { InvalidBindingsError } from '../errors/invalid-bindings.error';
-import type { PageRepository } from '../page.repository';
 
 describe('AppsService', () => {
 	let appRepository: ReturnType<typeof mock<AppRepository>>;
@@ -45,7 +44,6 @@ describe('AppsService', () => {
 		globalConfig = mock<GlobalConfig>({ apps: { maxAppsPerProject: 20 } });
 		service = new AppsService(
 			appRepository,
-			mock<PageRepository>(),
 			mock<WorkflowFinderService>(),
 			appVersionService,
 			globalConfig,
@@ -214,7 +212,6 @@ describe('AppsService bindings', () => {
 		]);
 		service = new AppsService(
 			appRepository,
-			mock<PageRepository>(),
 			workflowFinderService,
 			mock<AppVersionService>(),
 			mock<GlobalConfig>({ executions: { maxDisplaySize: 1024 } }),

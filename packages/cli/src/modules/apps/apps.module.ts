@@ -29,8 +29,7 @@ export class AppsModule implements ModuleInterface {
 	async entities() {
 		const { App } = await import('./app.entity.js');
 		const { AppVersion } = await import('./app-version.entity.js');
-		const { Page } = await import('./page.entity.js');
 
-		return [App, AppVersion, Page];
+		return [App, AppVersion];
 	}
 }

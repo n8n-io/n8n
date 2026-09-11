@@ -7,15 +7,14 @@ import path from 'node:path';
 import { AppServingService } from './app-serving.service';
 import { injectInspectorScript } from './inject-inspector-script';
 import { pathSegments } from './path-segments';
-import { renderAppPage, renderAppPageNotFound } from './render-page';
 
 @RootLevelController('/apps')
 export class AppServingController {
 	constructor(private readonly appServingService: AppServingService) {}
 
 	/**
-	 * Serves an App to anyone with the URL: a file of its active version's
-	 * dist, or one of its pages when it has no version.
+	 * Serves a published App to anyone with the URL: a file of its active
+	 * version's dist, or `index.html` for client-side routes.
 	 *
 	 * `skipAuth` because no App is protected, and because the auth middleware
 	 * would clear the visitor's editor session cookie: a top-level navigation
@@ -29,34 +28,21 @@ export class AppServingController {
 			res.status(404).json({ code: 'not_found', message: 'Not found' });
 			return;
 		}
-		const resolved = await this.appServingService.resolve(req.params.namespace, segments);
+		const filePath = await this.appServingService.resolve(req.params.namespace, segments);
+		if (!filePath) {
+			res.status(404).type('text').send('Not found');
+			return;
+		}
 
 		// A built app links its assets relative to its base URL, so the root document
 		// has to carry the trailing slash.
 		const { pathname, search } = new URL(req.originalUrl, 'http://n8n');
-		if (resolved && segments.length === 0 && !pathname.endsWith('/')) {
+		if (segments.length === 0 && !pathname.endsWith('/')) {
 			res.redirect(302, `/apps/${req.params.namespace}/${search}`);
 			return;
 		}
 
-		if (resolved?.kind === 'static') {
-			await this.sendStaticFile(res, resolved.filePath);
-			return;
-		}
-
-		// The same policy every other public HTML surface in n8n serves, which puts
-		// this document on an opaque origin.
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-
-		if (!resolved) {
-			res
-				.status(404)
-				.type('html')
-				.send(await renderAppPageNotFound());
-			return;
-		}
-
-		res.type('html').send(await renderAppPage(resolved.context));
+		await this.sendStaticFile(res, filePath);
 	}
 
 	private async sendStaticFile(res: Response, filePath: string) {

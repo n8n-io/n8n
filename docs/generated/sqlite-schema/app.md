@@ -18,7 +18,7 @@ CREATE TABLE "app" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) N
 | activeVersionId | varchar(36) |  | true |  | [app_version](app_version.md) |  |
 | bindings | TEXT | '[]' | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [app_version](app_version.md) [instance_ai_threads](instance_ai_threads.md) [page](page.md) |  |  |
+| id | varchar(36) |  | false | [app_version](app_version.md) [instance_ai_threads](instance_ai_threads.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | namespace | varchar(128) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
@@ -49,7 +49,6 @@ erDiagram
 "app" }o--o| "app_version" : "FOREIGN KEY (activeVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--o| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"page" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "app" {
@@ -83,16 +82,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar_255_ resourceId
   TEXT title
-  datetime_3_ updatedAt
-}
-"page" {
-  varchar_36_ appId FK
-  TEXT content
-  datetime_3_ createdAt
-  varchar_36_ dataWorkflowId FK
-  varchar_36_ id PK
-  varchar_36_ parentPageId FK
-  varchar_255_ route
   datetime_3_ updatedAt
 }
 "project" {

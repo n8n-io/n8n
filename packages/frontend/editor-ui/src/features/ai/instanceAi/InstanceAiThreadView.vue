@@ -1588,7 +1588,11 @@ async function dismissComposerContextChip() {
 												:style="{ animationDelay: `${index * 50}ms` }"
 												@click="useNewAppExample(example.key)"
 											>
-												<N8nIcon :icon="example.icon" :size="12" :class="$style.newAppExampleIcon" />
+												<N8nIcon
+													:icon="example.icon"
+													:size="12"
+													:class="$style.newAppExampleIcon"
+												/>
 												<span>{{ i18n.baseText(example.key) }}</span>
 											</button>
 										</div>

@@ -1,11 +1,9 @@
 import {
 	CreateAppBindingDto,
 	CreateAppDto,
-	CreatePageDto,
 	SetActiveAppVersionDto,
 	UpdateAppBindingDto,
 	UpdateAppDto,
-	UpdatePageDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -28,7 +26,6 @@ import multer from 'multer';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import { InstanceAiMemoryService } from '@/modules/instance-ai/instance-ai-memory.service';
 import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
@@ -39,7 +36,6 @@ import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
 import { AppNotFoundError } from './errors/app-not-found.error';
-import { PageRouteConflictError } from './errors/page-route-conflict.error';
 import { pathSegments } from './serving/path-segments';
 
 type TarballUploadRequest = AuthenticatedRequest<{ projectId: string }> & {
@@ -87,7 +83,6 @@ export class AppsController {
 		private readonly appsService: AppsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly instanceAiMemoryService: InstanceAiMemoryService,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
@@ -97,7 +92,7 @@ export class AppsController {
 	}
 
 	private handleAppError(e: unknown): never {
-		if (e instanceof AppNamespaceConflictError || e instanceof PageRouteConflictError) {
+		if (e instanceof AppNamespaceConflictError) {
 			throw new ConflictError(e.message);
 		}
 		throw e;
@@ -159,13 +154,6 @@ export class AppsController {
 	async listApps(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
 		const apps = await this.appsService.listApps(req.params.projectId);
 		return await Promise.all(apps.map(async (app) => await this.appsService.toResponse(app)));
-	}
-
-	/** Workflows a page can set as its `dataWorkflowId` — same trigger-compatible list agents pick tools from. */
-	@Get('/data-workflows')
-	@ProjectScope('app:read')
-	async listDataWorkflows(req: AuthenticatedRequest<{ projectId: string }>, _res: Response) {
-		return await this.attachableWorkflowsService.list(req.user, req.params.projectId);
 	}
 
 	@Get('/:appId')
@@ -371,33 +359,7 @@ export class AppsController {
 		return version;
 	}
 
-	@Post('/:appId/pages')
-	@ProjectScope('app:update')
-	async createPage(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('appId') appId: string,
-		@Body dto: CreatePageDto,
-	) {
-		this.checkInstanceWriteAccess();
-		try {
-			return await this.appsService.createPage(appId, dto);
-		} catch (e: unknown) {
-			this.handleAppError(e);
-		}
-	}
-
-	@Get('/:appId/pages')
-	@ProjectScope('app:read')
-	async listPages(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('appId') appId: string,
-	) {
-		return await this.appsService.listPages(appId);
-	}
-
-	/** The app's real pages, derived from its source; what the builder UI shows. */
+	/** The app's pages, derived from its source's `src/router.ts`. */
 	@Get('/:appId/routes')
 	@ProjectScope('app:read')
 	async listRoutes(
@@ -406,34 +368,5 @@ export class AppsController {
 		@Param('appId') appId: string,
 	) {
 		return await this.appsService.listRoutes(appId);
-	}
-
-	@Patch('/:appId/pages/:pageId')
-	@ProjectScope('app:update')
-	async updatePage(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('appId') appId: string,
-		@Param('pageId') pageId: string,
-		@Body dto: UpdatePageDto,
-	) {
-		this.checkInstanceWriteAccess();
-		try {
-			return await this.appsService.updatePage(appId, pageId, dto, req.user);
-		} catch (e: unknown) {
-			this.handleAppError(e);
-		}
-	}
-
-	@Delete('/:appId/pages/:pageId')
-	@ProjectScope('app:update')
-	async deletePage(
-		_req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('appId') appId: string,
-		@Param('pageId') pageId: string,
-	) {
-		this.checkInstanceWriteAccess();
-		await this.appsService.deletePage(appId, pageId);
 	}
 }

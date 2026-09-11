@@ -19,7 +19,6 @@ import { InstanceAiService } from '@/modules/instance-ai/instance-ai.service';
 import { MAX_TARBALL_BYTES } from '@/modules/apps/app-version.service';
 import { AppRepository } from '@/modules/apps/app.repository';
 import { AppsService } from '@/modules/apps/apps.service';
-import { PageRepository } from '@/modules/apps/page.repository';
 import { injectInspectorScript } from '@/modules/apps/serving/inject-inspector-script';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -41,7 +40,6 @@ const testServer = utils.setupTestServer({
 
 let appRepository: AppRepository;
 let appVersionRepository: AppVersionRepository;
-let pageRepository: PageRepository;
 let binaryDataRepository: BinaryDataRepository;
 let cacheRoot: string;
 const instanceAiService = mockInstance(InstanceAiService);
@@ -86,7 +84,6 @@ const sourceTgz = () => tgz([{ path: './src/main.ts', content: 'export {};' }]);
 beforeAll(async () => {
 	appRepository = Container.get(AppRepository);
 	appVersionRepository = Container.get(AppVersionRepository);
-	pageRepository = Container.get(PageRepository);
 	binaryDataRepository = Container.get(BinaryDataRepository);
 	cacheRoot = path.join(Container.get(InstanceSettings).n8nFolder, 'apps');
 
@@ -99,7 +96,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['App', 'Page']);
+	await testDb.truncate(['App']);
 	instanceAiService.destroyAppSandbox.mockClear();
 });
 
@@ -727,24 +724,10 @@ describe('GET /apps/:namespace with an active version', () => {
 });
 
 describe('GET /apps/:namespace without a version', () => {
-	test('redirects the bare namespace to the trailing-slash URL', async () => {
-		const app = await createApp();
-		await pageRepository.createPage(app.id, null, '');
+	test('answers 404', async () => {
+		await createApp();
 
-		const response = await visitor.get('/apps/hello').expect(302);
-
-		expect(response.headers.location).toBe('/apps/hello/');
-	});
-
-	test('still serves pages', async () => {
-		const app = await createApp();
-		await pageRepository.createPage(app.id, null, '');
-
-		const response = await visitor.get('/apps/hello/').expect(200);
-
-		expect(response.headers['content-type']).toContain('text/html');
-		expect(response.headers['content-security-policy']).toContain('sandbox');
-		expect(response.text).toContain('Hello');
+		await visitor.get('/apps/hello/').expect(404);
 	});
 });
 

@@ -160,7 +160,6 @@ type EntityName =
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'App'
-	| 'Page'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
 	| 'ChatHubAgent'

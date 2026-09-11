@@ -35,11 +35,7 @@ export type AppPublishResult =
 	| { versionId: string; url: string }
 	| { error: true; stage: string; message: string; log?: string };
 
-/**
- * A page of an App, derived from its source's `src/router.ts` — not a DB
- * row. `id` is synthesized from the route's own full path, since there is
- * no row to key by.
- */
+/** A page of an App, derived from its source's `src/router.ts`; `id` is the route's full path. */
 export interface Page {
 	id: string;
 	parentPageId: string | null;
