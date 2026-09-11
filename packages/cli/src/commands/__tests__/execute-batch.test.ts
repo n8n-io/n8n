@@ -30,10 +30,12 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
+import { RegexEngineService } from '@/regex-engine/regex-engine.service';
 
 import { ExecuteBatch } from '../execute-batch';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
+mockInstance(RegexEngineService);
 const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
@@ -115,4 +117,5 @@ test('should start a task runner', async () => {
 
 test('execute:batch needs the expression engine', () => {
 	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
+	expect(new ExecuteBatch().needsRegexEngine).toBe(true);
 });
