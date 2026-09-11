@@ -117,6 +117,39 @@ async function initialized() {
 	return context;
 }
 
+/** Drive adapter.stream() by hand, one delta at a time. */
+function deltaStream() {
+	const queue: string[] = [];
+	let done = false;
+	let wake: (() => void) | null = null;
+	const bump = () => {
+		wake?.();
+		wake = null;
+	};
+	const iterable: AsyncIterable<string> = {
+		[Symbol.asyncIterator]: () => ({
+			async next(): Promise<IteratorResult<string>> {
+				for (;;) {
+					if (queue.length > 0) return { value: queue.shift()!, done: false };
+					if (done) return { value: '', done: true };
+					await new Promise<void>((resolve) => (wake = resolve));
+				}
+			},
+		}),
+	};
+	return {
+		iterable,
+		emit: (delta: string) => {
+			queue.push(delta);
+			bump();
+		},
+		close: () => {
+			done = true;
+			bump();
+		},
+	};
+}
+
 const threadId = `twilioVoice:${CALL_SID}`;
 const speechUrl = `${WEBHOOK_URL}?turn=t1`;
 const streamUrl = `${WEBHOOK_URL}?stream=1`;
@@ -149,14 +182,63 @@ describe('splitSentences', () => {
 });
 
 describe('SentenceAccumulator', () => {
-	it('returns each sentence once as the accumulated text grows', () => {
+	it('emits a sentence once the deltas that form it have arrived', () => {
 		const accumulator = new SentenceAccumulator();
-		expect(accumulator.push('Hello there. ')).toEqual(['Hello there.']);
-		expect(accumulator.push('Hello there. How can I help? ')).toEqual(['How can I help?']);
+		expect(accumulator.push('Hello')).toEqual([]);
+		expect(accumulator.push(' there')).toEqual([]);
+		expect(accumulator.push('. ')).toEqual(['Hello there.']);
 	});
 
-	it('ignores the streaming placeholder', () => {
-		expect(new SentenceAccumulator().push('...')).toEqual([]);
+	it('speaks the opening words before their sentence is finished', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('I have checked your')).toEqual([]);
+		// The sixth word proves the fifth is complete, so the cut is safe.
+		expect(accumulator.push(' order and it ')).toEqual(['I have checked your order']);
+	});
+
+	it('prefers a clause boundary over a bare word count', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('Yes I can do that, and here is why ')).toEqual(['Yes I can do that,']);
+	});
+
+	it('never cuts an opening chunk mid-word', () => {
+		const accumulator = new SentenceAccumulator();
+		// Looks like five words, but nothing proves the fifth finished — and it
+		// had not: the next delta continues it.
+		expect(accumulator.push('one two three four five')).toEqual([]);
+		expect(accumulator.push('teen ')).toEqual(['one two three four fiveteen']);
+	});
+
+	it('keeps the space between deltas', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('the parcel ')).toEqual([]);
+		expect(accumulator.push('left on Tuesday. ')).toEqual(['the parcel left on Tuesday.']);
+	});
+
+	it('cuts early only once, then waits for whole sentences', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('I have checked your order and ')).toEqual([
+			'I have checked your order',
+		]);
+		// Plenty of words, but the caller is now listening, so this waits.
+		expect(accumulator.push('it turns out that the parcel ')).toEqual([]);
+		expect(accumulator.push('left on Tuesday. ')).toEqual([
+			'and it turns out that the parcel left on Tuesday.',
+		]);
+	});
+
+	it('does not repeat a sentence it already emitted', () => {
+		const accumulator = new SentenceAccumulator();
+		expect(accumulator.push('One. ')).toEqual(['One.']);
+		expect(accumulator.push('Two. ')).toEqual(['Two.']);
+	});
+
+	it('emits several sentences that arrive in one delta', () => {
+		expect(new SentenceAccumulator().push('One. Two! Three. ')).toEqual(['One.', 'Two!', 'Three.']);
+	});
+
+	it('says nothing for punctuation with no words in it', () => {
+		expect(new SentenceAccumulator().push('... ')).toEqual([]);
 	});
 
 	it('returns the unterminated tail when the turn ends', () => {
@@ -166,14 +248,14 @@ describe('SentenceAccumulator', () => {
 		expect(accumulator.end()).toEqual([]);
 	});
 
-	it('speaks a separate message in full after the tail of the previous one', () => {
+	it('speaks a whole message including its unterminated tail', () => {
 		const accumulator = new SentenceAccumulator();
 		expect(accumulator.push('Checking now. And a tail')).toEqual(['Checking now.']);
-		expect(accumulator.beginMessage('A new message. With more')).toEqual([
+		expect(accumulator.whole('A new message. With more')).toEqual([
 			'And a tail',
 			'A new message.',
+			'With more',
 		]);
-		expect(accumulator.end()).toEqual(['With more']);
 	});
 });
 
@@ -268,7 +350,9 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 			signedRequest(speechUrl, callFields({ SpeechResult: 'what is the status?' })),
 		);
 		await agentStarted;
-		await adapter.postMessage(threadId, { markdown: 'The order shipped. ' });
+		const stream = deltaStream();
+		const streaming = adapter.stream(threadId, stream.iterable);
+		stream.emit('The order shipped. ');
 		const firstBody = await twimlOf(await firstHop);
 
 		expect(processMessage).toHaveBeenCalledTimes(1);
@@ -278,9 +362,7 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 		expect(firstBody).not.toContain('<Gather');
 
 		// Second sentence arrives while the caller is hearing the first.
-		await adapter.editMessage(threadId, 'm1', {
-			markdown: 'The order shipped. It arrives on Tuesday. ',
-		});
+		stream.emit('It arrives on Tuesday. ');
 		const secondBody = await twimlOf(
 			await adapter.handleWebhook(signedRequest(streamUrl, callFields())),
 		);
@@ -288,6 +370,8 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 		expect(secondBody).not.toContain('<Say>The order shipped.</Say>');
 
 		// The agent finishes, so the last hop returns the turn to the caller.
+		stream.close();
+		await streaming;
 		finishAgent();
 		await agentDone;
 		await Promise.resolve();
@@ -305,10 +389,12 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 			signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })),
 		);
 		await agentStarted;
-		await adapter.postMessage(threadId, { markdown: 'Working on it. ' });
+		const stream = deltaStream();
+		void adapter.stream(threadId, stream.iterable);
+		stream.emit('Working on it. ');
 		await firstHop;
 
-		await adapter.editMessage(threadId, 'm1', { markdown: 'Working on it. Nearly there. ' });
+		stream.emit('Nearly there. ');
 		await adapter.handleWebhook(signedRequest(speechUrl, callFields({ SpeechResult: 'hello' })));
 
 		expect(processMessage).toHaveBeenCalledTimes(1);
@@ -335,14 +421,16 @@ describe('TwilioVoiceAdapter.handleWebhook', () => {
 		expect(body).not.toContain('<Gather');
 	});
 
-	it('holds the line quietly while the agent is still thinking', async () => {
+	it('acknowledges a slow agent quickly instead of leaving the caller in silence', async () => {
 		vi.useFakeTimers();
 		try {
 			const { adapter } = await initialized();
 			const firstHop = adapter.handleWebhook(
 				signedRequest(speechUrl, callFields({ SpeechResult: 'think hard' })),
 			);
-			await vi.advanceTimersByTimeAsync(5_000);
+
+			// Under the 5s a later hop waits: the first hop must not take that long.
+			await vi.advanceTimersByTimeAsync(4_000);
 			const body = await twimlOf(await firstHop);
 
 			expect(body).toContain('<Say>One moment.</Say>');

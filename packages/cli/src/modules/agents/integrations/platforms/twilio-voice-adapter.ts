@@ -8,6 +8,7 @@ import type {
 	FormattedContent,
 	Message,
 	RawMessage,
+	StreamChunk,
 	ThreadInfo,
 	WebhookOptions,
 } from 'chat';
@@ -24,6 +25,13 @@ const XML_CONTENT_TYPE = { 'content-type': 'text/xml; charset=utf-8' };
  * document. Twilio abandons a webhook that takes longer than 15 seconds.
  */
 const HOP_WAIT_MS = 5_000;
+
+/**
+ * The first hop answers sooner. Until it returns the caller hears nothing at
+ * all, so a quick "one moment" beats several seconds of silence. Later hops
+ * can wait longer because the caller knows the agent is working.
+ */
+const FIRST_HOP_WAIT_MS = 3_200;
 
 /**
  * Consecutive silent hops tolerated before the agent is declared too slow.
@@ -52,6 +60,12 @@ interface TwilioIncomingPhoneNumber {
 	sid: string;
 	phone_number: string;
 	voice_url: string | null;
+}
+
+interface ProducingTurn {
+	accumulator: SentenceAccumulator;
+	startedAt: number;
+	firstSpeechAt?: number;
 }
 
 interface VoiceTurnState {
@@ -118,6 +132,43 @@ function hasSpeech(text: string): boolean {
 }
 
 /**
+ * Words the opening chunk needs before it is worth speaking on its own.
+ * Only the first chunk of an answer is cut early — see
+ * {@link SentenceAccumulator.takeOpeningChunk}.
+ */
+const OPENING_CHUNK_MIN_WORDS = 5;
+
+function wordCount(text: string): number {
+	const trimmed = text.trim();
+	return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+/** Index just past the first clause boundary that already has enough words. */
+function clauseCut(text: string, minWords: number): number | null {
+	const boundary = /[,;:]\s/g;
+	let match: RegExpExecArray | null;
+	while ((match = boundary.exec(text)) !== null) {
+		const end = match.index + 1;
+		if (wordCount(text.slice(0, end)) >= minWords) return end;
+	}
+	return null;
+}
+
+/**
+ * Index after `minWords` complete words. Each run of whitespace proves the word
+ * before it finished, so a cut here never lands in the middle of one.
+ */
+function wordCut(text: string, minWords: number): number | null {
+	const whitespace = /\s+/g;
+	let words = 0;
+	let match: RegExpExecArray | null;
+	while ((match = whitespace.exec(text)) !== null) {
+		if (++words >= minWords) return match.index;
+	}
+	return null;
+}
+
+/**
  * Split accumulated text into sentences that are safe to speak, plus the
  * trailing fragment that is not finished yet. A terminator only ends a
  * sentence when whitespace follows it, so a stream that stops mid-number
@@ -153,7 +204,9 @@ export function splitSentences(text: string): { complete: string[]; rest: string
 		index++;
 	}
 
-	return { complete, rest: text.slice(start).trim() };
+	// Only the leading whitespace goes: a trailing space is what proves the
+	// last word ended, and dropping it would weld it to the next delta.
+	return { complete, rest: text.slice(start).replace(/^\s+/, '') };
 }
 
 /**
@@ -162,33 +215,62 @@ export function splitSentences(text: string): { complete: string[]; rest: string
  * main that produces text for a turn.
  */
 export class SentenceAccumulator {
-	private splitCount = 0;
+	private buffer = '';
 
-	private latestText = '';
+	private opened = false;
 
-	/** Sentences that the latest version of the current message has completed. */
-	push(text: string): string[] {
-		this.latestText = text;
-		const { complete } = splitSentences(text);
-		const fresh = complete.slice(this.splitCount).filter(hasSpeech);
-		this.splitCount = complete.length;
-		return fresh;
+	/** Add streamed text and return whatever is now ready to speak. */
+	push(delta: string): string[] {
+		this.buffer += delta;
+		const { complete, rest } = splitSentences(this.buffer);
+		this.buffer = rest;
+
+		const sentences = complete.filter(hasSpeech);
+		if (sentences.length > 0) {
+			this.opened = true;
+			return sentences;
+		}
+		if (this.opened) return [];
+
+		const opening = this.takeOpeningChunk();
+		if (opening === null) return [];
+		this.opened = true;
+		return [opening];
 	}
 
 	/**
-	 * Start a separate message, such as an approval card posted alongside the
-	 * streamed answer. The tail of the previous message is spoken first.
+	 * Cut the first few words loose before the sentence they belong to has
+	 * finished. Nothing is playing yet, so the caller hears silence until this
+	 * lands. Later chunks wait for a sentence: by then the caller is listening
+	 * to the previous one, which hides the generation time, and a whole
+	 * sentence gives the speech engine the context to read it naturally.
 	 */
-	beginMessage(text: string): string[] {
-		const tail = this.end();
-		this.splitCount = 0;
-		return [...tail, ...this.push(text)];
+	private takeOpeningChunk(): string | null {
+		const cut =
+			clauseCut(this.buffer, OPENING_CHUNK_MIN_WORDS) ??
+			wordCut(this.buffer, OPENING_CHUNK_MIN_WORDS);
+		if (cut === null) return null;
+
+		const opening = this.buffer.slice(0, cut).trim();
+		if (!hasSpeech(opening)) return null;
+		this.buffer = this.buffer.slice(cut);
+		return opening;
 	}
 
-	/** The trailing fragment that no terminator closed. Safe to call twice. */
+	/**
+	 * Add a message that arrives whole rather than streamed, such as an approval
+	 * card. Nothing more is coming, so the trailing fragment is spoken too.
+	 */
+	whole(text: string): string[] {
+		// Flush first: the leftover belongs to the streamed answer, and running
+		// the two together would speak one sentence made of both.
+		return [...this.end(), ...this.push(text), ...this.end()];
+	}
+
+	/** The fragment no terminator closed. Safe to call twice. */
 	end(): string[] {
-		const { rest } = splitSentences(this.latestText);
-		this.latestText = '';
+		const rest = this.buffer.trim();
+		this.buffer = '';
 		return hasSpeech(rest) ? [rest] : [];
 	}
 }
@@ -409,8 +491,8 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 
 	private chat?: ChatInstance;
 
-	/** Sentence accumulators for turns this main is producing. */
-	private readonly accumulators = new Map<string, SentenceAccumulator>();
+	/** Turns this main is producing text for, with timings for the debug log. */
+	private readonly producing = new Map<string, ProducingTurn>();
 
 	constructor(private readonly options: TwilioVoiceAdapterOptions) {}
 
@@ -471,7 +553,7 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		if (!turnId || !this.chat) return new Response('Invalid Twilio request', { status: 400 });
 
 		await this.startTurn(payload.CallSid, this.parseMessage(payload, turnId), options);
-		return await this.speakNext(payload.CallSid, 0);
+		return await this.speakNext(payload.CallSid, 0, true);
 	}
 
 	private async startTurn(
@@ -483,8 +565,9 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		// flight answers it rather than asking the agent the question twice.
 		if (!(await this.options.turns.create(callSid))) return;
 
-		const accumulator = new SentenceAccumulator();
-		this.accumulators.set(callSid, accumulator);
+		const turn: ProducingTurn = { accumulator: new SentenceAccumulator(), startedAt: Date.now() };
+		this.producing.set(callSid, turn);
+		this.options.logger.debug('[TwilioVoice] Turn started', { callSid });
 
 		// Deliberately not awaited: the caller needs a TwiML document now, and
 		// the answer arrives sentence by sentence through `postMessage`.
@@ -492,8 +575,13 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 			try {
 				await this.chat?.processMessage(this, this.encodeThreadId({ callSid }), message, options);
 			} finally {
-				this.accumulators.delete(callSid);
-				await this.options.turns.finish(callSid, accumulator.end());
+				this.producing.delete(callSid);
+				await this.options.turns.finish(callSid, turn.accumulator.end());
+				this.options.logger.debug('[TwilioVoice] Turn complete', {
+					callSid,
+					totalMs: Date.now() - turn.startedAt,
+					firstSpeechMs: turn.firstSpeechAt ? turn.firstSpeechAt - turn.startedAt : null,
+				});
 			}
 		})().catch((error: unknown) => {
 			// The hop waiting on this queue falls through to its silent-hop limit.
@@ -506,9 +594,25 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 	 * far, then either ask Twilio to come back for more or hand the turn back
 	 * to the caller.
 	 */
-	private async speakNext(callSid: string, silentHops: number): Promise<Response> {
-		const turn = await this.options.turns.drainWhenReady(callSid, HOP_WAIT_MS);
+	private async speakNext(
+		callSid: string,
+		silentHops: number,
+		isFirstHop = false,
+	): Promise<Response> {
+		// The first hop holds the only silence the caller has not been warned
+		// about, so give up on it quickly and say something.
+		const waitMs = isFirstHop ? FIRST_HOP_WAIT_MS : HOP_WAIT_MS;
+		const waitStartedAt = Date.now();
+		const turn = await this.options.turns.drainWhenReady(callSid, waitMs);
 		if (!turn) return twiml(gatherTwiml(this.options.webhookUrl));
+
+		this.options.logger.debug('[TwilioVoice] Hop answered', {
+			callSid,
+			waitedMs: Date.now() - waitStartedAt,
+			sentences: turn.pending.length,
+			finished: turn.finished,
+			silentHops,
+		});
 
 		const spoken = turn.pending.map(sayTwiml).join('');
 
@@ -555,7 +659,7 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		threadId: string,
 		message: AdapterPostableMessage,
 	): Promise<RawMessage<TwilioVoiceWebhook>> {
-		return await this.queueSpeech(threadId, message, true);
+		return await this.queueSpeech(threadId, message);
 	}
 
 	async editMessage(
@@ -563,30 +667,73 @@ export class TwilioVoiceAdapter implements Adapter<{ callSid: string }, TwilioVo
 		_messageId: string,
 		message: AdapterPostableMessage,
 	): Promise<RawMessage<TwilioVoiceWebhook>> {
-		return await this.queueSpeech(threadId, message, false);
+		return await this.queueSpeech(threadId, message);
 	}
 
 	/**
-	 * Hand a message to the call's speech queue. Streaming sends one post and
-	 * then edits it with the full answer so far, so an edit continues the
-	 * current message while a post starts a new one. A message with no live
-	 * turn (a tool resuming after the call ended) has nobody to speak to.
+	 * Native streaming. The Chat SDK prefers this over post-and-edit, so text
+	 * arrives as deltas the moment the agent writes them, with no polling
+	 * interval in between. Returning a message tells the SDK not to also run
+	 * its fallback, which would speak the whole answer a second time.
+	 */
+	async stream(
+		threadId: string,
+		textStream: AsyncIterable<string | StreamChunk>,
+		_options?: unknown,
+	): Promise<RawMessage<TwilioVoiceWebhook>> {
+		const { callSid } = this.decodeThreadId(threadId);
+		for await (const chunk of textStream) {
+			const delta = typeof chunk === 'string' ? chunk : this.chunkText(chunk);
+			if (delta) await this.queueSentences(callSid, (turn) => turn.accumulator.push(delta), false);
+		}
+		return this.sentMessage(callSid, threadId);
+	}
+
+	/** Text carried by a structured chunk, if it has any. */
+	private chunkText(chunk: StreamChunk): string {
+		return isRecord(chunk) && chunk.type === 'markdown_text' && typeof chunk.text === 'string'
+			? chunk.text
+			: '';
+	}
+
+	/**
+	 * Hand a whole (non-streamed) message to the call's speech queue — an
+	 * approval card, or an error. A message with no live turn (a tool resuming
+	 * after the call ended) has nobody to speak to.
 	 */
 	private async queueSpeech(
 		threadId: string,
 		message: AdapterPostableMessage,
-		isNewMessage: boolean,
 	): Promise<RawMessage<TwilioVoiceWebhook>> {
 		const { callSid } = this.decodeThreadId(threadId);
 		const { text, endCall } = postableText(message);
 		const spoken = this.options.chatSdk.markdownToPlainText(text);
-		const accumulator = this.accumulators.get(callSid);
-		if (accumulator) {
-			const sentences = isNewMessage ? accumulator.beginMessage(spoken) : accumulator.push(spoken);
-			if (sentences.length > 0 || endCall) {
-				await this.options.turns.append(callSid, sentences, endCall);
-			}
+		await this.queueSentences(callSid, (turn) => turn.accumulator.whole(spoken), endCall);
+		return this.sentMessage(callSid, threadId);
+	}
+
+	/** Queue sentences for a live turn, recording when the first one lands. */
+	private async queueSentences(
+		callSid: string,
+		extract: (turn: ProducingTurn) => string[],
+		endCall: boolean,
+	): Promise<void> {
+		const turn = this.producing.get(callSid);
+		if (!turn) return;
+		const sentences = extract(turn);
+		if (sentences.length === 0 && !endCall) return;
+
+		if (turn.firstSpeechAt === undefined && sentences.length > 0) {
+			turn.firstSpeechAt = Date.now();
+			this.options.logger.debug('[TwilioVoice] First sentence ready', {
+				callSid,
+				afterMs: turn.firstSpeechAt - turn.startedAt,
+			});
 		}
+		await this.options.turns.append(callSid, sentences, endCall);
+	}
+
+	private sentMessage(callSid: string, threadId: string): RawMessage<TwilioVoiceWebhook> {
 		return {
 			id: `${callSid}:${randomUUID()}`,
 			threadId,
