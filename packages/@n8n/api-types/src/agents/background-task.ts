@@ -8,6 +8,14 @@ export interface AgentBackgroundTaskDto {
 	startedAt: string;
 }
 
+export interface AgentBackgroundTaskSignal {
+	tasks: Array<
+		Pick<AgentBackgroundTaskDto, 'id' | 'title' | 'kind'> & {
+			status: Exclude<AgentBackgroundTaskDto['status'], 'running'>;
+		}
+	>;
+}
+
 export interface AgentBackgroundTasksResponse {
 	/** Jobs in the current group. Empty when no jobs are running. */
 	tasks: AgentBackgroundTaskDto[];

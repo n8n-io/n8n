@@ -12,6 +12,13 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAiActivityStep: {
+		props: ['label', 'loading'],
+		data: () => ({ open: false }),
+		template:
+			'<section><button :aria-expanded="open" @click="open = !open">{{ label }}</button><div v-if="open"><slot /></div></section>',
+	},
+
 	N8nChatActions: {
 		props: ['content'],
 		setup: function setup(props: { content: string }) {
@@ -109,6 +116,41 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('keeps signal expansion and order when the response gains tools and text', async () => {
+		const message: ChatMessage = {
+			id: 'wake:assistant',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			backgroundTaskSignal: {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+		const row = () => wrapper.get('[data-testid="agent-chat-background-task-signal"]');
+		expect(row().get('button').attributes('aria-expanded')).toBe('false');
+		expect(wrapper.find('[data-test-id="agent-chat-message-copy"]').exists()).toBe(false);
+		await row().get('button').trigger('click');
+		await wrapper.setProps({
+			messages: [
+				{ ...message, toolCalls: [{ tool: 'search', toolCallId: 'search-1', state: 'done' }] },
+			],
+		});
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		await wrapper.setProps({ messages: [{ ...message, content: 'Done' }] });
+		expect(row().get('button').attributes('aria-expanded')).toBe('true');
+		expect(
+			wrapper
+				.findAll(
+					'[data-testid="agent-chat-background-task-signal"], [data-testid="markdown-chunk"]',
+				)
+				.map((el) => el.attributes('data-testid')),
+		).toEqual(['agent-chat-background-task-signal', 'markdown-chunk']);
+		expect(wrapper.findAll('[data-test-id="agent-chat-message-copy"]')).toHaveLength(1);
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});

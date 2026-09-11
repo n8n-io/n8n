@@ -878,3 +878,30 @@ describe('applyOpenSuspensions', () => {
 		expect(chat[0].interactive).toBeUndefined();
 	});
 });
+
+describe('background task signals in history', () => {
+	it('keeps a signal-only message and its stable execution ID', () => {
+		const backgroundTaskSignal = {
+			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+		} as const;
+		const messages = convertDbMessages([
+			{
+				id: 'wake:assistant',
+				executionId: 'wake',
+				role: 'assistant',
+				content: [],
+				executionStatus: 'running',
+				backgroundTaskSignal: { tasks: [...backgroundTaskSignal.tasks] },
+			},
+		]);
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({ executionId: 'wake', content: '', backgroundTaskSignal });
+		expect(buildDisplayGroups(messages)).toEqual([
+			{
+				id: 'wake:background-task-signal',
+				kind: 'backgroundTaskSignal',
+				signal: backgroundTaskSignal,
+			},
+		]);
+	});
+});

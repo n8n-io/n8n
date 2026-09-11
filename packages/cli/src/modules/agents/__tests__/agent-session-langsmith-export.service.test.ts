@@ -206,6 +206,32 @@ describe('AgentSessionLangSmithExportService', () => {
 		batchIngestRunsMock.mockReset();
 	});
 
+	it('exports a background signal as a chain event', async () => {
+		const tasks = [
+			{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+		] as const;
+		const { service } = setupSession(
+			makeExecution({
+				userMessage: null,
+				timeline: [
+					{
+						type: 'background-task-signal',
+						timestamp: 100,
+						signal: { tasks: [...tasks] },
+					},
+				],
+			}),
+		);
+		await service.exportSession(input);
+		expect(submittedRuns()).toContainEqual(
+			expect.objectContaining({
+				name: 'Background task results received',
+				run_type: 'chain',
+				inputs: { tasks },
+			}),
+		);
+	});
+
 	it('exports a complete redacted session tree with stable snapshot IDs', async () => {
 		const { service, agentExecutionService, threadRepository } = setup();
 		const parentDetail: ThreadDetail = {

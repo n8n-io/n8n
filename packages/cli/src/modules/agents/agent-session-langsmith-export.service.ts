@@ -308,6 +308,18 @@ function buildExecutionRun(
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
 	switch (event.type) {
+		case 'background-task-signal':
+			return {
+				path,
+				name: 'Background task results received',
+				runType: 'chain',
+				startTime: event.timestamp,
+				endTime: event.timestamp,
+				inputs: { tasks: event.signal.tasks },
+				outputs: {},
+				metadata: {},
+				children: [],
+			};
 		case 'text':
 			return {
 				path,

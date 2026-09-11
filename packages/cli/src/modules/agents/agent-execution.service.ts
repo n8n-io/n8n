@@ -57,7 +57,9 @@ export interface RecordMessageParams {
 	};
 }
 
-export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'>;
+export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'> & {
+	initialTimeline?: TimelineEvent[];
+};
 
 interface TimelineSnapshotParams {
 	executionId: string;
@@ -128,7 +130,8 @@ export class AgentExecutionService {
 				completionTokens: null,
 				totalTokens: null,
 				cost: null,
-				timeline: null,
+				// Store the signal before the start notification lets clients fetch this turn.
+				timeline: params.initialTimeline?.length ? params.initialTimeline : null,
 				storedAt: 'db',
 				error: null,
 				failureSummary: null,

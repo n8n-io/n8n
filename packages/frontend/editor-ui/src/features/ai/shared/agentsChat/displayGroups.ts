@@ -1,3 +1,5 @@
+import type { AgentBackgroundTaskSignal } from '@n8n/api-types';
+
 import { summariseToolCall } from './interactiveSummary';
 import { getMessageInteractives } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
@@ -16,6 +18,11 @@ import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall }
  * cards beside the step list.
  */
 export type DisplayGroup =
+	| {
+			kind: 'backgroundTaskSignal';
+			id: string;
+			signal: AgentBackgroundTaskSignal;
+	  }
 	| {
 			kind: 'message';
 			id: string;
@@ -51,17 +58,23 @@ export function isGroupable(message: AgentsChatMessage): boolean {
 
 type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
 
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
+function isAssistantGroup(
+	group: DisplayGroup,
+): group is Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }> {
+	return (
+		group.kind === 'toolRun' || (group.kind === 'message' && group.message.role === 'assistant')
+	);
 }
 
-function executionIdForGroup(group: DisplayGroup): string | undefined {
+function executionIdForGroup(
+	group: Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>,
+): string | undefined {
 	return group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 }
 
 /** Keep one reasoning block at the tail of each assistant run, below its final output. */
 function moveThinkingToRunTail(groups: DisplayGroup[]): void {
-	let run: DisplayGroup[] = [];
+	let run: Array<Exclude<DisplayGroup, { kind: 'backgroundTaskSignal' }>> = [];
 	let executionId: string | undefined;
 
 	const flush = () => {
@@ -176,6 +189,22 @@ function appendInteractivePayloads(
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
+		if (message.role === 'assistant' && message.backgroundTaskSignal) {
+			// Keep the signal key stable when the same turn gains text or tool calls.
+			groups.push({
+				kind: 'backgroundTaskSignal',
+				id: `${message.executionId ?? message.id}:background-task-signal`,
+				signal: message.backgroundTaskSignal,
+			});
+			if (
+				!message.content &&
+				!message.toolCalls?.length &&
+				!getMessageThinkingSegments(message).length &&
+				!getMessageInteractives(message).length &&
+				!message.attachments?.length
+			)
+				continue;
+		}
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
 			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {

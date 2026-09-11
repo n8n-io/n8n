@@ -1,5 +1,6 @@
 import {
 	type APPROVAL_TOOL_NAME,
+	type AgentBackgroundTaskSignal,
 	type N8N_CHAT_ACTION_TOOL_NAME,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
@@ -124,6 +125,7 @@ export interface ChatMessageAttachment {
 }
 
 export interface AgentsChatMessage {
+	backgroundTaskSignal?: AgentBackgroundTaskSignal;
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;

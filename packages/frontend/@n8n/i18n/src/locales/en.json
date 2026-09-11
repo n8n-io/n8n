@@ -7493,6 +7493,7 @@
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
 	"agents.chat.stop.error": "Couldn't stop the agent. Try again.",
+	"agents.chat.backgroundTasks.resultsReceived": "Background task results received",
 	"agents.chat.backgroundTasks.runningCount": "Running {count} background task | Running {count} background tasks",
 	"agents.chat.backgroundTasks.subagent": "Sub-agent — {title}",
 	"agents.chat.backgroundTasks.workflow": "Workflow (Wait node) — {title}",

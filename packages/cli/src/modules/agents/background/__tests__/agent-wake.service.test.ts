@@ -113,6 +113,32 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('passes only the delivered jobs and their display fields to the signal', async () => {
+		const { service, jobRepository, orchestrator } = setup();
+		jobRepository.findWakeableUnconsumedSettled.mockResolvedValue([
+			makeJob(),
+			makeJob({ id: 'job-2', kind: 'workflow', status: 'failed', error: 'Private error' }),
+			makeJob({ id: 'job-3', status: 'cancelled' }),
+			makeJob({
+				id: 'other-author',
+				parentResourceId: 'draft-chat:user-2',
+				parentPrincipalHash: otherPrincipalHash,
+			}),
+		]);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+			expect.objectContaining({
+				backgroundTaskSignal: {
+					tasks: [
+						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
+						{ id: 'job-3', title: 'Research', kind: 'subagent', status: 'cancelled' },
+					],
+				},
+			}),
+		);
+	});
+
 	beforeEach(() => {
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 	});

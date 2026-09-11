@@ -2,6 +2,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 
 import type { AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentBackgroundTaskSignal } from './background-task';
 
 export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE] as const;
 
@@ -328,6 +329,8 @@ export interface AgentPersistedMessageContentPart {
 }
 
 export interface AgentPersistedMessageDto {
+	/** Background results that started this turn. */
+	backgroundTaskSignal?: AgentBackgroundTaskSignal;
 	id: string;
 	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];

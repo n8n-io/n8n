@@ -4,6 +4,37 @@ import { buildDisplayGroups, isGroupable } from '../displayGroups';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
+	it('keeps the signal before its turn with the same key as output arrives', () => {
+		const previous: AgentsChatMessage = {
+			id: 'previous',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'search', toolCallId: 'search-1', state: 'done' }],
+		};
+		const wake: AgentsChatMessage = {
+			id: 'wake:assistant',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			backgroundTaskSignal: {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const initial = buildDisplayGroups([previous, wake]);
+		expect(initial.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundTaskSignal']);
+		const updated = buildDisplayGroups([previous, { ...wake, content: 'Done' }]);
+		expect(updated.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundTaskSignal', 'message']);
+		expect(updated[1]).toEqual(initial[1]);
+		const retry = buildDisplayGroups([
+			wake,
+			{ ...wake, id: 'retry:assistant', executionId: 'retry' },
+		]);
+		expect(retry.map(({ id }) => id)).toEqual([
+			'wake:background-task-signal',
+			'retry:background-task-signal',
+		]);
+	});
+
 	it('folds consecutive assistant tool-only messages into one tool run', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'start' },
