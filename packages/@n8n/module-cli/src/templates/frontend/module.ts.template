@@ -13,16 +13,22 @@ export const {{PascalName}}Module: FrontendModuleDescription = {
 	description: 'TODO: describe what this module does',
 	icon: 'box',
 
-	// The shell reads the fields below. Uncomment what this module contributes.
+	// The shell registers the fields below AND a reader shows them. Uncomment
+	// what this module contributes.
 	//
 	// routes: [ /* RouteRecordRaw[]; components must be lazy */ ],
 	// projectTabs: { overview: [], project: [], shared: [] },
-	// resources: [ /* ResourceMetadata[]; feeds ResourcesListLayout */ ],
 	// modals: [ /* ModalDefinition[]; rendered by DynamicModalLoader */ ],
 	// adHocModalKeyPrefixes: [ /* prefixes for modal keys minted at runtime */ ],
 	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
-	// pushHandlers: { /* keyed by push message type */ },
-	// commands: [ /* CommandBarEntry[] */ ],
+	// pushHandlers: { /* keyed by push message type; active modules only */ },
+	// parameterInputs: [ /* ParameterInputContribution[]; resolved by parameter.type */ ],
+
+	// The shell registers the two fields below, but NOTHING reads the registry
+	// yet, so a value here draws nothing (CAT-3685):
+	//   resources — no caller of getResource/hasResource/getAllResourceKeys;
+	//               ResourcesListLayout does not import the SDK.
+	//   commands  — the command bar still builds its own list.
 
 	// The SDK types the fields below, but no host in the shell reads them yet.
 	// A value here does nothing at runtime: locales, shortcuts, banners, setup.
