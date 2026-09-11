@@ -496,6 +496,16 @@ export function getLatestAppResult(node: InstanceAiAgentNode): AppResult | undef
 	return undefined;
 }
 
+/** Whether a successful `apps create` in this agent tree returned `appId`. */
+export function isAppCreatedIn(node: InstanceAiAgentNode, appId: string): boolean {
+	for (const tc of node.toolCalls) {
+		const args = tc.args as { action?: string } | undefined;
+		if (tc.toolName !== 'apps' || args?.action !== 'create' || !isRecord(tc.result)) continue;
+		if (isRecord(tc.result.app) && tc.result.app.id === appId) return true;
+	}
+	return node.children.some((child) => isAppCreatedIn(child, appId));
+}
+
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
 	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
 		return undefined;
