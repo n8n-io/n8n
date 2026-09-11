@@ -1142,6 +1142,13 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return result.map((r) => r.workflowVersionId);
 	}
 
+	/** Status of one execution, or `undefined` if the row is gone. Reads only the status column. */
+	async findStatusById(id: string): Promise<ExecutionStatus | undefined> {
+		const row = await this.findOne({ select: ['id', 'status'], where: { id } });
+
+		return row?.status;
+	}
+
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
 		const rows: Array<Pick<ExecutionEntity, 'id' | 'status'>> = [];
 		for (const chunk of chunkIds(ids)) {

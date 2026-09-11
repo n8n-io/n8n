@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, type IExecutionBase } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -10,6 +10,7 @@ import {
 	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
+	type ExecutionStatus,
 	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
@@ -30,34 +31,27 @@ import {
 const MAX_PARENT_RESUME_ATTEMPTS = 3;
 
 /**
- * How long `resumeParentExecution` keeps retrying while the parent is still
- * `running` before giving up. A sub-workflow with a human-in-the-loop step can
- * complete while the parent (an in-process Agent v1/v2) is still looping on
- * LLM calls; the parent only parks at `waiting` once its agent node finishes.
- * Generous on purpose: giving up while the parent is still running strands it
- * at `WAIT_INDEFINITELY`, and an agent loop can legitimately run a long time.
+ * How long to keep waiting for the parent to park. Long enough for a parent that is still
+ * running an agent loop, short enough that a resumer which lost the claim to a sibling does
+ * not stay alive long enough to meet a later, unrelated park of the same parent and patch
+ * that one instead.
  */
-const PARENT_RESUME_TIMEOUT_MS = 60 * Time.minutes.toMilliseconds;
+const PARENT_RESUME_TIMEOUT_MS = 15 * Time.minutes.toMilliseconds;
 
-/** Delay before the resume loops re-check the parent / child row in the DB the first time. */
 const RESUME_POLL_INTERVAL_MS = 1000;
 
 /**
- * Ceiling for the resume poll delay. Each loop runs for up to an hour and there is one
- * per waiting child, so a fixed one second tick puts a query per second per wait on the
- * executions table. Backing off to ten seconds cuts that tenfold. The added resume
- * latency is not noticeable against the timeouts above.
+ * Ceiling for the poll delay. Kept short on purpose: the parent sits at `waiting` only
+ * briefly before whichever resumer sees it first claims it, so a resumer that polls slowly
+ * misses that window, fails to lose the claim, and keeps running with stale results.
  */
-const MAX_RESUME_POLL_INTERVAL_MS = 10 * Time.seconds.toMilliseconds;
+const MAX_RESUME_POLL_INTERVAL_MS = 2 * Time.seconds.toMilliseconds;
 
-/** Spread applied to a capped poll delay, so waits that start together do not query in lockstep. */
 const RESUME_POLL_JITTER = 0.2;
 
 /**
- * Delay before poll number `attempt` (1-based). Doubles up to
- * `MAX_RESUME_POLL_INTERVAL_MS`, then jitters by up to `RESUME_POLL_JITTER` either way.
- * Only the capped delay is jittered: spreading matters for the loops that keep polling
- * for minutes, and it keeps the early delays exact.
+ * Delay before poll number `attempt` (1-based). Doubles up to the ceiling, then jitters so
+ * waits that start together do not poll in lockstep.
  */
 function resumePollDelay(attempt: number): number {
 	const backoff = RESUME_POLL_INTERVAL_MS * 2 ** (attempt - 1);
@@ -67,9 +61,8 @@ function resumePollDelay(attempt: number): number {
 }
 
 /**
- * Whether a resume parent failure is worth retrying. Only `UserError` and
- * `UnexpectedError` are not. Everything else is retried, including `OperationalError` (which
- * by convention signals a transient issue) and raw database or Redis failures
+ * Whether a resume failure is worth retrying. `UserError` and `UnexpectedError` are not;
+ * everything else is, including `OperationalError` and raw database or Redis failures.
  */
 function isRetryableResumeError(error: unknown): boolean {
 	return !(error instanceof UserError || error instanceof UnexpectedError);
@@ -143,7 +136,7 @@ export class WaitTracker {
 					timer: setTimeout(() => {
 						void this.startExecution(executionId).catch((error) => {
 							// Another process already resumed this execution (e.g. multi-main
-							// duplicate timer) — expected, nothing to do.
+							// duplicate timer): expected, nothing to do.
 							if (error instanceof ExecutionAlreadyResumingError) {
 								this.logger.info('Execution already claimed by another process, skipping', {
 									executionId,
@@ -222,29 +215,17 @@ export class WaitTracker {
 	/**
 	 * Resume a parent execution once its child execution has completed.
 	 *
-	 * A sub-workflow with a human-in-the-loop step can complete (the human
-	 * approves) while the parent is still `running` — an in-process Agent v1/v2
-	 * keeps making LLM calls after the tool returns its placeholder, and only
-	 * parks at `waiting` once its agent node finishes. Patching/claiming before
-	 * the parent parks is a no-op (`updateParentExecutionWithChildResults`
-	 * early-returns on a non-`waiting` parent) and the parent then strands at
-	 * `WAIT_INDEFINITELY`, which the waiting-executions sweep never picks up.
+	 * A child can finish before the parent's row reaches `waiting`, because the parent
+	 * only parks once the node that started the child returns. Patching a parent that is
+	 * still `running` is a no-op and leaves it stranded at `WAIT_INDEFINITELY`, which the
+	 * waiting-executions sweep never picks up. So wait for the parent to park, then patch
+	 * its stack and claim it. Bails when the parent is gone or terminal, when a sibling
+	 * already claimed it, or at the deadline. Never rejects: callers fire and forget.
 	 *
-	 * So this retries the resume until the parent parks, then patches its stack
-	 * and claims it. It bails when the parent is gone/terminal, when a sibling
-	 * already claimed it (`ExecutionAlreadyResumingError`, expected in "run once
-	 * for each item" mode), or when the timeout elapses.
-	 * Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS` for transient
-	 * failures so a flaky DB write recovers. This never rejects, so callers can
-	 * invoke it fire and forget.
-	 *
-	 * This runs to completion regardless of multi-main leadership: only the
-	 * process holding the child's `postExecutePromise` can finish the resume, and
-	 * the `expectedStatus: 'waiting'` claim in `startExecution` already prevents
-	 * two processes from resuming the same parent. Aborting the loop on stepdown was
-	 * tried and dropped: the demoted process is the only one that can still finish
-	 * this resume, so cancelling it strands the parent that the claim already
-	 * protects, and a nested resume was aborted along with it.
+	 * Runs to completion regardless of leadership. Only the process holding the child's
+	 * `postExecutePromise` can finish the resume, and the `expectedStatus: 'waiting'`
+	 * claim already stops two processes resuming the same parent, so aborting on stepdown
+	 * would strand the parent instead of protecting it.
 	 */
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
@@ -259,17 +240,13 @@ export class WaitTracker {
 			const deadline = Date.now() + PARENT_RESUME_TIMEOUT_MS;
 			let pollAttempt = 0;
 			for (;;) {
-				// A failed poll read is treated like "parent not parked yet" and retried on
-				// the next tick (bounded by the deadline) — a transient DB error here must
-				// not abandon the resume, only a successful read may decide to bail.
-				let parent: IExecutionBase | undefined;
+				// A failed read counts as "not parked yet" and retries; only a successful
+				// read may decide to bail.
+				let parentStatus: ExecutionStatus | undefined;
 				try {
-					parent = await this.executionPersistence.findSingleExecution(
-						parentExecution.executionId,
-						{ includeData: false },
-					);
-					// Parent gone or already finished — nothing left to resume.
-					if (!parent || isTerminalExecutionStatus(parent.status)) return;
+					parentStatus = await this.executionRepository.findStatusById(parentExecution.executionId);
+					// Parent gone or already finished: nothing left to resume.
+					if (!parentStatus || isTerminalExecutionStatus(parentStatus)) return;
 				} catch (error) {
 					this.logger.debug('Failed to poll parent execution status, retrying', {
 						parentExecutionId: parentExecution.executionId,
@@ -277,8 +254,7 @@ export class WaitTracker {
 					});
 				}
 
-				if (parent?.status === 'waiting') {
-					// Parent parked — patch its stack, then claim and resume it.
+				if (parentStatus === 'waiting') {
 					await this.withRetry(
 						async () =>
 							await updateParentExecutionWithChildResults(
@@ -298,7 +274,7 @@ export class WaitTracker {
 								!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
 						);
 					} catch (error) {
-						// A sibling already claimed the parent ("run once for each item") — done.
+						// A sibling already claimed the parent ("run once for each item"), so stop here.
 						if (error instanceof ExecutionAlreadyResumingError) {
 							this.logger.info('Parent execution already claimed by another process, skipping', {
 								parentExecutionId: parentExecution.executionId,
@@ -311,10 +287,8 @@ export class WaitTracker {
 					return;
 				}
 
-				// Parent still `running` (hasn't parked yet) — wait and re-check.
 				if (Date.now() >= deadline) {
-					// If the parent parks after this, it strands at WAIT_INDEFINITELY with
-					// the child's results dropped — make that visible to operators.
+					// A parent that parks after this strands with the child's results dropped.
 					this.logger.warn('Timed out waiting to resume parent after sub-workflow completed', {
 						parentExecutionId: parentExecution.executionId,
 						childExecutionId: childExecution?.executionId,
@@ -332,11 +306,8 @@ export class WaitTracker {
 	}
 
 	/**
-	 * Run an operation up to `maxAttempts` times with exponential backoff, returning
-	 * on the first success and rethrowing the last error if they all fail. Generic
-	 * (not specific to parent resume) — the caller passes the attempt count and an
-	 * optional `shouldRetry` predicate; an error it rejects is rethrown immediately
-	 * instead of being retried.
+	 * Run an operation up to `maxAttempts` times with exponential backoff, rethrowing the
+	 * last error if they all fail. An error rejected by `shouldRetry` is rethrown at once.
 	 */
 	private async withRetry(
 		operation: () => Promise<void>,
