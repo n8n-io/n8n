@@ -378,6 +378,10 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 });
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+// Layout changes mount a new, empty composer.
+watch(chatInputRef, () => {
+	composerHasContent.value = false;
+});
 const isStartingThread = ref(false);
 
 watch(
@@ -498,10 +502,17 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
 	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
-	void router.replace({
-		name: INSTANCE_AI_THREAD_VIEW,
-		params: { threadId },
-	});
+	try {
+		await router.replace({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	} finally {
+		hasSubmittedFirstPrompt.value = false;
+		isStartingThread.value = false;
+	}
 }
 
 function handleShelfSuggestionSubmit(payload: {

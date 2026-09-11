@@ -46,11 +46,14 @@ async function loadMore() {
 	loading.value = true;
 	loadError.value = false;
 	try {
-		const result = await store.loadThreadPage({
-			page: nextPage,
-			limit: 30,
-			search: searchQuery.value.trim(),
-		});
+		const result = await store.loadThreadPage(
+			{
+				page: nextPage,
+				limit: 30,
+				search: searchQuery.value.trim(),
+			},
+			() => version === requestVersion,
+		);
 		if (version !== requestVersion) return;
 		threadIds.value = [
 			...new Set([...threadIds.value, ...result.threads.map((thread) => thread.id)]),
@@ -165,11 +168,8 @@ async function saveRename() {
 useDocumentTitle().set(i18n.baseText('instanceAi.sidebar.chatHistory'));
 
 const filteredThreads = computed(() => {
-	const byId = new Map(store.threads.map((thread) => [thread.id, thread]));
-	return threadIds.value.flatMap((id) => {
-		const thread = byId.get(id);
-		return thread ? [thread] : [];
-	});
+	const loadedIds = new Set(threadIds.value);
+	return store.threads.filter((thread) => loadedIds.has(thread.id));
 });
 
 function openThread(threadId: string) {

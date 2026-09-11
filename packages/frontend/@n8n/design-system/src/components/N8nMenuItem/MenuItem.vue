@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import type { IMenuItem } from '../../types';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
@@ -28,7 +28,6 @@ const emit = defineEmits<{
 
 const menuItemTextViewport = ref<HTMLElement | null>(null);
 const isLabelOverflowing = ref(false);
-let labelResizeObserver: ResizeObserver | undefined;
 
 const updateLabelOverflow = () => {
 	const viewport = menuItemTextViewport.value;
@@ -38,23 +37,24 @@ const updateLabelOverflow = () => {
 		viewport.scrollWidth > viewport.clientWidth;
 };
 
-onMounted(() => {
-	void nextTick(() => {
+watch(
+	[menuItemTextViewport, () => props.scrollLabelOnOverflow],
+	([viewport, enabled], _previous, onCleanup) => {
 		updateLabelOverflow();
 
-		if (typeof ResizeObserver !== 'undefined' && menuItemTextViewport.value) {
-			labelResizeObserver = new ResizeObserver(updateLabelOverflow);
-			labelResizeObserver.observe(menuItemTextViewport.value);
+		if (enabled && viewport && typeof ResizeObserver !== 'undefined') {
+			const observer = new ResizeObserver(updateLabelOverflow);
+			observer.observe(viewport);
+			onCleanup(() => observer.disconnect());
 		}
-	});
-});
+	},
+	{ flush: 'post' },
+);
 
 watch(
 	() => [props.item.label, props.scrollLabelOnOverflow],
 	async () => await nextTick(updateLabelOverflow),
 );
-
-onBeforeUnmount(() => labelResizeObserver?.disconnect());
 
 const to = computed(() => {
 	if (props.item.disabled) {

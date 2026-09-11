@@ -157,8 +157,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread list & lifecycle ---
 
-	async function loadThreadPage(query: InstanceAiThreadsQuery) {
+	async function loadThreadPage(query: InstanceAiThreadsQuery, isCurrent = () => true) {
 		const result = await fetchThreadsApi(rootStore.restApiContext, query);
+		// The history view can invalidate a request while its search is changing.
+		if (!isCurrent()) return result;
 		const merged = new Map(threads.value.map((thread) => [thread.id, thread]));
 		for (const thread of result.threads) {
 			persistedThreadIds.add(thread.id);
@@ -173,7 +175,19 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return result;
 	}
 
+	let pendingThreadsLoad: Promise<boolean> | undefined;
+
 	async function loadThreads(): Promise<boolean> {
+		if (pendingThreadsLoad) return await pendingThreadsLoad;
+		pendingThreadsLoad = fetchRecentThreads();
+		try {
+			return await pendingThreadsLoad;
+		} finally {
+			pendingThreadsLoad = undefined;
+		}
+	}
+
+	async function fetchRecentThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {

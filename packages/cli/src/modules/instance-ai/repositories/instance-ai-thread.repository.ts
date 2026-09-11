@@ -10,11 +10,11 @@ export class InstanceAiThreadRepository extends Repository<InstanceAiThread> {
 	}
 
 	async searchHistory(resourceId: string, search: string, page: number, perPage: number) {
-		const escapedSearch = search.replace(/[!%_]/g, '!$&');
+		const escapedSearch = search.replace(/[\\%_]/g, (char) => `\\${char}`);
 		return await this.findAndCount({
 			where: {
 				resourceId,
-				title: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:threadSearch) ESCAPE '!'`, {
+				title: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:threadSearch) ESCAPE '\\'`, {
 					threadSearch: `%${escapedSearch}%`,
 				}),
 			},
