@@ -42,6 +42,10 @@ export interface Props {
 	 */
 	enableVerticalScroll?: boolean;
 	/**
+	 * Whether to visually hide the vertical scrollbar while keeping the area scrollable
+	 */
+	hideVerticalScrollbar?: boolean;
+	/**
 	 * Change the default rendered element for the one passed as a child, merging their props and behavior.
 	 */
 	asChild?: boolean;
@@ -55,6 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 	maxWidth: undefined,
 	enableHorizontalScroll: false,
 	enableVerticalScroll: true,
+	hideVerticalScrollbar: false,
 	asChild: false,
 });
 
@@ -170,14 +175,18 @@ defineExpose({
 		:scroll-hide-delay="scrollHideDelay"
 		:class="$style.scrollAreaRoot"
 	>
-		<ScrollAreaViewport :as-child="asChild" :class="$style.viewport" :style="viewportStyle">
+		<ScrollAreaViewport
+			:as-child="asChild"
+			:class="[$style.viewport, { [$style.viewportScrollbarHidden]: props.hideVerticalScrollbar }]"
+			:style="viewportStyle"
+		>
 			<slot />
 		</ScrollAreaViewport>
 
 		<ScrollAreaScrollbar
 			v-if="enableVerticalScroll"
 			orientation="vertical"
-			:class="$style.scrollbar"
+			:class="[$style.scrollbar, { [$style.scrollbarHidden]: props.hideVerticalScrollbar }]"
 		>
 			<ScrollAreaThumb :class="$style.thumb" />
 		</ScrollAreaScrollbar>
@@ -210,6 +219,15 @@ defineExpose({
 	overflow-anchor: none;
 }
 
+.viewportScrollbarHidden {
+	overflow-y: auto !important;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 .scrollbar {
 	display: flex;
 	user-select: none;
@@ -230,6 +248,14 @@ defineExpose({
 	&[data-orientation='horizontal'] {
 		height: var(--spacing--2xs);
 		flex-direction: row;
+	}
+}
+
+.scrollbarHidden {
+	opacity: 0;
+
+	.thumb {
+		pointer-events: none;
 	}
 }
 

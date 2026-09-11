@@ -5,13 +5,20 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nIconButton,
-	N8nInput,
 	N8nText,
 	N8nScrollArea,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref } from 'vue';
+import {
+	ComboboxContent,
+	ComboboxGroup,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxLabel,
+	ComboboxRoot,
+} from 'reka-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -48,6 +55,12 @@ const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const searchQuery = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
+const threadListRef = ref<InstanceType<typeof N8nScrollArea>>();
+const comboboxRef = ref<{
+	highlightFirstItem?: () => void;
+}>();
+const hasOverflowBelow = ref(false);
+let resizeObserver: ResizeObserver | null = null;
 const activeThreadId = computed(() =>
 	typeof route.params.threadId === 'string' ? route.params.threadId : undefined,
 );
@@ -106,6 +119,40 @@ const groupedThreads = computed(() => {
 		return threads.length > 0 ? [{ label: dateGroupI18nMap[groupName] ?? groupName, threads }] : [];
 	});
 });
+
+function updateOverflowCue() {
+	const position = threadListRef.value?.getScrollPosition();
+	const element = threadListRef.value?.$el;
+	if (!position || !(element instanceof HTMLElement)) {
+		hasOverflowBelow.value = false;
+		return;
+	}
+
+	hasOverflowBelow.value = position.top + element.clientHeight < position.height - 1;
+}
+
+watch(
+	visibleThreads,
+	async () => {
+		await nextTick();
+		updateOverflowCue();
+		comboboxRef.value?.highlightFirstItem?.();
+	},
+	{ flush: 'post' },
+);
+
+onMounted(() => {
+	void nextTick(() => {
+		updateOverflowCue();
+		const element = threadListRef.value?.$el;
+		if (element instanceof HTMLElement) {
+			resizeObserver = new ResizeObserver(updateOverflowCue);
+			resizeObserver.observe(element);
+		}
+	});
+});
+
+onBeforeUnmount(() => resizeObserver?.disconnect());
 
 async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
@@ -171,114 +218,145 @@ function handleThreadAction(action: string, threadId: string) {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<div v-if="props.showHeader" :class="$style.header">
-			<N8nText :class="$style.title" tag="div" size="medium" bold>
-				{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-			</N8nText>
-			<N8nButton
-				variant="ghost"
-				size="xsmall"
-				:class="$style.viewAll"
-				data-test-id="instance-ai-view-all-threads"
-				@click="openAllThreads"
-			>
-				{{ i18n.baseText('instanceAi.threads.viewAll') }}
-			</N8nButton>
-		</div>
-		<form v-if="props.showSearch" :class="$style.search" role="search" @submit.prevent>
-			<N8nInput
-				v-model="searchQuery"
-				type="text"
-				size="small"
-				autofocus
-				clearable
-				autocomplete="off"
-				:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
-				data-test-id="instance-ai-thread-search"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" size="small" />
-				</template>
-			</N8nInput>
-		</form>
-
-		<N8nScrollArea
-			:class="$style.threadList"
-			:max-height="props.maxHeight"
-			:enable-vertical-scroll="false"
-		>
-			<template v-if="groupedThreads.length > 0">
-				<div v-for="group in groupedThreads" :key="group.label" :class="$style.group">
-					<N8nText :class="$style.groupLabel" tag="div" size="small" color="text-light">
-						{{ group.label }}
-					</N8nText>
-					<div
-						v-for="thread in group.threads"
-						:key="thread.id"
-						:class="[$style.threadItem, { [$style.active]: thread.id === activeThreadId }]"
-						data-test-id="instance-ai-thread-item"
-					>
-						<!-- Inline rename mode -->
-						<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
-							<input
-								ref="renameInput"
-								v-model="editingTitle"
-								:class="$style.renameInput"
-								type="text"
-								:aria-label="i18n.baseText('instanceAi.threads.rename')"
-								@keydown.enter="confirmRename(thread.id)"
-								@keydown.escape="cancelRename"
-								@blur="confirmRename(thread.id)"
-							/>
-						</div>
-						<!-- Normal display mode -->
-						<template v-else>
-							<RouterLink
-								:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
-								:class="$style.threadLink"
-								:title="thread.title"
-								:active-class="$style.threadLinkActive"
-								@click="handleThreadSelect(thread.id)"
-								@dblclick.prevent="startRename(thread.id, thread.title)"
-							>
-								<span :class="$style.threadTitle">{{ thread.title }}</span>
-							</RouterLink>
-							<N8nActionDropdown
-								v-if="props.showActions"
-								:items="threadActions"
-								:class="$style.actionDropdown"
-								placement="bottom-start"
-								@select="handleThreadAction($event, thread.id)"
-								@click.stop
-							>
-								<template #activator>
-									<N8nIconButton
-										variant="ghost"
-										icon="ellipsis-vertical"
-										:class="$style.actionTrigger"
-										:aria-label="i18n.baseText('instanceAi.threads.actions')"
-									/>
-								</template>
-							</N8nActionDropdown>
-						</template>
-					</div>
-				</div>
-			</template>
-			<div v-else :class="$style.empty">
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText(
-							searchQuery ? 'instanceAi.threads.noSearchResults' : 'instanceAi.sidebar.noThreads',
-						)
-					}}
+	<ComboboxRoot
+		ref="comboboxRef"
+		as-child
+		:open="true"
+		:ignore-filter="true"
+		:reset-search-term-on-blur="false"
+		:reset-search-term-on-select="false"
+	>
+		<div :class="$style.container" data-test-id="instance-ai-thread-list">
+			<div v-if="props.showHeader" :class="$style.header">
+				<N8nText :class="$style.title" tag="div" size="medium" bold>
+					{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
 				</N8nText>
+				<N8nButton
+					variant="ghost"
+					size="xsmall"
+					:class="$style.viewAll"
+					data-test-id="instance-ai-view-all-threads"
+					@click="openAllThreads"
+				>
+					{{ i18n.baseText('instanceAi.threads.viewAll') }}
+				</N8nButton>
 			</div>
-		</N8nScrollArea>
-	</div>
+			<form v-if="props.showSearch" :class="$style.search" role="search" @submit.prevent>
+				<div :class="$style.searchControl">
+					<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
+					<ComboboxInput
+						v-model="searchQuery"
+						:class="$style.searchInput"
+						:auto-focus="true"
+						autocomplete="off"
+						spellcheck="false"
+						:placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
+						data-test-id="instance-ai-thread-search"
+					/>
+					<button
+						v-if="searchQuery"
+						type="button"
+						:class="$style.clearSearch"
+						:aria-label="i18n.baseText('generic.list.clearSelection')"
+						@mousedown.prevent
+						@click="searchQuery = ''"
+					>
+						<N8nIcon icon="x" size="small" />
+					</button>
+				</div>
+			</form>
+
+			<ComboboxContent force-mount :class="$style.comboboxContent">
+				<N8nScrollArea
+					ref="threadListRef"
+					:class="[$style.threadList, { [$style.hasOverflowBelow]: hasOverflowBelow }]"
+					:max-height="props.maxHeight"
+					type="auto"
+					@scroll-capture="updateOverflowCue"
+				>
+					<template v-if="groupedThreads.length > 0">
+						<ComboboxGroup v-for="group in groupedThreads" :key="group.label" :class="$style.group">
+							<ComboboxLabel :class="$style.groupLabel">
+								<N8nText tag="span" size="small" color="text-light">
+									{{ group.label }}
+								</N8nText>
+							</ComboboxLabel>
+							<div
+								v-for="thread in group.threads"
+								:key="thread.id"
+								:class="$style.threadItem"
+								data-test-id="instance-ai-thread-item"
+							>
+								<!-- Inline rename mode -->
+								<div v-if="editingThreadId === thread.id" :class="$style.renameContainer">
+									<input
+										ref="renameInput"
+										v-model="editingTitle"
+										:class="$style.renameInput"
+										type="text"
+										:aria-label="i18n.baseText('instanceAi.threads.rename')"
+										@keydown.enter="confirmRename(thread.id)"
+										@keydown.escape="cancelRename"
+										@blur="confirmRename(thread.id)"
+									/>
+								</div>
+								<!-- Normal display mode -->
+								<template v-else>
+									<ComboboxItem as-child :value="thread.id" :text-value="thread.title">
+										<RouterLink
+											:to="{ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } }"
+											:class="$style.threadLink"
+											:title="thread.title"
+											active-class=""
+											exact-active-class=""
+											@click="handleThreadSelect(thread.id)"
+											@dblclick.prevent="startRename(thread.id, thread.title)"
+										>
+											<span :class="$style.threadTitle">{{ thread.title }}</span>
+										</RouterLink>
+									</ComboboxItem>
+									<N8nActionDropdown
+										v-if="props.showActions"
+										:items="threadActions"
+										:class="$style.actionDropdown"
+										placement="bottom-start"
+										@select="handleThreadAction($event, thread.id)"
+										@click.stop
+									>
+										<template #activator>
+											<N8nIconButton
+												variant="ghost"
+												icon="ellipsis-vertical"
+												:class="$style.actionTrigger"
+												:aria-label="i18n.baseText('instanceAi.threads.actions')"
+											/>
+										</template>
+									</N8nActionDropdown>
+								</template>
+							</div>
+						</ComboboxGroup>
+					</template>
+					<div v-else :class="$style.empty" role="status">
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText(
+									searchQuery
+										? 'instanceAi.threads.noSearchResults'
+										: 'instanceAi.sidebar.noThreads',
+								)
+							}}
+						</N8nText>
+					</div>
+				</N8nScrollArea>
+			</ComboboxContent>
+		</div>
+	</ComboboxRoot>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
+
 .container {
 	display: flex;
 	flex-direction: column;
@@ -314,13 +392,109 @@ function handleThreadAction(action: string, threadId: string) {
 	padding: 0 var(--spacing--sm) var(--spacing--2xs);
 }
 
+.searchControl {
+	@include input-mixin.size-variables('small');
+	@include input-mixin.theme-variables;
+	@include focus.focus-within-ring;
+
+	position: relative;
+	display: flex;
+	align-items: center;
+	width: 100%;
+	min-height: var(--input--height);
+	border-radius: var(--input--radius);
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+
+	&:hover:not(:focus-within) {
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
+	}
+
+	&:focus-within {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
+	}
+}
+
+.searchIcon {
+	position: absolute;
+	left: var(--input--padding);
+	color: var(--color--text--shade-1);
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.searchInput {
+	width: 100%;
+	min-width: 0;
+	min-height: var(--input--height);
+	padding: 0 calc(var(--input--padding) + var(--spacing--sm) + var(--spacing--3xs));
+	font-family: inherit;
+	font-size: var(--input--font-size);
+	color: var(--input--color--text);
+	background: transparent;
+	border: none;
+	outline: none;
+
+	&::placeholder {
+		color: var(--input--placeholder--color);
+	}
+}
+
+.clearSearch {
+	position: absolute;
+	right: var(--input--padding);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	color: var(--color--text--tint-1);
+	background: transparent;
+	border: none;
+	border-radius: var(--radius--sm);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color--text--shade-1);
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
+}
+
+.comboboxContent {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
 .threadList {
 	flex: 1;
 	min-height: 0;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--2xs) 0;
+
+	&.hasOverflowBelow::after {
+		content: '';
+		position: absolute;
+		inset: auto 0 0;
+		height: var(--spacing--lg);
+		background: linear-gradient(to bottom, transparent, var(--background--surface));
+		pointer-events: none;
+	}
 }
 
 .group {
+	&:last-child {
+		padding-bottom: var(--spacing--2xs);
+	}
+
 	&:not(:first-child) {
 		margin-top: var(--spacing--xs);
 	}
@@ -330,8 +504,6 @@ function handleThreadAction(action: string, threadId: string) {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
 }
 
 .threadItem {
@@ -341,7 +513,8 @@ function handleThreadAction(action: string, threadId: string) {
 	border-radius: var(--radius);
 
 	&:focus-within,
-	&:has([aria-expanded='true']) {
+	&:has([aria-expanded='true']),
+	&:has([data-highlighted]) {
 		background-color: var(--background--hover);
 	}
 
@@ -350,10 +523,6 @@ function handleThreadAction(action: string, threadId: string) {
 		&:hover {
 			background-color: var(--background--hover);
 		}
-	}
-
-	&.active {
-		background-color: var(--background--hover);
 	}
 }
 
@@ -383,10 +552,6 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 }
 
-.threadLinkActive {
-	// Active background handled by .threadItem.active
-}
-
 .threadIcon {
 	flex-shrink: 0;
 	color: var(--text-color--subtle);
@@ -409,8 +574,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 	.threadItem:has([aria-expanded='true']) &,
 	.threadItem:has(:focus) &,
-	.threadItem:hover &,
-	.active & {
+	.threadItem:hover & {
 		width: auto;
 		opacity: 1;
 	}

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { N8nButton, N8nCallout, N8nIcon, N8nPopover } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -8,7 +8,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useInstanceAiStore } from '../instanceAi.store';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import InstanceAiThreadList from './InstanceAiThreadList.vue';
-import { INSTANCE_AI_VIEW } from '../constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -23,7 +22,6 @@ const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const route = useRoute();
-const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const threadMenuOpen = ref(false);
 
@@ -39,10 +37,6 @@ const activeThreadId = computed(() => {
 const threadCreditsUsed = computed(() =>
 	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
 );
-
-function openNewThread() {
-	void router.push({ name: INSTANCE_AI_VIEW, force: true });
-}
 </script>
 
 <template>
@@ -54,6 +48,7 @@ function openNewThread() {
 			:side-offset="4"
 			width="calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))"
 			:enable-scrolling="false"
+			:content-class="$style.threadHistoryPopover"
 		>
 			<template #trigger>
 				<N8nButton
@@ -77,6 +72,7 @@ function openNewThread() {
 			<template #content>
 				<InstanceAiThreadList
 					max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
+					:max-threads="50"
 					@close="threadMenuOpen = false"
 					@select="threadMenuOpen = false"
 				/>
@@ -84,16 +80,6 @@ function openNewThread() {
 		</N8nPopover>
 		<slot name="title" />
 		<div :class="$style.headerActions">
-			<N8nButton
-				v-if="activeThreadId"
-				variant="ghost"
-				size="small"
-				icon="plus"
-				icon-only
-				:aria-label="i18n.baseText('instanceAi.thread.new')"
-				data-test-id="instance-ai-new-thread-button"
-				@click="openNewThread"
-			/>
 			<CreditsSettingsDropdown
 				v-if="store.creditsRemaining !== undefined"
 				:credits-remaining="store.creditsRemaining"
@@ -135,6 +121,10 @@ function openNewThread() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.threadHistoryPopover {
+	overflow: hidden;
 }
 
 .threadHistoryButton {

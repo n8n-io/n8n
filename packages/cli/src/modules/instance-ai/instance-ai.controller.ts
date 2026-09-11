@@ -11,6 +11,7 @@ import {
 	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
+	InstanceAiThreadsQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -859,9 +860,13 @@ export class InstanceAiController {
 
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
-	async listThreads(req: AuthenticatedRequest) {
+	async listThreads(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InstanceAiThreadsQuery,
+	) {
 		this.requireInstanceAiEnabled();
-		return await this.memoryService.listThreads(req.user.id);
+		return await this.memoryService.listThreads(req.user.id, query.page, query.limit, query.search);
 	}
 
 	@Post('/threads')

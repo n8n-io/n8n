@@ -218,6 +218,7 @@ export class TypeORMAgentMemory
 
 	async listThreads(args: {
 		filter?: { resourceId?: string };
+		search?: string;
 		perPage?: number;
 		page?: number;
 		orderBy?: { field: 'createdAt' | 'updatedAt'; direction: 'ASC' | 'DESC' };
@@ -226,12 +227,15 @@ export class TypeORMAgentMemory
 		const page = args.page ?? 0;
 		const field = args.orderBy?.field ?? 'updatedAt';
 		const direction = args.orderBy?.direction ?? 'DESC';
-		const [threads, total] = await this.threadRepo.findAndCount({
-			where: args.filter?.resourceId ? { resourceId: args.filter.resourceId } : {},
-			order: { [field]: direction, id: direction },
-			take: perPage,
-			skip: page * perPage,
-		});
+		const [threads, total] =
+			args.search && args.filter?.resourceId
+				? await this.threadRepo.searchHistory(args.filter.resourceId, args.search, page, perPage)
+				: await this.threadRepo.findAndCount({
+						where: args.filter?.resourceId ? { resourceId: args.filter.resourceId } : {},
+						order: { [field]: direction, id: direction },
+						take: perPage,
+						skip: page * perPage,
+					});
 
 		return {
 			threads: threads.map(toThread),

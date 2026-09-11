@@ -321,11 +321,13 @@ export class InstanceAiMemoryService {
 		userId: string,
 		page = 0,
 		perPage = 100,
+		search?: string,
 	): Promise<InstanceAiThreadListResponse> {
 		const result = await this.agentMemory.listThreads({
 			filter: { resourceId: userId },
 			perPage,
 			page,
+			search,
 			orderBy: { field: 'updatedAt', direction: 'DESC' },
 		});
 		return {

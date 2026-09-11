@@ -1,4 +1,5 @@
 import { createApp } from 'vue';
+import { ElNotification } from 'element-plus';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -58,6 +59,8 @@ app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
+// Startup notifications need the app context for translations and router links.
+app.use(ElNotification);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);

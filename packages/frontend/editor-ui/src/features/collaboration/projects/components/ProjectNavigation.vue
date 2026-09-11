@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
-import { HOVER_DELAY, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { N8nButton, N8nIcon, N8nMenuItem, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
@@ -23,7 +23,6 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import InstanceAiThreadList from '@/features/ai/instanceAi/components/InstanceAiThreadList.vue';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
@@ -31,7 +30,6 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
-const INSTANCE_AI_POPOVER_SHOW_DELAY = 500;
 
 type Props = {
 	collapsed: boolean;
@@ -42,7 +40,6 @@ const props = defineProps<Props>();
 
 const locale = useI18n();
 const route = useRoute();
-const router = useRouter();
 const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
@@ -51,81 +48,13 @@ const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
 
-const instanceAiPopoverOpen = ref(false);
-let instanceAiPopoverOpenTimer: ReturnType<typeof setTimeout> | undefined;
-let instanceAiPopoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 let instanceAiThreadsRequested = false;
-
-function clearInstanceAiOpenTimer() {
-	if (instanceAiPopoverOpenTimer !== undefined) {
-		clearTimeout(instanceAiPopoverOpenTimer);
-		instanceAiPopoverOpenTimer = undefined;
-	}
-}
-
-function clearInstanceAiCloseTimer() {
-	if (instanceAiPopoverCloseTimer !== undefined) {
-		clearTimeout(instanceAiPopoverCloseTimer);
-		instanceAiPopoverCloseTimer = undefined;
-	}
-}
 
 function requestInstanceAiThreads() {
 	if (instanceAiThreadsRequested) return;
 
 	instanceAiThreadsRequested = true;
 	void instanceAiStore.loadThreads();
-}
-
-function scheduleInstanceAiPopoverOpen() {
-	if (activeTabId.value === 'instance-ai') return;
-
-	clearInstanceAiCloseTimer();
-	clearInstanceAiOpenTimer();
-	instanceAiPopoverOpenTimer = setTimeout(() => {
-		instanceAiPopoverOpenTimer = undefined;
-		if (activeTabId.value === 'instance-ai') return;
-
-		instanceAiPopoverOpen.value = true;
-		requestInstanceAiThreads();
-	}, INSTANCE_AI_POPOVER_SHOW_DELAY);
-}
-
-function scheduleInstanceAiPopoverClose() {
-	clearInstanceAiOpenTimer();
-	clearInstanceAiCloseTimer();
-	instanceAiPopoverCloseTimer = setTimeout(() => {
-		instanceAiPopoverCloseTimer = undefined;
-		instanceAiPopoverOpen.value = false;
-	}, HOVER_DELAY.LEAVE);
-}
-
-function keepInstanceAiPopoverOpen() {
-	clearInstanceAiCloseTimer();
-}
-
-function closeInstanceAiPopover() {
-	clearInstanceAiOpenTimer();
-	clearInstanceAiCloseTimer();
-	instanceAiPopoverOpen.value = false;
-}
-
-function handleInstanceAiPopoverOpenUpdate(open: boolean) {
-	if (open && activeTabId.value === 'instance-ai') {
-		closeInstanceAiPopover();
-		return;
-	}
-
-	instanceAiPopoverOpen.value = open;
-}
-
-function handleInstanceAiMenuClick() {
-	void nextTick(closeInstanceAiPopover);
-}
-
-function openAllInstanceAiThreads() {
-	closeInstanceAiPopover();
-	void router.push({ name: INSTANCE_AI_THREADS_VIEW });
 }
 
 const {
@@ -135,10 +64,6 @@ const {
 	onFavoriteWorkflowClick,
 	onUnpinFavorite,
 } = useFavoriteNavItems();
-
-watch(activeTabId, (tabId) => {
-	if (tabId === 'instance-ai') closeInstanceAiPopover();
-});
 
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
@@ -259,7 +184,6 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	preview: true,
 }));
 
 async function onSourceControlPull() {
@@ -273,7 +197,6 @@ onBeforeMount(async () => {
 });
 
 onBeforeUnmount(() => {
-	closeInstanceAiPopover();
 	sourceControlEventBus.off('pull', onSourceControlPull);
 });
 </script>
@@ -281,65 +204,15 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
-			<N8nPopover
+			<N8nMenuItem
 				v-if="isInstanceAiNavVisible"
-				:open="instanceAiPopoverOpen"
-				side="right"
-				align="start"
-				:side-offset="4"
-				width="calc(var(--spacing--5xl) + var(--spacing--4xl))"
-				:enable-scrolling="false"
-				:suppress-auto-focus="true"
-				@update:open="handleInstanceAiPopoverOpenUpdate"
-			>
-				<template #trigger>
-					<div
-						@mouseenter="scheduleInstanceAiPopoverOpen"
-						@mouseleave="scheduleInstanceAiPopoverClose"
-					>
-						<N8nMenuItem
-							:item="instanceAi"
-							:compact="props.collapsed"
-							:active="activeTabId === 'instance-ai' && !isInstanceAiThreadView"
-							:class="{ [$style.instanceAiParentInactive]: isInstanceAiThreadView }"
-							disable-tooltip
-							data-test-id="project-instance-ai-menu-item"
-							@click="handleInstanceAiMenuClick"
-						/>
-					</div>
-				</template>
-				<template #content>
-					<div
-						:class="$style.instanceAiPopover"
-						@mouseenter="keepInstanceAiPopoverOpen"
-						@mouseleave="scheduleInstanceAiPopoverClose"
-					>
-						<div :class="$style.instanceAiPopoverHeader">
-							<N8nText size="small" bold>
-								{{ locale.baseText('instanceAi.threads.recent') }}
-							</N8nText>
-							<N8nButton
-								variant="ghost"
-								size="xsmall"
-								:class="$style.instanceAiPopoverViewAll"
-								data-test-id="instance-ai-view-all-threads"
-								@click="openAllInstanceAiThreads"
-							>
-								{{ locale.baseText('instanceAi.threads.viewAll') }}
-							</N8nButton>
-						</div>
-						<InstanceAiThreadList
-							:max-threads="5"
-							max-height="calc(var(--spacing--5xl) + var(--spacing--4xl))"
-							:show-actions="false"
-							:show-header="false"
-							:show-search="false"
-							@close="closeInstanceAiPopover"
-							@select="closeInstanceAiPopover"
-						/>
-					</div>
-				</template>
-			</N8nPopover>
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai' && !isInstanceAiThreadView"
+				:class="{ [$style.instanceAiParentInactive]: isInstanceAiThreadView }"
+				disable-tooltip
+				data-test-id="project-instance-ai-menu-item"
+			/>
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -347,7 +220,10 @@ onBeforeUnmount(() => {
 				data-test-id="project-home-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
+				v-if="
+					projectsStore.personalProject?.id &&
+					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled)
+				"
 				:item="personalProject"
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === personalProject.id"
@@ -448,7 +324,7 @@ onBeforeUnmount(() => {
 					/>
 				</button>
 				<RouterLink :to="{ name: INSTANCE_AI_THREADS_VIEW }" :class="$style.instanceAiChatsViewAll">
-					{{ locale.baseText('instanceAi.threads.showAll') }}
+					{{ locale.baseText('instanceAi.threads.viewAll') }}
 				</RouterLink>
 			</div>
 			<template v-if="!instanceAiChatsCollapsed">
@@ -516,31 +392,11 @@ onBeforeUnmount(() => {
 	padding: var(--spacing--2xs) var(--spacing--3xs);
 }
 
-.instanceAiPopover {
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-}
-
-.instanceAiPopoverHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--2xs) 0 var(--spacing--sm);
-}
-
-.instanceAiPopoverViewAll {
-	--button--color: var(--text-color--subtle);
-
-	font-weight: var(--font-weight--regular);
-}
-
 .instanceAiSidebar {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
 }
 
 .instanceAiParentInactive {

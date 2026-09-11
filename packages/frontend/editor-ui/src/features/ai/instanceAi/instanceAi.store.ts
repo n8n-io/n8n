@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary, type PushMessage } from '@n8n/api-types';
+import type { InstanceAiThreadsQuery } from '@n8n/api-types';
 import {
 	ensureThread,
 	getInstanceAiCredits,
@@ -156,6 +157,22 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Thread list & lifecycle ---
 
+	async function loadThreadPage(query: InstanceAiThreadsQuery) {
+		const result = await fetchThreadsApi(rootStore.restApiContext, query);
+		const merged = new Map(threads.value.map((thread) => [thread.id, thread]));
+		for (const thread of result.threads) {
+			persistedThreadIds.add(thread.id);
+			merged.set(thread.id, {
+				...thread,
+				title: thread.title || NEW_CONVERSATION_TITLE,
+			});
+		}
+		threads.value = [...merged.values()].sort(
+			(a, b) => Date.parse(b.updatedAt ?? b.createdAt) - Date.parse(a.updatedAt ?? a.createdAt),
+		);
+		return result;
+	}
+
 	async function loadThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
@@ -173,7 +190,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				updatedAt: t.updatedAt,
 				metadata: t.metadata ?? undefined,
 			}));
-			threads.value = [...localOnly, ...serverThreads];
+			threads.value = [...localOnly, ...serverThreads].sort(
+				(a, b) => Date.parse(b.updatedAt ?? b.createdAt) - Date.parse(a.updatedAt ?? a.createdAt),
+			);
 			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
@@ -300,6 +319,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		threadCreditsUsed,
 		updateThreadMetadata,
 		loadThreads,
+		loadThreadPage,
 		fetchCredits,
 		handleCreditsPush,
 		getOrCreateRuntime,
