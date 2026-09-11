@@ -44,6 +44,10 @@ const license = mockInstance(License);
 const binaryDataConfig = mockInstance(BinaryDataConfig);
 const objectStoreConfig = mockInstance(ObjectStoreConfig);
 
+afterEach(() => {
+	vi.resetAllMocks();
+});
+
 describe('BaseCommand', () => {
 	let exitSpy: ReturnType<typeof vi.spyOn>;
 
@@ -75,5 +79,35 @@ describe('BaseCommand', () => {
 
 			expect(exitSpy).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('logError', () => {
+	const error = new Error('Something went wrong');
+	error.stack = 'the stack';
+
+	it('should log the error banner', () => {
+		// @ts-expect-error Protected method
+		new TestCommand().logError(error);
+
+		expect(logger.error.mock.calls.flat()).toEqual([
+			'\nGOT ERROR',
+			'====================================',
+			'Something went wrong',
+			'the stack',
+		]);
+	});
+
+	it('should log the summary before the error banner', () => {
+		// @ts-expect-error Protected method
+		new TestCommand().logError(error, 'Error updating database.');
+
+		expect(logger.error.mock.calls.flat()).toEqual([
+			'Error updating database.',
+			'\nGOT ERROR',
+			'====================================',
+			'Something went wrong',
+			'the stack',
+		]);
 	});
 });
