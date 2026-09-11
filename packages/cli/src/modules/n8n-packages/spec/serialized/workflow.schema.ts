@@ -41,11 +41,46 @@ const connectionLeafSchema = z.object({
 
 const connectionsSchema = z.record(z.record(z.array(z.array(connectionLeafSchema).nullable())));
 
+const nodeGroupFrameSchema = z.object({
+	position: z.tuple([z.number().finite(), z.number().finite()]),
+	size: z.tuple([z.number().finite().positive(), z.number().finite().positive()]),
+});
+
+const nodeGroupVisualLinkNodeEndpointSchema = z.object({
+	kind: z.literal('node'),
+	id: z.string().min(1),
+	port: z.object({
+		type: z.literal('main'),
+		index: z.number().int().nonnegative(),
+	}),
+});
+
+const nodeGroupVisualLinkGroupEndpointSchema = z.object({
+	kind: z.literal('group'),
+	id: z.string().min(1),
+	port: z.object({
+		type: z.literal('main'),
+		index: z.literal(0),
+	}),
+});
+
+const nodeGroupVisualLinkEndpointSchema = z.discriminatedUnion('kind', [
+	nodeGroupVisualLinkNodeEndpointSchema,
+	nodeGroupVisualLinkGroupEndpointSchema,
+]);
+
+const nodeGroupVisualLinkSchema = z.object({
+	source: nodeGroupVisualLinkEndpointSchema,
+	target: nodeGroupVisualLinkEndpointSchema,
+});
+
 const nodeGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),
 	description: z.string().optional(),
+	frame: nodeGroupFrameSchema.optional(),
+	visualLinks: z.array(nodeGroupVisualLinkSchema).optional(),
 });
 
 export const serializedWorkflowSchema = z.object({

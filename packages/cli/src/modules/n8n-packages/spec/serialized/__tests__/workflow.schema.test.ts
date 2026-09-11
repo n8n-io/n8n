@@ -1,6 +1,19 @@
 import { serializedWorkflowSchema } from '../workflow.schema';
 
 describe('serializedWorkflowSchema', () => {
+	const emptyGroup = {
+		id: 'group-1',
+		name: 'Empty group',
+		nodeIds: [],
+		frame: { position: [560, 280], size: [240, 160] },
+		visualLinks: [
+			{
+				source: { kind: 'node', id: 'node-a', port: { type: 'main', index: 2 } },
+				target: { kind: 'group', id: 'group-1', port: { type: 'main', index: 0 } },
+			},
+		],
+	};
+
 	const workflow = (typeVersion: number) => ({
 		id: 'wf-1',
 		name: 'Workflow',
@@ -40,5 +53,40 @@ describe('serializedWorkflowSchema', () => {
 
 	it('rejects an empty-string tag id', () => {
 		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), tagIds: [''] })).toThrow();
+	});
+
+	it('preserves an empty group frame and visual links', () => {
+		const result = serializedWorkflowSchema.parse({
+			...workflow(1),
+			nodeGroups: [emptyGroup],
+		});
+
+		expect(result.nodeGroups).toEqual([emptyGroup]);
+	});
+
+	it.each([
+		['a non-finite frame position', { ...emptyGroup, frame: { position: [NaN, 0], size: [1, 1] } }],
+		[
+			'a fractional node port index',
+			{
+				...emptyGroup,
+				visualLinks: [
+					{
+						source: {
+							kind: 'node',
+							id: 'node-a',
+							port: { type: 'main', index: 0.5 },
+						},
+						target: {
+							kind: 'group',
+							id: 'group-1',
+							port: { type: 'main', index: 0 },
+						},
+					},
+				],
+			},
+		],
+	])('rejects %s', (_name, group) => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), nodeGroups: [group] })).toThrow();
 	});
 });
