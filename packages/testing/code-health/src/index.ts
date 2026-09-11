@@ -10,6 +10,7 @@ import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
+import { UnusedWorkspaceDepsRule } from './rules/unused-workspace-deps.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
@@ -22,6 +23,7 @@ export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rul
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
+export { UnusedWorkspaceDepsRule } from './rules/unused-workspace-deps.rule.js';
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
@@ -66,6 +68,15 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: false,
 		severity: 'warning',
 		options: { packages: ['packages/cli'] },
+	},
+	'unused-workspace-deps': {
+		// Report-first, like stale-overrides: the finding is a cleanup, not a
+		// break. Raise to "error" once the baseline is worked down to empty.
+		enabled: true,
+		severity: 'warning',
+		// allowUnused holds "<package dir>#<dependency>" edges that exist only to
+		// order the Turbo build, so no file in the package can mention them.
+		options: { allowUnused: [] },
 	},
 	'subpath-purity': {
 		enabled: true,
@@ -139,6 +150,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());
+	runner.registerRule(new UnusedWorkspaceDepsRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }

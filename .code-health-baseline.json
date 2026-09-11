@@ -211,6 +211,12 @@
 				"line": 80,
 				"message": "@types/psl appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "6e62e0076b0a"
+			},
+			{
+				"rule": "unused-workspace-deps",
+				"line": 154,
+				"message": "\"@n8n/ai-node-sdk\" is declared in dependencies of packages/cli but no file in the package mentions it.",
+				"hash": "87304ddda8e6"
 			}
 		],
 		"packages/@n8n/agents/package.json": [
@@ -1309,6 +1315,14 @@
 				"line": 428,
 				"message": "A bare `eslint-disable` directive silences every lint rule in its range, including the encryption guardrails.",
 				"hash": "7d9779f96d99"
+			}
+		],
+		"packages/modules/instance-registry/frontend/package.json": [
+			{
+				"rule": "unused-workspace-deps",
+				"line": 22,
+				"message": "\"@n8n/composables\" is declared in dependencies of packages/modules/instance-registry/frontend but no file in the package mentions it.",
+				"hash": "cb1701d9e693"
 			}
 		]
 	}

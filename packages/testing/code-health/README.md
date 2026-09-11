@@ -9,6 +9,7 @@ Scans all `package.json` files across the monorepo and flags:
 - **Hardcoded catalog deps** — dependencies using a pinned version when `pnpm-workspace.yaml` already defines a catalog entry
 - **Cross-package version drift** — the same dependency appearing in multiple packages with different versions
 - **Encryption boundary coverage** — every package that depends on `n8n-core` or `@n8n/db` composes the encryption-boundary ESLint config at `error` severity and contains no ESLint directive that silences it
+- **Unused workspace dependencies** — `workspace:*` entries a package declares but no file in it uses
 
 ## Usage
 
@@ -56,6 +57,46 @@ violations are found, 0 if clean.
   }
 }
 ```
+
+## Unused workspace dependencies
+
+`import-x/no-extraneous-dependencies` fails an import that the manifest does not declare. The
+`unused-workspace-deps` rule covers the opposite direction: a `workspace:*` entry in `dependencies`
+or `devDependencies` that no file in the package uses. An unused edge makes Turbo rebuild and
+re-test packages a change cannot affect, and it misstates the architecture.
+
+```bash
+node packages/testing/code-health/dist/cli.js --rule=unused-workspace-deps
+```
+
+A linter cannot answer this: ESLint and oxlint visit one file at a time and never see the whole
+package. The rule instead reads every file in the package and treats **any mention** of the
+dependency as a use — an import, a dynamic `import()`, a `require`, a tsconfig `extends`, a config
+file outside `src`, a `scripts` entry, a CSS or asset reference, or a plain string used to resolve a
+path. A package that provides a binary also counts as used when that binary is named in the
+manifest's `scripts` or in a `.bin/` path. Markdown is excluded: prose cannot make a dependency
+necessary.
+
+The bias is deliberate. A missed finding costs a stale edge that the next run may still catch; a
+false positive sends someone to delete a live one. `peerDependencies` are never reported — they are
+a contract with consumers, not a use — and third-party dependencies are out of scope, because they
+need a resolver for bundler aliases, plugin auto-loading and binaries.
+
+An edge with no mention anywhere, such as one that exists only to order the Turbo build, goes in
+the rule's `allowUnused` option in `src/index.ts` as `"<package dir>#<dependency>"`.
+
+The rule starts at `warning`. Raise it to `error` once the baseline is worked down to empty.
+
+### Why not knip or depcheck
+
+Neither is in the repo, and both answer a wider question than this one. `depcheck` reads imports
+per package and has no model of a pnpm workspace protocol, a tsconfig `extends`, or a binary run
+from a `scripts` entry — the cases that make up most of the "do not report" list. `knip` does model
+those, but it wants per-workspace entry and project configuration for ~80 packages, and it reports
+unused files and exports too, so adopting it is a project rather than a check. Wrapping either also
+adds a third-party dependency and its lockfile weight for a rule that needs a few hundred lines
+here, where every `package.json` is already read. Revisit as part of DEVP-618 if the wider
+unused-files and unused-exports questions are picked up.
 
 ## Single-instance dependency checks
 
