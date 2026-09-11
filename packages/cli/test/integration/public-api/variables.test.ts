@@ -1,8 +1,9 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import type { Project, User, Variables } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import {
@@ -58,6 +59,20 @@ describe('Variables in Public API', () => {
 					);
 				}
 			});
+		});
+
+		it('should represent a variable with a NULL value as an empty string', async () => {
+			testServer.license.enable('feat:variables');
+			const variable = await createVariable();
+			await Container.get(VariablesRepository).update(variable.id, { value: null } as never);
+			await Container.get(VariablesService).updateCache();
+
+			const response = await testServer.publicApiAgentFor(owner).get('/variables');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: variable.id, value: '' }),
+			);
 		});
 
 		it('should be able to filter variables by projectId and state', async () => {
