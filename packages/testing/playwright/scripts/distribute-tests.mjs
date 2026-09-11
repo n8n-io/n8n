@@ -34,6 +34,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { buildDistributionGroups, filterDistributionSpecs } from './distribution-groups.mjs';
+import { getRequiredImages } from './distribution-images.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
@@ -54,50 +55,6 @@ const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 // removed from PR shards too and cannot gate a PR. If a shard's whole spec list
 // is quarantined it becomes the `skip` sentinel below (never the full suite).
 const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
-
-const CAPABILITY_IMAGES = {
-	'dynamic-credentials': ['keycloak'],
-	email: ['mailpit'],
-	'external-secrets': ['localstack'],
-	kafka: ['kafka'],
-	kent: [], // Kent is built locally and has no remote image to pull.
-	observability: ['victoriaLogs', 'victoriaMetrics', 'vector'],
-	oidc: ['keycloak'],
-	proxy: ['mockserver'],
-	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
-	'source-control': ['gitea'],
-};
-
-const SERVICE_IMAGES = {
-	gitea: ['gitea'],
-	kafka: ['kafka'],
-	kent: [],
-	keycloak: ['keycloak'],
-	localstack: ['localstack'],
-	mailpit: ['mailpit'],
-	proxy: ['mockserver'],
-	sandbox: ['sandboxApi', 'sandboxRunner', 'sandboxSandbox'],
-	vector: ['vector'],
-	victoriaLogs: ['victoriaLogs'],
-	victoriaMetrics: ['victoriaMetrics'],
-};
-
-const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
-
-function getRequiredImages(capabilities, services) {
-	const images = new Set(BASE_IMAGES);
-	for (const cap of capabilities) {
-		const capImages = CAPABILITY_IMAGES[cap];
-		if (!capImages) throw new Error(`No Docker image mapping for capability "${cap}"`);
-		for (const img of capImages) images.add(img);
-	}
-	for (const service of services) {
-		const serviceImages = SERVICE_IMAGES[service];
-		if (!serviceImages) throw new Error(`No Docker image mapping for service "${service}"`);
-		for (const img of serviceImages) images.add(img);
-	}
-	return [...images].sort();
-}
 
 /**
  * Partition CSV of changed files into (a) inside the playwright package,

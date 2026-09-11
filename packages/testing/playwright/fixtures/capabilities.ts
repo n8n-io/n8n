@@ -22,7 +22,6 @@ export const CAPABILITIES = {
 		},
 	},
 	kent: { services: ['kent'] },
-	sandbox: { services: ['sandbox'] },
 	'dynamic-credentials': {
 		services: ['keycloak'],
 		env: {

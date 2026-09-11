@@ -334,22 +334,22 @@ The ProxyServer service supports recording HTTP requests for test mocking and re
 
 ```typescript
 // Record all requests (the request is simplified/cleansed to method/path/body/query)
-await proxyServer.recordExpectations('test-folder');
+await services.proxy.recordExpectations('test-folder');
 
 // Record with filtering and options
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   host: 'googleapis.com',           // Filter by host (partial match)
   dedupe: true,                     // Remove duplicate requests
   raw: false                        // Save cleaned requests (default)
 });
 
 // Record raw requests with all headers and metadata
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   raw: true                         // Save complete original requests
 });
 
 // Record requests matching specific criteria
-await proxyServer.recordExpectations('test-folder', {
+await services.proxy.recordExpectations('test-folder', {
   pathOrRequestDefinition: {
     method: 'POST',
     path: '/api/workflows'
@@ -362,9 +362,9 @@ await proxyServer.recordExpectations('test-folder', {
 Recorded expectations are saved as JSON files in the `expectations/` directory. To use them in tests, you must explicitly load them:
 
 ```typescript
-test('should use recorded expectations', async ({ proxyServer }) => {
+test('should use recorded expectations', async ({ services }) => {
   // Load expectations from a specific folder
-  await proxyServer.loadExpectations('test-folder');
+  await services.proxy.loadExpectations('test-folder');
 
   // Your test code here - requests will be mocked using loaded expectations
 });
@@ -375,14 +375,14 @@ test('should use recorded expectations', async ({ proxyServer }) => {
 **Remember to clean up expectations before or after test runs:**
 
 ```typescript
-test.beforeEach(async ({ proxyServer }) => {
+test.beforeEach(async ({ services }) => {
   // Clear any existing expectations before test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 
-test.afterEach(async ({ proxyServer }) => {
+test.afterEach(async ({ services }) => {
   // Or clear expectations after test
-  await proxyServer.clearAllExpectations();
+  await services.proxy.clearAllExpectations();
 });
 ```
 
