@@ -414,4 +414,23 @@ describe('Microsoft Teams V2 — Service Principal runtime guards', () => {
 			);
 		});
 	});
+
+	describe('chatMessage delete actions under SP', () => {
+		it.each(['softDeleteMessage'])(
+			'chatMessage:%s throws a static error and issues no request under SP',
+			async (operation) => {
+				selectSp({
+					resource: 'chatMessage',
+					operation,
+					chatId: 'chatID',
+					messageId: '1698378560692',
+				});
+
+				await expect(node.execute.call(ctx)).rejects.toThrow(
+					'Chat messages are not available with the Service Principal credential',
+				);
+				expect(transport.microsoftApiRequest).not.toHaveBeenCalled();
+			},
+		);
+	});
 });
