@@ -16,6 +16,11 @@ import {
 	isEpisodicMemoryEnabled,
 	RECALL_MEMORY_TOOL_NAME,
 } from '../memory/episodic-memory';
+import {
+	createFlagMemoryTool,
+	FLAG_MEMORY_TOOL_NAME,
+	resolveEpisodicMemoryCapture,
+} from '../memory/episodic-memory-capture';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
@@ -99,8 +104,9 @@ export class RuntimeContextBuilder {
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter);
+		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -133,6 +139,7 @@ export class RuntimeContextBuilder {
 	getCurrentTools(
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
@@ -146,7 +153,9 @@ export class RuntimeContextBuilder {
 		];
 
 		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
-		return recallTool ? [...tools, recallTool] : tools;
+		const toolsWithRecall = recallTool ? [...tools, recallTool] : tools;
+		const flagTool = this.createFlagMemoryToolForRun(persistence, toolsWithRecall, list);
+		return flagTool ? [...toolsWithRecall, flagTool] : toolsWithRecall;
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {
@@ -209,6 +218,27 @@ export class RuntimeContextBuilder {
 			scope,
 			executionCounter,
 			agentName: this.config.name,
+		});
+	}
+
+	private createFlagMemoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+		list?: AgentMessageList,
+	): BuiltTool | undefined {
+		if (!persistence || !list) return undefined;
+		const capture = resolveEpisodicMemoryCapture(this.config, persistence);
+		if (!capture) return undefined;
+		if (existingTools.some((tool) => tool.name === FLAG_MEMORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${FLAG_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+			);
+		}
+		return createFlagMemoryTool({
+			memory: capture.memory,
+			scope: capture.scope,
+			persistence,
+			list,
 		});
 	}
 
@@ -293,8 +323,6 @@ export class RuntimeContextBuilder {
 			agentName: this.config.name,
 			instructions: this.config.instructions,
 		});
-		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
-			| Record<string, Record<string, unknown>>
-			| undefined;
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions);
 	}
 }

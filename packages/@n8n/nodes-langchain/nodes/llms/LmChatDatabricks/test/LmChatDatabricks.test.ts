@@ -10,12 +10,12 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
 } from '@n8n/ai-utilities';
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
-import { CHAT_MODEL_USER_AGENT } from '../constants';
 import { LmChatDatabricks } from '../LmChatDatabricks.node';
 import { getDatabricksTokenProvider } from '../token-provider';
 
@@ -156,7 +156,7 @@ describe('LmChatDatabricks', () => {
 			// Resolved per request, so a token minted mid-execution is picked up
 			const headers = new Headers(await fetchOptions.resolveHeaders?.());
 			expect(headers.get('authorization')).toBe('Bearer test-token');
-			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 		});
 
 		it('should re-authorize with the rotated token after a rejection', async () => {
@@ -168,7 +168,7 @@ describe('LmChatDatabricks', () => {
 			const [fetchOptions] = mockedCreateRefreshingAuthFetch.mock.calls[0];
 			const headers = new Headers((await fetchOptions.refreshHeaders?.(new Headers())) ?? {});
 			expect(headers.get('authorization')).toBe('Bearer rotated-token');
-			expect(headers.get('user-agent')).toBe(CHAT_MODEL_USER_AGENT);
+			expect(headers.get('user-agent')).toBe(DATABRICKS_PARTNER_USER_AGENT);
 		});
 
 		it('should not re-authorize when the session cannot be refreshed', async () => {
@@ -408,7 +408,7 @@ describe('LmChatDatabricks', () => {
 			await node.methods.listSearch.searchModels.call(mockContext);
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.headers).toMatchObject({ 'User-Agent': CHAT_MODEL_USER_AGENT });
+			expect(requestOptions.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 		});
 	});
 });

@@ -407,7 +407,7 @@ export function mergeWorkflowToolInput(
 		...llmInput,
 		...getFixedWorkflowToolInputs(inputs),
 	};
-	return fullSchema.parse(merged) as Record<string, unknown>;
+	return fullSchema.parse(merged);
 }
 
 // ---------------------------------------------------------------------------
@@ -1062,7 +1062,7 @@ function assembleWorkflowTool(
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
 				const currentSchema = omitFixedFieldsFromSchema(currentFullSchema, toolInputs);
 				const parsedInput = mergeWorkflowToolInput(
-					currentSchema.parse(input) as Record<string, unknown>,
+					currentSchema.parse(input),
 					toolInputs,
 					currentFullSchema,
 				);

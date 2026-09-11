@@ -85,14 +85,15 @@ obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
-verification.
+verification. For a multi-trigger outcome, verify every trigger that does not
+yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
 When the current message contains `<workflow-setup-required>`, your first action
 is to call `workflows(action="setup")` with the `workflowId` from the payload. Do
 not verify, do not ask, do not write a message first — the inline setup card in
-the AI Assistant panel is the user-visible surface. If the result has
+the n8n Assistant panel is the user-visible surface. If the result has
 `announced: true`, use the persistent panel instructions above and end the turn.
 If it returns `deferred:
 true`, respect the user's choice and do not retry with any other setup tool.
@@ -139,7 +140,7 @@ it has you fetch, never from memory:
 - `placeholders` — one entry per marker: `name`, user-facing `title`, an
   optional `info` clarifying the value itself — its format or which of the
   provider's tokens it is (e.g. "Starts with tvly-"). Never where to obtain
-  it, and never a URL or domain: the user asks the AI Assistant for that from
+  it, and never a URL or domain: the user asks the n8n Assistant for that from
   the credential form. `type` is `password` unless clearly non-secret (at
   least one placeholder must stay `password`). Add `optional: true` only when
   the provider documents the value as optional (e.g. an org/region
@@ -147,7 +148,7 @@ it has you fetch, never from memory:
   omitted from the request.
 - `docsUrl` — the provider page where a logged-in user CREATES/COPIES the
   secret (e.g. `https://replicate.com/account/api-tokens`) — never the API
-  reference. Not shown in the form: the AI Assistant help thread uses it to
+  reference. Not shown in the form: the n8n Assistant help thread uses it to
   send the user to the exact page. Found via the `credential-recipe-research`
   procedure; omit when it finds nothing conclusive.
 - `testUrl` — a documented side-effect-free GET that rejects a bad key with
@@ -304,13 +305,14 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
-- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
-  the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
-  it.
-- Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+- Each pass reports `nodesNotReached` only for its selected trigger's main-flow
+  branch. Coverage is the **union** across successful passes. Run every trigger
+  before you report a workflow coverage gap. Different triggers can select
+  different outputs of a shared Switch or If node.
+- A failed rerun removes that trigger's earlier coverage. Verify that trigger
+  again before you claim that the workflow is verified.
+- Report each trigger and whether its branch ran. Use the combined `claim` to
+  describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -330,8 +332,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      `workflow-builder` skill and patch the same workflow with `build-workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
-   - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+   - If `verificationReadiness.status === "already_verified"`, do not repeat
+     automatic verification. Read the saved claim before describing the workflow
+     as verified. For tracked multi-trigger builds, follow the verification
+     obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
@@ -539,6 +543,11 @@ wrote is the deliverable. There you offer to clean up the _workflow_, never the
 result.
 
 ## Claiming success
+
+For tracked multi-trigger builds, `claim` combines the saved successful passes.
+A `verified` claim requires every trigger to pass and real coverage for every planned node.
+Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
+outside the claim describes only the current trigger's branch.
 
 `verify-built-workflow` returns a `claim`, and its `level` decides what you may
 say:

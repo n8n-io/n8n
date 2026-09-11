@@ -1,7 +1,7 @@
+import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { CHAT_MODEL_USER_AGENT } from '../constants';
 import type { DatabricksOAuth2Credential } from '../token-provider';
 import { getDatabricksTokenProvider } from '../token-provider';
 
@@ -88,7 +88,7 @@ describe('getDatabricksTokenProvider', () => {
 			accessTokenUri: 'https://my.databricks.com/oidc/v1/token',
 			scopes: ['all-apis'],
 			authentication: 'header',
-			headers: { 'User-Agent': CHAT_MODEL_USER_AGENT },
+			headers: { 'User-Agent': DATABRICKS_PARTNER_USER_AGENT },
 		});
 	});
 
