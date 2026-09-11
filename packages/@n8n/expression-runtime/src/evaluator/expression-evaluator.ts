@@ -117,11 +117,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	 * newly opened" and keeps the same do-not-double-release contract.
 	 */
 	async acquire(caller: object): Promise<boolean> {
-		// The pool throws this for eager acquisition; the lazy branch would
-		// otherwise happily open scopes whose every evaluation then fails.
-		if (this.disposed) throw new PoolDisposedError();
 		if (this.bridgesByCaller.has(caller)) return false;
 		if (this.config.lazyAcquire) {
+			// The pool throws this for eager acquisition; the lazy branch would
+			// otherwise happily open scopes whose every evaluation then fails.
+			if (this.disposed) throw new PoolDisposedError();
 			if (this.lazyScopes.has(caller)) return false;
 			this.lazyScopes.add(caller);
 			return true;
