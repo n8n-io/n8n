@@ -6,7 +6,6 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nCopyInput,
-	N8nLink,
 	N8nSegmentControl,
 	N8nSetupConnection,
 	N8nText,
@@ -16,7 +15,11 @@ import { addCredentialTranslation, useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { deepCopy, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import {
+	deepCopy,
+	DOMAIN_RESTRICTION_FIELDS,
+	type ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { AI_GATEWAY_UNSUPPORTED_NODE_TYPES, BUILTIN_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -190,22 +193,30 @@ watch(
 	{ immediate: true },
 );
 
-const requiredFields = computed(() =>
-	form.credentialProperties.value.filter(
-		(property) => property.required && property.type !== 'hidden',
-	),
-);
+const inlineFields = computed(() => {
+	const fields = form.credentialProperties.value.filter(
+		(property) =>
+			property.type !== 'hidden' &&
+			property.type !== 'notice' &&
+			!property.typeOptions?.copyButton &&
+			!DOMAIN_RESTRICTION_FIELDS.some(({ name }) => name === property.name),
+	);
+	const required = fields.filter((property) => property.required);
+	// Older credential definitions can omit required flags even for access tokens.
+	if (required.length === 0 && !isOAuth.value && fields.length <= 2) return fields;
+	return required;
+});
 const useAdvancedForm = computed(
 	() =>
 		!isOAuth.value &&
 		!isTemplated.value &&
 		!canQuickConnect.value &&
-		requiredFields.value.length === 0,
+		inlineFields.value.length === 0,
 );
 const fieldTitles = computed(() =>
 	isTemplated.value
 		? listPlaceholderTitles(form.credentialData.value)
-		: requiredFields.value.map((property) => property.displayName),
+		: inlineFields.value.map((property) => property.displayName),
 );
 const valueLabel = computed(() =>
 	binding.value?.__aiGatewayManaged
@@ -290,6 +301,8 @@ const actions = computed<DropdownMenuItemProps[]>(() => {
 				{ id: 'edit', label: i18n.baseText('instanceAi.setupPanel.editCredential') },
 			]
 		: [{ id: 'advanced', label: i18n.baseText('instanceAi.setupPanel.advancedSetup') }];
+	if (!connected.value && documentationUrl.value)
+		items.push({ id: 'docs', label: i18n.baseText('credentialEdit.credentialConfig.openDocs') });
 	if (props.node && usableCredentials.value.length)
 		items.push({ id: 'existing', label: i18n.baseText('instanceAi.setupPanel.useExisting') });
 	return items;
@@ -407,6 +420,10 @@ async function connect() {
 }
 
 function onMenuAction(id: string) {
+	if (id === 'docs') {
+		window.open(documentationUrl.value, '_blank', 'noopener,noreferrer');
+		return;
+	}
 	if (id === 'existing') {
 		chooseExisting.value = true;
 		return;
@@ -576,17 +593,12 @@ onScopeDispose(() => {
 					v-else
 					compact
 					:credential-type="item.credentialType"
-					:credential-properties="requiredFields"
+					:credential-properties="inlineFields"
 					:credential-data="form.credentialData.value"
 					:documentation-url="documentationUrl"
 					:show-validation-warnings="form.showValidationWarning.value"
 					@update="onDataChange"
 				/>
-			</template>
-			<template v-if="initialized && !useCredits && !canQuickConnect && documentationUrl" #footer>
-				<N8nLink :to="documentationUrl" size="small">{{
-					i18n.baseText('credentialEdit.credentialConfig.openDocs')
-				}}</N8nLink>
 			</template>
 		</N8nSetupConnection>
 		<N8nButton

@@ -8,7 +8,11 @@ import { mock } from 'vitest-mock-extended';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
-import type { ICredentialDataDecryptedObject, INodeProperties } from 'n8n-workflow';
+import {
+	DOMAIN_RESTRICTION_FIELDS,
+	type ICredentialDataDecryptedObject,
+	type INodeProperties,
+} from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -203,13 +207,66 @@ describe('InstanceAiSetupCredential', () => {
 		await userEvent.click(await rendered.findByRole('menuitem', { name: label }));
 	}
 
-	it('uses the existing modal when legacy metadata does not identify required fields', async () => {
-		form.credentialProperties.value = form.credentialProperties.value.map((property) => ({
-			...property,
-			required: false,
-		}));
-		const rendered = renderComponent();
+	it.each([1, 2])(
+		'saves %s inline inputs when legacy metadata omits required flags',
+		async (count) => {
+			form.credentialProperties.value = [
+				...[
+					{ name: 'apiKey', displayName: 'API key', type: 'string' as const, default: '' },
+					{ name: 'apiUrl', displayName: 'API URL', type: 'string' as const, default: '' },
+				].slice(0, count),
+				...DOMAIN_RESTRICTION_FIELDS,
+				{ name: 'hidden', displayName: 'Hidden', type: 'hidden', default: '' },
+				{ name: 'notice', displayName: 'Help text', type: 'notice', default: '' },
+				{
+					name: 'callback',
+					displayName: 'Callback URL',
+					type: 'string',
+					default: '',
+					typeOptions: { copyButton: true },
+				},
+			];
+			form.credentialData.value.allowedHttpRequestDomains = 'domains';
+			form.credentialData.value.allowedDomains = 'example.test';
+			const store = mockedStore(useCredentialsStore);
+			store.createNewCredential.mockResolvedValue(savedCredential);
+			const rendered = renderComponent({ global: { stubs: { CredentialInputs: false } } });
+			await flushPromises();
+			expect(rendered.getAllByRole('textbox')).toHaveLength(count);
+			await fireEvent.update(rendered.getByLabelText('API key'), 'submitted-key');
+			if (count === 2)
+				await fireEvent.update(rendered.getByLabelText('API URL'), 'https://example.test');
+			await fireEvent.click(rendered.getByRole('button', { name: 'Save' }));
+			await flushPromises();
+			expect(store.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: {
+						apiKey: 'submitted-key',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'example.test',
+						...(count === 2 ? { apiUrl: 'https://example.test' } : {}),
+					},
+				}),
+				'workflow-project',
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+			expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0][1]).toBe(
+				savedCredential.id,
+			);
+			expect(mockedStore(useUIStore).openNewCredential).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([0, 3])('uses the modal when legacy metadata has %s editable inputs', async (count) => {
+		form.credentialProperties.value = [
+			{ name: 'apiKey', displayName: 'API key', type: 'string' as const, default: '' },
+			{ name: 'apiUrl', displayName: 'API URL', type: 'string' as const, default: '' },
+			{ name: 'region', displayName: 'Region', type: 'string' as const, default: '' },
+		].slice(0, count);
+		const rendered = renderComponent({ global: { stubs: { CredentialInputs: false } } });
 		await flushPromises();
+		expect(rendered.queryAllByRole('textbox')).toHaveLength(0);
 		await fireEvent.click(rendered.getByRole('button', { name: 'Connect' }));
 		expect(mockedStore(useUIStore).openNewCredential).toHaveBeenCalled();
 		expect(mockedStore(useCredentialsStore).createNewCredential).not.toHaveBeenCalled();
