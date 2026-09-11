@@ -312,11 +312,23 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
 	});
 
-	it('renders the Knowledge tab with vector stores but without the files table when the knowledge base is disabled', async () => {
+	it('keeps vector stores under the collapsed Advanced disclosure on the Knowledge tab', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'knowledge', knowledgeBaseEnabled: false });
 
 		expect(wrapper.find('[data-testid="agent-knowledge-tab-content"]').exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+
+		const trigger = wrapper.find('[data-testid="agent-knowledge-advanced-trigger"]');
+
+		expect(trigger.exists()).toBe(true);
+		expect(trigger.attributes('aria-expanded')).toBe('false');
+		expect(wrapper.find('[data-testid="agent-knowledge-advanced-content"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(false);
+
+		await trigger.trigger('click');
+
+		expect(trigger.attributes('aria-expanded')).toBe('true');
+		expect(wrapper.find('[data-testid="agent-knowledge-advanced-content"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
 	});
 
