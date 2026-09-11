@@ -1,11 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { ActivityLogConfig, GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import type { ActivityEventInput } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,6 +23,9 @@ const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
 
 /** Enough distinct types to show what a user reached for, few enough to leave room for the rest. */
 const maxListedNodeTypes = 5;
+
+/** How long a resolved signup date is held. It never changes, so this only bounds memory. */
+const signupDateTtlMs = 10 * Time.minutes.toMilliseconds;
 
 /** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
 const maxDetailStringLength = 64;
@@ -68,6 +73,7 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly userRepository: UserRepository,
 		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
@@ -118,7 +124,8 @@ export class ActivityEventRelay extends EventRelay {
 	 *
 	 * Per acting user, because that is the unit the rollout exposes. The env var short-
 	 * circuits it, so a local instance never consults PostHog, and `getFeatureFlags`
-	 * caches per user, so a busy user costs one evaluation rather than one per event.
+	 * caches per user, so a busy user costs one evaluation rather than one per event, and
+	 * the signup date it needs is held for as long.
 	 *
 	 * Fails closed: an unreadable flag means no row, never a row written on a guess.
 	 */
@@ -142,14 +149,44 @@ export class ActivityEventRelay extends EventRelay {
 	 * in practice: the client caches a user's flags for ten minutes and only replaces them
 	 * on a successful read, so an outage mid-window leaves an already-evaluated user alone
 	 * and reaches only users it has not seen yet.
+	 *
+	 * The signup date is read from the database rather than taken from the event, whose
+	 * actor carries only a name and a role. It has to be the real one: the reader evaluates
+	 * the same flag with the real date, and a rollout that conditions on signup date would
+	 * otherwise answer one thing here and another there — recording for a user who cannot
+	 * read it back, or leaving a reader's own edits out of what they are handed. A user id
+	 * that resolves to nobody records nothing, for the same reason an unreadable flag does.
 	 */
 	private async readGate(userId: string): Promise<boolean> {
 		try {
-			const flags = await this.postHogClient.getFeatureFlagsByUserId(userId);
+			const createdAt = await this.resolveSignupDate(userId);
+			if (!createdAt) return false;
+
+			const flags = await this.postHogClient.getFeatureFlags({ id: userId, createdAt });
 			return flags[INSTANCE_ACTIVITY_CONTEXT_FLAG] === true;
 		} catch {
 			return false;
 		}
+	}
+
+	/** Resolved signup dates, so one user's events do not each re-read the same row. */
+	private readonly signupDates = new Map<string, { createdAt: Date; expiresAt: number }>();
+
+	/**
+	 * Held for a while because the flag answer behind it is: `gateChecks` only collapses the
+	 * events of one save, so without this every later event pays the read again while the
+	 * evaluation it feeds is still served from the client's own cache. A signup date cannot
+	 * change, so an entry here is never stale — the expiry is only what bounds the map.
+	 */
+	private async resolveSignupDate(userId: string): Promise<Date | undefined> {
+		const held = this.signupDates.get(userId);
+		if (held && held.expiresAt > Date.now()) return held.createdAt;
+
+		const createdAt = await this.userRepository.findCreatedAt(userId);
+		if (createdAt) {
+			this.signupDates.set(userId, { createdAt, expiresAt: Date.now() + signupDateTtlMs });
+		}
+		return createdAt;
 	}
 
 	private guarded<EventNames extends keyof RelayEventMap>(

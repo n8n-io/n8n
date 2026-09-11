@@ -142,20 +142,6 @@ export class PostHogClient {
 		return (await this.getFeatureFlagsAndPayloads(user)).featureFlags;
 	}
 
-	/**
-	 * Flags for an actor known only by id.
-	 *
-	 * `created_at_timestamp` goes out as the epoch, so a flag whose release conditions read
-	 * signup date will misjudge these calls. A percentage rollout is unaffected — bucketing
-	 * hashes `instanceId#userId` and never reads person properties.
-	 *
-	 * For callers that genuinely hold no `User`, such as an event relay whose payload
-	 * carries a narrower actor. Prefer {@link getFeatureFlags} everywhere else.
-	 */
-	async getFeatureFlagsByUserId(userId: string): Promise<FeatureFlags> {
-		return await this.getFeatureFlags({ id: userId, createdAt: new Date(0) });
-	}
-
 	async getFeatureFlagsAndPayloads(
 		user: Pick<PublicUser, 'id' | 'createdAt'>,
 	): Promise<FeatureFlagData> {
@@ -180,10 +166,10 @@ export class PostHogClient {
 		const { instanceId } = this.instanceSettings;
 		const fullId = [instanceId, user.id].join('#');
 
-		// Keyed on every input the evaluation reads, not just the id. A caller that knows a
-		// user only by id sends a placeholder signup date, and a slot holds the whole flag
-		// map — so sharing one with the real-user path would hand a genuine user an answer
-		// computed for a different person, across every flag, not only this feature's.
+		// Keyed on every input the evaluation reads, not just the id. A slot holds the whole
+		// flag map, so two evaluations of one user that disagree about their signup date must
+		// not share one — the loser would be answered for a different person across every
+		// flag, not only the one the caller came for.
 		const cacheKey = [fullId, user.createdAt.getTime()].join('#');
 
 		const cached = this.flagsCache.get(cacheKey);

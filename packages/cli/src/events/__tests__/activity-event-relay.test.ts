@@ -7,6 +7,7 @@ import type {
 	Project,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -26,6 +27,9 @@ const user = {
 	role: { slug: 'global:owner' },
 };
 
+/** What the gate must send to PostHog, since the event's actor does not carry it. */
+const signupDate = new Date('2026-02-02T00:00:00Z');
+
 const node = (type: string, name = type): INode =>
 	mock<INode>({ name, type, typeVersion: 1, position: [0, 0], parameters: {} });
 
@@ -36,6 +40,7 @@ describe('ActivityEventRelay', () => {
 	const activityEventRepository = mock<ActivityEventRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const userRepository = mock<UserRepository>();
 	const scopedLogger = mock<Logger>();
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
@@ -54,7 +59,7 @@ describe('ActivityEventRelay', () => {
 			diagnostics = true,
 		}: { rolloutFlag?: boolean; diagnostics?: boolean } = {},
 	) => {
-		postHogClient.getFeatureFlagsByUserId.mockResolvedValue(
+		postHogClient.getFeatureFlags.mockResolvedValue(
 			rolloutFlag ? { '114_instance_activity_context': true } : {},
 		);
 
@@ -63,6 +68,7 @@ describe('ActivityEventRelay', () => {
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
+			userRepository,
 			mock<ActivityLogConfig>({ enabled }),
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnostics } }),
 			postHogClient,
@@ -75,6 +81,7 @@ describe('ActivityEventRelay', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		postHogClient = mock<PostHogClient>();
+		userRepository.findCreatedAt.mockResolvedValue(signupDate);
 		eventService = new EventService();
 		// Every event whose resource still exists resolves its project through one of these.
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
@@ -143,8 +150,50 @@ describe('ActivityEventRelay', () => {
 			});
 			await emitDeletion();
 
-			expect(postHogClient.getFeatureFlagsByUserId).toHaveBeenCalledTimes(1);
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 			expect(activityEventRepository.record).toHaveBeenCalledTimes(3);
+		});
+
+		/**
+		 * The reader evaluates this same flag with the user's real signup date. Sending a
+		 * placeholder here would let a rollout that conditions on signup date answer one thing
+		 * for the record and another for the read.
+		 */
+		it('evaluates the flag on the same signup date the reader sends', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(userRepository.findCreatedAt).toHaveBeenCalledWith('user1');
+			expect(postHogClient.getFeatureFlags).toHaveBeenCalledWith({
+				id: 'user1',
+				createdAt: signupDate,
+			});
+		});
+
+		/**
+		 * `gateChecks` only collapses one save's events. Two separate actions would each pay
+		 * the read again, while the evaluation it feeds is still served from the client cache.
+		 */
+		it('reads a signup date once for events that do not arrive together', async () => {
+			relayWith(false, { rolloutFlag: true });
+
+			await emitDeletion();
+			await emitDeletion();
+
+			expect(userRepository.findCreatedAt).toHaveBeenCalledTimes(1);
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(2);
+		});
+
+		/** Fails closed with an unreadable flag: no signup date means no evaluation to trust. */
+		it('records nothing for an actor it cannot resolve', async () => {
+			relayWith(false, { rolloutFlag: true });
+			userRepository.findCreatedAt.mockResolvedValue(undefined);
+
+			await emitDeletion();
+
+			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
 		});
 
 		/**

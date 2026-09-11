@@ -2462,8 +2462,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * Rollout flag for reading instance-activity context: the per-turn
  * `<instance-context>` block, the `activity` tool, and the skill that explains them.
  *
- * One flag over the whole feature rather than one per side, and **the record and the read
- * always move together** — there is no state where one is on and the other is off:
+ * One flag over the whole feature rather than one per side, so **turning the record on turns
+ * the read on** and neither control means nothing is read. Only an explicit override parts
+ * them, and only in the one direction that is safe — see the last row:
  *
  * | `N8N_ACTIVITY_LOG_ENABLED` | this flag in PostHog | writes | reads |
  * | -- | -- | -- | -- |
@@ -2477,7 +2478,8 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
  * than instead of fetching them. Setting it is all that is needed to try this on a dev
  * instance. With it unset the flag decides, and both sides follow it: the relay evaluates
  * it for the acting user of each recorded event, so a rollout reaches writes and reads at
- * the same time and needs no deploy.
+ * the same time and needs no deploy. Both sides send the same person properties, including
+ * the real signup date, so a rollout may condition on one without the two sides splitting.
  *
  * The last row is the kill switch and the one asymmetry left: an explicit override stops
  * the read while the env var keeps the record accruing, so a token regression can be
