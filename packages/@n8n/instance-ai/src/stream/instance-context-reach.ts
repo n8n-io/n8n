@@ -23,15 +23,19 @@ const SURFACE_BY_CALL: Record<string, Record<string, InstanceContextSurface>> = 
 };
 
 function surfaceFor(call: ToolCallSummary): InstanceContextSurface | undefined {
-	if (call.action === undefined) return undefined;
-
 	// The node-usage index has two entrances under one flag: the `node-usage` action, and
 	// narrowing `list` by node type, which the tool documents as reading the same index.
 	// Crediting only the action would report a turn that asked "who uses Slack" the cheap
 	// way as never having left the block.
+	//
+	// Checked ahead of the action guard below, not after it: the node-type filter is recorded
+	// from the args on its own, so a call carrying it with no parsed action is still a read of
+	// this index, and crediting it must not depend on an action it never needed.
 	if (call.toolName === DOMAIN_TOOL_IDS.WORKFLOWS && call.filteredByNodeTypes === true) {
 		return 'node-usage';
 	}
+
+	if (call.action === undefined) return undefined;
 
 	// `toolName` and `action` both come off the model's own tool call, so a plain index
 	// could return an inherited member — `action: "constructor"` would hand back a

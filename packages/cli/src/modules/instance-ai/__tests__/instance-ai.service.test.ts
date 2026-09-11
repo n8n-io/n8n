@@ -238,7 +238,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 }));
 
 import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
-import type { InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiEvent,
+	InstanceContextInjection,
+	InstanceContextSurface,
+} from '@n8n/api-types';
 import type { InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
@@ -5975,5 +5979,145 @@ describe('InstanceAiService — internal follow-up failure streak', () => {
 			expect(runId).toBe('follow-up-run');
 			expect(service.startExecuteRun).toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — instance-context turn event', () => {
+	const TURN_EVENT = 'Instance AI instance-context turn completed';
+
+	type TurnBinding = {
+		userId: string;
+		threadId: string;
+		runId: string;
+		injection: InstanceContextInjection;
+		instanceContextEnabled: boolean;
+		nodeUsageEnabled: boolean;
+	};
+	type TurnSegment = {
+		segment: 'whole' | 'suspended' | 'resumed';
+		status: string;
+		reach: { surfaces: InstanceContextSurface[] };
+		workSummary?: { askedClarifyingQuestion?: boolean; totalToolCalls?: number };
+		usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+	};
+
+	function createService() {
+		return createTerminalGuardOrderService() as unknown as {
+			telemetry: { track: Mock };
+			emitInstanceContextTurn: (turn: TurnBinding, input: TurnSegment) => void;
+		};
+	}
+
+	/** The registry entry is what reaches `track`, so the name is read off it. */
+	function trackedRows(service: { telemetry: { track: Mock } }) {
+		return service.telemetry.track.mock.calls.map(([event, properties]) => {
+			expect((event as { name: string }).name).toBe(TURN_EVENT);
+			return properties as Record<string, unknown>;
+		});
+	}
+
+	const binding = (overrides: Partial<TurnBinding> = {}): TurnBinding => ({
+		userId: 'user-1',
+		threadId: 'thread-1',
+		runId: 'run-1',
+		injection: {
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 3, events: 2, runs: 1 },
+			chars: 400,
+		},
+		instanceContextEnabled: true,
+		nodeUsageEnabled: false,
+		...overrides,
+	});
+
+	const segment = (overrides: Partial<TurnSegment> = {}): TurnSegment => ({
+		segment: 'whole',
+		status: 'completed',
+		reach: { surfaces: [] },
+		...overrides,
+	});
+
+	/**
+	 * The reason the event exists at all: the rate it measures is only meaningful against the
+	 * turns that carried no block. A guard that skipped those would leave the read-out with a
+	 * numerator and no denominator.
+	 */
+	it('reports a turn in the arm that got no block', () => {
+		const service = createService();
+
+		service.emitInstanceContextTurn(
+			binding({
+				injection: { state: 'absent', reason: 'disabled' },
+				instanceContextEnabled: false,
+			}),
+			segment(),
+		);
+
+		expect(trackedRows(service)).toEqual([
+			expect.objectContaining({
+				instance_context_enabled: false,
+				block_state: 'absent',
+				absence_reason: 'disabled',
+			}),
+		]);
+	});
+
+	it('carries the block figures and the depth derived from the surfaces reached', () => {
+		const service = createService();
+
+		service.emitInstanceContextTurn(
+			binding(),
+			segment({ reach: { surfaces: ['activity-list', 'workflow-read'] } }),
+		);
+
+		expect(trackedRows(service)).toEqual([
+			expect.objectContaining({
+				block_state: 'injected',
+				block_inventory_rows: 3,
+				block_event_rows: 2,
+				block_run_rows: 1,
+				block_chars: 400,
+				context_surfaces: ['activity-list', 'workflow-read'],
+				// The deepest surface, not the count: a full workflow read is rung 3.
+				context_depth: 3,
+			}),
+		]);
+	});
+
+	/**
+	 * A turn that stops twice reports three segments. Each carries only its own reads and its own
+	 * spend, so a reader aggregates over the shared `run_id` rather than trusting any one row.
+	 */
+	it('reports every segment of one turn under a shared run id', () => {
+		const service = createService();
+		const turn = binding();
+
+		service.emitInstanceContextTurn(turn, {
+			...segment({ segment: 'suspended', status: 'suspended' }),
+			reach: { surfaces: ['activity-list'] },
+			usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+		});
+		service.emitInstanceContextTurn(turn, {
+			...segment({ segment: 'suspended', status: 'suspended' }),
+			reach: { surfaces: ['activity-expand'] },
+		});
+		service.emitInstanceContextTurn(turn, {
+			...segment({ segment: 'resumed' }),
+			reach: { surfaces: ['workflow-read'] },
+			usage: { promptTokens: 30, completionTokens: 4, totalTokens: 34 },
+		});
+
+		const rows = trackedRows(service);
+		expect(rows).toHaveLength(3);
+		expect(rows.map((row) => row.run_id)).toEqual(['run-1', 'run-1', 'run-1']);
+		expect(rows.map((row) => row.segment)).toEqual(['suspended', 'suspended', 'resumed']);
+		// Per segment, so summing them over the run gives the turn.
+		expect(rows.map((row) => row.context_surfaces)).toEqual([
+			['activity-list'],
+			['activity-expand'],
+			['workflow-read'],
+		]);
+		expect(rows.map((row) => row.turn_total_tokens)).toEqual([12, undefined, 34]);
 	});
 });

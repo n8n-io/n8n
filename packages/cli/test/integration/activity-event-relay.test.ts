@@ -69,7 +69,11 @@ describe('ActivityEventRelay', () => {
 	/** A handler awaits a lookup and an insert, so the row lands some turns after the emit. */
 	const waitForEntry = async (projectId: string) =>
 		await vi.waitFor(async () => {
-			const entries = await repository.findFeed({ projectIds: [projectId], limit: 10 });
+			const entries = await repository.findFeed({
+				projectIds: [projectId],
+				categories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(entries).not.toHaveLength(0);
 			return entries;
 		});

@@ -113,6 +113,20 @@ describe('InstanceContextStep', () => {
 		expect(text).not.toContain('No instance context to read');
 	});
 
+	/**
+	 * The block rides beside the injection rather than inside it, so an injected entry with no
+	 * block text is representable. Falling through to the absent hint would put "no context was
+	 * available" under a label that says the turn read three workflows.
+	 */
+	it('does not call an injected turn empty when only the block text is missing', async () => {
+		const entry = injected({ block: undefined });
+
+		const { getByRole, getByText } = renderComponent({ props: { entry } });
+		await userEvent.click(getByRole('button'));
+
+		expect(getByText(/was not kept with the trace/)).toBeTruthy();
+	});
+
 	it('names each surface the turn used', () => {
 		const entry = injected({
 			reach: { surfaces: ['activity-list', 'workflow-read'] },

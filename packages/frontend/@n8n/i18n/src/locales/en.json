@@ -287,6 +287,7 @@
 	"aiAssistant.instanceContext.trace.changes": "{count} recent change | {count} recent changes",
 	"aiAssistant.instanceContext.trace.runs": "{count} workflow with runs | {count} workflows with runs",
 	"aiAssistant.instanceContext.trace.blockHeading": "What the assistant was told",
+	"aiAssistant.instanceContext.trace.blockMissing": "This turn was given context, but the text was not kept with the trace.",
 	"aiAssistant.instanceContext.trace.noneHint": "No instance context was available for this turn.",
 	"aiAssistant.instanceContext.trace.failedHint": "Reading instance context failed, so this turn ran without it. The server log has the error.",
 	"aiAssistant.instanceContext.trace.surface.activity-list": "listed more activity",

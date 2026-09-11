@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { ActivityLogConfig, GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -24,23 +23,31 @@ const CORE_NODE_TYPE_PREFIX = 'n8n-nodes-base.';
 /** Enough distinct types to show what a user reached for, few enough to leave room for the rest. */
 const maxListedNodeTypes = 5;
 
-/** How long a resolved signup date is held. It never changes, so this only bounds memory. */
-const signupDateTtlMs = 10 * Time.minutes.toMilliseconds;
+/**
+ * Actors whose signup date is held. A signup date cannot change, so an entry is never stale and
+ * age is the wrong thing to bound this by — what needs bounding is the count, on a long-lived
+ * process that sees many actors.
+ */
+const maxHeldSignupDates = 1_000;
 
 /** Ceiling for any single free-text value inside `data`, so one field cannot exhaust the budget. */
 const maxDetailStringLength = 64;
 
 /**
- * The acting user's id on any of the recorded events. Read defensively rather than by
- * narrowing each payload type: all eleven carry a `user`, and a shape that does not is
- * one this relay has no business recording anyway.
+ * The acting user's id on any of the recorded events.
+ *
+ * Takes `unknown` rather than the declared `UserLike`: the handler map is generic over every
+ * event name, so a call site widens to the union of all payloads, and several of those carry no
+ * actor at all. An empty id is rejected too, because a row written against one would fail its
+ * own foreign key.
  */
 function actingUserId(payload: unknown): string | undefined {
 	if (typeof payload !== 'object' || payload === null || !('user' in payload)) return undefined;
-	const { user } = payload as { user?: unknown };
+
+	const { user } = payload;
 	if (typeof user !== 'object' || user === null || !('id' in user)) return undefined;
 
-	const { id } = user as { id?: unknown };
+	const { id } = user;
 	return typeof id === 'string' && id.length > 0 ? id : undefined;
 }
 
@@ -87,10 +94,18 @@ export class ActivityEventRelay extends EventRelay {
 		// The record and the assistant's read of it move together, and the rollout flag can
 		// turn both on for a user without a deploy — so this cannot be decided once here.
 		//
-		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so
-		// the flag can only ever come from the env override, and a disabled instance registers
-		// no listeners and pays nothing per event exactly as before.
-		if (!this.activityLogConfig.enabled && !this.globalConfig.diagnostics.enabled) return;
+		// It can still be ruled out. With diagnostics off there is no PostHog to consult, so the
+		// flag can only come from an explicit override — which is checked here too, or an instance
+		// that forces the read on that way would read a log nothing writes. Ruled out on every
+		// other combination, and such an instance registers no listeners and pays nothing per
+		// event exactly as before.
+		if (
+			!this.activityLogConfig.enabled &&
+			!this.globalConfig.diagnostics.enabled &&
+			!(INSTANCE_ACTIVITY_CONTEXT_FLAG in this.globalConfig.featureFlags.override)
+		) {
+			return;
+		}
 
 		this.setupListeners(
 			this.guarded({
@@ -109,13 +124,6 @@ export class ActivityEventRelay extends EventRelay {
 		);
 	}
 
-	/**
-	 * Wraps every listener so nothing one does can escape. Shaping an entry has to be as safe as
-	 * writing one — a malformed payload throwing while a delta is computed would reject inside an
-	 * async listener that nobody awaits, which is an unhandled rejection rather than a lost row.
-	 *
-	 * Wrapping the map rather than each entry is what lets the log name the event it came from.
-	 */
 	/** In-flight gate checks, keyed by user, so one burst asks PostHog once. */
 	private readonly gateChecks = new Map<string, Promise<boolean>>();
 
@@ -170,25 +178,39 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	/** Resolved signup dates, so one user's events do not each re-read the same row. */
-	private readonly signupDates = new Map<string, { createdAt: Date; expiresAt: number }>();
+	private readonly signupDates = new Map<string, Date>();
 
 	/**
-	 * Held for a while because the flag answer behind it is: `gateChecks` only collapses the
-	 * events of one save, so without this every later event pays the read again while the
-	 * evaluation it feeds is still served from the client's own cache. A signup date cannot
-	 * change, so an entry here is never stale — the expiry is only what bounds the map.
+	 * Held because the flag answer behind it is: `gateChecks` only collapses the events of one
+	 * save, so without this every later event pays the read again while the evaluation it feeds
+	 * is still served from the client's own cache.
+	 *
+	 * Bounded by evicting the oldest rather than by an expiry — a signup date cannot change, so
+	 * there is nothing for an expiry to correct, and only the entry count needs a ceiling. A Map
+	 * iterates in insertion order, which is what makes the first key the oldest.
 	 */
 	private async resolveSignupDate(userId: string): Promise<Date | undefined> {
 		const held = this.signupDates.get(userId);
-		if (held && held.expiresAt > Date.now()) return held.createdAt;
+		if (held) return held;
 
 		const createdAt = await this.userRepository.findCreatedAt(userId);
-		if (createdAt) {
-			this.signupDates.set(userId, { createdAt, expiresAt: Date.now() + signupDateTtlMs });
+		if (!createdAt) return undefined;
+
+		if (this.signupDates.size >= maxHeldSignupDates) {
+			const oldest = this.signupDates.keys().next();
+			if (!oldest.done) this.signupDates.delete(oldest.value);
 		}
+		this.signupDates.set(userId, createdAt);
 		return createdAt;
 	}
 
+	/**
+	 * Wraps every listener so nothing one does can escape. Shaping an entry has to be as safe as
+	 * writing one — a malformed payload throwing while a delta is computed would reject inside an
+	 * async listener that nobody awaits, which is an unhandled rejection rather than a lost row.
+	 *
+	 * Wrapping the map rather than each entry is what lets the log name the event it came from.
+	 */
 	private guarded<EventNames extends keyof RelayEventMap>(
 		handlers: ActivityHandlers<EventNames>,
 	): ActivityHandlers<EventNames> {

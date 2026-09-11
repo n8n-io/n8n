@@ -66,13 +66,11 @@ const resourceHistoryLimit = 20;
  * What this does and does not promise. A straggler is recovered only while it sits above the
  * floor, so one that commits below a turn's cut is lost. That row was already further down than a
  * window's worth of newer ones, which is the same reason the window cut its neighbours.
- */
-
-/**
- * Ids remembered so a delta cannot show one twice. Only ids above the floor can come back, so
- * this needs to hold no more than a turn's shown rows plus those earlier turns left above it —
- * the cap is a backstop for a long-lived thread on a busy project, where the oldest forgotten id
- * could reappear once before the age filter takes it.
+ *
+ * Ids are remembered so a delta cannot show one twice. Only ids above the floor can come
+ * back, so that set needs to hold no more than a turn's shown rows plus those earlier turns
+ * left above it — the cap below is a backstop for a long-lived thread on a busy project,
+ * where the oldest forgotten id could reappear once before the age filter takes it.
  */
 const seenIdsCap = 200;
 
@@ -131,13 +129,13 @@ type RunSummary = {
 	lastFailedExecutionId: string | null;
 };
 
-type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
-
-export type InstanceContextBlock = {
-	block: string;
-	/** What the caller should store on the thread, so the next turn sends only what is new. */
-	cursor: InstanceContextCursor;
+/** What one caller may read: which projects, and which categories inside them. */
+type ActivityReadScope = {
+	projectIds: string[];
+	categories: ActivityEventCategory[];
 };
+
+type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
 
 /**
  * What a turn was handed, or why it was handed nothing.
@@ -186,10 +184,19 @@ export function toContextInjection(result: InstanceContextResult): InstanceConte
  * nobody is reading intent. Both still reach telemetry, where the off arm is the
  * denominator.
  */
+/**
+ * Typed against the reason union rather than tested with `||`, so a reason added later has to
+ * decide here instead of silently defaulting to untraced.
+ */
+const TRACED_ABSENCE_REASONS: Record<InstanceContextAbsenceReason, boolean> = {
+	empty: true,
+	failed: true,
+	disabled: false,
+	'machine-follow-up': false,
+};
+
 export function shouldTraceContextInjection(injection: InstanceContextInjection): boolean {
-	return (
-		injection.state === 'injected' || injection.reason === 'empty' || injection.reason === 'failed'
-	);
+	return injection.state === 'injected' || TRACED_ABSENCE_REASONS[injection.reason];
 }
 
 /**
@@ -249,14 +256,15 @@ export class InstanceContextService {
 		try {
 			const now = input.now ?? new Date();
 			const isUpdate = input.cursor !== null;
-			const projectIds = await this.readableProjectIds(input.user, input.projectId);
+			const scope = await this.readableScope(input.user, input.projectId);
+			const { projectIds } = scope;
 
 			// Every leg is project-scoped, and a run has no acting user, so project is the only
 			// boundary available. Nothing in scope means nothing to show, never something wider.
 			if (projectIds.length === 0) return { state: 'absent', reason: 'empty' };
 
 			const [entries, runs, inventory] = await Promise.all([
-				this.readEntries({ projectIds, cursor: input.cursor, now }),
+				this.readEntries({ scope, cursor: input.cursor, now }),
 				this.readRuns({ projectIds, cursor: input.cursor, now }),
 				// Only on the opening block. A delta skips it: the estate has not changed in a way
 				// the earlier block failed to cover.
@@ -320,12 +328,17 @@ export class InstanceContextService {
 		// answer a narrowing request by widening it to the whole feed.
 		if (input.category !== undefined && !isKnownCategory(input.category)) return [];
 
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return [];
+
+		// A category the caller may not read is refused rather than dropped, for the same reason
+		// an unknown one is: answering a narrowing request by widening it is the wrong failure.
+		if (input.category !== undefined && !categories.includes(input.category)) return [];
 
 		const rows = await this.activityEventRepository.findFeed({
 			limit: input.limit,
 			projectIds,
+			categories,
 			...(input.category !== undefined ? { category: input.category } : {}),
 			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
 			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
@@ -343,10 +356,14 @@ export class InstanceContextService {
 		user: User;
 		projectId?: string;
 	}): Promise<InstanceAiActivityExpansion | null> {
-		const projectIds = await this.readableProjectIds(input.user, input.projectId);
+		const { projectIds, categories } = await this.readableScope(input.user, input.projectId);
 		if (projectIds.length === 0) return null;
 
-		const row = await this.activityEventRepository.findEntry({ id: input.id, projectIds });
+		const row = await this.activityEventRepository.findEntry({
+			id: input.id,
+			projectIds,
+			categories,
+		});
 		if (!row) return null;
 
 		const history =
@@ -377,7 +394,7 @@ export class InstanceContextService {
 	 * shown: they have been accounted for, and re-reading them next turn would only cost tokens.
 	 */
 	private async readEntries(input: {
-		projectIds: string[];
+		scope: ActivityReadScope;
 		cursor: InstanceContextCursor | null;
 		now: Date;
 	}): Promise<{
@@ -392,7 +409,7 @@ export class InstanceContextService {
 		// Newest first, and on a delta only what arrived above the mark.
 		const arrivals = await this.activityEventRepository.findFeed({
 			limit: entryFetchLimit,
-			projectIds: input.projectIds,
+			...input.scope,
 			...(cursor ? { afterId: cursor.activityMark } : {}),
 		});
 
@@ -403,7 +420,7 @@ export class InstanceContextService {
 		const band = cursor
 			? await this.activityEventRepository.findFeed({
 					limit: entryFetchLimit,
-					projectIds: input.projectIds,
+					...input.scope,
 					afterId: cursor.activityFloor,
 					beforeId: cursor.activityMark,
 				})
@@ -489,18 +506,28 @@ export class InstanceContextService {
 	 * Bare project membership is also not read access — `project:chatUser` holds neither
 	 * `workflow:read` nor `credential:read`.
 	 */
-	private async readableProjectIds(user: User, projectId?: string): Promise<string[]> {
-		if (projectId === undefined) return [];
+	private async readableScope(user: User, projectId?: string): Promise<ActivityReadScope> {
+		if (projectId === undefined) return { projectIds: [], categories: [] };
 
 		// Re-checked every turn, not trusted from the binding. A thread outlives the membership that
 		// authorised it — `assertThreadAccess` proves the thread is the caller's own and nothing more
 		// — so a user removed from a project would otherwise keep reading it here for the life of the
 		// thread, while every other read in this module refused them.
 		//
-		// `workflow:read` stands for the whole block: it is what the inventory and run legs expose,
-		// and credential entries carry a name and a type rather than a secret.
-		const allowed = await userHasScopes(user, ['workflow:read'], false, { projectId });
-		return allowed ? [projectId] : [];
+		// `workflow:read` opens the block at all: it is what the inventory and run legs expose.
+		// Credential entries are asked for separately, because a project grants the two scopes
+		// independently — a role with workflow access and no credential access must not read a
+		// credential's name and type here when every other surface refuses it.
+		const [workflows, credentials] = await Promise.all([
+			userHasScopes(user, ['workflow:read'], false, { projectId }),
+			userHasScopes(user, ['credential:read'], false, { projectId }),
+		]);
+		if (!workflows) return { projectIds: [], categories: [] };
+
+		return {
+			projectIds: [projectId],
+			categories: credentials ? ['workflow', 'credential'] : ['workflow'],
+		};
 	}
 }
 

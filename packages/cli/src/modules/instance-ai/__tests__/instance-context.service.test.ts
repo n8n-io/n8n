@@ -137,6 +137,50 @@ describe('InstanceContextService', () => {
 		 * A thread outlives the membership that authorised it, and thread access proves ownership
 		 * rather than project access, so the scope is re-checked rather than trusted.
 		 */
+		/**
+		 * A project grants `workflow:read` and `credential:read` separately, and a credential entry
+		 * carries the credential's name and type. A role denied credential access everywhere else
+		 * must not be handed an inventory of them here — the block is rendered to the user now, not
+		 * only to the model.
+		 */
+		it('withholds credential entries from a caller without credential:read', async () => {
+			// Every scope but the credential one, which is the shape of a custom project role.
+			userHasScopes.mockImplementation(async (...args: unknown[]) => {
+				const scopes = args[1];
+				return !(Array.isArray(scopes) && scopes.includes('credential:read'));
+			});
+			const service = serviceWith();
+
+			await service.buildBlock({
+				user: USER,
+				projectId: PROJECT_ID,
+				cursor: null,
+				now: NOW,
+				enabled: true,
+			});
+
+			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+				expect.objectContaining({ categories: ['workflow'] }),
+			);
+		});
+
+		/** With both scopes the feed carries everything the project recorded. */
+		it('allows credential entries for a caller that may read them', async () => {
+			const service = serviceWith();
+
+			await service.buildBlock({
+				user: USER,
+				projectId: PROJECT_ID,
+				cursor: null,
+				now: NOW,
+				enabled: true,
+			});
+
+			expect(activityEventRepository.findFeed).toHaveBeenCalledWith(
+				expect.objectContaining({ categories: ['workflow', 'credential'] }),
+			);
+		});
+
 		it('builds nothing once the user can no longer read the bound project', async () => {
 			const service = serviceWith();
 			workflowRepository.findRecentForProjects.mockResolvedValue({

@@ -706,6 +706,20 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
+/**
+ * The half of the instance-context turn event that is fixed once the block is built. Bound once
+ * per turn so every segment of it reports the same identity, arm and injection — four call sites
+ * assembling that themselves is four places for one added property to be forgotten.
+ */
+type InstanceContextTurnBinding = {
+	userId: string;
+	threadId: string;
+	runId: string;
+	injection: InstanceContextInjection;
+	instanceContextEnabled: boolean;
+	nodeUsageEnabled: boolean;
+};
+
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
 @Service()
@@ -724,9 +738,6 @@ export class InstanceAiService {
 	}
 
 	private readonly instanceAiConfig: InstanceAiConfig;
-
-	/** Whether the activity record accrues on this instance — the read's master switch. */
-	private readonly activityLogEnabled: boolean;
 
 	private readonly aiConfig: AiConfig;
 
@@ -878,7 +889,6 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
-		this.activityLogEnabled = globalConfig.activityLog.enabled;
 		this.aiConfig = globalConfig.ai;
 		this.backgroundTasks = new BackgroundTaskManager(
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
@@ -4082,6 +4092,14 @@ export class InstanceAiService {
 			// Reused by the trace event below and by the turn's telemetry, so both describe the
 			// same injection rather than each deriving its own view of it.
 			const contextInjection = toContextInjection(instanceContext);
+			const contextTurn: InstanceContextTurnBinding = {
+				userId: user.id,
+				threadId,
+				runId,
+				injection: contextInjection,
+				instanceContextEnabled,
+				nodeUsageEnabled,
+			};
 
 			// Published before the agent runs, so the trace records what the turn was handed
 			// rather than what it did with it.
@@ -4311,18 +4329,12 @@ export class InstanceAiService {
 				// A turn that suspended to ask something is a finished turn for this event's
 				// purposes — the question is the outcome being measured, not an interruption of it.
 				const suspendedReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
-				this.emitInstanceContextTurnIfInPlay({
-					userId: user.id,
-					threadId,
-					runId,
+				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'suspended',
 					status: 'suspended',
-					injection: contextInjection,
 					reach: suspendedReach,
 					workSummary: result.workSummary,
 					usage: result.usage,
-					instanceContextEnabled,
-					nodeUsageEnabled,
 				});
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
@@ -4530,18 +4542,12 @@ export class InstanceAiService {
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
 			const contextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
-			this.emitInstanceContextTurnIfInPlay({
-				userId: user.id,
-				threadId,
-				runId,
+			this.emitInstanceContextTurn(contextTurn, {
 				segment: 'whole',
 				status: result.status,
-				injection: contextInjection,
 				reach: contextReach,
 				workSummary: result.workSummary,
 				usage: result.usage,
-				instanceContextEnabled,
-				nodeUsageEnabled,
 			});
 			await this.finalizeRun(threadId, runId, result.status, {
 				promptVersion,
@@ -5620,19 +5626,14 @@ export class InstanceAiService {
 					opts.instanceContext?.reachSoFar,
 					resumedSegmentReach,
 				);
-				if (opts.instanceContext) {
-					this.emitInstanceContextTurnIfInPlay({
-						userId: opts.user.id,
-						threadId: opts.threadId,
-						runId: opts.runId,
+				const resumedTurn = this.instanceContextTurnBinding(opts);
+				if (resumedTurn) {
+					this.emitInstanceContextTurn(resumedTurn, {
 						segment: 'suspended',
 						status: 'suspended',
-						injection: opts.instanceContext.injection,
 						reach: resumedSegmentReach,
 						workSummary: result.workSummary,
 						usage: result.usage,
-						instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
-						nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
 					});
 				}
 				if (result.suspension) {
@@ -5847,19 +5848,14 @@ export class InstanceAiService {
 				opts.instanceContext?.reachSoFar,
 				resumedSegmentReach,
 			);
-			if (opts.instanceContext) {
-				this.emitInstanceContextTurnIfInPlay({
-					userId: opts.user.id,
-					threadId: opts.threadId,
-					runId: opts.runId,
+			const resumedTurn = this.instanceContextTurnBinding(opts);
+			if (resumedTurn) {
+				this.emitInstanceContextTurn(resumedTurn, {
 					segment: 'resumed',
 					status: result.status,
-					injection: opts.instanceContext.injection,
 					reach: resumedSegmentReach,
 					workSummary: result.workSummary,
 					usage: result.usage,
-					instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
-					nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
 				});
 			}
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
@@ -6637,20 +6633,6 @@ export class InstanceAiService {
 	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
 
 	/**
-	 * Reports a turn only where the feature is in play on this instance.
-	 *
-	 * The off arm is the denominator the read-out needs, but only within the rollout. An
-	 * instance that never turned the record on can never enter it, so reporting its turns
-	 * would add a row per turn per instance forever and say nothing.
-	 */
-	private emitInstanceContextTurnIfInPlay(
-		input: Parameters<InstanceAiService['emitInstanceContextTurn']>[0],
-	): void {
-		if (!this.activityLogEnabled && !input.instanceContextEnabled) return;
-		this.emitInstanceContextTurn(input);
-	}
-
-	/**
 	 * One event per turn that could have carried instance context.
 	 *
 	 * Emitted in both arms, including turns that got no block, because the read-out is a
@@ -6658,36 +6640,56 @@ export class InstanceAiService {
 	 * nothing was injected. `reach` comes from the same derivation the trace shows the
 	 * user, so the two read-outs of this feature cannot disagree about what happened.
 	 */
-	private emitInstanceContextTurn(input: {
-		userId: string;
+	/**
+	 * The turn binding a resumed segment reports under. `undefined` when the suspension carried no
+	 * context, which is a turn that never built a block — there is nothing to attribute a segment
+	 * of it to.
+	 */
+	private instanceContextTurnBinding(opts: {
+		user: User;
 		threadId: string;
 		runId: string;
-		/**
-		 * Which segment of the turn this is. A turn that stops for a confirmation finishes
-		 * in two, each reporting only its own reads, so they share a `runId` and a reader
-		 * counts turns by that rather than by rows.
-		 */
-		segment: 'whole' | 'suspended' | 'resumed';
-		status: string;
-		injection: InstanceContextInjection;
-		reach: InstanceContextReach;
-		workSummary?: WorkSummary;
-		/**
-		 * What this segment actually spent. Measured, unlike the block-size estimate — the
-		 * rollback threshold on turn cost is read from here.
-		 */
-		usage?: RunTokenUsage;
-		instanceContextEnabled: boolean;
-		nodeUsageEnabled: boolean;
-	}): void {
-		const { injection } = input;
+		instanceContext?: NonNullable<SuspendedRunState<User>['instanceContext']>;
+	}): InstanceContextTurnBinding | undefined {
+		if (!opts.instanceContext) return undefined;
+
+		return {
+			userId: opts.user.id,
+			threadId: opts.threadId,
+			runId: opts.runId,
+			injection: opts.instanceContext.injection,
+			instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
+			nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
+		};
+	}
+
+	private emitInstanceContextTurn(
+		turn: InstanceContextTurnBinding,
+		input: {
+			/**
+			 * Which segment of the turn this is. A turn that stops to ask something reports each
+			 * stop as `suspended`, so segments are not unique within a `runId` — every row carries
+			 * one segment's own reads and a reader aggregates them over the shared `runId`.
+			 */
+			segment: 'whole' | 'suspended' | 'resumed';
+			status: string;
+			reach: InstanceContextReach;
+			workSummary?: WorkSummary;
+			/**
+			 * What this segment actually spent. Measured, unlike the block-size estimate — the
+			 * rollback threshold on turn cost is read from here.
+			 */
+			usage?: RunTokenUsage;
+		},
+	): void {
+		const { injection } = turn;
 		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
-			user_id: input.userId,
-			thread_id: input.threadId,
-			run_id: input.runId,
+			user_id: turn.userId,
+			thread_id: turn.threadId,
+			run_id: turn.runId,
 			segment: input.segment,
-			instance_context_enabled: input.instanceContextEnabled,
-			node_usage_enabled: input.nodeUsageEnabled,
+			instance_context_enabled: turn.instanceContextEnabled,
+			node_usage_enabled: turn.nodeUsageEnabled,
 			block_state: injection.state,
 			...(injection.state === 'absent'
 				? { absence_reason: injection.reason }

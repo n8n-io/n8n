@@ -366,9 +366,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 	INSTANCE_CONTEXT_TURN: {
-		name: 'Instance AI instance-context turn',
+		name: 'Instance AI instance-context turn completed',
 		description:
-			'One turn segment that could have carried instance context. Emitted in both arms of the rollout, so a turn without a block has a denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`. Every per-turn figure is therefore an aggregate over the `run_id` — count distinct for turns, sum for tokens, OR for the question flag. Do not reduce a turn to a single row: a turn the user never answers has only its suspended segment, and those are the turns that asked.',
+			'One turn segment that could have carried instance context. Emitted whether or not a block rode the turn, so the arm without one is the denominator. Carries what the turn was handed, how far it then read, whether it still had to ask the user something, and what it cost — the two numbers the rollout is judged on are the clarifying-question rate and median turn tokens, and both are answerable from this event alone. A turn that stops for a confirmation emits a row per segment, all sharing a `run_id`. Every per-turn figure is therefore an aggregate over the `run_id` — count distinct for turns, sum for tokens, OR for the question flag. Do not reduce a turn to a single row: a turn the user never answers has only its suspended segment, and those are the turns that asked.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),
@@ -376,7 +376,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			segment: z
 				.enum(['whole', 'suspended', 'resumed'])
 				.describe(
-					'`whole` is a turn that ran start to finish. `suspended` stopped to ask the user something; `resumed` is the same turn continuing after they answered, and carries only the reads that followed',
+					'`whole` is a turn that ran start to finish. `suspended` stopped to ask the user something — a turn that stops more than once reports every stop as `suspended`, so these are not unique within a `run_id`. `resumed` is the final segment, after the last answer. Each segment carries only its own reads, so aggregate over the `run_id` rather than picking a segment',
 				),
 			instance_context_enabled: z
 				.boolean()

@@ -44,6 +44,13 @@ export type ActivityFeedQuery = {
 	resourceId?: string;
 	category?: ActivityEvent['category'];
 	/**
+	 * The categories the caller may see. Required for the same reason as `projectIds`: a project
+	 * grants `workflow:read` and `credential:read` independently, so a project scope alone does
+	 * not answer whether credential entries — which carry a credential's name and type — belong
+	 * in this caller's feed.
+	 */
+	categories: Array<ActivityEvent['category']>;
+	/**
 	 * Exclusive lower bound — entries newer than an id a caller has already seen. Ids are not a
 	 * completeness watermark; see `ActivityEvent.id` before using this to tail the feed.
 	 */
@@ -87,12 +94,19 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		if (isEmptyPage(query.limit)) return [];
 		// An empty allowance means nothing is visible, not everything — `In([])` would match no
 		// row on Postgres but is worth being explicit about rather than relying on it.
-		if (query.projectIds.length === 0) return [];
+		if (query.projectIds.length === 0 || query.categories.length === 0) return [];
 
-		const where: FindOptionsWhere<ActivityEvent> = { projectId: In(query.projectIds) };
+		const where: FindOptionsWhere<ActivityEvent> = {
+			projectId: In(query.projectIds),
+			category: In(query.categories),
+		};
 		if (query.userId !== undefined) where.userId = query.userId;
 		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
-		if (query.category !== undefined) where.category = query.category;
+		// Narrows within the allowance rather than replacing it: a caller asking for a category it
+		// may not see is answered by the guard above, not by widening its own filter.
+		if (query.category !== undefined && query.categories.includes(query.category)) {
+			where.category = query.category;
+		}
 
 		// Both bounds can apply at once — "what arrived while this page was open" pages an
 		// already-bounded range — so they combine rather than overwrite each other.
@@ -113,11 +127,19 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 *
 	 * Scoped here rather than by the caller, so the guarantee holds for every future caller.
 	 */
-	async findEntry(query: { id: number; projectIds: string[] }): Promise<ActivityEvent | null> {
-		if (query.projectIds.length === 0) return null;
+	async findEntry(query: {
+		id: number;
+		projectIds: string[];
+		categories: Array<ActivityEvent['category']>;
+	}): Promise<ActivityEvent | null> {
+		if (query.projectIds.length === 0 || query.categories.length === 0) return null;
 
 		return await this.findOne({
-			where: { id: query.id, projectId: In(query.projectIds) },
+			where: {
+				id: query.id,
+				projectId: In(query.projectIds),
+				category: In(query.categories),
+			},
 		});
 	}
 

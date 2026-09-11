@@ -72,8 +72,8 @@ export class WorkSummaryAccumulator {
 
 	private askedClarifyingQuestion = false;
 
-	/** Feed an event from the stream. Only tool-call / tool-result / tool-error
-	 *  events are processed; all others are silently ignored. */
+	/** Feed an event from the stream. Only tool-call / tool-result / tool-error and
+	 *  confirmation-request events are processed; all others are silently ignored. */
 	observe(event: InstanceAiEvent): void {
 		switch (event.type) {
 			case 'tool-call': {
@@ -119,7 +119,10 @@ export class WorkSummaryAccumulator {
 			}
 			case 'confirmation-request': {
 				// `questions` is the structured Q&A wizard; `text` is a free-form ask. Both are
-				// the agent stopping to be told something. Every other input type is an approval.
+				// the agent stopping to be told something. The remaining input types are not
+				// questions of that kind: an approval, a plan review, a resource decision and a
+				// bare continue all put a decision to the user rather than asking them for
+				// something the agent could not work out.
 				const { inputType } = event.payload;
 				if (inputType === 'questions' || inputType === 'text') {
 					this.askedClarifyingQuestion = true;

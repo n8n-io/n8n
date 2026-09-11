@@ -57,7 +57,8 @@ describe('ActivityEventRelay', () => {
 		{
 			rolloutFlag = false,
 			diagnostics = true,
-		}: { rolloutFlag?: boolean; diagnostics?: boolean } = {},
+			flagOverride = false,
+		}: { rolloutFlag?: boolean; diagnostics?: boolean; flagOverride?: boolean } = {},
 	) => {
 		postHogClient.getFeatureFlags.mockResolvedValue(
 			rolloutFlag ? { '114_instance_activity_context': true } : {},
@@ -70,7 +71,12 @@ describe('ActivityEventRelay', () => {
 			sharedCredentialsRepository,
 			userRepository,
 			mock<ActivityLogConfig>({ enabled }),
-			mock<GlobalConfig>({ diagnostics: { enabled: diagnostics } }),
+			mock<GlobalConfig>({
+				diagnostics: { enabled: diagnostics },
+				featureFlags: {
+					override: flagOverride ? { '114_instance_activity_context': true } : {},
+				},
+			}),
 			postHogClient,
 			logger,
 		);
@@ -194,6 +200,18 @@ describe('ActivityEventRelay', () => {
 
 			expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * An explicit override is the one way to turn the read on with neither other control set.
+		 * Registering for it is what stops that instance reading a log nothing writes.
+		 */
+		it('records when an explicit flag override is the only control set', async () => {
+			relayWith(false, { diagnostics: false, flagOverride: true, rolloutFlag: true });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).toHaveBeenCalled();
 		});
 
 		/**

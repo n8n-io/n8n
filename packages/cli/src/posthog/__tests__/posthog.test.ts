@@ -231,16 +231,44 @@ describe('PostHog', () => {
 			spy.mockRestore();
 		});
 
-		it('does not cache empty results', async () => {
-			(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+		/**
+		 * Held briefly rather than not at all. A caller on a per-event path would otherwise
+		 * re-request on every event, and an unreachable PostHog makes each of those a full
+		 * timeout-and-retry cycle.
+		 */
+		it('holds an empty result only briefly, then asks again', async () => {
+			vi.useFakeTimers();
+			try {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				await ph.getFeatureFlags({ id: userId, createdAt });
+				await ph.getFeatureFlags({ id: userId, createdAt });
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
+
+				// Past the short window, but well inside the window an answer would have earned.
+				vi.advanceTimersByTime(31_000);
+				await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		/** A throw is nothing-at-all too, so it must not cost a request per call either. */
+		it('holds a failed evaluation the same way', async () => {
+			(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog is down'));
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
 
-			await ph.getFeatureFlags({ id: userId, createdAt });
+			expect(await ph.getFeatureFlags({ id: userId, createdAt })).toEqual({});
 			await ph.getFeatureFlags({ id: userId, createdAt });
 
-			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
+			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(1);
 		});
 
 		describe('env-var overrides', () => {

@@ -54,8 +54,11 @@ const blockText = computed<string | undefined>(() =>
 			</div>
 			<pre :class="$style.pre">{{ blockText }}</pre>
 		</div>
-		<div v-else :class="$style.heading">
+		<div v-else-if="injection.state === 'absent'" :class="$style.heading">
 			{{ i18n.baseText(absentHintKey) }}
+		</div>
+		<div v-else :class="$style.heading">
+			{{ i18n.baseText('aiAssistant.instanceContext.trace.blockMissing') }}
 		</div>
 	</N8nAiActivityStep>
 </template>

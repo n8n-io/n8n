@@ -136,7 +136,11 @@ describe('InstanceContextService', () => {
 				resourceType: 'workflow',
 				resourceId: 'wf-theirs',
 			});
-			const [entry] = await activity.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [entry] = await activity.findFeed({
+				projectIds: [otherProject.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			// Scoped to the user's own project, so the other project's entry is out of reach.
 			expect(await service.expand({ id: entry.id, user, projectId: project.id })).toBeNull();
@@ -169,7 +173,11 @@ describe('InstanceContextService', () => {
 					resourceName: name,
 				});
 			}
-			const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+			const [newest] = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const delta = await service.buildBlock({
 				user,
@@ -246,7 +254,11 @@ describe('InstanceContextService', () => {
 			// One id near the top is freed up, so a row can later commit into it — which is what an
 			// out-of-order sequence value looks like from here. Near the top, so it is above whatever
 			// the first window cuts.
-			const seeded = await activity.findFeed({ projectIds: [project.id], limit: 50 });
+			const seeded = await activity.findFeed({
+				projectIds: [project.id],
+				categories: ['workflow', 'credential'],
+				limit: 50,
+			});
 			const hole = seeded[5].id;
 			await activity.delete({ id: hole });
 
@@ -393,7 +405,11 @@ describe('InstanceContextService', () => {
 				resourceName: 'Lead enrichment',
 			});
 		}
-		const [newest] = await activity.findFeed({ projectIds: [project.id], limit: 1 });
+		const [newest] = await activity.findFeed({
+			projectIds: [project.id],
+			categories: ['workflow', 'credential'],
+			limit: 1,
+		});
 
 		const expansion = await service.expand({
 			id: newest.id,
