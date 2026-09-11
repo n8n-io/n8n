@@ -284,7 +284,7 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
-export { UpdateAppVersionFileDto } from './app/update-app-version-file.dto';
+export { SaveAppDraftFileDto } from './app/save-app-draft-file.dto';
 export { CreateAppBindingDto } from './app/create-app-binding.dto';
 export { UpdateAppBindingDto } from './app/update-app-binding.dto';
 export { CreatePageDto } from './app/create-page.dto';

@@ -1,25 +1,14 @@
-import { createScopedWorkspace, type Workspace } from '@n8n/agents';
-import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { Workspace } from '@n8n/agents';
 import type { AppTheme } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { create as createTar, extract as extractTar } from 'tar';
 
-import { AppSourceSnapshotService } from '@/modules/instance-ai/app-preview/app-source-snapshot.service';
-
-import { AppsService } from './apps.service';
-import { createDistTarFilter } from './serving/dist-tar-filter';
-
-/** Same budget `AppVersionService` accepts for a source upload. */
-const SOURCE_TAR_LIMITS = { maxEntries: 50_000, maxBytes: 200 * 1024 * 1024 };
+import { AppDraftService, type DraftWriteResult } from './app-draft.service';
 
 const OVERRIDES_FILE = 'src/theme-overrides.css';
 const MODE_FILE = 'src/theme-mode.ts';
 
-export type ThemeSaveResult = { versionId: string | null } | { error: true; message: string };
+export type ThemeSaveResult = DraftWriteResult;
 
 function themeOverridesCss(vars: Record<string, string>): string {
 	const entries = Object.entries(vars);
@@ -56,18 +45,12 @@ const themeFiles = (existingOverrides: string, theme: AppTheme) => ({
 });
 
 /**
- * Writes a saved theme into the app's draft source. Nothing is built or
- * published: with the app's live sandbox the files land in the app
- * directory (the dev server reloads them) and the draft is snapshotted;
- * otherwise the newest stored source is patched into a new snapshot. The
- * user publishes explicitly afterwards.
+ * Writes a saved theme into the app's draft source (see `AppDraftService`):
+ * nothing is built or published, the user publishes explicitly afterwards.
  */
 @Service()
 export class AppThemeService {
-	constructor(
-		private readonly appsService: AppsService,
-		private readonly snapshotService: AppSourceSnapshotService,
-	) {}
+	constructor(private readonly draftService: AppDraftService) {}
 
 	async applyTheme(
 		appId: string,
@@ -75,91 +58,11 @@ export class AppThemeService {
 		user: User,
 		options: { draft?: Workspace } = {},
 	): Promise<ThemeSaveResult> {
-		const app = await this.appsService.getApp(appId);
-
-		if (options.draft) {
-			const written = await this.writeIntoDraft(app.namespace, theme, options.draft);
-			if (written) {
-				await this.snapshotService.snapshotAfterRun(appId, user, options.draft);
-				const [newest] = await this.appsService.listVersions(appId);
-				return { versionId: newest?.id ?? null };
-			}
-		}
-
-		const source = await this.appsService.getSourceTarball(appId);
-		if (!source) {
-			return {
-				error: true,
-				message: `App "${app.name}" has no source yet. Ask the AI Assistant to create it, then save the theme again.`,
-			};
-		}
-		const patched = await patchTarball(source.data, (existingOverrides) =>
-			themeFiles(existingOverrides, theme),
+		return await this.draftService.write(
+			appId,
+			user,
+			async (read) => themeFiles((await read(OVERRIDES_FILE)) ?? '', theme),
+			options.draft,
 		);
-		const version = await this.appsService.createSourceSnapshot(appId, patched);
-		return { versionId: version.id };
-	}
-
-	/** False when the app sandbox does not hold this app, so the stored source is patched instead. */
-	private async writeIntoDraft(
-		namespace: string,
-		theme: AppTheme,
-		draft: Workspace,
-	): Promise<boolean> {
-		// Handlers pass root-relative paths; the raw app workspace resolves against `/`.
-		const root = await getWorkspaceRoot(draft);
-		const filesystem = createScopedWorkspace(draft, root).filesystem;
-		if (!filesystem) return false;
-
-		const appDir = `apps/${namespace}`;
-		if (!(await filesystem.exists(`${appDir}/package.json`))) return false;
-
-		const existing = await filesystem.readFile(`${appDir}/${OVERRIDES_FILE}`).catch(() => '');
-		const files = themeFiles(
-			Buffer.isBuffer(existing) ? existing.toString('utf8') : (existing ?? ''),
-			theme,
-		);
-		await Promise.all(
-			Object.entries(files).map(
-				async ([file, content]) => await filesystem.writeFile(`${appDir}/${file}`, content),
-			),
-		);
-		return true;
-	}
-}
-
-/**
- * Unpacks the source into a fresh temp directory, replaces the theme files and
- * packs it again. `tar` has no in-memory entry API, and extracting keeps every
- * other entry (modes, mtimes) as it was. Links and out-of-tree paths are dropped
- * by the same filter the dist extraction uses.
- */
-export async function patchTarball(
-	tarball: Buffer,
-	filesFor: (existingOverrides: string) => Record<string, string>,
-): Promise<Buffer> {
-	const dir = await mkdtemp(path.join(os.tmpdir(), 'n8n-app-theme-'));
-	try {
-		await new Promise<void>((resolve, reject) => {
-			const unpack = extractTar({ cwd: dir, filter: createDistTarFilter(SOURCE_TAR_LIMITS) });
-			unpack.on('error', reject);
-			unpack.on('end', resolve);
-			unpack.end(tarball);
-		});
-		const existingOverrides = await readFile(path.join(dir, OVERRIDES_FILE), 'utf8').catch(
-			() => '',
-		);
-		for (const [file, content] of Object.entries(filesFor(existingOverrides))) {
-			const target = path.join(dir, file);
-			await mkdir(path.dirname(target), { recursive: true });
-			await writeFile(target, content);
-		}
-		const chunks: Buffer[] = [];
-		for await (const chunk of createTar({ gzip: true, cwd: dir, portable: true }, ['.'])) {
-			chunks.push(chunk);
-		}
-		return Buffer.concat(chunks);
-	} finally {
-		await rm(dir, { recursive: true, force: true });
 	}
 }

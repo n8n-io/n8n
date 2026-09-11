@@ -5,7 +5,6 @@ import {
 	SetActiveAppVersionDto,
 	UpdateAppBindingDto,
 	UpdateAppDto,
-	UpdateAppVersionFileDto,
 	UpdatePageDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -21,7 +20,6 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
-	Put,
 	RestController,
 } from '@n8n/decorators';
 import { NextFunction, RequestHandler, Response } from 'express';
@@ -37,7 +35,6 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 import { sendErrorResponse } from '@/response-helper';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { AppSourceEditBuildService } from './app-source-edit-build.service';
 import { MAX_TARBALL_BYTES } from './app-version.service';
 import { AppsService } from './apps.service';
 import { AppNamespaceConflictError } from './errors/app-namespace-conflict.error';
@@ -91,7 +88,6 @@ export class AppsController {
 		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
-		private readonly appSourceEditBuildService: AppSourceEditBuildService,
 		private readonly instanceAiMemoryService: InstanceAiMemoryService,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
@@ -337,34 +333,6 @@ export class AppsController {
 			return await this.appsService.listVersionFiles(appId, versionId);
 		}
 		return await this.appsService.getVersionFileContent(appId, versionId, segments);
-	}
-
-	/**
-	 * Overwrites one existing source file and rebuilds the app, storing the
-	 * result as a new version. `versionId` is accepted for symmetry with the
-	 * read route above, but the edit always applies to the app's *active*
-	 * version, resolved server-side.
-	 */
-	@Put('/:appId/versions/:versionId/files{/*path}')
-	@ProjectScope('app:update')
-	async updateVersionFile(
-		req: AuthenticatedRequest<{ projectId: string }>,
-		_res: Response,
-		@Param('appId') appId: string,
-		@Param('path') wildcardPath: unknown,
-		@Body dto: UpdateAppVersionFileDto,
-	) {
-		this.checkInstanceWriteAccess();
-		const segments = pathSegments(wildcardPath);
-		if (segments.length === 0) throw new BadRequestError('A file path is required');
-		const result = await this.appSourceEditBuildService.saveFile(
-			appId,
-			segments.join('/'),
-			dto.content,
-			req.user,
-		);
-		if ('error' in result) throw new BadRequestError(result.message);
-		return await this.appsService.getApp(appId);
 	}
 
 	@Post('/:appId/pages')
