@@ -85,7 +85,8 @@ obligation is `ready_to_verify` or `verifying`, call `verify-built-workflow`. Do
 **not** call `workflows(action="setup")` in this turn and do **not** declare the
 workflow finished if `outcome.setupRequirement.status === "required"` — setup is
 routed automatically as a separate `<workflow-setup-required>` step after
-verification.
+verification. For a multi-trigger outcome, verify every trigger that does not
+yet have a recorded successful verification. Make all of these calls in this turn.
 
 ## Setup follow-up
 
@@ -239,6 +240,14 @@ workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
 workflow as a precondition for running it.
 
+**Webhook input must carry the fields the workflow reads.** A flat `inputData`
+becomes the request `body` only; `query`, `headers` and `params` stay empty. When
+any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*`, pass
+the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` (or a
+`fixtureOverrides` entry on the trigger node). Otherwise the field resolves empty,
+the run still succeeds, and that field is unverified — say so instead of
+reporting it as working.
+
 Do not proactively offer, recommend, or mention publishing until a successful
 execution has run every required node on the claimed path without mocked
 credentials, simulated node output, fixture overrides, or temporary pin data
@@ -304,13 +313,14 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
   entry in `triggerNodes`. Naming no trigger verifies only the auto-detected
   one. An unresolvable name is rejected outright, so a rejected call means the
   name is wrong — re-read `triggerNodes`, never fall back to editing.
-- Each pass covers its own trigger's branch, so its `nodesNotReached` will list
-  the other triggers' nodes. That is expected, not a defect: coverage is the
-  **union** across passes. Only treat a node as unverified once no pass reached
-  it.
-- Report per-trigger coverage — name each trigger and whether its branch ran.
-  Claim the workflow is verified only when every trigger's branch has a
-  successful pass.
+- Each pass reports `nodesNotReached` only for its selected trigger's main-flow
+  branch. Coverage is the **union** across successful passes. Run every trigger
+  before you report a workflow coverage gap. Different triggers can select
+  different outputs of a shared Switch or If node.
+- A failed rerun removes that trigger's earlier coverage. Verify that trigger
+  again before you claim that the workflow is verified.
+- Report each trigger and whether its branch ran. Use the combined `claim` to
+  describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
   `executions(action="run")` the same way — one run per trigger — and report
   each branch's result.
@@ -330,8 +340,10 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      `workflow-builder` skill and patch the same workflow with `build-workflow`
      using the existing `workflowId` and `workItemId`; then inspect and verify
      again.
-   - If `verificationReadiness.status === "already_verified"`, treat the
-     workflow as verified and do **not** call `verify-built-workflow` again.
+   - If `verificationReadiness.status === "already_verified"`, do not repeat
+     automatic verification. Read the saved claim before describing the workflow
+     as verified. For tracked multi-trigger builds, follow the verification
+     obligation until every trigger has a successful pass.
 
 - If `verificationReadiness.status === "ready"`, call
   `verify-built-workflow` with the `workflowId`, the `workItemId` when you
@@ -376,6 +388,20 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      budget is exhausted.
    - Relay `simulationNote` (nodes whose output was simulated) to the user
      whenever it is present.
+   - Read `resolvedParameterWarnings`. A simulated node's preview is fixture
+     data: it never proves an expression resolved. Each warning names a
+     parameter that resolved to empty or threw on the real input — the usual
+     causes are a trigger input that lacks the field (body-only webhook input
+     for a `$json.query.*` expression) or a wrong expression. Fix the input
+     shape or the expression, re-run, and never report that field as working
+     while a warning stands. Each warning carries the execution ID that was
+     checked. Use that ID with `executions(action="get-resolved-node-parameters")`
+     to inspect the same input.
+   - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
+     The list shows at most 20 checks. `skippedParameterCheckCount` includes
+     omitted checks, which also leave dynamic fields unverified.
+     State that limitation even if the run succeeded and no parameter warnings
+     were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.
@@ -540,6 +566,11 @@ result.
 
 ## Claiming success
 
+For tracked multi-trigger builds, `claim` combines the saved successful passes.
+A `verified` claim requires every trigger to pass and real coverage for every planned node.
+Verify `claim.pendingTriggers` within the attempt limit. `nodesNotReached`
+outside the claim describes only the current trigger's branch.
+
 `verify-built-workflow` returns a `claim`, and its `level` decides what you may
 say:
 
@@ -568,7 +599,10 @@ applies to rows or records written to an external system: never make quantitativ
 claims ("22 rows written", "columns matched") that you did not read back from
 the effect node's actual output (`executions(action="get-node-output")`) or from
 the target system itself — a successful run status does not prove the _right
-data_ was written, only that nodes ran. If you could not run the
+data_ was written, only that nodes ran. Output of a simulated or pinned node is
+fixture data: never quote it as what the workflow produced, and never cite it as
+proof that an expression resolved — use `resolvedParameterWarnings` or
+`executions(action="get-resolved-node-parameters")` for that. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.

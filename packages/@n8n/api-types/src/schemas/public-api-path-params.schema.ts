@@ -18,6 +18,7 @@ export const executionIdParamSchema = numericIdParamSchema('The ID of the execut
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
+export const userIdParamSchema = stringIdParamSchema('The ID of the user.');
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
 export const promotionConnectionIdParamSchema = stringIdParamSchema(

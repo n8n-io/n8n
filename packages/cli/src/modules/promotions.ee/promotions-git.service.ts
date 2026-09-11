@@ -90,7 +90,7 @@ export class PromotionsGitService {
 	// Accept only SSH remotes; Git transport helpers and local paths can execute or expose host data.
 	private validateSshRemoteUrl(remoteUrl: string) {
 		const error = new BadRequestError(
-			'SSH key providers require an ssh:// or user@host:path remote URL',
+			'SSH key providers require an ssh:// or [user@]host:path remote URL',
 		);
 
 		if (remoteUrl.startsWith('-') || remoteUrl.includes('::')) throw error;
@@ -112,6 +112,7 @@ export class PromotionsGitService {
 		// On Windows, Git interprets drive-letter prefixes as local paths.
 		if (process.platform === 'win32' && /^[a-zA-Z]:/.test(remoteUrl)) throw error;
 
+		// Git uses the default SSH user when the remote omits one.
 		const isScpLike = /^(?:[a-zA-Z0-9_.-]+@)?[a-zA-Z0-9._][a-zA-Z0-9._-]*:[^\s]+$/.test(remoteUrl);
 		if (!isScpLike) throw error;
 	}

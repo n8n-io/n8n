@@ -204,6 +204,13 @@ describe('builtinToolLabelKey', () => {
 	it('does not label unrelated tools as web search', () => {
 		expect(builtinToolLabelKey('custom_web_search')).toBeNull();
 	});
+
+	it('labels memory flags only after the enqueue succeeded', () => {
+		expect(builtinToolLabelKey('flag_memory', { status: 'noted' })).toBe(
+			'agents.chat.toolNames.flagMemory',
+		);
+		expect(builtinToolLabelKey('flag_memory', { status: 'error' })).toBeNull();
+	});
 });
 
 import type {

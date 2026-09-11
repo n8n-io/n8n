@@ -20,7 +20,7 @@ const moduleEntry = Container.get(ModuleMetadata).get('redaction');
  * test file gets its own fork, which keeps this init the first one.
  */
 describe('RedactionModule hook registration', () => {
-	it('registers RedactionContextHook as a global execution-context hook', async () => {
+	it('registers its execution-context hooks as global hooks', async () => {
 		mockInstance(Logger);
 		Container.set(ExecutionRedactionService, mock<ExecutionRedactionService>());
 		Container.set(ExecutionRedactionServiceProxy, mock<ExecutionRedactionServiceProxy>());
@@ -42,5 +42,8 @@ describe('RedactionModule hook registration', () => {
 			.map((hookClass) => hookClass.name);
 
 		expect(globalHooks).toContain('RedactionContextHook');
+		// Security-sensitive wiring: without this hook a private-credential run that
+		// fails before the credential resolves would not be redacted for everyone.
+		expect(globalHooks).toContain('DynamicCredentialsContextHook');
 	});
 });

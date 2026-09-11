@@ -1016,6 +1016,7 @@ export class ProjectService {
 		const [members, count] = await this.projectRelationRepository.findAndCount({
 			where: { projectId },
 			relations: { user: true, role: true },
+			order: { createdAt: 'ASC', userId: 'ASC' },
 			skip: offset,
 			take: limit,
 		});

@@ -5,6 +5,8 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { strict } from 'node:assert';
 
+import { EventService } from '@/events/event.service';
+
 import { InstanceMonitoringReportRepository } from './database/repositories/instance-monitoring-report.repository';
 import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingService, RETRY_DELAY_MS } from './instance-reporting.service';
@@ -36,11 +38,14 @@ export class InstanceReportingScheduler {
 
 	private isShuttingDown = false;
 
+	private readonly onServerStarted = () => this.start();
+
 	constructor(
 		private readonly reportingService: InstanceReportingService,
 		private readonly reportRepository: InstanceMonitoringReportRepository,
 		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
@@ -57,7 +62,11 @@ export class InstanceReportingScheduler {
 	init(): void {
 		strict(this.instanceSettings.instanceRole !== 'unset', 'Instance role is not set');
 
-		if (this.instanceSettings.isLeader) this.start();
+		// Defer the first tick until the server has finished starting. A boot
+		// catch-up report can send right away, but log streaming module was not properly initialized
+		if (this.instanceSettings.isLeader) {
+			this.eventService.once('server-started', this.onServerStarted);
+		}
 	}
 
 	/**
@@ -84,6 +93,8 @@ export class InstanceReportingScheduler {
 
 	@OnLeaderStepdown()
 	stop(): void {
+		this.eventService.off('server-started', this.onServerStarted);
+
 		if (this.timeout === undefined) return;
 
 		clearTimeout(this.timeout);

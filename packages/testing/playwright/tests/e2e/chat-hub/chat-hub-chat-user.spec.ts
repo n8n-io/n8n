@@ -4,7 +4,7 @@ import { INSTANCE_OWNER_CREDENTIALS } from '../../../config/test-users';
 test.use(chatHubTestConfig);
 
 test.describe(
-	'Chat user role @capability:proxy',
+	'Chat user role',
 	{
 		annotation: [{ type: 'owner', description: 'Chat' }],
 	},

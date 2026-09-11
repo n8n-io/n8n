@@ -207,6 +207,8 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
+				payload.mode,
+				payload.promptVersion,
 			);
 		});
 
@@ -241,6 +243,35 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
+				payloadWithPushRef.mode,
+				payloadWithPushRef.promptVersion,
+			);
+		});
+
+		it('should forward the build mode and prompt version to startRun', async () => {
+			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				message: 'build me a workflow',
+				timeZone: 'UTC',
+				attachments: undefined,
+				mode: 'progressive',
+				promptVersion: 'progressive@1',
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-5');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithMode.message,
+				payloadWithMode.attachments,
+				payloadWithMode.context,
+				payloadWithMode.timeZone,
+				payloadWithMode.pushRef,
+				'progressive',
+				'progressive@1',
 			);
 		});
 
@@ -273,6 +304,8 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
+				payloadWithContext.mode,
+				payloadWithContext.promptVersion,
 			);
 		});
 
@@ -371,6 +404,8 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
+				nodesPayload.mode,
+				nodesPayload.promptVersion,
 			);
 		});
 

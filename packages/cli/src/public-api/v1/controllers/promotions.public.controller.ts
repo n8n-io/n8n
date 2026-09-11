@@ -115,7 +115,7 @@ export class PromotionsPublicController {
 		};
 	}
 
-	@Get('/providers/:id')
+	@Get('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -128,12 +128,13 @@ export class PromotionsPublicController {
 	async getPromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).findOne(id);
+		return await (await this.providersService()).findOne(promotionProviderId);
 	}
 
-	@Put('/providers/:id')
+	@Put('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -148,13 +149,14 @@ export class PromotionsPublicController {
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).update(id, input);
+		return await (await this.providersService()).update(promotionProviderId, input);
 	}
 
-	@Delete('/providers/:id')
+	@Delete('/providers/:promotionProviderId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
@@ -168,9 +170,10 @@ export class PromotionsPublicController {
 	async deletePromotionProvider(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionProviderIdParamSchema) id: string,
+		@Param('promotionProviderId', promotionProviderIdParamSchema)
+		promotionProviderId: string,
 	): Promise<void> {
-		await (await this.providersService()).delete(id);
+		await (await this.providersService()).delete(promotionProviderId);
 	}
 
 	// -- Connections ---------------------------------------------------------
@@ -224,7 +227,7 @@ export class PromotionsPublicController {
 		};
 	}
 
-	@Get('/connections/:id')
+	@Get('/connections/:promotionConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -237,12 +240,13 @@ export class PromotionsPublicController {
 	async getPromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 	): Promise<PromotionConnectionPublicDto> {
-		return await (await this.connectionsService()).findOne(id);
+		return await (await this.connectionsService()).findOne(promotionConnectionId);
 	}
 
-	@Put('/connections/:id')
+	@Put('/connections/:promotionConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -257,13 +261,14 @@ export class PromotionsPublicController {
 	async updatePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Body input: UpdatePromotionConnectionDto,
 	): Promise<PromotionConnectionPublicDto> {
-		return await (await this.connectionsService()).update(id, input);
+		return await (await this.connectionsService()).update(promotionConnectionId, input);
 	}
 
-	@Delete('/connections/:id')
+	@Delete('/connections/:promotionConnectionId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:delete')
 	@GlobalScope('gitConnection:delete')
@@ -278,14 +283,15 @@ export class PromotionsPublicController {
 	async deletePromotionConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 	): Promise<void> {
-		await (await this.connectionsService()).delete(id);
+		await (await this.connectionsService()).delete(promotionConnectionId);
 	}
 
 	// -- Configurations ------------------------------------------------------
 
-	@Put('/connections/:id/configs/apply')
+	@Put('/connections/:promotionConnectionId/configs/apply')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -301,16 +307,17 @@ export class PromotionsPublicController {
 	async upsertPromotionApplyConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Body input: UpsertPromotionApplyConfigDto,
 	): Promise<PromotionApplyConfigPublicDto> {
-		return await (await this.connectionsService()).upsertConfig(id, {
+		return await (await this.connectionsService()).upsertConfig(promotionConnectionId, {
 			config: { direction: 'apply', settings: input.settings },
 			name: input.name,
 		});
 	}
 
-	@Put('/connections/:id/configs/promote')
+	@Put('/connections/:promotionConnectionId/configs/promote')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -326,16 +333,17 @@ export class PromotionsPublicController {
 	async upsertPromotionPromoteConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Body input: UpsertPromotionPromoteConfigDto,
 	): Promise<PromotionPromoteConfigPublicDto> {
-		return await (await this.connectionsService()).upsertConfig(id, {
+		return await (await this.connectionsService()).upsertConfig(promotionConnectionId, {
 			config: { direction: 'promote', settings: input.settings },
 			name: input.name,
 		});
 	}
 
-	@Delete('/connections/:id/configs/:direction')
+	@Delete('/connections/:promotionConnectionId/configs/:direction')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
@@ -348,15 +356,19 @@ export class PromotionsPublicController {
 	async deletePromotionConfig(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<void> {
-		await (await this.connectionsService()).deleteConfig(id, parseDirection(direction));
+		await (await this.connectionsService()).deleteConfig(
+			promotionConnectionId,
+			parseDirection(direction),
+		);
 	}
 
 	// -- Local checkouts -----------------------------------------------------
 
-	@Post('/connections/:id/:direction/clone')
+	@Post('/connections/:promotionConnectionId/:direction/clone')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
@@ -372,13 +384,17 @@ export class PromotionsPublicController {
 	async clonePromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).clone(id, parseDirection(direction));
+		return await (await this.promotionsService()).clone(
+			promotionConnectionId,
+			parseDirection(direction),
+		);
 	}
 
-	@Post('/connections/:id/:direction/disconnect')
+	@Post('/connections/:promotionConnectionId/:direction/disconnect')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:clone')
 	@GlobalScope('gitConnection:clone')
@@ -393,15 +409,19 @@ export class PromotionsPublicController {
 	async disconnectPromotionCheckout(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Param('direction', promotionDirectionParamSchema) direction: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).disconnect(id, parseDirection(direction));
+		return await (await this.promotionsService()).disconnect(
+			promotionConnectionId,
+			parseDirection(direction),
+		);
 	}
 
 	// -- Project links -------------------------------------------------------
 
-	@Get('/connections/:id/projects')
+	@Get('/connections/:promotionConnectionId/projects')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
@@ -413,12 +433,13 @@ export class PromotionsPublicController {
 	async getPromotionConnectionProjects(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 	): Promise<PromotionConnectionProjectListPublicDto> {
-		return await (await this.connectionsService()).listProjects(id);
+		return await (await this.connectionsService()).listProjects(promotionConnectionId);
 	}
 
-	@Post('/connections/:id/projects/:projectId')
+	@Post('/connections/:promotionConnectionId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
@@ -436,17 +457,18 @@ export class PromotionsPublicController {
 	async addProjectToPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<PromotionConnectionProjectPublicDto> {
 		return await (await this.connectionsService()).addProject({
 			user: req.user,
-			connectionId: id,
+			connectionId: promotionConnectionId,
 			projectId,
 		});
 	}
 
-	@Delete('/connections/:id/projects/:projectId')
+	@Delete('/connections/:promotionConnectionId/projects/:projectId')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:manageProjects')
 	@GlobalScope('gitConnection:manageProjects')
@@ -460,19 +482,20 @@ export class PromotionsPublicController {
 	async removeProjectFromPromotionConnection(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 	): Promise<void> {
 		await (await this.connectionsService()).removeProject({
 			user: req.user,
-			connectionId: id,
+			connectionId: promotionConnectionId,
 			projectId,
 		});
 	}
 
 	// -- Package operations --------------------------------------------------
 
-	@Post('/connections/:id/promote')
+	@Post('/connections/:promotionConnectionId/promote')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
@@ -488,16 +511,17 @@ export class PromotionsPublicController {
 	async promotePackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 		@Body input: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
-		return await (await this.promotionsService()).promote(id, req.user, {
+		return await (await this.promotionsService()).promote(promotionConnectionId, req.user, {
 			...input,
 			canExportVariableValues: req.tokenGrant?.apiKeyScopes?.includes('variable:list') ?? false,
 		});
 	}
 
-	@Post('/connections/:id/apply')
+	@Post('/connections/:promotionConnectionId/apply')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:pull')
 	@GlobalScope('gitConnection:pull')
@@ -515,9 +539,10 @@ export class PromotionsPublicController {
 	async applyPackage(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('id', promotionConnectionIdParamSchema) id: string,
+		@Param('promotionConnectionId', promotionConnectionIdParamSchema)
+		promotionConnectionId: string,
 	): Promise<ApplyPackageResultDto> {
-		return await (await this.promotionsService()).apply(id, req.user);
+		return await (await this.promotionsService()).apply(promotionConnectionId, req.user);
 	}
 
 	// -- Module access -------------------------------------------------------

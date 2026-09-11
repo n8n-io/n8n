@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { NodeApiError } from 'n8n-workflow';
 import type {
@@ -14,7 +15,7 @@ import { execute as executeQuery } from '../actions/databricksSql/executeQuery.o
 import { makePermissionErrorLegible } from '../actions/helpers';
 import { getCatalogs, getSchemas } from '../methods/listSearch';
 
-// Mock sleep from @n8n/utils so polling tests run without real delays
+// The operation is imported from source, so this mock replaces the real poll delay
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
@@ -99,61 +100,6 @@ describe('Databricks', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['databricks-sql.workflow.json'],
-		});
-	});
-
-	describe('Databricks SQL -> Execute Query (async polling)', () => {
-		// This test exercises the PENDING → RUNNING → SUCCEEDED polling path.
-		// The initial POST returns PENDING, the first poll returns RUNNING, and
-		// the second poll returns the completed result with manifest and data.
-		beforeAll(() => {
-			nock(HOST)
-				.post('/api/2.0/sql/statements', {
-					warehouse_id: 'warehouse123',
-					statement: 'SELECT id, name FROM test_table',
-					wait_timeout: '50s',
-					on_wait_timeout: 'CONTINUE',
-				})
-				.reply(200, {
-					statement_id: 'stmt-001',
-					status: { state: 'PENDING' },
-				});
-
-			nock(HOST)
-				.get('/api/2.0/sql/statements/stmt-001')
-				.reply(200, {
-					statement_id: 'stmt-001',
-					status: { state: 'RUNNING' },
-				});
-
-			nock(HOST)
-				.get('/api/2.0/sql/statements/stmt-001')
-				.reply(200, {
-					statement_id: 'stmt-001',
-					status: { state: 'SUCCEEDED' },
-					manifest: {
-						total_chunk_count: 1,
-						schema: {
-							columns: [
-								{ name: 'id', type: 'INT' },
-								{ name: 'name', type: 'STRING' },
-							],
-						},
-					},
-					result: {
-						data_array: [
-							['1', 'Alice'],
-							['2', 'Bob'],
-						],
-					},
-				});
-		});
-
-		afterAll(() => nock.cleanAll());
-
-		new NodeTestHarness().setupTests({
-			credentials,
-			workflowFiles: ['databricks-sql-polling.workflow.json'],
 		});
 	});
 
@@ -851,5 +797,79 @@ describe('Databricks SQL -> Execute Query (FAILED/CANCELED statement)', () => {
 		await expect(executeQuery.call(context, 0)).rejects.toThrow(
 			`Query failed: ${JSON.stringify({ state: 'FAILED' })}`,
 		);
+	});
+});
+
+describe('Databricks SQL -> Execute Query (async polling)', () => {
+	const successResponse = {
+		statement_id: 'stmt-001',
+		status: { state: 'SUCCEEDED' },
+		manifest: {
+			total_chunk_count: 1,
+			schema: {
+				columns: [
+					{ name: 'id', type: 'INT' },
+					{ name: 'name', type: 'STRING' },
+				],
+			},
+		},
+		result: {
+			data_array: [
+				['1', 'Alice'],
+				['2', 'Bob'],
+			],
+		},
+	};
+
+	beforeEach(() => {
+		vi.mocked(sleep).mockClear();
+	});
+
+	it('should poll until the statement reaches SUCCEEDED and map rows to items', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNode.mockReturnValue(node);
+		context.getNodeParameter.mockImplementation((name) => {
+			if (name === 'warehouseId') return 'warehouse123';
+			if (name === 'query') return 'SELECT id, name FROM test_table';
+			if (name === 'authentication') return 'accessToken';
+			return [];
+		});
+		context.getCredentials.mockResolvedValue({ host: HOST });
+		context.helpers.httpRequestWithAuthentication
+			.mockResolvedValueOnce({ statement_id: 'stmt-001', status: { state: 'PENDING' } })
+			.mockResolvedValueOnce({ statement_id: 'stmt-001', status: { state: 'RUNNING' } })
+			.mockResolvedValueOnce(successResponse);
+
+		const result = await executeQuery.call(context, 0);
+
+		expect(result).toEqual([
+			{ json: { id: '1', name: 'Alice' }, pairedItem: { item: 0 } },
+			{ json: { id: '2', name: 'Bob' }, pairedItem: { item: 0 } },
+		]);
+
+		const requests = context.helpers.httpRequestWithAuthentication.mock.calls;
+		expect(requests).toHaveLength(3);
+		expect(requests[0][1]).toMatchObject({
+			method: 'POST',
+			url: `${HOST}/api/2.0/sql/statements`,
+			body: {
+				warehouse_id: 'warehouse123',
+				statement: 'SELECT id, name FROM test_table',
+				wait_timeout: '50s',
+				on_wait_timeout: 'CONTINUE',
+			},
+		});
+		expect(requests[1][1]).toMatchObject({
+			method: 'GET',
+			url: `${HOST}/api/2.0/sql/statements/stmt-001`,
+		});
+		expect(requests[2][1]).toMatchObject({
+			method: 'GET',
+			url: `${HOST}/api/2.0/sql/statements/stmt-001`,
+		});
+
+		// One delay before each poll, none before the initial POST
+		expect(sleep).toHaveBeenCalledTimes(2);
+		expect(sleep).toHaveBeenCalledWith(5000);
 	});
 });

@@ -235,7 +235,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
-			useWorkflowPublicationService: false,
+			useWorkflowPublicationService: true,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
 			workflowPublicationConcurrency: 5,
@@ -679,6 +679,8 @@ describe('GlobalConfig', () => {
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 			allowWebhookIsolateSkip: true,
+			lazyAcquire: false,
+			compileCache: false,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
