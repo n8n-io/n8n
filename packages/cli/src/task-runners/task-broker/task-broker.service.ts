@@ -132,7 +132,7 @@ export class TaskBroker {
 	/** Task types some runner has registered for at least once since boot. */
 	private readonly everRegisteredTaskTypes = new Set<string>();
 
-	private readonly startedAt = Date.now();
+	private readonly startedAt = this.monotonicNowMs();
 
 	constructor(
 		private readonly logger: Logger,
@@ -171,7 +171,7 @@ export class TaskBroker {
 	private hasRunnerNeverConnected(taskType: string) {
 		return (
 			!this.everRegisteredTaskTypes.has(taskType) &&
-			Date.now() - this.startedAt > this.runnerGraceMs()
+			this.monotonicNowMs() - this.startedAt > this.runnerGraceMs()
 		);
 	}
 

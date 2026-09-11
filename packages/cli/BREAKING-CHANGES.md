@@ -14,7 +14,7 @@ If you run n8n from the npm package, move to the Docker image before you update.
 
 ### What changed?
 
-Task runners no longer run inside the n8n process. `N8N_RUNNERS_MODE` defaults to `external` and n8n exits on start when it is set to `internal`. `N8N_RUNNERS_AUTH_TOKEN` is required. The `start`, `worker`, `execute` and `execute-batch` commands all need an external task runner. When no runner has connected since start, Code node executions fail at once instead of waiting for the request timeout. `N8N_RUNNERS_MAX_OLD_SPACE_SIZE` has no effect.
+Task runners no longer run inside the n8n process. `N8N_RUNNERS_MODE` defaults to `external` and n8n exits on start when it is set to `internal`. `N8N_RUNNERS_AUTH_TOKEN` is required. The `start`, `worker`, `execute` and `execute-batch` commands all need an external task runner. When no runner has connected within `N8N_RUNNERS_TASK_REQUEST_TIMEOUT` seconds (default 60) after start, Code node executions fail at once instead of waiting for the request timeout. During that first window they wait as before. `N8N_RUNNERS_MAX_OLD_SPACE_SIZE` has no effect.
 
 ### When is action necessary?
 

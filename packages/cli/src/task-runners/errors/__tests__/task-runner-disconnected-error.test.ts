@@ -23,7 +23,7 @@ describe('TaskRunnerDisconnectedError', () => {
 			'1. Reduce the number of items processed at a time, by batching them using a loop node',
 		);
 		expect(error.description).toContain(
-			"2. Increase the memory available to the task runner with 'N8N_RUNNERS_MAX_OLD_SPACE_SIZE' environment variable",
+			'2. Increase the memory available to the task runner by setting NODE_OPTIONS=--max-old-space-size=<MB> on the task runner launcher',
 		);
 		expect(error.description).not.toContain(
 			'Upgrade your cloud plan to increase the available memory',
@@ -43,7 +43,7 @@ describe('TaskRunnerDisconnectedError', () => {
 			'2. Upgrade your cloud plan to increase the available memory',
 		);
 		expect(error.description).not.toContain(
-			"Increase the memory available to the task runner with 'N8N_RUNNERS_MAX_OLD_SPACE_SIZE' environment variable",
+			'Increase the memory available to the task runner by setting NODE_OPTIONS=--max-old-space-size=<MB> on the task runner launcher',
 		);
 	});
 });
