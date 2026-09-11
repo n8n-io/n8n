@@ -390,15 +390,27 @@ export class VoiceTurnStore {
 	}
 }
 
+/**
+ * UTF-16 code-unit order, which is what `Array.prototype.sort()` with no
+ * comparator does — and what Twilio signs with. Not `localeCompare`: collation
+ * orders `Called` before `CallSid`, where Twilio puts `CallSid` first because
+ * `S` precedes `e` by code point. Every voice payload carries both.
+ */
+function compareCodeUnits(left: string, right: string): number {
+	if (left < right) return -1;
+	return left > right ? 1 : 0;
+}
+
 function formEntries(form: FormData): Array<[string, string]> {
 	return [...form.entries()]
 		.filter((entry): entry is [string, string] => typeof entry[1] === 'string')
-		.sort(([leftKey, leftValue], [rightKey, rightValue]) =>
-			leftKey === rightKey ? leftValue.localeCompare(rightValue) : leftKey.localeCompare(rightKey),
+		.sort(
+			([leftKey, leftValue], [rightKey, rightValue]) =>
+				compareCodeUnits(leftKey, rightKey) || compareCodeUnits(leftValue, rightValue),
 		);
 }
 
-function verifyTwilioSignature(
+export function verifyTwilioSignature(
 	requestUrl: string,
 	form: FormData,
 	signature: string,

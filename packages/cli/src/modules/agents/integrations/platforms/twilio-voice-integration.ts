@@ -10,8 +10,6 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
-	type BridgeExecutionContext,
-	type BridgeMessageContextParams,
 	type WebhookRequestContext,
 	type WebhookRequestResolution,
 } from '../agent-chat-integration';
@@ -27,6 +25,9 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Twilio Voice';
 
 	readonly displayIcon = 'mic';
+
+	readonly channelInstructions =
+		'You are speaking to the user on a phone call. Keep the response concise and easy to understand when read aloud. Do not use any formatting used for visual text output, like bold or italic markdown';
 
 	readonly builderGuidance = {
 		capabilities: [
@@ -146,8 +147,7 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 			phoneNumber: settings.phoneNumber,
 			allowedCallers: settings.allowedCallers,
 			webhookUrl: ctx.webhookUrlFor(this.type),
-			// HACK: disable signature verification for testing
-			verifySignature: false,
+			verifySignature: true,
 			// Shared across mains: Twilio spreads the hops of one call over all of them.
 			turns: new VoiceTurnStore(
 				this.cacheService,
@@ -157,16 +157,6 @@ export class TwilioVoiceIntegration extends AgentChatIntegration {
 			logger: this.logger,
 			chatSdk,
 		});
-	}
-
-	async createBridgeExecutionContext(
-		_params: BridgeMessageContextParams,
-	): Promise<BridgeExecutionContext> {
-		return {
-			platformAgentContext: {},
-			historyContext:
-				'You are speaking to the user on a phone call. Keep the response concise and easy to understand when read aloud.',
-		};
 	}
 
 	private settings(integration: AgentIntegrationConfig): AgentTwilioVoiceIntegrationSettings {

@@ -11,6 +11,7 @@ import {
 	SentenceAccumulator,
 	splitSentences,
 	TwilioVoiceAdapter,
+	verifyTwilioSignature,
 	VoiceTurnStore,
 } from '../../twilio-voice-adapter';
 
@@ -53,10 +54,9 @@ function signedRequest(url: string, fields: Record<string, string>): Request {
 	const form = new FormData();
 	for (const [key, value] of Object.entries(fields)) form.append(key, value);
 
+	// Sorted by UTF-16 code unit, as Twilio does — see the conformance test below.
 	const payload = Object.entries(fields)
-		.sort(([leftKey, leftValue], [rightKey, rightValue]) =>
-			leftKey === rightKey ? leftValue.localeCompare(rightValue) : leftKey.localeCompare(rightKey),
-		)
+		.sort(([leftKey], [rightKey]) => (leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0))
 		.reduce((value, [key, item]) => `${value}${key}${item}`, url);
 	const signature = createHmac('sha1', AUTH_TOKEN).update(payload).digest('base64');
 
@@ -153,6 +153,45 @@ function deltaStream() {
 const threadId = `twilioVoice:${CALL_SID}`;
 const speechUrl = `${WEBHOOK_URL}?turn=t1`;
 const streamUrl = `${WEBHOOK_URL}?stream=1`;
+
+describe('verifyTwilioSignature', () => {
+	// Twilio's published example, with its published signature. Hard-coding the
+	// expected value is the point: a test that recomputes the signature with our
+	// own sort would only prove the code agrees with itself.
+	// https://www.twilio.com/docs/usage/security
+	const EXAMPLE_URL = 'https://mycompany.com/myapp.php?foo=1&bar=2';
+	const EXAMPLE_TOKEN = '12345';
+	const EXAMPLE_SIGNATURE = 'RSOYDt4T1cUTdK1PDd93/VVr8B8=';
+
+	function exampleForm(): FormData {
+		const form = new FormData();
+		// CallSid before Caller: uppercase S precedes lowercase e by code point,
+		// which is exactly where locale collation disagrees with Twilio.
+		form.append('CallSid', 'CA1234567890ABCDE');
+		form.append('Caller', '+14158675309');
+		form.append('Digits', '1234');
+		form.append('From', '+14158675309');
+		form.append('To', '+18005551212');
+		return form;
+	}
+
+	it("accepts the signature from Twilio's published example", () => {
+		expect(
+			verifyTwilioSignature(EXAMPLE_URL, exampleForm(), EXAMPLE_SIGNATURE, EXAMPLE_TOKEN),
+		).toBe(true);
+	});
+
+	it('rejects the signature that locale-collated sorting produces', () => {
+		expect(
+			verifyTwilioSignature(
+				EXAMPLE_URL,
+				exampleForm(),
+				'OCo4gXhGdqELQKuB5w7aI64nqCE=',
+				EXAMPLE_TOKEN,
+			),
+		).toBe(false);
+	});
+});
 
 describe('splitSentences', () => {
 	it('returns only sentences a terminator plus whitespace has closed', () => {

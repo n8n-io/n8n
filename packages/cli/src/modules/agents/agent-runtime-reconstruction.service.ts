@@ -249,6 +249,13 @@ export class AgentRuntimeReconstructionService {
 			throw new UserError('Agent has no JSON config.');
 		}
 
+		const channelInstructions = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)?.channelInstructions
+			: undefined;
+		if (channelInstructions) {
+			config = { ...config, instructions: `${config.instructions}\n\n${channelInstructions}` };
+		}
+
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
 		// chat, resume, task-now), drop node/workflow tools the user can't

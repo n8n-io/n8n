@@ -218,6 +218,14 @@ export abstract class AgentChatIntegration {
 	readonly actionToolDefinitions: IntegrationActionDefinition[] =
 		resolveIntegrationActionDefinitions(['respond']);
 
+	/**
+	 * Optional guidance appended to the agent's system prompt for runs that come
+	 * from this channel. The runtime cache is keyed by integration type, so each
+	 * channel gets its own built agent and this is sent once per run rather than
+	 * with every message.
+	 */
+	readonly channelInstructions?: string;
+
 	/** Optional additional guidance appended to the generated context tool description. */
 	readonly contextToolGuidance?: string[];
 
