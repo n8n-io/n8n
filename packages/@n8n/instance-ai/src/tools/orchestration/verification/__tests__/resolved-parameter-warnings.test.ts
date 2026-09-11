@@ -94,17 +94,25 @@ describe('collectResolvedParameterWarnings', () => {
 		});
 		const logger = { debug: vi.fn() };
 
-		const warnings = await collectResolvedParameterWarnings({
+		const { warnings, skipped } = await collectResolvedParameterWarnings({
 			executionService: { getResolvedNodeParameters },
-			executionId: 'exec_1',
-			nodeNames: ['Send SMS', 'Broken'],
+			runs: [{ executionId: 'exec_1', nodeNames: ['Send SMS', 'Broken'] }],
 			logger,
 		});
 
 		expect(getResolvedNodeParameters).toHaveBeenCalledTimes(2);
 		expect(getResolvedNodeParameters).toHaveBeenCalledWith('exec_1', 'Send SMS');
 		expect(warnings).toEqual([
-			{ nodeName: 'Send SMS', path: 'to', raw: '={{ $json.query.caller }}', issue: 'empty' },
+			{
+				nodeName: 'Send SMS',
+				executionId: 'exec_1',
+				path: 'to',
+				raw: '={{ $json.query.caller }}',
+				issue: 'empty',
+			},
+		]);
+		expect(skipped).toEqual([
+			{ nodeName: 'Broken', executionId: 'exec_1', reason: 'replay-failed' },
 		]);
 		expect(logger.debug).toHaveBeenCalledWith(
 			'Resolved-parameter check skipped for simulated node',
@@ -115,13 +123,12 @@ describe('collectResolvedParameterWarnings', () => {
 	it('does not call the service when no simulated node was reached', async () => {
 		const getResolvedNodeParameters = vi.fn();
 
-		const warnings = await collectResolvedParameterWarnings({
+		const result = await collectResolvedParameterWarnings({
 			executionService: { getResolvedNodeParameters },
-			executionId: 'exec_1',
-			nodeNames: [],
+			runs: [{ executionId: 'exec_1', nodeNames: [] }],
 		});
 
-		expect(warnings).toEqual([]);
+		expect(result).toEqual({ warnings: [], skipped: [] });
 		expect(getResolvedNodeParameters).not.toHaveBeenCalled();
 	});
 });
@@ -148,6 +155,6 @@ describe('buildResolvedParameterNote', () => {
 		expect(note).toContain('`message` (={{ $json.body.text.trim() }}) failed: Cannot read trim');
 		expect(note).toContain('Post to Slack: `text`');
 		expect(note).toContain('fixture data');
-		expect(note).toContain('{body, query, headers}');
+		expect(note).toContain('{body, query, headers, params}');
 	});
 });

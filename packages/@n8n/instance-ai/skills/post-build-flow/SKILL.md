@@ -242,7 +242,7 @@ workflow as a precondition for running it.
 **Webhook input must carry the fields the workflow reads.** A flat `inputData`
 becomes the request `body` only; `query`, `headers` and `params` stay empty. When
 any expression reads `$json.query.*`, `$json.headers.*` or `$json.params.*`, pass
-the request envelope `{ body: {...}, query: {...}, headers: {...} }` (or a
+the request envelope `{ body: {...}, query: {...}, headers: {...}, params: {...} }` (or a
 `fixtureOverrides` entry on the trigger node). Otherwise the field resolves empty,
 the run still succeeds, and that field is unverified — say so instead of
 reporting it as working.
@@ -390,9 +390,12 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      causes are a trigger input that lacks the field (body-only webhook input
      for a `$json.query.*` expression) or a wrong expression. Fix the input
      shape or the expression, re-run, and never report that field as working
-     while a warning stands. For a node the check did not cover, use
-     `executions(action="get-resolved-node-parameters")` on the verification
-     execution.
+     while a warning stands. Each warning carries the execution ID that was
+     checked. Use that ID with `executions(action="get-resolved-node-parameters")`
+     to inspect the same input.
+   - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
+     State that limitation even if the run succeeded and no parameter warnings
+     were returned. Do not request parameter values when sharing is disabled.
 3. After verification handling, if `setupRequirement.status === "required"` and
    setup has not already run for this build, call `workflows(action="setup")`
    with the workflowId.

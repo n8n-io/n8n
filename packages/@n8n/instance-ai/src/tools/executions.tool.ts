@@ -52,7 +52,7 @@ const runAction = z.object({
 				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
 				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
 				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...} } instead. ' +
+				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
 				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
 				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
 		),

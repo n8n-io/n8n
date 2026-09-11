@@ -31,10 +31,16 @@ type VerifyBuiltWorkflowOutput = {
 	simulationNote?: string;
 	resolvedParameterWarnings?: Array<{
 		nodeName: string;
+		executionId?: string;
 		path: string;
 		raw: string;
 		issue: 'empty' | 'failed';
 		detail?: string;
+	}>;
+	skippedParameterChecks?: Array<{
+		nodeName: string;
+		executionId?: string;
+		reason: string;
 	}>;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
@@ -1211,12 +1217,19 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.resolvedParameterWarnings).toEqual([
 			{
 				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
 				path: 'channel',
 				raw: '={{ $json.body.ch.id }}',
 				issue: 'failed',
 				detail: 'Cannot read id',
 			},
-			{ nodeName: 'Send Slack', path: 'text', raw: '={{ $json.query.caller }}', issue: 'empty' },
+			{
+				nodeName: 'Send Slack',
+				executionId: 'exec-sim',
+				path: 'text',
+				raw: '={{ $json.query.caller }}',
+				issue: 'empty',
+			},
 		]);
 		expect(result.simulationNote).toContain('no real external writes');
 		expect(result.simulationNote).toContain('Send Slack: `channel`');
@@ -1236,8 +1249,12 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.resolvedParameterWarnings).toBeUndefined();
+		expect(result.skippedParameterChecks).toEqual([
+			{ nodeName: 'Send Slack', executionId: 'exec-sim', reason: 'replay-failed' },
+		]);
 		expect(result.simulationNote).toContain('no real external writes');
-		expect(result.simulationNote).not.toContain('parameter check');
+		expect(result.simulationNote).toContain('Parameter check skipped');
+		expect(result.simulationNote).toContain('unchecked dynamic fields');
 		expect(ctx.logger.debug).toHaveBeenCalledWith(
 			'Resolved-parameter check skipped for simulated node',
 			expect.objectContaining({ nodeName: 'Send Slack' }),

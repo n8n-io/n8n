@@ -22,6 +22,8 @@ import { resolveVerificationTarget } from './verification/resolve-target';
 import {
 	buildResolvedParameterNote,
 	collectResolvedParameterWarnings,
+	resolvedParameterWarningSchema,
+	skippedParameterCheckSchema,
 } from './verification/resolved-parameter-warnings';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import {
@@ -49,7 +51,7 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 				'Webhook -> a flat payload like {event: "signup", userId: "..."} is placed under `body` and leaves ' +
 				'`query`, `headers` and `params` EMPTY. When any expression reads $json.query.*, $json.headers.* or ' +
 				'$json.params.*, pass the request envelope instead: {body: {...}, query: {caller: "+1555..."}, ' +
-				'headers: {"x-github-event": "issues"}} — a flat payload cannot exercise those fields, they resolve ' +
+				'headers: {"x-github-event": "issues"}, params: {...}}. A flat payload cannot exercise those fields, they resolve ' +
 				'empty, and a simulated downstream node still looks green; ' +
 				'Chat Trigger -> {chatInput: "user message"}; ' +
 				'Schedule Trigger -> omit inputData. ' +
@@ -143,17 +145,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 		.optional(),
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
-	resolvedParameterWarnings: z
-		.array(
-			z.object({
-				nodeName: z.string(),
-				path: z.string(),
-				raw: z.string(),
-				issue: z.enum(['empty', 'failed']),
-				detail: z.string().optional(),
-			}),
-		)
-		.optional(),
+	resolvedParameterWarnings: z.array(resolvedParameterWarningSchema).optional(),
+	skippedParameterChecks: z.array(skippedParameterCheckSchema).optional(),
 	lastNodeExecuted: z.string().optional(),
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
@@ -228,7 +221,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis } = prepared.gateScript
+			const { result, analysis, parameterCheckRuns } = prepared.gateScript
 				? await runScriptedGateVerification({
 						script: prepared.gateScript,
 						prepared,
@@ -256,19 +249,26 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								abortSignal: context.abortSignal,
 							},
 						);
+						const analysis = analyzeVerificationResult({
+							result: runResult,
+							buildOutcome,
+							simulatedNodes: prepared.simulatedNodes,
+							haltedGateNames: prepared.haltedGateNames,
+							triggerNodeName: resolvedInput.triggerNodeName,
+							stateBefore: target.stateBefore,
+							runId: context.runId,
+							chatModelRelatedNodeNames,
+							chatModelRecovery,
+						});
 						return {
 							result: runResult,
-							analysis: analyzeVerificationResult({
-								result: runResult,
-								buildOutcome,
-								simulatedNodes: prepared.simulatedNodes,
-								haltedGateNames: prepared.haltedGateNames,
-								triggerNodeName: resolvedInput.triggerNodeName,
-								stateBefore: target.stateBefore,
-								runId: context.runId,
-								chatModelRelatedNodeNames,
-								chatModelRecovery,
-							}),
+							analysis,
+							parameterCheckRuns: [
+								{
+									executionId: runResult.executionId,
+									nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+								},
+							],
 						};
 					})();
 
@@ -302,17 +302,15 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// A simulated node's preview is fixture data, so an expression that resolved
 			// to empty (e.g. `$json.query.x` on a body-only input) leaves no trace in the
 			// run. Replay the parameters of every reached simulated node and surface it.
-			const resolvedParameterWarnings = result.executionId
-				? await collectResolvedParameterWarnings({
-						executionService: target.domainContext.executionService,
-						executionId: result.executionId,
-						nodeNames: analysis.reachedSimulatedNodes.map((n) => n.nodeName),
-						logger: context.logger,
-					})
-				: [];
+			const { warnings: resolvedParameterWarnings, skipped: skippedParameterChecks } =
+				await collectResolvedParameterWarnings({
+					executionService: target.domainContext.executionService,
+					runs: parameterCheckRuns,
+					logger: context.logger,
+				});
 			const simulationNote = [
 				analysis.simulationNote,
-				buildResolvedParameterNote(resolvedParameterWarnings),
+				buildResolvedParameterNote(resolvedParameterWarnings, skippedParameterChecks),
 			]
 				.filter((note): note is string => note !== undefined)
 				.join(' ');
@@ -333,6 +331,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulationNote: simulationNote.length > 0 ? simulationNote : undefined,
 				resolvedParameterWarnings:
 					resolvedParameterWarnings.length > 0 ? resolvedParameterWarnings : undefined,
+				skippedParameterChecks:
+					skippedParameterChecks.length > 0 ? skippedParameterChecks : undefined,
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,

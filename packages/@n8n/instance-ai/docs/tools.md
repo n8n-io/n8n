@@ -201,16 +201,23 @@ record (`{ attempted, success, executionId, status, evidence, verifiedAt }`) ont
 the build outcome so workflow-verification follow-ups and exceptional checkpoint
 turns can reuse it without re-running verify.
 
-**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings? }`
+**Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks? }`
 
 **Simulated-node parameter check**: a simulated node's preview is fixture data, so
 an expression that resolved to empty leaves no trace in the run. After the run the
 tool replays parameter resolution (`getResolvedNodeParameters`) for every reached
-simulated node and returns `resolvedParameterWarnings` — one entry per parameter
-that resolved to `null`/`undefined`/`""` or threw (`{ nodeName, path, raw, issue:
+simulated node and returns `resolvedParameterWarnings`, one entry per parameter
+that resolved to `null`/`undefined`/`""` or threw (`{ nodeName, executionId, path, raw, issue:
 'empty' | 'failed', detail? }`), with a summary appended to `simulationNote`.
+For scripted gates, it checks each node against every pass that reached it.
+Each warning identifies the execution used for that check.
 Expressions that need live-only context (`$secrets`, `$response`, …) are excluded.
-The check is advisory: a replay failure is logged and skipped.
+The check is advisory and does not change execution success. Suppressed parameter
+values, replay failures, and missing executions produce `skippedParameterChecks`
+entries (`{ nodeName, executionId?, reason }`) and a note in `simulationNote`.
+The reasons are `parameter-values-disabled`, `replay-failed`, and
+`execution-unavailable`. Skipped checks expose no parameter values or replay
+error details. Their dynamic fields remain unverified.
 
 ### `report-verification-verdict` *(conditional)*
 

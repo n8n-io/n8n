@@ -6,17 +6,31 @@
  * parameter resolution against the saved execution exposes it.
  */
 
+import { z } from 'zod';
+
 import type { InstanceAiExecutionService, ResolvedNodeParametersResult } from '../../../types';
 
-export interface ResolvedParameterWarning {
-	nodeName: string;
-	/** Dot-path into the node's parameters tree. */
-	path: string;
-	/** The expression as authored (incl. leading `=`). */
-	raw: string;
-	issue: 'empty' | 'failed';
-	/** Expression engine error for `failed`. */
-	detail?: string;
+export const resolvedParameterWarningSchema = z.object({
+	nodeName: z.string(),
+	executionId: z.string().optional(),
+	path: z.string(),
+	raw: z.string(),
+	issue: z.enum(['empty', 'failed']),
+	detail: z.string().optional(),
+});
+
+export const skippedParameterCheckSchema = z.object({
+	nodeName: z.string(),
+	executionId: z.string().optional(),
+	reason: z.enum(['parameter-values-disabled', 'replay-failed', 'execution-unavailable']),
+});
+
+export type ResolvedParameterWarning = z.infer<typeof resolvedParameterWarningSchema>;
+type SkippedParameterCheck = z.infer<typeof skippedParameterCheckSchema>;
+
+export interface ParameterCheckRun {
+	executionId?: string;
+	nodeNames: readonly string[];
 }
 
 /** Keep the tool output compact when a node has many empty leaves. */
@@ -52,39 +66,73 @@ export function warningsFromResolution(
 
 export async function collectResolvedParameterWarnings(args: {
 	executionService: Pick<InstanceAiExecutionService, 'getResolvedNodeParameters'>;
-	executionId: string;
-	nodeNames: readonly string[];
+	runs: readonly ParameterCheckRun[];
 	logger?: WarningLogger;
-}): Promise<ResolvedParameterWarning[]> {
-	const { executionService, executionId, nodeNames, logger } = args;
-	if (nodeNames.length === 0) return [];
-
-	const settled = await Promise.allSettled(
-		nodeNames.map(
-			async (nodeName) => await executionService.getResolvedNodeParameters(executionId, nodeName),
-		),
-	);
-
+}): Promise<{ warnings: ResolvedParameterWarning[]; skipped: SkippedParameterCheck[] }> {
+	const { executionService, runs, logger } = args;
 	const warnings: ResolvedParameterWarning[] = [];
-	settled.forEach((outcome, index) => {
-		if (outcome.status === 'fulfilled') {
-			warnings.push(...warningsFromResolution(outcome.value));
-			return;
+	const skipped: SkippedParameterCheck[] = [];
+	for (const { executionId, nodeNames } of runs) {
+		if (!executionId) {
+			for (const nodeName of nodeNames) {
+				skipped.push({ nodeName, reason: 'execution-unavailable' });
+			}
+			continue;
 		}
-		// Advisory only: a replay failure must never fail the verification.
-		logger?.debug('Resolved-parameter check skipped for simulated node', {
-			executionId,
-			nodeName: nodeNames[index],
-			error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+
+		const settled = await Promise.allSettled(
+			nodeNames.map(
+				async (nodeName) => await executionService.getResolvedNodeParameters(executionId, nodeName),
+			),
+		);
+		settled.forEach((outcome, index) => {
+			const nodeName = nodeNames[index];
+			if (outcome.status === 'fulfilled') {
+				if (outcome.value.suppressed) {
+					skipped.push({ nodeName, executionId, reason: outcome.value.suppressed });
+				} else {
+					warnings.push(
+						...warningsFromResolution(outcome.value).map((warning) => ({
+							...warning,
+							executionId,
+						})),
+					);
+				}
+				return;
+			}
+			// Keep the run result, but disclose that its parameters were not checked.
+			skipped.push({ nodeName, executionId, reason: 'replay-failed' });
+			logger?.debug('Resolved-parameter check skipped for simulated node', {
+				executionId,
+				nodeName,
+				error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+			});
 		});
-	});
-	return warnings.slice(0, MAX_WARNINGS);
+	}
+	return { warnings: warnings.slice(0, MAX_WARNINGS), skipped };
 }
 
 export function buildResolvedParameterNote(
 	warnings: readonly ResolvedParameterWarning[],
+	skipped: readonly SkippedParameterCheck[] = [],
 ): string | undefined {
-	if (warnings.length === 0) return undefined;
+	const skipReasons = {
+		'parameter-values-disabled': 'parameter values are disabled',
+		'replay-failed': 'parameter replay failed',
+		'execution-unavailable': 'the execution is unavailable',
+	};
+	const skippedNote =
+		skipped.length > 0
+			? 'Parameter check skipped for ' +
+				skipped
+					.map(
+						({ nodeName, executionId, reason }) =>
+							`${nodeName}${executionId ? ` (execution ${executionId})` : ''}: ${skipReasons[reason]}`,
+					)
+					.join('; ') +
+				'. These nodes have unchecked dynamic fields. Do not report those fields as verified.'
+			: undefined;
+	if (warnings.length === 0) return skippedNote;
 
 	const byNode = new Map<string, string[]>();
 	for (const warning of warnings) {
@@ -100,10 +148,13 @@ export function buildResolvedParameterNote(
 		.map(([nodeName, entries]) => `${nodeName}: ${entries.join(', ')}`)
 		.join('; ');
 
-	return (
-		`Simulated-node parameter check — ${summary}. ` +
-		'A simulated node’s preview is fixture data and does not prove these fields: fix the ' +
-		'trigger input shape (for a Webhook, pass the {body, query, headers} envelope) or the ' +
-		'expression, re-run verification, and do not report these fields as working until they resolve.'
-	);
+	return [
+		`Simulated-node parameter check: ${summary}. ` +
+			'A simulated node’s preview is fixture data and does not prove these fields: fix the ' +
+			'trigger input shape (for a Webhook, pass the {body, query, headers, params} envelope) or the ' +
+			'expression, re-run verification, and do not report these fields as working until they resolve.',
+		skippedNote,
+	]
+		.filter((note): note is string => note !== undefined)
+		.join(' ');
 }
