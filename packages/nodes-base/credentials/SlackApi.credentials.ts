@@ -27,8 +27,9 @@ export class SlackApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: true,
 			description:
-				'The signature secret is used to verify the authenticity of requests sent by Slack.',
+				'The signing secret of your Slack app. Find it under "Basic Information" in the Slack API dashboard. n8n uses it to verify that incoming requests come from Slack. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">More info</a>.',
 		},
 		{
 			displayName: 'Managed App ID',
@@ -47,18 +48,6 @@ export class SlackApi implements ICredentialType {
 			name: 'managerCredentialId',
 			type: 'hidden',
 			default: '',
-		},
-		{
-			displayName:
-				'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					signatureSecret: [''],
-				},
-			},
 		},
 	];
 

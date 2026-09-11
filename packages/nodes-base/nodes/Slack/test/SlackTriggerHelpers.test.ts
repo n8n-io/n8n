@@ -48,24 +48,36 @@ describe('SlackTriggerHelpers', () => {
 	});
 
 	describe('verifySignature', () => {
-		it('should return true when no credentials are provided', async () => {
+		it('should return false when the credential is empty', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
-			expect(result).toBe(true);
+			expect(result).toBe(false);
+			expect(createHmac).not.toHaveBeenCalled();
 			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
 		});
 
-		it('should return true when no signature secret is provided', async () => {
+		it('should return false when no signature secret is configured', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
-				apiToken: 'test-token',
+				accessToken: 'test-token',
 			});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
-			expect(result).toBe(true);
-			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+			expect(result).toBe(false);
+			expect(createHmac).not.toHaveBeenCalled();
+		});
+
+		it('should return false when the signature secret is not a string', async () => {
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				signatureSecret: 12345,
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(false);
+			expect(createHmac).not.toHaveBeenCalled();
 		});
 
 		it('should return false when signature header is missing', async () => {
@@ -162,27 +174,9 @@ describe('SlackTriggerHelpers', () => {
 			expect(mockHmac.update).toHaveBeenCalledWith(`v0:${testTimestamp}:${testBody}`);
 		});
 
-		it('should verify timestamp even if signature secret is not set', async () => {
-			// No signature secret in credentials
+		it('should return false when no signature secret is configured even if timestamp is valid', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
-				apiToken: 'test-token',
-			});
-
-			// Mock Date.now() to return a timestamp that's more than 5 minutes after the request timestamp
-			const futureDate = new Date((parseInt(testTimestamp, 10) + 301) * 1000);
-			vi.spyOn(Date, 'now').mockImplementation(() => futureDate.getTime());
-
-			const result = await verifySignature.call(mockWebhookFunctions);
-
-			// Should return false because timestamp is too old, even though signature secret is not set
-			expect(result).toBe(false);
-			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
-		});
-
-		it('should return true when timestamp is valid even if signature secret is not set', async () => {
-			// No signature secret in credentials
-			mockWebhookFunctions.getCredentials.mockResolvedValue({
-				apiToken: 'test-token',
+				accessToken: 'test-token',
 			});
 
 			// Keep Date.now() at the same time as the request timestamp (within 5 minute window)
@@ -191,9 +185,19 @@ describe('SlackTriggerHelpers', () => {
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
-			// Should return true because timestamp is valid and signature secret is not required
+			expect(result).toBe(false);
+		});
+
+		it('should read the signature secret from the given credential type', async () => {
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				signatureSecret: testSignatureSecret,
+			});
+			(timingSafeEqual as Mock).mockReturnValue(true);
+
+			const result = await verifySignature.call(mockWebhookFunctions, 'slackOAuth2Api');
+
 			expect(result).toBe(true);
-			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackOAuth2Api');
 		});
 	});
 });
