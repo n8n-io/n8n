@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
 test.describe(
-	'Langchain Integration @capability:proxy',
+	'Langchain Integration',
 	{
 		annotation: [{ type: 'owner', description: 'AI' }],
 	},

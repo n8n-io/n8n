@@ -33,6 +33,7 @@
     "test:evals:smoke": "playwright test --project=eval:smoke",
     "test:unit": "vitest run",
     "test:harness": "vitest run --config vitest.harness.config.ts",
+    "distribution:count": "pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk... 1>&2 && node scripts/count-test-distribution.mjs",
     "coverage:shard": "node scripts/run-coverage-shard.mjs",
     "coverage:emit-shard": "tsx scripts/emit-shard-coverage.ts",
     "coverage:emit-spec-lcovs": "tsx scripts/emit-spec-lcovs.ts",

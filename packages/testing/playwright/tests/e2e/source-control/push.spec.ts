@@ -16,7 +16,7 @@ async function expectNoChangesToCommit(n8n: n8nPage) {
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Push resources to Git @capability:source-control',
+	'Push resources to Git',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
