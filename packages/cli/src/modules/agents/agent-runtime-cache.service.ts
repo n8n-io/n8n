@@ -44,6 +44,11 @@ export interface GetRuntimeParams {
 	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	/** Disable background-job tools and wake hints for task-triggered runtimes. */
 	allowBackgroundTasks?: boolean;
+	/**
+	 * Build the runtime with no persistent memory. Keyed separately so a
+	 * stateless build never satisfies a stateful caller and vice versa.
+	 */
+	disableMemory?: boolean;
 }
 
 /**
@@ -124,6 +129,7 @@ export class AgentRuntimeCacheService {
 		const parts = [params.agentId, params.usePublishedVersion ? 'published' : 'draft'];
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
+		if (params.disableMemory) parts.push('no-memory');
 		// Per-user runtimes have node/workflow tools filtered by that user's
 		// access — keying by user id keeps them from colliding with each other
 		// or with the unscoped (no-user) runtime.
@@ -350,6 +356,7 @@ export class AgentRuntimeCacheService {
 			user,
 			sandboxPrincipalHash,
 			allowBackgroundTasks,
+			disableMemory,
 		} = params;
 
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -381,6 +388,7 @@ export class AgentRuntimeCacheService {
 			sandboxPrincipalHash,
 			undefined,
 			allowBackgroundTasks,
+			disableMemory,
 		);
 		const { agent: agentInstance, toolRegistry, userToolAccessSnapshot } = await reconstruction;
 

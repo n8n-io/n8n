@@ -81,11 +81,27 @@ export type AgentDiscordIntegrationSettings = z.infer<typeof AgentDiscordSetting
 export const AgentLinearSettingsSchema = AgentSessionOnlySettingsSchema;
 export type AgentLinearIntegrationSettings = z.infer<typeof AgentLinearSettingsSchema>;
 
+/**
+ * OpenWebUI/LibreChat have no platform-specific settings of their own,
+ * same as Discord/Linear. `sessionIdleTimeoutMinutes` is carried along for
+ * type compatibility with generic code that reads it optionally across the
+ * whole settings union (e.g. agent-chat-bridge.ts); it's meaningless here
+ * and never read, since this channel never goes through AgentChatBridge or
+ * resourceId-keyed session persistence at all (see
+ * agent-connection-channels.md 5.1, 5.6, each call gets a fresh, throwaway
+ * thread instead).
+ */
+export const AgentOpenAiCompatibleSettingsSchema = AgentSessionOnlySettingsSchema;
+export type AgentOpenAiCompatibleIntegrationSettings = z.infer<
+	typeof AgentOpenAiCompatibleSettingsSchema
+>;
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
 	AgentDiscordSettingsSchema,
 	AgentLinearSettingsSchema,
+	AgentOpenAiCompatibleSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -105,6 +121,12 @@ const credentialIntegrations = [
 	createCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
 	}),
+	createCredIntegrationSchema('openwebui', AgentOpenAiCompatibleSettingsSchema).extend({
+		settings: AgentOpenAiCompatibleSettingsSchema.optional(),
+	}),
+	createCredIntegrationSchema('librechat', AgentOpenAiCompatibleSettingsSchema).extend({
+		settings: AgentOpenAiCompatibleSettingsSchema.optional(),
+	}),
 ] as const;
 
 const draftCredentialIntegrations = [
@@ -119,6 +141,12 @@ const draftCredentialIntegrations = [
 	}),
 	createDraftCredIntegrationSchema('discord', AgentDiscordSettingsSchema).extend({
 		settings: AgentDiscordSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('openwebui', AgentOpenAiCompatibleSettingsSchema).extend({
+		settings: AgentOpenAiCompatibleSettingsSchema.optional(),
+	}),
+	createDraftCredIntegrationSchema('librechat', AgentOpenAiCompatibleSettingsSchema).extend({
+		settings: AgentOpenAiCompatibleSettingsSchema.optional(),
 	}),
 ] as const;
 

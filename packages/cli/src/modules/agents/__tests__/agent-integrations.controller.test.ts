@@ -415,6 +415,31 @@ describe('AgentIntegrationsController channel status', () => {
 		]);
 	});
 
+	it('reports a type with no runtime process as connected with no status rows at all', async () => {
+		const openwebui = {
+			type: 'openwebui',
+			credentialId: 'credential-openwebui',
+		} satisfies AgentIntegrationConfig;
+		const agent = { ...publishedAgent, integrations: [openwebui] } as unknown as Agent;
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({ hasNoRuntimeProcess: true } as never);
+		const { controller, agentRepository, channelStatusRepository } = makeController({
+			chatIntegrationRegistry,
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		channelStatusRepository.findByAgentId.mockResolvedValue([]);
+
+		const response = await controller.integrationStatus(
+			{ params: { projectId: agent.projectId } } as never,
+			undefined as never,
+			agent.id,
+		);
+
+		expect(response.integrations).toEqual([
+			{ type: 'openwebui', credentialId: 'credential-openwebui', status: 'connected' },
+		]);
+	});
+
 	it('reports the reason a channel could not start', async () => {
 		const failed = {
 			...liveRow(telegram),

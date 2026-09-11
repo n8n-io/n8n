@@ -13,7 +13,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import {
 	agentChannelPlatforms,
@@ -84,6 +84,15 @@ const pendingDisconnect = ref<{
 	credentialId: string;
 	closeAfter: boolean;
 } | null>(null);
+/**
+ * A channel (e.g. the OpenAI-compatible one) whose key was generated —
+ * which already persists the integration on the backend — but that the user
+ * has not confirmed yet. If the setup is abandoned (Cancel, X, click-outside,
+ * or back), this entry is rolled back so nothing is left behind.
+ */
+const pendingUnconfirmedConnection = ref<{ channelType: string; connectionId: string } | null>(
+	null,
+);
 
 function channelTypeFromView(view: ChannelView): string | null {
 	if (view === 'list') return null;
@@ -306,6 +315,7 @@ function goToEdit(channelType: string) {
 
 function goBackToList() {
 	if (actionInFlight.value) return;
+	void rollbackUnconfirmedConnection();
 	captureConnectedCredential(null);
 	currentView.value = 'list';
 }
@@ -325,11 +335,13 @@ function completeAndClose() {
 
 function closeModal() {
 	if (actionInFlight.value) return;
+	void rollbackUnconfirmedConnection();
 	completeAndClose();
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
 	if (!isOpen && actionInFlight.value) return;
+	if (!isOpen) void rollbackUnconfirmedConnection();
 	emit('update:open', isOpen);
 }
 
@@ -404,9 +416,50 @@ async function saveChannelConfig() {
 function handlePlatformConnected() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
+	// The user confirmed: the persisted connection is now intentional, so drop
+	// the rollback that a close would otherwise trigger.
+	pendingUnconfirmedConnection.value = null;
 	emit('channel-connected', channelType);
 	emit('agent-changed');
 	completeAndClose();
+}
+
+// Emitted only by the OpenAI-compatible setup, whose key generation persists
+// the integration before the user confirms. No other channel emits `generated`,
+// so this stays dormant for them.
+function trackUnconfirmedConnection(connectionId: string) {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return;
+	pendingUnconfirmedConnection.value = { channelType, connectionId };
+}
+
+async function rollbackUnconfirmedConnection() {
+	const pending = pendingUnconfirmedConnection.value;
+	// Null for every channel that never generated an unconfirmed key, so the
+	// close paths below are a no-op for Slack/Telegram/Linear/Discord.
+	if (!pending) return;
+	// Clear first so the several close paths that call this can't double-fire.
+	pendingUnconfirmedConnection.value = null;
+	try {
+		await handleDisconnected(pending.channelType, pending.connectionId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
+	}
+}
+
+function handleSetupCancel() {
+	void rollbackUnconfirmedConnection();
+	completeAndClose();
+}
+
+/**
+ * The OpenAI-compatible edit view rotates the key through its runtime, which
+ * refreshes the shared status first. Re-capture the connected credential so a
+ * later save/disconnect targets the live integration, not the rotated-away one.
+ */
+function handleChannelRegenerated() {
+	if (!selectedChannelType.value) return;
+	prepareChannelEdit(selectedChannelType.value);
 }
 
 async function handleDisconnected(
@@ -513,6 +566,7 @@ watch(
 	(isOpen) => {
 		if (isOpen) {
 			viewSession.value += 1;
+			pendingUnconfirmedConnection.value = null;
 			void loadChannelState();
 			currentView.value = props.view;
 		} else {
@@ -521,6 +575,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The host (builder tab/agent/page) can unmount this modal without going through
+// a close path — roll back any key that was generated but never confirmed so it
+// is not left configured on the backend.
+onBeforeUnmount(() => {
+	void rollbackUnconfirmedConnection();
+});
 </script>
 
 <template>
@@ -650,6 +711,9 @@ watch(
 						@edit="editCredential"
 						@connect="saveChannelConfig"
 						@connected="handlePlatformConnected"
+						@generated="trackUnconfirmedConnection"
+						@regenerated="handleChannelRegenerated"
+						@cancel="handleSetupCancel"
 					/>
 				</div>
 			</Transition>

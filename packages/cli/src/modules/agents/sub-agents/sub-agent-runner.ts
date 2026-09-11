@@ -92,6 +92,12 @@ export interface SubAgentRunContext {
 	onChunk?: (chunk: StreamChunk) => void;
 	/** Difficulty-selected model override for parent self-delegation only. */
 	selfDelegationDifficulty?: SubAgentTaskDifficulty;
+	/**
+	 * Inherited from a stateless top-level run (OpenAI-compatible channels): build
+	 * the child with no persistent memory so a child of a stateless turn does not
+	 * load or write orphan memory rows nobody will ever read.
+	 */
+	disableMemory?: boolean;
 }
 
 export interface SubAgentRunResult {
@@ -219,6 +225,7 @@ export class SubAgentRunner {
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
+			...(context.disableMemory !== undefined ? { disableMemory: context.disableMemory } : {}),
 			...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 			...(context.parentWorkspaceHandle !== undefined
 				? {

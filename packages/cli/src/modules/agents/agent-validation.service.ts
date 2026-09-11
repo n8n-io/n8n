@@ -511,6 +511,17 @@ export class AgentValidationService {
 				issues.push(issue('missing_credential', path, capability));
 				continue;
 			}
+
+			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
+
+			// Credential-less channels (the OpenAI-compatible channels) carry a
+			// synthetic connection id, not a credential reference: there is no
+			// Credentials row to resolve, so the existence and type checks below
+			// do not apply.
+			if (integrationImpl && integrationImpl.credentialTypes.length === 0) {
+				continue;
+			}
+
 			const credentialId = integration.credentialId.trim();
 
 			const credential = await this.findCredentialSafe(findCredential, credentialId);
@@ -519,7 +530,6 @@ export class AgentValidationService {
 				continue;
 			}
 
-			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
 			if (integrationImpl && !integrationImpl.credentialTypes.includes(credential.type)) {
 				issues.push(issue('incompatible_credential', path, capability));
 			}

@@ -25,6 +25,7 @@ class FakeIntegration extends AgentChatIntegration {
 	constructor(
 		readonly type: string,
 		private readonly leaderOnly: boolean,
+		override readonly hasNoRuntimeProcess: boolean = false,
 	) {
 		super();
 	}
@@ -46,6 +47,12 @@ class FakeIntegration extends AgentChatIntegration {
 
 const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
 const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
+// A stateless request/response channel (OpenAI-compatible): no runtime process,
+// so it never writes a liveness row and the pass must not try to start it.
+const openaiCompatible: AgentIntegrationConfig = {
+	type: 'openwebui',
+	credentialId: 'cred-openwebui',
+};
 
 function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
 	return { id, projectId: 'project-1', integrations } as unknown as Agent;
@@ -97,6 +104,8 @@ function build(
 	// Telegram stands in for a polling platform: exactly one main may own it.
 	registry.register(new FakeIntegration('telegram', true));
 	registry.register(new FakeIntegration('slack', false));
+	// A stateless platform: no runtime process to bring up.
+	registry.register(new FakeIntegration('openwebui', false, true));
 
 	const agentRepository = mock<AgentRepository>();
 	agentRepository.findPublished.mockResolvedValue([]);
@@ -176,6 +185,19 @@ describe('AgentChannelReconciler', () => {
 			await reconciler.reconcile('interval');
 
 			expect(chatIntegrationService.startChannel).toHaveBeenCalledWith(agent, slack);
+		});
+
+		it('never tries to start a stateless channel that has no runtime process', async () => {
+			// The OpenAI-compatible channels answer synchronous requests and hold no
+			// connection, so there is nothing to bring up. Trying would loop every
+			// pass — no live channel is ever created — and write a status row for a
+			// channel that resolves its status straight from config.
+			const { reconciler, agentRepository, chatIntegrationService } = build();
+			agentRepository.findPublished.mockResolvedValue([makeAgent([openaiCompatible])]);
+
+			await reconciler.reconcile('interval');
+
+			expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
 		});
 
 		it('never tries to start a draft entry, which has no credential', async () => {

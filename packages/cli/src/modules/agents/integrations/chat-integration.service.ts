@@ -315,6 +315,13 @@ export class ChatIntegrationService {
 			throw error;
 		}
 
+		// A stateless channel (e.g. the OpenAI-compatible channels) builds no
+		// runtime: `establishConnection` returns before creating a connection, so
+		// `disconnectOne` never withdraws a status for it and the reconciler skips
+		// it. Recording it connected would leave a status row nothing ever clears;
+		// its status is derived from config instead (see channel-status-report.ts).
+		if (this.integrationRegistry.get(integration.type)?.hasNoRuntimeProcess) return;
+
 		await this.statusReporter.recordConnected(ref);
 	}
 
@@ -336,6 +343,19 @@ export class ChatIntegrationService {
 		}
 
 		const integrationImpl = this.integrationRegistry.require(integration.type);
+
+		// A channel reached over a plain synchronous request/response (e.g.
+		// openwebui/librechat) has no bot, no webhook, no persistent connection
+		// for the Chat SDK to manage: `requiresChatInstance` is only otherwise
+		// checked at action/context-query execution time
+		// (integration-action-executor.ts, integration-context-query-executor.ts),
+		// never here, so without this guard every connect would call
+		// `createAdapter()` regardless and the base implementation throws by
+		// design (mirrors N8nChatIntegration, which never reaches this method
+		// at all: it is internal and never persisted). Persisting the
+		// integration record is all a connect needs to do for this shape of
+		// channel; there is no runtime state to build.
+		if (!integrationImpl.requiresChatInstance) return;
 
 		// Decrypt the integration credential to get platform tokens
 		const decryptedData = await this.decryptCredentialForProject(

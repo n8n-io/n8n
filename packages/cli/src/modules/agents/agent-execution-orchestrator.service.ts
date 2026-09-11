@@ -86,6 +86,20 @@ export interface ExecuteForChatPublishedConfig {
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
+	/**
+	 * Build the runtime with no persistent memory (no store load/save, no
+	 * observation log, no mid-run observer). For stateless channels whose client
+	 * resends the full transcript every call (the OpenAI-compatible channels), so
+	 * persisting to a per-call throwaway thread would only leak orphan rows.
+	 */
+	disableMemory?: boolean;
+	/**
+	 * Cancels the model/tool run when the caller aborts (e.g. the OpenAI-compatible
+	 * channel client disconnects mid-stream). Threaded down to
+	 * `agentInstance.stream({ abortSignal })` so the underlying run stops, not just
+	 * our consumption of it. Optional; when omitted the run behaves as before.
+	 */
+	abortSignal?: AbortSignal;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
 	// session — there is no n8n `User` to attach. The admin who published the
@@ -634,6 +648,8 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			attachments,
 			sandboxPrincipalHash,
+			disableMemory,
+			abortSignal,
 		} = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
@@ -646,6 +662,7 @@ export class AgentExecutionOrchestratorService {
 				integrationType,
 				usePublishedVersion: true,
 				sandboxPrincipalHash,
+				...(disableMemory ? { disableMemory: true } : {}),
 			},
 			{ threadId: memory.threadId, userMessage: message, attachments, source: integrationType },
 		);
@@ -665,6 +682,9 @@ export class AgentExecutionOrchestratorService {
 					configuration: runtime.telemetryConfiguration,
 				},
 				sandboxPrincipalHash,
+				// Forward the caller's cancel signal so a client disconnect aborts the
+				// live model/tool run, not just the stream consumption above it.
+				...(abortSignal ? { abortSignal } : {}),
 			});
 		} finally {
 			this.runtimeCacheService.releaseRuntimeLease(runtime.agent);

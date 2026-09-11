@@ -70,6 +70,7 @@ describe('AgentIntegrationManagementService', () => {
 			chatService,
 			implementation,
 			agentRepository,
+			registry,
 		};
 	}
 

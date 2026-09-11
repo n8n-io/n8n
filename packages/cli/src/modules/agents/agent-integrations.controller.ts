@@ -99,8 +99,12 @@ export class AgentIntegrationsController {
 		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
 		const now = new Date();
 
-		return buildChannelStatusReport(agent.integrations, agent.activeVersionId, statuses, (row) =>
-			this.statusReporter.isLive(row, now),
+		return buildChannelStatusReport(
+			agent.integrations,
+			agent.activeVersionId,
+			statuses,
+			(row) => this.statusReporter.isLive(row, now),
+			(type) => this.chatIntegrationRegistry.get(type)?.hasNoRuntimeProcess ?? false,
 		);
 	}
 
