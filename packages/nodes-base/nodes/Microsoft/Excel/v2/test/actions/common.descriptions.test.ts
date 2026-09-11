@@ -25,19 +25,19 @@ const issuesFor = (property: INodeProperties, value: string) =>
 describe('Microsoft Excel resource locators, By ID mode', () => {
 	describe('Workbook', () => {
 		it.each([
-			['a work account item ID', '016LYZ3HUDUGG5UN54ANFKEOW3472JHUX3'],
-			['a personal account item ID', 'F6B9FC11B50FF84A!s65efa4c5cf3f44f9a9c92f993b244006'],
-			['a legacy personal account item ID', 'F6B9FC11B50FF84A!123'],
-			['a percent-encoded separator', 'F6B9FC11B50FF84A%21s65efa4c5cf3f44f9a9c92f993b244006'],
+			['a work account item ID', '01ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'],
+			['a personal account item ID', 'A1B2C3D4E5F60718!s0123456789abcdef0123456789abcdef'],
+			['a legacy personal account item ID', 'A1B2C3D4E5F60718!123'],
+			['a percent-encoded separator', 'A1B2C3D4E5F60718%21s0123456789abcdef0123456789abcdef'],
 		])('accepts %s', (_label, value) => {
 			expect(issuesFor(workbookRLC, value)).toEqual({});
 		});
 
 		it.each([
-			['a path separator', 'F6B9FC11B50FF84A/children'],
+			['a path separator', 'A1B2C3D4E5F60718/children'],
 			['parent directory traversal', '../drives'],
-			['a trailing separator', 'F6B9FC11B50FF84A!'],
-			['a space', 'F6B9FC11 B50FF84A'],
+			['a trailing separator', 'A1B2C3D4E5F60718!'],
+			['a space', 'A1B2C3D4E5 F60718'],
 		])('rejects %s', (_label, value) => {
 			expect(issuesFor(workbookRLC, value)).toEqual({
 				workbook: ['Not a valid Workbook ID'],
