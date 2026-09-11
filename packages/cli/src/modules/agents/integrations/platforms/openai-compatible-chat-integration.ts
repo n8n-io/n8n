@@ -40,6 +40,9 @@ abstract class OpenAiCompatibleChatIntegrationBase extends AgentChatIntegration 
 
 	readonly hasNoRuntimeProcess = true;
 
+	// One live key per channel type: a second generate replaces the first.
+	readonly singleInstancePerType = true;
+
 	readonly contextToolDefinitions = [];
 
 	readonly actionToolDefinitions = [];

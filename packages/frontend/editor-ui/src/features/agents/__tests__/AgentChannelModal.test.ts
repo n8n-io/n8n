@@ -75,6 +75,7 @@ vi.mock('../channels/registry', async () => {
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 				<button data-testid="generate-key" @click="$emit('generated', 'conn-generated')" />
+				<button data-testid="regenerate-key" @click="$emit('regenerated', 'conn-rotated')" />
 				<button data-testid="cancel-setup" @click="$emit('cancel')" />
 			</div>
 		`,
@@ -667,6 +668,26 @@ describe('AgentChannelModal', () => {
 
 			expect(wrapper.emitted('channel-connected')).toEqual([['example']]);
 			expect(mocks.disconnect).not.toHaveBeenCalled();
+		});
+	});
+
+	it('disconnects the rotated credential after a regenerate, even if the status is stale', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-old';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		// The edit view rotates the key and emits the new id. A failed status
+		// refresh leaves connectedCredentials stale ('credential-old'), so the
+		// modal must adopt the emitted id rather than the stale shared status.
+		await wrapper.get('[data-testid="regenerate-key"]').trigger('click');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'conn-rotated', {
+			deleteExternalResource: undefined,
 		});
 	});
 

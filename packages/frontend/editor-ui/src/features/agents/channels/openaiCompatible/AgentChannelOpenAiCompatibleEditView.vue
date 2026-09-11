@@ -8,9 +8,10 @@ import { isOpenAiCompatibleChannelRuntime } from './useOpenAiCompatibleChannelRu
 
 const props = defineProps<AgentChannelViewProps>();
 const emit = defineEmits<{
-	// Emitted after a successful key rotation so the modal re-reads the refreshed
-	// integration status (the old connection id is dead after regenerate).
-	regenerated: [];
+	// Emitted after a key rotation with the new connection id (the source of
+	// truth from the backend). The modal adopts it directly so a later
+	// save/disconnect targets the live entry even if the status refresh failed.
+	regenerated: [connectionId: string];
 }>();
 
 const i18n = useI18n();
@@ -52,15 +53,24 @@ function copyLabel(field: 'baseUrl' | 'apiKey'): string {
 async function handleRegenerate() {
 	if (busy.value) return;
 	regenerateError.value = null;
+	let result: { connectionId: string; statusRefreshed: boolean };
 	try {
-		await runtime.value.regenerate();
+		result = await runtime.value.regenerate();
 	} catch {
 		// The runtime path has no shared error surface, so report inline and leave
 		// the button active for a retry.
 		regenerateError.value = i18n.baseText('agents.channels.openaiCompatible.regenerate.error');
 		return;
 	}
-	emit('regenerated');
+	// Adopt the new id in the modal first, independent of the status refresh.
+	emit('regenerated', result.connectionId);
+	if (!result.statusRefreshed) {
+		// The key rotated, but the shared status is stale. Surface it without
+		// implying the rotation failed or that a retry is needed.
+		regenerateError.value = i18n.baseText(
+			'agents.channels.openaiCompatible.regenerate.refreshError',
+		);
+	}
 }
 
 function selectInput(event: FocusEvent) {

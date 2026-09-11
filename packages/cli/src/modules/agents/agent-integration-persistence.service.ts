@@ -75,7 +75,7 @@ export function matchesIntegrationRef(
  */
 function projectIntegrations(
 	current: AgentIntegrationConfig[],
-	delta: { add?: AgentIntegrationConfig; remove?: IntegrationRef },
+	delta: { add?: AgentIntegrationConfig; remove?: IntegrationRef; singleInstancePerType?: boolean },
 ): AgentIntegrationConfig[] {
 	let next = delta.remove
 		? current.filter((entry) => !matchesIntegrationRef(entry, delta.remove!))
@@ -83,6 +83,14 @@ function projectIntegrations(
 
 	const { add } = delta;
 	if (!add) return next;
+
+	// A single-instance channel keeps one entry per type: drop every same-type
+	// entry from the freshly read column before appending, so two overlapping
+	// connects — each with a stale `replaces` ref that no longer matches — cannot
+	// both survive as separate, independently valid entries.
+	if (delta.singleInstancePerType) {
+		return [...next.filter((entry) => entry.type !== add.type), add];
+	}
 
 	// Drop a same-type draft entry (empty credentialId, written by the builder
 	// before setup completes) so connecting a real credential replaces it
@@ -176,7 +184,10 @@ export class AgentIntegrationPersistenceService {
 				return { agent, changed: false, published };
 			}
 
-			const integrations = projectIntegrations(current, { add, remove });
+			const singleInstancePerType = add
+				? (this.chatIntegrationRegistry.get(add.type)?.singleInstancePerType ?? false)
+				: false;
+			const integrations = projectIntegrations(current, { add, remove, singleInstancePerType });
 			// Always fresh: `versionId` is the compare-and-set token, so writing back
 			// the value we guarded on would let two concurrent writes both match.
 			// Consumers only compare it to `activeVersionId`, which a rotation keeps.

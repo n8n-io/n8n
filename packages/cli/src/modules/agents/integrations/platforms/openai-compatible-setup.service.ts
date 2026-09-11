@@ -44,22 +44,18 @@ export class OpenAiCompatibleSetupService {
 			settings: {},
 		} satisfies AgentIntegrationConfig;
 
-		// A channel keeps at most one live key per type. Replace any existing entry
-		// of this type in the same write so a second generate cannot append a
-		// second entry (both derived tokens would then keep validating). The old
-		// entry — and the token derived from it — stops validating only once the
-		// new entry is durable, so a failed write leaves the previous key working
-		// rather than leaving the agent with no channel.
-		const existing = (agent.integrations ?? []).find((entry) => entry.type === options.type);
-
+		// A channel keeps at most one live key per type. The integration is marked
+		// `singleInstancePerType`, so the write drops every existing same-type entry
+		// from the freshly read column before it appends this one — in a single
+		// compare-and-set write. Two overlapping generates therefore cannot leave
+		// two independently valid tokens, and a failed write leaves the previous key
+		// working (nothing changed) rather than leaving the agent with no channel.
+		// This holds without a `replaces` ref, which a concurrent write could stale.
 		await this.integrationManagementService.connect({
 			agent,
 			user: options.user,
 			integration,
 			onPersisted: options.onPersisted,
-			...(existing
-				? { replaces: { type: existing.type, credentialId: existing.credentialId } }
-				: {}),
 		});
 
 		return {
@@ -83,8 +79,8 @@ export class OpenAiCompatibleSetupService {
 			);
 		}
 
-		// `generateKey` swaps the existing entry of this type for a fresh one in a
-		// single write, so the old key keeps validating until the new one lands.
+		// `generateKey` drops the existing same-type entry and appends a fresh one in
+		// a single write, so the old key keeps validating until the new one lands.
 		return await this.generateKey(options);
 	}
 

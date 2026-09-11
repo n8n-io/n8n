@@ -95,7 +95,7 @@ describe('useOpenAiCompatibleChannelRuntime', () => {
 		const context = createContext();
 		const runtime = useOpenAiCompatibleChannelRuntime(context, 'librechat');
 
-		await runtime.regenerate();
+		const result = await runtime.regenerate();
 
 		expect(mocks.regenerateOpenAiCompatibleKey).toHaveBeenCalledWith(
 			mocks.restApiContext,
@@ -107,6 +107,26 @@ describe('useOpenAiCompatibleChannelRuntime', () => {
 		expect(runtime.connectionId.value).toBe('conn-2');
 		// Without this refresh the modal keeps the dead pre-rotation connection id.
 		expect(context.fetchStatus).toHaveBeenCalledWith(['librechat']);
+		expect(result).toEqual({ connectionId: 'conn-2', statusRefreshed: true });
+		expect(runtime.loading.value).toBe(false);
+	});
+
+	it('returns the new id even when the status refresh fails', async () => {
+		mocks.regenerateOpenAiCompatibleKey.mockResolvedValue({
+			apiKey: 'sk-rotated',
+			connectionId: 'conn-2',
+		});
+		const context = createContext({
+			fetchStatus: vi.fn().mockRejectedValue(new Error('status refresh failed')),
+		});
+		const runtime = useOpenAiCompatibleChannelRuntime(context, 'librechat');
+
+		const result = await runtime.regenerate();
+
+		// The key rotated, so the new id is the source of truth the caller must
+		// adopt; the failed refresh is reported separately, not by losing the id.
+		expect(runtime.connectionId.value).toBe('conn-2');
+		expect(result).toEqual({ connectionId: 'conn-2', statusRefreshed: false });
 		expect(runtime.loading.value).toBe(false);
 	});
 

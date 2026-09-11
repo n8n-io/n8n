@@ -8198,6 +8198,7 @@
 	"agents.channels.openaiCompatible.regenerate.button": "Regenerate secret",
 	"agents.channels.openaiCompatible.generate.error": "Could not generate a key. Please try again.",
 	"agents.channels.openaiCompatible.regenerate.error": "Could not regenerate the key. Please try again.",
+	"agents.channels.openaiCompatible.regenerate.refreshError": "The new secret is active, but the status did not refresh. Reload the page to see the current state.",
 	"agents.channels.openaiCompatible.baseUrl.label": "Base URL",
 	"agents.channels.openaiCompatible.apiKey.label": "API key",
 	"agents.channels.openaiCompatible.librechatYaml.label": "librechat.yaml",

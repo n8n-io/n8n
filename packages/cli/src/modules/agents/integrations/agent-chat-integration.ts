@@ -267,6 +267,15 @@ export abstract class AgentChatIntegration {
 	readonly hasNoRuntimeProcess: boolean = false;
 
 	/**
+	 * True when an agent may hold at most one entry of this type. The write path
+	 * drops every existing same-type entry from the freshly read column before it
+	 * appends the new one, so two overlapping connects cannot leave two valid
+	 * entries even when each captured a stale `replaces` ref. Multi-credential
+	 * platforms (e.g. several Slack workspaces on one agent) leave this false.
+	 */
+	readonly singleInstancePerType: boolean = false;
+
+	/**
 	 * True when this integration needs a platform Chat SDK instance (adapter +
 	 * credential) to execute actions and context queries. Internal channels
 	 * (e.g. the in-app n8n chat) set this to false — the executors then skip

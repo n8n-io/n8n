@@ -14,7 +14,13 @@ export interface OpenAiCompatibleChannelRuntime extends AgentChannelRuntime {
 	connectionId: Ref<string | null>;
 	baseUrl: Ref<string>;
 	connect: () => Promise<void>;
-	regenerate: () => Promise<void>;
+	/**
+	 * Rotate the key. Returns the new integration `connectionId` (the source of
+	 * truth) and whether the follow-up shared-status refresh succeeded. The id is
+	 * returned even when the refresh fails, so the caller never adopts the dead
+	 * pre-rotation id.
+	 */
+	regenerate: () => Promise<{ connectionId: string; statusRefreshed: boolean }>;
 }
 
 export function isOpenAiCompatibleChannelRuntime(
@@ -72,7 +78,7 @@ export function useOpenAiCompatibleChannelRuntime(
 		}
 	}
 
-	async function regenerate(): Promise<void> {
+	async function regenerate(): Promise<{ connectionId: string; statusRefreshed: boolean }> {
 		loading.value = true;
 		try {
 			const result = await regenerateOpenAiCompatibleKey(
@@ -83,10 +89,17 @@ export function useOpenAiCompatibleChannelRuntime(
 			);
 			apiKey.value = result.apiKey;
 			connectionId.value = result.connectionId;
-			// Regenerate replaces the integration entry on the backend, so the old
-			// connection id is now dead. Refresh the shared status (as `connect`
-			// does) so the modal targets the live entry for save/disconnect.
-			await context.fetchStatus([type]);
+			// The key already rotated. Refresh the shared status (as `connect` does)
+			// so the modal's status view is live, but treat that refresh as a
+			// separate concern: a failure here must not stop the caller adopting the
+			// new id, or the modal keeps targeting the dead pre-rotation entry.
+			let statusRefreshed = true;
+			try {
+				await context.fetchStatus([type]);
+			} catch {
+				statusRefreshed = false;
+			}
+			return { connectionId: result.connectionId, statusRefreshed };
 		} finally {
 			loading.value = false;
 		}

@@ -225,6 +225,31 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(row.integrations).toEqual([{ type: 'slack', credentialId: 'c1' }]);
 		});
 
+		it('drops every same-type entry before appending for a single-instance channel', async () => {
+			// The stale-race case: a same-type entry the caller never referenced (a
+			// concurrent generate already swapped the id) is still on the fresh row,
+			// and this add carries no `remove` ref. A single-instance channel must end
+			// with exactly one entry of the type, so the old one cannot keep validating.
+			const { service, agent, row, chatIntegrationRegistry } = setup({
+				integrations: [
+					{ type: 'openwebui', credentialId: 'connection-old' },
+					{ type: 'linear', credentialId: 'linear-1' },
+				],
+			});
+			chatIntegrationRegistry.get.mockReturnValue({ singleInstancePerType: true } as never);
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'openwebui', credentialId: 'connection-new', settings: {} } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([
+				{ type: 'linear', credentialId: 'linear-1' },
+				{ type: 'openwebui', credentialId: 'connection-new', settings: {} },
+			]);
+		});
+
 		it('updates in place when the same type and credential is already persisted', async () => {
 			const { service, agent, row } = setup({
 				integrations: [

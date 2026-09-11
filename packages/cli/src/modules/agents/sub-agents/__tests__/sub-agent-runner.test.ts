@@ -324,6 +324,31 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('forwards disableMemory into child reconstruction for a stateless parent turn', async () => {
+		await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			disableMemory: true,
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({ disableMemory: true }),
+		);
+	});
+
+	it('does not carry disableMemory into child reconstruction on the default path', async () => {
+		await runner.run(spawnRequest, {
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.not.objectContaining({ disableMemory: true }),
+		);
+	});
+
 	it('inherits the parent resource id as the child memory scope when provided', async () => {
 		const result = await runner.run(
 			{ ...spawnRequest, parentResourceId: 'draft-chat:user-1' },

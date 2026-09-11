@@ -32,6 +32,7 @@ function createRuntime(
 		regenerate: vi.fn(async () => {
 			apiKey.value = 'sk-rotated';
 			connectionId.value = 'conn-2';
+			return { connectionId: 'conn-2', statusRefreshed: true };
 		}),
 		...overrides,
 	} as OpenAiCompatibleChannelRuntime;
@@ -93,6 +94,23 @@ describe('AgentChannelOpenAiCompatibleEditView', () => {
 
 		expect(runtime.regenerate).toHaveBeenCalledTimes(1);
 		await waitFor(() => expect(emitted().regenerated).toBeTruthy());
+		// The modal must adopt the new id, so it travels in the emit payload.
+		expect(emitted().regenerated?.[0]).toEqual(['conn-2']);
+	});
+
+	it('adopts the new id and surfaces the failure when the status refresh fails', async () => {
+		const runtime = createRuntime({
+			regenerate: vi.fn(async () => ({ connectionId: 'conn-rotated', statusRefreshed: false })),
+		});
+		const { getByTestId, getByText, emitted } = renderComponent({ props: baseProps(runtime) });
+
+		await fireEvent.click(getByTestId('openai-compatible-regenerate-button'));
+
+		// The key rotated: the new id still reaches the modal even though the
+		// follow-up status refresh failed.
+		await waitFor(() => expect(emitted().regenerated?.[0]).toEqual(['conn-rotated']));
+		// The refresh failure is surfaced, not swallowed.
+		expect(getByText('agents.channels.openaiCompatible.regenerate.refreshError')).toBeVisible();
 	});
 
 	it('surfaces a failed regeneration and stays retryable', async () => {

@@ -67,7 +67,7 @@ describe('OpenAiCompatibleSetupService', () => {
 			expect(result.apiKey).toBe('n8n_agent_derived_token');
 		});
 
-		it('replaces an existing connection of the same type instead of appending', async () => {
+		it('connects without a stale replaces ref when a same-type entry exists', async () => {
 			const { service, integrationManagementService, agentRepository } = makeService();
 			const agent = makeAgent({
 				integrations: [{ type: 'openwebui', credentialId: 'connection-old' }] as never,
@@ -81,14 +81,17 @@ describe('OpenAiCompatibleSetupService', () => {
 				user: user as never,
 			});
 
-			// A second generate must not leave the previous entry (and its derived
-			// token) valid, so it swaps in the same write rather than appending.
+			// No `replaces` ref: a concurrent write could stale it. The channel is
+			// `singleInstancePerType`, so the persistence write drops every same-type
+			// entry from the fresh column before appending — one valid token per type.
 			expect(integrationManagementService.connect).toHaveBeenCalledWith({
 				agent,
 				user,
 				integration: { type: 'openwebui', credentialId: result.connectionId, settings: {} },
-				replaces: { type: 'openwebui', credentialId: 'connection-old' },
 			});
+			expect(integrationManagementService.connect).not.toHaveBeenCalledWith(
+				expect.objectContaining({ replaces: expect.anything() }),
+			);
 		});
 
 		it('throws when the agent does not exist', async () => {
@@ -121,13 +124,12 @@ describe('OpenAiCompatibleSetupService', () => {
 				user: user as never,
 			});
 
-			// The old entry is removed and the new one added in one write, so the old
+			// The old entry is dropped and the new one added in one write, so the old
 			// key keeps validating until the new one is durable.
 			expect(integrationManagementService.connect).toHaveBeenCalledWith({
 				agent,
 				user,
 				integration: { type: 'openwebui', credentialId: result.connectionId, settings: {} },
-				replaces: { type: 'openwebui', credentialId: 'connection-old' },
 			});
 			expect(integrationManagementService.disconnect).not.toHaveBeenCalled();
 			expect(result.connectionId).toMatch(/^[0-9a-f]{32}$/);

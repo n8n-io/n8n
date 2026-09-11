@@ -453,13 +453,17 @@ function handleSetupCancel() {
 }
 
 /**
- * The OpenAI-compatible edit view rotates the key through its runtime, which
- * refreshes the shared status first. Re-capture the connected credential so a
- * later save/disconnect targets the live integration, not the rotated-away one.
+ * The OpenAI-compatible edit view rotates the key through its runtime and emits
+ * the new connection id. Adopt it directly as the tracked credential — it is the
+ * source of truth, so a later save/disconnect targets the live entry even if the
+ * runtime's status refresh failed and `connectedCredentials` is now stale.
  */
-function handleChannelRegenerated() {
-	if (!selectedChannelType.value) return;
-	prepareChannelEdit(selectedChannelType.value);
+function handleChannelRegenerated(connectionId: string) {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return;
+	clearIntegrationError(channelType);
+	credentialIdAtEditOpen.value = connectionId;
+	selectedCredentials.value[channelType] = connectionId;
 }
 
 async function handleDisconnected(
