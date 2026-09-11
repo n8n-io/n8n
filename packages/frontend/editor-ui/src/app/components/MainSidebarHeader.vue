@@ -202,6 +202,8 @@ const {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus' as focus;
+
 .header {
 	display: flex;
 	align-items: center;
@@ -225,6 +227,10 @@ const {
 .logo {
 	margin-right: auto;
 	padding-inline-start: var(--spacing--3xs);
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .readOnlyEnvironmentIcon {

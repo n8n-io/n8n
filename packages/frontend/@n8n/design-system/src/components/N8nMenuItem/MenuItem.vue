@@ -185,6 +185,7 @@ const tooltipPlacement = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/_focus.scss';
 @use '../../css/mixins/mixins' as scroll-mask;
 @use '../../css/mixins/motion' as motion;
 
@@ -232,7 +233,7 @@ const tooltipPlacement = computed(() => {
 }
 
 .menuItem:focus-visible {
-	outline: 1px solid var(--color--secondary);
+	@include focus.focus-ring;
 	outline-offset: -1px;
 }
 
