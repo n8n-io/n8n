@@ -40,8 +40,40 @@ const alias = editorUiAliases(__dirname, packagesDir);
 
 const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
 
+/**
+ * Shim `node:fs` for browser builds.
+ *
+ * `QuickJsBridge` imports `readFileSync` statically for its Node-only bundle
+ * read. The dev server externalizes `node:fs` behind a proxy that throws on any
+ * property access, which breaks the editor boot as soon as the module is
+ * evaluated — the production build tolerates the same import.
+ *
+ * The alias has to beat the generic `node:fs` alias that nodePolyfills installs
+ * in its own config() hook. mergeAlias prepends incoming aliases, so the last
+ * plugin to run config() ends up first in the array; `enforce: 'post'` puts this
+ * one last. A regex find keeps it to `node:fs` exactly: a string find is a
+ * prefix match and would also rewrite `node:fs/promises`.
+ */
+const nodeFsShimPlugin = (): UserConfig['plugins'][number] => ({
+	name: 'node-fs-shim',
+	enforce: 'post',
+	config() {
+		return {
+			resolve: {
+				alias: [
+					{
+						find: /^node:fs$/,
+						replacement: resolve(__dirname, 'vite/node-fs-shim.ts'),
+					},
+				],
+			},
+		};
+	},
+});
+
 const plugins: UserConfig['plugins'] = [
 	devServerPlugin(process.env),
+	nodeFsShimPlugin(),
 	nodePopularityPlugin(),
 	lucideIconsPlugin(),
 	icons({
