@@ -1,6 +1,6 @@
 # Custom Test Orchestration
 
-Capability-aware test distribution across CI shards.
+Fixture-pool-aware test distribution across CI shards.
 
 ## How It Works
 
@@ -9,17 +9,17 @@ Capability-aware test distribution across CI shards.
 | 1. Discovery | `pnpm janitor discover` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
 | 2. Metrics | Get `avgDuration` per spec from Currents (last 7 days) |
 | 3. Default | Missing specs get **60s** default (accounts for container startup) |
-| 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
-| 5. Effective Duration | Calculate actual time accounting for container reuse within groups |
-| 6. Split | If a group exceeds **5 min**, split into sub-groups |
-| 7. Limit | Aim for **5 min** of tests on each shard, one shard per capability |
-| 8. Bin Pack | Greedy assign groups + standard specs to lightest shard |
+| 4. Group | Group specs by their resolved Playwright worker fixture pools |
+| 5. Count | Count the fixture pools that start on each shard |
+| 6. Split | Split a fixture-pool group when it exceeds **5 min** |
+| 7. Limit | Aim for **5 min** of tests on each shard |
+| 8. Bin Pack | Assign the heaviest items to the lightest shard |
 
-### Why Group by Capability?
+### Why Group by Fixture Pool?
 
-Tests requiring containers (proxy, email, etc.) include ~20s startup overhead. When grouped on the same shard, only the first test pays this cost - the rest reuse the worker.
-
-**Example:** 15 proxy tests across 8 shards = 8 container starts (160s). Grouped on 2 shards = 2 starts (40s). **Saves 120s.**
+Playwright starts a worker for each worker fixture pool on a shard. Specs with
+the same worker configuration can reuse that worker. Capability tags do not
+define these groups. They select filters, reports, and Docker image pre-pulls.
 
 ### Why the Shard Count Has a Limit
 
@@ -39,16 +39,13 @@ the shards that remain. A 12-minute selection gets 3 shards of 4 minutes, not 2
 shards of 6 minutes. `floor` would enforce a true minimum, but it would also add
 about 2 minutes of wall-clock time to keep one more runner idle.
 
-The shard count never drops below the number of capability groups. One runner
-that starts every image set pays back in container startup what it saved in
-setup. Capability groups therefore stay on separate shards.
+The shard count never drops below the number of fixture-pool packing items.
+This prevents one runner from starting multiple fixture groups.
 
 The packer applies the limits before it fills the buckets. Bin-packing still
 balances the shards. This is not a merge step after the packer runs.
 
-Full-suite selections do not collapse: about 196 minutes of test time still fills
-all 20 shards. Over 7 days of PR CI, the limit removed about 9% of the E2E shard
-jobs, and the average wall-clock time did not increase.
+The full suite has about 196 minutes of test time. It uses all 20 available shards.
 
 Configure both values under `orchestration` in `janitor.config.mjs`.
 
@@ -58,13 +55,11 @@ Metrics auto-correct over time. As grouped tests run, they report actual executi
 
 ## Writing Tests with Capabilities
 
-### 1. Use capability option (enables worker reuse)
+### 1. Use the capability option
 
 ```typescript
-// String capability - maps to predefined config
 test.use({ capability: 'proxy' });
 
-// Custom config - full control over container settings
 test.use({
   capability: {
     proxyServerEnabled: true,
@@ -73,16 +68,15 @@ test.use({
 });
 ```
 
-### 2. Add @capability tag (required for orchestration grouping)
+### 2. Add an `@capability` tag
+
+The tag enables filtering, reporting, and Docker image pre-pulls.
 
 ```typescript
 test('My feature @capability:proxy', async ({ page }) => {
-  // This test will be grouped with other proxy tests
 });
 
-// Or at describe level:
 test.describe('Feature @capability:email', () => {
-  // All tests inherit the tag
 });
 ```
 
@@ -225,4 +219,4 @@ node scripts/distribute-tests.mjs 14 0
 |---------|----------|
 | Specs not running | Check path matches janitor test patterns in `janitor.config.mjs` |
 | Unbalanced shards | Refresh metrics - durations may have drifted |
-| Worker not reused | Use string capabilities like `'proxy'`, not inline objects |
+| Worker not reused | Reuse the same capability constant for equivalent worker configurations |

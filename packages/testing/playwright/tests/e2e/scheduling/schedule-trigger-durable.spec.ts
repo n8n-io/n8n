@@ -29,25 +29,17 @@ test.describe(
 			await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 		});
 
-		test('should not fire once per sweep when the tick is slower than the sweep', async ({
-			api,
-		}) => {
-			// Sweep and executor run every 1s but the schedule ticks every 2s. The
-			// dedupe guards (row claim + guarded fire-time write) must collapse the
-			// intervening sweeps so a single tick yields a single execution, not one
-			// per second.
+		test('should execute each scheduled tick once', async ({ api }) => {
+			// The claim and fire-time guards must prevent duplicate executions.
 			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
-			// Count the delta over a fixed window rather than the absolute total:
-			// expectScheduleTriggerFires already polled for up to 60s, so ticks
-			// accrued during detection must not count against the window's budget.
+			// The delta excludes executions created during initial detection.
 			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
 			await sleep(10_000);
 			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;
 			const fired = countAfter - countBefore;
 
-			// ~5 expected over 10s at a 2s tick. A per-sweep double-fire (once every
-			// 1s) would land near ~10. Tolerant band absorbs scheduling jitter.
+			// This range allows for scheduling jitter around five expected executions.
 			expect(fired).toBeGreaterThanOrEqual(2);
 			expect(fired).toBeLessThanOrEqual(8);
 		});

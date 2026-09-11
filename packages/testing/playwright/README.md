@@ -49,7 +49,7 @@ It compares those stack starts with the fixture count from the distributor.
 Inspect the impact selection for a pull request:
 
 ```bash
-pnpm --silent distribution:count -- --pr=37851
+pnpm --silent distribution:count -- --pr=<pull-request-number>
 ```
 
 Pass an explicit changed-file list when no pull request exists:

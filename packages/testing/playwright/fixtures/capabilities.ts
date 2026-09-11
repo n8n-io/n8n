@@ -34,6 +34,7 @@ export const CAPABILITIES = {
 	},
 } as const satisfies Record<string, Partial<N8NConfig>>;
 
+// Community package requests add unrelated traffic to proxy recordings.
 export const PROXY_WITHOUT_COMMUNITY_PACKAGES = {
 	services: ['proxy'],
 	env: { N8N_COMMUNITY_PACKAGES_ENABLED: 'false' },

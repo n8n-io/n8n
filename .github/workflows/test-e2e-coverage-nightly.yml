@@ -50,7 +50,7 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
 
-      - name: Generate matrix (20 shards, duration-weighted)
+      - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen
         run: |
           MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --project=coverage)
@@ -66,7 +66,6 @@ jobs:
       # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
       test-command: pnpm --filter=n8n-playwright coverage:shard
       workers: '1'
-      runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 55
       pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: coverage
@@ -323,9 +322,8 @@ jobs:
         run: |
           MAP=/tmp/coverage-report/impact-map.json
           # Completeness guard. This, not the job's e2e result, is what keeps a
-          # degraded map out: a lost shard shows up as a drop in spec count against
-          # the map we already trust. 4% absorbs legitimately deleted specs while
-          # still catching a missing shard (20 shards, so ~5% of specs each).
+          # degraded map out. A 4% margin allows valid spec deletions. It also
+          # detects a missing shard if that shard contains more than 4% of the specs.
           node -e '
             const fs = require("fs");
             const m = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));

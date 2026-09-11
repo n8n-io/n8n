@@ -5,8 +5,8 @@ import { makeScheduleTriggerWorkflow } from './schedule-trigger-workflow';
 import { durableScheduleTestConfig } from './scheduler-test-config';
 import { test, expect } from '../../../fixtures/base';
 
-// Durable scheduler under a multi-main cluster. The scheduler has no leader: the
-// sweep, executor and reaper loops run on every main, and correctness comes from
+// Durable scheduler under a multi-main cluster. The scheduler has no leader. The
+// materializer, executor, and reaper loops run on every main. Correctness comes from
 // the DB claim (`FOR UPDATE SKIP LOCKED` plus a `claimedBy`/`leaseEpoch` fence)
 // rather than electing one main to fire. These tests prove the two properties the
 // legacy in-memory timer cannot offer across a cluster: a tick fires exactly once
@@ -35,12 +35,8 @@ test.describe(
 
 			const workflowId = await expectScheduleTriggerFires(api, makeScheduleTriggerWorkflow());
 
-			// Count the delta over a fixed window of roughly five 2s ticks. Both mains
-			// run the sweep + executor every 1s, so a broken claim would let each main
-			// fire the same tick, doubling the count towards ~10. A correct atomic
-			// claim keeps it to one execution per tick (~5). Measuring the delta (not
-			// the absolute total) keeps ticks accrued during the up-to-60s detection
-			// in expectScheduleTriggerFires out of the window's budget.
+			// A broken claim could let both mains execute each tick.
+			// The delta excludes executions created during initial detection.
 			const countBefore = (await api.workflows.getExecutions(workflowId, 100)).length;
 			await sleep(10_000);
 			const countAfter = (await api.workflows.getExecutions(workflowId, 100)).length;

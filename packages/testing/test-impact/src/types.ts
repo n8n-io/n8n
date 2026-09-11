@@ -10,8 +10,6 @@ export interface DiscoveredSpec {
 	path: string;
 	/** Capabilities extracted from tags matching the capability prefix. */
 	capabilities: string[];
-	/** Generated worker-fixture identity used to keep compatible specs together. */
-	distributionGroup?: string;
-	/** Resolved fixture pools that the spec starts. */
+	/** The fixture pools that this spec starts. */
 	fixturePools?: string[];
 }

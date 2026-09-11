@@ -329,8 +329,12 @@ let groupsFile;
 if (orchestrateMode || !matrixMode) {
 	const generated = generateDistributionGroups(project, grepInvert);
 	groupsFile = generated.groupsPath;
+	const runnableSpecs = new Set(generated.specs);
 	const selectedSpecs = includeSpecsFile
-		? readFileSync(includeSpecsFile, 'utf8').split('\n').filter(Boolean)
+		? readFileSync(includeSpecsFile, 'utf8')
+				.split('\n')
+				.filter(Boolean)
+				.filter((spec) => runnableSpecs.has(spec))
 		: generated.specs;
 	includeSpecsFile = writeRunnableSpecs(generated.temp, selectedSpecs);
 	cleanupPaths.push(generated.temp);
@@ -357,16 +361,7 @@ if (matrixMode) {
 	} else {
 		const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 
-		// Apply the quarantine again before the empty check and drop any shard it
-		// empties out. A shard whose only specs are quarantined must become the
-		// `skip` sentinel — not an empty spec list, which the e2e job would
-		// silently expand to `--shard=1/1` and run the entire suite (DEVP-671).
-		const shardsWithSpecs = result.shards
-			.map((shard) => ({
-				...shard,
-				specs: shard.specs.filter((s) => !QUARANTINE.has(s)),
-			}))
-			.filter((shard) => shard.specs.length > 0);
+		const shardsWithSpecs = result.shards;
 
 		if (shardsWithSpecs.length === 0) {
 			console.error(
@@ -419,7 +414,7 @@ if (matrixMode) {
 	const result = getOrchestration(shards, { includeSpecsFile, groupsFile });
 	const shard = result.shards[index];
 	if (shard) {
-		console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));
+		console.log(shard.specs.join('\n'));
 	}
 }
 

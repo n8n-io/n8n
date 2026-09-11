@@ -29,21 +29,19 @@ export default class DistributionCounterReporter implements Reporter {
 		if (!output) throw new Error('DISTRIBUTION_COUNTER_OUTPUT is required');
 
 		const tests = suite.allTests().filter((test) => test.expectedStatus !== 'skipped');
-		const profiles = new Map<
-			string,
-			{ poolDigest: string; specs: Set<string>; tags: Set<string>; tests: number }
-		>();
+		const runnableSpecs = new Set<string>();
+		const profiles = new Map<string, { poolDigest: string; specs: Set<string>; tests: number }>();
 
 		for (const test of tests) {
+			const spec = relativeSpec(test.location.file);
+			runnableSpecs.add(spec);
 			const hash = workerHash(test);
 			const profile = profiles.get(hash) ?? {
 				poolDigest: poolDigest(test),
 				specs: new Set<string>(),
-				tags: new Set<string>(),
 				tests: 0,
 			};
-			profile.specs.add(relativeSpec(test.location.file));
-			for (const tag of test.tags) profile.tags.add(tag);
+			profile.specs.add(spec);
 			profile.tests++;
 			profiles.set(hash, profile);
 		}
@@ -52,14 +50,13 @@ export default class DistributionCounterReporter implements Reporter {
 			output,
 			JSON.stringify({
 				runnableTests: tests.length,
-				runnableSpecs: new Set(tests.map((test) => relativeSpec(test.location.file))).size,
+				runnableSpecs: runnableSpecs.size,
 				profiles: [...profiles.entries()]
 					.map(([hash, profile]) => ({
 						workerHash: hash,
 						poolDigest: profile.poolDigest,
 						tests: profile.tests,
 						specs: [...profile.specs].sort(),
-						tags: [...profile.tags].sort(),
 					}))
 					.sort((a, b) => a.workerHash.localeCompare(b.workerHash)),
 			}),

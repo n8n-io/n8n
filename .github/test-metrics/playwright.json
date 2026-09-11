@@ -1029,7 +1029,7 @@
       "flakyRate": 0
     },
     "tests/e2e/dynamic-credentials/resolver-deletion.spec.ts": {
-      "avgDuration": 60000,
+      "avgDuration": 1181,
       "testCount": 3,
       "flakyRate": 0
     },

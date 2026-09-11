@@ -49,9 +49,7 @@ test.describe(
 			services,
 		}) => {
 			// The seed poll above runs inline on activation, bypassing the scheduler.
-			// `fireScheduledJobsNow` forces the job's `nextRunAt` to now so the 1s
-			// sweep configured above claims it, instead of waiting out the real
-			// cron interval.
+			// The one-second executor interval avoids waiting for the real cron interval.
 			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,

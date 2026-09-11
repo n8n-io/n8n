@@ -1,7 +1,7 @@
 /**
  * Algorithm:
  * 1. Enrich specs with duration from metrics
- * 2. Group specs that share a generated worker-fixture identity
+ * 2. Group specs that share the same fixture pools
  * 3. Split large groups exceeding maxGroupDuration
  * 4. Limit the bucket count to keep each shard near targetShardDuration
  * 5. Greedy bin-packing: assign heaviest items to lightest shard
@@ -30,13 +30,7 @@ interface DistributeConfig {
 	minShardSpecs?: number;
 }
 
-interface SpecWithDuration {
-	path: string;
-	capabilities: string[];
-	distributionGroup?: string;
-	fixturePools?: string[];
-	duration: number;
-}
+type SpecWithDuration = DiscoveredSpec & { duration: number };
 
 interface PackingItem {
 	fixtures: string[];
@@ -72,7 +66,9 @@ function groupSpecs(specs: SpecWithDuration[]): {
 	const standard: SpecWithDuration[] = [];
 
 	for (const spec of specs) {
-		const group = spec.distributionGroup;
+		const group = spec.fixturePools?.length
+			? JSON.stringify([...spec.fixturePools].sort())
+			: undefined;
 		if (group) {
 			if (!groups.has(group)) {
 				groups.set(group, []);
@@ -95,7 +91,6 @@ function splitLargeGroups(
 	for (const specs of groups.values()) {
 		specs.sort((a, b) => b.duration - a.duration);
 		const totalDuration = specs.reduce((sum, s) => sum + s.duration, 0);
-		const capabilities = [...new Set(specs.flatMap((spec) => spec.capabilities))].sort();
 		const fixtures = [...new Set(specs.flatMap((spec) => spec.fixturePools ?? []))].sort();
 
 		if (totalDuration > maxGroupDuration && specs.length > 1) {
@@ -118,7 +113,7 @@ function splitLargeGroups(
 			for (const subGroup of subGroups) {
 				items.push({
 					fixtures,
-					capabilities,
+					capabilities: [...new Set(subGroup.flatMap((spec) => spec.capabilities))].sort(),
 					specs: subGroup.map((s) => s.path),
 					duration: subGroup.reduce((sum, s) => sum + s.duration, 0),
 				});
@@ -126,7 +121,7 @@ function splitLargeGroups(
 		} else {
 			items.push({
 				fixtures,
-				capabilities,
+				capabilities: [...new Set(specs.flatMap((spec) => spec.capabilities))].sort(),
 				specs: specs.map((s) => s.path),
 				duration: totalDuration,
 			});
@@ -137,15 +132,10 @@ function splitLargeGroups(
 }
 
 /**
- * Each shard pays the same fixed setup cost, so a small selection on many shards
- * spends more time in setup than in tests. The limit applies before bin-packing,
- * so the packer still balances the shards it gets.
- *
- * The count never drops below the number of fixture-group packing items. A group
- * split by maxGroupDuration needs one shard per piece, so counting distinct
- * fixture groups instead would leave the packer too few shards and merge the
- * remaining fixture groups onto one runner. One runner that starts every
- * image set pays back in container startup what it saved in setup.
+ * Small selections spend more time in shard setup than in tests.
+ * Limit the shard count before bin-packing.
+ * Keep one shard for each grouped item.
+ * This prevents one runner from starting multiple fixture groups.
  */
 function boundShardCount(
 	numShards: number,

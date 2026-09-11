@@ -65,14 +65,34 @@ function parseMatrix(output) {
 		) {
 			throw new Error('The distributor returned an invalid matrix entry');
 		}
+		const specs = words(entry.specs);
+		if (specs.length === 0) {
+			return {
+				shard: entry.shard,
+				specs,
+				images: words(entry.images),
+				capabilities: [],
+				fixturePools: [],
+				fixtureCount: 0,
+				testTime: 0,
+			};
+		}
+		if (
+			!Array.isArray(entry.capabilities) ||
+			!Array.isArray(entry.fixturePools) ||
+			typeof entry.fixtureCount !== 'number' ||
+			typeof entry.testTime !== 'number'
+		) {
+			throw new Error('The distributor did not return distribution metadata');
+		}
 		return {
 			shard: entry.shard,
-			specs: words(entry.specs),
+			specs,
 			images: words(entry.images),
-			capabilities: Array.isArray(entry.capabilities) ? entry.capabilities : [],
-			fixturePools: Array.isArray(entry.fixturePools) ? entry.fixturePools : [],
-			fixtureCount: typeof entry.fixtureCount === 'number' ? entry.fixtureCount : 0,
-			testTime: typeof entry.testTime === 'number' ? entry.testTime : 0,
+			capabilities: entry.capabilities,
+			fixturePools: entry.fixturePools,
+			fixtureCount: entry.fixtureCount,
+			testTime: entry.testTime,
 		};
 	});
 }
@@ -150,6 +170,7 @@ const tempDir = mkdtempSync(join(tmpdir(), 'distribution-counter-'));
 try {
 	const byShard = [];
 	for (const entry of matrix) {
+		if (entry.specs.length === 0) continue;
 		const output = join(tempDir, `shard-${entry.shard}.json`);
 		run(
 			process.execPath,

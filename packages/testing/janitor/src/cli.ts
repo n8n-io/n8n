@@ -583,7 +583,7 @@ async function runDistribute(options: CliOptions): Promise<void> {
 				throw new Error(`Fixture pools missing for ${spec.path}`);
 			}
 			const sortedPools = [...fixturePools].sort();
-			return { ...spec, distributionGroup: JSON.stringify(sortedPools), fixturePools: sortedPools };
+			return { ...spec, fixturePools: sortedPools };
 		});
 	}
 
