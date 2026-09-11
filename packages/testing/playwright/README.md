@@ -314,16 +314,16 @@ import { test, expect } from '../fixtures/base';
 test.use({ capability: 'proxy' });
 
 test.describe('Proxy tests', () => {
-  test('should mock HTTP requests', async ({ proxyServer, n8n }) => {
+  test('should mock HTTP requests', async ({ services, n8n }) => {
     // Create mock expectations
-    await proxyServer.createGetExpectation('/api/data', { result: 'mocked' });
+    await services.proxy.createGetExpectation('/api/data', { result: 'mocked' });
 
     // Execute workflow that makes HTTP requests
     await n8n.canvas.openNewWorkflow();
     // ... test implementation
 
     // Verify requests were proxied
-    expect(await proxyServer.wasGetRequestMade('/api/data')).toBe(true);
+    expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/api/data' })).toBe(true);
   });
 });
 ```

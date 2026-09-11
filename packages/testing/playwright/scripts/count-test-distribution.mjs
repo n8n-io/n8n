@@ -8,6 +8,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseDistributionMatrix, summarizeDistribution } from './distribution-counter.mjs';
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = resolve(SCRIPT_DIR, '..');
 const DISTRIBUTOR = resolve(SCRIPT_DIR, 'distribute-tests.mjs');
@@ -17,10 +19,6 @@ const PLAYWRIGHT_CLI = createRequire(import.meta.url).resolve('@playwright/test/
 function option(name, fallback) {
 	const prefix = `--${name}=`;
 	return process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) ?? fallback;
-}
-
-function words(value) {
-	return value.split(/\s+/).filter(Boolean);
 }
 
 function changedFiles(value) {
@@ -50,54 +48,6 @@ function run(command, args, env = process.env) {
 		);
 	}
 	return result.stdout;
-}
-
-function parseMatrix(output) {
-	const value = JSON.parse(output);
-	if (!Array.isArray(value)) throw new Error('The distributor did not return a matrix');
-	return value.map((entry) => {
-		if (
-			typeof entry !== 'object' ||
-			entry === null ||
-			typeof entry.shard !== 'number' ||
-			typeof entry.specs !== 'string' ||
-			typeof entry.images !== 'string'
-		) {
-			throw new Error('The distributor returned an invalid matrix entry');
-		}
-		const specs = words(entry.specs);
-		if (specs.length === 0) {
-			return {
-				shard: entry.shard,
-				specs,
-				images: words(entry.images),
-				capabilities: [],
-				services: [],
-				fixturePools: [],
-				fixtureCount: 0,
-				testTime: 0,
-			};
-		}
-		if (
-			!Array.isArray(entry.capabilities) ||
-			!Array.isArray(entry.services) ||
-			!Array.isArray(entry.fixturePools) ||
-			typeof entry.fixtureCount !== 'number' ||
-			typeof entry.testTime !== 'number'
-		) {
-			throw new Error('The distributor did not return distribution metadata');
-		}
-		return {
-			shard: entry.shard,
-			specs,
-			images: words(entry.images),
-			capabilities: entry.capabilities,
-			services: entry.services,
-			fixturePools: entry.fixturePools,
-			fixtureCount: entry.fixtureCount,
-			testTime: entry.testTime,
-		};
-	});
 }
 
 function resolvePullRequest(pr, repo) {
@@ -167,7 +117,7 @@ if (selection.files.length > 0) {
 	if (selection.base) distributorArgs.push(`--base=${selection.base}`);
 }
 
-const matrix = parseMatrix(run(process.execPath, distributorArgs));
+const matrix = parseDistributionMatrix(run(process.execPath, distributorArgs));
 const tempDir = mkdtempSync(join(tmpdir(), 'distribution-counter-'));
 
 try {
@@ -207,37 +157,7 @@ try {
 		});
 	}
 
-	const selectedSpecs = matrix.flatMap((shard) => shard.specs);
-	const uniqueSpecs = new Set(selectedSpecs);
-	const imageCounts = new Map();
-	for (const shard of byShard) {
-		for (const image of shard.images) imageCounts.set(image, (imageCounts.get(image) ?? 0) + 1);
-	}
-
-	console.log(
-		JSON.stringify(
-			{
-				project,
-				selection,
-				shards: byShard.length,
-				selectedSpecs: selectedSpecs.length,
-				uniqueSpecs: uniqueSpecs.size,
-				duplicateSpecs: selectedSpecs.length - uniqueSpecs.size,
-				runnableSpecs: byShard.reduce((sum, shard) => sum + shard.runnableSpecs, 0),
-				runnableTests: byShard.reduce((sum, shard) => sum + shard.runnableTests, 0),
-				modeledStackStarts: byShard.reduce((sum, shard) => sum + shard.modeledStackStarts, 0),
-				stackStarts: byShard.reduce((sum, shard) => sum + shard.stackStarts, 0),
-				extraStackStarts: byShard.reduce((sum, shard) => sum + shard.extraStackStarts, 0),
-				declaredImageLoads: [...imageCounts.values()].reduce((sum, count) => sum + count, 0),
-				images: Object.fromEntries(
-					[...imageCounts.entries()].sort(([a], [b]) => a.localeCompare(b)),
-				),
-				byShard,
-			},
-			null,
-			2,
-		),
-	);
+	console.log(JSON.stringify(summarizeDistribution(project, selection, matrix, byShard), null, 2));
 } finally {
 	rmSync(tempDir, { recursive: true, force: true });
 }

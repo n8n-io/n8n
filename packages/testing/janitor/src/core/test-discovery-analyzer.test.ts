@@ -204,6 +204,20 @@ test('outside', async () => {});
 			expect(report.specs[0].services).toEqual(['proxy', 'sandbox']);
 		});
 
+		it('resolves a shorthand capability property', () => {
+			const file = createFile(
+				'tests/shorthand.spec.ts',
+				`
+	const capability = { services: ['proxy'] };
+	test.use({ capability });
+	test('uses shorthand config', async () => {});
+`,
+			);
+			const report = discoverWith([file]);
+
+			expect(report.specs[0].services).toEqual(['proxy']);
+		});
+
 		it('resolves an imported shared configuration', () => {
 			createFile(
 				'fixtures/shared.ts',

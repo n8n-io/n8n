@@ -33,6 +33,8 @@ import { tmpdir } from 'node:os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { buildDistributionGroups, filterDistributionSpecs } from './distribution-groups.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -253,29 +255,14 @@ function generateDistributionGroups(project, grepInvert) {
 		},
 	);
 	const report = JSON.parse(readFileSync(reportPath, 'utf8'));
-	if (!Array.isArray(report.profiles)) throw new Error('Playwright returned invalid profile data');
-	const bySpec = new Map();
-	for (const profile of report.profiles) {
-		if (typeof profile.poolDigest !== 'string' || !Array.isArray(profile.specs)) {
-			throw new Error('Playwright returned an invalid fixture-pool profile');
-		}
-		for (const spec of profile.specs) {
-			if (typeof spec !== 'string') throw new Error('Playwright returned an invalid spec path');
-			const digests = bySpec.get(spec) ?? new Set();
-			digests.add(profile.poolDigest);
-			bySpec.set(spec, digests);
-		}
-	}
-	const groups = Object.fromEntries(
-		[...bySpec.entries()].map(([spec, digests]) => [spec, [...digests].sort()]),
-	);
+	const groups = buildDistributionGroups(report);
 	writeFileSync(groupsPath, JSON.stringify(groups));
-	return { groupsPath, specs: [...bySpec.keys()], temp };
+	return { groupsPath, specs: Object.keys(groups), temp };
 }
 
 function writeRunnableSpecs(temp, specs) {
 	const includePath = path.join(temp, 'include-specs.txt');
-	writeFileSync(includePath, specs.filter((spec) => !QUARANTINE.has(spec)).join('\n'));
+	writeFileSync(includePath, specs.join('\n'));
 	return includePath;
 }
 
@@ -348,13 +335,10 @@ let groupsFile;
 if (orchestrateMode || !matrixMode) {
 	const generated = generateDistributionGroups(project, grepInvert);
 	groupsFile = generated.groupsPath;
-	const runnableSpecs = new Set(generated.specs);
-	const selectedSpecs = includeSpecsFile
-		? readFileSync(includeSpecsFile, 'utf8')
-				.split('\n')
-				.filter(Boolean)
-				.filter((spec) => runnableSpecs.has(spec))
+	const candidates = includeSpecsFile
+		? readFileSync(includeSpecsFile, 'utf8').split('\n').filter(Boolean)
 		: generated.specs;
+	const selectedSpecs = filterDistributionSpecs(candidates, generated.specs, QUARANTINE);
 	includeSpecsFile = writeRunnableSpecs(generated.temp, selectedSpecs);
 	cleanupPaths.push(generated.temp);
 }

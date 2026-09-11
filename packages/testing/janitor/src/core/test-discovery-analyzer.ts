@@ -197,6 +197,11 @@ export class TestDiscoveryAnalyzer {
 			if (Node.isPropertyAssignment(property) && property.getName() === name) {
 				return property.getInitializer();
 			}
+			if (Node.isShorthandPropertyAssignment(property) && property.getName() === name) {
+				const symbol = property.getValueSymbol();
+				const declaration = symbol?.getValueDeclaration() ?? symbol?.getDeclarations()[0];
+				if (Node.isVariableDeclaration(declaration)) return declaration.getInitializer();
+			}
 			if (Node.isSpreadAssignment(property)) {
 				const value = this.resolveObjectProperty(property.getExpression(), name, seen);
 				if (value) return value;
