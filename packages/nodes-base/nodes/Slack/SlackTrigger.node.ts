@@ -43,6 +43,10 @@ export class SlackTrigger implements INodeType {
 				name: 'slackApi',
 				required: true,
 			},
+			{
+				name: 'slackSigningSecretApi',
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -53,7 +57,7 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. We also recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. The node verifies every request with the <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> of your Slack app and rejects requests that Slack did not sign.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -342,7 +346,13 @@ export class SlackTrigger implements INodeType {
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 		let eventChannel: string = '';
 
-		const isSignatureValid = await verifySignature.call(this);
+		// Every request must carry a valid Slack signature. Nodes created before the signing-secret
+		// credential existed keep using the secret stored on the Slack API credential until the new
+		// credential is attached.
+		const isSignatureValid = await verifySignature.call(this, 'slackSigningSecretApi', {
+			requireSecret: true,
+			legacyCredentialType: 'slackApi',
+		});
 		if (!isSignatureValid) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();
