@@ -1,11 +1,14 @@
 import { ScheduledJobOwnerType } from '@n8n/constants';
-import type { ScheduledJobOwner } from '@n8n/db';
+import type { ScheduledJob, ScheduledJobOwner } from '@n8n/db';
 import { ScheduledJobRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ScheduledJobOwnerResolver } from '@n8n/scheduler';
 import { gt, valid } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
+
+/** A system task's stored job as listed, pinned to the payload read at the time. */
+export type StaleSystemTaskJob = Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>;
 
 /**
  * Marks a system task as the owner of its own durable job, one per task, so
@@ -50,15 +53,13 @@ export class SystemTaskScheduledJobOwner implements ScheduledJobOwnerResolver {
 		return existing;
 	}
 
-	/** The stored tasks this instance does not run durably and no newer version stamped. */
-	async findStale(): Promise<string[]> {
+	/** The stored jobs this instance does not run durably and no newer version stamped, as read. */
+	async findStale(): Promise<StaleSystemTaskJob[]> {
 		const rows = await this.jobs.findPayloadsByOwnerType(this.ownerType);
-		return rows
-			.filter(
-				({ ownerId, payload }) =>
-					!this.durableTaskNames.has(ownerId) && !stampedByNewerVersion(payload),
-			)
-			.map(({ ownerId }) => ownerId);
+		return rows.filter(
+			({ ownerId, payload }) =>
+				!this.durableTaskNames.has(ownerId) && !stampedByNewerVersion(payload),
+		);
 	}
 }
 

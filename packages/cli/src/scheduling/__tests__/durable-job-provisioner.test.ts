@@ -1085,6 +1085,21 @@ describe('DurableJobProvisioner', () => {
 			expect(result).toEqual({ removed: 5 });
 		});
 
+		it('deletes one job as it was read, inside a transaction, and reports the count', async () => {
+			jobs.deleteIfPayloadUnchanged.mockResolvedValue(1);
+
+			const result = await provisioner.deprovisionUnchangedJob({
+				id: 10,
+				payload: { n8nVersion: '1.0.0' },
+			});
+
+			expect(jobs.deleteIfPayloadUnchanged).toHaveBeenCalledWith(manager, 10, {
+				n8nVersion: '1.0.0',
+			});
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 1 });
+		});
+
 		it('deprovisions an owner type with no registered resolver, so cleanup is never blocked', async () => {
 			jobs.deleteByOwnerRef.mockResolvedValue(1);
 
