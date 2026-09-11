@@ -481,6 +481,7 @@ async function handleSubmit(
 	}
 
 	if (!selectedProject.value) {
+		restoreDraftAfterFailedSubmit(message, restoreDraft);
 		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
 		return;
 	}
