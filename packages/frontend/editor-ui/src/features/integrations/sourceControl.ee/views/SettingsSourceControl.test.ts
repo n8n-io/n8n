@@ -237,7 +237,8 @@ describe('SettingsSourceControl', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
 		});
 
-		async function typeSshRepoUrl(url: string) {
+		// Types the URL into the SSH form and returns the validation error element, or null.
+		async function queryUrlErrorAfterTypingSshUrl(url: string) {
 			await nextTick();
 			const { container, queryByText } = renderComponent({
 				pinia,
@@ -255,11 +256,15 @@ describe('SettingsSourceControl', () => {
 		}
 
 		it('should accept a valid ssh URL', async () => {
-			expect(await typeSshRepoUrl('git@github.com:user/repository.git')).not.toBeInTheDocument();
+			const urlError = await queryUrlErrorAfterTypingSshUrl('git@github.com:user/repository.git');
+
+			expect(urlError).not.toBeInTheDocument();
 		});
 
 		it('should reject an invalid ssh URL', async () => {
-			expect(await typeSshRepoUrl('http://github.com/user/repository')).toBeInTheDocument();
+			const urlError = await queryUrlErrorAfterTypingSshUrl('http://github.com/user/repository');
+
+			expect(urlError).toBeInTheDocument();
 		});
 
 		it('should reject a non-https URL for https connection', async () => {
