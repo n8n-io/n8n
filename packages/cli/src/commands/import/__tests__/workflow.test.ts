@@ -77,6 +77,7 @@ describe('ImportWorkflowsCommand', () => {
 
 	test('needs the expression engine', () => {
 		expect(new ImportWorkflowsCommand().needsExpressionEngine).toBe(true);
+		expect(new ImportWorkflowsCommand().needsRegexEngine).toBe(true);
 	});
 
 	describe('logSkippedWorkflows', () => {
