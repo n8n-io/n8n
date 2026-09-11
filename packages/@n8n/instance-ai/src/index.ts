@@ -708,6 +708,9 @@ export type {
 	WebSearchResponse,
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
+	InstanceAiAppService,
+	AppSummary,
+	AppPublishResult,
 	InstanceAiWorkflowTemplateService,
 	ProjectSummary,
 	FolderSummary,
@@ -731,6 +734,15 @@ export {
 	CONVERSATION_HISTORY_MAX_WINDOW_SIDE,
 } from './types';
 export { ASK_USER_TOOL_ID } from './tools/tool-ids';
+export { handleBuild as buildApp, handleRestore as restoreApp } from './tools/apps.tool';
+export type {
+	AppSandboxContext,
+	AppBuildResult,
+	AppRestoreResult,
+	AppActionDenied,
+	BuildFailure as AppBuildFailure,
+	AppRestoreFailure,
+} from './tools/apps.tool';
 export type {
 	OrchestratorRunHandoffReason,
 	OrchestratorRunHandoffState,

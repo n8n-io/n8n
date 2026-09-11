@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { agentPermissionSchema, dataTablePermissionSchema } from './app-binding.schema';
+import { appNameSchema, appNamespaceSchema, appThemeSettingsSchema } from './app.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
@@ -273,6 +275,91 @@ export const webSearchMetaSchema = z.object({
 	query: z.string(),
 });
 export type WebSearchMeta = z.infer<typeof webSearchMetaSchema>;
+
+/** What the `apps` tool is about to connect, for the bind approval card. */
+export const appBindingMetaSchema = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('workflow'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		workflowId: z.string(),
+		workflowName: z.string(),
+		key: z.string(),
+	}),
+	z.object({
+		kind: z.literal('dataTable'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		dataTableId: z.string(),
+		dataTableName: z.string(),
+		key: z.string(),
+		permissions: z.array(dataTablePermissionSchema).min(1).max(2),
+		// For the link to the data table in the approval card.
+		projectId: z.string(),
+	}),
+	z.object({
+		kind: z.literal('agent'),
+		appId: z.string(),
+		appName: z.string(),
+		appNamespace: z.string(),
+		agentId: z.string(),
+		agentName: z.string(),
+		key: z.string(),
+		permissions: z.array(agentPermissionSchema).min(1).max(2),
+		// Only the published version answers visitors; the card warns while there is none.
+		published: z.boolean(),
+		// For the link to the agent in the approval card.
+		projectId: z.string(),
+	}),
+]);
+export type AppBindingMeta = z.infer<typeof appBindingMetaSchema>;
+
+/**
+ * What the agent proposes to build before it creates an app. The card lets the
+ * user edit the name, namespace, connections and theme, then approve or ask for
+ * changes; the resume carries the edited blueprint back.
+ */
+export const appBlueprintSchema = z.object({
+	name: appNameSchema,
+	namespace: appNamespaceSchema,
+	summary: z.string().trim().min(1).max(500),
+	pages: z
+		.array(
+			z.object({
+				/** Route path such as `/` or `/settings`. */
+				route: z.string().trim().min(1).max(255),
+				purpose: z.string().trim().min(1).max(300),
+			}),
+		)
+		.min(1)
+		.max(20),
+	/** Workflows, data tables and agents the app will use; each becomes a binding after approval. */
+	connections: z
+		.array(
+			z.object({
+				kind: z.enum(['workflow', 'dataTable', 'agent']),
+				/** The workflow, data table or agent id. */
+				id: z.string(),
+				name: z.string(),
+				key: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/),
+				purpose: z.string().trim().max(300).optional(),
+			}),
+		)
+		.max(20),
+	theme: appThemeSettingsSchema,
+});
+export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
+
+export const appBlueprintResumeSchema = z.object({
+	approved: z.boolean(),
+	/** The blueprint as the user left it in the card; present on approval. */
+	blueprint: appBlueprintSchema.optional(),
+	/** What to change; present when the user asked for changes instead of approving. */
+	feedback: z.string().trim().max(2000).optional(),
+});
+export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
 export const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -694,6 +781,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'plan-review',
 	'resource-decision',
 	'continue',
+	'app-blueprint',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -736,6 +824,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
+				'app-blueprint shows the editable app proposal card, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
 				'continue shows a single primary button (used by pause-for-user)',
 		),
@@ -764,6 +853,12 @@ export const confirmationRequestPayloadSchema = z.object({
 	webSearch: webSearchMetaSchema
 		.optional()
 		.describe('When present, renders web-search approval UI instead of generic confirm'),
+	appBinding: appBindingMetaSchema
+		.optional()
+		.describe('When present, renders the app binding approval UI instead of generic confirm'),
+	appBlueprint: appBlueprintSchema
+		.optional()
+		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
 	credentialFlow: credentialFlowSchema
 		.optional()
 		.describe(
@@ -827,6 +922,7 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
+	if (payload.appBinding) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 
@@ -842,6 +938,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'app-blueprint':
+			return payload.appBlueprint !== undefined;
 		default:
 			return assertNever(inputType);
 	}
@@ -1281,6 +1379,19 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+/**
+ * An app reference the apps pages hand off to a message. Binds the thread to
+ * the app the `apps` tool should build.
+ */
+export const instanceAiAppAttachmentSchema = z.object({
+	type: z.literal('app'),
+	projectId: z.string().min(1).max(64),
+	appId: z.string().min(1).max(64),
+	name: appNameSchema,
+	namespace: appNamespaceSchema.optional(),
+});
+export type InstanceAiAppAttachment = z.infer<typeof instanceAiAppAttachmentSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1315,11 +1426,57 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+/**
+ * A reference to one element picked in an App preview via the inspect toggle.
+ * Carries a description of the DOM node (not a source-code location) — the
+ * agent locates the matching source by searching the app's files itself.
+ */
+export const instanceAiElementAttachmentSchema = z.object({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+	/** Pathname of the app page the element was picked from. */
+	route: z.string().max(500).optional(),
+	tagName: z.string().min(1).max(50),
+	/** Trimmed visible text of the element, if any. */
+	text: z.string().max(200).optional(),
+	/** A short structural hint (id/class/data-testid), if the element has one. */
+	selector: z.string().max(500).optional(),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
+/** One error the live app preview reported to the editor via `postMessage`. */
+export const instanceAiAppPreviewDiagnosticSchema = z.object({
+	kind: z.enum(['vite-error', 'uncaught']),
+	message: z.string().max(2048),
+	file: z.string().max(512).optional(),
+	line: z.number().int().optional(),
+	column: z.number().int().optional(),
+	stack: z.string().max(4096).optional(),
+	at: z.string().datetime(),
+});
+export type InstanceAiAppPreviewDiagnostic = z.infer<typeof instanceAiAppPreviewDiagnosticSchema>;
+
+/**
+ * Errors the live app preview collected since the user's last message. The
+ * editor buffers them and attaches them to the next message it sends.
+ */
+export const instanceAiAppPreviewDiagnosticsAttachmentSchema = z.object({
+	type: z.literal('app-preview-diagnostics'),
+	appId: z.string().min(1).max(64),
+	items: z.array(instanceAiAppPreviewDiagnosticSchema).min(1).max(50),
+});
+export type InstanceAiAppPreviewDiagnosticsAttachment = z.infer<
+	typeof instanceAiAppPreviewDiagnosticsAttachmentSchema
+>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
+	instanceAiAppPreviewDiagnosticsAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
@@ -1436,6 +1593,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the apps list or app details page
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
@@ -1453,6 +1611,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'assistant_page',
 	// Experiment cleanup: remove with openWorkflowInAssistant.
@@ -1685,6 +1844,8 @@ export interface InstanceAiThreadInfo {
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
+	/** App this thread builds, when it is bound to one. */
+	appId?: string;
 }
 
 export interface InstanceAiThreadListResponse {
@@ -1844,6 +2005,9 @@ const instanceAiPermissionsSchema = z.object({
 	webSearch: instanceAiPermissionModeSchema,
 	restoreWorkflowVersion: instanceAiPermissionModeSchema,
 	executeMcpTool: instanceAiPermissionModeSchema,
+	bindAppWorkflow: instanceAiPermissionModeSchema,
+	bindAppDataTable: instanceAiPermissionModeSchema,
+	bindAppAgent: instanceAiPermissionModeSchema,
 });
 
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
@@ -1870,6 +2034,9 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	webSearch: 'require_approval',
 	restoreWorkflowVersion: 'require_approval',
 	executeMcpTool: 'require_approval',
+	bindAppWorkflow: 'require_approval',
+	bindAppDataTable: 'require_approval',
+	bindAppAgent: 'require_approval',
 };
 
 /**

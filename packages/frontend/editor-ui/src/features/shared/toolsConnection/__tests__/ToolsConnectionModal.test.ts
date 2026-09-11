@@ -61,6 +61,7 @@ vi.mock('@n8n/design-system', async () => {
 					:key="option.value"
 					role="tab"
 					:data-test-id="'tab-' + option.value"
+					:data-icon="option.icon"
 					:aria-selected="modelValue === option.value"
 					@click="$emit('update:modelValue', option.value)"
 				>{{ option.label }}</button>
@@ -74,6 +75,7 @@ import ToolsConnectionModal from '../ToolsConnectionModal.vue';
 import McpToolSettingsContent from '../McpToolSettingsContent.vue';
 import { connectedMcpFixture, makeLargeMcpList, realisticItems } from '../fixtures';
 import type { ToolCategoryKey, ToolConnectionItem } from '../types';
+import type { IconName } from '@n8n/design-system';
 
 const renderModal = createComponentRenderer(ToolsConnectionModal);
 
@@ -92,6 +94,7 @@ function renderWith(
 		detailItem: ToolConnectionItem | null;
 		detailMode: 'detail' | 'settings';
 		allowWorkflowCreation: boolean;
+		categoryIcons: Partial<Record<ToolCategoryKey, IconName>>;
 	}>,
 ) {
 	return renderModal({
@@ -102,6 +105,7 @@ function renderWith(
 			detailItem: props.detailItem ?? null,
 			detailMode: props.detailMode,
 			allowWorkflowCreation: props.allowWorkflowCreation,
+			categoryIcons: props.categoryIcons,
 		},
 		slots: {
 			'suggestion-footer': '<div data-test-id="suggest-tool-footer">Suggest a tool</div>',
@@ -330,6 +334,17 @@ describe('ToolsConnectionModal', () => {
 		expect(getByTestId('tools-connection-tabs')).toBeTruthy();
 		expect(getByTestId('tab-mcp')).toBeTruthy();
 		expect(getByTestId('tab-workflows')).toBeTruthy();
+	});
+
+	it('passes the category icons through to the matching tabs', () => {
+		const { getByTestId } = renderWith({
+			items: [],
+			categories: ['workflows', 'data'],
+			categoryIcons: { workflows: 'workflow' },
+		});
+
+		expect(getByTestId('tab-workflows')).toHaveAttribute('data-icon', 'workflow');
+		expect(getByTestId('tab-data')).not.toHaveAttribute('data-icon');
 	});
 
 	it('only offers the community tab once there is something in it', () => {

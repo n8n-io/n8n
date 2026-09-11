@@ -332,6 +332,25 @@ export {
 export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
+export { CreateAppDto } from './app/create-app.dto';
+export {
+	ListAppsQueryDto,
+	APPS_LIST_SORT_OPTIONS,
+	type AppsListSortBy,
+} from './app/list-apps-query.dto';
+export { UpdateAppDto } from './app/update-app.dto';
+export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
+export { SaveAppDraftFileDto } from './app/save-app-draft-file.dto';
+export { CreateAppBindingDto } from './app/create-app-binding.dto';
+export { UpdateAppBindingDto } from './app/update-app-binding.dto';
+export {
+	appAgentChatRequestSchema,
+	type AppAgentChatRequest,
+	appAgentResumeRequestSchema,
+	type AppAgentResumeRequest,
+} from './app/app-agent-chat.dto';
+export { SetActiveAppVersionDto } from './app/set-active-app-version.dto';
+
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';

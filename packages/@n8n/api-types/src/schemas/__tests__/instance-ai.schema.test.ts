@@ -33,7 +33,9 @@ import {
 	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
 	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiAppAttachmentSchema,
 	instanceAiAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -291,6 +293,15 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.mutateDataTableSchema).toBe('blocked');
 		expect(result.mutateDataTableRows).toBe('blocked');
 		expect(result.cleanupTestExecutions).toBe('blocked');
+		expect(result.bindAppWorkflow).toBe('blocked');
+		expect(result.bindAppDataTable).toBe('blocked');
+		expect(result.bindAppAgent).toBe('blocked');
+	});
+
+	it('requires approval for app bindings by default', () => {
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppWorkflow).toBe('require_approval');
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppDataTable).toBe('require_approval');
+		expect(DEFAULT_INSTANCE_AI_PERMISSIONS.bindAppAgent).toBe('require_approval');
 	});
 
 	it('should preserve safe permissions even when set to always_allow', () => {
@@ -348,6 +359,76 @@ describe('confirmationRequestPayloadSchema', () => {
 		});
 
 		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of a workflow bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				kind: 'workflow',
+				appId: 'app-1',
+				appName: 'Runner',
+				appNamespace: 'runner',
+				workflowId: 'wf-1',
+				workflowName: 'Echo',
+				key: 'submit',
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of a data table bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				kind: 'dataTable',
+				appId: 'app-1',
+				appName: 'Board',
+				appNamespace: 'board',
+				dataTableId: 'dt-1',
+				dataTableName: 'Tasks',
+				key: 'tasks',
+				permissions: ['read', 'write'],
+				projectId: 'proj-1',
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('preserves the app binding details of an agent bind approval', () => {
+		const payload = makeConfirmation({
+			appBinding: {
+				kind: 'agent',
+				appId: 'app-1',
+				appName: 'Helpdesk',
+				appNamespace: 'helpdesk',
+				agentId: 'agent-1',
+				agentName: 'Support',
+				key: 'support',
+				permissions: ['chat', 'history'],
+				published: false,
+				projectId: 'proj-1',
+			},
+		});
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+
+	it('rejects an app binding without a kind', () => {
+		const result = confirmationRequestPayloadSchema.safeParse(
+			makeConfirmation({
+				appBinding: {
+					appId: 'app-1',
+					appName: 'Runner',
+					appNamespace: 'runner',
+					workflowId: 'wf-1',
+					workflowName: 'Echo',
+					key: 'submit',
+				} as unknown as InstanceAiConfirmationRequestPayload['appBinding'],
+			}),
+		);
+
+		expect(result.success).toBe(false);
 	});
 
 	it('requires a credential destination to be an exact HTTP origin', () => {
@@ -1058,6 +1139,80 @@ describe('instanceAiAttachmentSchema — nodes attachment', () => {
 	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
 		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('instanceAiAppAttachmentSchema', () => {
+	const appAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'app',
+		projectId: 'proj-1',
+		appId: 'app-1',
+		name: 'Greeter',
+		...overrides,
+	});
+
+	it('accepts an app with a slug namespace', () => {
+		const result = instanceAiAppAttachmentSchema.safeParse(
+			appAttachment({ namespace: 'my-greeter-2' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing appId', () => {
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ appId: undefined })).success,
+		).toBe(false);
+	});
+
+	it('applies the apps.create name and namespace rules', () => {
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ name: 'a'.repeat(129) })).success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'foo_bar' })).success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'a'.repeat(129) }))
+				.success,
+		).toBe(false);
+		expect(
+			instanceAiAppAttachmentSchema.safeParse(appAttachment({ namespace: 'Greeter' })).success,
+		).toBe(false);
+	});
+});
+
+describe('instanceAiElementAttachmentSchema', () => {
+	const elementAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'element',
+		appId: 'app-1',
+		tagName: 'button',
+		...overrides,
+	});
+
+	it('accepts just the required fields', () => {
+		expect(instanceAiElementAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
+	});
+
+	it('accepts the optional route/text/selector fields', () => {
+		const result = instanceAiElementAttachmentSchema.safeParse(
+			elementAttachment({ route: '/clients', text: 'Submit', selector: '#go' }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing appId or tagName', () => {
+		expect(
+			instanceAiElementAttachmentSchema.safeParse(elementAttachment({ appId: undefined })).success,
+		).toBe(false);
+		expect(
+			instanceAiElementAttachmentSchema.safeParse(elementAttachment({ tagName: undefined }))
+				.success,
+		).toBe(false);
+	});
+
+	it('is also accepted by instanceAiAttachmentSchema and instanceAiResourceAttachmentSchema', () => {
+		expect(instanceAiAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
+		expect(instanceAiResourceAttachmentSchema.safeParse(elementAttachment()).success).toBe(true);
 	});
 });
 

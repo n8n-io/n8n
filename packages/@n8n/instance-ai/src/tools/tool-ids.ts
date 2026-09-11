@@ -16,6 +16,8 @@ export const DOMAIN_TOOL_IDS = {
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
+	APPS: 'apps',
+	APP_BLUEPRINT: 'app-blueprint',
 	ACTIVITY: 'activity',
 } as const;
 
@@ -50,6 +52,8 @@ export const DATA_TABLES_TOOL_ID = DOMAIN_TOOL_IDS.DATA_TABLES;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
+export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
+export const APP_BLUEPRINT_TOOL_ID = DOMAIN_TOOL_IDS.APP_BLUEPRINT;
 
 export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRATION_TOOL_IDS));
 
@@ -75,6 +79,11 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
+	// Only wired when the host exposes an app service; deferring it would cost
+	// search_tools + load_tool on every "build me an app" request.
+	DOMAIN_TOOL_IDS.APPS,
+	// The blueprint step precedes every app create; loaded together with `apps`.
+	DOMAIN_TOOL_IDS.APP_BLUEPRINT,
 	// The instance-context block hands the agent ids and tells it to expand them, so deferring
 	// this would price every expand at search_tools + load_tool. It is only registered when the
 	// reader is enabled, so an instance without the feature pays nothing for the entry.

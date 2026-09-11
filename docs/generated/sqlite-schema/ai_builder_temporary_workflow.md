@@ -51,6 +51,7 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "instance_ai_threads" {
+  varchar_36_ appId FK
   datetime_3_ createdAt
   varchar id PK
   TEXT metadata

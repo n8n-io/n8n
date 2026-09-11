@@ -225,6 +225,29 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
 	});
 
+	it('gates the apps tool on both the host-wired appService and the app workspace', () => {
+		const appService = {} as InstanceAiContext['appService'];
+		const appWorkspace = {} as InstanceAiContext['appWorkspace'];
+
+		expect(createOrchestratorDomainTools(makeContext({ appService })).has('apps')).toBe(false);
+		expect(createOrchestratorDomainTools(makeContext({ appWorkspace })).has('apps')).toBe(false);
+		expect(
+			createOrchestratorDomainTools(makeContext({ appService, appWorkspace })).has('apps'),
+		).toBe(true);
+	});
+
+	it('exposes the app blueprint tool wherever apps is exposed', () => {
+		const appService = {} as InstanceAiContext['appService'];
+		const appWorkspace = {} as InstanceAiContext['appWorkspace'];
+
+		expect(
+			createOrchestratorDomainTools(makeContext({ appService, appWorkspace })).has('app-blueprint'),
+		).toBe(true);
+		expect(createOrchestratorDomainTools(makeContext({ appService })).has('app-blueprint')).toBe(
+			false,
+		);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});

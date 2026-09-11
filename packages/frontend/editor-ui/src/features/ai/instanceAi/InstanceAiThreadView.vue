@@ -14,6 +14,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import {
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
@@ -33,6 +34,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
+	InstanceAiAppAttachment,
+	InstanceAiAppPreviewDiagnosticsAttachment,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
@@ -57,6 +60,7 @@ import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getAppBuilderTargetFromThreadMetadata,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
@@ -66,12 +70,15 @@ import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	clearPendingAgentAttachment,
+	clearPendingAppAttachment,
 	consumePendingDraftAttachment,
+	consumePendingElementAttachment,
 	clearPendingComposerDraft,
 	clearPendingHandoffContext,
 	clearPendingThreadHandoff,
 	consumePendingFirstMessage,
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	stashPendingComposerDraft,
@@ -91,7 +98,7 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
+import { useAppThreadScope, useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -116,11 +123,13 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
+import { useAppPreviewDiagnostics } from './composables/useAppPreviewDiagnostics';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const props = defineProps<{
@@ -137,6 +146,10 @@ const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
+// On the app page the app panel is the point of the view: it stays open, the
+// artifacts sidebar is dropped, and the chat collapses behind the panel instead.
+const appScope = useAppThreadScope();
+const isAppPage = appScope !== null;
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -167,6 +180,28 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 	};
 });
 
+const pendingAppAttachment = ref<InstanceAiAppAttachment | null>(null);
+// Errors the live app preview reported; they ride along with the next message.
+const appPreviewDiagnostics = useAppPreviewDiagnostics();
+// A pending (new) app takes its id from the thread's bound target once the
+// agent's `apps.create` result has been recorded there.
+const currentAppAttachment = computed<InstanceAiAppAttachment | null>(() => {
+	const queued = pendingAppAttachment.value;
+	if (!queued) return null;
+	if (queued.appId) return queued;
+
+	const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
+	if (!boundTarget || boundTarget.projectId !== queued.projectId) return queued;
+
+	return {
+		type: 'app',
+		appId: boundTarget.appId,
+		projectId: queued.projectId,
+		name: boundTarget.name ?? queued.name,
+		...(queued.namespace ? { namespace: queued.namespace } : {}),
+	};
+});
+
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
 // it in its natural chronological slot.
@@ -191,6 +226,21 @@ watch(
 
 // Show the input disclaimer only once the AI has produced a visible response.
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
+
+// The new-app page: a bound app does not exist yet, so the composer asks for the idea first.
+const isNewAppPage = computed(() => isAppPage && !appScope?.value.appId);
+const NEW_APP_EXAMPLES = [
+	{ key: 'instanceAi.newApp.example.todo', icon: 'square-check' },
+	{ key: 'instanceAi.newApp.example.form', icon: 'file-text' },
+	{ key: 'instanceAi.newApp.example.agentChat', icon: 'message-circle' },
+] as const;
+const showNewAppExamples = computed(
+	() => isNewAppPage.value && displayedMessages.length === 0 && !thread.isStreaming,
+);
+function useNewAppExample(key: (typeof NEW_APP_EXAMPLES)[number]['key']) {
+	chatInputRef.value?.setText(i18n.baseText(key));
+	chatInputRef.value?.focus();
+}
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
@@ -312,11 +362,14 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () =>
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
 	onPreviewOpenChange: (open) => {
 		persistedArtifactPreviewOpen.value = open;
 	},
 });
+
 // --- Setup panel (checklist docked above the composer) ---
 // Anchors to the active canvas tab's workflow; on a hydrated thread with no
 // tab state yet, the latest workflow artifact wins (insertion order).
@@ -369,9 +422,11 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', pendingComposerContext);
 provide('dismissPendingComposerContext', dismissPendingComposerContext);
+provide('appPreviewDiagnostics', appPreviewDiagnostics);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -484,9 +539,10 @@ const isArtifactsPanelInLayout = computed(
 );
 const canShowArtifactsPanel = computed(
 	() =>
-		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
-		(Boolean(props.threadId) && thread.isHydratingThread),
+		!isAppPage &&
+		(thread.hasMessages ||
+			preview.allArtifactTabs.value.length > 0 ||
+			(Boolean(props.threadId) && thread.isHydratingThread)),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -817,6 +873,19 @@ const composerContextChip = computed(() => {
 		};
 	}
 
+	const appAttachment = currentAppAttachment.value;
+	if (appAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+		return {
+			type: 'app-artifact' as const,
+			appId: appAttachment.appId,
+			projectId: appAttachment.projectId,
+			key: `pending-app:${appAttachment.appId}`,
+			label: appAttachment.name,
+			icon: 'app-window',
+			isPending: true,
+		};
+	}
+
 	if (pendingComposerContext.value?.source === 'agent-preview') {
 		return {
 			type: 'agent-preview-session' as const,
@@ -830,6 +899,22 @@ const composerContextChip = computed(() => {
 				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
 			),
 			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
+			isPending: true,
+		};
+	}
+
+	const diagnosticsCount = appPreviewDiagnostics.count.value;
+	if (diagnosticsCount > 0) {
+		return {
+			type: 'app-preview-diagnostics' as const,
+			count: diagnosticsCount,
+			key: 'app-preview-diagnostics',
+			label: i18n.baseText('instanceAi.appPreview.diagnostics.chip', {
+				interpolate: { count: diagnosticsCount },
+				adjustToNumber: diagnosticsCount,
+			}),
+			icon: 'triangle-alert',
+			testId: 'instance-ai-app-preview-diagnostics-chip',
 			isPending: true,
 		};
 	}
@@ -866,8 +951,16 @@ function reconnectThreadAfterHydration(): void {
 		pendingAgentAttachment.value = agentAttachment;
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
+	const appAttachment = getPendingAppAttachment(props.threadId);
+	if (appAttachment) {
+		pendingAppAttachment.value = appAttachment;
+		const appId = currentAppAttachment.value?.appId;
+		if (appId) preview.openAppPreview(appId, appAttachment.projectId);
+	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
 	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+	const elementAttachment = consumePendingElementAttachment(props.threadId);
+	if (elementAttachment) store.stageElementSelection(elementAttachment);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -1003,9 +1096,14 @@ function handleSubmit(
 	const submittedGeneratedDraft = generatedComposerDraft.value;
 	const queuedAgentAttachment = pendingAgentAttachment.value;
 	const agentAttachment = currentAgentAttachment.value;
-	const submittedAttachments = agentAttachment
-		? [...(attachments ?? []), agentAttachment]
-		: attachments;
+	const queuedAppAttachment = pendingAppAttachment.value;
+	const appAttachment = currentAppAttachment.value;
+	const diagnosticsAttachment = takeAppPreviewDiagnosticsAttachment();
+	const resourceAttachments = [agentAttachment, appAttachment, diagnosticsAttachment].filter(
+		(attachment) => attachment !== null,
+	);
+	const submittedAttachments =
+		resourceAttachments.length > 0 ? [...(attachments ?? []), ...resourceAttachments] : attachments;
 
 	const nodeCount = countAttachedNodes(attachments);
 
@@ -1013,6 +1111,7 @@ function handleSubmit(
 		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
 		.then((sent) => {
 			if (!sent) {
+				diagnosticsAttachment?.items.forEach(appPreviewDiagnostics.add);
 				if (restoreDraft?.()) return;
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
@@ -1042,6 +1141,17 @@ function handleSubmit(
 			if (queuedAgentAttachment && pendingAgentAttachment.value === queuedAgentAttachment) {
 				clearPendingAgentAttachment(props.threadId);
 				pendingAgentAttachment.value = null;
+			}
+			// The create-result watcher may have swapped the queued object for its
+			// resolved copy mid-send, so match the app itself and not only the identity.
+			const pendingApp = pendingAppAttachment.value;
+			const isQueuedApp =
+				pendingApp === queuedAppAttachment ||
+				(pendingApp?.projectId === queuedAppAttachment?.projectId &&
+					pendingApp?.namespace === queuedAppAttachment?.namespace);
+			if (queuedAppAttachment && pendingApp && isQueuedApp) {
+				clearPendingAppAttachment(props.threadId);
+				pendingAppAttachment.value = null;
 			}
 		});
 }
@@ -1124,6 +1234,17 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 }
 
 /**
+ * A page +/edit/delete click inside the embedded app builder (this thread is
+ * already bound to the app, via `InstanceAiAppPreview`'s own target sync) —
+ * fill the already-open composer instead of opening another thread.
+ */
+function handleAppPreviewAssistantHandoff(prompt: string) {
+	stashPendingComposerDraft(props.threadId, prompt);
+	pendingComposerDraft.value = prompt;
+	void nextTick(() => chatInputRef.value?.focus());
+}
+
+/**
  * Reveal the agent artifact, then hand off to the builder to select its Evals
  * tab and generate. Generation deliberately stays in the builder: it already
  * owns the call, its loading flag and its error toast, so driving it from here
@@ -1173,12 +1294,33 @@ function dismissPendingComposerContext(key: string): boolean {
 	return true;
 }
 
+// The previewed app is the one that reported; the bound target covers a closed preview tab.
+function takeAppPreviewDiagnosticsAttachment(): InstanceAiAppPreviewDiagnosticsAttachment | null {
+	if (appPreviewDiagnostics.count.value === 0) return null;
+	const appId =
+		preview.activeAppId.value ??
+		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id))?.appId;
+	if (!appId) return null;
+	return { type: 'app-preview-diagnostics', appId, items: appPreviewDiagnostics.takeAll() };
+}
+
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
+
+	if (composerContextChip.value.type === 'app-preview-diagnostics') {
+		appPreviewDiagnostics.clear();
+		return;
+	}
 
 	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
 		clearPendingAgentAttachment(props.threadId);
 		pendingAgentAttachment.value = null;
+		return;
+	}
+
+	if (pendingAppAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+		clearPendingAppAttachment(props.threadId);
+		pendingAppAttachment.value = null;
 		return;
 	}
 
@@ -1273,7 +1415,42 @@ async function dismissComposerContextChip() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<template v-if="isAppPage">
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="history"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:aria-pressed="!sidebar.collapsed.value"
+									:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+									data-test-id="app-builder-thread-history"
+									@click="sidebar.toggle"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
+								:content="i18n.baseText('apps.builder.collapseChat')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:disabled="!preview.isPreviewVisible.value"
+									:aria-label="i18n.baseText('apps.builder.collapseChat')"
+									data-test-id="app-builder-collapse-chat"
+									@click="togglePreviewExpanded"
+								/>
+							</N8nTooltip>
+						</template>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -1398,6 +1575,27 @@ async function dismissComposerContextChip() {
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 											@dismiss="creditBanner.dismiss()"
 										/>
+										<div
+											v-if="showNewAppExamples"
+											:class="$style.newAppExamples"
+											data-test-id="instance-ai-new-app-examples"
+										>
+											<button
+												v-for="(example, index) in NEW_APP_EXAMPLES"
+												:key="example.key"
+												type="button"
+												:class="$style.newAppExample"
+												:style="{ animationDelay: `${index * 50}ms` }"
+												@click="useNewAppExample(example.key)"
+											>
+												<N8nIcon
+													:icon="example.icon"
+													:size="12"
+													:class="$style.newAppExampleIcon"
+												/>
+												<span>{{ i18n.baseText(example.key) }}</span>
+											</button>
+										</div>
 										<InstanceAiSetupPanel
 											v-if="setupPanelWorkflowId"
 											:workflow-id="setupPanelWorkflowId"
@@ -1423,6 +1621,9 @@ async function dismissComposerContextChip() {
 													:amend-context="thread.amendContext"
 													:context-chip="composerContextChip"
 													:contextual-suggestion="thread.contextualSuggestion"
+													:placeholder-key="
+														isNewAppPage ? 'instanceAi.input.newAppPlaceholder' : undefined
+													"
 													@submit="handleSubmit"
 													@stop="handleStop"
 													@cancel-plan-edit="thread.cancelPlanEdit"
@@ -1507,7 +1708,7 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:preview-toggle-label="artifactsPreviewToggleLabel"
+							:preview-toggle-label="isAppPage ? undefined : artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>
@@ -1553,6 +1754,20 @@ async function dismissComposerContextChip() {
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
+							<InstanceAiAppPreview
+								v-if="
+									preview.isPreviewVisible.value &&
+									preview.activeAppId.value &&
+									preview.activeAppProjectId.value
+								"
+								:key="preview.activeAppId.value"
+								:class="$style.previewSlot"
+								:app-id="preview.activeAppId.value"
+								:project-id="preview.activeAppProjectId.value"
+								:version-id="preview.activeAppVersionId.value ?? undefined"
+								:building="preview.activeAppBuilding.value"
+								@assistant-handoff="handleAppPreviewAssistantHandoff"
+							/>
 						</div>
 					</TabsRoot>
 				</N8nResizeWrapper>
@@ -1565,6 +1780,7 @@ async function dismissComposerContextChip() {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion' as motion;
+@use '../shared/styles/prompt-suggestion-buttons' as promptSuggestions;
 
 @property --instance-ai-artifacts-layout-width {
 	syntax: '<length>';
@@ -1824,6 +2040,27 @@ async function dismissComposerContextChip() {
 // The leaving child is detached from layout (see `.input-swap-leave-active`
 // below) so the slot follows the entering child's intrinsic height during
 // the cross-fade.
+.newAppExamples {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--xs);
+}
+
+.newAppExample {
+	@include promptSuggestions.prompt-suggestion-button;
+}
+
+.newAppExampleIcon {
+	@include promptSuggestions.prompt-suggestion-icon;
+
+	.newAppExample:hover &,
+	.newAppExample:focus-visible & {
+		opacity: 1;
+	}
+}
+
 .inputSwap {
 	position: relative;
 }

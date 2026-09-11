@@ -1,0 +1,209 @@
+<script setup lang="ts">
+import { computed, inject, ref, watch } from 'vue';
+import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import AppDetailsView from '@/features/apps/AppDetailsView.vue';
+import { useAppLivePreview } from '@/features/apps/composables/useAppLivePreview';
+import type { App } from '@/features/apps/apps.types';
+import { getLatestAppSourceEditId, isAppCreatedIn } from '../canvasPreview.utils';
+import { getAppBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
+import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY } from '../constants';
+import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
+
+const props = defineProps<{
+	appId: string;
+	projectId: string;
+	/** Latest published version; absent until the first `apps publish` result arrives. */
+	versionId?: string;
+	/** An `apps publish` call for this app is in flight. */
+	building?: boolean;
+}>();
+
+defineEmits<{ 'assistant-handoff': [prompt: string] }>();
+
+const thread = useThread();
+const instanceAiStore = useInstanceAiStore();
+const i18n = useI18n();
+const toast = useToast();
+
+// The registry knows the namespace once an `apps create`/`publish` result is in
+// the thread; a thread opened from the apps page learns it from the details view.
+const loadedApp = ref<App>();
+const namespace = computed(
+	() => thread.producedArtifacts.get(props.appId)?.namespace ?? loadedApp.value?.namespace,
+);
+
+const latestSourceEditId = computed(() => {
+	if (!namespace.value) return undefined;
+	const target = { appId: props.appId, namespace: namespace.value };
+	for (let i = thread.messages.length - 1; i >= 0; i--) {
+		const tree = thread.messages[i].agentTree;
+		if (!tree) continue;
+		const editId = getLatestAppSourceEditId(tree, target);
+		if (editId) return editId;
+	}
+	return undefined;
+});
+
+// The thread view only mounts this component while the preview tab is shown,
+// so the document's visibility is the remaining gate for the dev server.
+const { isVisible } = useDocumentVisibility();
+const live = useAppLivePreview(
+	{ projectId: () => props.projectId, appId: () => props.appId },
+	isVisible,
+	() => props.versionId,
+	() => thread.isStreaming,
+	latestSourceEditId,
+);
+
+// The run that creates the app starts from the scaffold, and a theme write
+// stores a source before the home page is touched; the dev server would show
+// the starter template until then. Hold the frame until that run ends. A
+// thread reopened on an existing app has no create in its active run.
+const creatingRun = computed(() => {
+	const runId = thread.activeRunId;
+	if (runId === null) return false;
+	return thread.messages.some(
+		(m) =>
+			m.role === 'assistant' &&
+			(m.runId === runId || (m.runIds?.includes(runId) ?? false)) &&
+			m.agentTree !== undefined &&
+			isAppCreatedIn(m.agentTree, props.appId),
+	);
+});
+const liveUrl = computed(() => (creatingRun.value ? undefined : live.liveUrl.value));
+const liveStatus = computed(() =>
+	creatingRun.value ? ({ status: 'starting' } as const) : live.status.value,
+);
+
+function onAppLoaded(app: App) {
+	loadedApp.value = app;
+	if (!app.hasUnpublishedChanges) live.markPreviewPublished();
+}
+
+const diagnostics = inject<AppPreviewDiagnostics | undefined>('appPreviewDiagnostics', undefined);
+
+// Showing an app binds the thread to it, so a later visit reopens this tab and
+// the agent keeps building the same app.
+async function syncAppTarget() {
+	const target = getAppBuilderTargetFromThreadMetadata(
+		instanceAiStore.getThreadMetadata(thread.id),
+	);
+	if (target?.appId === props.appId && target.projectId === props.projectId) return;
+
+	const name = thread.producedArtifacts.get(props.appId)?.name;
+	try {
+		await instanceAiStore.updateThreadMetadata(thread.id, {
+			[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: {
+				appId: props.appId,
+				projectId: props.projectId,
+				...(name ? { name } : {}),
+			},
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('generic.error'));
+	}
+}
+
+watch(() => props.appId, syncAppTarget, { immediate: true });
+
+// Seeded once (see openAppArtifactThread) when this thread was opened from a
+// specific page's inspector — not kept in sync with in-app navigation.
+const pagePath = computed(
+	() =>
+		getAppBuilderTargetFromThreadMetadata(instanceAiStore.getThreadMetadata(thread.id))?.pagePath,
+);
+</script>
+
+<template>
+	<div :class="$style.root">
+		<Transition name="app-building-indicator">
+			<div
+				v-if="props.building"
+				:class="$style.buildingIndicator"
+				role="status"
+				data-test-id="instance-ai-app-building-indicator"
+			>
+				<N8nIcon icon="spinner" spin size="small" />
+				<span :class="$style.buildingLabel">
+					{{ i18n.baseText('instanceAi.appPreview.publishing') }}
+				</span>
+			</div>
+		</Transition>
+		<AppDetailsView
+			artifact-mode
+			:project-id="props.projectId"
+			:app-id="props.appId"
+			:artifact-version-id="props.versionId"
+			:artifact-page-path="pagePath"
+			:live-url="liveUrl"
+			:live-status="liveStatus"
+			:refresh-key="live.settledCount.value"
+			:draft-dirty="live.previewAhead.value"
+			@app-loaded="onAppLoaded"
+			@diagnostic="diagnostics?.add($event)"
+			@assistant-handoff="$emit('assistant-handoff', $event)"
+		/>
+	</div>
+</template>
+
+<style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
+.root {
+	position: relative;
+	height: 100%;
+	min-height: 0;
+}
+
+.buildingIndicator {
+	position: absolute;
+	top: calc(var(--height--4xl) + var(--spacing--xs));
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--xl);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--sm);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--text-color--subtle);
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+.buildingLabel {
+	--animation--shimmer--duration: 1.5s;
+	--animation--shimmer--background: color-mix(
+		in srgb,
+		var(--text-color--subtle) 30%,
+		var(--background--surface) 70%
+	);
+	--animation--shimmer--foreground: var(--text-color--subtle);
+	@include motion.shimmer;
+}
+</style>
+
+<style lang="scss">
+.app-building-indicator-enter-from,
+.app-building-indicator-leave-to {
+	opacity: 0;
+	transform: translate(-50%, -4px);
+}
+
+.app-building-indicator-enter-active {
+	transition: all var(--duration--snappy) var(--easing--ease-out);
+}
+
+.app-building-indicator-leave-active {
+	transition: all var(--duration--snappy) var(--easing--ease-in);
+}
+</style>

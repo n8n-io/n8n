@@ -1,0 +1,146 @@
+/*
+ * This template's own theming: every component added via the `apps` tool's
+ * `add-component` action (src/components/ui/*) reads these CSS variables
+ * (via Tailwind utilities like bg-primary, rounded-lg) instead of hardcoded
+ * colors. Changing the values below restyles every component at once.
+ *
+ * theme-overrides.css loads after this file (see main.ts) so its :root
+ * block wins by plain cascade order — the theme rebuild pipeline
+ * overwrites that file wholesale, this one never needs to be touched.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+	/* Every spacing utility (p-4, gap-2, w-64) is a multiple of this; the theme's density scales it. */
+	--spacing: var(--space-unit);
+	--font-sans: var(--font-sans);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * Light-mode values below are n8n's own tokens (@n8n/design-system's
+ * _primitives.scss / _tokens.scss), not shadcn's stock neutral defaults:
+ * --primary is n8n's brand orange (--color--orange-500), --ring is n8n's
+ * focus-ring purple (--focus--border-color), the grays are n8n's neutral
+ * scale, and --radius (4px) matches n8n's own button/input radius. Every
+ * value is a literal oklch() copy — this template has no dependency on
+ * @n8n/design-system, so it can't reference those tokens directly.
+ */
+:root {
+	--space-unit: 0.25rem;
+	--radius: 0.25rem;
+	--font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+	--background: oklch(98.51% 0 89.88);
+	--foreground: oklch(26.86% 0 89.88);
+	--card: oklch(100% 0 89.88);
+	--card-foreground: oklch(26.86% 0 89.88);
+	--popover: oklch(100% 0 89.88);
+	--popover-foreground: oklch(26.86% 0 89.88);
+	--primary: oklch(69.96% 0.202 44.44);
+	--primary-foreground: oklch(100% 0 89.88);
+	--secondary: oklch(97.02% 0 89.88);
+	--secondary-foreground: oklch(26.86% 0 89.88);
+	--muted: oklch(98.51% 0 89.88);
+	--muted-foreground: oklch(68.3% 0 89.88);
+	--accent: oklch(97.02% 0 89.88);
+	--accent-foreground: oklch(26.86% 0 89.88);
+	--destructive: oklch(0.577 0.245 27.325);
+	--border: oklch(92.19% 0 89.88);
+	--input: oklch(92.19% 0 89.88);
+	--ring: oklch(60.06% 0.2425 293.89);
+	--chart-1: oklch(0.646 0.222 41.116);
+	--chart-2: oklch(0.6 0.118 184.704);
+	--chart-3: oklch(0.398 0.07 227.392);
+	--chart-4: oklch(0.828 0.189 84.429);
+	--chart-5: oklch(0.769 0.188 70.08);
+	--sidebar: oklch(0.985 0 0);
+	--sidebar-foreground: oklch(0.145 0 0);
+	--sidebar-primary: oklch(0.205 0 0);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.97 0 0);
+	--sidebar-accent-foreground: oklch(0.205 0 0);
+	--sidebar-border: oklch(0.922 0 0);
+	--sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+	--background: oklch(31.71% 0 89.88);
+	--foreground: oklch(100% 0 89.88);
+	--card: oklch(26.86% 0 89.88);
+	--card-foreground: oklch(100% 0 89.88);
+	--popover: oklch(26.86% 0 89.88);
+	--popover-foreground: oklch(100% 0 89.88);
+	--primary: oklch(69.96% 0.202 44.44);
+	--primary-foreground: oklch(100% 0 89.88);
+	--secondary: oklch(31.71% 0 89.88);
+	--secondary-foreground: oklch(100% 0 89.88);
+	--muted: oklch(31.71% 0 89.88);
+	--muted-foreground: oklch(68.3% 0 89.88);
+	--accent: oklch(31.71% 0 89.88);
+	--accent-foreground: oklch(100% 0 89.88);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(100% 0 89.88 / 10%);
+	--input: oklch(100% 0 89.88 / 15%);
+	--ring: oklch(60.06% 0.2425 293.89);
+	--chart-1: oklch(0.488 0.243 264.376);
+	--chart-2: oklch(0.696 0.17 162.48);
+	--chart-3: oklch(0.769 0.188 70.08);
+	--chart-4: oklch(0.627 0.265 303.9);
+	--chart-5: oklch(0.645 0.246 16.439);
+	--sidebar: oklch(0.205 0 0);
+	--sidebar-foreground: oklch(0.985 0 0);
+	--sidebar-primary: oklch(0.488 0.243 264.376);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.269 0 0);
+	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground font-sans;
+	}
+}

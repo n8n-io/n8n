@@ -11,6 +11,12 @@ export type AgentArtifactContextChip = ContextChipBase & {
 	isNewAgent: boolean;
 };
 
+export type AppArtifactContextChip = ContextChipBase & {
+	type: 'app-artifact';
+	appId: string;
+	projectId: string;
+};
+
 export type AgentPreviewSessionContextChip = ContextChipBase & {
 	type: 'agent-preview-session';
 	agentId: string;
@@ -18,4 +24,13 @@ export type AgentPreviewSessionContextChip = ContextChipBase & {
 	executionId?: string;
 };
 
-export type ContextChip = AgentArtifactContextChip | AgentPreviewSessionContextChip;
+export type AppPreviewDiagnosticsContextChip = ContextChipBase & {
+	type: 'app-preview-diagnostics';
+	count: number;
+};
+
+export type ContextChip =
+	| AgentArtifactContextChip
+	| AppArtifactContextChip
+	| AgentPreviewSessionContextChip
+	| AppPreviewDiagnosticsContextChip;

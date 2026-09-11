@@ -23,6 +23,8 @@ _START_PACKAGE
 nodelinter.config.json
 **/package-lock.json
 !.github/scripts/package-lock.json
+# App starter template shipped with the app-builder skill; the lockfile pins what `npm ci` installs in the sandbox.
+!packages/@n8n/instance-ai/skills/app-builder/templates/vue/package-lock.json
 packages/**/.turbo
 .turbo
 .stryker-tmp/

@@ -1510,6 +1510,9 @@ import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import type { AppPublishService } from '@/modules/apps/app-publish.service';
+import type { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
@@ -5145,6 +5148,9 @@ function createAdapterWithGatewayMock(
 		enabled?: boolean;
 		settingsService?: unknown;
 		getWallet?: Mock;
+		appsService?: unknown;
+		urlService?: unknown;
+		appPublishService?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -5194,6 +5200,14 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
+	if (overrides?.appsService) {
+		args[43] = overrides.appsService as ConstructorParameters<typeof InstanceAiAdapterService>[43];
+		args[44] = overrides.urlService as ConstructorParameters<typeof InstanceAiAdapterService>[44];
+		args[45] = (overrides.appPublishService ?? {}) as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[45];
+		args[46] = {} as ConstructorParameters<typeof InstanceAiAdapterService>[46];
+	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -5940,6 +5954,318 @@ describe('createContext — builder delegate wiring', () => {
 
 		expect(result).toEqual(agents);
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createContext — app service wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — app service wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+	const app = {
+		id: 'app-1',
+		name: 'Greeter',
+		namespace: 'greeter',
+		projectId: 'proj-1',
+		bindings: [{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' }],
+		createdAt: new Date('2024-01-01T00:00:00.000Z'),
+	};
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	function mockAppsModule(active: boolean) {
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: vi.fn().mockReturnValue(active) };
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+	}
+
+	function createAdapterWithApps(
+		appsService: Partial<AppsService>,
+		appPublishService: Partial<AppPublishService> = {},
+	) {
+		return createAdapterWithGatewayMock(vi.fn(), {
+			appsService,
+			urlService: { getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678') },
+			appPublishService,
+		});
+	}
+
+	it('omits appService when the apps module is inactive', () => {
+		mockAppsModule(false);
+		const service = createAdapterWithApps({});
+
+		expect(service.createContext(mockUser, { projectId: 'proj-1' }).appService).toBeUndefined();
+	});
+
+	it('omits appService when the apps deps were not injected', () => {
+		mockAppsModule(true);
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser, { projectId: 'proj-1' }).appService).toBeUndefined();
+	});
+
+	it('creates an app in the bound project and maps a namespace conflict to { conflict }', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createApp = vi
+			.fn()
+			.mockResolvedValueOnce(app)
+			.mockRejectedValueOnce(new AppNamespaceConflictError('greeter'));
+		const service = createAdapterWithApps({ createApp });
+		const appService = service.createContext(mockUser, { projectId: 'proj-1' }).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual({
+			app: {
+				id: 'app-1',
+				name: 'Greeter',
+				namespace: 'greeter',
+				projectId: 'proj-1',
+				createdAt: '2024-01-01T00:00:00.000Z',
+			},
+		});
+		expect(createApp).toHaveBeenCalledWith('proj-1', { name: 'Greeter', namespace: 'greeter' });
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:create'], false, {
+			projectId: 'proj-1',
+		});
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual({ conflict: true });
+	});
+
+	it('reports the app to onAppTouched when it is created or built, and survives a failing hook', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const onAppTouched = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValue(undefined);
+		const service = createAdapterWithApps({
+			createApp: vi.fn().mockResolvedValue(app),
+			getApp: vi.fn().mockResolvedValue(app),
+			createVersion: vi.fn().mockResolvedValue({ id: 'v-1', appId: 'app-1' }),
+		});
+		const appService = service.createContext(mockUser, {
+			projectId: 'proj-1',
+			threadId: 'thread-1',
+			onAppTouched,
+		}).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Greeter', namespace: 'greeter' }),
+		).resolves.toEqual(expect.objectContaining({ app: expect.objectContaining({ id: 'app-1' }) }));
+		await appService?.storeVersion('app-1', { source: Buffer.from('s'), dist: Buffer.from('d') });
+
+		expect(onAppTouched).toHaveBeenCalledTimes(2);
+		expect(onAppTouched).toHaveBeenCalledWith({
+			id: 'app-1',
+			projectId: 'proj-1',
+			name: 'Greeter',
+		});
+	});
+
+	it('stores a version after checking app:update on the app project and returns the served url', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createVersion = vi.fn().mockResolvedValue({ id: 'v-1', appId: 'app-1' });
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			createVersion,
+		});
+		const appService = service.createContext(mockUser).appService;
+		const source = Buffer.from('src');
+		const dist = Buffer.from('dist');
+
+		await expect(appService?.storeVersion('app-1', { source, dist })).resolves.toEqual({
+			versionId: 'v-1',
+			url: 'http://localhost:5678/apps/greeter/',
+		});
+		expect(createVersion).toHaveBeenCalledWith('app-1', source, dist);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('rejects a namespace that is not a URL slug before touching the service', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const createApp = vi.fn();
+		const service = createAdapterWithApps({ createApp });
+		const appService = service.createContext(mockUser, { projectId: 'proj-1' }).appService;
+
+		await expect(
+			appService?.create({ projectId: 'proj-1', name: 'Evil', namespace: '../etc' }),
+		).rejects.toThrow('Invalid app');
+		expect(createApp).not.toHaveBeenCalled();
+	});
+
+	it('rejects reads of an app in a project the user cannot access', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) });
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.get('app-1')).rejects.toThrow('required permissions');
+	});
+
+	it('returns the stored source tarball after checking app:read on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const data = Buffer.from('src');
+		const getSourceTarball = vi.fn().mockResolvedValue({ versionId: 'v-1', data });
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			getSourceTarball,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getSourceTarball('app-1')).resolves.toEqual({
+			versionId: 'v-1',
+			data,
+		});
+		expect(getSourceTarball).toHaveBeenCalledWith('app-1');
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it("publishes after checking app:update, handing over the app's sandbox as the draft", async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const published = { versionId: 'v-2', url: 'http://localhost:5678/apps/greeter/' };
+		const publish = vi.fn().mockResolvedValue(published);
+		const workspace = { sandbox: {} };
+		const getAppWorkspace = vi.fn(() => workspace as never);
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser, {
+			threadId: 'thread-1',
+			getAppWorkspace,
+		}).appService;
+
+		await expect(appService?.publish('app-1')).resolves.toEqual(published);
+		expect(getAppWorkspace).toHaveBeenCalledWith('app-1');
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, { draft: workspace });
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('publishes without a draft when the app has no live sandbox', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const publish = vi.fn().mockResolvedValue({ versionId: 'v-2', url: 'u' });
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser, {
+			threadId: 'thread-1',
+			getAppWorkspace: () => undefined,
+		}).appService;
+
+		await appService?.publish('app-1');
+
+		expect(publish).toHaveBeenCalledWith('app-1', mockUser, { draft: undefined });
+	});
+
+	it('does not publish an app in a project the user cannot update', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const publish = vi.fn();
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app) }, { publish });
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.publish('app-1')).rejects.toThrow('required permissions');
+		expect(publish).not.toHaveBeenCalled();
+	});
+
+	it('does not read the source tarball of an app in a project the user cannot access', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const getSourceTarball = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			getSourceTarball,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getSourceTarball('app-1')).rejects.toThrow('required permissions');
+		expect(getSourceTarball).not.toHaveBeenCalled();
+	});
+
+	it('sets bindings as the user after checking app:update on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: ['not published'] };
+		const setBindings = vi.fn().mockResolvedValue(described);
+		const service = createAdapterWithApps({ getApp: vi.fn().mockResolvedValue(app), setBindings });
+		const appService = service.createContext(mockUser).appService;
+		const bindings = [{ key: 'submit', kind: 'workflow' as const, workflowId: 'wf-1' }];
+
+		await expect(appService?.setBindings('app-1', bindings)).resolves.toEqual(described);
+		expect(setBindings).toHaveBeenCalledWith('app-1', bindings, mockUser);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:update'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('previews bindings as if stored, after checking app:read, without saving them', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: [] };
+		const describeBindings = vi.fn().mockResolvedValue(described);
+		const setBindings = vi.fn();
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+			setBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+		const bindings = [{ key: 'notify', kind: 'workflow' as const, workflowId: 'wf-2' }];
+
+		await expect(appService?.previewBindings('app-1', bindings)).resolves.toEqual(described);
+		expect(describeBindings).toHaveBeenCalledWith({ projectId: 'proj-1', bindings });
+		expect(setBindings).not.toHaveBeenCalled();
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('describes bindings after checking app:read on the app project', async () => {
+		mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(true);
+		const described = { bindings: [], warnings: [] };
+		const describeBindings = vi.fn().mockResolvedValue(described);
+		const service = createAdapterWithApps({
+			getApp: vi.fn().mockResolvedValue(app),
+			describeBindings,
+		});
+		const appService = service.createContext(mockUser).appService;
+
+		await expect(appService?.getBindings('app-1')).resolves.toEqual({
+			...described,
+			stored: app.bindings,
+		});
+		expect(describeBindings).toHaveBeenCalledWith(app);
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:read'], false, {
+			projectId: 'proj-1',
+		});
+	});
+
+	it('returns the packed SDK tarball under its vendor filename', async () => {
+		mockAppsModule(true);
+		const service = createAdapterWithApps({});
+		const appService = service.createContext(mockUser).appService;
+
+		const tarball = await appService?.getSdkTarball();
+
+		expect(tarball?.filename).toBe('n8n-app-sdk.tgz');
+		// gzip magic bytes
+		expect(Array.from(tarball?.data.subarray(0, 2) ?? [])).toEqual([0x1f, 0x8b]);
+		expect((await appService?.getSdkTarball())?.data).toBe(tarball?.data);
 	});
 });
 

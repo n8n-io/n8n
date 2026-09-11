@@ -1,4 +1,5 @@
 import type {
+	AppBlueprint,
 	InstanceAiBuildMode,
 	InstanceAiPromptConfiguration,
 	InstanceAiCredentialDestinationDecision,
@@ -93,6 +94,10 @@ export interface ConfirmationData {
 	autoSetup?: { credentialType: string; attemptId?: string };
 	credentialDestination?: InstanceAiCredentialDestinationDecision;
 	connectedSlugs?: string[];
+	/** The app blueprint as the user approved it in the card. */
+	blueprint?: AppBlueprint;
+	/** What the user wants changed about a proposed blueprint. */
+	feedback?: string;
 }
 
 export interface PendingConfirmation {

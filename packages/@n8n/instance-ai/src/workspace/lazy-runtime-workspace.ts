@@ -6,6 +6,7 @@ import {
 	raceWithAbort,
 	type AbortableOptions,
 	type AppendOptions,
+	type BuiltTool,
 	type CommandResult,
 	type CopyOptions,
 	type ExecuteCommandOptions,
@@ -21,6 +22,7 @@ import {
 	type WorkspaceSandbox,
 	type WriteOptions,
 } from '@n8n/agents';
+import { z } from 'zod';
 
 import {
 	traceSandboxOperation,
@@ -31,8 +33,20 @@ import {
 
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
 
+export type SandboxTarget = 'thread' | 'app';
+
 export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
+	/**
+	 * The sandbox of the app this thread builds. When set, the core workspace
+	 * tools take a `sandbox` input and route `'app'` calls to this workspace.
+	 */
+	appWorkspace?: Workspace;
+	/**
+	 * Which sandbox a core workspace call without a `sandbox` input targets.
+	 * Read per call, so a thread that binds to an app mid-run switches to it.
+	 */
+	defaultSandbox?: () => SandboxTarget;
 	id?: string;
 	name?: string;
 	/**
@@ -50,8 +64,39 @@ export interface LazyRuntimeWorkspaceOptions {
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
 type WorkspaceDestroyedListener = () => void;
 
+const sandboxTargetSchema = z
+	.enum(['thread', 'app'])
+	.optional()
+	.describe(
+		"Which sandbox the call targets: 'app' is the sandbox of the app this thread builds, 'thread' the workflow-building one. Defaults to 'app' when the thread builds an app, else 'thread'.",
+	);
+
+/** One model-facing tool whose `sandbox` input picks the thread or the app instance. */
+function withSandboxTarget(
+	threadTool: BuiltTool,
+	appTool: BuiltTool,
+	defaultSandbox: () => SandboxTarget,
+): BuiltTool {
+	const inputSchema = threadTool.inputSchema;
+	const threadHandler = threadTool.handler;
+	const appHandler = appTool.handler;
+	if (!(inputSchema instanceof z.ZodObject) || !threadHandler || !appHandler) return threadTool;
+	return {
+		...threadTool,
+		description: `${threadTool.description} In a thread that builds an app this targets the app's sandbox unless sandbox 'thread' is passed.`,
+		inputSchema: inputSchema.extend({ sandbox: sandboxTargetSchema }),
+		handler: async (input, ctx) => {
+			const { sandbox, ...rest } = input as { sandbox?: SandboxTarget } & Record<string, unknown>;
+			const target = sandbox ?? defaultSandbox();
+			return await (target === 'app' ? appHandler : threadHandler)(rest, ctx);
+		},
+	};
+}
+
 export function createLazyRuntimeWorkspace({
 	ensureWorkspace,
+	appWorkspace,
+	defaultSandbox = () => 'thread',
 	id = 'instance-ai-runtime-workspace',
 	name = 'Instance AI runtime workspace',
 	sandboxInstructions,
@@ -67,8 +112,15 @@ export function createLazyRuntimeWorkspace({
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);
-	workspace.getTools = () =>
-		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+	workspace.getTools = () => {
+		const threadTools = baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+		if (!appWorkspace) return threadTools;
+		const appTools = new Map(appWorkspace.getTools().map((tool) => [tool.name, tool]));
+		return threadTools.map((tool) => {
+			const appTool = appTools.get(tool.name);
+			return appTool ? withSandboxTarget(tool, appTool, defaultSandbox) : tool;
+		});
+	};
 
 	return workspace;
 }

@@ -12,7 +12,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { SidebarStateKey } from '../instanceAiLayout';
+import { AppThreadScopeKey, SidebarStateKey } from '../instanceAiLayout';
 import { NEW_CONVERSATION_TITLE } from '../constants';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
@@ -27,11 +27,14 @@ import type {
 } from '@n8n/api-types';
 import {
 	getPendingAgentAttachment,
+	getPendingAppAttachment,
 	stashPendingAgentAttachment,
+	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
+import type { AppPreviewDiagnostics } from '../composables/useAppPreviewDiagnostics';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 
 const mockWindowSizeState = vi.hoisted(() => ({
@@ -377,6 +380,49 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	},
 });
 
+const InstanceAiAppPreviewStub = defineComponent({
+	name: 'InstanceAiAppPreviewStub',
+	props: {
+		appId: { type: String, required: true },
+		projectId: { type: String, required: true },
+		versionId: { type: String, required: false },
+	},
+	setup(props) {
+		const diagnostics = inject<AppPreviewDiagnostics | undefined>(
+			'appPreviewDiagnostics',
+			undefined,
+		);
+		return () =>
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-app-preview-stub',
+					'data-app-id': props.appId,
+					'data-project-id': props.projectId,
+					'data-version-id': props.versionId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-app-preview-report-error',
+							onClick: () => diagnostics?.add(PREVIEW_DIAGNOSTIC),
+						},
+						'Report error',
+					),
+				],
+			);
+	},
+});
+
+const PREVIEW_DIAGNOSTIC = {
+	kind: 'uncaught' as const,
+	message: 'boom',
+	file: '/src/pages/Home.vue',
+	line: 12,
+	at: '2026-09-08T10:00:00.000Z',
+};
+
 const InstanceAiConfirmationPanelStub = defineComponent({
 	name: 'InstanceAiConfirmationPanelStub',
 	props: {
@@ -449,6 +495,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 			InstanceAiInput: InstanceAiInputStub,
 			InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
 			InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
+			InstanceAiAppPreview: InstanceAiAppPreviewStub,
 			InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 			AgentSection: AgentSectionStub,
 			InstanceAiDataTablePreview: { template: '<div data-test-id="data-table-preview-stub" />' },
@@ -548,8 +595,8 @@ describe('InstanceAiThreadView', () => {
 			contextualSuggestion: null,
 			currentTasks: null,
 			producedArtifacts: new Map(),
-			resourceNameIndex: new Map(),
-			linkableResourceNameIndex: new Map(),
+			resourceIndex: new Map(),
+			linkableResourceIndex: new Map(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],
@@ -1474,6 +1521,145 @@ describe('InstanceAiThreadView', () => {
 		);
 	});
 
+	describe('app context chip', () => {
+		const boundApp = {
+			type: 'app' as const,
+			appId: 'app-1',
+			projectId: 'project-1',
+			name: 'Greeter',
+		};
+
+		beforeEach(() => {
+			thread.sseState = 'disconnected';
+			vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+			store.updateThreadMetadata.mockResolvedValue(undefined);
+		});
+
+		it('shows the stashed app as the composer chip and opens its preview', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			const preview = await findByTestId('instance-ai-app-preview-stub');
+			expect(preview).toHaveAttribute('data-app-id', 'app-1');
+			expect(preview).toHaveAttribute('data-project-id', 'project-1');
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Greeter');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent('app-window');
+		});
+
+		it('sends the app attachment with the first message and then drops the chip', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				[boundApp],
+				expect.any(String),
+				undefined,
+			);
+			await vi.waitFor(() => {
+				expect(getPendingAppAttachment('thread-1')).toBeNull();
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+		});
+
+		it('attaches buffered preview errors to the next message and clears them', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				[
+					boundApp,
+					{ type: 'app-preview-diagnostics', appId: 'app-1', items: [PREVIEW_DIAGNOSTIC] },
+				],
+				expect.any(String),
+				undefined,
+			);
+
+			await vi.waitFor(() => {
+				expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			});
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenLastCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+
+		it('shows buffered preview errors as a chip and dismisses them without sending', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			await findByTestId('instance-ai-app-preview-stub');
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+			await userEvent.click(getByTestId('instance-ai-app-preview-report-error'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('1 preview error');
+			expect(getByTestId('instance-ai-input-context-chip-icon')).toHaveTextContent(
+				'triangle-alert',
+			);
+
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+
+		it('dismisses the app chip without sending it', async () => {
+			thread.producedArtifacts = new Map([
+				['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'Greeter' }],
+			]) as typeof thread.producedArtifacts;
+			stashPendingAppAttachment('thread-1', boundApp);
+
+			const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			const preview = await findByTestId('instance-ai-app-preview-stub');
+
+			await userEvent.click(getByTestId('instance-ai-input-dismiss-context-chip'));
+
+			expect(getPendingAppAttachment('thread-1')).toBeNull();
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
+			expect(preview).toBeInTheDocument();
+			await userEvent.click(getByTestId('instance-ai-input-submit'));
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				undefined,
+				expect.any(String),
+				undefined,
+			);
+		});
+	});
+
 	it('dismisses a pending preview-context chip without sending it', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
@@ -1733,6 +1919,48 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
 
 		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	it('on the app page drops the artifacts panel and offers history and collapse-chat instead', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+		const toggleSidebar = vi.fn();
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+			global: {
+				provide: {
+					[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: toggleSidebar },
+					[AppThreadScopeKey as symbol]: ref({
+						appId: 'app-1',
+						projectId: 'proj-1',
+						name: 'Greeter',
+					}),
+				},
+			},
+		});
+
+		await vi.waitFor(() => {
+			expect(getByTestId('app-builder-thread-history')).toBeInTheDocument();
+		});
+		expect(queryByTestId('instance-ai-artifacts-panel-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-preview-toggle')).not.toBeInTheDocument();
+		expect(getByTestId('app-builder-back')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-sidebar-toggle')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('app-builder-thread-history'));
+		expect(toggleSidebar).toHaveBeenCalled();
 	});
 
 	it('restores an open preview when the artifact has no message attachment', async () => {

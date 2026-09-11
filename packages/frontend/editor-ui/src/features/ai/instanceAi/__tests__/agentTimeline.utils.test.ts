@@ -248,6 +248,41 @@ describe('extractArtifacts', () => {
 		expect(extractArtifacts(node)[0].resourceId).toBe('dt-4');
 	});
 
+	test('returns one app artifact from apps create and build tool calls', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'apps',
+					result: {
+						app: { id: 'app-1', name: 'Greeter', namespace: 'greeter', projectId: 'proj-1' },
+						workspacePath: '/workspace/apps/greeter',
+					},
+					completedAt: '2025-01-01T00:00:00.000Z',
+				}),
+				makeToolCall({
+					toolCallId: 'tc-2',
+					toolName: 'apps',
+					result: { error: true, stage: 'build', message: 'failed', log: '' },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-3',
+					toolName: 'apps',
+					result: { appId: 'app-1', name: 'Greeter', projectId: 'proj-1', versionId: 'v-1' },
+				}),
+			],
+		});
+		expect(extractArtifacts(node)).toEqual([
+			{
+				type: 'app',
+				resourceId: 'app-1',
+				name: 'Greeter',
+				projectId: 'proj-1',
+				completedAt: '2025-01-01T00:00:00.000Z',
+			},
+		]);
+	});
+
 	test('deduplicates artifacts by resourceId', () => {
 		const node = makeAgentNode({
 			targetResource: { id: 'wf-1', type: 'workflow', name: 'WF From Target' },

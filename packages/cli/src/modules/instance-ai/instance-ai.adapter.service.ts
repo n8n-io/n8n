@@ -1,3 +1,4 @@
+import type { Workspace } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -5,6 +6,7 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	CreateAppDto,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -43,6 +45,7 @@ import type {
 	InstanceAiWebResearchService,
 	InstanceAiWorkspaceService,
 	InstanceAiWorkflowTemplateService,
+	InstanceAiAppService,
 	FetchedPage,
 	DataTableSummary,
 	DataTableColumnInfo,
@@ -149,6 +152,11 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { APP_SDK_TARBALL_FILENAME, getAppSdkTarball } from '@/modules/apps/app-sdk-tarball';
+import { AppPublishService } from '@/modules/apps/app-publish.service';
+import { AppThemeService, deriveAppTheme } from '@/modules/apps/app-theme.service';
+import { AppsService } from '@/modules/apps/apps.service';
+import { AppNamespaceConflictError } from '@/modules/apps/errors/app-namespace-conflict.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import {
@@ -172,6 +180,7 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -400,6 +409,11 @@ export class InstanceAiAdapterService {
 		private readonly folderRepository?: FolderRepository,
 		private readonly folderFinderService?: FolderFinderService,
 		private readonly instanceContext?: InstanceContextService,
+		// Apps: optional so adapter tests can omit them; `createContext` also checks the module is active.
+		private readonly appsService?: AppsService,
+		private readonly urlService?: UrlService,
+		private readonly appPublishService?: AppPublishService,
+		private readonly appThemeService?: AppThemeService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -443,6 +457,10 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** The thread's live sandbox, if a run created it: `apps publish` snapshots its draft first. */
+			getAppWorkspace?: (appId: string) => Workspace | undefined;
+			/** Called when the run creates or builds an app, so the caller can bind the thread to it. */
+			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
 		},
 	): InstanceAiContext {
 		const {
@@ -459,6 +477,8 @@ export class InstanceAiAdapterService {
 			conversationHistory,
 			folderExplorationEnabled,
 			modelId,
+			getAppWorkspace,
+			onAppTouched,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -501,6 +521,24 @@ export class InstanceAiAdapterService {
 				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
+			...(this.appsService &&
+			this.urlService &&
+			this.appPublishService &&
+			this.appThemeService &&
+			Container.get(ModuleRegistry).isActive('apps')
+				? {
+						appService: this.createAppAdapter(
+							{
+								appsService: this.appsService,
+								urlService: this.urlService,
+								appPublishService: this.appPublishService,
+								appThemeService: this.appThemeService,
+							},
+							user,
+							{ boundProjectId: projectId, threadId, getAppWorkspace, onAppTouched },
+						),
+					}
+				: {}),
 			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
@@ -3528,6 +3566,135 @@ export class InstanceAiAdapterService {
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
+		};
+	}
+
+	private createAppAdapter(
+		services: {
+			appsService: AppsService;
+			urlService: UrlService;
+			appPublishService: AppPublishService;
+			appThemeService: AppThemeService;
+		},
+		user: User,
+		run: {
+			boundProjectId?: string;
+			threadId?: string;
+			getAppWorkspace?: (appId: string) => Workspace | undefined;
+			onAppTouched?: (app: { id: string; projectId: string; name: string }) => Promise<void>;
+		},
+	): InstanceAiAppService {
+		const { appsService, urlService, appPublishService, appThemeService } = services;
+		// Best effort: a failed binding must not fail the tool call that did the real work.
+		const noteAppTouched = async (app: { id: string; projectId: string; name: string }) => {
+			try {
+				await run.onAppTouched?.({ id: app.id, projectId: app.projectId, name: app.name });
+			} catch (error) {
+				this.logger.warn('Could not bind the thread to the app', {
+					appId: app.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		};
+		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('apps');
+		const { resolveProjectId, assertProjectScope } = this.createProjectScopeHelpers(
+			user,
+			run.boundProjectId,
+		);
+
+		const getAccessibleApp = async (scopes: Scope[], appId: string) => {
+			const app = await appsService.getApp(appId);
+			await assertProjectScope(scopes, app.projectId);
+			return app;
+		};
+
+		return {
+			async create({ projectId: requestedProjectId, name, namespace }) {
+				assertNotReadOnly();
+				const projectId = await resolveProjectId(['app:create'], requestedProjectId);
+				// The REST controller validates through this DTO; the tool path must not skip the slug rules.
+				const dto = CreateAppDto.safeParse({ name, namespace });
+				if (!dto.success) {
+					throw new UserError(`Invalid app: ${dto.error.issues.map((i) => i.message).join(' ')}`);
+				}
+				try {
+					const app = await appsService.createApp(projectId, dto.data);
+					await noteAppTouched(app);
+					return {
+						app: {
+							id: app.id,
+							name: app.name,
+							namespace: app.namespace,
+							projectId: app.projectId,
+							createdAt: app.createdAt.toISOString(),
+						},
+					};
+				} catch (error) {
+					if (error instanceof AppNamespaceConflictError) return { conflict: true };
+					throw error;
+				}
+			},
+
+			async get(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return { id: app.id, name: app.name, namespace: app.namespace, projectId: app.projectId };
+			},
+
+			async getSourceTarball(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return await appsService.getSourceTarball(app.id);
+			},
+
+			async storeVersion(appId, { source, dist }) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const version = await appsService.createVersion(app.id, source, dist);
+				await noteAppTouched(app);
+				// Same URL the apps UI shows; the trailing slash keeps relative asset URLs working.
+				return {
+					versionId: version.id,
+					url: `${urlService.getInstanceBaseUrl()}/apps/${app.namespace}/`,
+				};
+			},
+
+			async setBindings(appId, bindings) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				return await appsService.setBindings(app.id, bindings, user);
+			},
+
+			async previewBindings(appId, bindings) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return await appsService.describeBindings({ projectId: app.projectId, bindings });
+			},
+
+			async getBindings(appId) {
+				const app = await getAccessibleApp(['app:read'], appId);
+				return { ...(await appsService.describeBindings(app)), stored: app.bindings };
+			},
+
+			async getSdkTarball() {
+				return { filename: APP_SDK_TARBALL_FILENAME, data: await getAppSdkTarball() };
+			},
+
+			async publish(appId) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				return await appPublishService.publish(app.id, user, {
+					draft: run.getAppWorkspace?.(app.id),
+				});
+			},
+
+			async applyTheme(appId, settings) {
+				assertNotReadOnly();
+				const app = await getAccessibleApp(['app:update'], appId);
+				const theme = deriveAppTheme(settings);
+				await appsService.updateApp(app.id, { theme });
+				const result = await appThemeService.applyTheme(app.id, theme, user, {
+					draft: run.getAppWorkspace?.(app.id),
+				});
+				return 'error' in result ? { error: result.message } : undefined;
+			},
 		};
 	}
 

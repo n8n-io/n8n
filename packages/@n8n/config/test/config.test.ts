@@ -88,6 +88,13 @@ describe('GlobalConfig', () => {
 			fileMaxAgeMs: 2 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
+		apps: {
+			maxAppsPerProject: 20,
+			maxVersionsPerApp: 50,
+			maxProjectBlobSize: 500 * 1024 * 1024,
+			runtimeRateLimit: 60,
+			runtimeMaxConcurrent: 10,
+		},
 		database: {
 			logging: {
 				enabled: false,

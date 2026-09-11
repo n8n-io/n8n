@@ -139,7 +139,7 @@ export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
 }
 
-function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
+export function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
 
@@ -277,16 +277,19 @@ function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
 export type WorkflowInputFieldDef = { name: string; type?: string };
 
 /**
- * Resolve the Execute Workflow Trigger `inputSource`. Mirrors the runtime
- * fallback in `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`: when the
- * parameter is absent (legacy node versions < 1.1, or imported triggers that
- * never saved it), the trigger treats the workflow as passthrough and passes
- * all input data through unchanged. Defaulting to PASSTHROUGH here keeps the
- * inferred schema open so undeclared input fields are not dropped.
+ * Resolve the Execute Workflow Trigger `inputSource`. The editor strips parameters
+ * left at their default before it saves a node, so an absent value means the node's
+ * default: `workflowInputs` from typeVersion 1.1 on, where the parameter exists;
+ * passthrough before that, where the runtime falls back to it. Declared fields on
+ * a trigger without the parameter settle it the same way.
  */
 function getExecuteWorkflowInputSource(triggerNode: INode): string {
 	const params = triggerNode.parameters ?? {};
-	return (params[INPUT_SOURCE] as string | undefined) ?? PASSTHROUGH;
+	const inputSource = params[INPUT_SOURCE];
+	if (typeof inputSource === 'string') return inputSource;
+	const declared = params[WORKFLOW_INPUTS] as { values?: unknown[] } | undefined;
+	if (Array.isArray(declared?.values) && declared.values.length > 0) return WORKFLOW_INPUTS;
+	return triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
 }
 
 /** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */
@@ -557,7 +560,7 @@ function normaliseExecutionStatus(status: string | undefined): string {
 	return 'success';
 }
 
-function formatResult(
+export function formatResult(
 	executionId: string,
 	status: string | undefined,
 	data: IRun['data'] | undefined,

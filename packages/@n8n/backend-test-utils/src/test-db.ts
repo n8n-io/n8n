@@ -159,6 +159,7 @@ type EntityName =
 	| 'InstanceMonitoringReport'
 	| 'DataTable'
 	| 'DataTableColumn'
+	| 'App'
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
 	| 'ChatHubAgent'

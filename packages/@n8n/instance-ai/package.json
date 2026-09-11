@@ -93,6 +93,7 @@
     "@langchain/core": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/json-schema": "catalog:",
     "@types/luxon": "catalog:",
     "@types/psl": "1.1.3",
     "@types/turndown": "catalog:",

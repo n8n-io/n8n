@@ -109,6 +109,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'agent') {
 		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
 	}
+	if (tab.type === 'app') {
+		return tab.projectId ? `/projects/${tab.projectId}/apps/${tab.id}` : '/home/apps';
+	}
 	return undefined;
 }
 

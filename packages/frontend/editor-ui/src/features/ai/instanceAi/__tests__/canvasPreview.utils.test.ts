@@ -12,6 +12,8 @@ import {
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
+	isAgentBuildingApp,
+	getLatestAppSourceEditId,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -1386,5 +1388,142 @@ describe('isAgentEditingAgent', () => {
 		});
 		const parent = makeAgentNode({ children: [builder] });
 		expect(isAgentEditingAgent(parent, 'agent-1')).toBe(false);
+	});
+});
+
+describe('isAgentBuildingApp', () => {
+	const buildCall = (overrides: Partial<InstanceAiToolCallState> = {}) =>
+		makeToolCall({
+			toolName: 'apps',
+			args: { action: 'publish', appId: 'app-1' },
+			isLoading: true,
+			...overrides,
+		});
+
+	test('is true while an apps publish call for the app is in flight', () => {
+		const node = makeAgentNode({ toolCalls: [buildCall()] });
+		expect(isAgentBuildingApp(node, 'app-1')).toBe(true);
+	});
+
+	test('is false once the publish call has completed', () => {
+		const node = makeAgentNode({
+			toolCalls: [buildCall({ isLoading: false, result: { appId: 'app-1', versionId: 'v-1' } })],
+		});
+		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
+	});
+
+	test('is false for a legacy in-flight apps build call', () => {
+		const node = makeAgentNode({
+			toolCalls: [buildCall({ args: { action: 'build', appId: 'app-1' } })],
+		});
+		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
+	});
+
+	test('is false for an in-flight apps create call', () => {
+		const node = makeAgentNode({
+			toolCalls: [buildCall({ args: { action: 'create', name: 'Greeter' } })],
+		});
+		expect(isAgentBuildingApp(node, 'app-1')).toBe(false);
+	});
+
+	test('is true when the in-flight publish call is on a child node', () => {
+		const child = makeAgentNode({ agentId: 'agent-2', toolCalls: [buildCall()] });
+		const parent = makeAgentNode({ children: [child] });
+		expect(isAgentBuildingApp(parent, 'app-1')).toBe(true);
+	});
+});
+
+describe('getLatestAppSourceEditId', () => {
+	const target = { appId: 'app-1', namespace: 'greeter' };
+	const write = (
+		toolCallId: string,
+		path: string,
+		overrides: Partial<InstanceAiToolCallState> = {},
+	) => makeToolCall({ toolCallId, toolName: 'workspace_write_file', args: { path }, ...overrides });
+
+	test('is the most recent write under the app directory, in flight or done', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				write('tc-1', 'apps/greeter/src/App.vue'),
+				write('tc-2', 'apps/greeter/src/pages/Home.vue', { isLoading: true }),
+				write('tc-3', 'skills/notes.md', { isLoading: true }),
+			],
+		});
+		expect(getLatestAppSourceEditId(node, target)).toBe('tc-2');
+	});
+
+	test.each([
+		['workspace_str_replace_file', '/home/user/workspace/apps/greeter/src/App.vue'],
+		['workspace_str_replace_file', 'apps/greeter/package.json'],
+		['workspace_write_file', './apps/greeter/index.html'],
+	])('counts %s on %s', (toolName, path) => {
+		const node = makeAgentNode({ toolCalls: [write('tc-1', path, { toolName })] });
+		expect(getLatestAppSourceEditId(node, target)).toBe('tc-1');
+	});
+
+	test.each([
+		'apps/greeter-v2/src/App.vue',
+		'apps/greeter',
+		'my-apps/greeter/src/App.vue',
+		'apps/other/src/App.vue',
+	])('ignores a write to %s', (path) => {
+		const node = makeAgentNode({ toolCalls: [write('tc-1', path)] });
+		expect(getLatestAppSourceEditId(node, target)).toBeUndefined();
+	});
+
+	test('treats the namespace literally', () => {
+		const node = makeAgentNode({ toolCalls: [write('tc-1', 'apps/greeterX/src/App.vue')] });
+		expect(
+			getLatestAppSourceEditId(node, { appId: 'app-1', namespace: 'greeter.' }),
+		).toBeUndefined();
+	});
+
+	test('counts an apps add-component call for the app, not a restore', () => {
+		const addComponent = makeToolCall({
+			toolCallId: 'tc-1',
+			toolName: 'apps',
+			args: { action: 'add-component', appId: 'app-1', component: 'dialog' },
+			isLoading: true,
+		});
+		expect(getLatestAppSourceEditId(makeAgentNode({ toolCalls: [addComponent] }), target)).toBe(
+			'tc-1',
+		);
+		const otherApp = makeToolCall({
+			...addComponent,
+			args: { ...addComponent.args, appId: 'app-2' },
+		});
+		expect(
+			getLatestAppSourceEditId(makeAgentNode({ toolCalls: [otherApp] }), target),
+		).toBeUndefined();
+		const restore = makeToolCall({
+			toolCallId: 'tc-2',
+			toolName: 'apps',
+			args: { action: 'restore', appId: 'app-1' },
+		});
+		expect(
+			getLatestAppSourceEditId(makeAgentNode({ toolCalls: [restore] }), target),
+		).toBeUndefined();
+	});
+
+	test('ignores reads and other tools on the app directory', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				write('tc-1', 'apps/greeter/src/App.vue', { toolName: 'workspace_read_file' }),
+				write('tc-2', 'apps/greeter/src/App.vue', { toolName: 'workspace_list_files' }),
+			],
+		});
+		expect(getLatestAppSourceEditId(node, target)).toBeUndefined();
+	});
+
+	test('prefers the edit of a child node', () => {
+		const child = makeAgentNode({
+			agentId: 'agent-2',
+			toolCalls: [write('tc-child', 'apps/greeter/src/App.vue')],
+		});
+		const parent = makeAgentNode({
+			toolCalls: [write('tc-parent', 'apps/greeter/src/App.vue')],
+			children: [child],
+		});
+		expect(getLatestAppSourceEditId(parent, target)).toBe('tc-child');
 	});
 });

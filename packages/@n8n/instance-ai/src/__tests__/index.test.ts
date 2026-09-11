@@ -103,6 +103,7 @@ vi.mock('../workspace/lazy-runtime-workspace', () => ({
 }));
 vi.mock('../workspace/sandbox-setup', () => ({
 	setupSandboxWorkspace: () => undefined,
+	NPM_INSTALL_FLAGS: '--ignore-scripts',
 }));
 vi.mock('../workspace/snapshot-manager', () => ({ SnapshotManager: class SnapshotManager {} }));
 vi.mock('../runtime/background-task-manager', () => ({

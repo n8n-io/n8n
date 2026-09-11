@@ -227,6 +227,10 @@ const resolvedSuggestionCatalogVersion = computed(
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
+const contextChipDefaultIcon = computed(() =>
+	props.contextChip?.type === 'app-artifact' ? 'app-window' : 'robot',
+);
+
 const placeholder = computed(() => {
 	if (!props.isWorkflowBuilderAvailable) {
 		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
@@ -585,7 +589,7 @@ const resizable = computed(() => {
 						<template #tag>
 							<span :class="$style.contextChipContent">
 								<N8nIcon
-									:icon="props.contextChip.icon ?? 'robot'"
+									:icon="props.contextChip.icon ?? contextChipDefaultIcon"
 									size="medium"
 									:class="$style.contextChipIcon"
 									data-test-id="instance-ai-handoff-context-chip-icon"

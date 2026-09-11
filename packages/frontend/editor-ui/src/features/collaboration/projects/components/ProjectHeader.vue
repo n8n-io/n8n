@@ -21,6 +21,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { APP_NEW } from '@/features/apps/apps.constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -120,6 +121,7 @@ const homeProject = computed(() => projectsStore.currentProject ?? projectsStore
 
 const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 const instanceAiReady = useInstanceAiReady();
+const canCreateApp = computed(() => !!getResourcePermissions(homeProject.value?.scopes).app.create);
 
 const isPersonalProject = computed(() => {
 	return homeProject.value?.type === ProjectTypes.Personal;
@@ -199,6 +201,7 @@ const ACTION_TYPES = {
 	VARIABLE: 'variable',
 	AGENT: 'agent',
 	AGENT_MANUAL: 'agentManual',
+	APP: 'app',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -250,8 +253,18 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const createAppButton = computed(() => ({
+	value: ACTION_TYPES.APP,
+	label: i18n.baseText('apps.add.button.label'),
+	size: 'mini' as const,
+	disabled: !canCreateApp.value,
+}));
+
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isModuleActive('apps')) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -267,6 +280,8 @@ const mainButtonConfig = computed(() => {
 			return createVariableButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
+		case ACTION_TYPES.APP:
+			return createAppButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -352,6 +367,14 @@ const menu = computed(() => {
 				disabled: !canCreateAgent.value,
 			});
 		}
+	}
+
+	if (settingsStore.isModuleActive('apps') && selectedMainButtonType.value !== ACTION_TYPES.APP) {
+		items.push({
+			value: ACTION_TYPES.APP,
+			label: i18n.baseText('apps.add.button.label'),
+			disabled: !canCreateApp.value,
+		});
 	}
 
 	return items;
@@ -441,6 +464,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		const agentId = generateNanoId();
 		agentTelemetry.trackClickedNewAgent(source, agentId, { manual: true });
 		void router.push(instanceAiCreateAgentRoute(projectId, agentId, { manual: true }));
+	},
+	[ACTION_TYPES.APP]: (projectId) => {
+		void router.push({ name: APP_NEW, params: { projectId } });
 	},
 } as const;
 

@@ -16,7 +16,10 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	AppBinding,
+	AppThemeSettings,
 	ChatIntegrationDescriptor,
+	DescribedBinding,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiPromptConfiguration,
@@ -1151,6 +1154,69 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── App service ──────────────────────────────────────────────────────────────
+
+export interface AppSummary {
+	id: string;
+	name: string;
+	namespace: string;
+	projectId: string;
+	createdAt: string;
+}
+
+export interface InstanceAiAppService {
+	/** `conflict` when the namespace is already taken instance-wide, so the tool can guide a retry. */
+	create(input: {
+		/** Omitted → the project bound to the conversation, else the user's personal project. */
+		projectId?: string;
+		name: string;
+		namespace: string;
+	}): Promise<{ app: AppSummary } | { conflict: true }>;
+	get(appId: string): Promise<Omit<AppSummary, 'createdAt'>>;
+	/** Gzipped source tarball of the newest version (per-turn snapshot or build); `null` when the app has none. */
+	getSourceTarball(appId: string): Promise<{ versionId: string; data: Uint8Array } | null>;
+	/** Stores both gzipped tarballs as a new version and makes it the served one. */
+	storeVersion(
+		appId: string,
+		files: { source: Buffer; dist: Buffer },
+	): Promise<{ versionId: string; url: string }>;
+	/** Replaces the app's bindings; `warnings` covers bindings that work only after a follow-up (e.g. publish). */
+	setBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** Describes `bindings` as if they were stored, without saving; for the bind approval card. */
+	previewBindings(
+		appId: string,
+		bindings: AppBinding[],
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[] }>;
+	/** `stored` is the saved list as-is; `bindings` describes only the ones whose draft still resolves. */
+	getBindings(
+		appId: string,
+	): Promise<{ bindings: DescribedBinding[]; warnings: string[]; stored: AppBinding[] }>;
+	/** `@n8n/app-sdk` as an npm tarball for the app's `vendor/` dir; same bytes on every call. */
+	getSdkTarball(): Promise<{ filename: string; data: Uint8Array }>;
+	/**
+	 * Builds the newest stored source (after snapshotting the thread's draft) in
+	 * n8n's own build sandbox and makes the result the served version.
+	 */
+	publish(appId: string): Promise<AppPublishResult>;
+	/**
+	 * Persists the theme choices and writes the derived CSS into the app's
+	 * draft source (the app sandbox when it holds the app, else a new snapshot).
+	 */
+	applyTheme(appId: string, settings: AppThemeSettings): Promise<{ error: string } | undefined>;
+}
+
+export type AppPublishResult =
+	| { versionId: string; url: string }
+	| {
+			error: true;
+			stage: 'sandbox' | 'snapshot' | 'restore' | 'install' | 'build' | 'check' | 'store';
+			message: string;
+			log?: string;
+	  };
+
 // ── Workflow template service ────────────────────────────────────────────────
 
 export interface InstanceAiWorkflowTemplateService {
@@ -1375,6 +1441,9 @@ export interface InstanceAiContext {
 	/** Optional — wired by the host when the run has a bound project. Presence
 	 *  gates the `conversation-history` tool (orchestrator only). */
 	conversationHistoryService?: InstanceAiConversationHistoryReader;
+	/** Optional — wired by the host when the `apps` module is active. Presence
+	 *  gates the `apps` tool. */
+	appService?: InstanceAiAppService;
 	/** Present only when the instance-context reader is enabled; its absence hides the tool. */
 	activityService?: InstanceAiActivityService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1490,6 +1559,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** The sandbox of the app this thread builds; created on first use and shared by the app's threads. */
+	appWorkspace?: Workspace;
+	/** The app this thread builds, read live so a binding made during the run is seen. */
+	getAppId?: () => string | undefined;
 	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */

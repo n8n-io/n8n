@@ -45,4 +45,22 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 			return { ...current, ...patch, title: saved.title || undefined, updatedAt: saved.updatedAt };
 		});
 	}
+
+	/** A user's threads that build the app, newest activity first. */
+	async findByApp(resourceId: string, appId: string): Promise<InstanceAiThread[]> {
+		return await this.find({
+			where: { resourceId, appId },
+			order: { updatedAt: 'DESC', id: 'DESC' },
+		});
+	}
+
+	/** The app a thread builds, or undefined for a thread without one. */
+	async findAppId(threadId: string): Promise<string | undefined> {
+		const thread = await this.findOne({ where: { id: threadId }, select: ['appId'] });
+		return thread?.appId ?? undefined;
+	}
+
+	async setApp(threadId: string, appId: string): Promise<void> {
+		await this.update({ id: threadId }, { appId });
+	}
 }
