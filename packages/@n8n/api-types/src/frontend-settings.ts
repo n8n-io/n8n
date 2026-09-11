@@ -176,7 +176,6 @@ export interface FrontendSettings {
 			enabled: boolean;
 		};
 	};
-	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
 	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;

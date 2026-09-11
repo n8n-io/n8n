@@ -4,7 +4,6 @@ import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
@@ -38,7 +37,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
-const settingsStore = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 
@@ -181,7 +179,6 @@ onMounted(async () => {
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<WorkflowTagsDropdown
-					v-if="settingsStore.areTagsEnabled"
 					ref="dropdown"
 					v-model="currentTagIds"
 					:create-enabled="true"

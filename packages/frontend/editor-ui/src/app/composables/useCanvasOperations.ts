@@ -3239,7 +3239,7 @@ export function useCanvasOperations() {
 				historyStore.stopRecordingUndo();
 			}
 
-			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
+			if (importTags && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
 			}
 

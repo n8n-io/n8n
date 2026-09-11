@@ -605,10 +605,8 @@ export class McpService {
 		registerIfAllowed(listCredentialsTool);
 		registerIfAllowed(listN8nGatewayServicesTool);
 
-		if (!this.globalConfig.tags.disabled) {
-			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
-			registerIfAllowed(listTagsTool);
-		}
+		const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
+		registerIfAllowed(listTagsTool);
 
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);

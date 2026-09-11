@@ -35,7 +35,6 @@ describe('FrontendService', () => {
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
-		tags: { disabled: false },
 		collaboration: { crdt: 'off' },
 		logging: { level: 'info' },
 		hiringBanner: { enabled: false },

@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	FolderTagMappingRepository,
@@ -748,65 +747,6 @@ describe('workflow package import — with tags', () => {
 
 		expect(result.workflows[0].status).toBe('skipped');
 		expect(await tagRepository.count()).toBe(0);
-	});
-
-	it('silently ignores tags when workflow tags are disabled on the instance', async () => {
-		const { tag, packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
-		// A drift that would gate under fail — disabled tags must not even look at it.
-		await updateTag(tag, { name: 'production' });
-		const targetProject = await createTeamProject('Target', owner);
-		const mappingsBefore = await mappingRepository.count();
-
-		const globalConfig = Container.get(GlobalConfig);
-		globalConfig.tags.disabled = true;
-		try {
-			const result = await importPackage({
-				user: owner,
-				projectId: targetProject.id,
-				packageBuffer,
-				tagConflictPolicy: 'fail',
-			});
-
-			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({
-				matched: [],
-				created: [],
-				renamed: [],
-				reconciled: [],
-				skipped: [],
-			});
-			expect((await tagRepository.findOneByOrFail({ id: tag.id })).name).toBe('production');
-			expect(await mappingRepository.count()).toBe(mappingsBefore);
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
-	});
-
-	it('does not require tag scopes when workflow tags are disabled', async () => {
-		const { packageBuffer } = await taggedWorkflowPackage(owner, 'prod');
-		const targetProject = await createTeamProject('Target', owner);
-
-		const globalConfig = Container.get(GlobalConfig);
-		globalConfig.tags.disabled = true;
-		try {
-			const result = await importPackage({
-				user: owner,
-				projectId: targetProject.id,
-				packageBuffer,
-				apiKeyScopes: ['workflow:import'],
-			});
-
-			expect(result.workflows[0].status).toBe('created');
-			expect(result.tags).toEqual({
-				matched: [],
-				created: [],
-				renamed: [],
-				reconciled: [],
-				skipped: [],
-			});
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 
 	it('rejects a package whose workflow references a tag missing from the requirements', async () => {
