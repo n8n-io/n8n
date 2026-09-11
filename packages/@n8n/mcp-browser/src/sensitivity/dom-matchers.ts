@@ -332,15 +332,24 @@ function opaqueValueHits(value: string): SecretHit[] {
  * longer one the span, and the marker the model sees would resolve back to the
  * framing — capturable.
  *
- * A value with no opaque run of its own is a secret only as a whole — a
- * passphrase, or an issued value under the floor — so it stays one hit. An
- * editable field is whole for a different reason: it holds what the caller
+ * Tokens are the hits only when one of them can be the secret. The field's own
+ * signals confirmed it holds one, so where no token can be, the value stands as
+ * the hit: with no opaque run it is a secret only as a whole — a passphrase, or
+ * an issued value under the floor — and where the only run that cleared the floor
+ * is a name, the secret is the part that did not clear it. That value carries the
+ * name with it, so capturing it would store both.
+ *
+ * An editable field is whole for a different reason: it holds what the caller
  * typed, so there is no framing to leave behind.
  */
 export function sensitiveFieldHits(field: Element): SecretHit[] {
 	return sensitiveInputValues(field).flatMap((value) => {
 		const tokens = isPresentedField(field) ? opaqueValueHits(value) : [];
-		return tokens.length > 0 ? tokens : [{ type: 'password', value }];
+		if (tokens.some((hit) => !hit.captureBlocked)) return tokens;
+		// Every token blocked can only mean every one is a name, so the whole run
+		// still leads with one.
+		if (tokens.length > 0) return [{ type: 'password', value, captureBlocked: ASSIGNMENT_NAME }];
+		return [{ type: 'password', value }];
 	});
 }
 

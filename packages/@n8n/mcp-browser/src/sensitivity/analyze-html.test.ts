@@ -549,6 +549,21 @@ describe('analyzeHtmlSensitivity', () => {
 		]);
 	});
 
+	// A name can clear the opaque floor when the value beside it does not, which
+	// leaves the name as the only token — and a name is never the hit. The field's
+	// own signals already confirmed it holds a secret, so the value has to stand as
+	// the hit, and it carries the name with it so it must not be capturable.
+	it('keeps the whole value of a presented field whose only opaque run is a name', () => {
+		const assignment = 'GOOGLE_CLIENT_SECRET=nyk7Qp2';
+		const result = analyzeHtmlSensitivity(
+			probe(`<input type="text" readonly spellcheck="false" value="${assignment}">`),
+		);
+
+		expect(result.ok && result.hits).toEqual([
+			{ type: 'password', value: assignment, captureBlocked: ASSIGNMENT_NAME },
+		]);
+	});
+
 	// Tokens are the hits only when the value has one. A presented value with no
 	// opaque run is a secret only as a whole, so it stays one hit rather than none.
 	it('keeps the whole value of a presented field with no opaque run', () => {
