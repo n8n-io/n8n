@@ -14,7 +14,6 @@ import path from 'node:path';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
@@ -34,6 +33,7 @@ import {
 	type ImportRequest,
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
@@ -225,6 +225,8 @@ export class PromotionsService {
 			);
 		}
 
+		const branch = await this.workingCopy.assertSelectionFitsBranch(packageFolder, selection);
+
 		const stagingFolder = await mkdtemp(path.join(repositoryFolder, `.${PACKAGE_SUBFOLDER}-`));
 		const prePushBackup = `${packageFolder}.pre-selection`;
 		let backedUp = false;
@@ -254,7 +256,13 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
-			await this.workingCopy.applySelection(packageFolder, stagingFolder, staging, selection);
+			await this.workingCopy.applySelection(
+				packageFolder,
+				stagingFolder,
+				staging,
+				selection,
+				branch,
+			);
 
 			const { commitSha } = await this.gitService.commitAndPush({
 				remoteUrl: repositoryUrl(input),

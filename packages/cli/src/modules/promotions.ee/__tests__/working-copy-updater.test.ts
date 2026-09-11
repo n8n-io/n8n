@@ -118,6 +118,11 @@ describe('WorkingCopyUpdater', () => {
 	const readWrittenManifest = async () =>
 		packageManifestSchema.parse(JSON.parse(await readExported('manifest.json')));
 
+	const overlaySelection = async (staging: PackageManifest, sel: SelectivePushOptions) => {
+		const scanned = await updater.assertSelectionFitsBranch(exportFolder, sel);
+		return await updater.applySelection(exportFolder, stagingFolder, staging, sel, scanned);
+	};
+
 	/** Write the branch and the staging export, then apply the selection. */
 	const apply = async (
 		branch: Side,
@@ -132,12 +137,7 @@ describe('WorkingCopyUpdater', () => {
 			'manifest.json': manifestFile(staging.manifest),
 			...staging.files,
 		});
-		return await updater.applySelection(
-			exportFolder,
-			stagingFolder,
-			staging.manifest,
-			selection(overrides),
-		);
+		return await overlaySelection(staging.manifest, selection(overrides));
 	};
 
 	beforeEach(async () => {
@@ -358,12 +358,7 @@ describe('WorkingCopyUpdater', () => {
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ deletedWorkflowIds: ['w-other'] }),
-				),
+				overlaySelection(staging, selection({ deletedWorkflowIds: ['w-other'] })),
 			).rejects.toThrow('Deleted workflows do not belong to the selected project: w-other');
 
 			expect(await readExported('projects/beta/workflows/w-other/workflow.json')).toBe(
@@ -383,12 +378,7 @@ describe('WorkingCopyUpdater', () => {
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ deletedWorkflowIds: ['w1'] }),
-				),
+				overlaySelection(staging, selection({ deletedWorkflowIds: ['w1'] })),
 			).rejects.toThrow(/two workflows with id "w1"/);
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
@@ -420,12 +410,7 @@ describe('WorkingCopyUpdater', () => {
 			});
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w-moved'] }),
-				),
+				overlaySelection(staging, selection({ workflowIds: ['w-moved'] })),
 			).rejects.toThrow('These workflows moved to another project: w-moved');
 
 			expect(await readExported('projects/beta/workflows/w-moved/workflow.json')).toBe(
@@ -676,12 +661,7 @@ describe('WorkingCopyUpdater', () => {
 			});
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w-new'] }),
-				),
+				overlaySelection(staging, selection({ workflowIds: ['w-new'] })),
 			).rejects.toThrow(/symbolic link/);
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
@@ -700,12 +680,7 @@ describe('WorkingCopyUpdater', () => {
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ deletedWorkflowIds: ['w1'] }),
-				),
+				overlaySelection(staging, selection({ deletedWorkflowIds: ['w1'] })),
 			).rejects.toThrow('would delete content the selection keeps');
 
 			expect(await readExported(`${shared}/workflow.json`)).toBe(workflowFile('w1'));
@@ -724,12 +699,7 @@ describe('WorkingCopyUpdater', () => {
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ deletedWorkflowIds: ['wbad'] }),
-				),
+				overlaySelection(staging, selection({ deletedWorkflowIds: ['wbad'] })),
 			).rejects.toThrow('would delete content the selection keeps');
 
 			expect(await readExported('projects/alpha/folders/sales/folder.json')).toBe(
@@ -745,12 +715,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
@@ -775,12 +740,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			expect(await readExported('projects/alpha/credentials/new-c1/credential.json')).toBe(
 				credentialFile('c1'),
@@ -811,12 +771,7 @@ describe('WorkingCopyUpdater', () => {
 				'tags/new-t1/tag.json': tagFile('t1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			await expectAbsent('projects/alpha/data-tables/old-d1');
 			await expectAbsent('tags/old-t1');
@@ -845,12 +800,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			await expectAbsent('projects/alpha/shared/credential.json');
 			expect(await readExported('projects/alpha/shared/tag.json')).toBe(tagFile('t1'));
@@ -876,12 +826,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/credentials/new-c1/credential.json': credentialFile('c1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			expect(await readExported('projects/alpha/credentials/new-c1/credential.json')).toBe(
 				credentialFile('c1'),
@@ -901,12 +846,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			expect(await readExported('projects/alpha/credentials/leftover-c9/credential.json')).toBe(
 				credentialFile('c9'),
@@ -930,12 +870,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/variables/new-v1/variable.json': variableFile('v1', 'new'),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			// Variables dedupe by id, so the stale directory is harmless; full push GCs it.
 			expect(await readExported('projects/alpha/variables/old-v1/variable.json')).toBe(
@@ -962,14 +897,9 @@ describe('WorkingCopyUpdater', () => {
 			});
 			vi.mocked(rename).mockRejectedValueOnce(new Error('EACCES'));
 
-			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w1'] }),
-				),
-			).rejects.toThrow('EACCES');
+			await expect(overlaySelection(staging, selection({ workflowIds: ['w1'] }))).rejects.toThrow(
+				'EACCES',
+			);
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
@@ -996,14 +926,9 @@ describe('WorkingCopyUpdater', () => {
 				.mockImplementationOnce(async (from, to) => await actualRename(from, to))
 				.mockRejectedValueOnce(new Error('EACCES'));
 
-			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w1'] }),
-				),
-			).rejects.toThrow('EACCES');
+			await expect(overlaySelection(staging, selection({ workflowIds: ['w1'] }))).rejects.toThrow(
+				'EACCES',
+			);
 
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				workflowFile('w1'),
@@ -1034,12 +959,7 @@ describe('WorkingCopyUpdater', () => {
 			});
 
 			try {
-				await updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w1'] }),
-				);
+				await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 				expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 					workflowFile('w1', { v: 2 }),
@@ -1064,12 +984,7 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1', { v: 2 }),
 			});
 
-			await updater.applySelection(
-				exportFolder,
-				stagingFolder,
-				staging,
-				selection({ workflowIds: ['w1'] }),
-			);
+			await overlaySelection(staging, selection({ workflowIds: ['w1'] }));
 
 			const aside = vi
 				.mocked(rename)
@@ -1102,14 +1017,9 @@ describe('WorkingCopyUpdater', () => {
 				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
 			});
 
-			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ workflowIds: ['w1'] }),
-				),
-			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
+			await expect(overlaySelection(staging, selection({ workflowIds: ['w1'] }))).rejects.toThrow(
+				/"projects\/alpha\/workflows" on the branch is a symbolic link/,
+			);
 			expect(await readdir(outside)).toEqual([]);
 		});
 
@@ -1134,12 +1044,7 @@ describe('WorkingCopyUpdater', () => {
 			await writeTree(stagingFolder, { 'manifest.json': manifestFile(staging) });
 
 			await expect(
-				updater.applySelection(
-					exportFolder,
-					stagingFolder,
-					staging,
-					selection({ deletedWorkflowIds: ['w1'] }),
-				),
+				overlaySelection(staging, selection({ deletedWorkflowIds: ['w1'] })),
 			).rejects.toThrow(/"projects\/alpha\/workflows" on the branch is a symbolic link/);
 			expect(await readdir(path.join(outside, 'w1'))).toEqual(['workflow.json']);
 		});

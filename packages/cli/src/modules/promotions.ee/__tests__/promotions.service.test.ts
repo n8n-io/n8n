@@ -612,15 +612,11 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('validates the selection against the branch during apply', async () => {
+		it('refuses a deletion that is not on the branch before export', async () => {
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
 				'projects/alpha/project.json': JSON.stringify(alpha),
 				'projects/alpha/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
-			});
-			mockExport({
-				'manifest.json': buildManifest({ projects: [alpha] }),
-				'projects/alpha/project.json': JSON.stringify(alpha),
 			});
 
 			await expect(
@@ -631,14 +627,14 @@ describe('PromotionsService', () => {
 					{ projectId: 'p1', workflowIds: [], deletedWorkflowIds: ['w-unknown'] },
 				),
 			).rejects.toThrow('Deleted workflows not found on the branch: w-unknown');
-			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalled();
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
 				branchWorkflowFile('w1', 'W1'),
 			);
 		});
 
-		it('refuses a workflow that moved out of another project during apply', async () => {
+		it('refuses a workflow that moved to another project before export', async () => {
 			const beta = { id: 'p2', name: 'Beta', target: 'projects/beta' };
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({
@@ -649,14 +645,6 @@ describe('PromotionsService', () => {
 				'projects/beta/project.json': JSON.stringify(beta),
 				'projects/beta/workflows/w1/workflow.json': branchWorkflowFile('w1', 'W1'),
 			});
-			mockExport({
-				'manifest.json': buildManifest({
-					projects: [alpha],
-					workflows: [wf('w1')],
-				}),
-				'projects/alpha/project.json': JSON.stringify(alpha),
-				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
-			});
 
 			await expect(
 				service.promoteSelection(
@@ -666,7 +654,7 @@ describe('PromotionsService', () => {
 					{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
 				),
 			).rejects.toThrow('These workflows moved to another project: w1');
-			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalled();
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 			expect(await readExported('projects/beta/workflows/w1/workflow.json')).toBe(
 				branchWorkflowFile('w1', 'W1'),

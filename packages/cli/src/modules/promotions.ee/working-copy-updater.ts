@@ -53,6 +53,11 @@ interface DependencyRef {
 	target: string;
 }
 
+export type ScannedBranch = {
+	state: BranchState;
+	dependencies: DependencyRef[];
+};
+
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
@@ -118,13 +123,11 @@ export class WorkingCopyUpdater {
 		return (await this.scanBranch(exportFolder)).state;
 	}
 
-	private async scanBranch(
-		exportFolder: string,
-	): Promise<{ state: BranchState; dependencies: DependencyRef[] }> {
+	private async scanBranch(exportFolder: string): Promise<ScannedBranch> {
 		const resolvedBase = await this.resolveContained(exportFolder, '.');
 		// A fresh branch holds no export yet, so a first push has nothing to read.
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
-		if (rootInfo === null || !rootInfo.isDirectory()) return { state: {}, dependencies: [] };
+		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
 		const collected: Required<BranchState> = { projects: [], folders: [], workflows: [] };
 		const dependencies: DependencyRef[] = [];
@@ -228,6 +231,16 @@ export class WorkingCopyUpdater {
 		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
 	}
 
+	async assertSelectionFitsBranch(
+		exportFolder: string,
+		selection: SelectivePushOptions,
+	): Promise<ScannedBranch> {
+		const branch = await this.scanBranch(exportFolder);
+		this.assertDeletionsOnBranch(branch.state, selection);
+		this.assertNoCrossProjectMoves(branch.state, selection);
+		return branch;
+	}
+
 	/**
 	 * Every deleted workflow must be on the branch and belong to the selected
 	 * project. Membership is judged by the project's directory on the branch,
@@ -286,12 +299,11 @@ export class WorkingCopyUpdater {
 		stagingFolder: string,
 		staging: PackageManifest,
 		selection: SelectivePushOptions,
+		branch: ScannedBranch,
 	): Promise<void> {
 		this.validateSelection(selection);
 		this.assertStagingMatchesSelection(staging, selection);
-		const { state: existing, dependencies } = await this.scanBranch(exportFolder);
-		this.assertDeletionsOnBranch(existing, selection);
-		this.assertNoCrossProjectMoves(existing, selection);
+		const { state: existing, dependencies } = branch;
 
 		const placement = containerPlacement(existing, staging);
 		const remaining: BranchState = {
