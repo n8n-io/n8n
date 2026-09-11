@@ -573,7 +573,9 @@ Get the output data of a specific node from an execution.
 | `startIndex` | number | no | First item index to return. Defaults to `0` |
 | `maxItems` | number | no | Maximum items to return. Defaults to `10`; maximum `50` |
 
-**Returns**: `{ nodeName, data?, error? }`
+**Returns**: `{ nodeName, outputs: [{ index, name?, totalItems, items }], totalItems, returned: { from, to } }`.
+One `outputs` entry per node output, in output order; a Filter reports `Kept` and
+`Discarded` separately. `totalItems` and `returned` count across all outputs.
 
 ### `executions(action="get-resolved-node-parameters")`
 

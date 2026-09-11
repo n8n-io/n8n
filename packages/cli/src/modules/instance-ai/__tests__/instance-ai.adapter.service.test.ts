@@ -56,6 +56,7 @@ import { Expression } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeParameters,
 	IPinData,
@@ -196,6 +197,23 @@ function makeTaskData(
 	} as unknown as ITaskData;
 }
 
+/** Build a task data entry for a multi-output node, one item list per output. */
+function makeMultiOutputTaskData(outputs: IDataObject[][]): ITaskData {
+	return {
+		...makeTaskData([]),
+		data: { main: outputs.map((items) => items.map((json) => ({ json }))) },
+	};
+}
+
+/** Node types that resolve every node to a two-output Filter (Kept / Discarded). */
+function filterNodeTypes(): NodeTypes {
+	const nodeTypes = mock<NodeTypes>();
+	nodeTypes.getByNameAndVersion.mockReturnValue({
+		description: { outputNames: ['Kept', 'Discarded'] },
+	} as never);
+	return nodeTypes;
+}
+
 // ---------------------------------------------------------------------------
 // extractExecutionResult
 // ---------------------------------------------------------------------------
@@ -329,6 +347,29 @@ describe('extractExecutionResult', () => {
 		expect(result.data!['Set Node']).toContain('<untrusted_data');
 		expect(result.data!['Set Node']).toContain('"id": 1');
 		expect(result.data!['Set Node']).toContain('"name": "Alice"');
+	});
+
+	it('groups the output data of a multi-output node per output', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [{ name: 'Filter', type: 'n8n-nodes-base.filter' }],
+				runData: {
+					Filter: [makeMultiOutputTaskData([[{ text: '$TSLA' }], [{ text: 'plain' }]])],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', true, filterNodeTypes());
+
+		const wrapped = result.data!.Filter as string;
+		expect(JSON.parse(wrapped.split('\n').slice(1, -1).join('\n'))).toEqual({
+			outputs: [
+				{ index: 0, name: 'Kept', items: [{ text: '$TSLA' }] },
+				{ index: 1, name: 'Discarded', items: [{ text: 'plain' }] },
+			],
+			totalItems: 2,
+		});
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
@@ -714,6 +755,33 @@ describe('truncateResultData', () => {
 		const result = truncateResultData(data);
 
 		expect(result['Empty Node']).toEqual([]);
+	});
+
+	it('collapses the item arrays of each output for a multi-output node', () => {
+		const bigItems = Array.from({ length: 200 }, (_, i) => ({ id: i, data: 'x'.repeat(300) }));
+		const data: Record<string, unknown> = {
+			Filter: {
+				outputs: [
+					{ index: 0, name: 'Kept', items: bigItems },
+					{ index: 1, name: 'Discarded', items: [] },
+				],
+				totalItems: 200,
+			},
+		};
+
+		const result = truncateResultData(data);
+
+		expect(result.Filter).toEqual({
+			outputs: [
+				{
+					index: 0,
+					name: 'Kept',
+					items: { _itemCount: 200, _truncated: true, _firstItemPreview: bigItems[0] },
+				},
+				{ index: 1, name: 'Discarded', items: [] },
+			],
+			totalItems: 200,
+		});
 	});
 });
 
@@ -1147,7 +1215,7 @@ describe('extractNodeOutput', () => {
 
 		expect(result.nodeName).toBe('Set Node');
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(10); // default maxItems
+		expect(result.outputs[0].items).toHaveLength(10); // default maxItems
 		expect(result.returned).toEqual({ from: 0, to: 10 });
 	});
 
@@ -1163,11 +1231,11 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Set Node', { startIndex: 10, maxItems: 5 });
 
 		expect(result.totalItems).toBe(25);
-		expect(result.items).toHaveLength(5);
+		expect(result.outputs[0].items).toHaveLength(5);
 		expect(result.returned).toEqual({ from: 10, to: 15 });
 		// Items are wrapped in untrusted-data boundary tags
-		expect(result.items[0]).toContain('<untrusted_data');
-		expect(result.items[0]).toContain('"id": 10');
+		expect(result.outputs[0].items[0]).toContain('<untrusted_data');
+		expect(result.outputs[0].items[0]).toContain('"id": 10');
 	});
 
 	it('caps maxItems at 50', async () => {
@@ -1181,7 +1249,7 @@ describe('extractNodeOutput', () => {
 
 		const result = await extractNodeOutput('exec-1', 'Set Node', { maxItems: 100 });
 
-		expect(result.items).toHaveLength(50);
+		expect(result.outputs[0].items).toHaveLength(50);
 		expect(result.returned).toEqual({ from: 0, to: 50 });
 	});
 
@@ -1197,9 +1265,9 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Big Node');
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(1);
+		expect(result.outputs[0].items).toHaveLength(1);
 		// Items are wrapped in untrusted-data boundary tags after truncation
-		const wrapped = result.items[0] as string;
+		const wrapped = result.outputs[0].items[0] as string;
 		expect(wrapped).toContain('<untrusted_data');
 		expect(wrapped).toContain('_truncatedItem');
 		expect(wrapped).toContain('"originalLength"');
@@ -1237,8 +1305,72 @@ describe('extractNodeOutput', () => {
 		const result = await extractNodeOutput('exec-1', 'Node', { startIndex: 100 });
 
 		expect(result.totalItems).toBe(1);
-		expect(result.items).toHaveLength(0);
+		expect(result.outputs[0].items).toHaveLength(0);
 		expect(result.returned).toEqual({ from: 100, to: 100 });
+	});
+
+	it('reports each output of a multi-output node separately, with the node type labels', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [{ name: 'Filter', type: 'n8n-nodes-base.filter' }],
+				runData: {
+					Filter: [makeMultiOutputTaskData([[{ text: '$TSLA' }], [{ text: 'plain' }]])],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', undefined, filterNodeTypes());
+
+		expect(result.totalItems).toBe(2);
+		expect(result.returned).toEqual({ from: 0, to: 2 });
+		expect(result.outputs).toEqual([
+			expect.objectContaining({ index: 0, name: 'Kept', totalItems: 1 }),
+			expect.objectContaining({ index: 1, name: 'Discarded', totalItems: 1 }),
+		]);
+		expect(result.outputs[0].items[0]).toContain('"text": "$TSLA"');
+		expect(result.outputs[1].items[0]).toContain('"text": "plain"');
+	});
+
+	it('lists an output that received no items and omits names without node types', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { Filter: [makeMultiOutputTaskData([[], [{ id: 1 }, { id: 2 }]])] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Filter');
+
+		expect(result.totalItems).toBe(2);
+		expect(result.outputs[0]).toEqual({ index: 0, totalItems: 0, items: [] });
+		expect(result.outputs[1]).toMatchObject({ index: 1, totalItems: 2 });
+		expect(result.outputs[1].items).toHaveLength(2);
+		expect(result.outputs[1]).not.toHaveProperty('name');
+	});
+
+	it('paginates across outputs as one sequence', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					Filter: [
+						makeMultiOutputTaskData([
+							[{ id: 0 }, { id: 1 }],
+							[{ id: 2 }, { id: 3 }],
+						]),
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Filter', { startIndex: 1, maxItems: 2 });
+
+		expect(result.returned).toEqual({ from: 1, to: 3 });
+		expect(result.outputs[0].items).toHaveLength(1);
+		expect(result.outputs[0].items[0]).toContain('"id": 1');
+		expect(result.outputs[1].items).toHaveLength(1);
+		expect(result.outputs[1].items[0]).toContain('"id": 2');
 	});
 });
 
