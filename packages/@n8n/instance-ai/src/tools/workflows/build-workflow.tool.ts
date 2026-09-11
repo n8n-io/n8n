@@ -81,6 +81,7 @@ import { compileWorkflowSource } from './workflow-source-compiler';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	groupingDecisionBlocker,
+	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
 	summarizeWorkflowTopLevelItems,
@@ -1272,10 +1273,16 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
 							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
 
+					// The dropped-group error already carries each drop reason, so the matching
+					// warnings would only repeat it.
+					const informationalWithoutDrops = groupWasDropped
+						? informational.filter((warning) => warning.code !== NODE_GROUP_DROPPED_CODE)
+						: informational;
+
 					return await handleValidationFailure({
 						context,
 						blocking: [blocker],
-						informational,
+						informational: informationalWithoutDrops,
 						reason,
 						guidance,
 						summary:

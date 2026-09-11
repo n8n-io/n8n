@@ -687,6 +687,8 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.success).toBe(false);
 			expect(result.errors?.join('\n')).toContain('[GROUP_DROPPED_OVER_CEILING]');
 			expect(result.errors?.join('\n')).toContain('Stage');
+			// The error carries the drop reason; the matching warning is not repeated.
+			expect(result.warnings?.join('\n') ?? '').not.toContain('[NODE_GROUP_DROPPED]');
 			expect(result.remediation?.reason).toBe('workflow_group_dropped_over_ceiling');
 			expect(result.grouping).toMatchObject({ groupCount: 0, decision: 'grouped' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
