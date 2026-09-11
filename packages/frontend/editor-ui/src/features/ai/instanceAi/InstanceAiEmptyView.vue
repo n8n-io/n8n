@@ -77,6 +77,11 @@ import {
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
+import InstanceAiRecordPromoPill from './components/InstanceAiRecordPromoPill.vue';
+import { useInstanceAiRecordPromoPill } from './composables/useInstanceAiRecordPromoPill';
+import { useBrowserUseConnection } from './composables/useBrowserUseConnection';
+import { armAutoApproveRecording } from './composables/useAutoApproveRecording';
+import type { ThreadRuntime } from './instanceAi.store';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -131,6 +136,8 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
+const recordPromo = useInstanceAiRecordPromoPill();
+const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -465,6 +472,7 @@ async function handleSubmit(
 	message: string,
 	attachments?: InstanceAiAttachment[],
 	restoreDraft?: () => boolean,
+	options?: { onThreadReady?: (thread: ThreadRuntime) => void },
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -500,6 +508,7 @@ async function handleSubmit(
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
+	options?.onThreadReady?.(thread);
 	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
 	// drop the user into a blank thread, and handing the draft to the destination view is
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
@@ -549,6 +558,15 @@ async function handleSubmit(
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
+	});
+}
+
+async function handleRecordPromoClick() {
+	const connected = await ensureBrowserConnected('empty_state_promo');
+	if (!connected) return;
+
+	await handleSubmit(i18n.baseText('instanceAi.recordPromo.startPrompt'), undefined, undefined, {
+		onThreadReady: armAutoApproveRecording,
 	});
 }
 
@@ -659,6 +677,11 @@ function handleShelfSuggestionInsert(payload: {
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
 						"
+					/>
+					<InstanceAiRecordPromoPill
+						:eligible="recordPromo.isEligible.value"
+						@click="handleRecordPromoClick"
+						@dismiss="recordPromo.dismiss"
 					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
