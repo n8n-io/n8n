@@ -1087,6 +1087,27 @@ describe('WorkingCopyUpdater', () => {
 			);
 		});
 
+		it('removes a newly created export directory when a first push fails before the swap', async () => {
+			const staging = makeManifest({ projects: [alpha], workflows: [wf('w1')] });
+			await writeTree(stagingFolder, {
+				'manifest.json': manifestFile(staging),
+				'projects/alpha/project.json': projectFile,
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			vi.mocked(mkdtemp).mockRejectedValueOnce(new Error('ENOSPC'));
+
+			await expect(
+				updater.applySelection(
+					exportFolder,
+					stagingFolder,
+					staging,
+					selection({ workflowIds: ['w1'] }),
+				),
+			).rejects.toThrow('Failed to apply the selection to the branch');
+
+			await expect(stat(exportFolder)).rejects.toThrow();
+		});
+
 		it('leaves the new export in place when removing the backup fails', async () => {
 			await writeTree(exportFolder, {
 				'manifest.json': manifestFile(makeManifest({ projects: [alpha], workflows: [wf('w1')] })),

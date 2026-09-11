@@ -320,11 +320,14 @@ export class WorkingCopyUpdater {
 
 		let workFolder: string | undefined;
 		let backupFolder: string | undefined;
+		let createdExport = false;
 
 		try {
 			// A first push meets a branch with no export yet; create it so the temp
 			// copy and the later swap have a directory to work with.
-			await fs.mkdir(exportFolder, { recursive: true });
+			// mkdir returns the first path it created, or undefined when it existed.
+			const firstCreated = await fs.mkdir(exportFolder, { recursive: true });
+			createdExport = firstCreated !== undefined;
 			workFolder = await fs.mkdtemp(path.join(tempBase, `.${path.basename(exportFolder)}-`));
 
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
@@ -393,6 +396,14 @@ export class WorkingCopyUpdater {
 						'Failed to restore the export from backup. The copy is at the backup path.',
 						{ exportFolder, backupFolder, error: restoreError },
 					);
+				});
+			} else if (createdExport) {
+				// First push: undo the mkdir so a failed apply leaves no trace.
+				await fs.rm(exportFolder, { recursive: true, force: true }).catch((rmError: unknown) => {
+					this.logger.warn('Failed to remove the newly created export after a failed first push', {
+						exportFolder,
+						error: rmError,
+					});
 				});
 			}
 			if (error instanceof BadRequestError) throw error;
