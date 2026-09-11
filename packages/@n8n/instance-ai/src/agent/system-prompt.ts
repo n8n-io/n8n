@@ -11,12 +11,14 @@ import {
 	getSandboxWorkspaceSection,
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
-import type { LocalGatewayStatus } from '../types';
+import type { LocalGatewayChannel, LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
 	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
+	/** Computer Use + menu entries the client renders for this user (see getComputerUsePrompt). */
+	connectableComputerUseChannels?: readonly LocalGatewayChannel[];
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
@@ -221,6 +223,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		webhookBaseUrl,
 		formBaseUrl,
 		localGateway,
+		connectableComputerUseChannels,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
 		licenseHints,
@@ -282,7 +285,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ browserAvailable, localGateway })}
+${getComputerUsePrompt({ browserAvailable, localGateway, connectable: connectableComputerUseChannels })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}`;
 }

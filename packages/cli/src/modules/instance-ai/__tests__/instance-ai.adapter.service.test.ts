@@ -76,6 +76,9 @@ import {
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_COMPUTER_USE_FLAG,
+	INSTANCE_AI_BROWSER_USE_FLAG,
+	INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -5477,6 +5480,8 @@ describe('resolveExperimentGates', () => {
 		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
+		[INSTANCE_AI_COMPUTER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
+		[INSTANCE_AI_BROWSER_USE_FLAG]: INSTANCE_AI_COMPUTER_USE_ENABLED_VARIANT,
 	};
 
 	it('resolves every gate, including folder exploration, from one flag fetch', async () => {
@@ -5489,6 +5494,8 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
+			computerUseExperimentEnabled: true,
+			browserUseExperimentEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -5511,6 +5518,8 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			computerUseExperimentEnabled: false,
+			browserUseExperimentEnabled: false,
 		});
 	});
 
@@ -5524,6 +5533,8 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			computerUseExperimentEnabled: false,
+			browserUseExperimentEnabled: false,
 		});
 	});
 
@@ -5538,6 +5549,8 @@ describe('resolveExperimentGates', () => {
 			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
+			computerUseExperimentEnabled: false,
+			browserUseExperimentEnabled: false,
 		});
 	});
 
