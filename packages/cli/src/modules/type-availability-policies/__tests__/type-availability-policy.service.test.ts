@@ -1068,4 +1068,101 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result).toEqual([]);
 		});
 	});
+
+	describe('evaluateComposedTypesFor', () => {
+		const PROJECT_ID = 'project-1';
+		const TYPE = 'n8n-nodes-base.slack';
+
+		it('reports the version of both scopes it read', async () => {
+			scopeRepository.findScopeByKindAndProject.mockImplementation(async (_kind, projectId) =>
+				makeScope(
+					projectId === null
+						? { projectId: null, version: 4 }
+						: { id: 'scope-2', projectId: PROJECT_ID, version: 2 },
+				),
+			);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			const result = await service.evaluateComposedTypesFor(KIND, PROJECT_ID, [TYPE]);
+
+			expect(result.versions).toEqual([
+				{ scope: 'instance', version: 4 },
+				{ scope: 'project', version: 2 },
+			]);
+		});
+
+		it('reports version 0 for a scope that has no row yet', async () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+
+			const result = await service.evaluateComposedTypesFor(KIND, PROJECT_ID, [TYPE]);
+
+			expect(result.versions).toEqual([
+				{ scope: 'instance', version: 0 },
+				{ scope: 'project', version: 0 },
+			]);
+			expect(result.verdicts).toEqual([
+				{
+					name: TYPE,
+					action: 'allow',
+					scope: 'instance',
+					matchedRuleId: null,
+					optInAvailable: false,
+				},
+			]);
+		});
+
+		describe('with no project scope', () => {
+			it('reads only the instance scope', async () => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ projectId: null, version: 4 }),
+				);
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+				const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+				expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledTimes(1);
+				expect(scopeRepository.findScopeByKindAndProject).toHaveBeenCalledWith(KIND, null, ROOT);
+				expect(result.versions).toEqual([{ scope: 'instance', version: 4 }]);
+			});
+
+			it('still lets an instance deny decide', async () => {
+				const denyRule: PolicyRule = {
+					id: 'instance-deny',
+					action: 'deny',
+					selector: { kind: 'name', value: TYPE },
+				};
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+					{ policyId: 'p1', rules: [denyRule], priority: 0, isFloor: false },
+				]);
+
+				const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+				expect(result.verdicts[0]).toEqual({
+					name: TYPE,
+					action: 'deny',
+					scope: 'instance',
+					matchedRuleId: 'instance-deny',
+					optInAvailable: false,
+				});
+			});
+
+			it('denies an instance delegate, which no project can satisfy here', async () => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(
+					makeScope({ projectId: null, defaultAction: 'delegate' }),
+				);
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+				const result = await service.evaluateComposedTypesFor(KIND, null, [TYPE]);
+
+				expect(result.verdicts[0]).toEqual({
+					name: TYPE,
+					action: 'deny',
+					scope: 'instance',
+					matchedRuleId: null,
+					optInAvailable: true,
+				});
+			});
+		});
+	});
 });

@@ -3,9 +3,10 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 
 /**
- * The module-level `licenseFlag` skips `init()` on an unlicensed instance, so the controllers
- * are never loaded there. Each route still carries `@Licensed`: modules are initialized once
- * at startup, so only the per-route check covers a license that changes while running.
+ * The module-level `licenseFlag` skips `init()` on an unlicensed instance, so neither the
+ * controllers nor the policy check are loaded there. Each route still carries `@Licensed` and
+ * the check reads the license per decision: modules are initialized once at startup, so only
+ * those cover a license that changes while running.
  */
 @BackendModule({
 	name: 'type-availability-policies',
@@ -17,6 +18,9 @@ export class TypeAvailabilityPoliciesModule implements ModuleInterface {
 		await import('./type-availability-policy-instance.controller.js');
 		await import('./type-availability-policy-project.controller.js');
 		await import('./available-types.controller.js');
+
+		// Side-effecting import: `@PolicyCheck` registers the check on class definition.
+		await import('./node-type-policy.check.js');
 	}
 
 	async entities() {
