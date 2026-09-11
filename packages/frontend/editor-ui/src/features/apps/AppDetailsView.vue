@@ -775,79 +775,87 @@ watch(
 					@diagnostic="emit('diagnostic', $event)"
 					@element-selected="onElementSelected"
 				/>
-				<div v-if="hasPreviewSource" :class="$style.previewTools" data-test-id="app-preview-tools">
-					<N8nToggleGroup
-						:model-value="device"
-						variant="ghost"
-						size="small"
-						data-test-id="app-preview-device"
-						@update:model-value="onDeviceChange"
-					>
-						<template #default="{ variant, size }">
-							<N8nToggle
-								value="desktop"
-								:label="i18n.baseText('apps.builder.desktop')"
-								icon="monitor"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-device-desktop"
-							/>
-							<N8nToggle
-								value="mobile"
-								:label="i18n.baseText('apps.builder.mobile')"
-								icon="smartphone"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-device-mobile"
-							/>
-						</template>
-					</N8nToggleGroup>
-					<span :class="$style.previewToolsDivider" />
-					<N8nToggleGroup
-						:model-value="previewTheme"
-						variant="ghost"
-						size="small"
-						data-test-id="app-preview-theme"
-						@update:model-value="onPreviewThemeChange"
-					>
-						<template #default="{ variant, size }">
-							<N8nToggle
-								value="light"
-								:label="i18n.baseText('apps.builder.theme.mode.light')"
-								icon="sun"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-light"
-							/>
-							<N8nToggle
-								value="dark"
-								:label="i18n.baseText('apps.builder.theme.mode.dark')"
-								icon="moon"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-dark"
-							/>
-							<N8nToggle
-								value="system"
-								:label="i18n.baseText('apps.builder.theme.mode.system')"
-								icon="laptop"
-								:variant="variant"
-								:size="size"
-								data-test-id="app-preview-theme-system"
-							/>
-						</template>
-					</N8nToggleGroup>
-					<span :class="$style.previewToolsDivider" />
-					<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
-						<N8nIconButton
-							icon="mouse-pointer"
-							:variant="inspecting ? 'subtle' : 'ghost'"
+				<div
+					v-if="hasPreviewSource"
+					:class="[
+						$style.previewToolsZone,
+						{ [$style.previewToolsPinned]: inspecting || device === 'mobile' },
+					]"
+				>
+					<div :class="$style.previewTools" data-test-id="app-preview-tools">
+						<N8nToggleGroup
+							:model-value="device"
+							variant="ghost"
 							size="small"
-							:aria-label="i18n.baseText('apps.builder.inspect')"
-							data-test-id="app-preview-inspect"
-							@click="onToggleInspect"
-						/>
-					</N8nTooltip>
+							data-test-id="app-preview-device"
+							@update:model-value="onDeviceChange"
+						>
+							<template #default="{ variant, size }">
+								<N8nToggle
+									value="desktop"
+									:label="i18n.baseText('apps.builder.desktop')"
+									icon="monitor"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-device-desktop"
+								/>
+								<N8nToggle
+									value="mobile"
+									:label="i18n.baseText('apps.builder.mobile')"
+									icon="smartphone"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-device-mobile"
+								/>
+							</template>
+						</N8nToggleGroup>
+						<span :class="$style.previewToolsDivider" />
+						<N8nToggleGroup
+							:model-value="previewTheme"
+							variant="ghost"
+							size="small"
+							data-test-id="app-preview-theme"
+							@update:model-value="onPreviewThemeChange"
+						>
+							<template #default="{ variant, size }">
+								<N8nToggle
+									value="light"
+									:label="i18n.baseText('apps.builder.theme.mode.light')"
+									icon="sun"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-light"
+								/>
+								<N8nToggle
+									value="dark"
+									:label="i18n.baseText('apps.builder.theme.mode.dark')"
+									icon="moon"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-dark"
+								/>
+								<N8nToggle
+									value="system"
+									:label="i18n.baseText('apps.builder.theme.mode.system')"
+									icon="laptop"
+									:variant="variant"
+									:size="size"
+									data-test-id="app-preview-theme-system"
+								/>
+							</template>
+						</N8nToggleGroup>
+						<span :class="$style.previewToolsDivider" />
+						<N8nTooltip :content="i18n.baseText('apps.builder.inspect')">
+							<N8nIconButton
+								icon="mouse-pointer"
+								:variant="inspecting ? 'subtle' : 'ghost'"
+								size="small"
+								:aria-label="i18n.baseText('apps.builder.inspect')"
+								data-test-id="app-preview-inspect"
+								@click="onToggleInspect"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 				<div
 					v-else-if="liveStarting"
@@ -1272,11 +1280,35 @@ watch(
 }
 
 // Floats over the frame like a browser devtools bar, so the document keeps the whole pane.
-.previewTools {
+// The iframe swallows pointer events, so this zone is the only hover target the pane
+// owns over the document: the toolbar hides into the bottom edge and slides back when
+// the zone is hovered. The pane's overflow: hidden clips the tucked-away part.
+.previewToolsZone {
 	position: absolute;
-	bottom: var(--spacing--sm);
+	bottom: 0;
 	left: 50%;
 	transform: translateX(-50%);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
+
+	&:hover,
+	&:focus-within,
+	&.previewToolsPinned {
+		.previewTools {
+			opacity: 1;
+			transform: none;
+			transition-delay: 0s;
+		}
+	}
+}
+
+.previewTools {
+	margin-bottom: var(--spacing--sm);
+	opacity: 0.6;
+	transform: translateY(calc(100% + var(--spacing--sm) - 4px));
+	transition:
+		opacity 150ms ease,
+		transform 150ms ease;
+	transition-delay: 300ms;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
