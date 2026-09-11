@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 
 import { indexColumnsInOrder } from './shared/index-columns';
 
-const MIGRATION_NAME = 'AddActivityEventResourceIndex1788856841573';
+const MIGRATION_NAME = 'AddActivityEventResourceIndex1789128904935';
 const INDEX_NAME = 'activity_event_resource';
 
 describe('AddActivityEventResourceIndex migration', () => {

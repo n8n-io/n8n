@@ -12,7 +12,7 @@ const ACTIVITY_TABLE = 'activity_event';
  * resource kind, and leading with it would stop a read that filters `resourceId` alone from
  * seeking this index at all.
  */
-export class AddActivityEventResourceIndex1788856841573 implements ReversibleMigration {
+export class AddActivityEventResourceIndex1789128904935 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex }, tablePrefix }: MigrationContext) {
 		// `id` trails the pointer column so a newest-first scan of one resource is served by the
 		// index alone, matching the two indexes the table already carries.
