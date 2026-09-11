@@ -4,17 +4,18 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
-const runnerModeSchema = z.enum(['internal', 'external']);
+const runnerModeSchema = z.enum(['external']);
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
 @Config
 export class TaskRunnersConfig {
 	/**
-	 * How the task runner runs: `internal` (child process of n8n) or `external` (separate process).
+	 * How the task runner runs. Only `external` (separate process) is supported.
+	 * The env var stays accepted so existing `N8N_RUNNERS_MODE=external` configs keep working.
 	 */
 	@Env('N8N_RUNNERS_MODE', runnerModeSchema)
-	mode: TaskRunnerMode = 'internal';
+	mode: TaskRunnerMode = 'external';
 
 	/** URL path segment where the task runner service is exposed (for example, `/runners`). */
 	@Env('N8N_RUNNERS_PATH')
@@ -46,8 +47,7 @@ export class TaskRunnersConfig {
 
 	/**
 	 * How long (in seconds) a task is allowed to take for completion, else the
-	 * task will be aborted. (In internal mode, the runner will also be
-	 * restarted.) Must be greater than 0.
+	 * task will be aborted. Must be greater than 0.
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 1 * Time.minutes.toSeconds;
@@ -69,7 +69,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_TASK_ACCEPT_TIMEOUT')
 	taskAcceptTimeout: number = 2;
 
-	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task (and restart the runner in internal mode). Must be > 0. */
+	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task. Must be > 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
 	heartbeatInterval: number = 30;
 

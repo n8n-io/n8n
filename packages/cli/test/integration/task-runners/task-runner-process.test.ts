@@ -17,9 +17,7 @@ describe('TaskRunnerProcess', () => {
 	// 5s `retryUntil` window, so allow a longer window for all connect waits.
 	const CONNECT_TIMEOUT_MS = 15_000;
 
-	const { config, server: taskRunnerServer } = setupBrokerTestServer({
-		mode: 'internal',
-	});
+	const { config, server: taskRunnerServer } = setupBrokerTestServer();
 	const runnerProcess = Container.get(JsTaskRunnerProcess);
 	const taskBroker = Container.get(TaskBroker);
 	const taskRunnerService = Container.get(TaskBrokerWsServer);

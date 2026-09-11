@@ -52,7 +52,7 @@ const createServer = ({
 		logger,
 		taskBroker,
 		disconnectAnalyzer,
-		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval, mode: 'internal' }),
+		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval, mode: 'external' }),
 		runnerLifecycleEvents,
 		globalConfig,
 		eventService,
@@ -446,7 +446,7 @@ describe('TaskBrokerWsServer', () => {
 
 				expect(eventService.emit).toHaveBeenCalledWith('runner-disconnected', {
 					reason,
-					mode: 'internal',
+					mode: 'external',
 				});
 			},
 		);

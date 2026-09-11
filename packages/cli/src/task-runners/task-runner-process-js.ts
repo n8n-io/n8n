@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import * as process from 'node:process';
 
@@ -27,8 +26,6 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super('task-runner-js', logger, runnerConfig, authService, runnerLifecycleEvents);
-
-		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
 
 	startProcess(grantToken: string, taskBrokerUri: string, runnerId: string): ChildProcess {

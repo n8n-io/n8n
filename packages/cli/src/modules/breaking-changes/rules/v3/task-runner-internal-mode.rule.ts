@@ -1,3 +1,4 @@
+import { readEnvValue } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
 import type {
@@ -25,7 +26,7 @@ export class TaskRunnerInternalModeRule implements IBreakingChangeInstanceRule {
 
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async detect(): Promise<InstanceDetectionReport> {
-		if (process.env.N8N_RUNNERS_MODE !== 'internal') {
+		if (readEnvValue('N8N_RUNNERS_MODE') !== 'internal') {
 			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 

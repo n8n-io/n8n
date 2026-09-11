@@ -20,6 +20,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
 // `restoreMocks: true` in the root vi config restores spies between tests,
@@ -38,12 +39,13 @@ afterAll(() => {
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
  * as a child process and executes tasks on it via the broker.
  */
-describe('JS TaskRunner execution on internal mode', () => {
+describe('JS TaskRunner execution', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
-	runnerConfig.mode = 'internal';
 	runnerConfig.port = 45678;
+	runnerConfig.authToken = 'test-token';
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
+	const runnerProcess = Container.get(JsTaskRunnerProcess);
 	const taskRequester = Container.get(LocalTaskRequester);
 
 	/**
@@ -196,9 +198,11 @@ describe('JS TaskRunner execution on internal mode', () => {
 	describe('Basic code execution', () => {
 		beforeAll(async () => {
 			await taskRunnerModule.start();
+			await runnerProcess.start();
 		});
 
 		afterAll(async () => {
+			await runnerProcess.stop();
 			await taskRunnerModule.stop();
 		});
 
@@ -274,9 +278,11 @@ describe('JS TaskRunner execution on internal mode', () => {
 			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service.js');
 			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
+			await runnerProcess.start();
 		});
 
 		afterAll(async () => {
+			await runnerProcess.stop();
 			await taskRunnerModule.stop();
 		});
 

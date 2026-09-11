@@ -129,6 +129,11 @@ export class TaskBroker {
 	/** Request IDs that have already logged a task-type mismatch warning */
 	private mismatchWarned = new Set<string>();
 
+	/** Task types some runner has registered for at least once since boot. */
+	private readonly everRegisteredTaskTypes = new Set<string>();
+
+	private readonly startedAt = Date.now();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
@@ -144,6 +149,30 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.taskAcceptTimeout <= 0) {
 			throw new UserError('Task accept timeout must be greater than 0');
 		}
+
+		setTimeout(() => {
+			if (this.everRegisteredTaskTypes.size > 0) return;
+			this.logger.error(
+				'No task runner has connected since n8n started. Code node executions fail until a runner connects. Check that the task runner launcher is running, points at this instance and shares N8N_RUNNERS_AUTH_TOKEN with it.',
+			);
+		}, this.runnerGraceMs()).unref();
+	}
+
+	private runnerGraceMs() {
+		return this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds;
+	}
+
+	/**
+	 * Runners start in any order relative to n8n, so a missing runner is only
+	 * treated as such after a grace window. Past it, a type no runner ever
+	 * registered for is failed at once instead of after the full request timeout.
+	 * A type that did register keeps the wait, so a transient disconnect still recovers.
+	 */
+	private hasRunnerNeverConnected(taskType: string) {
+		return (
+			!this.everRegisteredTaskTypes.has(taskType) &&
+			Date.now() - this.startedAt > this.runnerGraceMs()
+		);
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {
@@ -229,6 +258,7 @@ export class TaskBroker {
 		isRunnerReachable: RunnerReachabilityCheck = () => true,
 	) {
 		this.knownRunners.set(runner.id, { runner, messageCallback, isRunnerReachable });
+		for (const taskType of runner.taskTypes) this.everRegisteredTaskTypes.add(taskType);
 		void this.knownRunners.get(runner.id)!.messageCallback({ type: 'broker:runnerregistered' });
 	}
 
@@ -621,24 +651,15 @@ export class TaskBroker {
 		const isCappedByShutdown =
 			this.shutdownDeadline !== undefined && task.timesOutAt === this.shutdownDeadline;
 
-		if (this.taskRunnersConfig.mode === 'internal') {
-			// Don't restart a runner that shutdown is about to stop anyway.
-			if (this.shutdownDeadline === undefined) {
-				this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
-					runnerId: task.runnerId,
-				});
-			}
-		} else if (this.taskRunnersConfig.mode === 'external') {
-			await this.messageRunner(task.runnerId, {
-				type: 'broker:taskcancel',
-				taskId,
-				reason: isCappedByShutdown
-					? 'Task aborted because this n8n instance is shutting down'
-					: 'Task execution timed out',
-			});
-		}
+		await this.messageRunner(task.runnerId, {
+			type: 'broker:taskcancel',
+			taskId,
+			reason: isCappedByShutdown
+				? 'Task aborted because this n8n instance is shutting down'
+				: 'Task execution timed out',
+		});
 
-		const { taskTimeout, mode } = this.taskRunnersConfig;
+		const { taskTimeout } = this.taskRunnersConfig;
 
 		await this.taskErrorHandler(
 			taskId,
@@ -647,7 +668,6 @@ export class TaskBroker {
 				: new TaskRunnerExecutionTimeoutError({
 						taskTimeout,
 						isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
-						mode,
 					}),
 		);
 	}
@@ -970,12 +990,12 @@ export class TaskBroker {
 	}
 
 	taskRequested(request: TaskRequest) {
-		if (this.isDraining) {
+		if (this.isDraining || this.hasRunnerNeverConnected(request.taskType)) {
 			clearTimeout(request.timeout);
 			void this.requesters.get(request.requesterId)?.({
 				type: 'broker:requestexpired',
 				requestId: request.requestId,
-				reason: 'draining',
+				reason: this.isDraining ? 'draining' : 'no-runner',
 			});
 			return;
 		}

@@ -56,10 +56,8 @@ export class DeprecationService {
 				'Use N8N_WEBHOOK_URL instead, which sets the base URL for both test and production webhooks.',
 		},
 		{
-			envVar: 'N8N_RUNNERS_MODE',
-			message:
-				'The `internal` mode is deprecated and will be removed in a future version. Run task runners as a separate process and set this variable to `external`.',
-			checkValue: (value?: string) => value === 'internal',
+			envVar: 'N8N_RUNNERS_MAX_OLD_SPACE_SIZE',
+			message: `Task runners no longer run inside the n8n process, so this variable has no effect. Set NODE_OPTIONS on the task runner launcher instead. ${SAFE_TO_REMOVE}`,
 		},
 		{
 			envVar: 'N8N_SSRF_PROTECTION_ENABLED',

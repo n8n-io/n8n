@@ -35,7 +35,6 @@ describe('TaskRunnerProcess', () => {
 	const logger = mockInstance(Logger);
 	logger.scoped.mockReturnValue(logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
-	runnerConfig.mode = 'internal';
 	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
@@ -53,14 +52,6 @@ describe('TaskRunnerProcess', () => {
 	});
 
 	describe('constructor', () => {
-		it('should throw if runner mode is external', () => {
-			runnerConfig.mode = 'external';
-
-			expect(() => new JsTaskRunnerProcess(logger, runnerConfig, authService, mock())).toThrow();
-
-			runnerConfig.mode = 'internal';
-		});
-
 		it('should register listener for `runner:failed-heartbeat-check` event', () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
 			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
