@@ -1114,13 +1114,76 @@ describe('data-tables tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Add 2 rows',
+					message: 'Add 2 rows. Row 1: set "email" to "a@b.com"; Row 2: set "email" to "c@d.com"',
 					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
 		});
+
+		it('describes the values in a single inserted row', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTablesTool(context),
+				{
+					action: 'insert-rows',
+					dataTableId: 'dt-1',
+					dataTableName: 'Contacts',
+					rows: [{ email: 'a@b.com', age: 42, active: false, notes: null }],
+				},
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Add 1 row. Row 1: set "email" to "a@b.com", "age" to 42, "active" to false, "notes" to no value',
+					resourceName: 'Contacts',
+				}),
+			);
+			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it.each([4, 5])(
+			'bounds a preview of %s rows and inserts all values after approval',
+			async (rowCount) => {
+				const context = createMockContext();
+				const suspend = vi.fn();
+				const rows = Array.from({ length: rowCount }, (_, index) => ({
+					email: `contact-${index}@example.com`,
+					notes: 'x'.repeat(200),
+					age: 42,
+					active: true,
+					company: 'Acme',
+					extra: 'Keep this value',
+				}));
+				const input = { ...insertRowsInput, rows };
+				const tool = createDataTablesTool(context);
+				await executeTool(tool, input, suspendCtx(suspend));
+
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: expect.stringContaining(`Add ${rowCount} rows.`),
+					}),
+				);
+				const message: unknown = suspend.mock.calls[0][0].message;
+				expect(message).toContain('Row 3:');
+				expect(message).not.toContain('Row 4:');
+				expect(message).toContain(rowCount === 4 ? '1 more row' : '2 more rows');
+				expect(message).toContain('1 more column');
+				expect(message).not.toContain('Keep this value');
+				expect(message).toContain('x'.repeat(99) + '…');
+				expect(message).not.toContain('x'.repeat(100));
+				expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+
+				await executeTool(tool, input, resumeCtx(true));
+				expect(context.dataTableService.insertRows).toHaveBeenCalledWith('dt-1', rows, {
+					projectId: undefined,
+				});
+			},
+		);
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });

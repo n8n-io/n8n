@@ -31,7 +31,9 @@ optional so older saved tool calls can still resume. Calls without the field
 show a generic description such as `Save the changes to this workflow`.
 
 Data-table approvals build the description from the tool input: columns, row
-counts, and filter conditions. Pass `dataTableName` and `currentColumnName` when known
+counts, and filter conditions. Insert previews show up to three rows, five columns
+per row, and 100 characters per value. The card states how many rows or columns
+the preview omits. Pass `dataTableName` and `currentColumnName` when known
 so the card shows names instead of IDs. No tool looks up names only for the
 card. These messages do not change approval permissions or group separate tool
 calls.

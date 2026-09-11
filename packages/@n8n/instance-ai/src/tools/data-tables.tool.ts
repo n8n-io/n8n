@@ -146,6 +146,7 @@ function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
 }
 
 const MAX_DESCRIBED_COLUMNS = 5;
+const MAX_DESCRIBED_ROWS = 3;
 
 function describeRowChanges(data: Record<string, unknown>): string {
 	const entries = Object.entries(data);
@@ -685,9 +686,17 @@ async function handleInsertRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const rowDescriptions = input.rows.slice(0, MAX_DESCRIBED_ROWS).map((row, index) => {
+			const changes = describeRowChanges(row);
+			return `Row ${index + 1}: ${changes ? `set ${changes}` : 'no column values supplied'}`;
+		});
+		const remaining = input.rows.length - rowDescriptions.length;
+		if (remaining > 0) {
+			rowDescriptions.push(`${remaining} more ${remaining === 1 ? 'row' : 'rows'}`);
+		}
 		return await ctx.suspend({
 			requestId: nanoid(),
-			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}`,
+			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}. ${rowDescriptions.join('; ')}`,
 			resourceName: dataTableResourceName(input),
 			severity: 'warning' as const,
 		});
