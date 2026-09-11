@@ -3,11 +3,13 @@
 
 @mixin focus-ring {
 	outline: var(--focus--border-width) solid var(--focus--outline-color);
+	border-radius: var(--radius);
 }
 
 @mixin focus-ring-with-border {
 	outline: var(--focus--border-width) solid var(--focus--outline-color);
 	border-color: var(--focus--border-color);
+	border-radius: var(--radius);
 }
 
 @mixin focus-visible-ring {
