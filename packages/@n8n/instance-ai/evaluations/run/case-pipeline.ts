@@ -208,8 +208,12 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
 		// otherwise be scored as an agent failure on a premise that never existed.
 		if (build.priorRunFailed) {
+			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return await attachExpectations({
 				buildSuccess: build.success,
+				...(agentRef ? { agentId: agentRef.id } : {}),
+				...(capturedAgent ? { agentContext: capturedAgent.rendered } : {}),
+				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
 				passed: false,
 				// Not graded rather than failed — the same treatment an ungraded expectation
 				// gets, so this stays out of the pass rate instead of landing in the

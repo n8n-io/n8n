@@ -88,6 +88,26 @@ describe('agentHandler', () => {
 		expect(serialized).not.toContain('abcdef1234567890');
 	});
 
+	it('rejects an artifact when a configured skill body is missing', async () => {
+		const projectId = 'project-123';
+		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue(projectId);
+		const getAgentConfig: Mock = vi.fn().mockResolvedValue({
+			name: 'My Agent',
+			instructions: 'Triage requests.',
+			skills: [{ type: 'skill', id: 'missing-skill' }],
+		});
+		const getAgentSkills: Mock = vi.fn().mockResolvedValue({});
+		const client = {
+			getPersonalProjectId,
+			getAgentConfig,
+			getAgentSkills,
+		} as unknown as N8nClient;
+
+		await expect(agentHandler.fetch({ type: 'agent', id: 'agent-1' }, client)).rejects.toThrow(
+			'Agent agent-1 preview could not be sanitized',
+		);
+	});
+
 	it('renderArtifact() surfaces skill instructions and reference content for the judge', () => {
 		const output = agentHandler.renderArtifact({
 			config: { name: 'My Agent' },
