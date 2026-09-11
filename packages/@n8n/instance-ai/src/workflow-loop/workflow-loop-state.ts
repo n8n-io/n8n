@@ -164,7 +164,7 @@ export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unpr
 export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
 
 /**
- * The deterministic verdict for one verification run. Backend-only: it shapes
+ * The deterministic verdict from verification evidence. Backend-only: it shapes
  * the tool result the model reads and gates the publish offer. It is
  * deliberately not sent to the client — see INS-1308.
  */
@@ -184,6 +184,8 @@ export const verificationClaimSchema = z.object({
 	 * claim `verified` even when it ended without an error.
 	 */
 	unprovenTargets: z.array(z.string()),
+	/** Triggers with missing or incomplete scoped verification evidence. */
+	pendingTriggers: z.array(z.string()).optional(),
 	publishReady: z.boolean(),
 	liveTestRecommended: z.boolean(),
 });
@@ -205,6 +207,8 @@ export const workflowVerificationEvidenceSchema = z.object({
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/** Trigger whose main-flow scope was used for this evidence. */
+			triggerNodeName: z.string().optional(),
 			/**
 			 * Plan nodes the execution never reached (e.g. a lookup returned zero
 			 * items and stopped the chain). Non-empty means partial coverage —
@@ -221,6 +225,15 @@ export const workflowVerificationEvidenceSchema = z.object({
 });
 
 export type WorkflowVerificationEvidence = z.infer<typeof workflowVerificationEvidenceSchema>;
+
+export const workflowVerificationProgressSchema = z.record(
+	z.string(),
+	z.array(workflowVerificationEvidenceSchema.required({ claim: true })),
+);
+
+export type WorkflowTriggerVerificationProgress = z.infer<
+	typeof workflowVerificationProgressSchema
+>[string];
 
 export const workflowVerificationReadinessSchema = z.discriminatedUnion('status', [
 	z.object({ status: z.literal('ready') }),
@@ -334,7 +347,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	submitted: z.boolean(),
 	triggerType: triggerTypeSchema,
 	/**
-	 * Trigger nodes in the submitted workflow. Populated on successful submits;
+	 * Enabled trigger nodes in the submitted workflow. Populated on successful submits;
 	 * absent on failed or pre-submit outcomes. The orchestrator reads `nodeType`
 	 * to pick a `verify-built-workflow` `inputData` shape for direct builds.
 	 */
@@ -411,6 +424,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
+	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */
+	verificationProgress: workflowVerificationProgressSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow`
 	 * tool call. This is tool evidence, not builder prose, so downstream checks may

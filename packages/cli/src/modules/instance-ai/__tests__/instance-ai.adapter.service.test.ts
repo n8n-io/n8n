@@ -68,6 +68,8 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
@@ -5262,6 +5264,7 @@ describe('resolveExperimentGates', () => {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
+		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: true,
 	};
@@ -5273,6 +5276,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: true,
 			mcpConnectionsEnabled: true,
 			conversationHistoryEnabled: true,
+			progressiveBuildingEnabled: true,
 			nodeUsageEnabled: true,
 			folderExplorationEnabled: true,
 		});
@@ -5285,6 +5289,7 @@ describe('resolveExperimentGates', () => {
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
+			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 			[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: false,
 		});
@@ -5293,6 +5298,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 		});
@@ -5305,6 +5311,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 		});
@@ -5318,6 +5325,7 @@ describe('resolveExperimentGates', () => {
 			configEvalsEnabled: false,
 			mcpConnectionsEnabled: false,
 			conversationHistoryEnabled: false,
+			progressiveBuildingEnabled: false,
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 		});
