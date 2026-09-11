@@ -6,6 +6,14 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
+The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start. The rename was opt-in via `N8N_MIGRATE_FS_STORAGE_PATH`. That variable is removed and the rename always runs.
+
+### When is action necessary?
+
+If you mount a volume at `~/.n8n/binaryData`, mount it at `~/.n8n/storage` instead, or set `N8N_STORAGE_PATH` to the old path to keep it. If both directories exist, n8n does not start: move or remove `~/.n8n/storage` before you update.
+
+### What changed?
+
 n8n is no longer published to npm. The `n8n` package on npm stays at the last 2.x release and is marked as deprecated. The official Docker image is the only supported way to run n8n.
 
 ### When is action necessary?
