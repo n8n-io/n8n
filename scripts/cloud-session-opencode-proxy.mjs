@@ -4,7 +4,7 @@ import { createServer, request } from 'node:http';
 export const basicAuth = (password) =>
 	`Basic ${Buffer.from(`opencode:${password}`).toString('base64')}`;
 
-// Set `targetPort` on the result once the tunnel port is known. Requests before that fail with 502.
+// Set `targetPort` on the result once the tunnel port is known. Requests before that get 503.
 export async function openCodeProxy({ password, port = 0 }) {
 	const sockets = new Set();
 	const authorization = basicAuth(password);
@@ -32,9 +32,14 @@ export async function openCodeProxy({ password, port = 0 }) {
 			method: req.method,
 			headers: { ...req.headers, authorization },
 		});
+	const waiting = 'OpenCode is still connecting. Retry in a moment.';
 	const server = createServer((req, res) => {
 		if (!allowed(req)) {
 			res.writeHead(403).end('Use the local OpenCode URL printed by pnpm session:opencode.');
+			return;
+		}
+		if (!proxy.targetPort) {
+			res.writeHead(503).end(waiting);
 			return;
 		}
 		const remote = upstream(req);
@@ -54,6 +59,10 @@ export async function openCodeProxy({ password, port = 0 }) {
 	server.on('upgrade', (req, socket, head) => {
 		if (!allowed(req)) {
 			socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+			return;
+		}
+		if (!proxy.targetPort) {
+			socket.end(`HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n${waiting}`);
 			return;
 		}
 		const remote = upstream(req);

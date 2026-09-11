@@ -68,19 +68,21 @@ async function health(server, directory) {
 	}
 }
 
-async function ensureServer({ stateDir, mainDirectory, workspaces }) {
+const serverFile = (stateDir) => join(stateDir, 'server.json');
+
+async function runningServer({ stateDir, mainDirectory }) {
+	const previous = readJson(serverFile(stateDir));
+	return previous && (await health(previous, mainDirectory)) ? previous : undefined;
+}
+
+async function startServer({ stateDir, mainDirectory, workspaces }) {
 	const tmuxSession = 'n8n-opencode-server';
-	const serverFile = join(stateDir, 'server.json');
-	const previous = readJson(serverFile);
-	if (previous && (await health(previous, mainDirectory))) return previous;
 	if (spawnSync('tmux', ['has-session', '-t', `=${tmuxSession}`]).status === 0) {
 		throw new Error(
 			`OpenCode is still starting or is unhealthy. Check ${stateDir}/server.log, then retry. The running server was not stopped.`,
 		);
 	}
 
-	// Fail before tmux starts when OpenCode is missing on the Codespace.
-	execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	const server = { port: await freePort(), password: randomBytes(32).toString('hex') };
 	const launcher = join(stateDir, 'serve.sh');
 	// Read secrets when the server starts. Do not store provider keys in the launcher.
@@ -105,7 +107,7 @@ async function ensureServer({ stateDir, mainDirectory, workspaces }) {
 		].join('\n'),
 		{ mode: 0o600 },
 	);
-	saveJson(serverFile, server);
+	saveJson(serverFile(stateDir), server);
 	run('tmux', ['new-session', '-d', '-s', tmuxSession, `bash ${quote(launcher)}`]);
 	console.error('Starting the OpenCode server…');
 	for (let attempt = 0; attempt < 60; attempt++) {
@@ -194,8 +196,11 @@ export async function prepareOpenCode({
 	if (!/^\w[\w-]*$/.test(name)) throw new Error('Invalid OpenCode workspace name.');
 	mkdirSync(stateDir, { recursive: true, mode: 0o700 });
 	const directory = name === 'agent' ? mainDirectory : join(workspaces, `wt-${name}`);
+	let server = await runningServer({ stateDir, mainDirectory });
+	// On a cold start, fail before the worktree install when OpenCode is missing on the Codespace.
+	if (!server) execFileSync('opencode', ['--version'], { stdio: ['ignore', 'pipe', 'inherit'] });
 	prepareWorkspace({ name, directory, mainDirectory, stateDir });
-	const server = await ensureServer({ stateDir, mainDirectory, workspaces });
+	server ??= await startServer({ stateDir, mainDirectory, workspaces });
 	const sessionID = await ensureSession({ name, fresh, directory, stateDir, server });
 	// Only the parent process reads stdout. Never send this record to terminal output.
 	return { ...server, directory, sessionID };

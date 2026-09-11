@@ -119,13 +119,16 @@ test(
 	},
 );
 
-test('rejects an occupied browser port and reports a closed upstream', async (t) => {
+test('rejects an occupied browser port and reports a missing or closed upstream', async (t) => {
 	const proxy = await openCodeProxy({ password: 'test' });
-	proxy.targetPort = 1;
 	t.after(proxy.close);
 	await assert.rejects(openCodeProxy({ password: 'test', port: +new URL(proxy.origin).port }), {
 		code: 'EADDRINUSE',
 	});
+	const waiting = await fetch(proxy.origin);
+	assert.equal(waiting.status, 503);
+	await waiting.text();
+	proxy.targetPort = 1;
 	const response = await fetch(proxy.origin);
 	assert.equal(response.status, 502);
 	await response.text();
