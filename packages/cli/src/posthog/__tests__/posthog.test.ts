@@ -252,6 +252,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.mcpConnectionsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+				globalConfig.instanceAi.folderExplorationEnabled = false;
 				globalConfig.featureFlags.override = {};
 			});
 
@@ -289,6 +290,18 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '089_instance_ai_mcp_connections': 'variant' });
+			});
+
+			it('force-enables the folder-exploration flag when N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.instanceAi.folderExplorationEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '110_instance_ai_folder_exploration': true });
 			});
 
 			it('applies the generic override map on top of resolved flags', async () => {

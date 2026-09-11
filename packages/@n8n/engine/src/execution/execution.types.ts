@@ -1,4 +1,4 @@
-import type { JsonValue } from '../common';
+import type { JsonObject, JsonValue } from '../common';
 
 /** Lifecycle status of an execution. */
 export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -70,6 +70,13 @@ export type StepSlots = JsonValue[];
  * `INodeExecutionData[]` in each slot.
  */
 export type TriggerOutputs = StepSlots;
+
+/**
+ * The full workflow the run came from, supplied by CP. Opaque: the engine
+ * never reads a field out of it. Different from WorkflowGraph, which
+ * is only the graph that is executed (e.g. without disabled nodes).
+ */
+export type WorkflowDocument = JsonObject;
 
 /** Slots recorded for a trigger that fired without a payload: no slots at all. */
 export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];

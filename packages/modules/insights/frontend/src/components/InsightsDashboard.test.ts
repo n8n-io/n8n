@@ -1,0 +1,891 @@
+import type {
+	FrontendModuleSettings,
+	InsightsByTime,
+	InsightsByWorkflow,
+	InsightsSummaryType,
+} from '@n8n/api-types';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
+import {
+	createComponentRenderer,
+	defaultSettings,
+	mockedStore,
+	useEmitters,
+	waitAllPromises,
+	type MockedStore,
+} from '@n8n/frontend-test-utils';
+import { ResponseError } from '@n8n/rest-api-client/utils';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { within, screen, waitFor } from '@testing-library/vue';
+import { vi } from 'vitest';
+import { defineComponent, h, reactive } from 'vue';
+
+import InsightsDashboard from './InsightsDashboard.vue';
+import { INSIGHT_TYPES } from '../insights.constants';
+import { useInsightsStore } from '../insights.store';
+import type { InsightsSummaryDisplay } from '../insights.types';
+
+// Called in a hook, not at module scope: the design-system mock below is hoisted above the
+// imports, and `@n8n/frontend-test-utils` reaches design-system through its renderer.
+let emitterHandles: ReturnType<typeof useEmitters<'n8nDataTableServer'>>;
+
+beforeAll(() => {
+	emitterHandles = useEmitters<'n8nDataTableServer'>();
+});
+
+const mockRoute = reactive<{
+	params: {
+		insightType: InsightsSummaryType;
+	};
+}>({
+	params: { insightType: INSIGHT_TYPES.TOTAL },
+});
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	useRouter: vi.fn(),
+	RouterLink: vi.fn(),
+}));
+
+vi.mock('vue-chartjs', () => ({
+	Bar: {
+		template: '<div>Bar</div>',
+	},
+	Line: {
+		template: '<div>Line</div>',
+	},
+}));
+
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		// A plain options object, not `defineComponent`. This factory is hoisted above the
+		// imports and runs while `@n8n/frontend-test-utils` is still initialising — it reaches
+		// design-system through its renderer — so calling anything imported from `vue` here
+		// throws a TDZ error on an import that has not been evaluated yet.
+		N8nDataTableServer: {
+			props: {
+				headers: { type: Array, required: true },
+				items: { type: Array, required: true },
+				itemsLength: { type: Number, required: true },
+			},
+			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
+				emitterHandles.addEmitter('n8nDataTableServer', emit);
+			},
+			template: '<div data-test-id="insights-table"><slot /></div>',
+		},
+	};
+});
+
+const mockTelemetry = {
+	track: vi.fn(),
+};
+
+const showError = vi.fn();
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => mockTelemetry,
+}));
+
+const renderComponent = createComponentRenderer(InsightsDashboard);
+
+const moduleSettings: FrontendModuleSettings = {
+	insights: {
+		summary: true,
+		dashboard: true,
+		earliestDataDate: null,
+		dateRanges: [
+			{
+				key: 'day',
+				licensed: true,
+				granularity: 'hour',
+			},
+			{
+				key: 'week',
+				licensed: true,
+				granularity: 'day',
+			},
+			{
+				key: 'month',
+				licensed: true,
+				granularity: 'day',
+			},
+			{
+				key: 'quarter',
+				licensed: false,
+				granularity: 'week',
+			},
+		],
+	},
+};
+
+const mockSummaryData: InsightsSummaryDisplay = [
+	{
+		id: 'total',
+		value: 1250,
+		deviation: 15,
+		unit: '',
+		deviationUnit: '%',
+	},
+	{
+		id: 'failed',
+		value: 23,
+		deviation: -8,
+		unit: '',
+		deviationUnit: '%',
+	},
+	{
+		id: 'failureRate',
+		value: 1.84,
+		deviation: -0.5,
+		unit: '%',
+		deviationUnit: '%',
+	},
+	{
+		id: 'timeSaved',
+		value: 3600,
+		deviation: 20,
+		unit: 's',
+		deviationUnit: '%',
+	},
+	{
+		id: 'averageRunTime',
+		value: 15,
+		deviation: 2,
+		unit: 's',
+		deviationUnit: '%',
+	},
+];
+
+const mockChartsData: InsightsByTime[] = [
+	{
+		date: '2024-01-01',
+		values: {
+			total: 100,
+			failed: 5,
+			failureRate: 5,
+			timeSaved: 45,
+			averageRunTime: 12,
+			succeeded: 95,
+		},
+	},
+	{
+		date: '2024-01-02',
+		values: {
+			total: 120,
+			failed: 8,
+			failureRate: 6.7,
+			timeSaved: 55,
+			averageRunTime: 15,
+			succeeded: 112,
+		},
+	},
+];
+
+const mockTableData: InsightsByWorkflow = {
+	count: 2,
+	data: [
+		{
+			workflowId: 'workflow-1',
+			workflowName: 'Test Workflow 1',
+			hasReadAccess: true,
+			total: 100,
+			failed: 5,
+			failureRate: 5,
+			timeSaved: 45,
+			averageRunTime: 12,
+			projectId: 'project-1',
+			projectName: 'Test Project 1',
+			succeeded: 95,
+			runTime: 1200,
+		},
+		{
+			workflowId: 'workflow-2',
+			workflowName: 'Test Workflow 2',
+			hasReadAccess: true,
+			total: 50,
+			failed: 2,
+			failureRate: 4,
+			timeSaved: 20,
+			averageRunTime: 8,
+			projectId: 'project-2',
+			projectName: 'Test Project 2',
+			succeeded: 48,
+			runTime: 400,
+		},
+	],
+};
+
+let insightsStore: MockedStore<typeof useInsightsStore>;
+
+const teamProjects = [
+	{ id: 'project-a', name: 'Project A' },
+	{ id: 'project-b', name: 'Project B' },
+];
+
+/**
+ * The project picker is shell-hosted (the `project-filter` component slot), so this
+ * suite registers a stub that emits the same narrow selection the real host emits.
+ * What is under test here is how the dashboard reacts to a selection, not how the
+ * picker collects one — that belongs to `ProjectFilter.vue` in the shell.
+ */
+const ProjectFilterStub = defineComponent({
+	props: { modelValue: { type: Object, default: null } },
+	emits: ['update:modelValue'],
+	setup(_props, { emit }) {
+		return () =>
+			h(
+				'div',
+				{ 'data-test-id': 'project-filter' },
+				teamProjects.map((project) =>
+					h(
+						'button',
+						{
+							key: project.id,
+							'data-test-id': `project-option-${project.id}`,
+							onClick: () => emit('update:modelValue', { id: project.id }),
+						},
+						project.name,
+					),
+				),
+			);
+	},
+});
+const date = new Date('2000-12-19T00:00:00.000Z');
+
+// Test helper constants
+const DEFAULT_DATE_RANGE = {
+	startDate: new Date('2000-12-12T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
+};
+
+const SINGLE_DAY_RANGE = {
+	startDate: new Date('2000-12-18T00:00:00.000Z'),
+	endDate: new Date('2000-12-19T00:00:00.000Z'),
+};
+
+const DEFAULT_TABLE_PARAMS = {
+	skip: 0,
+	take: 25,
+};
+
+// Helper functions
+const expectStoreExecutions = (params: { summary?: object; charts?: object; table?: object }) => {
+	if (params.summary) {
+		expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, params.summary);
+	}
+	if (params.charts) {
+		expect(insightsStore.charts.execute).toHaveBeenCalledWith(0, params.charts);
+	}
+	if (params.table) {
+		expect(insightsStore.table.execute).toHaveBeenCalledWith(0, params.table);
+	}
+};
+
+const openDatePicker = async (getByRole: (role: string, options?: object) => HTMLElement) => {
+	const trigger = getByRole('button', { name: '12 Dec - 19 Dec, 2000' });
+	expect(trigger).toBeInTheDocument();
+	await userEvent.click(trigger);
+
+	const controllingId = trigger.getAttribute('aria-controls');
+	expect(controllingId).toBeDefined();
+
+	const picker = document.getElementById(controllingId as string);
+	expect(picker).toBeInTheDocument();
+
+	return picker as HTMLElement;
+};
+
+const selectProject = async (projectName: string) => {
+	const project = teamProjects.find((candidate) => candidate.name === projectName);
+	expect(project).toBeDefined();
+	await userEvent.click(screen.getByTestId(`project-option-${project?.id}`));
+};
+
+const setupStores = () => {
+	insightsStore = mockedStore(useInsightsStore);
+
+	insightsStore.isSummaryEnabled = true;
+	insightsStore.isDashboardEnabled = true;
+
+	insightsStore.summary = {
+		state: mockSummaryData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.charts = {
+		state: mockChartsData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.table = {
+		state: mockTableData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+};
+
+describe('InsightsDashboard', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.setSystemTime(date);
+
+		mockRoute.params.insightType = INSIGHT_TYPES.TOTAL;
+
+		componentRegistry.clear();
+		componentRegistry.register('project-filter', ProjectFilterStub);
+
+		createTestingPinia({
+			initialState: { settings: { settings: defaultSettings, moduleSettings } },
+		});
+
+		setupStores();
+	});
+
+	describe('Component Rendering', () => {
+		it('should render without error', () => {
+			expect(() =>
+				renderComponent({
+					props: { insightType: INSIGHT_TYPES.TOTAL },
+				}),
+			).not.toThrow();
+			expect(document.title).toBe('Insights - n8n');
+			expect(screen.getByRole('heading', { level: 2, name: 'Insights' })).toBeInTheDocument();
+		});
+
+		it('should render summary when enabled', () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+			expect(screen.getByTestId('insights-summary-tabs')).toBeInTheDocument();
+		});
+
+		it('should not render summary when disabled', () => {
+			insightsStore.isSummaryEnabled = false;
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+			expect(screen.queryByTestId('insights-summary-tabs')).not.toBeInTheDocument();
+		});
+
+		it('should render chart and table when dashboard enabled', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+				expect(screen.getByTestId('insights-table')).toBeInTheDocument();
+			});
+		});
+
+		it('should render chart when in time saved route even if dashboard disabled', async () => {
+			insightsStore.isDashboardEnabled = false;
+			mockRoute.params.insightType = INSIGHT_TYPES.TIME_SAVED;
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TIME_SAVED },
+			});
+			await waitFor(() => {
+				expect(screen.getByTestId('insights-chart-time-saved')).toBeInTheDocument();
+			});
+		});
+
+		it('should render paywall when dashboard disabled and not time saved route', async () => {
+			insightsStore.isDashboardEnabled = false;
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.queryByTestId('insights-chart-total')).not.toBeInTheDocument();
+				expect(screen.queryByTestId('insights-table')).not.toBeInTheDocument();
+				expect(
+					screen.getByRole('heading', {
+						level: 4,
+						name: 'Upgrade to access more detailed insights',
+					}),
+				).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('Date Range Selection', () => {
+		it('should update the selected time range', async () => {
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			const picker = await openDatePicker(getByRole);
+			const dayOption = within(picker).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
+				end_date: SINGLE_DAY_RANGE.endDate.toISOString(),
+				start_date: SINGLE_DAY_RANGE.startDate.toISOString(),
+				range_length_days: 1,
+				type: 'preset',
+			});
+
+			expectStoreExecutions({
+				summary: SINGLE_DAY_RANGE,
+				charts: SINGLE_DAY_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...SINGLE_DAY_RANGE,
+				},
+			});
+		});
+
+		it('should show upgrade modal when unlicensed time range selected ', async () => {
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			const picker = await openDatePicker(getByRole);
+			const dayOption = within(picker).getByText('Last 90 days');
+			await userEvent.click(dayOption);
+
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+			expect(
+				screen.getByText(/Viewing this time period requires an enterprise plan/),
+			).toBeVisible();
+		});
+
+		it('should set start date to beginning of day for multi-day ranges', async () => {
+			// Set system time to Dec 19, 2000 at 14:30:45
+			const currentTime = new Date('2000-12-19T14:30:45.000Z');
+			vi.setSystemTime(currentTime);
+
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			vi.clearAllMocks();
+
+			const picker = await openDatePicker(getByRole);
+			// Select month option to get a multi-day range
+			const monthOption = within(picker).getByText('Last 30 days');
+			await userEvent.click(monthOption);
+
+			// For multi-day ranges ending today: start is midnight, end is current time
+			const expectedRange = {
+				startDate: new Date('2000-11-19T00:00:00.000Z'), // 30 days ago at midnight
+				endDate: currentTime, // Current time
+			};
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
+				end_date: expectedRange.endDate.toISOString(),
+				start_date: expectedRange.startDate.toISOString(),
+				range_length_days: 30,
+				type: 'preset',
+			});
+
+			expectStoreExecutions({
+				summary: expectedRange,
+				charts: expectedRange,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...expectedRange,
+				},
+			});
+		});
+	});
+
+	describe('Component Lifecycle', () => {
+		it('should execute data fetching on mount', () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			expectStoreExecutions({
+				summary: DEFAULT_DATE_RANGE,
+				charts: DEFAULT_DATE_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+
+		it('should refetch data when insight type changes', async () => {
+			const { rerender } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			vi.clearAllMocks();
+			await rerender({ insightType: INSIGHT_TYPES.FAILED });
+
+			expectStoreExecutions({
+				summary: DEFAULT_DATE_RANGE,
+				charts: DEFAULT_DATE_RANGE,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+
+		it('should update sort order when insight type changes', async () => {
+			const { rerender } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await rerender({ insightType: INSIGHT_TYPES.TIME_SAVED });
+
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'timeSaved:desc',
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+	});
+
+	describe('Chart wrapper', () => {
+		test.each([
+			[INSIGHT_TYPES.TOTAL, 'insights-chart-total'],
+			[INSIGHT_TYPES.FAILED, 'insights-chart-failed'],
+			[INSIGHT_TYPES.FAILURE_RATE, 'insights-chart-failure-rate'],
+			[INSIGHT_TYPES.TIME_SAVED, 'insights-chart-time-saved'],
+			[INSIGHT_TYPES.AVERAGE_RUN_TIME, 'insights-chart-average-runtime'],
+		])('should render %s chart component', async (type, testId) => {
+			renderComponent({
+				props: { insightType: type },
+			});
+			await waitFor(() => {
+				expect(screen.getByTestId(testId)).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('Table Functionality', () => {
+		it('should handle table pagination', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitAllPromises();
+
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+				page: 1,
+				itemsPerPage: 50,
+				sortBy: [{ id: 'total', desc: true }],
+			});
+
+			expectStoreExecutions({
+				table: {
+					skip: 50,
+					take: 50,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+
+		it('should handle table sorting', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitAllPromises();
+
+			await waitFor(() => {
+				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [{ id: 'failed', desc: false }],
+				});
+			});
+
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:asc',
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+
+		it('should handle empty sort array', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitAllPromises();
+
+			await waitFor(() => {
+				emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+					page: 0,
+					itemsPerPage: 25,
+					sortBy: [],
+				});
+			});
+
+			expectStoreExecutions({
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: undefined,
+					...DEFAULT_DATE_RANGE,
+				},
+			});
+		});
+	});
+
+	describe('Project Filter Functionality', () => {
+		it('should render the registered project-filter slot', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-filter')).toBeInTheDocument();
+			});
+		});
+
+		it('should render no picker when the project-filter slot is unregistered', async () => {
+			componentRegistry.clear();
+
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByRole('heading', { level: 2, name: 'Insights' })).toBeInTheDocument();
+			});
+			expect(screen.queryByTestId('project-filter')).not.toBeInTheDocument();
+		});
+
+		it('should select a project and filter data by project ID', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-filter')).toBeInTheDocument();
+			});
+
+			await selectProject(teamProjects[0].name);
+
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...DEFAULT_DATE_RANGE, projectId },
+				charts: { ...DEFAULT_DATE_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId,
+				},
+			});
+		});
+
+		it('should combine project filter with date range changes', async () => {
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await selectProject(teamProjects[0].name);
+			vi.clearAllMocks();
+
+			const picker = await openDatePicker(getByRole);
+			const dayOption = within(picker).getByText('Last 24 hours');
+			await userEvent.click(dayOption);
+
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...SINGLE_DAY_RANGE, projectId },
+				charts: { ...SINGLE_DAY_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...SINGLE_DAY_RANGE,
+					projectId,
+				},
+			});
+		});
+
+		it('should maintain project filter when insight type changes', async () => {
+			const { rerender } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await selectProject(teamProjects[0].name);
+			vi.clearAllMocks();
+
+			await rerender({ insightType: INSIGHT_TYPES.FAILED });
+
+			const projectId = teamProjects[0].id;
+			expectStoreExecutions({
+				summary: { ...DEFAULT_DATE_RANGE, projectId },
+				charts: { ...DEFAULT_DATE_RANGE, projectId },
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId,
+				},
+			});
+		});
+
+		it('should pass project ID to table pagination and sorting events', async () => {
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await selectProject(teamProjects[0].name);
+			await waitAllPromises();
+			vi.clearAllMocks();
+
+			emitterHandles.emitters.n8nDataTableServer.emit('update:options', {
+				page: 1,
+				itemsPerPage: 50,
+				sortBy: [{ id: 'failed', desc: true }],
+			});
+
+			expectStoreExecutions({
+				table: {
+					skip: 50,
+					take: 50,
+					sortBy: 'failed:desc',
+					...DEFAULT_DATE_RANGE,
+					projectId: teamProjects[0].id,
+				},
+			});
+		});
+
+		it('should show an error and revert to all projects when the selected project is forbidden', async () => {
+			insightsStore.charts.execute = vi.fn().mockImplementation(async (_delay, params) => {
+				insightsStore.charts.error = params?.projectId
+					? new ResponseError('You do not have access to insights for this project.', {
+							httpStatusCode: 403,
+						})
+					: null;
+			});
+
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-filter')).toBeInTheDocument();
+			});
+
+			await selectProject(teamProjects[0].name);
+			await waitAllPromises();
+
+			expect(showError).toHaveBeenCalledWith(
+				expect.objectContaining({
+					httpStatusCode: 403,
+					message: 'You do not have access to insights for this project.',
+				}),
+				"Couldn't load insights",
+				{ message: "You don't have access to insights for this project" },
+			);
+
+			await waitFor(() => {
+				expect(insightsStore.charts.execute).toHaveBeenLastCalledWith(0, {
+					...DEFAULT_DATE_RANGE,
+					projectId: undefined,
+				});
+			});
+		});
+
+		it('should not revert the current selection when a stale forbidden request resolves after a newer one', async () => {
+			let resolveForbiddenFetch: () => void = () => {};
+			const forbiddenFetchGate = new Promise<void>((resolve) => {
+				resolveForbiddenFetch = resolve;
+			});
+
+			insightsStore.charts.execute = vi.fn().mockImplementation(async (_delay, params) => {
+				if (params?.projectId === teamProjects[0].id) {
+					await forbiddenFetchGate;
+					insightsStore.charts.error = new ResponseError(
+						'You do not have access to insights for this project.',
+						{ httpStatusCode: 403 },
+					);
+					return;
+				}
+				insightsStore.charts.error = null;
+			});
+
+			renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			await waitFor(() => {
+				expect(screen.getByTestId('project-filter')).toBeInTheDocument();
+			});
+
+			// Select the forbidden project — its request is held open below.
+			await selectProject(teamProjects[0].name);
+
+			// Switch to an accessible project before the first request resolves.
+			await selectProject(teamProjects[1].name);
+			await waitAllPromises();
+
+			vi.clearAllMocks();
+
+			// Let the stale (forbidden) request resolve now that a newer selection is active.
+			resolveForbiddenFetch();
+			await waitAllPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+			expect(insightsStore.charts.execute).not.toHaveBeenCalledWith(
+				0,
+				expect.objectContaining({ projectId: undefined }),
+			);
+		});
+	});
+
+	describe('Default date range initialization', () => {
+		it('should default to 7 days ago when earliestDataDate is null', () => {
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			// System date is 2000-12-19, so 7 days ago is 2000-12-12
+			expect(getByRole('button', { name: '12 Dec - 19 Dec, 2000' })).toBeInTheDocument();
+		});
+
+		it('should clamp default range start to the earliest date with data with a maximum of 7', () => {
+			// earliestDataDate is Dec 15, which is within the last 7 days (Dec 12–19)
+			createTestingPinia({
+				initialState: {
+					settings: {
+						settings: defaultSettings,
+						moduleSettings: {
+							...moduleSettings,
+							insights: {
+								...moduleSettings.insights!,
+								earliestDataDate: '2000-12-15T00:00:00.000Z',
+							},
+						},
+					},
+				},
+			});
+			setupStores();
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			expect(getByRole('button', { name: '15 Dec - 19 Dec, 2000' })).toBeInTheDocument();
+		});
+	});
+});

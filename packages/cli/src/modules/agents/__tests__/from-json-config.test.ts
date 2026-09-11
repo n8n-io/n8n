@@ -114,7 +114,6 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						extract?: unknown;
 						reflect?: unknown;
 					};
 					titleGeneration?: {
@@ -235,7 +234,11 @@ describe('buildFromJson()', () => {
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search', hasToMessage: true });
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
 		const rawOutput = { matches: ['first', 'second'] };
 		const toolExecutor: ToolExecutor = {
@@ -261,6 +264,7 @@ describe('buildFromJson()', () => {
 			}
 		).tools.find(({ name }) => name === 'my_search');
 		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
 		const output = await tool.handler({ query: 'n8n' }, {} as never);
 
@@ -1152,7 +1156,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
@@ -1199,8 +1202,7 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
-		const extractSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
@@ -1216,7 +1218,6 @@ describe('buildFromJson()', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'embedding-key',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'episodic-reflector-key',
@@ -1235,11 +1236,6 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(extractSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'extractor-key-api-key',
-			baseURL: 'https://extractor-key.example/v1',
-		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
@@ -1252,7 +1248,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
-		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
 	});
 

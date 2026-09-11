@@ -32,6 +32,7 @@ import { Expression, UnexpectedError } from 'n8n-workflow';
 import type { AbstractServer } from '@/abstract-server';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
@@ -201,6 +202,11 @@ export abstract class BaseCommand<F = never> {
 			});
 		}
 
+		// Wire the encryption key provider (and seed keys on a seeding main) before
+		// anything encrypts or decrypts. This must run for every entrypoint —
+		// servers and one-off commands — since the cipher has no fallback path.
+		await Container.get(EncryptionBootstrapService).run();
+
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
@@ -323,6 +329,15 @@ export abstract class BaseCommand<F = never> {
 
 	protected error(message: string) {
 		throw new UnexpectedError(message);
+	}
+
+	/** Print an error banner, optionally preceded by a command-specific summary. */
+	protected logError(error: Error, summary?: string) {
+		if (summary) this.logger.error(summary);
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 
 	async initBinaryDataService() {

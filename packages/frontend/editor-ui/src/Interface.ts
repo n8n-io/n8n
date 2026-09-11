@@ -141,6 +141,8 @@ declare global {
 			};
 			debug?(): void;
 			get_session_id?(): string | null;
+			/** Set by posthog-js once init() has run; further init() calls are no-ops. */
+			__loaded?: boolean;
 		};
 		analytics?: {
 			identify(userId: string): void;

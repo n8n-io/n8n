@@ -1,4 +1,5 @@
-import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { isZodSchema } from '@n8n/agents';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
@@ -849,8 +850,10 @@ describe('credentials tool', () => {
 		function panelContext(overrides: Parameters<typeof createMockContext>[0] = {}) {
 			const emitter = {
 				emit: vi.fn(() => true),
+				announce: vi.fn().mockResolvedValue(undefined),
 				merge: vi.fn(() => true),
 				lastWorkflowId: vi.fn<() => string | undefined>(() => undefined),
+				workflowIds: vi.fn(() => []),
 			};
 			const context = createMockContext({
 				setupItemsEmitter: emitter,

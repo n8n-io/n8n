@@ -57,7 +57,6 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	z.object({
 		enabled: z.literal(true),
 		credential: EpisodicMemoryCredentialSchema,
-		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
 		maxEntriesPerRun: z.number().int().min(1).max(50).optional(),

@@ -1,0 +1,132 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"@odata.etag": {
+			"type": "string"
+		},
+		"assistantName": {
+			"type": "string"
+		},
+		"birthday": {
+			"type": "string"
+		},
+		"businessAddress": {
+			"properties": {
+				"city": {
+					"type": "string"
+				},
+				"countryOrRegion": {
+					"type": "string"
+				},
+				"postalCode": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"street": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"businessHomePage": {},
+		"businessPhones": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"categories": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"changeKey": {
+			"type": "string"
+		},
+		"children": {
+			"items": {},
+			"type": "array"
+		},
+		"companyName": {
+			"type": "string"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"department": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"emailAddresses": {
+			"items": {},
+			"type": "array"
+		},
+		"fileAs": {
+			"type": "string"
+		},
+		"generation": {},
+		"givenName": {
+			"type": "string"
+		},
+		"homeAddress": {
+			"properties": {},
+			"type": "object"
+		},
+		"homePhones": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "string"
+		},
+		"imAddresses": {
+			"items": {},
+			"type": "array"
+		},
+		"initials": {},
+		"jobTitle": {},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"manager": {
+			"type": "string"
+		},
+		"middleName": {},
+		"mobilePhone": {
+			"type": "string"
+		},
+		"nickName": {},
+		"officeLocation": {},
+		"otherAddress": {
+			"properties": {},
+			"type": "object"
+		},
+		"parentFolderId": {
+			"type": "string"
+		},
+		"personalNotes": {
+			"type": "string"
+		},
+		"profession": {},
+		"spouseName": {
+			"type": "string"
+		},
+		"surname": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"yomiCompanyName": {},
+		"yomiGivenName": {},
+		"yomiSurname": {}
+	},
+	"type": "object"
+}

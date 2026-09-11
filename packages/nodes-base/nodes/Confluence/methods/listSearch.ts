@@ -19,6 +19,9 @@ interface SearchPage {
 const SEARCH_PAGE_SIZE = 50;
 const MAX_FILTERED_SEARCH_PAGES = 10;
 const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
+const TITLE_TERM_SEPARATORS = /[^\p{L}\p{M}\p{N}_.,'\u2019]+/u;
+const TERM_EDGE_PUNCTUATION = /^[.,'\u2019]+|[.,'\u2019]+$/gu;
+const TEXT_SEARCH_OPERATORS = new Set(['AND', 'OR', 'NOT']);
 
 /**
  * Shared list search over the v2 cursor-paginated lists that have no
@@ -186,6 +189,14 @@ function nextStartToken(
 	return parsed ?? String(start + Math.max(count, 1));
 }
 
+// Mirrors the word breaks of the title index; a wildcard applies to one term only
+function toTitleTerms(filter: string): string[] {
+	return filter
+		.split(TITLE_TERM_SEPARATORS)
+		.map((term) => term.replace(TERM_EDGE_PUNCTUATION, ''))
+		.filter((term) => term !== '' && !TEXT_SEARCH_OPERATORS.has(term));
+}
+
 function getScopedSpaceId(this: ILoadOptionsFunctions): string {
 	try {
 		const raw = this.getCurrentNodeParameter('space', { extractValue: true });
@@ -210,17 +221,18 @@ export async function getPages(
 		if (spaceKey !== undefined) spaceClause = ` AND space = "${spaceKey}"`;
 	}
 
-	const escaped = (filter ?? '').replace(/(["\\])/g, '\\$1');
-	const cql =
-		escaped === ''
-			? `type=page${spaceClause} ORDER BY lastmodified DESC`
-			: `type=page${spaceClause} AND title ~ "${escaped}*" ORDER BY lastmodified DESC`;
+	const text = (filter ?? '').trim();
+	const terms = toTitleTerms(text).join(' ');
+	// The wildcard term skips the analyser (no stemming), so the OR adds the analysed form
+	const titleClause = terms === '' ? '' : ` AND (title ~ "${terms}*" OR title ~ "${terms}")`;
+	const cql = `type=page${spaceClause}${titleClause} ORDER BY lastmodified DESC`;
 
 	// Exact-title pages can be buried behind newer prefix matches, so page one
 	// fetches them separately; toPageItems drops the overlap
+	// A phrase with escaped quotes or backslashes gets a 400, so such text skips the exact query
 	const exact =
-		escaped !== '' && paginationToken === undefined
-			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${escaped}"`)
+		text !== '' && paginationToken === undefined && !/["\\]/.test(text)
+			? await fetchSearchPage.call(this, `type=page${spaceClause} AND title = "${text}"`)
 			: EMPTY_PAGE;
 
 	const page = await fetchSearchPage.call(this, cql, start);

@@ -1,0 +1,81 @@
+operationId: updatePromotionProvider
+tags:
+  - Promotions
+summary: Update a promotion provider
+description: Renames the provider, and replaces its credentials when `auth` is sent. New credentials apply to every connection that uses this provider. The authentication method cannot change.
+x-required-scope: gitConnection:update
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion provider.
+    name: promotionProviderId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          auth:
+            oneOf:
+              - type: object
+                properties:
+                  authType:
+                    type: string
+                    enum:
+                      - ssh-key
+                  keyType:
+                    type: string
+                    enum:
+                      - ed25519
+                      - rsa
+                required:
+                  - authType
+                additionalProperties: false
+              - type: object
+                properties:
+                  authType:
+                    type: string
+                    enum:
+                      - token
+                  username:
+                    type: string
+                    minLength: 1
+                  password:
+                    type: string
+                    minLength: 1
+                required:
+                  - authType
+                  - username
+                  - password
+                additionalProperties: false
+        additionalProperties: false
+        minProperties: 1
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionProviderPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
