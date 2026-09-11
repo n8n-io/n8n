@@ -190,8 +190,8 @@ export class LiveWebhooks implements IWebhookManager {
 							return reject(error);
 						}
 						// Save static data if it changed
-						await this.workflowStaticDataService.saveStaticData(workflow);
-						resolve(data);
+						void Promise.resolve(this.workflowStaticDataService.saveStaticData(workflow))
+							.then(() => resolve(data), reject);
 					},
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});

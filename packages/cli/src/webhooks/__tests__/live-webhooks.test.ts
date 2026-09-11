@@ -149,6 +149,29 @@ describe('LiveWebhooks', () => {
 	}
 
 	describe('executeWebhook', () => {
+		it('rejects when saving static data fails after the webhook callback succeeds', async () => {
+			const workflowEntity = mock<WorkflowEntity>({
+				id: WORKFLOW_ID,
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [],
+				connections: {},
+				staticData: {},
+				activeVersion: mock<WorkflowHistory>({
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+				}),
+				shared: [],
+			});
+			const request = setupExecuteWebhookMocks(workflowEntity);
+			const saveError = new Error('static data storage failed');
+			workflowStaticDataService.saveStaticData.mockRejectedValue(saveError);
+
+			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toBe(saveError);
+		});
+
 		it('should use active version nodes when executing webhook', async () => {
 			const httpMethod: IHttpRequestMethods = 'GET';
 
