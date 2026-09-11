@@ -200,7 +200,7 @@ import {
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
-import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import { appSandboxKey, InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -289,16 +289,11 @@ function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string
 	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}${boundaryNote}`;
 }
 
-/**
- * Renders one app attachment. A bound app pins `apps.build` to it; a pending
- * one (no row yet) tells the agent exactly what to pass to `apps.create`.
- */
+/** Renders one app attachment: the thread is bound to the app, so the agent restores and edits it, never creates it. */
 function buildAppAttachmentLine(attachment: InstanceAiAppAttachment): string {
 	const namespace = attachment.namespace ? `, namespace \`${attachment.namespace}\`` : '';
-	if (attachment.appId) {
-		return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: when the user asks to build or change it, call \`apps\` with action \`build\` and \`appId\` \`${attachment.appId}\`. Do not call \`apps\` with action \`create\` for it.`;
-	}
-	return `- New app "${attachment.name}"${namespace} that does not exist yet, in project \`${attachment.projectId}\`. When the user asks to build it, first call \`apps\` with action \`create\` using exactly this name${attachment.namespace ? ', namespace' : ''} and project id, then build it with action \`build\` on the returned \`appId\`.`;
+	const appDir = `apps/${attachment.namespace ?? '<namespace>'}`;
+	return `- App "${attachment.name}" (id: \`${attachment.appId}\`${namespace}, in project \`${attachment.projectId}\`). This thread is bound to this app: if ${appDir} is not in the app sandbox yet, call \`apps\` with action \`restore\` and \`appId\` \`${attachment.appId}\` first. When the user asks to build or change it, edit its files under ${appDir} with the \`workspace_*\` tools and \`sandbox: 'app'\`; the live preview follows. Call \`apps\` with action \`publish\` and \`appId\` \`${attachment.appId}\` only when the user asks to publish. Do not call \`apps\` with action \`create\` for it.`;
 }
 
 /**
@@ -834,8 +829,14 @@ export class InstanceAiService {
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
-	/** End-of-turn app source snapshots in flight, by thread. */
+	/** End-of-turn app source snapshots in flight, by app. */
 	private readonly pendingAppSnapshots = new Map<string, Promise<void>>();
+
+	/**
+	 * The app each thread seen by this process builds. Read where no request
+	 * carries a thread: the end-of-turn snapshot and the preview's run check.
+	 */
+	private readonly appIdByThread = new Map<string, string>();
 
 	/**
 	 * Consecutive machine-started follow-up runs that errored, per thread.
@@ -1971,10 +1972,7 @@ export class InstanceAiService {
 		this.tracing.deleteTraceContextsForThread(threadId);
 		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId);
-		Container.get(AppPreviewService).clearThread(threadId);
-		if (Container.get(ModuleRegistry).isActive('apps')) {
-			Container.get(AppSourceSnapshotService).clearThread(threadId);
-		}
+		this.appIdByThread.delete(threadId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
 		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
@@ -2001,27 +1999,43 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * The thread's runtime workspace, created together with its sandbox when the
-	 * thread has none yet; undefined when the sandbox is disabled. Skills are not
-	 * materialised here, the next run does that on the same entry.
+	 * The runtime workspace of a sandbox key (a thread id or `appSandboxKey`),
+	 * created together with its sandbox when there is none yet; undefined when
+	 * the sandbox is disabled. Skills are not materialised here, the next run
+	 * does that on the same entry.
 	 */
-	async getOrCreateWorkspace(threadId: string, user: User): Promise<Workspace | undefined> {
-		const entry = await this.sandboxService.getOrCreateWorkspaceEntry(threadId, user);
+	async getOrCreateWorkspace(sandboxKey: string, user: User): Promise<Workspace | undefined> {
+		const entry = await this.sandboxService.getOrCreateWorkspaceEntry(sandboxKey, user);
 		return entry?.workspace;
 	}
 
-	/** The thread's runtime workspace only if a run already created it; never creates one. */
-	getCachedWorkspace(threadId: string): Workspace | undefined {
-		return this.sandboxService.getCachedWorkspaceEntry(threadId)?.workspace;
+	/** The workspace of a sandbox key only if something already created it; never creates one. */
+	getCachedWorkspace(sandboxKey: string): Workspace | undefined {
+		return this.sandboxService.getCachedWorkspaceEntry(sandboxKey)?.workspace;
+	}
+
+	/** Whether a run is active on any thread of this process that builds the app. */
+	hasActiveRunForApp(appId: string): boolean {
+		for (const [threadId, boundAppId] of this.appIdByThread) {
+			if (boundAppId === appId && this.runState.getActiveRunId(threadId)) return true;
+		}
+		return false;
+	}
+
+	/** The app is gone: its sandbox and the preview served from it go with it. */
+	async destroyAppSandbox(appId: string): Promise<void> {
+		await this.sandboxService.destroySandbox(appSandboxKey(appId), 'app_deleted');
+		Container.get(AppPreviewService).clearApp(appId);
+		Container.get(AppSourceSnapshotService).clearApp(appId);
 	}
 
 	/**
-	 * Resolves once the thread's end-of-turn app snapshot (and preview rebuild)
+	 * Resolves once the app's end-of-turn source snapshot (and preview rebuild)
 	 * has landed, at once when none is in flight, and after `APP_SNAPSHOT_WAIT_MS`
 	 * at the latest. Never rejects.
 	 */
-	async awaitPendingSnapshot(threadId: string): Promise<void> {
-		const pending = this.pendingAppSnapshots.get(threadId);
+	async awaitPendingSnapshot(appId: string): Promise<void> {
+		const pending = this.pendingAppSnapshots.get(appId);
 		if (pending) await settlesWithin(pending, APP_SNAPSHOT_WAIT_MS);
 	}
 
@@ -2547,6 +2561,9 @@ export class InstanceAiService {
 			);
 		}
 
+		const boundAppId = await this.memoryService.getThreadAppId(threadId);
+		if (boundAppId) this.appIdByThread.set(threadId, boundAppId);
+
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
@@ -2590,7 +2607,11 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 			conversationHistory,
 			modelId,
-			getThreadWorkspace: () => this.getCachedWorkspace(threadId),
+			getAppWorkspace: (appId) => this.getCachedWorkspace(appSandboxKey(appId)),
+			onAppTouched: async (app) => {
+				await this.memoryService.bindThreadToApp(threadId, app);
+				this.appIdByThread.set(threadId, app.id);
+			},
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2728,6 +2749,7 @@ export class InstanceAiService {
 				: loadInstanceAiRuntimeSkillSource();
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
+		let appWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
 		const sandboxStatus = this.settingsService.getSandboxStatus();
@@ -2764,6 +2786,35 @@ export class InstanceAiService {
 					return createScopedWorkspace(workspace, root);
 				};
 
+				// The app's sandbox is shared by every thread that builds the app and
+				// created on first use only. The binding is read at resolve time, so a
+				// thread that creates an app mid-run reaches the app's sandbox in that
+				// run. The `apps` tool copies templates out of the skills directory,
+				// which the thread's `load_skill` only materializes into its own
+				// sandbox; the app sandbox gets the same bundle here.
+				const ensureAppWorkspace = async (): Promise<Workspace | undefined> => {
+					const appId = this.appIdByThread.get(threadId);
+					if (!appId) return undefined;
+					const entry = await this.sandboxService.getOrCreateWorkspaceEntry(
+						appSandboxKey(appId),
+						user,
+					);
+					if (!entry) return undefined;
+					await createLazyWorkspaceRuntimeSkillSource({
+						source: allRuntimeSkills,
+						workspace: entry.workspace,
+						logger: this.logger,
+					}).prepare?.();
+					return await scopeWorkspaceForAgent(entry.workspace);
+				};
+				appWorkspace = createLazyRuntimeWorkspace({
+					id: 'instance-ai-app-workspace',
+					name: 'Instance AI app workspace',
+					sandboxInstructions: '',
+					filesystemInstructions: '',
+					ensureWorkspace: ensureAppWorkspace,
+				});
+
 				runtimeWorkspace = createLazyRuntimeWorkspace({
 					// Empty + stable across resumes: sandbox/filesystem guidance lives in
 					// the system prompt's `## Sandbox workspace` section. Passing '' here
@@ -2774,13 +2825,18 @@ export class InstanceAiService {
 					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
+					appWorkspace,
 				});
-				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
-					id: 'instance-ai-runtime-skill-workspace',
-					name: 'Instance AI runtime skill workspace',
-					ensureWorkspace: async () =>
-						await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
-				});
+				// A thread bound to an app at run start loads its skills into the app
+				// sandbox, so an app page never creates a thread sandbox nothing uses.
+				const runtimeSkillWorkspace = boundAppId
+					? appWorkspace
+					: createLazyRuntimeWorkspace({
+							id: 'instance-ai-runtime-skill-workspace',
+							name: 'Instance AI runtime skill workspace',
+							ensureWorkspace: async () =>
+								await scopeWorkspaceForAgent((await getSandboxEntry())?.workspace),
+						});
 				runtimeSkills = createLazyWorkspaceRuntimeSkillSource({
 					source: allRuntimeSkills,
 					workspace: runtimeSkillWorkspace,
@@ -2790,6 +2846,8 @@ export class InstanceAiService {
 		}
 
 		context.workspace = runtimeWorkspace;
+		context.appWorkspace = appWorkspace;
+		context.getAppId = () => this.appIdByThread.get(threadId);
 		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
@@ -3864,7 +3922,7 @@ export class InstanceAiService {
 					if (attachment.type === 'app') {
 						return {
 							type: attachment.type,
-							id: attachment.appId ?? 'pending',
+							id: attachment.appId,
 							projectId: attachment.projectId,
 						};
 					}
@@ -6892,44 +6950,45 @@ export class InstanceAiService {
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
-		if (status === 'completed' && options?.user) {
+		const appId = status === 'completed' && options?.user && this.appIdByThread.get(threadId);
+		if (appId && options?.user) {
 			// Registered before the first await, so a preview request that follows the
 			// run-finish event can wait for the snapshot to land.
-			const snapshot = this.snapshotAppSources(threadId, options.user).finally(() => {
-				if (this.pendingAppSnapshots.get(threadId) === snapshot) {
-					this.pendingAppSnapshots.delete(threadId);
+			const snapshot = this.snapshotAppSources(appId, threadId, options.user).finally(() => {
+				if (this.pendingAppSnapshots.get(appId) === snapshot) {
+					this.pendingAppSnapshots.delete(appId);
 				}
 			});
-			this.pendingAppSnapshots.set(threadId, snapshot);
+			this.pendingAppSnapshots.set(appId, snapshot);
 		}
 	}
 
 	/**
-	 * Persist the working copy of every app in the thread's sandbox once the
+	 * Persist the working copy of the thread's app from its sandbox once the
 	 * turn is over, so the source outlives the sandbox without a build.
-	 * Best-effort: only a sandbox the run already used is looked at, and any
+	 * Best-effort: only a sandbox already in the cache is looked at, and any
 	 * failure is logged.
 	 */
-	private async snapshotAppSources(threadId: string, user: User): Promise<void> {
+	private async snapshotAppSources(appId: string, threadId: string, user: User): Promise<void> {
 		try {
 			if (!Container.get(ModuleRegistry).isActive('apps')) return;
-			const entry = this.sandboxService.getCachedWorkspaceEntry(threadId);
+			const entry = this.sandboxService.getCachedWorkspaceEntry(appSandboxKey(appId));
 			if (!entry) {
-				this.logger.debug('No cached sandbox to snapshot app sources from', { threadId });
+				this.logger.debug('No cached app sandbox to snapshot app sources from', {
+					threadId,
+					appId,
+				});
 				return;
 			}
 			// Marked before the first await: the run-finish event is already out, and the
 			// client's ensure that follows it must find the rebuild in flight.
-			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(threadId, entry.workspace);
-			await Container.get(AppSourceSnapshotService).snapshotAfterRun(
-				threadId,
-				user,
-				entry.workspace,
-			);
+			const rebuilt = Container.get(AppPreviewService).rebuildIfBuilt(appId, entry.workspace);
+			await Container.get(AppSourceSnapshotService).snapshotAfterRun(appId, user, entry.workspace);
 			await rebuilt;
 		} catch (error) {
 			this.logger.warn('App source snapshot failed', {
 				threadId,
+				appId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

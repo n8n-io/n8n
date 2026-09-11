@@ -26,7 +26,7 @@ const router = useRouter();
 const uiStore = useUIStore();
 const appsStore = useAppsStore();
 const instanceAiReady = useInstanceAiReady();
-const { openAppArtifactThread } = useInstanceAiHandoff();
+const { createAppArtifactThread } = useInstanceAiHandoff();
 
 // Mirrors `appNameSchema` / `appNamespaceSchema` in @n8n/api-types: at most
 // 128 characters; the namespace is lowercase, digits, single hyphens.
@@ -67,35 +67,34 @@ const isFormValid = computed(() => formValidation.name && formValidation.namespa
 
 const namespacePreview = computed(() => `/apps/${namespace.value || '…'}`);
 
-// With the assistant ready, the agent creates the row itself from the handed-off
-// name and namespace (`apps.create`), so the thread owns the app from the start.
+// The app page opens the thread bound to the new app; the agent fills the app's
+// sandbox from there and never creates the app itself.
 const onSubmit = async () => {
 	if (!isFormValid.value || isCreating.value) return;
 	isCreating.value = true;
 	try {
-		if (instanceAiReady.value) {
-			const opened = await openAppArtifactThread(
-				{
-					type: 'app',
-					projectId: props.data.projectId,
-					name: name.value,
-					namespace: namespace.value,
-					isNewApp: true,
-				},
-				{
-					source: 'app_builder_page',
-					origin: 'internal',
-					sourceContext: { namespace: namespace.value },
-				},
-			);
-			if (opened) uiStore.closeModal(props.modalName);
-			return;
-		}
 		const app = await appsStore.createApp(props.data.projectId, name.value, namespace.value);
+		const threadId = instanceAiReady.value
+			? await createAppArtifactThread(
+					{
+						type: 'app',
+						appId: app.id,
+						projectId: props.data.projectId,
+						name: name.value,
+						namespace: namespace.value,
+					},
+					{
+						source: 'app_builder_page',
+						origin: 'internal',
+						sourceContext: { namespace: namespace.value },
+					},
+				)
+			: undefined;
 		uiStore.closeModal(props.modalName);
 		await router.push({
 			name: APP_DETAILS,
 			params: { projectId: props.data.projectId, appId: app.id },
+			...(threadId ? { query: { thread: threadId } } : {}),
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('apps.add.error'));

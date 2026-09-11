@@ -287,8 +287,6 @@ export { ApplyAppThemeDto } from './app/apply-app-theme.dto';
 export { UpdateAppVersionFileDto } from './app/update-app-version-file.dto';
 export { CreatePageDto } from './app/create-page.dto';
 export { UpdatePageDto } from './app/update-page.dto';
-export { EnsureAppPreviewDto } from './app/ensure-app-preview.dto';
-export { PublishAppDto } from './app/publish-app.dto';
 export { SetActiveAppVersionDto } from './app/set-active-app-version.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';

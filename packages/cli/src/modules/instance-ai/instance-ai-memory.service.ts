@@ -33,6 +33,7 @@ import {
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
@@ -256,6 +257,15 @@ function buildLogDerivedSnapshots(
 	return { entries };
 }
 
+/** Mirrors `INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY` in editor-ui. */
+export const APP_BUILDER_TARGET_METADATA_KEY = 'instanceAiAppBuilderTarget';
+
+function appIdFromMetadata(metadata: Record<string, unknown> | undefined): string | undefined {
+	const target = metadata?.[APP_BUILDER_TARGET_METADATA_KEY];
+	if (typeof target !== 'object' || target === null || !('appId' in target)) return undefined;
+	return typeof target.appId === 'string' ? target.appId : undefined;
+}
+
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
@@ -268,8 +278,37 @@ export class InstanceAiMemoryService {
 		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly durableLogMetrics: DurableLogMetrics,
+		private readonly threadRepository: InstanceAiThreadRepository,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
+	}
+
+	/** The user's threads that build the app, newest activity first. */
+	async listThreadsForApp(userId: string, appId: string): Promise<InstanceAiThreadInfo[]> {
+		const threads = await this.threadRepository.findByApp(userId, appId);
+		return threads.map((thread) =>
+			this.toThreadInfo({ ...thread, metadata: thread.metadata ?? undefined }),
+		);
+	}
+
+	async getThreadAppId(threadId: string): Promise<string | undefined> {
+		return await this.threadRepository.findAppId(threadId);
+	}
+
+	/** Records which app a thread builds, in the same shape the editor writes when it opens a thread for an app. */
+	async bindThreadToApp(
+		threadId: string,
+		app: { id: string; projectId: string; name: string },
+	): Promise<void> {
+		await this.updateThread(threadId, {
+			metadata: {
+				[APP_BUILDER_TARGET_METADATA_KEY]: {
+					appId: app.id,
+					projectId: app.projectId,
+					name: app.name,
+				},
+			},
+		});
 	}
 
 	async listThreads(
@@ -586,6 +625,9 @@ export class InstanceAiMemoryService {
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);
 		}
+		// The app binding also lives in its own column, so the app page can look threads up by app.
+		const appId = appIdFromMetadata(updates.metadata);
+		if (appId) await this.threadRepository.setApp(threadId, appId);
 		return this.toThreadInfo(updated);
 	}
 
@@ -658,6 +700,7 @@ export class InstanceAiMemoryService {
 		title?: string;
 		resourceId: string;
 		metadata?: Record<string, unknown>;
+		appId?: string | null;
 		createdAt: Date;
 		updatedAt: Date;
 	}): InstanceAiThreadInfo {
@@ -668,6 +711,7 @@ export class InstanceAiMemoryService {
 			createdAt: thread.createdAt.toISOString(),
 			updatedAt: thread.updatedAt.toISOString(),
 			metadata: thread.metadata,
+			...(thread.appId ? { appId: thread.appId } : {}),
 		};
 	}
 

@@ -60,7 +60,6 @@ describe('AppPreviewProxyController', () => {
 			namespace: 'greeter',
 			port: 5173,
 			userId: 'user-1',
-			threadId: 'thread-1',
 			startedAt: new Date(),
 			expiresAt: new Date(Date.now() + 60_000),
 		};

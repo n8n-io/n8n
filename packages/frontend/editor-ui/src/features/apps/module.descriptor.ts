@@ -8,11 +8,12 @@ import {
 	PROJECT_APPS,
 } from '@/features/apps/apps.constants';
 import { APPS_MODALS } from '@/features/apps/modals';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 
 const i18n = useI18n();
 
 const AppsView = async () => await import('@/features/apps/AppsView.vue');
-const AppDetailsView = async () => await import('@/features/apps/AppDetailsView.vue');
+const AppBuilderView = async () => await import('@/features/apps/AppBuilderView.vue');
 const PageView = async () => await import('@/features/apps/PageView.vue');
 
 export const AppsModule: FrontendModuleDescription = {
@@ -43,9 +44,15 @@ export const AppsModule: FrontendModuleDescription = {
 			name: APP_DETAILS,
 			path: 'apps/:appId',
 			props: true,
-			component: AppDetailsView,
+			component: AppBuilderView,
+			// Apps are built in an assistant thread; without the assistant there is nothing to do here.
+			beforeEnter: (to) =>
+				useInstanceAiAvailable().value
+					? true
+					: { name: PROJECT_APPS, params: { projectId: to.params.projectId } },
 			meta: {
 				projectRoute: true,
+				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
 			},
 		},

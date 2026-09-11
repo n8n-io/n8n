@@ -19,8 +19,6 @@ import type { App, AppTheme } from '@/features/apps/apps.types';
 const props = defineProps<{
 	projectId: string;
 	app: App;
-	/** Thread whose sandbox holds the draft; the theme files are written there so the live preview shows them. */
-	threadId?: string;
 }>();
 
 const emit = defineEmits<{ saved: [App] }>();
@@ -155,12 +153,7 @@ const theme = computed<AppTheme>(() => {
 const onSave = async () => {
 	saving.value = true;
 	try {
-		const updated = await appsStore.applyAppTheme(
-			props.projectId,
-			props.app.id,
-			theme.value,
-			props.threadId,
-		);
+		const updated = await appsStore.applyAppTheme(props.projectId, props.app.id, theme.value);
 		emit('saved', updated);
 		toast.showMessage({
 			title: i18n.baseText('apps.builder.theme.saved'),

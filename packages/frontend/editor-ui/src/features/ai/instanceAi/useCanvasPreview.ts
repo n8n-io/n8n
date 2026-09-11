@@ -155,7 +155,7 @@ export function useCanvasPreview({
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
 				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
-				if (attachment.type === 'app' && attachment.appId) return attachment.appId;
+				if (attachment.type === 'app') return attachment.appId;
 			}
 		}
 		return undefined;

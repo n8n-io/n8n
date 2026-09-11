@@ -1396,6 +1396,10 @@ export interface InstanceAiContext {
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
 	workspace?: Workspace;
+	/** The sandbox of the app this thread builds; created on first use and shared by the app's threads. */
+	appWorkspace?: Workspace;
+	/** The app this thread builds, read live so a binding made during the run is seen. */
+	getAppId?: () => string | undefined;
 	/** Absolute sandbox workspace root (e.g. /home/user/workspace). Lets tools
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */

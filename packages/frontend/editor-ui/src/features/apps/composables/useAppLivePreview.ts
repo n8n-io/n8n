@@ -58,11 +58,10 @@ export function previewContentKey(
 export type AppLivePreviewTarget = {
 	projectId: MaybeRefOrGetter<string>;
 	appId: MaybeRefOrGetter<string>;
-	threadId: MaybeRefOrGetter<string>;
 };
 
 /**
- * Keeps the thread's dev server alive while `visible` is true: ensures on
+ * Keeps the app's dev server alive while `visible` is true: ensures on
  * start and on every return to visibility, polls while it starts, and
  * heartbeats once it is ready. Hidden pauses everything. A new
  * `builtVersionId` retries a preview that stopped for lack of a build. The end
@@ -82,7 +81,8 @@ export function useAppLivePreview(
 	latestSourceEditId?: MaybeRefOrGetter<string | undefined>,
 ) {
 	const rootStore = useRootStore();
-	const status = ref<AppPreviewStatus>();
+	// `starting` from the first ask: the host shows a starting preview, never a blank gap, until the server answers.
+	const status = ref<AppPreviewStatus>({ status: 'starting' });
 	const settledCount = ref(0);
 	const publishedContentKey = ref<string>();
 
@@ -112,7 +112,6 @@ export function useAppLivePreview(
 			rootStore.restApiContext,
 			toValue(target.projectId),
 			toValue(target.appId),
-			toValue(target.threadId),
 		).catch((): AppPreviewStatus => ({ status: 'unavailable', reason: 'sandbox' }));
 		if (seq !== requestSeq) return;
 
@@ -152,7 +151,7 @@ export function useAppLivePreview(
 	watch(
 		() => toValue(builtVersionId),
 		() => {
-			const current = status.value?.status;
+			const current = status.value.status;
 			if (!visible.value || (current !== 'no-source' && current !== 'unavailable')) return;
 			pollingSince = null;
 			void ensure();
@@ -163,7 +162,7 @@ export function useAppLivePreview(
 	watch(
 		() => toValue(running) ?? false,
 		(isRunning, wasRunning) => {
-			const current = status.value?.status;
+			const current = status.value.status;
 			if (isRunning || !wasRunning || !visible.value) return;
 			if (current !== 'ready' && current !== 'no-source' && current !== 'unavailable') return;
 			pollingSince = null;
@@ -175,10 +174,8 @@ export function useAppLivePreview(
 
 	onScopeDispose(stop);
 
-	const liveUrl = computed(() => (status.value?.status === 'ready' ? status.value.url : undefined));
-	const reason = computed(() =>
-		status.value && 'reason' in status.value ? status.value.reason : undefined,
-	);
+	const liveUrl = computed(() => (status.value.status === 'ready' ? status.value.url : undefined));
+	const reason = computed(() => ('reason' in status.value ? status.value.reason : undefined));
 	const contentKey = computed(() => previewContentKey(liveUrl.value, toValue(latestSourceEditId)));
 	const previewAhead = computed(
 		() => contentKey.value !== undefined && contentKey.value !== publishedContentKey.value,

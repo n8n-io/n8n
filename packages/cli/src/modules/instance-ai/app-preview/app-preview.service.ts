@@ -9,7 +9,10 @@ import { nanoid } from 'nanoid';
 
 import { JwtService } from '@/services/jwt.service';
 
-import { buildThreadScopedSandboxUuid } from '../sandbox/instance-ai-sandbox.service';
+import {
+	appSandboxKey,
+	buildThreadScopedSandboxUuid,
+} from '../sandbox/instance-ai-sandbox.service';
 
 export const APP_PREVIEW_PORT = 5173;
 export const APP_PREVIEW_PATH_PREFIX = '/apps-preview';
@@ -35,7 +38,7 @@ const NPM_INSTALL_FLAGS = '--ignore-scripts --no-audit --no-fund --prefer-offlin
 
 export type AppPreviewSandbox = { url: string; apiKey?: string };
 
-/** Where a built preview's files live: root-relative `dir` inside the thread workspace's `filesystem`. */
+/** Where a built preview's files live: root-relative `dir` inside the app workspace's `filesystem`. */
 export type AppPreviewBuiltDist = { filesystem: WorkspaceFilesystem; dir: string };
 
 type AppPreviewEntryBase = {
@@ -46,7 +49,6 @@ type AppPreviewEntryBase = {
 	projectId: string;
 	namespace: string;
 	userId: string;
-	threadId: string;
 	startedAt: Date;
 	expiresAt: Date;
 	starting?: Promise<AppPreviewStatus>;
@@ -80,26 +82,25 @@ export type AppPreviewBuiltEntry = AppPreviewEntryBase & {
 export type AppPreviewEntry = AppPreviewDevEntry | AppPreviewBuiltEntry;
 
 export type EnsureAppPreviewInput = {
-	threadId: string;
 	appId: string;
 	projectId: string;
 	namespace: string;
 	userId: string;
-	/** The n8n sandbox service the thread's sandbox runs in; undefined for other providers, which only get a built preview. */
+	/** The n8n sandbox service the app's sandbox runs in; undefined for other providers, which only get a built preview. */
 	sandbox?: AppPreviewSandbox;
-	/** Whether the thread's agent is mid-turn; a built preview then waits for the turn's rebuild instead of building. */
+	/** Whether an agent is mid-turn on the app; a built preview then waits for the turn's rebuild instead of building. */
 	hasActiveRun: () => boolean;
-	/** Creates the thread's sandbox when it has none yet; undefined when the sandbox is disabled. */
+	/** Creates the app's sandbox when it has none yet; undefined when the sandbox is disabled. */
 	getWorkspace: () => Promise<Workspace | undefined>;
 	/** The app's newest stored source; null when the app was never scaffolded. */
 	getSourceTarball: () => Promise<{ data: Buffer } | null>;
 };
 
-type AppPreviewTokenClaims = { sub: string; appId: string; threadId: string; jti: string };
+type AppPreviewTokenClaims = { sub: string; appId: string; jti: string };
 
 type ExecOutput = { exitCode: number; stdout: string; stderr: string };
 
-/** Shell and file access to the thread's sandbox: the sandbox client for the dev server, the workspace for a built preview. */
+/** Shell and file access to the app's sandbox: the sandbox client for the dev server, the workspace for a built preview. */
 type SandboxRunner = {
 	root: string;
 	exec(
@@ -113,13 +114,8 @@ type WorkspaceRunner = SandboxRunner & { filesystem: WorkspaceFilesystem };
 
 type StartOutcome = { status: AppPreviewStatus; entry: AppPreviewEntry };
 
-/** Kills the dev server whose pid the app directory records, if any. */
-export function buildDevServerStopScript(namespace: string): string {
-	return `cd apps/${namespace} && [ -f ${DEV_SERVER_PID_FILE} ] && kill "$(cat ${DEV_SERVER_PID_FILE})" 2>/dev/null`;
-}
-
 /**
- * Starts the app's dev server in the thread's sandbox with `setsid nohup` so it
+ * Starts the app's dev server in the app's sandbox with `setsid nohup` so it
  * outlives the exec, and waits for Vite's "ready in" line. Prints the log tail
  * and exits non-zero when it does not come up. A stale dev server from a
  * previous n8n process (same app directory, still bound to the port) is killed
@@ -163,8 +159,6 @@ export function buildRestoreScript(input: { appDir: string; tarballPath: string 
 	].join('; ');
 }
 
-const entryKey = (threadId: string, appId: string) => `${threadId}:${appId}`;
-
 /** Resolves to true when `promise` settles within `ms`, false otherwise. */
 export async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
 	const settled = promise.then(
@@ -194,7 +188,7 @@ export class AppPreviewService {
 	}
 
 	async ensure(input: EnsureAppPreviewInput): Promise<AppPreviewStatus> {
-		const key = entryKey(input.threadId, input.appId);
+		const key = input.appId;
 		const existing = this.entries.get(key);
 		if (existing?.starting) return { status: 'starting' };
 		if (existing?.failed) {
@@ -226,10 +220,10 @@ export class AppPreviewService {
 	resolveToken(token: string): AppPreviewEntry | undefined {
 		const claims = this.verify(token);
 		if (!claims) return undefined;
-		const entry = this.entries.get(entryKey(claims.threadId, claims.appId));
+		const entry = this.entries.get(claims.appId);
 		if (!entry || entry.jti !== claims.jti || entry.starting || entry.failed) return undefined;
 		if (entry.expiresAt.getTime() <= Date.now()) {
-			this.entries.delete(entryKey(entry.threadId, entry.appId));
+			this.entries.delete(entry.appId);
 			return undefined;
 		}
 		return entry;
@@ -237,49 +231,40 @@ export class AppPreviewService {
 
 	/** The proxy saw the dev server go away; the next ensure starts a new one. */
 	markDead(entry: AppPreviewEntry): void {
-		const key = entryKey(entry.threadId, entry.appId);
-		if (this.entries.get(key)?.jti === entry.jti) this.entries.delete(key);
+		if (this.entries.get(entry.appId)?.jti === entry.jti) this.entries.delete(entry.appId);
 	}
 
-	/** The thread's sandbox is gone, and every dev server in it with it. */
-	clearThread(threadId: string): void {
-		for (const [key, entry] of this.entries) {
-			if (entry.threadId === threadId) this.entries.delete(key);
-		}
+	/** The app's sandbox is gone, and its preview with it. */
+	clearApp(appId: string): void {
+		this.entries.delete(appId);
 	}
 
 	/**
-	 * Builds every built preview of the thread from the sandbox's current
-	 * sources, so the frame shows the turn's edits; a preview started during the
-	 * run gets its first build here. Marks the entries synchronously: an ensure
-	 * that arrives meanwhile waits for the rebuild. A rebuild already in flight is
-	 * followed by one more. Never rejects.
+	 * Builds the app's built preview from the sandbox's current sources, so the
+	 * frame shows the turn's edits; a preview started during the run gets its
+	 * first build here. Marks the entry synchronously: an ensure that arrives
+	 * meanwhile waits for the rebuild. A rebuild already in flight is followed by
+	 * one more. Never rejects.
 	 */
-	async rebuildIfBuilt(threadId: string, workspace: Workspace): Promise<void> {
-		const entries = [...this.entries.values()].filter(
-			(entry): entry is AppPreviewBuiltEntry =>
-				entry.threadId === threadId && entry.kind === 'built' && !entry.starting && !entry.failed,
-		);
-		await Promise.all(
-			entries.map(async (entry) => {
-				const previous = entry.rebuilding ?? Promise.resolve();
-				const rebuilding = previous
-					.then(async () => await this.rebuild(entry, workspace))
-					.finally(() => {
-						if (entry.rebuilding === rebuilding) entry.rebuilding = undefined;
-					});
-				entry.rebuilding = rebuilding;
-				await rebuilding;
-			}),
-		);
+	async rebuildIfBuilt(appId: string, workspace: Workspace): Promise<void> {
+		const entry = this.entries.get(appId);
+		if (!entry || entry.kind !== 'built' || entry.starting || entry.failed) return;
+		const previous = entry.rebuilding ?? Promise.resolve();
+		const rebuilding = previous
+			.then(async () => await this.rebuild(entry, workspace))
+			.finally(() => {
+				if (entry.rebuilding === rebuilding) entry.rebuilding = undefined;
+			});
+		entry.rebuilding = rebuilding;
+		await rebuilding;
 	}
 
 	private async rebuild(entry: AppPreviewBuiltEntry, workspace: Workspace): Promise<void> {
-		const key = entryKey(entry.threadId, entry.appId);
+		const key = entry.appId;
 		if (this.entries.get(key) !== entry || entry.failed) return;
 		try {
 			const runner = await this.workspaceRunner(workspace);
-			if (!runner) throw new Error('The thread workspace has no sandbox');
+			if (!runner) throw new Error('The app workspace has no sandbox');
 			const result = await runner.exec(
 				buildPreviewBuildScript({ namespace: entry.namespace, token: entry.token }),
 				{ timeoutMs: START_TIMEOUT_MS },
@@ -314,14 +299,9 @@ export class AppPreviewService {
 	}
 
 	private async start(input: EnsureAppPreviewInput, key: string): Promise<AppPreviewStatus> {
-		const sandboxId = buildThreadScopedSandboxUuid(input.threadId);
+		const sandboxId = buildThreadScopedSandboxUuid(appSandboxKey(input.appId));
 		const jti = nanoid();
-		const claims: AppPreviewTokenClaims = {
-			sub: input.userId,
-			appId: input.appId,
-			threadId: input.threadId,
-			jti,
-		};
+		const claims: AppPreviewTokenClaims = { sub: input.userId, appId: input.appId, jti };
 		const token = this.jwtService.sign(claims, {
 			expiresIn: TOKEN_TTL_SECONDS,
 			audience: TOKEN_AUDIENCE,
@@ -335,7 +315,6 @@ export class AppPreviewService {
 			projectId: input.projectId,
 			namespace: input.namespace,
 			userId: input.userId,
-			threadId: input.threadId,
 			startedAt,
 			expiresAt: new Date(startedAt.getTime() + TOKEN_TTL_SECONDS * 1000),
 		};
@@ -343,7 +322,7 @@ export class AppPreviewService {
 			input.sandbox && (await this.supportsPortRoute(input.sandbox))
 				? { ...base, kind: 'dev', sandbox: input.sandbox, port: APP_PREVIEW_PORT }
 				: this.builtEntry(base);
-		// A sibling start or `clearThread` may have replaced or removed this entry meanwhile;
+		// A sibling start or `clearApp` may have replaced or removed this entry meanwhile;
 		// only the entry still in the map may settle itself. `starting` is a built preview
 		// whose first build waits for the turn to end.
 		const settle = (outcome: StartOutcome) => {
@@ -399,7 +378,6 @@ export class AppPreviewService {
 			if (restored) return { status: restored, entry };
 		}
 
-		await this.stopSiblings(entry);
 		const result = await client.exec(entry.sandboxId, {
 			command: buildDevServerStartScript({ namespace: entry.namespace, token: entry.token }),
 			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
@@ -413,7 +391,7 @@ export class AppPreviewService {
 	}
 
 	/**
-	 * Builds the app in the thread's workspace, whichever provider backs it,
+	 * Builds the app in the app's workspace, whichever provider backs it,
 	 * restoring the stored source first when the app directory is missing.
 	 * During a run only the restore happens: the turn's edits are still coming,
 	 * and `rebuildIfBuilt` builds the entry once the run completes.
@@ -433,7 +411,6 @@ export class AppPreviewService {
 			if (restored) return { status: restored, entry };
 		}
 
-		await this.stopSiblings(entry);
 		if (input.hasActiveRun()) return { status: { status: 'starting' }, entry };
 		const result = await runner.exec(
 			buildPreviewBuildScript({ namespace: entry.namespace, token: entry.token }),
@@ -453,31 +430,7 @@ export class AppPreviewService {
 		return `apps/${namespace}/${APP_PREVIEW_DIST_DIR}`;
 	}
 
-	/**
-	 * One dev server per sandbox: a preview of another app in this thread must
-	 * yield its port. A sibling still starting settles first, so its probe never
-	 * hits this entry's dev server. A built sibling has no process to stop.
-	 */
-	private async stopSiblings(entry: AppPreviewEntry): Promise<void> {
-		const siblings = [...this.entries.values()].filter(
-			(other) => other.sandboxId === entry.sandboxId && other.jti !== entry.jti,
-		);
-		await Promise.allSettled(siblings.map(async (other) => await other.starting));
-		for (const other of siblings) {
-			this.markDead(other);
-			if (other.kind === 'dev') await this.stopDevServer(other);
-		}
-	}
-
-	private async stopDevServer(entry: AppPreviewDevEntry): Promise<void> {
-		await this.client(entry.sandbox).exec(entry.sandboxId, {
-			command: buildDevServerStopScript(entry.namespace),
-			workdir: N8N_SANDBOX_WORKSPACE_ROOT,
-			timeoutMs: PROBE_TIMEOUT_MS,
-		});
-	}
-
-	/** The sandbox or the app's `package.json` in it is missing: a new thread that has not held the app yet. */
+	/** The sandbox or the app's `package.json` in it is missing: an app sandbox that has not held the source yet. */
 	private async needsRestore(client: SandboxClient, entry: AppPreviewEntry): Promise<boolean> {
 		try {
 			await client.getSandbox(entry.sandboxId);
@@ -493,7 +446,7 @@ export class AppPreviewService {
 	}
 
 	/**
-	 * Brings the app's newest stored source into the thread's sandbox. Resolves
+	 * Brings the app's newest stored source into the app's sandbox. Resolves
 	 * to a status that ends the start, or to undefined when the preview may
 	 * start: after a restore, or without one when the agent already filled the
 	 * app directory.
@@ -627,16 +580,11 @@ export class AppPreviewService {
 			const claims = this.jwtService.verify<Partial<AppPreviewTokenClaims>>(token, {
 				audience: TOKEN_AUDIENCE,
 			});
-			const { sub, appId, threadId, jti } = claims;
-			if (
-				typeof sub !== 'string' ||
-				typeof appId !== 'string' ||
-				typeof threadId !== 'string' ||
-				typeof jti !== 'string'
-			) {
+			const { sub, appId, jti } = claims;
+			if (typeof sub !== 'string' || typeof appId !== 'string' || typeof jti !== 'string') {
 				return undefined;
 			}
-			return { sub, appId, threadId, jti };
+			return { sub, appId, jti };
 		} catch {
 			return undefined;
 		}

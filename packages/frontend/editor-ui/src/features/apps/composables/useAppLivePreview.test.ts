@@ -85,7 +85,7 @@ describe('previewContentKey', () => {
 });
 
 describe('useAppLivePreview', () => {
-	const target = { projectId: 'proj-1', appId: 'app-1', threadId: 'thread-1' };
+	const target = { projectId: 'proj-1', appId: 'app-1' };
 
 	async function flush() {
 		await Promise.resolve();
@@ -119,14 +119,10 @@ describe('useAppLivePreview', () => {
 	it('ensures on start, polls while starting, and exposes the URL once ready', async () => {
 		ensureAppPreviewApi.mockResolvedValueOnce(STARTING).mockResolvedValueOnce(READY);
 		const live = mountLive();
+		expect(live.status.value).toEqual(STARTING);
 		await flush();
 
-		expect(ensureAppPreviewApi).toHaveBeenCalledWith(
-			expect.anything(),
-			'proj-1',
-			'app-1',
-			'thread-1',
-		);
+		expect(ensureAppPreviewApi).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'app-1');
 		expect(live.status.value).toEqual(STARTING);
 		expect(live.liveUrl.value).toBeUndefined();
 
@@ -199,7 +195,7 @@ describe('useAppLivePreview', () => {
 		resolveEnsure(READY);
 		await flush();
 
-		expect(live.status.value).toBeUndefined();
+		expect(live.status.value).toEqual(STARTING);
 		await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_HEARTBEAT_MS);
 		expect(ensureAppPreviewApi).toHaveBeenCalledTimes(1);
 	});

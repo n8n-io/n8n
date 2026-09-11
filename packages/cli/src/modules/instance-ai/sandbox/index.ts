@@ -1,4 +1,5 @@
 export {
+	appSandboxKey,
 	InstanceAiSandboxService,
 	type InstanceAiSandboxBackgroundTasks,
 	type InstanceAiSandboxProxy,

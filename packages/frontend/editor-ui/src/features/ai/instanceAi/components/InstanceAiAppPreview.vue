@@ -52,7 +52,7 @@ const latestSourceEditId = computed(() => {
 // so the document's visibility is the remaining gate for the dev server.
 const { isVisible } = useDocumentVisibility();
 const live = useAppLivePreview(
-	{ projectId: () => props.projectId, appId: () => props.appId, threadId: () => thread.id },
+	{ projectId: () => props.projectId, appId: () => props.appId },
 	isVisible,
 	() => props.versionId,
 	() => thread.isStreaming,
@@ -119,7 +119,6 @@ const pagePath = computed(
 			:app-id="props.appId"
 			:artifact-version-id="props.versionId"
 			:artifact-page-path="pagePath"
-			:thread-id="thread.id"
 			:live-url="live.liveUrl.value"
 			:live-status="live.status.value"
 			:refresh-key="live.settledCount.value"

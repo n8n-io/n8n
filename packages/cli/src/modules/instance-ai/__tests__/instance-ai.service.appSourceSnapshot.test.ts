@@ -46,6 +46,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		sandboxService: { getCachedWorkspaceEntry: ReturnType<typeof vi.fn> };
 		logger: { debug: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
 		pendingAppSnapshots: Map<string, Promise<void>>;
+		appIdByThread: Map<string, string>;
 		awaitPendingSnapshot: (threadId: string) => Promise<void>;
 		finalizeRun: (
 			threadId: string,
@@ -70,6 +71,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		service.sandboxService = { getCachedWorkspaceEntry: vi.fn(() => cachedEntry) };
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.pendingAppSnapshots = new Map();
+		service.appIdByThread = new Map([['thread-1', 'app-1']]);
 		return service;
 	}
 
@@ -90,15 +92,15 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 
 	const flush = async () => await new Promise((resolve) => setImmediate(resolve));
 
-	it('snapshots the cached sandbox of a completed run', async () => {
+	it("snapshots the cached sandbox of the completed run's app", async () => {
 		const service = createService();
 
 		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
 		await flush();
 
-		expect(service.sandboxService.getCachedWorkspaceEntry).toHaveBeenCalledWith('thread-1');
-		expect(snapshotAfterRun).toHaveBeenCalledWith('thread-1', user, workspace);
-		expect(rebuildIfBuilt).toHaveBeenCalledWith('thread-1', workspace);
+		expect(service.sandboxService.getCachedWorkspaceEntry).toHaveBeenCalledWith('app-app-1');
+		expect(snapshotAfterRun).toHaveBeenCalledWith('app-1', user, workspace);
+		expect(rebuildIfBuilt).toHaveBeenCalledWith('app-1', workspace);
 	});
 
 	it('marks built previews for rebuild in the same tick as the run-finish, before the snapshot', async () => {
@@ -110,7 +112,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 			user,
 		});
 
-		expect(rebuildIfBuilt).toHaveBeenCalledWith('thread-1', workspace);
+		expect(rebuildIfBuilt).toHaveBeenCalledWith('app-1', workspace);
 		expect(rebuildIfBuilt.mock.invocationCallOrder[0]).toBeLessThan(
 			snapshotAfterRun.mock.invocationCallOrder[0],
 		);
@@ -136,7 +138,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		expect(snapshotAfterRun).not.toHaveBeenCalled();
 	});
 
-	it('logs at debug and never creates a sandbox when the thread has none cached', async () => {
+	it('logs at debug and never creates a sandbox when the app has none cached', async () => {
 		const service = createService({ cachedEntry: undefined });
 
 		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
@@ -144,9 +146,20 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 
 		expect(snapshotAfterRun).not.toHaveBeenCalled();
 		expect(service.logger.debug).toHaveBeenCalledWith(
-			'No cached sandbox to snapshot app sources from',
-			{ threadId: 'thread-1' },
+			'No cached app sandbox to snapshot app sources from',
+			{ threadId: 'thread-1', appId: 'app-1' },
 		);
+	});
+
+	it('does not look for a sandbox when the thread builds no app', async () => {
+		const service = createService();
+		service.appIdByThread.clear();
+
+		await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
+		await flush();
+
+		expect(service.sandboxService.getCachedWorkspaceEntry).not.toHaveBeenCalled();
+		expect(snapshotAfterRun).not.toHaveBeenCalled();
 	});
 
 	it('logs a warning instead of failing the run when the snapshot throws', async () => {
@@ -160,6 +173,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 
 		expect(service.logger.warn).toHaveBeenCalledWith('App source snapshot failed', {
 			threadId: 'thread-1',
+			appId: 'app-1',
 			error: 'sandbox gone',
 		});
 	});
@@ -168,10 +182,10 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 		const settled = async (promise: Promise<void>) =>
 			await Promise.race([promise.then(() => true), flush().then(() => false)]);
 
-		it('resolves at once when the thread has no snapshot in flight', async () => {
+		it('resolves at once when the app has no snapshot in flight', async () => {
 			const service = createService();
 
-			await expect(service.awaitPendingSnapshot('thread-1')).resolves.toBeUndefined();
+			await expect(service.awaitPendingSnapshot('app-1')).resolves.toBeUndefined();
 		});
 
 		it('resolves only after the snapshot of the completed run has landed', async () => {
@@ -180,12 +194,12 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 			snapshotAfterRun.mockReturnValue(new Promise<void>((resolve) => (finishSnapshot = resolve)));
 			await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
 
-			const waited = service.awaitPendingSnapshot('thread-1');
+			const waited = service.awaitPendingSnapshot('app-1');
 			expect(await settled(waited)).toBe(false);
 
 			finishSnapshot();
 			expect(await settled(waited)).toBe(true);
-			expect(await settled(service.awaitPendingSnapshot('thread-1'))).toBe(true);
+			expect(await settled(service.awaitPendingSnapshot('app-1'))).toBe(true);
 		});
 
 		it('resolves when the snapshot fails', async () => {
@@ -193,7 +207,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 			snapshotAfterRun.mockRejectedValue(new Error('sandbox gone'));
 			await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
 
-			await expect(service.awaitPendingSnapshot('thread-1')).resolves.toBeUndefined();
+			await expect(service.awaitPendingSnapshot('app-1')).resolves.toBeUndefined();
 		});
 
 		it('gives up after 15 s on a snapshot that does not land', async () => {
@@ -203,7 +217,7 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 				snapshotAfterRun.mockReturnValue(new Promise(() => {}));
 				await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
 
-				const waited = service.awaitPendingSnapshot('thread-1').then(() => 'done');
+				const waited = service.awaitPendingSnapshot('app-1').then(() => 'done');
 				await vi.advanceTimersByTimeAsync(14_999);
 				expect(await Promise.race([waited, Promise.resolve('pending')])).toBe('pending');
 
@@ -214,12 +228,12 @@ describe('InstanceAiService — finalizeRun app source snapshot', () => {
 			}
 		});
 
-		it('waits only for its own thread', async () => {
+		it('waits only for its own app', async () => {
 			const service = createService();
 			snapshotAfterRun.mockReturnValue(new Promise(() => {}));
 			await service.finalizeRun('thread-1', 'run-1', 'completed', { userId: 'user-1', user });
 
-			expect(await settled(service.awaitPendingSnapshot('thread-2'))).toBe(true);
+			expect(await settled(service.awaitPendingSnapshot('app-2'))).toBe(true);
 		});
 	});
 

@@ -383,35 +383,6 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
-	it('opens a thread for a new app without binding metadata until it exists', async () => {
-		const { openAppArtifactThread } = useInstanceAiHandoff();
-
-		const opened = await openAppArtifactThread(
-			{
-				type: 'app',
-				projectId: 'project-1',
-				name: 'Greeter',
-				namespace: 'greeter',
-				isNewApp: true,
-			},
-			{ source: 'app_builder_page', origin: 'internal' },
-		);
-
-		expect(opened).toBe(true);
-		expect(mocks.updateThreadMetadata).not.toHaveBeenCalled();
-		expect(getPendingAppAttachment('thread-1')).toEqual({
-			type: 'app',
-			projectId: 'project-1',
-			name: 'Greeter',
-			namespace: 'greeter',
-			isNewApp: true,
-		});
-		expect(mocks.routerPush).toHaveBeenCalledWith({
-			name: 'InstanceAiThread',
-			params: { threadId: 'thread-1' },
-		});
-	});
-
 	it('clears the stashed app attachment when navigation fails', async () => {
 		mocks.routerPush.mockRejectedValueOnce(new Error('Navigation failed'));
 		const { openAppArtifactThread } = useInstanceAiHandoff();

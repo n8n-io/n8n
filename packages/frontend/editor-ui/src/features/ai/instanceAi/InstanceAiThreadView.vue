@@ -66,7 +66,6 @@ import {
 	getPendingAppAttachment,
 	getPendingComposerDraft,
 	getPendingHandoffContext,
-	stashPendingAppAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
@@ -75,7 +74,6 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import {
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
-	INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_VIEW,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
@@ -85,7 +83,7 @@ import {
 	getDismissedContextKeys,
 	handoffContextKey,
 } from './instanceAi.handoffContext';
-import { useSidebarState } from './instanceAiLayout';
+import { useAppThreadScope, useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
@@ -131,6 +129,9 @@ const router = useRouter();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(showCreditWarning);
 const sidebar = useSidebarState();
+// On the app page the app panel is the point of the view: it stays open, the
+// artifacts sidebar is dropped, and the chat collapses behind the panel instead.
+const isAppPage = useAppThreadScope() !== null;
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
@@ -325,71 +326,6 @@ const preview = useCanvasPreview({
 		getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.appId,
 });
 
-// The namespace the user asked a new app to live under. Outlives the composer
-// chip (cleared on the first send) so the `apps.create` result can still be
-// matched to this thread when it arrives.
-const newAppNamespace = computed(() => {
-	const queued = pendingAppAttachment.value;
-	if (queued && !queued.appId && queued.namespace) return queued.namespace;
-	for (const message of thread.messages) {
-		for (const attachment of message.attachments ?? []) {
-			if (attachment.type === 'app' && !attachment.appId && attachment.namespace) {
-				return attachment.namespace;
-			}
-		}
-	}
-	return undefined;
-});
-
-const createdAppForNamespace = computed(() => {
-	const namespace = newAppNamespace.value;
-	if (!namespace) return undefined;
-	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'app' && entry.namespace === namespace) return entry;
-	}
-	return undefined;
-});
-
-// Resolve the pending app chip and bind the thread once `apps.create` has
-// produced the row. `flush: 'sync'` for the same hydration-gate reason as the
-// auto-open watches in useCanvasPreview.
-watch(
-	() => createdAppForNamespace.value?.id,
-	(appId) => {
-		const created = createdAppForNamespace.value;
-		if (!appId || !created) return;
-		const projectId = created.projectId ?? pendingAppAttachment.value?.projectId;
-		if (!projectId) return;
-
-		const queued = pendingAppAttachment.value;
-		if (queued && !queued.appId) {
-			const resolved: InstanceAiAppAttachment = {
-				type: 'app',
-				appId,
-				projectId,
-				name: created.name,
-				...(created.namespace ? { namespace: created.namespace } : {}),
-			};
-			pendingAppAttachment.value = resolved;
-			stashPendingAppAttachment(props.threadId, resolved);
-		}
-
-		const boundTarget = getAppBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id));
-		if (boundTarget?.appId !== appId) {
-			void store
-				.updateThreadMetadata(thread.id, {
-					[INSTANCE_AI_APP_BUILDER_TARGET_METADATA_KEY]: { appId, projectId, name: created.name },
-				})
-				.catch((error: unknown) => {
-					toast.showError(error, i18n.baseText('generic.error'));
-				});
-		}
-
-		if (thread.isHydratingThread) return;
-		preview.openAppPreview(appId, projectId);
-	},
-	{ flush: 'sync' },
-);
 const activeAgentPreviewSessionId = computed(() => {
 	const context = pendingComposerContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -522,9 +458,10 @@ const isArtifactsPanelInLayout = computed(
 );
 const canShowArtifactsPanel = computed(
 	() =>
-		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
-		(Boolean(props.threadId) && thread.isHydratingThread),
+		!isAppPage &&
+		(thread.hasMessages ||
+			preview.allArtifactTabs.value.length > 0 ||
+			(Boolean(props.threadId) && thread.isHydratingThread)),
 );
 const showArtifactsPanel = computed(
 	() =>
@@ -818,8 +755,7 @@ const composerContextChip = computed(() => {
 			type: 'app-artifact' as const,
 			appId: appAttachment.appId,
 			projectId: appAttachment.projectId,
-			isNewApp: !appAttachment.appId,
-			key: `pending-app:${appAttachment.appId ?? appAttachment.namespace ?? appAttachment.name}`,
+			key: `pending-app:${appAttachment.appId}`,
 			label: appAttachment.name,
 			icon: 'app-window',
 			isPending: true,
@@ -1351,7 +1287,42 @@ async function dismissComposerContextChip() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<template v-if="isAppPage">
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="history"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:aria-pressed="!sidebar.collapsed.value"
+									:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+									data-test-id="app-builder-thread-history"
+									@click="sidebar.toggle"
+								/>
+							</N8nTooltip>
+							<N8nTooltip
+								:content="i18n.baseText('apps.builder.collapseChat')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+							>
+								<N8nIconButton
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									:disabled="!preview.isPreviewVisible.value"
+									:aria-label="i18n.baseText('apps.builder.collapseChat')"
+									data-test-id="app-builder-collapse-chat"
+									@click="togglePreviewExpanded"
+								/>
+							</N8nTooltip>
+						</template>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -1580,7 +1551,7 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
-							:preview-toggle-label="artifactsPreviewToggleLabel"
+							:preview-toggle-label="isAppPage ? undefined : artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
 						/>

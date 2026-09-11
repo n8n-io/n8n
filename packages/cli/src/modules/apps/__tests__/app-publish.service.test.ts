@@ -124,7 +124,7 @@ describe('AppPublishService', () => {
 		expect(commands[1]).toContain('npm install --ignore-scripts');
 		expect(executeCommand.mock.calls[1][2]).toEqual({ env: { CI: 'true' }, timeout: 600_000 });
 		expect(buildApp).toHaveBeenCalledWith(
-			expect.objectContaining({ appService: expect.any(Object), workspace: expect.any(Object) }),
+			expect.objectContaining({ appService: expect.any(Object), appWorkspace: expect.any(Object) }),
 			{ action: 'build', appId: 'app-1' },
 		);
 	});
@@ -141,9 +141,9 @@ describe('AppPublishService', () => {
 			return SOURCE;
 		});
 
-		await service.publish('app-1', USER, { draft: { threadId: 'thread-1', workspace } });
+		await service.publish('app-1', USER, { draft: workspace });
 
-		expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('thread-1', USER, workspace);
+		expect(snapshotService.snapshotAfterRun).toHaveBeenCalledWith('app-1', USER, workspace);
 		expect(order).toEqual(['snapshot', 'read']);
 	});
 
@@ -152,7 +152,7 @@ describe('AppPublishService', () => {
 		snapshotService.snapshotAfterRun.mockRejectedValue(new Error('blob store down'));
 
 		const result = await service.publish('app-1', USER, {
-			draft: { threadId: 'thread-1', workspace: mock<Workspace>() },
+			draft: mock<Workspace>(),
 		});
 
 		expect(result).toEqual({ error: true, stage: 'snapshot', message: 'blob store down' });

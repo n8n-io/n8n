@@ -228,16 +228,16 @@ describe('domain tool construction', () => {
 		expect(createAllTools(enabled).get('mcp-servers')).toBeUndefined();
 	});
 
-	it('gates the apps tool on both the host-wired appService and a sandbox workspace', () => {
+	it('gates the apps tool on both the host-wired appService and the app workspace', () => {
 		const appService = {} as InstanceAiContext['appService'];
-		const workspace = {} as InstanceAiContext['workspace'];
+		const appWorkspace = {} as InstanceAiContext['appWorkspace'];
 
 		expect(createOrchestratorDomainTools(makeContext({ appService })).has('apps')).toBe(false);
-		expect(createOrchestratorDomainTools(makeContext({ workspace })).has('apps')).toBe(false);
-		expect(createOrchestratorDomainTools(makeContext({ appService, workspace })).has('apps')).toBe(
-			true,
-		);
-		expect(createAllTools(makeContext({ appService, workspace })).has('apps')).toBe(true);
+		expect(createOrchestratorDomainTools(makeContext({ appWorkspace })).has('apps')).toBe(false);
+		expect(
+			createOrchestratorDomainTools(makeContext({ appService, appWorkspace })).has('apps'),
+		).toBe(true);
+		expect(createAllTools(makeContext({ appService, appWorkspace })).has('apps')).toBe(true);
 		expect(createAllTools(makeContext({ appService })).has('apps')).toBe(false);
 	});
 
