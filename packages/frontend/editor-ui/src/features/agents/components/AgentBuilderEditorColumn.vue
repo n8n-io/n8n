@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
