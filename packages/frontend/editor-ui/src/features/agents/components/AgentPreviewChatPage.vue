@@ -24,7 +24,7 @@ withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		layout?: 'page' | 'dock';
 	}>(),
-	{ layout: 'page' },
+	{ layout: 'dock' },
 );
 
 const emit = defineEmits<{
@@ -40,13 +40,17 @@ function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
 }
 
-defineExpose({ focusInput });
+function getConversationMarkdown(): string {
+	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+defineExpose({ focusInput, getConversationMarkdown });
 </script>
 
 <template>
 	<component
-		:is="layout === 'dock' ? 'div' : 'main'"
-		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
+		:is="layout === 'page' ? 'main' : 'div'"
+		:class="[$style.previewPage, { [$style.pageLayout]: layout === 'page' }]"
 		data-testid="agent-preview-chat-page"
 	>
 		<div :class="$style.chatFrame">
@@ -78,17 +82,17 @@ defineExpose({ focusInput });
 	min-height: 0;
 	display: flex;
 	justify-content: center;
-	background-color: var(--background--surface);
+	background-color: transparent;
 	overflow: hidden;
+}
+
+.pageLayout {
+	background-color: var(--background--surface);
 }
 
 .chatFrame {
 	width: 100%;
 	min-height: 0;
 	display: flex;
-}
-
-.dockLayout {
-	background-color: transparent;
 }
 </style>

@@ -1,4 +1,7 @@
-import { setupRemediationBlocksVerification } from './setup-verification-policy';
+import {
+	setupRemediationBlocksVerification,
+	stateForPendingSetupVerification,
+} from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	WorkflowBuildOwner,
@@ -25,6 +28,7 @@ export interface DeriveWorkflowVerificationObligationOptions {
 	owner?: WorkflowBuildOwner;
 	plannedTaskId?: string;
 	updatedAt?: string;
+	setupPanelEnabled?: boolean;
 }
 
 /** Blocking-reason text for one-off builds whose verification is optional. */
@@ -186,8 +190,17 @@ export function deriveWorkflowVerificationObligation(
 	record: WorkflowVerificationObligationRecord,
 	options: DeriveWorkflowVerificationObligationOptions = {},
 ): WorkflowVerificationObligation {
-	const outcome = record.lastBuildOutcome;
-	const status = deriveStatus(record.state, outcome);
+	const savedOutcome = record.lastBuildOutcome;
+	const setupVerificationState =
+		options.setupPanelEnabled === true && savedOutcome
+			? stateForPendingSetupVerification(record.state, savedOutcome)
+			: undefined;
+	const outcome: WorkflowBuildOutcome | undefined =
+		setupVerificationState && savedOutcome
+			? { ...savedOutcome, verificationReadiness: { status: 'ready' } }
+			: savedOutcome;
+	const state = setupVerificationState ?? record.state;
+	const status = deriveStatus(state, outcome);
 	const updatedAt =
 		options.updatedAt ?? lastAttemptTimestamp(record.attempts) ?? new Date().toISOString();
 	const owner = resolveWorkflowBuildOwner(options, record.state, outcome);
@@ -209,7 +222,7 @@ export function deriveWorkflowVerificationObligation(
 		setupRequirement: outcome?.setupRequirement,
 		evidence: outcome?.verification,
 		executionIntent: outcome?.executionIntent,
-		blockingReason: deriveBlockingReason(record.state, outcome),
+		blockingReason: deriveBlockingReason(state, outcome),
 		updatedAt,
 	};
 }

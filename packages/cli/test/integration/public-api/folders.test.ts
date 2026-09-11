@@ -15,6 +15,7 @@ import * as utils from '../shared/utils/';
 let owner: User;
 let member: User;
 let ownerPersonalProject: Project;
+let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
@@ -57,7 +58,7 @@ beforeEach(async () => {
 	};
 
 	ownerPersonalProject = await createPersonalProject(owner);
-	await createPersonalProject(member);
+	memberPersonalProject = await createPersonalProject(member);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -293,6 +294,18 @@ describe('GET /projects/:projectId/folders', () => {
 		expect(response.body).toHaveProperty('data');
 		expect(response.body).toHaveProperty('count', 2);
 		expect(response.body.data).toHaveLength(2);
+	});
+
+	test('should list folders in their own personal project when user is a member', async () => {
+		testServer.license.enable('feat:folders');
+
+		await createFolder(memberPersonalProject, { name: 'Member Folder' });
+
+		const response = await authMemberAgent.get(`/projects/${memberPersonalProject.id}/folders`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toHaveLength(1);
 	});
 
 	test('should list folders in a team project when user is a member', async () => {

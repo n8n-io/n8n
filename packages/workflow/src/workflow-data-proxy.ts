@@ -43,6 +43,7 @@ import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -1045,8 +1046,28 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-			nodeBeforeLast?: string,
-			activePath: Set<string> = new Set(),
+		): INodeExecutionData =>
+			resolvePairedItem(
+				destinationNodeName,
+				incomingSourceData,
+				initialPairedItem,
+				usedMethodName,
+				undefined,
+				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
+				// Aggregate output pairing to all its inputs), so without memoization
+				// the walk revisits the same item exponentially often.
+				new PairedItemMemo(),
+				new Set(),
+			);
+
+		const resolvePairedItem = (
+			destinationNodeName: string,
+			incomingSourceData: ISourceData | null,
+			initialPairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+			activePath: Set<string>,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1055,9 +1076,31 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
+			return memo.resolve(sourceData, pairedItem, () =>
+				resolvePairedItemUncached(
+					destinationNodeName,
+					sourceData,
+					pairedItem,
+					usedMethodName,
+					nodeBeforeLast,
+					memo,
+					activePath,
+				),
+			);
+		};
+
+		const resolvePairedItemUncached = (
+			destinationNodeName: string,
+			sourceData: ISourceData,
+			pairedItem: IPairedItemData,
+			usedMethodName: PairedItemMethod,
+			nodeBeforeLast: string | undefined,
+			memo: PairedItemMemo,
+			activePath: Set<string>,
+		): INodeExecutionData => {
 			// Track visited items per path rather than cumulatively: lineage is a DAG,
 			// so the same item reached again through another branch must still resolve.
-			const pathKey = `${sourceData.previousNode} ${sourceData.previousNodeRun ?? 0} ${sourceData.previousNodeOutput ?? 0} ${pairedItem.item}`;
+			const pathKey = `${sourceData.previousNode} ${sourceData.previousNodeRun ?? 0} ${sourceData.previousNodeOutput ?? 0} ${pairedItem.item}`;
 
 			if (activePath.has(pathKey)) {
 				throw createPairedItemCycleError(sourceData.previousNode, pairedItem.item);
@@ -1097,12 +1140,13 @@ export class WorkflowDataProxy {
 
 					try {
 						return createResultOk(
-							getPairedItem(
+							resolvePairedItem(
 								destinationNodeName,
 								nextSource,
 								{ ...nextPairedItem, input: inputIndex },
 								usedMethodName,
 								sourceData.previousNode,
+								memo,
 								activePath,
 							),
 						);

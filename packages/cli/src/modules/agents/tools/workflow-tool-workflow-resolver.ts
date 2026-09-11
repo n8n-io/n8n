@@ -1,9 +1,7 @@
-import type {
-	AgentJsonConfig,
-	AgentJsonToolConfig,
-	AgentJsonWorkflowToolConfig,
-} from '@n8n/api-types';
+import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-types';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+
+import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
 
 export async function findWorkflowToolWorkflows(
 	workflowRepository: WorkflowRepository,
@@ -54,13 +52,10 @@ export async function findWorkflowToolWorkflow(
  */
 export async function normalizeWorkflowToolRefs(
 	workflowRepository: WorkflowRepository,
-	tools: AgentJsonConfig['tools'],
+	config: AgentJsonConfig,
 	projectId: string,
 ): Promise<void> {
-	const refs = (tools ?? []).filter(
-		(tool): tool is Extract<AgentJsonToolConfig, { type: 'workflow' }> => tool.type === 'workflow',
-	);
-	const legacyRefs = refs.filter((ref) => ref.workflowId === undefined);
+	const legacyRefs = extractAgentWorkflowRefs(config).filter((ref) => ref.workflowId === undefined);
 	if (legacyRefs.length === 0) return;
 
 	const values = [...new Set(legacyRefs.map((ref) => ref.workflow))];
