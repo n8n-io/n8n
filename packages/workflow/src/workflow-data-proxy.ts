@@ -1055,9 +1055,9 @@ export class WorkflowDataProxy {
 				undefined,
 				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
 				// Aggregate output pairing to all its inputs), so without memoization
-				// the walk revisits the same item exponentially often.
+				// the walk revisits the same item exponentially often. The memo also
+				// carries the cycle detection, since both key the same walk state.
 				new PairedItemMemo(),
-				new Set(),
 			);
 
 		const resolvePairedItem = (
@@ -1067,7 +1067,6 @@ export class WorkflowDataProxy {
 			usedMethodName: PairedItemMethod,
 			nodeBeforeLast: string | undefined,
 			memo: PairedItemMemo,
-			activePath: Set<string>,
 		): INodeExecutionData => {
 			// Normalize inputs
 			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
@@ -1076,39 +1075,7 @@ export class WorkflowDataProxy {
 				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
 			}
 
-			return memo.resolve(sourceData, pairedItem, () =>
-				resolvePairedItemUncached(
-					destinationNodeName,
-					sourceData,
-					pairedItem,
-					usedMethodName,
-					nodeBeforeLast,
-					memo,
-					activePath,
-				),
-			);
-		};
-
-		const resolvePairedItemUncached = (
-			destinationNodeName: string,
-			sourceData: ISourceData,
-			pairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod,
-			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
-			activePath: Set<string>,
-		): INodeExecutionData => {
-			// Track visited items per path rather than cumulatively: lineage is a DAG,
-			// so the same item reached again through another branch must still resolve.
-			const pathKey = `${sourceData.previousNode} ${sourceData.previousNodeRun ?? 0} ${sourceData.previousNodeOutput ?? 0} ${pairedItem.item}`;
-
-			if (activePath.has(pathKey)) {
-				throw createPairedItemCycleError(sourceData.previousNode, pairedItem.item);
-			}
-
-			activePath.add(pathKey);
-
-			try {
+			const walkAncestry = (): INodeExecutionData => {
 				const taskData = getTaskData(sourceData);
 				const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 				const item = outputData[pairedItem.item];
@@ -1147,7 +1114,6 @@ export class WorkflowDataProxy {
 								usedMethodName,
 								sourceData.previousNode,
 								memo,
-								activePath,
 							),
 						);
 					} catch (error) {
@@ -1155,7 +1121,7 @@ export class WorkflowDataProxy {
 					}
 				});
 
-				if (results.every((result) => !result.ok)) {
+				if (results.length > 0 && results.every((result) => !result.ok)) {
 					throw results[0].error;
 				}
 
@@ -1172,9 +1138,11 @@ export class WorkflowDataProxy {
 				}
 
 				return first;
-			} finally {
-				activePath.delete(pathKey);
-			}
+			};
+
+			return memo.resolve(sourceData, pairedItem, walkAncestry, () =>
+				createPairedItemCycleError(sourceData.previousNode, pairedItem.item),
+			);
 		};
 
 		const handleFromAi = (

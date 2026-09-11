@@ -6,6 +6,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
+	type IConnections,
 	type IDataObject,
 	type IExecuteData,
 	type INode,
@@ -13,6 +14,8 @@ import {
 	type IPairedItemData,
 	type IPinData,
 	type IRun,
+	type ISourceData,
+	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowDataProxyAdditionalKeys,
 	type WorkflowExecuteMode,
@@ -99,6 +102,44 @@ const getProxyFromFixture = (
 
 	return dataProxy.getDataProxy(opts);
 };
+
+// Shared shape for the paired-item cycle fixtures below: only the node
+// list and connections vary between them, everything else is boilerplate.
+const buildWorkflowFixture = (
+	name: string,
+	nodes: Array<{ name: string; type: string }>,
+	connections: IConnections,
+): IWorkflowBase => ({
+	id: '123',
+	name,
+	nodes: nodes.map(({ name: nodeName, type }, index) => ({
+		id: `node${index}`,
+		name: nodeName,
+		type,
+		typeVersion: 1,
+		position: [index * 100, 0],
+		parameters: {},
+	})),
+	connections,
+	active: false,
+	activeVersionId: null,
+	isArchived: false,
+	createdAt: new Date(),
+	updatedAt: new Date(),
+});
+
+// Shared task/run fixture shape for the paired-item cycle fixtures below;
+// only the source chain and items differ between call sites.
+const createTaskData = (
+	source: Array<ISourceData | null>,
+	items: INodeExecutionData[],
+): ITaskData => ({
+	startTime: 100,
+	executionTime: 1,
+	executionIndex: 0,
+	source,
+	data: { main: [items] },
+});
 
 describe('WorkflowDataProxy', () => {
 	describe('$(If))', () => {
@@ -688,80 +729,40 @@ describe('WorkflowDataProxy', () => {
 	});
 
 	describe('Cyclic paired item lineage', () => {
-		const createWorkflowWithCycle = (): IWorkflowBase => ({
-			id: '123',
-			name: 'cyclic lineage',
-			nodes: [
+		const createWorkflowWithCycle = (): IWorkflowBase =>
+			buildWorkflowFixture(
+				'cyclic lineage',
+				[
+					{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' },
+					{ name: 'Middle', type: 'n8n-nodes-base.set' },
+					{ name: 'End', type: 'n8n-nodes-base.set' },
+				],
 				{
-					id: 'node1',
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
+					Start: {
+						main: [[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					Middle: {
+						main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
 				},
-				{
-					id: 'node2',
-					name: 'Middle',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					position: [300, 0],
-					parameters: {},
-				},
-				{
-					id: 'node3',
-					name: 'End',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					position: [600, 0],
-					parameters: {},
-				},
-			],
-			connections: {
-				Start: {
-					main: [[{ node: 'Middle', type: NodeConnectionTypes.Main, index: 0 }]],
-				},
-				Middle: {
-					main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
-				},
-			},
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
+			);
 
 		const createRunWithCycle = (middlePreviousNode: string): IRun => ({
 			data: createRunExecutionData({
 				resultData: {
 					runData: {
-						Start: [
-							{
-								startTime: 100,
-								executionTime: 1,
-								executionIndex: 0,
-								source: [null],
-								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
-							},
-						],
+						Start: [createTaskData([null], [{ json: { id: 1 }, pairedItem: { item: 0 } }])],
 						Middle: [
-							{
-								startTime: 110,
-								executionTime: 1,
-								executionIndex: 0,
-								source: [{ previousNode: middlePreviousNode }],
-								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
-							},
+							createTaskData(
+								[{ previousNode: middlePreviousNode }],
+								[{ json: { id: 1 }, pairedItem: { item: 0 } }],
+							),
 						],
 						End: [
-							{
-								startTime: 120,
-								executionTime: 1,
-								executionIndex: 0,
-								source: [{ previousNode: 'Middle' }],
-								data: { main: [[{ json: { id: 1 }, pairedItem: { item: 0 } }]] },
-							},
+							createTaskData(
+								[{ previousNode: 'Middle' }],
+								[{ json: { id: 1 }, pairedItem: { item: 0 } }],
+							),
 						],
 					},
 				},
@@ -798,6 +799,136 @@ describe('WorkflowDataProxy', () => {
 				expect(exprError.context.nodeCause).toEqual('Middle');
 			},
 		);
+
+		// The lineage below is a DAG apart from a single back link, 'T' -> 'U'.
+		// Walking 'P' first hits that back link while 'U' is still in flight, so
+		// 'T' fails for a reason that holds only on that branch. The later branch
+		// 'V' -> 'T' -> 'U' -> 'S1' -> 'Start' has no cycle and must still resolve,
+		// which it cannot if the branch-scoped failure is cached and replayed.
+		describe('Branch scoped cycles', () => {
+			const nodeNames = ['Start', 'S1', 'Q', 'T', 'U', 'P', 'V', 'Fork', 'End'];
+
+			const createRecombiningWorkflow = (): IWorkflowBase =>
+				buildWorkflowFixture(
+					'branch scoped cycle',
+					nodeNames.map((name) => ({
+						name,
+						type: name === 'Start' ? 'n8n-nodes-base.manualTrigger' : 'n8n-nodes-base.set',
+					})),
+					{
+						Start: {
+							main: [
+								[
+									{ node: 'S1', type: NodeConnectionTypes.Main, index: 0 },
+									{ node: 'Q', type: NodeConnectionTypes.Main, index: 0 },
+								],
+							],
+						},
+						S1: { main: [[{ node: 'U', type: NodeConnectionTypes.Main, index: 1 }]] },
+						Q: { main: [[{ node: 'P', type: NodeConnectionTypes.Main, index: 1 }]] },
+						U: {
+							main: [
+								[
+									{ node: 'P', type: NodeConnectionTypes.Main, index: 0 },
+									{ node: 'T', type: NodeConnectionTypes.Main, index: 0 },
+								],
+							],
+						},
+						T: { main: [[{ node: 'V', type: NodeConnectionTypes.Main, index: 0 }]] },
+						P: { main: [[{ node: 'Fork', type: NodeConnectionTypes.Main, index: 0 }]] },
+						V: { main: [[{ node: 'Fork', type: NodeConnectionTypes.Main, index: 1 }]] },
+						Fork: { main: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]] },
+					},
+				);
+
+			const bothInputs = [
+				{ item: 0, input: 0 },
+				{ item: 0, input: 1 },
+			];
+
+			const createRecombiningRun = (forkSources: Array<{ previousNode: string }>): IRun => ({
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							Start: [
+								createTaskData(
+									[null],
+									[
+										{ json: { id: 0 }, pairedItem: { item: 0 } },
+										{ json: { id: 1 }, pairedItem: { item: 1 } },
+									],
+								),
+							],
+							S1: [
+								createTaskData(
+									[{ previousNode: 'Start' }],
+									[{ json: {}, pairedItem: { item: 0 } }],
+								),
+							],
+							// 'Q' pairs to the other 'Start' item, so 'P' sees two different
+							// matches and fails on its own merit.
+							Q: [
+								createTaskData(
+									[{ previousNode: 'Start' }],
+									[{ json: {}, pairedItem: { item: 1 } }],
+								),
+							],
+							T: [
+								createTaskData(
+									[{ previousNode: 'U' }],
+									[{ json: {}, pairedItem: [{ item: 0, input: 0 }] }],
+								),
+							],
+							U: [
+								createTaskData(
+									[{ previousNode: 'T' }, { previousNode: 'S1' }],
+									[{ json: {}, pairedItem: bothInputs }],
+								),
+							],
+							P: [
+								createTaskData(
+									[{ previousNode: 'U' }, { previousNode: 'Q' }],
+									[{ json: {}, pairedItem: bothInputs }],
+								),
+							],
+							V: [
+								createTaskData(
+									[{ previousNode: 'T' }],
+									[{ json: {}, pairedItem: [{ item: 0, input: 0 }] }],
+								),
+							],
+							Fork: [createTaskData(forkSources, [{ json: {}, pairedItem: bothInputs }])],
+							End: [
+								createTaskData([{ previousNode: 'Fork' }], [{ json: {}, pairedItem: { item: 0 } }]),
+							],
+						},
+					},
+				}),
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'success',
+				storedAt: 'db',
+			});
+
+			test.each([
+				{
+					label: 'the cyclic branch first',
+					forkSources: [{ previousNode: 'P' }, { previousNode: 'V' }],
+				},
+				{
+					label: 'the acyclic branch first',
+					forkSources: [{ previousNode: 'V' }, { previousNode: 'P' }],
+				},
+			])('resolves the acyclic branch when the walk visits $label', ({ forkSources }) => {
+				const proxy = getProxyFromFixture(
+					createRecombiningWorkflow(),
+					createRecombiningRun(forkSources),
+					'End',
+				);
+
+				expect(proxy.$('Start').item.json).toEqual({ id: 0 });
+			});
+		});
 	});
 
 	describe('Pinned data with manual execution', () => {
