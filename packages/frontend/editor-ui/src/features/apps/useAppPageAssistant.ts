@@ -4,7 +4,7 @@ import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useIn
 import type { App } from '@/features/apps/apps.types';
 import { formatRoutePath } from '@/features/apps/pageTree.utils';
 
-export type PageAssistantAction = 'add-root' | 'add-child' | 'edit' | 'delete';
+type PageAssistantAction = 'add-root' | 'add-child' | 'edit' | 'delete';
 
 /**
  * Pages are derived from the app's own source, not a DB row: there is

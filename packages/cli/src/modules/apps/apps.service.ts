@@ -93,7 +93,7 @@ function inputJsonSchema(triggerNode: INode, triggerType: string): JSONSchema7 {
 }
 
 /** What the REST API returns for an app: the entity plus its draft-versus-published state. */
-export type AppResponse = App & { hasUnpublishedChanges: boolean };
+type AppResponse = App & { hasUnpublishedChanges: boolean };
 
 @Service()
 export class AppsService {

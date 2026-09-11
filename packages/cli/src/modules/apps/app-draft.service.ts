@@ -18,7 +18,7 @@ import { createDistTarFilter } from './serving/dist-tar-filter';
 const SOURCE_TAR_LIMITS = { maxEntries: 50_000, maxBytes: 200 * 1024 * 1024 };
 
 /** Reads one file of the draft (`undefined` when it does not exist) and returns the files to write. */
-export type DraftFilesFor = (
+type DraftFilesFor = (
 	read: (file: string) => Promise<string | undefined>,
 ) => Promise<Record<string, string>>;
 

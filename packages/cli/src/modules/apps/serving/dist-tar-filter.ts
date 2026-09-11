@@ -3,9 +3,9 @@
  * `ReadEntry | Stats` because the same option serves packing; on extraction it
  * is always a `ReadEntry`, which carries `type`.
  */
-export type TarEntryLike = { type?: string; size: number };
+type TarEntryLike = { type?: string; size: number };
 
-export type DistTarLimits = { maxEntries: number; maxBytes: number };
+type DistTarLimits = { maxEntries: number; maxBytes: number };
 
 export const DIST_TAR_LIMITS: DistTarLimits = { maxEntries: 5_000, maxBytes: 50 * 1024 * 1024 };
 

@@ -8,7 +8,7 @@ import { AppDraftService, type DraftWriteResult } from './app-draft.service';
 const OVERRIDES_FILE = 'src/theme-overrides.css';
 const MODE_FILE = 'src/theme-mode.ts';
 
-export type ThemeSaveResult = DraftWriteResult;
+type ThemeSaveResult = DraftWriteResult;
 
 /** Matches the template's own `:root` defaults in style.css. */
 const DEFAULT_RADIUS_PX = 4;

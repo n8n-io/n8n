@@ -16,7 +16,7 @@ export type StoredAppVersionBlob = {
 	storageKey: string;
 };
 
-export type AppVersionBlobKind = 'source' | 'dist';
+type AppVersionBlobKind = 'source' | 'dist';
 
 const TARBALL_MIME_TYPE = 'application/gzip';
 

@@ -50,8 +50,8 @@ export type AppSandboxContext = Pick<
 	'appService' | 'appWorkspace' | 'workspaceRoot' | 'getAppId'
 >;
 
-export const APP_BUILDER_SKILL_DIR = 'app-builder';
-export const MAX_APP_TARBALL_BYTES = 20 * 1024 * 1024;
+const APP_BUILDER_SKILL_DIR = 'app-builder';
+const MAX_APP_TARBALL_BYTES = 20 * 1024 * 1024;
 const APPS_DIR = 'apps';
 /** Module augmentation of `@n8n/app-sdk`, rewritten on every bind/unbind; `tsconfig.json` includes `src/**`. */
 const BINDINGS_TYPES_PATH = 'src/n8n-bindings.d.ts';
@@ -208,7 +208,7 @@ type AppsInput =
 	| BindingsInput;
 
 /** Not a tool action: n8n's publish pipeline calls `handleBuild` directly. */
-export interface BuildInput {
+interface BuildInput {
 	action: 'build';
 	appId: string;
 	/** Build command run in the app directory (default "npm run build"). */
@@ -241,7 +241,7 @@ export interface AppActionDenied {
 	reason: string;
 }
 
-export interface AppBuildSuccess {
+interface AppBuildSuccess {
 	appId: string;
 	name: string;
 	namespace: string;
@@ -253,7 +253,7 @@ export interface AppBuildSuccess {
 
 export type AppBuildResult = AppActionDenied | BuildFailure | AppBuildSuccess;
 
-export interface AppRestoreSuccess {
+interface AppRestoreSuccess {
 	appId: string;
 	name: string;
 	namespace: string;

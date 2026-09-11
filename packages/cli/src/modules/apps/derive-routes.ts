@@ -1,7 +1,7 @@
 import ts from 'typescript';
 
 /** One page derived from a router route entry. Shaped like `PageNode` so the same tree logic applies. */
-export type DerivedRoute = {
+type DerivedRoute = {
 	id: string;
 	parentPageId: string | null;
 	route: string;

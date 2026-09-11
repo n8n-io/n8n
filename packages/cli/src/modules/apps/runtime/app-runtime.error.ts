@@ -1,6 +1,6 @@
 import { UserError } from 'n8n-workflow';
 
-export type AppRuntimeErrorCode =
+type AppRuntimeErrorCode =
 	| 'app_not_found'
 	| 'binding_not_found'
 	| 'workflow_not_found'
@@ -18,7 +18,7 @@ export type AppRuntimeErrorCode =
 	| 'too_many_requests';
 
 /** One rejected input field: where and which check failed, nothing about the expected shape. */
-export interface AppRuntimeInputIssue {
+interface AppRuntimeInputIssue {
 	path: string[];
 	code: string;
 }

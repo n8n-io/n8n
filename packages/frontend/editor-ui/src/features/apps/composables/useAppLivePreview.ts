@@ -11,9 +11,9 @@ export const LIVE_PREVIEW_POLL_MS = 1500;
 export const LIVE_PREVIEW_POLL_TIMEOUT_MS = 240_000;
 export const LIVE_PREVIEW_HEARTBEAT_MS = 10 * 60_000;
 
-export type LivePreviewNext = 'poll' | 'heartbeat' | 'stop';
+type LivePreviewNext = 'poll' | 'heartbeat' | 'stop';
 
-export type LivePreviewTransition = {
+type LivePreviewTransition = {
 	status: AppPreviewStatus;
 	next: LivePreviewNext;
 	/** Start of the current `starting` streak; null outside one. */
@@ -55,7 +55,7 @@ export function previewContentKey(
 	return buildSeq === null ? latestSourceEditId : `b:${buildSeq}`;
 }
 
-export type AppLivePreviewTarget = {
+type AppLivePreviewTarget = {
 	projectId: MaybeRefOrGetter<string>;
 	appId: MaybeRefOrGetter<string>;
 };

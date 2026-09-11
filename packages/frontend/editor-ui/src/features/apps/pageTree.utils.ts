@@ -48,7 +48,7 @@ export function getChildCounts(pages: Page[]): Map<string | null, number> {
 /** How many levels of the tree a Pages list shows inline before requiring a click into a page. */
 export const MAX_INLINE_PAGE_LEVELS = 3;
 
-export type PageRow = { page: Page; indent: number };
+type PageRow = { page: Page; indent: number };
 
 /**
  * `parentId`'s descendants, depth-first, up to `maxLevels` deep — each row

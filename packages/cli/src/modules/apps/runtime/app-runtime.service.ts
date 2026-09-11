@@ -45,7 +45,7 @@ const SYNC_WAIT_MS = 60_000;
 const STOP_AND_ERROR_NODE_TYPE = 'n8n-nodes-base.stopAndError';
 const GENERIC_FAILURE_MESSAGE = 'The workflow failed.';
 
-export type AppRuntimeRunResult =
+type AppRuntimeRunResult =
 	| { executionId: string; status: 'running'; principal: null }
 	| {
 			executionId: string;
