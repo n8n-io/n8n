@@ -42,6 +42,7 @@ export const AGENT_SESSION_ORIGINS = [
 	'telegram',
 	'linear',
 	'discord',
+	'email',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];

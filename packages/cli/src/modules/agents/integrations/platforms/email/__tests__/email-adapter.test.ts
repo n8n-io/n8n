@@ -14,6 +14,9 @@ describe('EmailAdapter', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		serviceClient.getSignedAttachmentUrl.mockReturnValue(
+			'https://email.example/attachment?expires=1&signature=signed',
+		);
 		const { Message } = await import('chat');
 		adapter = new EmailAdapter({
 			channelId: 'inbox-1',
@@ -105,6 +108,110 @@ describe('EmailAdapter', () => {
 			'inbox-1',
 			'<message-1@example.com>',
 			'Agent response',
+		);
+	});
+
+	it('accepts an attachment-only inbound email', async () => {
+		const event = inboundEvent({
+			message: {
+				text: undefined,
+				attachments: [
+					{
+						attachment_id: 'att-1',
+						filename: 'report.pdf',
+						content_type: 'application/pdf',
+						size: 1200,
+						content_disposition: 'attachment',
+					},
+				],
+			},
+		});
+
+		const response = await adapter.handleWebhook(signedRequest(event));
+
+		expect(response.status).toBe(200);
+		const factory = chat.processMessage.mock.calls[0][2] as () => Promise<
+			ReturnType<EmailAdapter['parseMessage']>
+		>;
+		const message = await factory();
+		expect(message.text).toBe('');
+		expect(message.attachments).toEqual([
+			expect.objectContaining({
+				type: 'file',
+				name: 'report.pdf',
+				mimeType: 'application/pdf',
+				size: 1200,
+				url: 'https://email.example/attachment?expires=1&signature=signed',
+			}),
+		]);
+	});
+
+	it('downloads inbound attachments through the email service', async () => {
+		const pdf = Buffer.from('%PDF-1.4');
+		serviceClient.getAttachment.mockResolvedValue(pdf);
+		const message = adapter.parseMessage(
+			inboundEvent({
+				message: {
+					attachments: [
+						{
+							attachment_id: 'att-1',
+							filename: 'report.pdf',
+							content_type: 'application/pdf',
+							content_disposition: 'attachment',
+						},
+						{
+							attachment_id: 'logo-1',
+							filename: 'logo.png',
+							content_type: 'image/png',
+							content_disposition: 'inline',
+						},
+					],
+				},
+			}),
+		);
+
+		expect(message.attachments).toHaveLength(1);
+		await expect(message.attachments[0]?.fetchData?.()).resolves.toEqual(pdf);
+		expect(serviceClient.getAttachment).toHaveBeenCalledWith(
+			'inbox-1',
+			'<message-1@example.com>',
+			'att-1',
+		);
+	});
+
+	it('rejects a payload with neither text nor attachments', async () => {
+		const event = inboundEvent({ message: { text: undefined } });
+
+		const response = await adapter.handleWebhook(signedRequest(event));
+
+		expect(response.status).toBe(400);
+		expect(chat.processMessage).not.toHaveBeenCalled();
+	});
+
+	it('posts reply attachments to the latest inbound message', async () => {
+		await adapter.handleWebhook(signedRequest(inboundEvent()));
+		const threadId = adapter.encodeThreadId({ inboxId: 'inbox-1', threadId: 'thread-1' });
+		const attachments = [
+			{ filename: 'report.pdf', contentType: 'application/pdf', content: 'YQ==' },
+		];
+
+		await adapter.postMessage(threadId, {
+			markdown: 'See attached',
+			attachments: [
+				{
+					type: 'file',
+					name: 'report.pdf',
+					mimeType: 'application/pdf',
+					data: Buffer.from('a'),
+				},
+			],
+		});
+
+		expect(serviceClient.reply).toHaveBeenCalledWith(
+			'inbox-1',
+			'<message-1@example.com>',
+			'See attached',
+			attachments,
 		);
 	});
 

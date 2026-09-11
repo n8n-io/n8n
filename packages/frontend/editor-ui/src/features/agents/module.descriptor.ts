@@ -8,6 +8,7 @@ import {
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_EMAIL_INBOX_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 import { AGENTS_MODALS } from '@/features/agents/modals';
@@ -24,6 +25,8 @@ const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
+const AgentEmailInboxView = async (): Promise<unknown> =>
+	await import('@/features/agents/channels/email/inbox/AgentEmailInboxView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -87,6 +90,11 @@ export const AgentsModule: FrontendModuleDescription = {
 					name: AGENT_SESSION_DETAIL_VIEW,
 					path: 'sessions/:threadId',
 					component: AgentSessionTimelineView,
+				},
+				{
+					name: AGENT_EMAIL_INBOX_VIEW,
+					path: 'email',
+					component: AgentEmailInboxView,
 				},
 			],
 		},

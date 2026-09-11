@@ -5,6 +5,7 @@ export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
 export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
+export const AGENT_EMAIL_INBOX_VIEW = 'AgentEmailInboxView';
 export const PROJECT_AGENTS = 'ProjectAgents';
 
 export const AGENTS_MODULE_NAME = 'agents';

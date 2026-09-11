@@ -34,6 +34,46 @@ export const messageSchema = richMessageSchema;
 /** Wire shape of a single rich-card component. */
 export type IntegrationCardComponent = RichCardComponent;
 
+const emailReplyAttachmentSchema = z
+	.object({
+		filename: z.string().min(1),
+		contentType: z.string().min(1),
+		content: z.string().min(1).optional().describe('Base64-encoded file content.'),
+		url: z
+			.string()
+			.url()
+			.refine((url) => url.startsWith('https://'), 'Attachment URL must use HTTPS.')
+			.optional()
+			.describe('Public or pre-signed HTTPS URL that AgentMail can download.'),
+	})
+	.strict()
+	.refine((attachment) => (attachment.content === undefined) !== (attachment.url === undefined), {
+		message: 'Provide exactly one of attachment.content or attachment.url.',
+	});
+
+export const emailRespondInputSchema = z
+	.object({
+		message: z
+			.object({
+				text: z.string().optional(),
+				attachments: z.array(emailReplyAttachmentSchema).min(1),
+			})
+			.strict(),
+	})
+	.strict();
+
+export type EmailReplyMessage = z.infer<typeof emailRespondInputSchema>['message'];
+
+export const EMAIL_RESPOND_ACTION_TOOL_DEFINITION = {
+	name: 'respond',
+	inputSchema: z.object({
+		action: z.literal('respond'),
+		input: emailRespondInputSchema,
+	}),
+	description:
+		'respond: input.message.attachments is required. Each attachment needs filename, contentType, and either base64 content or a public/pre-signed url. input.message.text is optional. Sends one reply in the current email thread.',
+} satisfies IntegrationActionDefinition;
+
 const noInputSchema = z.object({}).strict();
 
 const platformUserIdSchema = z

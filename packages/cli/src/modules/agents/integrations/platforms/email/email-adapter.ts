@@ -1,6 +1,7 @@
 import type {
 	Adapter,
 	AdapterPostableMessage,
+	Attachment,
 	ChatInstance,
 	EmojiValue,
 	FetchOptions,
@@ -15,11 +16,23 @@ import type {
 } from 'chat';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
-import type { AgentEmailServiceClient } from './agent-email-service-client';
+import type {
+	AgentEmailReplyAttachment,
+	AgentEmailServiceClient,
+} from './agent-email-service-client';
 
 type EmailThreadId = {
 	inboxId: string;
 	threadId: string;
+};
+
+export type AgentMailInboundAttachment = {
+	attachment_id: string;
+	filename?: string;
+	size?: number;
+	content_type?: string;
+	content_disposition?: 'inline' | 'attachment';
+	content_id?: string;
 };
 
 export type AgentMailMessageReceived = {
@@ -35,6 +48,7 @@ export type AgentMailMessageReceived = {
 		text?: string;
 		timestamp?: string;
 		created_at?: string;
+		attachments?: AgentMailInboundAttachment[];
 	};
 };
 
@@ -43,6 +57,8 @@ type MessageConstructor = new (
 ) => Message<AgentMailMessageReceived>;
 
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+/** AgentMail inline `content` replies are capped at 6 MB for the whole request. */
+const AGENTMAIL_REPLY_MAX_BYTES = Math.floor(5.5 * 1024 * 1024);
 
 export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageReceived> {
 	readonly name = 'email';
@@ -104,9 +120,12 @@ export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageRece
 			event.event_type !== 'message.received' ||
 			!event.message?.inbox_id ||
 			!event.message.thread_id ||
-			!event.message.message_id ||
-			typeof event.message.text !== 'string'
+			!event.message.message_id
 		) {
+			return new Response('Unsupported email payload', { status: 400 });
+		}
+		const attachments = this.ingestibleAttachments(event.message.attachments);
+		if (typeof event.message.text !== 'string' && attachments.length === 0) {
 			return new Response('Unsupported email payload', { status: 400 });
 		}
 		if (event.message.inbox_id !== this.config.channelId) {
@@ -153,7 +172,7 @@ export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageRece
 				dateSent: new Date(raw.message.timestamp ?? raw.message.created_at ?? Date.now()),
 				edited: false,
 			},
-			attachments: [],
+			attachments: this.mapAttachments(raw),
 		});
 	}
 
@@ -165,7 +184,20 @@ export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageRece
 		if (!triggeringMessageId) throw new Error('No inbound Email message is available to reply to');
 
 		const text = this.renderPostable(message);
-		await this.config.serviceClient.reply(this.config.channelId, triggeringMessageId, text);
+		const attachments = this.fitReplyAttachments(
+			text,
+			await this.extractOutboundAttachments(message),
+		);
+		if (attachments.length > 0) {
+			await this.config.serviceClient.reply(
+				this.config.channelId,
+				triggeringMessageId,
+				text,
+				attachments,
+			);
+		} else {
+			await this.config.serviceClient.reply(this.config.channelId, triggeringMessageId, text);
+		}
 		return {
 			id: `email-reply-${randomUUID()}`,
 			threadId,
@@ -238,6 +270,63 @@ export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageRece
 		_emoji: EmojiValue | string,
 	): Promise<void> {}
 
+	private ingestibleAttachments(
+		attachments: AgentMailInboundAttachment[] | undefined,
+	): AgentMailInboundAttachment[] {
+		if (!Array.isArray(attachments)) return [];
+		return attachments.filter(isIngestibleAttachment);
+	}
+
+	private mapAttachments(raw: AgentMailMessageReceived): Attachment[] {
+		return this.ingestibleAttachments(raw.message.attachments).map((attachment) => {
+			const mimeType = attachment.content_type ?? 'application/octet-stream';
+			return {
+				type: mimeType.startsWith('image/') ? 'image' : 'file',
+				name: attachment.filename ?? 'attachment',
+				mimeType,
+				size: attachment.size,
+				url: this.config.serviceClient.getSignedAttachmentUrl(
+					raw.message.inbox_id,
+					raw.message.message_id,
+					attachment.attachment_id,
+					this.config.callbackSecret,
+				),
+				fetchData: async () =>
+					await this.config.serviceClient.getAttachment(
+						raw.message.inbox_id,
+						raw.message.message_id,
+						attachment.attachment_id,
+					),
+			};
+		});
+	}
+
+	private async extractOutboundAttachments(
+		message: AdapterPostableMessage,
+	): Promise<AgentEmailReplyAttachment[]> {
+		if (typeof message !== 'object' || message === null || !('attachments' in message)) {
+			return [];
+		}
+		const rawAttachments = 'attachments' in message ? message.attachments : undefined;
+		if (!Array.isArray(rawAttachments)) return [];
+		const attachments: AgentEmailReplyAttachment[] = [];
+		for (const attachment of rawAttachments) {
+			const converted = await toEmailReplyAttachment(attachment);
+			if (converted) attachments.push(converted);
+		}
+		return attachments;
+	}
+
+	private fitReplyAttachments(
+		text: string,
+		attachments: AgentEmailReplyAttachment[],
+	): AgentEmailReplyAttachment[] {
+		if (Buffer.byteLength(JSON.stringify({ text, attachments })) > AGENTMAIL_REPLY_MAX_BYTES) {
+			throw new Error('Email reply with inline attachments exceeds the AgentMail size limit');
+		}
+		return attachments;
+	}
+
 	private renderPostable(message: AdapterPostableMessage): string {
 		if (typeof message === 'string') return message;
 		if ('raw' in message && typeof message.raw === 'string') return message.raw;
@@ -286,4 +375,54 @@ export class EmailAdapter implements Adapter<EmailThreadId, AgentMailMessageRece
 			return candidate.length === expected.length && timingSafeEqual(candidate, expected);
 		});
 	}
+}
+
+function isIngestibleAttachment(attachment: AgentMailInboundAttachment): boolean {
+	if (!attachment.attachment_id) return false;
+	// Skip CID logos; keep real files even when AgentMail marks a PDF inline.
+	return !(
+		attachment.content_disposition === 'inline' &&
+		(attachment.content_type ?? '').startsWith('image/')
+	);
+}
+
+function isReplyAttachment(value: unknown): value is AgentEmailReplyAttachment {
+	if (typeof value !== 'object' || value === null) return false;
+	const attachment = value as AgentEmailReplyAttachment;
+	return (
+		typeof attachment.filename === 'string' &&
+		attachment.filename.length > 0 &&
+		typeof attachment.contentType === 'string' &&
+		attachment.contentType.length > 0 &&
+		((typeof attachment.content === 'string' && attachment.content.length > 0) ||
+			(typeof attachment.url === 'string' && attachment.url.length > 0))
+	);
+}
+
+async function toEmailReplyAttachment(
+	attachment: Attachment,
+): Promise<AgentEmailReplyAttachment | null> {
+	if (isReplyAttachment(attachment)) return attachment;
+	if (!attachment.name || !attachment.mimeType) return null;
+	if (attachment.url) {
+		return {
+			filename: attachment.name,
+			contentType: attachment.mimeType,
+			url: attachment.url,
+		};
+	}
+
+	const data = attachment.fetchData
+		? await attachment.fetchData()
+		: Buffer.isBuffer(attachment.data)
+			? attachment.data
+			: attachment.data
+				? Buffer.from(await attachment.data.arrayBuffer())
+				: null;
+	if (!data) return null;
+	return {
+		filename: attachment.name,
+		contentType: attachment.mimeType,
+		content: data.toString('base64'),
+	};
 }

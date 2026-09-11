@@ -156,6 +156,8 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'linear':
 		case 'discord':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'email':
+			return { icon: 'mail', label: i18n.baseText('agentSessions.origin.email') };
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:

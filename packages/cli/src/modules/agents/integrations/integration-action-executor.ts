@@ -19,6 +19,7 @@ import {
 	normalizePlatformId,
 	unsupportedAction,
 } from './integration-helpers';
+import { emailRespondInputSchema, type EmailReplyMessage } from './integration-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionExecutor,
@@ -53,6 +54,7 @@ const addReactionInputSchema = z.object({
 });
 
 type MessagePayload = z.infer<typeof messageSchema>;
+type PostableMessagePayload = MessagePayload | EmailReplyMessage;
 
 /**
  * Dispatches action invocations between cross-platform actions (`respond`,
@@ -238,7 +240,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		chat: ChatInstance,
 		params: ExecuteParams,
 	): Promise<IntegrationActionResult> {
-		const input = respondInputSchema.parse(params.input);
+		const input =
+			params.descriptor.integration.type === 'email'
+				? emailRespondInputSchema.parse(params.input)
+				: respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
 		if (!threadId) {
 			return integrationError(
@@ -251,7 +256,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const isAutomaticReplyTarget =
 			params.currentMessageContext?.replyExpectation !== undefined &&
 			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
-		if (!input.message.card && isAutomaticReplyTarget) {
+		const hasCard = 'card' in input.message && input.message.card !== undefined;
+		const hasAttachments = 'attachments' in input.message && input.message.attachments.length > 0;
+		if (!hasCard && !hasAttachments && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
@@ -264,6 +271,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 		return {
 			ok: true,
+			...(hasAttachments
+				? {
+						silent: true,
+						note: 'The attachment reply was sent. End the turn without a normal final reply.',
+					}
+				: {}),
 			messageContext: buildMessageContextFromSentMessage({
 				descriptor: params.descriptor,
 				sent,
@@ -361,9 +374,25 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async toPostable(
 		descriptor: IntegrationToolConnectionDescriptor,
-		message: MessagePayload,
+		message: PostableMessagePayload,
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
 	) {
+		if ('attachments' in message) {
+			return {
+				markdown: message.text ?? '',
+				attachments: message.attachments.map((attachment) => ({
+					type: attachment.contentType.startsWith('image/')
+						? ('image' as const)
+						: ('file' as const),
+					name: attachment.filename,
+					mimeType: attachment.contentType,
+					...(attachment.content
+						? { data: Buffer.from(attachment.content, 'base64') }
+						: { url: attachment.url }),
+				})),
+			};
+		}
+
 		const cardPayload = message.card;
 		if (!cardPayload) return message.text ?? '';
 

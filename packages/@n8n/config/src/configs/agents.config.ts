@@ -117,4 +117,11 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_EMAIL_SERVICE_TOKEN')
 	emailServiceToken: string = '';
+
+	/**
+	 * Public Agent Email relay URL. URL-only tools use this host to download
+	 * short-lived signed copies of inbound email attachments.
+	 */
+	@Env('N8N_AGENTS_EMAIL_PUBLIC_BASE_URL')
+	emailServicePublicBaseUrl: string = '';
 }

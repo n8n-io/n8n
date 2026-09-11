@@ -12,6 +12,7 @@ import {
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
+import { EMAIL_RESPOND_ACTION_TOOL_DEFINITION } from '../integration-tool-definitions';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',
@@ -31,6 +32,11 @@ const linear: AgentIntegrationConfig = {
 const telegram: AgentIntegrationConfig = {
 	type: 'telegram',
 	credentialId: 'cred-telegram',
+};
+
+const email: AgentIntegrationConfig = {
+	type: 'email',
+	credentialId: 'cred-email',
 };
 
 function makeInterruptibleCtx(
@@ -956,6 +962,35 @@ describe('integration tools', () => {
 		// Actions with required input still fail without it — at their own schema.
 		expect(schema.safeParse({ action: 'respond' }).success).toBe(false);
 		expect(schema.safeParse({}).success).toBe(false);
+	});
+
+	it('email action schema accepts a base64 PDF attachment', () => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([email], 'agent-1', () => ({
+				actionToolDefinitions: [EMAIL_RESPOND_ACTION_TOOL_DEFINITION],
+			}))[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(
+			schema.safeParse({
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Attached is page 1.',
+						attachments: [
+							{
+								filename: 'split-page-1.pdf',
+								contentType: 'application/pdf',
+								content: 'JVBERi0xLjQ=',
+							},
+						],
+					},
+				},
+			}).success,
+		).toBe(true);
 	});
 
 	it('action tool schema accepts Linear issue and comment actions', () => {

@@ -11,6 +11,7 @@ import {
 } from '../../agent-chat-integration';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadChatSdk } from '../../esm-loader';
+import { EMAIL_RESPOND_ACTION_TOOL_DEFINITION } from '../../integration-tool-definitions';
 import { AgentEmailServiceClient } from './agent-email-service-client';
 import { EmailAdapter } from './email-adapter';
 
@@ -26,10 +27,16 @@ export class EmailIntegration extends AgentChatIntegration {
 
 	readonly disableStreaming = true;
 
+	readonly actionToolDefinitions = [EMAIL_RESPOND_ACTION_TOOL_DEFINITION];
+
+	readonly actionToolGuidance = [
+		'To send files in the current email thread, call respond with message.attachments and stop after it succeeds. Do not also write a normal final reply.',
+	];
+
 	readonly builderGuidance = {
 		capabilities: [
-			'Receive plain-text emails as agent triggers.',
-			'Reply in the same email thread with conversation memory.',
+			'Receive emails, including file attachments, as agent triggers.',
+			'Reply in the same email thread with conversation memory and file attachments.',
 		],
 		useIntegrationWhen: [
 			'People should be able to email the agent and continue an asynchronous conversation.',

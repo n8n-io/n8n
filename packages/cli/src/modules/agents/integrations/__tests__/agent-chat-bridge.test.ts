@@ -1435,6 +1435,37 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('gives email agents the signed source URL for URL-only file tools', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService, {
+				type: 'email',
+				credentialId: 'cred-email',
+			});
+			const thread = makeThread();
+			const sourceUrl = 'https://email.example/attachment?expires=1&signature=signed-attachment';
+
+			await handlers.mention!(thread, {
+				text: 'split page 1',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'file',
+						name: 'report.pdf',
+						mimeType: 'application/pdf',
+						url: sourceUrl,
+						fetchData: vi.fn().mockResolvedValue(Buffer.from('%PDF-1.4')),
+					},
+				],
+			});
+
+			const execution = agentExecutor.executeForChatPublished.mock.calls[0][0];
+			expect(execution.message).toContain(`source URL for file-processing tools: ${sourceUrl}`);
+			expect(execution.message).toContain(
+				'Use this URL instead of links found inside the document.',
+			);
+		});
+
 		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();

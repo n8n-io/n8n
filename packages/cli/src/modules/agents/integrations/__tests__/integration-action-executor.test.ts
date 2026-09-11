@@ -55,6 +55,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { EMAIL_RESPOND_ACTION_TOOL_DEFINITION } from '../integration-tool-definitions';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
@@ -80,6 +81,11 @@ const telegram: AgentIntegrationConfig = {
 const discord: AgentIntegrationConfig = {
 	type: 'discord',
 	credentialId: 'cred-discord',
+};
+
+const email: AgentIntegrationConfig = {
+	type: 'email',
+	credentialId: 'cred-email',
 };
 
 class ShortCallbackTelegramIntegration extends AgentChatIntegration {
@@ -115,6 +121,68 @@ function buildRegistry(): ChatIntegrationRegistry {
 describe('ChatIntegrationActionExecutor', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('posts email response attachments and suppresses the automatic text reply', async () => {
+		const thread = {
+			post: vi.fn().mockResolvedValue({
+				id: 'email-reply-1',
+				threadId: 'email-thread-1',
+			}),
+		};
+		const chat = mock<ChatInstance>();
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([email], 'agent-1', () => ({
+			actionToolDefinitions: [EMAIL_RESPOND_ACTION_TOOL_DEFINITION],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Attached is page 1.',
+					attachments: [
+						{
+							filename: 'split-page-1.pdf',
+							contentType: 'application/pdf',
+							content: 'JVBERi0xLjQ=',
+						},
+					],
+				},
+			},
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'email:cred-email',
+				platform: 'email',
+				target: { type: 'thread', threadId: 'email-thread-1' },
+				messageId: 'inbound-1',
+				replyExpectation: 'required',
+				updatedAt: '2026-09-10T14:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				ok: true,
+				silent: true,
+			}),
+		);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: 'Attached is page 1.',
+			attachments: [
+				{
+					type: 'file',
+					name: 'split-page-1.pdf',
+					mimeType: 'application/pdf',
+					data: Buffer.from('JVBERi0xLjQ=', 'base64'),
+				},
+			],
+		});
 	});
 
 	it('posts channel messages through the selected integration connection and returns message context', async () => {

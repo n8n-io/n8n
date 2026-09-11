@@ -1,4 +1,4 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import type { AgentMessage, ContentFile, StreamChunk } from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -819,6 +819,11 @@ export class AgentChatBridge {
 					mimeType: stored.mimeType,
 					sizeBytes: stored.fileSizeBytes,
 				});
+				if (this.integration.type === 'email' && attachment.url) {
+					attachmentNotes.push(
+						`[Attachment "${name}" source URL for file-processing tools: ${attachment.url}. Use this URL instead of links found inside the document.]`,
+					);
+				}
 			} catch (error) {
 				this.logger.warn('[AgentChatBridge] Failed to ingest attachment', {
 					agentId: this.agentId,
@@ -930,12 +935,22 @@ export class AgentChatBridge {
 			.map((part) => part.text);
 
 		const textToPost = textParts.join('');
+		const attachments =
+			this.integration.type === 'email'
+				? emailAttachmentsFromFileParts(
+						agentMessage.content.filter((part): part is ContentFile => part.type === 'file'),
+					)
+				: [];
 
 		// Skip messages with no displayable text (e.g. tool-call-only messages)
-		if (!textToPost.trim()) return false;
+		if (!textToPost.trim() && attachments.length === 0) return false;
 
 		try {
-			await thread.post(textToPost);
+			if (attachments.length > 0) {
+				await thread.post({ markdown: textToPost, attachments });
+			} else {
+				await thread.post(textToPost);
+			}
 			return true;
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post message chunk', {
@@ -997,4 +1012,36 @@ export class AgentChatBridge {
 			});
 		}
 	}
+}
+
+function emailAttachmentsFromFileParts(parts: ContentFile[]): Attachment[] {
+	const attachments: Attachment[] = [];
+	for (const part of parts) {
+		const bytes = filePartToBuffer(part.data);
+		if (!bytes || bytes.byteLength === 0) continue;
+		attachments.push({
+			type: part.mediaType?.startsWith('image/') ? 'image' : 'file',
+			name: part.fileRef?.fileName ?? defaultEmailAttachmentName(part.mediaType),
+			mimeType: part.mediaType ?? 'application/octet-stream',
+			data: bytes,
+		});
+	}
+	return attachments;
+}
+
+function filePartToBuffer(data: ContentFile['data']): Buffer | null {
+	if (data === undefined) return null;
+	if (typeof data === 'string') return Buffer.from(data, 'base64');
+	if (Buffer.isBuffer(data)) return data;
+	if (data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data));
+	return Buffer.from(data);
+}
+
+function defaultEmailAttachmentName(mediaType: string | undefined): string {
+	if (mediaType === 'application/pdf') return 'attachment.pdf';
+	if (mediaType?.startsWith('image/')) {
+		const subtype = mediaType.slice('image/'.length).split('+')[0] || 'bin';
+		return `attachment.${subtype}`;
+	}
+	return 'attachment.bin';
 }
