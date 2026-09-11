@@ -22,7 +22,7 @@ export class SlackTrigger implements INodeType {
 		name: 'slackTrigger',
 		icon: 'file:slack.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["eventFilter"].join(", ")}}',
 		description: 'Handle Slack events via webhooks',
 		defaults: {
@@ -43,6 +43,15 @@ export class SlackTrigger implements INodeType {
 				name: 'slackApi',
 				required: true,
 			},
+			{
+				name: 'slackSigningSecretApi',
+				required: true,
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -57,6 +66,23 @@ export class SlackTrigger implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName:
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>. The node verifies every request with the <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> of your Slack app and rejects requests that Slack did not sign.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 			{
 				displayName: 'Trigger On',
@@ -342,7 +368,12 @@ export class SlackTrigger implements INodeType {
 		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 		let eventChannel: string = '';
 
-		const isSignatureValid = await verifySignature.call(this);
+		// Version 1 reads the optional secret from the Slack API credential and skips verification
+		// without it. Version 2 has a dedicated, required signing-secret credential and fails closed.
+		const isSignatureValid =
+			this.getNode().typeVersion >= 2
+				? await verifySignature.call(this, 'slackSigningSecretApi', { requireSecret: true })
+				: await verifySignature.call(this);
 		if (!isSignatureValid) {
 			const res = this.getResponseObject();
 			res.status(401).send('Unauthorized').end();

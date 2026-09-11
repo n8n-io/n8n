@@ -362,6 +362,7 @@
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackManagerOAuth2Api.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",
+      "dist/credentials/SlackSigningSecretApi.credentials.js",
       "dist/credentials/Sms77Api.credentials.js",
       "dist/credentials/Smtp.credentials.js",
       "dist/credentials/Snowflake.credentials.js",

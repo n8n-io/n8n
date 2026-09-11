@@ -195,5 +195,69 @@ describe('SlackTriggerHelpers', () => {
 			expect(result).toBe(true);
 			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
 		});
+
+		describe('with requireSecret', () => {
+			it('should return false when the credential has no signature secret', async () => {
+				mockWebhookFunctions.getCredentials.mockResolvedValue({});
+
+				const result = await verifySignature.call(mockWebhookFunctions, 'slackSigningSecretApi', {
+					requireSecret: true,
+				});
+
+				expect(result).toBe(false);
+				expect(createHmac).not.toHaveBeenCalled();
+				expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackSigningSecretApi');
+			});
+
+			it('should return false when the signature secret is an empty string', async () => {
+				mockWebhookFunctions.getCredentials.mockResolvedValue({ signatureSecret: '' });
+
+				const result = await verifySignature.call(mockWebhookFunctions, 'slackSigningSecretApi', {
+					requireSecret: true,
+				});
+
+				expect(result).toBe(false);
+				expect(createHmac).not.toHaveBeenCalled();
+			});
+
+			it('should return false when the node has no credential of the given type', async () => {
+				mockWebhookFunctions.getCredentials.mockRejectedValue(new Error('No credentials'));
+
+				const result = await verifySignature.call(mockWebhookFunctions, 'slackSigningSecretApi', {
+					requireSecret: true,
+				});
+
+				expect(result).toBe(false);
+				expect(createHmac).not.toHaveBeenCalled();
+			});
+
+			it('should verify the signature when the credential has a signature secret', async () => {
+				mockWebhookFunctions.getCredentials.mockResolvedValue({
+					signatureSecret: testSignatureSecret,
+				});
+				(timingSafeEqual as Mock).mockReturnValue(true);
+
+				const result = await verifySignature.call(mockWebhookFunctions, 'slackSigningSecretApi', {
+					requireSecret: true,
+				});
+
+				expect(result).toBe(true);
+				expect(createHmac).toHaveBeenCalledWith('sha256', testSignatureSecret);
+				expect(timingSafeEqual).toHaveBeenCalled();
+			});
+
+			it('should return false when the signature is invalid', async () => {
+				mockWebhookFunctions.getCredentials.mockResolvedValue({
+					signatureSecret: testSignatureSecret,
+				});
+				(timingSafeEqual as Mock).mockReturnValue(false);
+
+				const result = await verifySignature.call(mockWebhookFunctions, 'slackSigningSecretApi', {
+					requireSecret: true,
+				});
+
+				expect(result).toBe(false);
+			});
+		});
 	});
 });

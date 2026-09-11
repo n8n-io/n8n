@@ -81,11 +81,31 @@ export async function downloadFile(this: IWebhookFunctions, url: string): Promis
 	return response;
 }
 
+export interface VerifySlackSignatureOptions {
+	/**
+	 * Fail verification when the credential has no signature secret. Defaults to `false`
+	 * because the secret is optional on the `slackApi` and `slackOAuth2Api` credentials.
+	 */
+	requireSecret?: boolean;
+}
+
 export async function verifySignature(
 	this: IWebhookFunctions,
 	credentialType = 'slackApi',
+	options: VerifySlackSignatureOptions = {},
 ): Promise<boolean> {
-	const credential = await this.getCredentials(credentialType);
+	let signatureSecret: unknown;
+	try {
+		signatureSecret = (await this.getCredentials(credentialType)).signatureSecret;
+	} catch (error) {
+		// The node has no credential of this type. Treat it like a missing secret.
+		signatureSecret = undefined;
+	}
+	const hasSecret = typeof signatureSecret === 'string' && signatureSecret !== '';
+	if (!hasSecret && options.requireSecret) {
+		return false;
+	}
+
 	const req = this.getRequestObject();
 
 	const timestamp = req.header('x-slack-request-timestamp');
@@ -93,11 +113,10 @@ export async function verifySignature(
 		return false;
 	}
 
-	const signatureSecret = credential.signatureSecret;
 	try {
 		const isValid = verifySignatureGeneric({
 			getExpectedSignature: () => {
-				if (!signatureSecret || typeof signatureSecret !== 'string' || !req.rawBody) {
+				if (!hasSecret || !req.rawBody) {
 					return null;
 				}
 
@@ -115,7 +134,7 @@ export async function verifySignature(
 				const computedSignature = `v0=${hmac.digest('hex')}`;
 				return computedSignature;
 			},
-			skipIfNoExpectedSignature: !signatureSecret || typeof signatureSecret !== 'string',
+			skipIfNoExpectedSignature: !hasSecret,
 			getActualSignature: () => {
 				const actualSignature = req.header('x-slack-signature');
 				return typeof actualSignature === 'string' ? actualSignature : null;

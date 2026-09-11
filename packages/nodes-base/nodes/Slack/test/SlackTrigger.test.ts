@@ -1,7 +1,8 @@
 import { mock } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions, IWebhookFunctions, INodeType } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, IWebhookFunctions, INode, INodeType } from 'n8n-workflow';
 
 import { SlackTrigger } from '../SlackTrigger.node';
+import { verifySignature } from '../SlackTriggerHelpers';
 import * as GenericFunctions from '../V2/GenericFunctions';
 
 // Mock the helper functions
@@ -20,6 +21,8 @@ describe('SlackTrigger Node', () => {
 		vi.clearAllMocks();
 		slackTrigger = new SlackTrigger();
 		mockWebhookFunctions = mock<IWebhookFunctions>();
+		mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
+		vi.mocked(verifySignature).mockResolvedValue(true);
 
 		// Mock helpers
 		mockWebhookFunctions.helpers = {
@@ -706,6 +709,60 @@ describe('SlackTrigger Node', () => {
 			expect(mockWebhookFunctions.getResponseObject().json).toHaveBeenCalledWith({
 				challenge: 'test_challenge_123',
 			});
+		});
+	});
+
+	describe('webhook method - signature verification', () => {
+		const eventRequest = {
+			body: {
+				type: 'event_callback',
+				event: { type: 'message', channel: 'C123', user: 'U456', text: 'Hello' },
+			},
+		};
+
+		beforeEach(() => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue(eventRequest as any);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'trigger':
+						return ['message'];
+					case 'watchWorkspace':
+						return true;
+					default:
+						return {};
+				}
+			});
+		});
+
+		it('should verify with the optional secret of the Slack API credential in version 1', async () => {
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1 }));
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(verifySignature).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(verifySignature).mock.calls[0]).toEqual([]);
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should verify with the required signing-secret credential in version 2', async () => {
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(verifySignature).toHaveBeenCalledWith('slackSigningSecretApi', {
+				requireSecret: true,
+			});
+			expect(result.workflowData).toBeDefined();
+		});
+
+		it('should respond with 401 and not start the workflow when verification fails', async () => {
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
+			vi.mocked(verifySignature).mockResolvedValue(false);
+
+			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
+
+			expect(mockWebhookFunctions.getResponseObject().status).toHaveBeenCalledWith(401);
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 
