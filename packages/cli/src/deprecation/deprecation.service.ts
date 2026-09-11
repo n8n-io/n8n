@@ -92,7 +92,7 @@ export class DeprecationService {
 		},
 		{
 			envVar: 'N8N_WORKFLOW_TAGS_DISABLED',
-			message: SAFE_TO_REMOVE,
+			message: `Workflow tags are always enabled. ${SAFE_TO_REMOVE}`,
 			checkValue: (value?: string) => value !== undefined,
 		},
 		{
