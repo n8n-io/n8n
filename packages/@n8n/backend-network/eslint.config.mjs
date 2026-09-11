@@ -1,10 +1,8 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(baseConfig, {
+export default defineConfig(backendConfig, {
 	rules: {
-		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 		/**
 		 * This package is full of HTTP header maps (`Content-Type`, `Authorization`, `X-Custom-Header`)
 		 * and charset identifiers (`iso-8859-15`, `windows-1252`).

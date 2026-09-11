@@ -4,9 +4,7 @@
 		"src/__tests__/integration/agent-vector-store-pinecone.test.ts",
 		"src/evals/categorization.ts"
 	],
-	"packages/@n8n/ai-node-sdk": [
-		"src/index.ts"
-	],
+	"packages/@n8n/ai-node-sdk": ["src/index.ts"],
 	"packages/@n8n/ai-utilities": [
 		"integration-tests/openai.test.ts",
 		"src/__tests__/adapters/langchain-chat-model.test.ts",
@@ -21,28 +19,18 @@
 		"src/__tests__/agent-builder-interactive.test.ts",
 		"src/agent-builder-interactive.ts"
 	],
-	"packages/@n8n/backend-common": [
-		"src/__tests__/cli-parser.test.ts",
-		"src/cli-parser.ts"
-	],
+	"packages/@n8n/backend-common": ["src/__tests__/cli-parser.test.ts", "src/cli-parser.ts"],
 	"packages/@n8n/backend-network": [
 		"src/dns/__tests__/dns-resolver.test.ts",
 		"src/dns/dns-resolver.ts"
 	],
-	"packages/@n8n/backend-test-utils": [
-		"src/db/projects.ts"
-	],
-	"packages/@n8n/benchmark": [
-		"src/commands/list.ts"
-	],
+	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
+	"packages/@n8n/benchmark": ["src/commands/list.ts"],
 	"packages/@n8n/blob-storage": [
 		"src/__tests__/azure-byte-store.test.ts",
 		"src/azure-blob/azure-blob.config.ts"
 	],
-	"packages/@n8n/chat-hub": [
-		"src/artifact.test.ts",
-		"src/artifact.ts"
-	],
+	"packages/@n8n/chat-hub": ["src/artifact.test.ts", "src/artifact.ts"],
 	"packages/@n8n/cli": [
 		"src/__tests__/client.test.ts",
 		"src/base-command.ts",
@@ -50,14 +38,8 @@
 		"src/commands/login.ts",
 		"src/index.ts"
 	],
-	"packages/@n8n/client-oauth2": [
-		"src/client-oauth2-token.ts",
-		"test/client-oauth2.test.ts"
-	],
-	"packages/@n8n/codemirror-lang-sql": [
-		"src/complete.ts",
-		"test/complete.test.ts"
-	],
+	"packages/@n8n/client-oauth2": ["src/client-oauth2-token.ts", "test/client-oauth2.test.ts"],
+	"packages/@n8n/codemirror-lang-sql": ["src/complete.ts", "test/complete.test.ts"],
 	"packages/@n8n/codemirror-lang": [
 		"src/expressions/grammar.terms.ts",
 		"test/expressions/expressions.test.ts"
@@ -70,9 +52,7 @@
 		"src/configs/__tests__/ai.config.test.ts",
 		"src/configs/activity-log.config.ts"
 	],
-	"packages/@n8n/constants": [
-		"src/api.ts"
-	],
+	"packages/@n8n/constants": ["src/api.ts"],
 	"packages/@n8n/crdt": [
 		"src/__tests__/helpers.ts",
 		"src/awareness/awareness.test.ts",
@@ -87,28 +67,18 @@
 		"src/__tests__/memoized.test.ts",
 		"src/auth-handler/auth-handler-metadata.ts"
 	],
-	"packages/@n8n/di": [
-		"src/__tests__/circular-depedency.test.ts",
-		"src/di.ts"
-	],
+	"packages/@n8n/di": ["src/__tests__/circular-depedency.test.ts", "src/di.ts"],
 	"packages/@n8n/engine": [
 		"src/admittance/__tests__/allow-all-admittance.test.ts",
 		"src/admittance/admittance-rejected.error.ts"
 	],
-	"packages/@n8n/errors": [
-		"src/application.error.ts"
-	],
+	"packages/@n8n/errors": ["src/application.error.ts"],
 	"packages/@n8n/eslint-plugin-community-nodes": [
 		"src/plugin.ts",
 		"src/rules/ai-node-package-json.test.ts"
 	],
-	"packages/@n8n/extension-sdk": [
-		"src/backend/define.ts"
-	],
-	"packages/@n8n/imap": [
-		"src/connection-options.test.ts",
-		"src/connection-options.ts"
-	],
+	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",
 		"evaluations/computer-use/report-html.ts",
@@ -116,14 +86,8 @@
 		"src/agent/aia-model-defaults.ts",
 		"src/tools/__tests__/activity.tool.test.ts"
 	],
-	"packages/@n8n/json-schema-to-zod": [
-		"src/index.ts",
-		"test/json-schema-to-zod.test.ts"
-	],
-	"packages/@n8n/local-gateway": [
-		"src/main/connect-origin.test.ts",
-		"src/main/connect-origin.ts"
-	],
+	"packages/@n8n/json-schema-to-zod": ["src/index.ts", "test/json-schema-to-zod.test.ts"],
+	"packages/@n8n/local-gateway": ["src/main/connect-origin.test.ts", "src/main/connect-origin.ts"],
 	"packages/@n8n/mcp-apps": [
 		"src/apps-manifest.ts",
 		"src/apps/workflow-preview/App.vue",
@@ -157,31 +121,15 @@
 		"nodes/Guardrails/helpers/__tests__/model.test.ts",
 		"nodes/mcp/McpClient/__test__/McpClient.node.test.ts"
 	],
-	"packages/@n8n/permissions": [
-		"src/__tests__/schemas.test.ts",
-		"src/constants.ee.ts"
-	],
-	"packages/@n8n/scheduler": [
-		"src/__tests__/dependency-purity.test.ts",
-		"src/core/clock-skew.ts"
-	],
-	"packages/@n8n/syslog-client": [
-		"src/client.ts",
-		"test/client.test.ts",
-		"vite.config.ts"
-	],
+	"packages/@n8n/permissions": ["src/__tests__/schemas.test.ts", "src/constants.ee.ts"],
+	"packages/@n8n/scheduler": ["src/__tests__/dependency-purity.test.ts", "src/core/clock-skew.ts"],
+	"packages/@n8n/syslog-client": ["src/client.ts", "test/client.test.ts", "vite.config.ts"],
 	"packages/@n8n/task-runner": [
 		"src/__tests__/node-types.test.ts",
 		"src/config/base-runner-config.ts"
 	],
-	"packages/@n8n/telemetry": [
-		"src/__tests__/catalog.test.ts",
-		"src/catalog.ts"
-	],
-	"packages/@n8n/tournament": [
-		"src/Constants.ts",
-		"test/ASTHooks.test.ts"
-	],
+	"packages/@n8n/telemetry": ["src/__tests__/catalog.test.ts", "src/catalog.ts"],
+	"packages/@n8n/tournament": ["src/Constants.ts", "test/ASTHooks.test.ts"],
 	"packages/@n8n/utils": [
 		"src/__tests__/setup.ts",
 		"src/assert.ts",
@@ -373,30 +321,19 @@
 		"src/plugin.ts",
 		"src/rules/require-teleported-tooltip-in-dropdown.test.ts"
 	],
-	"packages/frontend/@n8n/frontend-constants": [
-		"src/urls.ts",
-		"src/views.test.ts",
-		"src/views.ts"
-	],
+	"packages/frontend/@n8n/frontend-constants": ["src/urls.ts", "src/views.test.ts", "src/views.ts"],
 	"packages/frontend/@n8n/frontend-module-sdk": [
 		"src/__tests__/setup.ts",
 		"src/index.ts",
 		"src/registries/commandRegistry.test.ts"
 	],
-	"packages/frontend/@n8n/frontend-test-utils": [
-		"src/__tests__/render.test.ts",
-		"src/defaults.ts"
-	],
+	"packages/frontend/@n8n/frontend-test-utils": ["src/__tests__/render.test.ts", "src/defaults.ts"],
 	"packages/frontend/@n8n/frontend-utils": [
 		"src/__tests__/setup.ts",
 		"src/constants/sanitization.ts",
 		"src/htmlUtils.test.ts"
 	],
-	"packages/frontend/@n8n/i18n": [
-		"src/__tests__/setup.ts",
-		"src/index.test.ts",
-		"src/index.ts"
-	],
+	"packages/frontend/@n8n/i18n": ["src/__tests__/setup.ts", "src/index.test.ts", "src/index.ts"],
 	"packages/frontend/@n8n/rest-api-client": [
 		"src/__tests__/setup.ts",
 		"src/api/__tests__/api-keys.test.ts",
@@ -406,9 +343,7 @@
 		"src/__tests__/metaTagConfig.test.ts",
 		"src/cloudPlan.store.ts"
 	],
-	"packages/frontend/@n8n/storybook": [
-		".storybook/ThemedDocsContainer.ts"
-	],
+	"packages/frontend/@n8n/storybook": [".storybook/ThemedDocsContainer.ts"],
 	"packages/frontend/editor-ui": [
 		"src/Interface.ts",
 		"src/__tests__/data/users.ts",
@@ -443,9 +378,7 @@
 		"src/__tests__/setup.ts",
 		"src/index.ts"
 	],
-	"packages/node-dev": [
-		"src/Build.ts"
-	],
+	"packages/node-dev": ["src/Build.ts"],
 	"packages/nodes-base": [
 		"credentials/ActionNetworkApi.credentials.ts",
 		"credentials/common/aws/s3-path-signing.test.ts",
@@ -453,25 +386,11 @@
 		"nodes/ActionNetwork/ActionNetwork.node.ts",
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
-	"packages/testing/code-health": [
-		"src/cli.ts",
-		"src/cli/arg-parser.test.ts"
-	],
-	"packages/testing/janitor": [
-		"src/cli.test.ts",
-		"src/cli.ts"
-	],
-	"packages/testing/playwright": [
-		"coverage-options.test.ts"
-	],
-	"packages/testing/rules-engine": [
-		"src/ast/ast-rule.ts",
-		"src/ast/imports.test.ts"
-	],
-	"packages/testing/test-impact": [
-		"src/changes.test.ts",
-		"src/changes.ts"
-	],
+	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
+	"packages/testing/playwright": ["coverage-options.test.ts"],
+	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
+	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
 		"src/augment-object.ts",
 		"test/ExpressionExtensions/array-extensions.test.ts"
