@@ -29,6 +29,8 @@ describe('Microsoft Excel resource locators, By ID mode', () => {
 			['a personal account item ID', 'A1B2C3D4E5F60718!s0123456789abcdef0123456789abcdef'],
 			['a legacy personal account item ID', 'A1B2C3D4E5F60718!123'],
 			['a percent-encoded separator', 'A1B2C3D4E5F60718%21s0123456789abcdef0123456789abcdef'],
+			// Graph documents the ID as opaque, so a base64url-shaped one must pass too.
+			['a hyphen and an underscore', 'A1B2-C3D4_E5F60718!s0123-4567_89abcdef'],
 		])('accepts %s', (_label, value) => {
 			expect(issuesFor(workbookRLC, value)).toEqual({});
 		});

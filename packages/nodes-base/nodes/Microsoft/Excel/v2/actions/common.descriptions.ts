@@ -26,9 +26,11 @@ export const workbookRLC: INodeProperties = {
 					type: 'regex',
 					properties: {
 						// A work account returns `01A2B3…`; a personal one `<driveId>!<itemId>`, where
-						// the separator arrives as `!` or percent-encoded as `%21`. The pattern is
-						// anchored by the validator, so it must cover both shapes.
-						regex: '[a-zA-Z0-9]{2,}((!|%21)[a-zA-Z0-9]+)*',
+						// the separator arrives as `!` or percent-encoded as `%21`. Graph documents
+						// the ID only as opaque, so the class stays permissive and rejects just the
+						// characters that would change the request path. The validator anchors the
+						// pattern, so it must cover a whole ID.
+						regex: '[a-zA-Z0-9\\-_]{2,}((!|%21)[a-zA-Z0-9\\-_]+)*',
 						errorMessage: 'Not a valid Workbook ID',
 					},
 				},
