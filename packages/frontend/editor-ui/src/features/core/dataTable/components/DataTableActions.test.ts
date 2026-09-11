@@ -13,6 +13,8 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { VIEWS } from '@/app/constants';
 
 const mockMessage = {
 	confirm: vi.fn(),
@@ -23,6 +25,7 @@ const mockToast = {
 };
 
 const mockDeleteDataTable = vi.fn();
+const mockRouterPush = vi.fn();
 
 const mockDataTablePermissions = {
 	delete: true,
@@ -44,8 +47,14 @@ vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 		deleteDataTable: mockDeleteDataTable,
 		projectPermissions: {
 			dataTable: mockDataTablePermissions,
+			workflow: { create: true },
 		},
 	}),
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({ push: mockRouterPush }),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -91,6 +100,7 @@ const openActionsDropdown = async (getByTestId: (testId: string) => HTMLElement)
 
 let dataTableStore: MockedStore<typeof useDataTableStore>;
 let uiStore: MockedStore<typeof useUIStore>;
+let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 
 describe('DataTableActions', () => {
 	beforeEach(() => {
@@ -98,6 +108,7 @@ describe('DataTableActions', () => {
 		createTestingPinia();
 		dataTableStore = mockedStore(useDataTableStore);
 		uiStore = mockedStore(useUIStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
 		dataTableStore.deleteDataTable.mockResolvedValue(true);
 		mockMessage.confirm.mockResolvedValue(MODAL_CONFIRM);
 		mockDataTablePermissions.delete = true;
@@ -293,6 +304,52 @@ describe('DataTableActions', () => {
 			expect(uiStore.openModal).toHaveBeenCalledTimes(2);
 			expect(uiStore.openModal).toHaveBeenNthCalledWith(1, `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-1`);
 			expect(uiStore.openModal).toHaveBeenNthCalledWith(2, `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-2`);
+		});
+	});
+
+	describe('create form action', () => {
+		const dataTableWithColumns: DataTable = {
+			...mockDataTable,
+			columns: [{ id: 'c1', name: 'email', type: 'string', index: 0 }],
+		};
+
+		it('should create a form workflow and open it', async () => {
+			workflowsStore.createNewWorkflow.mockResolvedValue({ id: 'wf-1' } as never);
+
+			const { getByTestId } = renderComponent({ props: { dataTable: dataTableWithColumns } });
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.CREATE_FORM}`));
+
+			expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Form - Test DataTable', projectId: 'project-1' }),
+			);
+			expect(mockRouterPush).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: 'wf-1' },
+			});
+		});
+
+		it('should show error when workflow creation fails', async () => {
+			const error = new Error('Create failed');
+			workflowsStore.createNewWorkflow.mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent({ props: { dataTable: dataTableWithColumns } });
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.CREATE_FORM}`));
+
+			expect(mockToast.showError).toHaveBeenCalledWith(error, 'dataTable.createForm.error');
+			expect(mockRouterPush).not.toHaveBeenCalled();
+		});
+
+		it('should be disabled when the table has no columns', async () => {
+			const { getByTestId } = renderComponent();
+
+			await openActionsDropdown(getByTestId);
+			await userEvent.click(getByTestId(`action-${DATA_TABLE_CARD_ACTIONS.CREATE_FORM}`));
+
+			expect(workflowsStore.createNewWorkflow).not.toHaveBeenCalled();
 		});
 	});
 

@@ -5227,6 +5227,8 @@
 	"dataTable.download.modal.includeSystemColumns": "Include system columns (id, createdAt, updatedAt)",
 	"dataTable.download.modal.confirm": "Download",
 	"dataTable.download.modal.cancel": "Cancel",
+	"dataTable.createForm": "Create form",
+	"dataTable.createForm.error": "Failed to create form workflow",
 	"dataTable.importCsv": "Import CSV",
 	"dataTable.importCsv.title": "Import CSV to data table",
 	"dataTable.importCsv.description": "Column names must match the table's column names. System columns (id, createdAt, updatedAt) found in CSV will be ignored.",

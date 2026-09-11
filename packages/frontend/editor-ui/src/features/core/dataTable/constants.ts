@@ -26,6 +26,7 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DOWNLOAD_CSV: 'download-csv',
 	FAVORITE: 'favorite',
 	IMPORT_CSV: 'import-csv',
+	CREATE_FORM: 'create-form',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';

@@ -2,7 +2,7 @@
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
 	DATA_TABLE_CARD_ACTIONS,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
@@ -14,11 +14,14 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { escapeHtml } from '@/app/utils/htmlUtils';
 
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { buildFormWorkflow } from '@/features/core/dataTable/utils/formWorkflow';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
 import ImportCsvModal from './ImportCsvModal.vue';
 type Props = {
@@ -45,6 +48,8 @@ const emit = defineEmits<{
 const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
+const workflowsStore = useWorkflowsStore();
+const router = useRouter();
 
 const i18n = useI18n();
 const message = useMessage();
@@ -65,6 +70,12 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 			label: i18n.baseText('dataTable.download.csv'),
 			value: DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV,
 			disabled: !dataTableStore.projectPermissions.dataTable.readRow,
+		},
+		{
+			label: i18n.baseText('dataTable.createForm'),
+			value: DATA_TABLE_CARD_ACTIONS.CREATE_FORM,
+			disabled:
+				!dataTableStore.projectPermissions.workflow.create || props.dataTable.columns.length === 0,
 		},
 		{
 			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
@@ -108,6 +119,10 @@ const onAction = async (action: string) => {
 			uiStore.openModal(downloadModalKey.value);
 			break;
 		}
+		case DATA_TABLE_CARD_ACTIONS.CREATE_FORM: {
+			await createFormWorkflow();
+			break;
+		}
 		case DATA_TABLE_CARD_ACTIONS.FAVORITE: {
 			await favoritesStore.toggleFavorite(props.dataTable.id, 'dataTable');
 			break;
@@ -148,6 +163,20 @@ const downloadDataTableCsv = async (includeSystemColumns: boolean) => {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.download.error'));
+	}
+};
+
+const createFormWorkflow = async () => {
+	try {
+		const workflow = await workflowsStore.createNewWorkflow(buildFormWorkflow(props.dataTable));
+		telemetry.track('User created form from data table', {
+			data_table_id: props.dataTable.id,
+			data_table_project_id: props.dataTable.projectId,
+			workflow_id: workflow.id,
+		});
+		await router.push({ name: VIEWS.WORKFLOW, params: { workflowId: workflow.id } });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.createForm.error'));
 	}
 };
 
