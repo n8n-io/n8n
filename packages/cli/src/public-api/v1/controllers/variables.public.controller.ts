@@ -96,7 +96,7 @@ export class VariablesPublicController {
 			value,
 			// The public spec marks `type` read-only, so the caller never sends it.
 			type: VARIABLE_TYPE_DEFAULT,
-			...(projectId !== undefined && { projectId }),
+			projectId,
 		});
 	}
 
@@ -119,7 +119,7 @@ export class VariablesPublicController {
 		await this.variablesService.update(req.user, id, {
 			key,
 			value,
-			...(projectId !== undefined && { projectId }),
+			projectId,
 		});
 	}
 
