@@ -625,13 +625,18 @@ function findNonMainBoundaryConnection(
 }
 
 /**
- * Picks the representative start/end for a group, which may have several boundary
- * connections attaching anywhere in it. The canvas uses these only to place the
- * collapsed block's single entry and exit handles, so it prefers a true entry (no
- * incoming edge from inside) and a true exit (no outgoing edge to inside), and
- * falls back to any boundary member when the group has none — a group whose only
- * boundary edges attach mid-chain. The merge machinery in
- * `useCanvasMapping.groups` folds the remaining edges onto them.
+ * Names the members where main connections enter and leave the group.
+ *
+ * Only extraction reads `start` / `end` (see `validateNodeSelectionForExtraction`
+ * and `doExtractNodesIntoSubworkflow`). Grouping ignores them: the collapsed
+ * canvas block remaps every boundary edge onto the group's own handles, so it
+ * never needs to know which member an edge attached to. This exists so the
+ * relaxed path still returns a well-formed `ExtractableSubgraphData`.
+ *
+ * A group may have many boundary edges attaching anywhere, so "the" entry and
+ * exit are ambiguous. It reports a member that nothing inside the group feeds
+ * (a true entry) and one that feeds nothing inside it (a true exit), falling
+ * back to any boundary member when every edge attaches mid-chain.
  */
 function resolveBoundarySubgraphEndpoints(
 	nodeNames: Set<string>,
