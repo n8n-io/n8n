@@ -303,7 +303,6 @@ export class FrontendService {
 					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
-			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
 			workflowsGroupsWithManyBoundariesEnabled:
