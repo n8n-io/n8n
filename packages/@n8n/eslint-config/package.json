@@ -16,6 +16,10 @@
       "types": "./dist/configs/frontend.d.js",
       "default": "./dist/configs/frontend.js"
     },
+    "./frontend-module": {
+      "types": "./dist/configs/frontend-module.d.js",
+      "default": "./dist/configs/frontend-module.js"
+    },
     "./nodes": {
       "types": "./dist/configs/nodes.d.js",
       "default": "./dist/configs/nodes.js"

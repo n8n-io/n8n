@@ -360,12 +360,43 @@ baseline in the repository (`.boundaries-baseline.json`). The count of issues ca
 dependency by design.
 
 The alias split changes an accidental import from a silent success into two clear failures. It
-does not stop a person who wants that import. An ESLint `no-restricted-imports` rule would stop
-it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
+does not stop a person who wants that import.
 
-Until that rule lands, the boundary is the responsibility of the reviewer. Reviewers, look for a
-new `@n8n/frontend-module-*` entry in the `dependencies` of a module. That entry is the only
-signal. After a module declares the dependency, every check passes.
+**The ESLint rule stops it, and the rule is in the repository.** The `eslint.config.mjs` of a
+module extends `frontendModuleConfig` from `@n8n/eslint-config/frontend-module`, which is
+`frontendConfig` plus `@typescript-eslint/no-restricted-imports` at **error** level:
+
+```js
+import { defineConfig } from 'eslint/config';
+import { frontendModuleConfig } from '@n8n/eslint-config/frontend-module';
+
+export default defineConfig(frontendModuleConfig(import.meta.dirname));
+```
+
+The CLI writes that file, so a new module gets the boundary with no manual step. Pass
+`import.meta.dirname`: the config reads the name from the `package.json` next to it, and lets the
+module import itself.
+
+The rule bans a bare specifier and a subpath, so `@n8n/frontend-module-insights` and
+`@n8n/frontend-module-insights/insights.module` both fail. Two specifiers stay legal:
+
+- `@n8n/frontend-module-sdk`. It is an L2 package, not a module.
+- The name of this package. The shell imports the insights descriptor as
+  `@n8n/frontend-module-insights/insights.module`, and a module may do the same with its own
+  `exports` map.
+
+The rule also bans `@/`, the alias of the editor-ui shell.
+
+```
+error  '@n8n/frontend-module-insights' import is restricted from being used by a pattern.
+       A module does not import another module. Move the shared value into an L2 package,
+       such as @n8n/stores or @n8n/composables. If you cannot move it, the two features are
+       one module. To reach the shell or another module, contribute through a descriptor
+       surface of @n8n/frontend-module-sdk
+```
+
+Do not add a suppression for this rule. If your module needs a value from a sibling, read the FAQ
+entry at the end of this guide.
 
 ## Stores
 
@@ -629,10 +660,9 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    command-bar host reads that registry. `locales`, `shortcuts`, `banners` and `setup` are types,
    and no file reads them (**CAT-3685**). Until that work lands, cross-feature code stays in the
    shell.
-2. **No tool stops a deliberate cross-module import.** The ESLint `no-restricted-imports` rule is
-   **CAT-3692**. The alias split stops an accident in a test run. The tsconfig base stops one at
-   typecheck. `turbo boundaries` reports only an *undeclared* dependency. A declared dependency
-   clears all three. This rule must land before the second extraction.
+2. ~~**No tool stops a deliberate cross-module import.**~~ **Done (CAT-3692).**
+   `frontendModuleConfig` bans a sibling module and the `@/` shell alias at error level. See "The
+   no-cross-module rule" above.
 3. **Per-module i18n.** A module keeps its strings in the central `en.json` of `@n8n/i18n` today.
    The target is the `locales` descriptor field with per-module key types. The central `en.json` is
    the accepted alternative, but it must not become permanent.
