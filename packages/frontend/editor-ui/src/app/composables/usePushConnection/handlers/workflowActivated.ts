@@ -25,6 +25,15 @@ export async function workflowActivated(
 	const showActivationModal = consumePendingActivationModal(workflowId, activeVersionId);
 
 	const workflowIsBeingViewed = workflowDocumentStore.workflowId === workflowId;
+
+	// First publish initiated in this tab: show the one-time success modal (ADO-4969).
+	// Open it before the refresh below: the awaits can yield long enough for
+	// navigation to change what is on screen, and the modal does not depend on
+	// the fetched data.
+	if (workflowIsBeingViewed && showActivationModal) {
+		uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+	}
+
 	const activeVersionChanged = workflowDocumentStore.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionChanged) {
 		const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId);
@@ -47,10 +56,5 @@ export async function workflowActivated(
 			workflowDocumentStore.setPublicationStatus({ status: 'published', failures: [] });
 		}
 		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
-
-		// First publish initiated in this tab: how the one-time success modal (ADO-4969).
-		if (showActivationModal) {
-			uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
-		}
 	}
 }

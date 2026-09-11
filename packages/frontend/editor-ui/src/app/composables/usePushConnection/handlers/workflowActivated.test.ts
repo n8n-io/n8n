@@ -160,6 +160,27 @@ describe('workflowActivated', () => {
 			expect(mockConsumePendingActivationModal).toHaveBeenCalledWith('wf-other', 'v1');
 			expect(mockUIStore.openModal).not.toHaveBeenCalled();
 		});
+
+		it('opens the modal before the workspace refresh, so navigating away mid-refresh cannot misplace it', async () => {
+			mockConsumePendingActivationModal.mockReturnValue(true);
+
+			// Push beats the publish response: the stored active version is stale,
+			// so the handler refreshes the workspace (awaits).
+			let resolveFetch!: (workflow: { id: string; checksum: string }) => void;
+			mockWorkflowsListStore.fetchWorkflow.mockReturnValue(
+				new Promise((resolve) => {
+					resolveFetch = resolve;
+				}),
+			);
+
+			const handlerDone = workflowActivated(makeEvent('wf-123', 'v1'), options);
+
+			// The modal is already open while the refresh is still in flight.
+			expect(mockUIStore.openModal).toHaveBeenCalledWith(WORKFLOW_ACTIVE_MODAL_KEY);
+
+			resolveFetch({ id: 'wf-123', checksum: 'abc' });
+			await handlerDone;
+		});
 	});
 
 	// Regression: INS-859 — "Workflow was changed by someone else" on dragging a node.
