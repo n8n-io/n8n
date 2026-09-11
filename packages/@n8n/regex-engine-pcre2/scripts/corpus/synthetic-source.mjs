@@ -237,7 +237,9 @@ export function loadSyntheticCases() {
         cases.push({
           id: `synthetic:${group.category}:${patternIndex}:${inputIndex}`,
           source: 'synthetic',
-          category: `synthetic-${group.category}`,
+          // One shared category so build-corpus.mjs writes all synthetic cases into a
+          // single file; group.category is preserved per-case via `tags` for traceability.
+          category: 'synthetic-patterns',
           tags: [group.category],
           pattern: c.pattern,
           flags: c.flags,
