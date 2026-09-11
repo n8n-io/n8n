@@ -124,6 +124,6 @@ const hasChanges = computed(
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 	padding-top: var(--spacing--md);
-	border-top: 1px solid var(--color--foreground--shade-1);
+	border-top: 1px solid var(--border-color);
 }
 </style>

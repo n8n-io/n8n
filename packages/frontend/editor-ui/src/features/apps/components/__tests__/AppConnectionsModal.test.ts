@@ -201,9 +201,7 @@ describe('AppConnectionsModal', () => {
 
 		expect(getByTestId('tools-connection-detail')).toBeInTheDocument();
 		expect(getByText('Notify Slack')).toBeInTheDocument();
-		expect(
-			getByText('The app can run this workflow with the inputs of its trigger.'),
-		).toBeInTheDocument();
+		expect(getByText('Anyone who can open the app gets this access.')).toBeInTheDocument();
 		expect(queryByRole('checkbox')).not.toBeInTheDocument();
 		expect(getByTestId('app-binding-connect')).toBeEnabled();
 		expect(queryByTestId('app-binding-disconnect')).not.toBeInTheDocument();

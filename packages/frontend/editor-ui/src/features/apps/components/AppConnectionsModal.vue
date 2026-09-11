@@ -231,13 +231,7 @@ async function disconnect(item: ToolConnectionItem) {
 				:connected="bindingFor(item) !== null"
 				:permissions="permissionsOf(bindingFor(item))"
 				:permission-options="item.kind === 'data-store' ? DATA_TABLE_PERMISSION_OPTIONS : []"
-				:note="
-					i18n.baseText(
-						item.kind === 'data-store'
-							? 'apps.connections.access.note'
-							: 'apps.connections.workflow.note',
-					)
-				"
+				:note="i18n.baseText('apps.connections.access.note')"
 				@connect="connect(item, $event)"
 				@save="save(item, $event)"
 				@disconnect="disconnect(item)"
