@@ -16,6 +16,12 @@ export type ProjectRoleScope = {
 	[R in ProjectResource]: `${R}:${(typeof PROJECT_CUSTOM_ROLE_OPERATIONS)[R][number]}`;
 }[ProjectResource];
 
+/**
+ * The resource groups the editor renders, in display order. Hand-kept, unlike
+ * `SCOPES`: every resource in `PROJECT_CUSTOM_ROLE_OPERATIONS` must appear here, or
+ * its scopes count toward `TOTAL_PROJECT_PERMISSIONS` while no checkbox can reach
+ * them. A test in this folder holds the two lists together.
+ */
 export const SCOPE_TYPES: ProjectResource[] = [
 	'project',
 	'folder',
@@ -27,6 +33,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'externalSecret',
 	'dataTable',
 	'projectVariable',
+	'projectAiPreference',
 	'sourceControl',
 ];
 

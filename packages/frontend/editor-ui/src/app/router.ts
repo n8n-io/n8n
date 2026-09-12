@@ -15,6 +15,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
+import { isContextPreferencesEnabled } from '@/features/settings/context/composables/useContextPreferencesFlag';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
@@ -1100,6 +1101,37 @@ export const routes: RouteRecordRaw[] = [
 							const settingsStore = useSettingsStore();
 							return settingsStore.isCommunityNodesFeatureEnabled;
 						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'context',
+				name: VIEWS.SETTINGS_CONTEXT,
+				component: async () =>
+					await import('@/features/settings/context/views/SettingsContextView.vue'),
+				meta: {
+					// No RBAC gate: every user reaches this page to manage their own preferences.
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => isContextPreferencesEnabled(),
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'context/preferences',
+				name: VIEWS.SETTINGS_CONTEXT_PREFERENCES,
+				component: async () =>
+					await import('@/features/settings/context/views/SettingsPreferencesView.vue'),
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => isContextPreferencesEnabled(),
 					},
 					telemetry: {
 						pageCategory: 'settings',

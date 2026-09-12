@@ -206,8 +206,28 @@ export function useSettingsItems() {
 
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;
+		const items = menuItems.concat(
+			moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)),
+		);
 
-		return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
+		// Context belongs directly after Instance-level MCP. That entry is registered by
+		// the MCP module, so it lands after every core item and Context cannot simply be
+		// pushed with the rest. Falls back to the end when the module is inactive.
+		//
+		// The feature flag needs no separate check here: `canUserAccessRouteByName` runs
+		// the route's whole middleware list, and the Context routes gate on the flag
+		// through their `custom` middleware.
+		const mcpIndex = items.findIndex((item) => item.id === 'settings-mcp');
+		items.splice(mcpIndex === -1 ? items.length : mcpIndex + 1, 0, {
+			id: 'settings-context',
+			icon: 'brain',
+			label: i18n.baseText('settings.context.title'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.SETTINGS_CONTEXT),
+			route: { to: { name: VIEWS.SETTINGS_CONTEXT } },
+		});
+
+		return items;
 	});
 
 	const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
