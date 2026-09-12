@@ -379,7 +379,7 @@ export class InstanceAiController {
 		//     message group. Each frame uses a named SSE event type
 		//     (event: run-sync) with NO id: field so the browser's lastEventId is
 		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = (
+		const writeRunSyncFrame = async (
 			groupId: string,
 			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
 			runEvents: InstanceAiEvent[],
@@ -387,6 +387,12 @@ export class InstanceAiController {
 			if (runEvents.length === 0) return;
 
 			const agentTree = buildAgentTreeFromEvents(runEvents);
+			// The fold records that a confirmation was requested, not that it was
+			// answered. Settle cards whose pending row is gone (same check as the
+			// history read); otherwise a client that reconnects mid-run re-arms a
+			// card the server already consumed, and every click on it fails.
+			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: group.runIds.at(-1),
@@ -441,7 +447,7 @@ export class InstanceAiController {
 			for (const [groupId, group] of liveGroups) {
 				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
 				if (closed) return;
-				writeRunSyncFrame(groupId, group, runEvents);
+				await writeRunSyncFrame(groupId, group, runEvents);
 				for (const event of runEvents) {
 					if (event.type === 'text-block' || event.type === 'reasoning-block') {
 						foldedBlockKeys.add(blockKey(event));
