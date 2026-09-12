@@ -308,6 +308,9 @@ jobs:
               -e N8N_SANDBOX_SERVICE_API_KEY=n8n-sandbox-ci-key
             )
           fi
+          # Eval sandboxes are throwaway. Default false leaves them stopped and
+          # they accumulate on the shared tenant until the CLI deletes the thread.
+          SANDBOX_ARGS+=(-e N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true)
 
           # Only the local sandbox stack needs the shared network — a hosted
           # deployment is reached over the default bridge, and the network is
