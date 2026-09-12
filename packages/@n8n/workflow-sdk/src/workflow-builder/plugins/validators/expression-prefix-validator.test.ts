@@ -1,6 +1,6 @@
 import { expressionPrefixValidator } from './expression-prefix-validator';
 import type { GraphNode, NodeInstance } from '../../../types/base';
-import type { PluginContext } from '../types';
+import type { NodeTypesProvider, PluginContext } from '../types';
 
 // Helper to create a mock node instance
 function createMockNode(
@@ -26,12 +26,140 @@ function createGraphNode(node: NodeInstance<string, string, unknown>): GraphNode
 }
 
 // Helper to create a mock plugin context
-function createMockPluginContext(): PluginContext {
+function createMockPluginContext(nodeTypesProvider?: NodeTypesProvider): PluginContext {
 	return {
 		nodes: new Map(),
 		workflowId: 'test-workflow',
 		workflowName: 'Test Workflow',
 		settings: {},
+		...(nodeTypesProvider ? { validationOptions: { nodeTypesProvider } } : {}),
+	};
+}
+
+// One provider covering every branch: a SQL editor field, a noDataExpression
+// field that is not an editor, and a field that does support expressions.
+function createProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					},
+					{
+						displayName: 'Code',
+						name: 'jsCode',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						typeOptions: { editor: 'jsEditor' },
+					},
+					{
+						displayName: 'Project',
+						name: 'projectId',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		}),
+	};
+}
+
+// Provider shaped like Wait v1.1, where one name is declared twice behind
+// different displayOptions and the declarations disagree about expressions.
+function createDuplicateNameProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'Resume',
+						name: 'resume',
+						type: 'options',
+						default: 'webhook',
+						noDataExpression: true,
+						options: [
+							{ name: 'On Webhook Call', value: 'webhook' },
+							{ name: 'On Form Submitted', value: 'form' },
+						],
+					},
+					{
+						displayName: 'Authentication',
+						name: 'incomingAuthentication',
+						type: 'options',
+						default: 'none',
+						displayOptions: { show: { resume: ['form'] } },
+						options: [{ name: 'None', value: 'none' }],
+					},
+					{
+						displayName: 'Authentication',
+						name: 'incomingAuthentication',
+						type: 'options',
+						default: 'none',
+						noDataExpression: true,
+						displayOptions: { show: { resume: ['webhook'] } },
+						options: [{ name: 'None', value: 'none' }],
+					},
+				],
+			},
+		}),
+	};
+}
+
+// Provider where the declarations of one name branch on a sibling that is
+// itself hidden, so the sibling only exists as a default.
+function createHiddenSiblingProvider(): NodeTypesProvider {
+	return {
+		getByNameAndVersion: () => ({
+			description: {
+				properties: [
+					{
+						displayName: 'Resource',
+						name: 'resource',
+						type: 'options',
+						default: 'db',
+						options: [
+							{ name: 'Database', value: 'db' },
+							{ name: 'Other', value: 'other' },
+						],
+					},
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						default: 'legacy',
+						// Hidden while resource is 'db', so it never reaches a
+						// display-filtered parameter set.
+						displayOptions: { show: { resource: ['other'] } },
+						options: [
+							{ name: 'Legacy', value: 'legacy' },
+							{ name: 'Modern', value: 'modern' },
+						],
+					},
+					{
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						displayOptions: { show: { mode: ['legacy'] } },
+					},
+					{
+						displayName: 'Query',
+						name: 'query',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['modern'] } },
+					},
+				],
+			},
+		}),
 	};
 }
 
@@ -177,6 +305,210 @@ describe('expressionPrefixValidator', () => {
 			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
 
 			expect(issues[0]?.nodeName).toBe('My Set Node');
+		});
+
+		it('skips sqlEditor parameters (the node resolves inline {{ }} itself)', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('still warns for a non-sqlEditor parameter on a node that has an sqlEditor field', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: {
+					sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}',
+					projectId: '{{ $json.project }}',
+				},
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.parameterPath).toBe('projectId');
+		});
+
+		it('warns that an sqlEditor parameter cannot carry the = prefix', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('sqlQuery');
+			expect(issues[0]?.message).toContain('Keep the {{ }} inline');
+		});
+
+		it('tells a non-editor parameter to use a static value instead', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: '={{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('Use a static value');
+		});
+
+		it('reports an inline template on a non-editor parameter as used literally', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: 'return {{ $json.id }};' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('used literally');
+		});
+
+		it('keeps a lone $fromAI() placeholder intact', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: "={{ $fromAI('query') }}" },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('reports a prefix-free $fromAI() template on a non-editor parameter', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { jsCode: "{{ $fromAI('query') }}" },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.message).toContain('used literally');
+		});
+
+		it('follows displayOptions when one name is declared twice and they disagree', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: {
+					resume: 'form',
+					incomingAuthentication: "={{ $json.requiresAuth ? 'basicAuth' : 'none' }}",
+				},
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('still reports a missing prefix on the declaration that allows expressions', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { resume: 'form', incomingAuthentication: '{{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('MISSING_EXPRESSION_PREFIX');
+		});
+
+		it('reports the prefix on the declaration that forbids expressions', () => {
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { resume: 'webhook', incomingAuthentication: '={{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('incomingAuthentication');
+		});
+
+		it('resolves the default of the parameter the declarations branch on', () => {
+			// `resume` is omitted, so its default ('webhook') decides which
+			// declaration is visible.
+			const node = createMockNode('n8n-nodes-base.wait', {
+				parameters: { incomingAuthentication: '={{ $json.authMode }}' },
+			});
+			const ctx = createMockPluginContext(createDuplicateNameProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+		});
+
+		it('drops the inline-template remedy when the value has no template', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT 1' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.message).toContain("Drop the leading '='.");
+			expect(issues[0]?.message).not.toContain('Keep the {{ }} inline');
+		});
+
+		it('resolves visibility against hidden siblings, as getNodeParameters does', () => {
+			// `mode` is hidden behind `resource`, so it exists only as a default. The
+			// declaration it selects is still the one that decides.
+			const node = createMockNode('n8n-nodes-base.someDb', {
+				parameters: { resource: 'db', query: '=SELECT 1' },
+			});
+			const ctx = createMockPluginContext(createHiddenSiblingProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
+			expect(issues[0]?.code).toBe('UNSUPPORTED_EXPRESSION');
+			expect(issues[0]?.parameterPath).toBe('query');
+		});
+
+		it('leaves the = prefix alone on a parameter that supports expressions', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { projectId: '={{ $json.project }}' },
+			});
+			const ctx = createMockPluginContext(createProvider());
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('says nothing about the = prefix when no node-type provider is available', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: '=SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it('warns on an sqlEditor parameter when no node-type provider is available', () => {
+			const node = createMockNode('n8n-nodes-base.googleBigQuery', {
+				parameters: { sqlQuery: 'SELECT * FROM dataset.table WHERE id = {{ $json.id }}' },
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = expressionPrefixValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(1);
 		});
 
 		it('includes parameterPath in issues', () => {
