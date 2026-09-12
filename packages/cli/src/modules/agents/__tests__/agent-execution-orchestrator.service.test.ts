@@ -330,7 +330,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	it('waits for a foreign claimed row to end and claims again on conflict', async () => {
 		const { service, executionService, turnCoordinator, permitFor } = makeService();
 		executionService.startClaimedExecutionRecording
-			.mockRejectedValueOnce(new AgentThreadClaimConflictError('thread-1'))
+			.mockRejectedValueOnce(new AgentThreadClaimConflictError())
 			.mockResolvedValueOnce({
 				executionId: 'execution-2',
 				claimLost: new AbortController().signal,
@@ -365,7 +365,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService, turnCoordinator, permitFor } = makeService();
 		const permit = await permitFor('thread-1');
 		executionService.startClaimedExecutionRecording.mockRejectedValue(
-			new AgentThreadClaimConflictError('thread-1'),
+			new AgentThreadClaimConflictError(),
 		);
 		turnCoordinator.executionRepository.existsRunningByThread.mockImplementationOnce(async () => {
 			turnCoordinator.leases.at(-1)?.abort();
@@ -388,7 +388,7 @@ describe('AgentExecutionOrchestratorService', () => {
 					permit,
 				}),
 			),
-		).rejects.toThrow('Agent thread lease was lost before the turn could claim its thread');
+		).rejects.toThrow('Agent thread lease was lost');
 
 		expect(executionService.startClaimedExecutionRecording).toHaveBeenCalledOnce();
 		expect(runtime.agent.stream).not.toHaveBeenCalled();

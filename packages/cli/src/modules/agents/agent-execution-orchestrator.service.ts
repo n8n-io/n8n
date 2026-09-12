@@ -902,6 +902,9 @@ export class AgentExecutionOrchestratorService {
 
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		return await this.turnCoordinator.run(memory.threadId, abortSignal, async (permit) => {
+			// A suspended thread belongs to its pending resume, which may have
+			// started while this wake waited. Execution rows keep `suspended`
+			// after a resume, so the checkpoint store decides.
 			if (
 				(await this.agentExecutionService.hasSuspendedRun(memory.threadId)) &&
 				(await this.n8nCheckpointStorage.findSuspendedForThread(agentId, memory.threadId)) !== null
@@ -1236,14 +1239,10 @@ export class AgentExecutionOrchestratorService {
 		permit: AgentThreadTurnPermit,
 		abortSignal?: AbortSignal,
 	): Promise<{ executionId: string; abortSignal: AbortSignal }> {
-		// The lock service aborts `leaseLost` without a reason; name the cause here.
-		const leaseLostError = () =>
-			new OperationalError('Agent thread lease was lost before the turn could claim its thread');
 		const waitSignal = AbortSignal.any(
 			[abortSignal, permit.leaseLost].filter((s) => s !== undefined),
 		);
 		for (;;) {
-			if (permit.leaseLost.aborted) throw leaseLostError();
 			waitSignal.throwIfAborted();
 			try {
 				const { executionId, claimLost } =
@@ -1260,11 +1259,7 @@ export class AgentExecutionOrchestratorService {
 					agentId: params.agentId,
 					threadId: params.threadId,
 				});
-				try {
-					await this.turnCoordinator.waitUntilThreadIdle(params.threadId, waitSignal);
-				} catch (waitError) {
-					throw permit.leaseLost.aborted ? leaseLostError() : waitError;
-				}
+				await this.turnCoordinator.waitUntilThreadIdle(params.threadId, waitSignal);
 			}
 		}
 	}

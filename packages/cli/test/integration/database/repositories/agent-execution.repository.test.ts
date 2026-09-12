@@ -295,9 +295,9 @@ describe('AgentExecutionRepository', () => {
 				{ id: execution.id },
 				{ updatedAt: new Date('2026-01-02T00:00:01Z') },
 			);
-			expect(
-				await repository.updateIfAbandoned(execution.id, staleBefore, finalizationValues),
-			).toBe(false);
+			expect(await repository.updateIfRunning(execution.id, finalizationValues, staleBefore)).toBe(
+				false,
+			);
 			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
 				status: 'running',
 				activeThreadId: thread.id,
@@ -308,9 +308,9 @@ describe('AgentExecutionRepository', () => {
 				{ id: execution.id },
 				{ updatedAt: new Date('2026-01-01T23:59:59Z') },
 			);
-			expect(
-				await repository.updateIfAbandoned(execution.id, staleBefore, finalizationValues),
-			).toBe(true);
+			expect(await repository.updateIfRunning(execution.id, finalizationValues, staleBefore)).toBe(
+				true,
+			);
 			expect(await repository.findOneByOrFail({ id: execution.id })).toMatchObject({
 				status: 'interrupted',
 				activeThreadId: null,

@@ -73,7 +73,6 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
-		agentExecutionRepository.updateIfAbandoned.mockResolvedValue(true);
 		agentExecutionRepository.updateTimelineIfRunning.mockResolvedValue(true);
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
 		n8nMemory = mock<N8nMemory>();
@@ -864,7 +863,7 @@ describe('AgentExecutionService', () => {
 				executionUpdateBroadcaster,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
-			agentExecutionRepository.updateIfAbandoned.mockResolvedValue(true);
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
 
 			await service.finalizeInterruptedExecution({
@@ -883,9 +882,8 @@ describe('AgentExecutionService', () => {
 					executionId: 'execution-1',
 				}),
 			);
-			expect(agentExecutionRepository.updateIfAbandoned).toHaveBeenCalledWith(
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
-				expect.any(Date),
 				expect.objectContaining({
 					status: 'interrupted',
 					timeline: partial,
@@ -901,6 +899,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
+				expect.any(Date),
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
 		});

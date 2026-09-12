@@ -265,10 +265,8 @@ export class AgentExecutionService {
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
-		const staleBefore = new Date(Date.now() - AgentExecutionService.livenessGraceMs);
-		const finalized = await this.agentExecutionRepository.updateIfAbandoned(
+		const finalized = await this.agentExecutionRepository.updateIfRunning(
 			execution.id,
-			staleBefore,
 			{
 				status: 'interrupted',
 				stoppedAt,
@@ -283,6 +281,7 @@ export class AgentExecutionService {
 					stoppedAt: stoppedAt.getTime(),
 				}),
 			},
+			new Date(Date.now() - AgentExecutionService.livenessGraceMs),
 		);
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;

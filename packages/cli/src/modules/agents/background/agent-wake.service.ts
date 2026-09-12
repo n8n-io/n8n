@@ -22,9 +22,7 @@ import {
 } from './background-job-messages';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
-import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
@@ -51,10 +49,8 @@ export class AgentWakeService {
 
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
-		private readonly executionRepository: AgentExecutionRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly userRepository: UserRepository,
-		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly lockService: LockService,
@@ -163,17 +159,6 @@ export class AgentWakeService {
 			.join(':');
 		const failure = this.failures.get(threadId);
 		if (failure?.generation === generation && failure.count >= MAX_CONSECUTIVE_FAILED_WAKES) {
-			return;
-		}
-
-		// A running parent is no reason to skip: the wake queues behind it as a
-		// thread turn. A suspended parent is, because the resume owns the thread.
-		// Execution records keep their suspended status after a resume, so check
-		// the checkpoint store to determine whether the thread is still suspended.
-		if (
-			(await this.executionRepository.hasSuspendedRun(threadId)) &&
-			(await this.checkpointStorage.findSuspendedForThread(first.parentAgentId, threadId)) !== null
-		) {
 			return;
 		}
 

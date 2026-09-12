@@ -127,8 +127,8 @@ describe('AgentThreadTurnCoordinator', () => {
 		const run = coordinator.run('t1', undefined, body);
 		await flush();
 
-		leases[0].abort(new Error('lock lost'));
-		await expect(run).rejects.toThrow('lock lost');
+		leases[0].abort();
+		await expect(run).rejects.toThrow('Agent thread lease was lost');
 		expect(body).not.toHaveBeenCalled();
 
 		executionRepository.existsRunningByThread.mockResolvedValue(false);
@@ -157,7 +157,7 @@ describe('AgentThreadTurnCoordinator', () => {
 		const stream = coordinator.stream('t1', undefined, async function* (permit) {
 			expect(permit.threadId).toBe('t1');
 			yield 'one';
-			leases[0].abort(new Error('lock lost'));
+			leases[0].abort();
 			expect(permit.leaseLost.aborted).toBe(true);
 			yield 'two';
 		});

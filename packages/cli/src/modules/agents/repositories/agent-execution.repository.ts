@@ -14,7 +14,7 @@ export type RunningAgentExecution = Pick<
 
 /** Another running turn already claims this thread. The caller waits and retries. */
 export class AgentThreadClaimConflictError extends OperationalError {
-	constructor(readonly threadId: string) {
+	constructor() {
 		super('Another agent turn already holds this thread', { level: 'info' });
 	}
 }
@@ -66,7 +66,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			return await this.save(this.create(values));
 		} catch (error) {
 			if (values.activeThreadId !== null && isUniqueConstraintError(error)) {
-				throw new AgentThreadClaimConflictError(values.activeThreadId);
+				throw new AgentThreadClaimConflictError();
 			}
 			throw error;
 		}
@@ -96,24 +96,12 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return result.affected === 1;
 	}
 
-	/** Move a running row to a terminal status. This also releases its thread claim. */
+	/**
+	 * Move a running row to a terminal status. This also releases its thread
+	 * claim. With `staleBefore`, only a row without a heartbeat since then
+	 * matches, so a run that is alive again keeps its claim.
+	 */
 	async updateIfRunning(
-		executionId: string,
-		values: AgentExecutionFinalizationValues,
-	): Promise<boolean> {
-		return await this.finalizeRunning(executionId, values);
-	}
-
-	/** Finalize a running row only while its liveness timestamp remains stale. */
-	async updateIfAbandoned(
-		executionId: string,
-		staleBefore: Date,
-		values: AgentExecutionFinalizationValues,
-	): Promise<boolean> {
-		return await this.finalizeRunning(executionId, values, staleBefore);
-	}
-
-	private async finalizeRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
 		staleBefore?: Date,

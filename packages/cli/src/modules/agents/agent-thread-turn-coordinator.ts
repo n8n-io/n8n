@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
@@ -44,10 +44,6 @@ export interface AgentThreadTurnLease {
 	release: () => Promise<void>;
 }
 
-interface Waiter {
-	resolve: () => void;
-}
-
 /**
  * Admits one agent turn per durable thread at a time.
  *
@@ -61,7 +57,7 @@ interface Waiter {
 @Service()
 export class AgentThreadTurnCoordinator {
 	/** Threads with an active turn in this process, with their waiting turns in arrival order. */
-	private readonly waiters = new Map<string, Waiter[]>();
+	private readonly waiters = new Map<string, Array<() => void>>();
 
 	constructor(
 		private readonly lockService: LockService,
@@ -111,8 +107,7 @@ export class AgentThreadTurnCoordinator {
 				[signal, lease.leaseLost].filter((s) => s !== undefined),
 			);
 			await this.waitUntilThreadIdle(threadId, idleWaitSignal);
-			signal?.throwIfAborted();
-			lease.leaseLost.throwIfAborted();
+			idleWaitSignal.throwIfAborted();
 		} catch (error) {
 			await lease?.release();
 			this.releaseLocally(threadId);
@@ -152,11 +147,9 @@ export class AgentThreadTurnCoordinator {
 				if (index !== -1) queue.splice(index, 1);
 				reject(ensureError(signal?.reason));
 			};
-			const waiter: Waiter = {
-				resolve: () => {
-					signal?.removeEventListener('abort', onAbort);
-					resolve();
-				},
+			const waiter = () => {
+				signal?.removeEventListener('abort', onAbort);
+				resolve();
 			};
 			queue.push(waiter);
 			signal?.addEventListener('abort', onAbort, { once: true });
@@ -166,28 +159,35 @@ export class AgentThreadTurnCoordinator {
 	/** Hand the turn to the next local waiter, or forget the thread when idle. */
 	private releaseLocally(threadId: string): void {
 		const next = this.waiters.get(threadId)?.shift();
-		if (next) next.resolve();
+		if (next) next();
 		else this.waiters.delete(threadId);
 	}
 
 	/**
 	 * Hold the distributed lease as a handle instead of a callback scope, so a
-	 * generator can keep it until its consumer is done.
+	 * generator can keep it until its consumer is done. The lock service aborts
+	 * without a reason, so `leaseLost` carries one for every consumer.
 	 */
 	private async acquireLease(
 		threadId: string,
 	): Promise<{ leaseLost: AbortSignal; release: () => Promise<void> }> {
-		const acquired = createDeferredPromise<AbortSignal>();
+		const acquired = createDeferredPromise();
 		const released = createDeferredPromise();
+		const lost = new AbortController();
 		const held = this.lockService
 			.withLease(LockNamespace.KNOWN_LOCKS, `agent-thread-turn:${threadId}`, async (signal) => {
-				acquired.resolve(signal);
+				signal.addEventListener(
+					'abort',
+					() => lost.abort(new OperationalError('Agent thread lease was lost')),
+					{ once: true },
+				);
+				acquired.resolve();
 				await released.promise;
 			})
 			.catch((error: Error) => acquired.reject(error));
-		const leaseLost = await acquired.promise;
+		await acquired.promise;
 		return {
-			leaseLost,
+			leaseLost: lost.signal,
 			release: async () => {
 				released.resolve();
 				await held;
