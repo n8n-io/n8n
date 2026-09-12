@@ -135,7 +135,7 @@ const combinedSettingsInputSchema = z
 		...workflowSettingsObjectSchema.shape,
 	})
 	.describe(
-		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds). Provide only the keys for the operation you are running.',
+		'Settings to write. For setNodeSettings use the node-level keys (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce). For setWorkflowSettings use the workflow-level keys (errorWorkflow, timezone, executionOrder, saveExecutionProgress, saveManualExecutions, saveDataErrorExecution, saveDataSuccessExecution, executionTimeout, timeSavedPerExecution, callerPolicy, callerIds, availableInMCP). Provide only the keys for the operation you are running.',
 	);
 const buildOperationInputSchema = (canvasGroupsEnabled: boolean) =>
 	z
