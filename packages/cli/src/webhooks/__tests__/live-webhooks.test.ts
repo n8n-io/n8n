@@ -2,6 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { Response } from 'express';
+import type { ErrorReporter } from 'n8n-core';
 import type {
 	IConnections,
 	IHttpRequestMethods,
@@ -33,7 +34,7 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 vi.mock('@/webhooks/webhook-helpers');
 vi.mock('@/workflow-execute-additional-data');
@@ -149,7 +150,38 @@ describe('LiveWebhooks', () => {
 	}
 
 	describe('executeWebhook', () => {
-		it('rejects when saving static data fails after the webhook callback succeeds', async () => {
+		it('rejects when the static data write fails after the webhook callback succeeds', async () => {
+			const dbError = new Error('static data write failed');
+			const execute = vi.fn().mockRejectedValue(dbError);
+			const failingRepository = mock<WorkflowRepository>();
+			failingRepository.createQueryBuilder.mockReturnValue({
+				update: vi.fn().mockReturnThis(),
+				set: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				execute,
+			} as never);
+
+			// A real service backed by a failing write, so the rejection is produced
+			// by the actual DB failure path rather than a mocked rejection.
+			const webhooks = new LiveWebhooks(
+				mockLogger(),
+				nodeTypes,
+				webhookService,
+				workflowRepository,
+				new WorkflowStaticDataService(mockLogger(), mock<ErrorReporter>(), failingRepository),
+				workflowsConfig,
+				workflowPublishedDataService,
+				expressionEngineConfig,
+			);
+
+			const webhookNode: INode = {
+				id: 'webhook-node',
+				name: NODE_NAME,
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { path: WEBHOOK_PATH, httpMethod: 'GET' },
+			};
 			const workflowEntity = mock<WorkflowEntity>({
 				id: WORKFLOW_ID,
 				name: 'Test Workflow',
@@ -160,16 +192,20 @@ describe('LiveWebhooks', () => {
 				staticData: {},
 				activeVersion: mock<WorkflowHistory>({
 					versionId: 'v1',
-					nodes: [],
+					nodes: [webhookNode],
 					connections: {},
 				}),
 				shared: [],
 			});
-			const request = setupExecuteWebhookMocks(workflowEntity);
-			const saveError = new Error('static data storage failed');
-			workflowStaticDataService.saveStaticData.mockRejectedValue(saveError);
+			const request = setupExecuteWebhookMocks(workflowEntity, {
+				onExecuteWebhook: ({ workflow }) => {
+					// Change the static data, otherwise there is nothing to save
+					workflow.staticData.testValue = 1;
+				},
+			});
 
-			await expect(liveWebhooks.executeWebhook(request, mock<Response>())).rejects.toBe(saveError);
+			await expect(webhooks.executeWebhook(request, mock<Response>())).rejects.toBe(dbError);
+			expect(execute).toHaveBeenCalled();
 		});
 
 		it('should use active version nodes when executing webhook', async () => {
