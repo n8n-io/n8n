@@ -540,7 +540,8 @@ export const isResourceMapperFieldListStale = (
 			oldField.defaultMatch !== newField.defaultMatch ||
 			oldField.display !== newField.display ||
 			oldField.canBeUsedToMatch !== newField.canBeUsedToMatch ||
-			oldField.type !== newField.type
+			oldField.type !== newField.type ||
+			oldField.description !== newField.description
 		) {
 			return true;
 		}
