@@ -6,7 +6,7 @@ import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { TabOptions } from '@n8n/design-system';
-import { N8nButton, N8nHeading, N8nLink, N8nTabs, N8nTag, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nHeading, N8nLink, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -88,7 +88,7 @@ onMounted(async () => {
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ i18n.baseText('settings.roles') }}
 			</N8nHeading>
-			<N8nTag :clickable="false" text="New" :class="$style.newTag" />
+			<N8nBadge variant="success" :class="$style.newTag">New</N8nBadge>
 		</div>
 
 		<N8nText color="text-base" class="mb-xl" tag="p">

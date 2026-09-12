@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import {
-	N8nActionPill,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
@@ -173,14 +166,14 @@ function handleConnect() {
 								data-test-id="tools-connection-row-verified-badge"
 							/>
 						</N8nTooltip>
-						<N8nActionPill
+						<N8nBadge
 							v-if="item.freeCredits"
-							size="small"
-							:type="creditsPill.type"
+							size="xxsmall"
+							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
 							data-test-id="tools-connection-row-free-credits"
 						>
 							{{ creditsPill.text }}
-						</N8nActionPill>
+						</N8nBadge>
 					</span>
 					<N8nText
 						v-if="item.description"

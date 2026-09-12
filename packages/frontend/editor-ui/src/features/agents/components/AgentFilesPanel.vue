@@ -8,6 +8,7 @@ import {
 	N8nTooltip,
 	N8nText,
 	N8nEmptyState,
+	N8nBadge,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -199,10 +200,9 @@ function onFilesSelected(event: Event) {
 							</span>
 						</td>
 						<td :class="$style.originCell" data-testid="agent-file-origin">
-							<span :class="$style.originPill" data-testid="agent-file-origin-pill">
-								<N8nIcon icon="user" size="large" />
-								<span>{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}</span>
-							</span>
+							<N8nBadge leading-icon="user" data-testid="agent-file-origin-pill">
+								{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-testid="agent-file-created-at">
 							{{ formatDate(file.createdAt) }}

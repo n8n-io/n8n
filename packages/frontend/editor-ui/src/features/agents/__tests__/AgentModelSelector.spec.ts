@@ -288,7 +288,7 @@ describe('AgentModelSelector', () => {
 		expect(getN8nCreditsItem(wrapper, 'anthropic')).toBeDefined();
 	});
 
-	it('shows the Free credits pill (same N8nActionPill as the node creator) on covered providers', async () => {
+	it('shows the Free credits badge on covered providers', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
 
@@ -502,7 +502,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: null });
 
 		const item = getN8nCreditsItem(wrapper, 'anthropic');
-		// Green balance action pill (N8nActionPill), matching the workflow node.
+		/** Green balance badge that matches the workflow node. */
 		expect(item?.data?.actionPill).toEqual({ text: '$4.99 left', type: 'default' });
 	});
 

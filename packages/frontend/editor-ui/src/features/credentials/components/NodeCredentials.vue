@@ -62,7 +62,7 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
 import {
-	N8nActionPill,
+	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -1313,13 +1313,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
 									</N8nText>
 								</span>
-								<N8nActionPill
+								<N8nBadge
 									v-if="balancePill"
-									size="small"
-									:type="balancePill.type"
-									:text="balancePill.text"
+									size="xxsmall"
+									:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
 									:class="$style.entryPill"
-								/>
+								>
+									{{ balancePill.text }}
+								</N8nBadge>
 							</div>
 						</N8nOption>
 						<template #empty> </template>
@@ -1407,12 +1408,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									<N8nText :class="$style.optionName">
 										{{ N8N_CREDITS_LABEL }}
 									</N8nText>
-									<N8nActionPill
+									<N8nBadge
 										v-if="balancePill"
-										size="small"
-										:type="balancePill.type"
-										:text="balancePill.text"
-									/>
+										size="xxsmall"
+										:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
+									>
+										{{ balancePill.text }}
+									</N8nBadge>
 									<N8nIcon
 										v-if="isAiGatewayManagedCredentials(type.name)"
 										icon="check"
@@ -1495,7 +1497,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
 								N8N_CREDITS_LABEL
 							}}</span>
-							<N8nActionPill size="small" :type="balancePill?.type" :text="balancePill?.text" />
+							<N8nBadge
+								size="xxsmall"
+								:variant="balancePill?.type === 'danger' ? 'danger' : 'success'"
+							>
+								{{ balancePill?.text }}
+							</N8nBadge>
 						</div>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">

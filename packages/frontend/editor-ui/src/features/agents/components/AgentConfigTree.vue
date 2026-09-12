@@ -143,14 +143,13 @@ function onSectionClick(section: SectionDescriptor) {
 				<N8nText tag="span" size="medium" :class="$style.sectionLabel">{{ section.label }}</N8nText>
 				<N8nBadge
 					v-if="typeof section.count === 'number'"
-					theme="default"
+					variant="outline"
 					size="xsmall"
-					:show-border="false"
 					:class="$style.countPill"
 					data-testid="agent-config-tree-count"
 					>{{ section.count }}</N8nBadge
 				>
-				<N8nBadge v-if="section.pill" theme="primary" size="xsmall" :class="$style.statusPill">{{
+				<N8nBadge v-if="section.pill" variant="primary" size="xsmall" :class="$style.statusPill">{{
 					section.pill
 				}}</N8nBadge>
 			</button>

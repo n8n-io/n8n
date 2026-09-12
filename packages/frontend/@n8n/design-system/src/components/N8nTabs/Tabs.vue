@@ -3,11 +3,11 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
-import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -125,8 +125,8 @@ const scrollRight = () => scroll(50);
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewTag v-if="option.preview" />
-							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+							<PreviewBadge v-if="option.preview" />
+							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
 					<RouterLink
@@ -139,8 +139,8 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
 						v-else
@@ -175,8 +175,8 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>
 			</div>
@@ -262,12 +262,16 @@ const scrollRight = () => scroll(50);
 	}
 
 	/**
-	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * A badge is taller than the label's line box, so it would sit flush against the
 	 * tab's top edge and collide with the inset focus ring.
 	 */
-	.tabs:has(:global(.n8n-tag)) & {
+	.tabs:has(.badge) & {
 		padding-top: var(--spacing--4xs);
 	}
+}
+
+.badge {
+	flex-shrink: 0;
 }
 
 .activeTab {

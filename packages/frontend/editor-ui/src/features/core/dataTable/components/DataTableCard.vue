@@ -66,7 +66,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 						<N8nText tag="h2" bold data-test-id="data-table-card-name">
 							{{ props.dataTable.name }}
 						</N8nText>
-						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="props.readOnly" class="ml-3xs" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>

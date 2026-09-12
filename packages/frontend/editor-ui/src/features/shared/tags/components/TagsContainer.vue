@@ -7,7 +7,7 @@ import IntersectionObserved from '@/app/components/IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 
-import { N8nTag } from '@n8n/design-system';
+import { N8nBadge, N8nTag } from '@n8n/design-system';
 
 interface TagsContainerProps {
 	tagIds: readonly string[];
@@ -136,13 +136,9 @@ onBeforeUnmount(() => {
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
 			>
-				<N8nTag
-					v-if="tag.isCount"
-					:title="tag.title"
-					:text="tag.name"
-					:clickable="false"
-					class="count-container"
-				/>
+				<N8nBadge v-if="tag.isCount" :title="tag.title" class="count-container">
+					{{ tag.name }}
+				</N8nBadge>
 				<IntersectionObserved
 					v-else
 					:class="{ hideTag: tag.hidden }"
