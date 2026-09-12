@@ -457,6 +457,23 @@ describe('useWorkflowSaving', () => {
 			expect(snapshot.availableInMCP).toBe(true);
 		});
 
+		it('syncs the workflow scopes from the create response into the document', async () => {
+			const workflow = getDuplicateTestWorkflow();
+			const created = createTestWorkflow({
+				id: 'new-wf-id',
+				scopes: ['workflow:read', 'workflow:update'],
+			});
+			vi.spyOn(workflowsStore, 'createNewWorkflow').mockResolvedValue(created);
+
+			const { saveAsNewWorkflow } = useWorkflowSaving({ router });
+			await saveAsNewWorkflow({ name: workflow.name, data: workflow });
+
+			expect(useWorkflowDocumentStore(createWorkflowDocumentId(created.id)).scopes).toEqual([
+				'workflow:read',
+				'workflow:update',
+			]);
+		});
+
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			if (!workflow.nodes) {
