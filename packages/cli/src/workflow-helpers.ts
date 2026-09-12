@@ -14,6 +14,9 @@ import {
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
 	validateWorkflowGroups,
+	buildSubWorkflowOutputFromRunData,
+	triggerReturnsLastRunOnly,
+	type IConnections,
 	type IDataObject,
 	type INodeCredentialsDetails,
 	type INodeTypes,
@@ -490,8 +493,21 @@ export async function updateParentExecutionWithChildResults(
 	childExecution?: RelatedExecution,
 ): Promise<void> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
+	const workflowDefinition = await getSubWorkflowDefinition(childExecution);
+	const subWorkflowOutput = workflowDefinition
+		? buildSubWorkflowOutputFromRunData(subworkflowResults.data.resultData, workflowDefinition, {
+				lastRunOnly: triggerReturnsLastRunOnly(workflowDefinition.nodes),
+				mode: subworkflowResults.mode,
+				pinData: subworkflowResults.data.resultData.pinData,
+			})
+		: undefined;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	const hasSubWorkflowOutput =
+		subWorkflowOutput !== undefined &&
+		subWorkflowOutput[0] !== null &&
+		subWorkflowOutput[0].length > 0;
+
+	if (!subworkflowError && !hasSubWorkflowOutput && !lastExecutedNodeData?.data) return;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -558,6 +574,8 @@ export async function updateParentExecutionWithChildResults(
 			resumeError: subworkflowError,
 			...(childExecution && { subExecution: childExecution }),
 		};
+	} else if (hasSubWorkflowOutput) {
+		nodeExecutionStack[0].data = { main: subWorkflowOutput };
 	} else if (lastExecutedNodeData?.data) {
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
@@ -594,6 +612,23 @@ export function getActiveVersionUpdateValue(
 	}
 
 	return dbWorkflow.activeVersionId ? updatedVersion : null;
+}
+
+async function getSubWorkflowDefinition(
+	childExecution?: RelatedExecution,
+): Promise<{ nodes: INode[]; connections: IConnections } | undefined> {
+	if (!childExecution?.workflowId) {
+		return undefined;
+	}
+
+	const { WorkflowRepository } = await import('@n8n/db');
+	const workflow = await Container.get(WorkflowRepository).findById(childExecution.workflowId);
+
+	if (!workflow) {
+		return undefined;
+	}
+
+	return { nodes: workflow.nodes, connections: workflow.connections };
 }
 
 /**
