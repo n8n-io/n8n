@@ -1,4 +1,5 @@
-import type { NextFunction, Response } from 'express';
+import type { ExecutionSummaries } from '@n8n/db';
+import type { NextFunction, Request, Response } from 'express';
 import { validate } from 'jsonschema';
 import type { JsonObject } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
@@ -6,51 +7,61 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as ResponseHelper from '@/response-helper';
 
+import { parseExecutionCursor } from './execution-cursor';
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
 } from './execution.service';
-import type { ExecutionRequest } from './execution.types';
 
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
+
+/** Parse and validate the `filter` query param, applied on top of `rangeQuery`. */
+function parseFilter(rawFilter: unknown, rangeQuery: ExecutionSummaries.RangeQuery) {
+	if (typeof rawFilter !== 'string') return rangeQuery;
+
+	const jsonFilter = jsonParse<JsonObject>(rawFilter, {
+		errorMessage: 'Failed to parse query string',
+	});
+
+	for (const key of Object.keys(jsonFilter)) {
+		if (!ALLOWED_FILTER_FIELDS.includes(key)) delete jsonFilter[key];
+	}
+
+	if (!isValid(jsonFilter)) throw new UnexpectedError('Query does not match schema');
+
+	return { ...rangeQuery, ...jsonFilter };
+}
 
 /**
  * Middleware to parse the query string in a request to retrieve a range of execution summaries.
  */
-export const parseRangeQuery = (
-	req: ExecutionRequest.GetMany,
-	res: Response,
-	next: NextFunction,
-) => {
+export const parseRangeQuery = (req: Request, res: Response, next: NextFunction) => {
 	const { limit, firstId, lastId } = req.query;
 
 	try {
-		req.rangeQuery = {
+		if (firstId !== undefined || lastId !== undefined)
+			throw new BadRequestError(
+				'Use cursor to load execution pages. Your n8n instance has most likely updated. Please refresh the page.',
+			);
+
+		if (req.query.cursor !== undefined && typeof req.query.cursor !== 'string')
+			throw new BadRequestError('Invalid execution cursor');
+
+		const beforeId = parseExecutionCursor(req.query.cursor);
+
+		const pageLimit = limit === undefined ? 20 : Number(limit);
+		if (!Number.isInteger(pageLimit) || pageLimit < 1 || pageLimit > 100)
+			throw new BadRequestError('Execution limit must be between 1 and 100');
+
+		const rangeQuery: ExecutionSummaries.RangeQuery = parseFilter(req.query.filter, {
 			kind: 'range',
 			range: {
-				limit: limit && typeof limit === 'string' ? Math.min(parseInt(limit, 10), 100) : 20,
+				limit: pageLimit,
+				...(beforeId ? { beforeId } : {}),
 			},
-		};
+		});
 
-		if (firstId && typeof firstId === 'string') req.rangeQuery.range.firstId = firstId;
-		if (lastId && typeof lastId === 'string') req.rangeQuery.range.lastId = lastId;
-
-		if (typeof req.query.filter === 'string') {
-			const jsonFilter = jsonParse<JsonObject>(req.query.filter, {
-				errorMessage: 'Failed to parse query string',
-			});
-
-			for (const key of Object.keys(jsonFilter)) {
-				if (!ALLOWED_FILTER_FIELDS.includes(key)) delete jsonFilter[key];
-			}
-
-			if (jsonFilter.waitTill) jsonFilter.waitTill = Boolean(jsonFilter.waitTill);
-
-			if (!isValid(jsonFilter)) throw new UnexpectedError('Query does not match schema');
-
-			req.rangeQuery = { ...req.rangeQuery, ...jsonFilter };
-		}
-
+		Object.assign(req, { rangeQuery });
 		next();
 	} catch (error) {
 		if (error instanceof Error) {

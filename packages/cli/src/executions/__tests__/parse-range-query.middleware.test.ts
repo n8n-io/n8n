@@ -1,7 +1,9 @@
+import type { SerializedCursor } from '@n8n/api-types';
 import type { NextFunction } from 'express';
 import type * as express from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
@@ -23,6 +25,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": ["waiting }',
 					limit: undefined,
 					firstId: undefined,
@@ -41,6 +44,7 @@ describe('`parseRangeQuery` middleware', () => {
 
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": 123 }',
 					limit: undefined,
 					firstId: undefined,
@@ -59,6 +63,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse status and mode fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "status": ["waiting"], "mode": "manual" }',
 					limit: undefined,
 					firstId: undefined,
@@ -76,8 +81,8 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse date-related fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
-					filter:
-						'{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01", "waitTill": "true" }',
+					cursor: undefined,
+					filter: '{ "startedBefore": "2021-01-01", "startedAfter": "2020-01-01" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -88,14 +93,14 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.startedBefore).toBe('2021-01-01');
 			expect(req.rangeQuery.startedAfter).toBe('2020-01-01');
-			expect(req.rangeQuery.waitTill).toBe(true);
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should parse ID-related fields', () => {
+		test('should parse `workflowId` field', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
-					filter: '{ "id": "123", "workflowId": "456" }',
+					cursor: undefined,
+					filter: '{ "workflowId": "456" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -104,7 +109,6 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.id).toBe('123');
 			expect(req.rangeQuery.workflowId).toBe('456');
 			expect(nextFn).toBeCalledTimes(1);
 		});
@@ -112,6 +116,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should parse `projectId` field', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: '{ "projectId": "123" }',
 					limit: undefined,
 					firstId: undefined,
@@ -128,7 +133,9 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should delete invalid fields', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
-					filter: '{ "id": "123", "test": "789" }',
+					cursor: undefined,
+					// `id` is no longer a filter, so it is dropped like any unknown field.
+					filter: '{ "workflowId": "456", "id": "123", "test": "789" }',
 					limit: undefined,
 					firstId: undefined,
 					lastId: undefined,
@@ -137,16 +144,18 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.id).toBe('123');
+			expect(req.rangeQuery.workflowId).toBe('456');
+			expect('id' in req.rangeQuery).toBe(false);
 			expect('test' in req.rangeQuery).toBe(false);
 			expect(nextFn).toBeCalledTimes(1);
 		});
 	});
 
 	describe('range', () => {
-		test('should parse first and last IDs', () => {
+		test('should reject first and last IDs', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: undefined,
 					firstId: '111',
@@ -156,14 +165,14 @@ describe('`parseRangeQuery` middleware', () => {
 
 			parseRangeQuery(req, res, nextFn);
 
-			expect(req.rangeQuery.range.firstId).toBe('111');
-			expect(req.rangeQuery.range.lastId).toBe('999');
-			expect(nextFn).toBeCalledTimes(1);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(nextFn).not.toHaveBeenCalled();
 		});
 
 		test('should parse limit', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: '50',
 					firstId: undefined,
@@ -180,6 +189,7 @@ describe('`parseRangeQuery` middleware', () => {
 		test('should default limit to 20 if absent', () => {
 			const req = mock<ExecutionRequest.GetMany>({
 				query: {
+					cursor: undefined,
 					filter: undefined,
 					limit: undefined,
 					firstId: undefined,
@@ -191,6 +201,58 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.range.limit).toEqual(20);
 			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should leave `beforeId` unset without a cursor', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor: undefined,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.range.beforeId).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should set range.beforeId from a valid cursor', () => {
+			const cursor = encodeExecutionCursor('123');
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.range.beforeId).toBe('123');
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should reject an invalid cursor', () => {
+			const req = mock<ExecutionRequest.GetMany>({
+				query: {
+					cursor: 'not-a-real-cursor' as SerializedCursor,
+					filter: undefined,
+					limit: undefined,
+					firstId: undefined,
+					lastId: undefined,
+				},
+			});
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(nextFn).not.toHaveBeenCalled();
 		});
 	});
 });

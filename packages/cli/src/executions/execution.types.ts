@@ -1,9 +1,11 @@
+import type { ExecutionListPaginationQuery } from '@n8n/api-types';
 import type { AuthenticatedRequest, ExecutionSummaries, ExecutionEntity } from '@n8n/db';
 import type { AnnotationVote, ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
 		type GetMany = {
+			cursor?: ExecutionListPaginationQuery['cursor'];
 			filter: string; // stringified `FilterFields`
 			limit: string;
 			lastId: string;

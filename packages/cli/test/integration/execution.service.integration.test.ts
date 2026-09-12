@@ -136,62 +136,36 @@ describe('ExecutionService', () => {
 			expect(output.results).toHaveLength(2);
 		});
 
-		test('should retrieve executions before `lastId`, excluding it', async () => {
+		test('should retrieve executions before the cursor position, excluding it', async () => {
 			const workflow = await createWorkflow({}, owner);
 
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-			]);
+			const startedAt = (minute: number) => new Date(`2024-06-01T10:0${minute}:00.000Z`);
 
-			const [firstId, secondId] = await executionRepository.getAllIds();
+			// Created in ascending `startedAt` order, so the last one is the newest.
+			const executions = [];
+			for (const minute of [1, 2, 3, 4]) {
+				executions.push(
+					await createExecution({ status: 'success', startedAt: startedAt(minute) }, workflow),
+				);
+			}
+
+			const [oldest, secondOldest, thirdOldest] = executions;
 
 			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
-				range: { limit: 20, lastId: secondId },
+				range: {
+					limit: 20,
+					beforeId: thirdOldest.id,
+				},
 				user: owner,
 			};
 
 			const output = await executionService.findRangeWithCount(query);
 
+			// The count covers all matching rows, not just the page.
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual(
-				expect.arrayContaining([expect.objectContaining({ id: firstId })]),
-			);
-		});
-
-		test('should retrieve executions after `firstId`, excluding it', async () => {
-			const workflow = await createWorkflow({}, owner);
-
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-			]);
-
-			const [firstId, secondId, thirdId, fourthId] = await executionRepository.getAllIds();
-
-			const query: ExecutionSummaries.RangeQuery = {
-				kind: 'range',
-				range: { limit: 20, firstId },
-				user: owner,
-			};
-
-			const output = await executionService.findRangeWithCount(query);
-
-			expect(output.count).toBe(4);
-			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ id: fourthId }),
-					expect.objectContaining({ id: thirdId }),
-					expect.objectContaining({ id: secondId }),
-				]),
-			);
+			expect(output.results.map(({ id }) => id)).toEqual([secondOldest.id, oldest.id]);
 		});
 
 		test('should filter executions by `status`', async () => {
@@ -319,6 +293,7 @@ describe('ExecutionService', () => {
 			expect(output).toEqual({
 				count: 1,
 				estimated: false,
+				nextCursor: null,
 				results: [expect.objectContaining({ status: 'success' })],
 			});
 		});
@@ -346,6 +321,7 @@ describe('ExecutionService', () => {
 			expect(output).toEqual({
 				count: 2,
 				estimated: false,
+				nextCursor: null,
 				results: [
 					expect.objectContaining({ status: 'success' }),
 					expect.objectContaining({ status: 'success' }),
@@ -376,6 +352,7 @@ describe('ExecutionService', () => {
 			expect(output).toEqual({
 				count: 2,
 				estimated: false,
+				nextCursor: null,
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
 					expect.objectContaining({ workflowId: firstWorkflow.id }),
@@ -408,6 +385,7 @@ describe('ExecutionService', () => {
 			expect(output).toEqual({
 				count: 1,
 				estimated: false,
+				nextCursor: null,
 				results: expect.arrayContaining([
 					expect.objectContaining({ workflowId: firstWorkflow.id, status: 'error' }),
 				]),
@@ -415,12 +393,6 @@ describe('ExecutionService', () => {
 		});
 
 		test.each([
-			{
-				name: 'waitTill',
-				filter: { waitTill: true },
-				matchingParams: { waitTill: new Date() },
-				nonMatchingParams: { waitTill: undefined },
-			},
 			{
 				name: 'metadata',
 				filter: { metadata: [{ key: 'testKey', value: 'testValue' }] },
@@ -466,6 +438,7 @@ describe('ExecutionService', () => {
 				expect(output).toEqual({
 					count: 1,
 					estimated: false,
+					nextCursor: null,
 					results: expect.arrayContaining([
 						expect.objectContaining({ workflowId: firstWorkflow.id }),
 					]),
