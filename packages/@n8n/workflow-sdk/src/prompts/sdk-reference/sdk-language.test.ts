@@ -120,6 +120,13 @@ describe('NODE_GROUPS_REFERENCE', () => {
 		expect(NODE_GROUPS_REFERENCE).toMatch(/keep the .+ and their descriptions\s+intact/is);
 	});
 
+	it('names the two shapes that are cut wrong most often', () => {
+		// Case 8 (gates in a row) and case 3 (two-node stages) failed on every eval run
+		// while the abstract rule was present, so the guidance names the shape.
+		expect(GROUPING_GUIDANCE).toMatch(/first node of the next group, never loose/i);
+		expect(GROUPING_GUIDANCE).toMatch(/merge the small stage into its neighbour/i);
+	});
+
 	it('tells agents to fix what a dropped-group warning reports, not the boundary', () => {
 		// A build took two dropped-group warnings as licence to publish the stage
 		// ungrouped instead of fixing the group.

@@ -127,13 +127,13 @@ Every workflow needs an explicit grouping decision, taken while you write the co
 
 - **When:** count top-level items with no groups (trigger + every node or existing group). More than ${TOP_LEVEL_ITEM_CEILING} → you must group. A linear pipeline is the normal case for grouping, not an exemption: stages run in sequence (ingest → transform → deliver). ${TOP_LEVEL_ITEM_CEILING} or fewer serving one objective → leave it ungrouped.
 - **How many:** one per stage or high-level objective, typically 3-5, aiming for at most ${TOP_LEVEL_ITEM_CEILING} top-level items after grouping. Staying above ${TOP_LEVEL_ITEM_CEILING} is only acceptable when every item still at the top level is either a group already, or a node that cannot join one without breaking a validity rule — check each one before you settle. Never split one objective to hit the number. When in doubt, fewer and larger.
-- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them.
+- **What belongs together:** one business outcome ("Fetch new recordings"), never a technical category ("HTTP requests", "Database operations"). Cut where the objective changes; merge groups serving the same outcome. Stages of one or two nodes mean the boundaries are too fine — widen them: merge the small stage into its neighbour rather than keeping three groups.
 - **Groups vs sub-workflows:** a group organises one canvas; a sub-workflow is separately executed and reusable. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
 
 **Boundaries:** a group takes one member receiving from outside and one member sending outside; any number of connections may reach those two members.
 
 - A branch that stops one way and continues the other: keep the branch node inside with both its paths outside, end the group before it, or leave it and its stop path outside.
-- Work that fans out into parallel branches: the node they fan out from and the node they reconverge on both belong inside, or every branch faces outward on its own.
+- Work that fans out into parallel branches: the node they fan out from and the node they reconverge on both belong inside, or every branch faces outward on its own. Several IF nodes in a row: each IF sits inside a stage; the node where their paths join is inside that stage or the first node of the next group, never loose.
 - When the node at either end cannot be a member — the trigger, or a node already in another group — the stage needs its own step there to serve as the single entry or exit. Use a step the stage already has; add a plain pass-through only when the stage would otherwise stay ungrouped.
 - A rejected group never closes the stage: try a smaller slice that is valid — one branch, or the linear run before or after the split — before leaving anything ungrouped.
 

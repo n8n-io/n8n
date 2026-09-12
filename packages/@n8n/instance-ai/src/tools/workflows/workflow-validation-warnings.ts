@@ -1,17 +1,30 @@
 import {
 	partitionValidationIssues,
+	toEngineConnections,
 	type IssueSeverity,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
 import {
-	isTriggerNodeType,
-	STICKY_NODE_TYPE,
-	TOP_LEVEL_ITEM_CEILING,
+	formatTopLevelItemsMessage,
+	summarizeTopLevelItems,
+	TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
+	type TopLevelItemsSummary,
 	type WorkflowGroupViolation,
 } from 'n8n-workflow';
 
+/** Informational: a declared group was invalid and the save removed it. */
 export const NODE_GROUP_DROPPED_CODE = 'NODE_GROUP_DROPPED';
-export const TOP_LEVEL_ITEMS_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+/** Refusal: the canvas is over the ceiling, has no group, and the agent gave no reason. */
+export const GROUPING_DECISION_MISSING_CODE = 'GROUPING_DECISION_MISSING';
+/** Refusal: the canvas is over the ceiling and the save dropped a group the agent declared. */
+export const GROUP_DROPPED_OVER_CEILING_CODE = 'GROUP_DROPPED_OVER_CEILING';
+
+/**
+ * What the agent tells build-workflow about groups.
+ * `grouped`: the source declares groups.
+ * `not_warranted`: no group is needed, and a reason is given.
+ */
+export type GroupingDecision = 'grouped' | 'not_warranted';
 
 export interface ValidationWarning {
 	code: string;
@@ -50,44 +63,82 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	return partitionValidationIssues(warnings);
 }
 
+/** Boxes on the canvas with every group collapsed, for the saved shape of a build. */
+export function summarizeWorkflowTopLevelItems(json: WorkflowJSON): TopLevelItemsSummary {
+	return summarizeTopLevelItems({
+		nodes: json.nodes ?? [],
+		nodeGroups: json.nodeGroups,
+		connectionsBySourceNode: toEngineConnections(json.connections),
+	});
+}
+
 /**
- * Counts the boxes on the canvas with every group collapsed, and warns when there are
- * more than the TOP_LEVEL_ITEM_CEILING ceiling. Sub-nodes and sticky notes don't count:
- * a sub-node rides with its parent, and a sticky belongs to the user.
+ * Warns when the collapsed canvas has more boxes than TOP_LEVEL_ITEM_CEILING. The
+ * count lives in n8n-workflow so the MCP tools report the same number.
  */
-export function topLevelItemsWarning(json: WorkflowJSON): ValidationWarning | undefined {
-	const groups = json.nodeGroups ?? [];
-	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
-	const subNodeNames = new Set(
-		Object.entries(json.connections ?? {}).flatMap(([nodeName, connectionsByType]) => {
-			const types = Object.keys(connectionsByType);
-			return types.length > 0 && types.every((type) => type !== 'main') ? [nodeName] : [];
-		}),
-	);
-
-	const ungrouped = (json.nodes ?? []).filter(
-		(node) =>
-			!groupedNodeIds.has(node.id) &&
-			node.type !== STICKY_NODE_TYPE &&
-			!(node.name !== undefined && subNodeNames.has(node.name)),
-	);
-
-	const total = groups.length + ungrouped.length;
-	if (total <= TOP_LEVEL_ITEM_CEILING) {
+export function topLevelItemsWarning(
+	json: WorkflowJSON,
+	summary: TopLevelItemsSummary = summarizeWorkflowTopLevelItems(json),
+): ValidationWarning | undefined {
+	if (!summary.overCeiling) {
 		return;
 	}
 
-	const groupable = ungrouped
-		.filter((node) => !isTriggerNodeType(node.type))
-		.map((node) => node.name ?? node.id);
+	return {
+		code: TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
+		severity: 'informational',
+		message: formatTopLevelItemsMessage(summary),
+	};
+}
+
+/**
+ * The check that blocks a save. Over the ceiling, a dropped group refuses the build
+ * until its boundary is fixed — the agent had already decided to group, and an opt-out
+ * never excuses that. A canvas with no group refuses it until the agent groups or
+ * states why it cannot.
+ */
+export function groupingDecisionBlocker(input: {
+	summary: TopLevelItemsSummary;
+	declaredGroupCount: number;
+	droppedGroupWarnings: ValidationWarning[];
+	groupingDecision?: GroupingDecision;
+}): ValidationWarning | undefined {
+	const { summary, declaredGroupCount, droppedGroupWarnings, groupingDecision } = input;
+
+	if (!summary.overCeiling) {
+		return;
+	}
+
+	// Over the ceiling and the save dropped a group: the agent must repair it, not ship past it.
+	if (droppedGroupWarnings.length > 0) {
+		const reasons = droppedGroupWarnings.map((warning) => warning.message).join(' ');
+		return {
+			code: GROUP_DROPPED_OVER_CEILING_CODE,
+			severity: 'warning',
+			message:
+				`${droppedGroupWarnings.length} of ${declaredGroupCount} declared node group(s) were removed, ` +
+				`so the canvas would have ${summary.total} boxes. ` +
+				`${reasons} Fix the boundary each message names and build again; do not remove the groups.`,
+		};
+	}
+
+	if (summary.groupCount > 0) {
+		return;
+	}
+
+	if (groupingDecision === 'not_warranted') {
+		return;
+	}
 
 	return {
-		code: TOP_LEVEL_ITEMS_CODE,
-		severity: 'informational',
+		code: GROUPING_DECISION_MISSING_CODE,
+		severity: 'warning',
 		message:
-			`The canvas top level has ${total} boxes with every group collapsed, over the ${TOP_LEVEL_ITEM_CEILING} you should aim for` +
-			(groupable.length > 0 ? `. Still ungrouped: ${groupable.join(', ')}` : '') +
-			'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.',
+			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
+			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
+			'Wrap each stage in `.group(name, members, { description })` and build again. ' +
+			"If no valid group can hold these nodes, call build-workflow again with `groupingDecision: 'not_warranted'` " +
+			'and a `groupingReason` that says why.',
 	};
 }
 
