@@ -11,6 +11,7 @@ import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
+import { UnusedWorkspaceDepsRule } from './rules/unused-workspace-deps.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 export type { CodeHealthContext } from './context.js';
@@ -24,6 +25,7 @@ export { SingleInstanceLockfileRule } from './rules/single-instance-lockfile.rul
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
+export { UnusedWorkspaceDepsRule } from './rules/unused-workspace-deps.rule.js';
 export { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
 
 const defaultRuleSettings: RuleSettingsMap = {
@@ -68,6 +70,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'warning',
 		options: { workspaceFile: 'pnpm-workspace.yaml', lockFile: 'pnpm-lock.yaml' },
+	},
+	'unused-workspace-deps': {
+		enabled: true,
+		severity: 'warning',
+		options: {},
 	},
 	'endpoint-scope-coverage': {
 		// Disabled by default: enabling gates CI on ~129 existing authenticated-unscoped
@@ -147,6 +154,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new EncryptionBoundaryRule());
 	runner.registerRule(new LintConfigLayeringRule());
 	runner.registerRule(new StaleOverridesRule());
+	runner.registerRule(new UnusedWorkspaceDepsRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());
 	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
