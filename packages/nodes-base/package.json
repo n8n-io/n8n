@@ -269,6 +269,7 @@
       "dist/credentials/MicrosoftSql.credentials.js",
       "dist/credentials/MicrosoftTeamsOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftToDoOAuth2Api.credentials.js",
+      "dist/credentials/MindeeApi.credentials.js",
       "dist/credentials/MindeeInvoiceApi.credentials.js",
       "dist/credentials/MindeeReceiptApi.credentials.js",
       "dist/credentials/MiroOAuth2Api.credentials.js",
