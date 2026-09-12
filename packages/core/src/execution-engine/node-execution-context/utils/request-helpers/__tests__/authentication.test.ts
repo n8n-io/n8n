@@ -407,6 +407,52 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).toHaveBeenCalledTimes(2);
 	});
 
+	test('does not refresh again when the retried request fails', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error401 = Object.assign(new Error('401 - still expired'), {
+			response: { status: 401 },
+		});
+		request
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockRejectedValueOnce(error401);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				{
+					shouldRefreshCredentials: (response) =>
+						typeof response.body === 'object' &&
+						response.body !== null &&
+						'code' in response.body &&
+						response.body.code === 10001,
+				},
+			),
+		).rejects.toBeInstanceOf(NodeApiError);
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenNthCalledWith(
+			2,
+			{ helpers: mockThis.helpers },
+			expect.objectContaining({ sessionToken: 'fresh' }),
+			'testSessionAuth',
+			mockNode,
+			true,
+		);
+	});
+
 	test('still retries a form-data body when the 401 happened before any send', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });

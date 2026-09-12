@@ -41,6 +41,25 @@ describe('toHttpFullResponse', () => {
 		});
 	});
 
+	it('reads a legacy error payload from the top-level error field', () => {
+		expect(
+			toHttpFullResponse({
+				statusCode: 400,
+				error: { errcode: 40001 },
+				response: {
+					status: 400,
+					headers: {},
+					statusText: 'Bad Request',
+				},
+			}),
+		).toEqual({
+			statusCode: 400,
+			body: { errcode: 40001 },
+			headers: {},
+			statusMessage: 'Bad Request',
+		});
+	});
+
 	it('parses a JSON buffer body', () => {
 		expect(
 			toHttpFullResponse({

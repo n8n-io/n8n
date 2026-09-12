@@ -976,6 +976,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
 		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('refreshes on a streamed JSON body when the custom callback matches (legacy path)', async () => {
@@ -1010,6 +1011,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
 		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('does not consume a non-JSON stream when a custom callback is set (legacy path)', async () => {
@@ -1087,6 +1089,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('refreshes on a never-error full response when the custom callback matches (legacy path)', async () => {
@@ -1125,6 +1128,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
 		expect(mockThis.helpers.request).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('does not refresh a 200 when no custom callback is set (isN8nRequest path)', async () => {
@@ -1177,6 +1181,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('still refreshes on 401 when the custom callback is false (isN8nRequest path)', async () => {
@@ -1204,6 +1209,7 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		expect(mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData).toHaveBeenCalled();
 	});
 
 	test('does not refresh when skipTokenRefresh is true even if the custom callback matches', async () => {
@@ -1270,6 +1276,41 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 
 		expect(result).toEqual({ statusCode: 200, body: { ok: true } });
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not refresh again when the retried isN8nRequest fails', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+		const retryError = Object.assign(new Error('401'), { response: { status: 401 } });
+		mockThis.helpers.httpRequest
+			.mockResolvedValueOnce({ statusCode: 200, body: { code: 10001 } })
+			.mockRejectedValueOnce(retryError);
+
+		await expect(
+			requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data`, returnFullResponse: true },
+				mockNode,
+				mockAdditionalData,
+				{
+					shouldRefreshCredentials: (response) =>
+						typeof response.body === 'object' &&
+						response.body !== null &&
+						'code' in response.body &&
+						response.body.code === 10001,
+				},
+				true,
+			),
+		).rejects.toThrow('401');
+
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledTimes(1);
 	});
 });
 

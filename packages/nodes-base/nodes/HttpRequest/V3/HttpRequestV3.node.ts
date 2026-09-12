@@ -81,7 +81,10 @@ function buildAdditionalCredentialOptions(
 
 	return {
 		...(oauth2 ? { oauth2 } : {}),
-		...(hasExpiredWhen ? { credentialExpiredWhen } : {}),
+		...(hasExpiredWhen &&
+		(typeof credentialExpiredWhen === 'string' || typeof credentialExpiredWhen === 'boolean')
+			? { credentialExpiredWhen }
+			: {}),
 	};
 }
 
@@ -346,8 +349,16 @@ export class HttpRequestV3 implements INodeType {
 					if (typeof raw !== 'string' && typeof raw !== 'object') {
 						return raw as T;
 					}
-					const resolved = this.getNodeParameter(`options.${key}`, itemIndex, raw);
-					return ((resolved as T) ?? raw) as T;
+					const resolved = this.getNodeParameter(`options.${key}`, itemIndex);
+					if (resolved !== undefined && resolved !== null) {
+						return resolved as T;
+					}
+					// A nullish expression result means the option is unset.
+					// Do not send the raw `={{...}}` text to request construction.
+					if (typeof raw === 'string' && raw.charAt(0) === '=') {
+						return fallback;
+					}
+					return (raw as T) ?? fallback;
 				};
 
 				const redirect = resolveOption('redirect', undefined) as

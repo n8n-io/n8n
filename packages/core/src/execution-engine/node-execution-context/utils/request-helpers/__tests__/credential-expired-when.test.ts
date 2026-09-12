@@ -100,6 +100,23 @@ describe('withShouldRefreshCredentials', () => {
 		).toBe(false);
 	});
 
+	it('does not treat a resolved string true as expired', () => {
+		const getResolvedValue = vi.fn<ResolveValueFn>().mockReturnValue('true');
+		const compiled = withShouldRefreshCredentials(
+			{ credentialExpiredWhen: '={{ $response.body.flag }}' },
+			getResolvedValue,
+			node,
+		);
+
+		expect(
+			compiled?.shouldRefreshCredentials?.({
+				statusCode: 200,
+				body: { flag: 'true' },
+				headers: {},
+			}),
+		).toBe(false);
+	});
+
 	it('resolves a raw expression against a materialized JSON stream', async () => {
 		const getResolvedValue = vi.fn<ResolveValueFn>((_value, _item, _run, _execute, keys) => {
 			const response = keys?.$response as IN8nHttpFullResponse;

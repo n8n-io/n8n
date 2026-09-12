@@ -309,5 +309,15 @@ describe('completion utils', () => {
 			mockNdvStore.focusedInputPath = 'parameters.options.pagination.pagination.completeExpression';
 			expect(isInHttpNodeCredentialExpiredWhen('test-id')).toBe(false);
 		});
+
+		it('uses the target parameter path when NDV focus is on another field', () => {
+			mockNdvStore.focusedInputPath = 'parameters.options.timeout';
+			expect(
+				isInHttpNodeCredentialExpiredWhen('test-id', {
+					nodeName: HTTP_REQUEST_NODE_TYPE,
+					parameterPath: 'parameters.options.credentialExpiredWhen',
+				}),
+			).toBe(true);
+		});
 	});
 });

@@ -39,11 +39,15 @@ export function withShouldRefreshCredentials(
 				return true;
 			}
 
+			if (typeof raw !== 'string') {
+				return false;
+			}
+
 			try {
 				const resolved = getResolvedValue(raw, itemIndex, 0, executeData, {
 					$response: response,
 				});
-				return resolved === true || resolved === 'true';
+				return resolved === true;
 			} catch {
 				// A bad `$response` path must not fail the request. Treat it as "do not refresh".
 				return false;

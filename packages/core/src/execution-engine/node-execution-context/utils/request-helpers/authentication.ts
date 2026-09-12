@@ -102,6 +102,8 @@ export async function httpRequestWithAuthentication(
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	let requestSent = false;
+	// Keep a retry error out of the first-attempt catch so refresh runs once.
+	let didRetry = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing
 	if (additionalData.evalLlmMockHandler) {
@@ -178,6 +180,7 @@ export async function httpRequestWithAuthentication(
 			isCustomRefreshRequested(additionalCredentialOptions, materializedResponse) &&
 			canUsePreAuthentication(additionalData, credentialsDecrypted)
 		) {
+			didRetry = true;
 			const refreshed = await additionalData.credentialsHelper.preAuthentication(
 				{ helpers: this.helpers },
 				credentialsDecrypted,
@@ -206,6 +209,9 @@ export async function httpRequestWithAuthentication(
 		}
 		return materializedResponse;
 	} catch (error) {
+		if (didRetry) {
+			throw new NodeApiError(this.getNode(), error);
+		}
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		const materializedError = await materializeForRefreshEvaluation(
@@ -277,6 +283,8 @@ export async function requestWithAuthentication(
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	let requestSent = false;
+	// Keep a retry error out of the first-attempt catch so refresh runs once.
+	let didRetry = false;
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
@@ -356,6 +364,7 @@ export async function requestWithAuthentication(
 			isCustomRefreshRequested(additionalCredentialOptions, materializedResponse) &&
 			credentialsDecrypted !== undefined
 		) {
+			didRetry = true;
 			try {
 				const data = await additionalData.credentialsHelper.preAuthentication(
 					{ helpers: this.helpers },
@@ -387,6 +396,10 @@ export async function requestWithAuthentication(
 		}
 		return materializedResponse;
 	} catch (error) {
+		if (didRetry) {
+			if (error instanceof ExecutionBaseError) throw error;
+			throw new NodeApiError(this.getNode(), error);
+		}
 		try {
 			if (credentialsDecrypted !== undefined) {
 				// try to refresh the credentials

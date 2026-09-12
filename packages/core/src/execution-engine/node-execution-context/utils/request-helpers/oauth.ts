@@ -563,16 +563,9 @@ export async function requestOAuth2(
 	};
 
 	if (isN8nRequest) {
+		let firstAttempt: unknown;
 		try {
-			const response = await this.helpers.httpRequest(newRequestOptions);
-			const decision = await shouldRefresh(response);
-			if (decision.refresh) {
-				return await retryWithNewToken(
-					async (opts) => await this.helpers.httpRequest(opts),
-					() => decision.value,
-				);
-			}
-			return decision.value;
+			firstAttempt = await this.helpers.httpRequest(newRequestOptions);
 		} catch (error) {
 			const decision = await shouldRefresh(error as AxiosError);
 			if (decision.refresh) {
@@ -585,6 +578,14 @@ export async function requestOAuth2(
 			}
 			throw error;
 		}
+		const decision = await shouldRefresh(firstAttempt);
+		if (decision.refresh) {
+			return await retryWithNewToken(
+				async (opts) => await this.helpers.httpRequest(opts),
+				() => decision.value,
+			);
+		}
+		return decision.value;
 	}
 
 	return await this.helpers

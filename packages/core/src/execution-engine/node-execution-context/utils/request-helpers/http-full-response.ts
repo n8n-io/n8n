@@ -105,7 +105,8 @@ export function toHttpFullResponse(value: unknown): IN8nHttpFullResponse | undef
 	if (isHttpEnvelope(nested) && typeof nested.status === 'number') {
 		return {
 			statusCode: nested.status,
-			body: parseResponseBody(nested.data),
+			// Legacy request stores the payload on top-level `error`, not `response.data`.
+			body: parseResponseBody(nested.data !== undefined ? nested.data : value.error),
 			headers: asHeaders(nested.headers),
 			statusMessage: typeof nested.statusText === 'string' ? nested.statusText : undefined,
 		};

@@ -1272,6 +1272,7 @@ For what a template cannot express, use the matching type for new and existing c
 							'httpTemplatedCustomAuth',
 							'oAuth1Api',
 						],
+						'/nodeCredentialType': ['trelloOAuth1Api', 'twitterOAuth1Api'],
 					},
 				},
 			},

@@ -77,9 +77,9 @@ export async function dollarOptions(context: CompletionContext): Promise<Complet
 		}),
 	};
 
-	if (isInHttpNodeCredentialExpiredWhen(workflowDocumentId)) {
+	if (isInHttpNodeCredentialExpiredWhen(workflowDocumentId, targetNodeParameterContext)) {
 		recommendedCompletions = [responseCompletion];
-	} else if (isInHttpNodePagination(workflowDocumentId)) {
+	} else if (isInHttpNodePagination(workflowDocumentId, targetNodeParameterContext)) {
 		recommendedCompletions = [
 			{
 				label: '$pageCount',

@@ -179,6 +179,7 @@ describe('HttpRequestV3', () => {
 						'httpTemplatedCustomAuth',
 						'oAuth1Api',
 					],
+					'/nodeCredentialType': ['trelloOAuth1Api', 'twitterOAuth1Api'],
 				},
 			},
 		});
@@ -1382,6 +1383,42 @@ describe('HttpRequestV3', () => {
 			expect(executeFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
 			expect(executeFunctions.logger.warn).toHaveBeenCalledWith(
 				'HTTP Request ignored Credential Expired When. This authentication type cannot refresh the credential.',
+			);
+		});
+
+		it('does not pass credentialExpiredWhen for generic OAuth1', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'genericCredentialType';
+						case 'genericAuthType':
+							return 'oAuth1Api';
+						case 'options':
+							return options;
+						case 'options.credentialExpiredWhen':
+							return expiredExpression;
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				oauth_token: 'token',
+				oauth_token_secret: 'secret',
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.requestOAuth1).toHaveBeenCalled();
+			expect(executeFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(executeFunctions.logger.warn).toHaveBeenCalledWith(
+				'HTTP Request ignored Credential Expired When. OAuth1 cannot refresh the credential with this option.',
 			);
 		});
 
