@@ -114,7 +114,9 @@ describe('InstanceContextService', () => {
 		it('builds nothing with the flag off, and reads nothing either', async () => {
 			const service = serviceWith(false);
 
-			expect(await service.buildBlock({ user: USER, cursor: null, now: NOW })).toBeNull();
+			expect(
+				await service.buildBlock({ user: USER, scope: BOUND, cursor: null, now: NOW }),
+			).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 		});
@@ -128,7 +130,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				isMachineFollowUp: true,
 				now: NOW,
@@ -158,7 +160,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -183,7 +185,17 @@ describe('InstanceContextService', () => {
 		it('builds nothing, and reads nothing, when the conversation is bound to no project', async () => {
 			const service = serviceWith();
 
-			expect(await service.buildBlock({ user: USER, cursor: null, now: NOW })).toBeNull();
+			// A conversation with no project, which is the point of this case — not `BOUND`.
+			const unboundConversation: InstanceContextScope = { surface: 'conversation' };
+
+			expect(
+				await service.buildBlock({
+					user: USER,
+					scope: unboundConversation,
+					cursor: null,
+					now: NOW,
+				}),
+			).toBeNull();
 			expect(activityEventRepository.findFeed).not.toHaveBeenCalled();
 			expect(executionRepository.summariseRunsForProjects).not.toHaveBeenCalled();
 			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
@@ -195,7 +207,7 @@ describe('InstanceContextService', () => {
 			expect(
 				await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -212,7 +224,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -231,7 +243,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -248,7 +260,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -265,7 +277,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -281,7 +293,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -298,7 +310,7 @@ describe('InstanceContextService', () => {
 			expect(
 				await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -314,7 +326,7 @@ describe('InstanceContextService', () => {
 
 			await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -325,7 +337,9 @@ describe('InstanceContextService', () => {
 			expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);
-			expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith([PROJECT_ID], 8);
+			expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith([PROJECT_ID], 8, {
+				mcpVisibleOnly: false,
+			});
 		});
 
 		describe('deltas', () => {
@@ -341,7 +355,7 @@ describe('InstanceContextService', () => {
 
 				const built = await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -367,7 +381,7 @@ describe('InstanceContextService', () => {
 
 				const built = await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -402,7 +416,7 @@ describe('InstanceContextService', () => {
 
 				const built = await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -418,7 +432,7 @@ describe('InstanceContextService', () => {
 
 				await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -438,7 +452,7 @@ describe('InstanceContextService', () => {
 
 				const built = await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor,
 					now: NOW,
 				});
@@ -454,7 +468,7 @@ describe('InstanceContextService', () => {
 				expect(
 					await service.buildBlock({
 						user: USER,
-						projectId: PROJECT_ID,
+						scope: BOUND,
 						cursor,
 						now: NOW,
 					}),
@@ -469,7 +483,7 @@ describe('InstanceContextService', () => {
 			expect(
 				await service.buildBlock({
 					user: USER,
-					projectId: PROJECT_ID,
+					scope: BOUND,
 					cursor: null,
 					now: NOW,
 				}),
@@ -493,7 +507,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -512,7 +526,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -531,7 +545,7 @@ describe('InstanceContextService', () => {
 
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -548,7 +562,7 @@ describe('InstanceContextService', () => {
 			});
 			const built = await service.buildBlock({
 				user: USER,
-				projectId: PROJECT_ID,
+				scope: BOUND,
 				cursor: null,
 				now: NOW,
 			});
@@ -701,6 +715,87 @@ describe('InstanceContextService', () => {
 			const entries = await service.list({ user: USER, scope: unbound(true), limit: 5 });
 
 			expect(entries.map((e) => e.id)).toEqual([2]);
+		});
+
+		describe('the opening block', () => {
+			it('filters the aggregate legs inside the query, not after it', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 1,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				await service.buildBlock({ user: USER, scope: MCP_BOUND, cursor: null, now: NOW });
+
+				// A count filtered after the fact would report workflows the caller cannot see.
+				expect(workflowRepository.findRecentForProjects).toHaveBeenCalledWith(
+					[PROJECT_ID],
+					expect.any(Number),
+					{ mcpVisibleOnly: true },
+				);
+				expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
+					expect.objectContaining({ mcpVisibleOnly: true }),
+				);
+			});
+
+			/** An MCP client is handed the text directly and has nothing to strip a tag out of. */
+			it('carries no instance-context tags and names MCP tools, not Instance AI ones', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 3,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.block).not.toContain('<instance-context>');
+				expect(built?.block).toContain('get_instance_activity');
+				expect(built?.block).toContain('search_workflows');
+				expect(built?.block).not.toContain('activity(action=');
+				expect(built?.block).not.toContain('workflows(action=');
+			});
+
+			it('still tags the block and names Instance AI tools on a conversation', async () => {
+				const service = serviceWith();
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 3,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					user: USER,
+					scope: BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.block).toContain('<instance-context>');
+				expect(built?.block).toContain('activity(action="list")');
+				expect(built?.block).not.toContain('get_instance_activity');
+			});
+
+			/** The MCP surface answers to its own flag, checked where its tools are registered. */
+			it('builds over MCP even with the Instance AI read flag off', async () => {
+				const service = serviceWith(false);
+				workflowRepository.findRecentForProjects.mockResolvedValue({
+					total: 1,
+					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
+				});
+
+				const built = await service.buildBlock({
+					user: USER,
+					scope: MCP_BOUND,
+					cursor: null,
+					now: NOW,
+				});
+
+				expect(built?.block).toBeTruthy();
+			});
 		});
 
 		/**

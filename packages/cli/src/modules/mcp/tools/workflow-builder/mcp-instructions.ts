@@ -6,6 +6,10 @@
  * It provides a condensed orchestration guide for the tool calling sequence.
  */
 
+import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
+import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
+import { GET_NODE_USAGE_TOOL_NAME } from '../get-node-usage.tool';
+import { GET_INSTANCE_ACTIVITY_TOOL_NAME } from '../instance-activity.tool';
 import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
@@ -18,7 +22,6 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
 } from './constants';
-import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME } from '../../mcp.constants';
 
 export type McpInstructionsOptions = {
 	/**
@@ -46,6 +49,12 @@ export type McpInstructionsOptions = {
 	isAgentsEnabled?: boolean;
 
 	/**
+	 * Whether the instance-context surface is on. When it is, the instructions name the opening
+	 * read — the one thing here a client would otherwise never think to ask for.
+	 */
+	isInstanceContextEnabled?: boolean;
+
+	/**
 	 * The caller's saved AI preferences, already rendered as a tagged block by
 	 * `AiPreferenceService`. Appended as the last section when set.
 	 */
@@ -57,9 +66,16 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isN8nConnectAvailable = false,
 		canvasGroupsEnabled = false,
 		isAgentsEnabled = false,
+		isInstanceContextEnabled = false,
 		aiPreferences,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	// Named in the instructions rather than left to discovery: an instance is not empty, and a
+	// client that opens by asking what to build ignores work already in progress.
+	const INSTANCE_CONTEXT_HINT = isInstanceContextEnabled
+		? `Start with the instance, not a blank page. Read the n8n://instance/context resource, or call ${GET_INSTANCE_CONTEXT_TOOL_NAME} if you do not read resources, before your first substantive answer. It reports which workflows exist, what changed recently, and what has run or failed. When the user is vague ("fix it", "carry on", "what should I look at"), the answer is usually the most recent thing there. Use ${GET_INSTANCE_ACTIVITY_TOOL_NAME} to look further back, and ${GET_NODE_USAGE_TOOL_NAME} to match how this instance already builds before choosing between equivalent nodes. Do not narrate any of it back unprompted — let it change what you do rather than what you say.`
+		: '';
 
 	// Only appended when the flag is on; keeps the paid-per-session string short.
 	const GROUPS_HINT = canvasGroupsEnabled
@@ -125,6 +141,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 
 	return [
 		INTRO,
+		INSTANCE_CONTEXT_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',

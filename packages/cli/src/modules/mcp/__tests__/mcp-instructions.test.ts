@@ -111,3 +111,23 @@ describe('getMcpInstructions', () => {
 		});
 	});
 });
+
+describe('instance context', () => {
+	it('names the resource and the tool when the surface is on', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: false,
+			isInstanceContextEnabled: true,
+		});
+
+		expect(instructions).toContain('n8n://instance/context');
+		expect(instructions).toContain('get_instance_context');
+	});
+
+	/** Every word here is paid for on every session, so an off surface costs nothing. */
+	it('says nothing about it when the surface is off', () => {
+		const instructions = getMcpInstructions({ isBuilderEnabled: false });
+
+		expect(instructions).not.toContain('n8n://instance/context');
+		expect(instructions).not.toContain('get_instance_context');
+	});
+});

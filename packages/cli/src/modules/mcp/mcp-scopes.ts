@@ -26,6 +26,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'validate_node_config',
 		// Instance-context reads. Both describe workflows, so `workflow:read` is the bar; the
 		// activity tools drop credential entries for a grant that lacks `credential:read`.
+		'get_instance_context',
 		'get_instance_activity',
 		'expand_instance_activity',
 		'get_node_usage',
@@ -139,6 +140,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
  * scope-map drift guard tell "not mapped" from "not registered here".
  */
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_context',
 	'get_instance_activity',
 	'expand_instance_activity',
 	'get_node_usage',
