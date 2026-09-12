@@ -242,6 +242,11 @@ export class HelpScout implements INodeType {
 						if (options.tags) {
 							qs.tag = options.tags.toString();
 						}
+						if (options.modifiedSince) {
+							const value = options.modifiedSince;
+							qs.modifiedSince = (Array.isArray(value) ? value[0] : value) as string;
+							delete options.modifiedSince;
+						}
 						Object.assign(qs, options);
 						delete qs.tags;
 
@@ -358,6 +363,11 @@ export class HelpScout implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
+						if (options.modifiedSince) {
+							const value = options.modifiedSince;
+							qs.modifiedSince = (Array.isArray(value) ? value[0] : value) as string;
+							delete options.modifiedSince;
+						}
 						Object.assign(qs, options);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
